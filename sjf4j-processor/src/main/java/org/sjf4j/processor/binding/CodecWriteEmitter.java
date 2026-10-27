@@ -18,7 +18,6 @@ final class CodecWriteEmitter {
         out.indent();
 
         String info = value.helperName();
-
         out.beginBlock("if (" + info + ".streamGenerator != null)");
         out.line(info + ".streamGenerator.write(" + generator + ", codecValue);");
         out.endBlock(" else {");
@@ -26,8 +25,7 @@ final class CodecWriteEmitter {
         String method = value.codecRawType() == null ? null
                 : nativeWrite(value.codecRawType().toString(), backend, nativeWriter != null);
         if (method == null) {
-            out.line(generator + ".writeRaw(" + info
-                    + ".valueToRaw(codecValue), this.context);");
+            out.line(generator + ".writeRaw(" + info + ".valueToRaw(codecValue), this.context);");
         } else {
             out.line("Object rawValue = " + info + ".valueToRaw(codecValue);");
             out.beginBlock("if (" + info + ".rawClazz == "

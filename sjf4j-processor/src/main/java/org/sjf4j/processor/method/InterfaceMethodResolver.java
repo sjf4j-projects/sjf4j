@@ -40,62 +40,35 @@ public final class InterfaceMethodResolver {
             Elements elements,
             TypeSystem types) {
 
-        this.typeUtils =
-                Asserts.notNull(
-                        typeUtils,
-                        "typeUtils");
-
-        this.elements =
-                Asserts.notNull(
-                        elements,
-                        "elements");
-
-        this.types =
-                Asserts.notNull(
-                        types,
-                        "types");
+        this.typeUtils = Asserts.notNull(typeUtils, "typeUtils");
+        this.elements = Asserts.notNull(elements, "elements");
+        this.types = Asserts.notNull(types, "types");
     }
 
 
     /**
      * Returns effective abstract instance methods specialized through owner.
      */
-    public List<ResolvedMethod> abstractMethods(
-            TypeElement owner) {
+    public List<ResolvedMethod> abstractMethods(TypeElement owner) {
+        Map<String, ResolvedMethod> methods = new LinkedHashMap<String, ResolvedMethod>();
 
-        Map<String, ResolvedMethod> methods =
-                new LinkedHashMap<String, ResolvedMethod>();
-
-        for (Element member :
-                elements.getAllMembers(owner)) {
-
-            if (member.getKind() !=
-                    ElementKind.METHOD) {
-
+        for (Element member : elements.getAllMembers(owner)) {
+            if (member.getKind() != ElementKind.METHOD) {
                 continue;
             }
 
-            ExecutableElement method =
-                    (ExecutableElement) member;
+            ExecutableElement method = (ExecutableElement) member;
 
-            if (!method.getModifiers()
-                    .contains(Modifier.ABSTRACT)) {
-
+            if (!method.getModifiers().contains(Modifier.ABSTRACT)) {
                 continue;
             }
 
-            if (method.getModifiers()
-                    .contains(Modifier.STATIC) ||
-                    method.getModifiers()
-                            .contains(Modifier.PRIVATE)) {
-
+            if (method.getModifiers().contains(Modifier.STATIC) ||
+                    method.getModifiers().contains(Modifier.PRIVATE)) {
                 continue;
             }
 
-            ExecutableType resolved =
-                    types.resolveMethodType(
-                            owner.asType(),
-                            method);
+            ExecutableType resolved = types.resolveMethodType(owner.asType(), method);
 
             if (resolved == null) {
                 /*
@@ -103,60 +76,34 @@ public final class InterfaceMethodResolver {
                  * getAllMembers(). Preserve the declaration type so feature
                  * validation can still produce a useful diagnostic.
                  */
-                resolved =
-                        (ExecutableType)
-                                method.asType();
+                resolved = (ExecutableType) method.asType();
             }
 
-            ResolvedMethod candidate =
-                    new ResolvedMethod(
-                            method,
-                            resolved);
-
-            String key =
-                    signatureKey(candidate);
-
-            ResolvedMethod current =
-                    methods.get(key);
+            ResolvedMethod candidate = new ResolvedMethod(method, resolved);
+            String key = signatureKey(candidate);
+            ResolvedMethod current = methods.get(key);
 
             if (current == null) {
-                methods.put(
-                        key,
-                        candidate);
+                methods.put(key, candidate);
             } else {
-                methods.put(
-                        key,
-                        moreSpecific(
-                                owner,
-                                current,
-                                candidate));
+                methods.put(key, moreSpecific(owner, current, candidate));
             }
         }
 
-        List<ResolvedMethod> result =
-                new ArrayList<ResolvedMethod>(
-                        methods.values());
+        List<ResolvedMethod> result = new ArrayList<ResolvedMethod>(methods.values());
 
         Collections.sort(
                 result,
                 new Comparator<ResolvedMethod>() {
                     @Override
-                    public int compare(
-                            ResolvedMethod first,
-                            ResolvedMethod second) {
-
-                        int compared =
-                                signatureKey(first)
-                                        .compareTo(
-                                                signatureKey(second));
+                    public int compare(ResolvedMethod first, ResolvedMethod second) {
+                        int compared = signatureKey(first).compareTo(signatureKey(second));
 
                         if (compared != 0) {
                             return compared;
                         }
 
-                        return declarationKey(first)
-                                .compareTo(
-                                        declarationKey(second));
+                        return declarationKey(first).compareTo(declarationKey(second));
                     }
                 });
 
@@ -169,26 +116,15 @@ public final class InterfaceMethodResolver {
             ResolvedMethod first,
             ResolvedMethod second) {
 
-        ExecutableElement firstMethod =
-                first.declaration();
-
-        ExecutableElement secondMethod =
-                second.declaration();
+        ExecutableElement firstMethod = first.declaration();
+        ExecutableElement secondMethod = second.declaration();
 
         try {
-            if (elements.overrides(
-                    secondMethod,
-                    firstMethod,
-                    owner)) {
-
+            if (elements.overrides(secondMethod, firstMethod, owner)) {
                 return second;
             }
 
-            if (elements.overrides(
-                    firstMethod,
-                    secondMethod,
-                    owner)) {
-
+            if (elements.overrides(firstMethod, secondMethod, owner)) {
                 return first;
             }
         } catch (IllegalArgumentException ignored) {
@@ -199,45 +135,25 @@ public final class InterfaceMethodResolver {
              */
         }
 
-        TypeMirror firstReturn =
-                first.type()
-                        .getReturnType();
-
-        TypeMirror secondReturn =
-                second.type()
-                        .getReturnType();
+        TypeMirror firstReturn = first.type().getReturnType();
+        TypeMirror secondReturn = second.type().getReturnType();
 
         if (firstReturn.getKind().isPrimitive() ||
                 secondReturn.getKind().isPrimitive() ||
                 firstReturn.getKind() == TypeKind.VOID ||
                 secondReturn.getKind() == TypeKind.VOID) {
 
-            return declarationKey(second)
-                    .compareTo(
-                            declarationKey(first)) < 0
-                    ? second
-                    : first;
+            return declarationKey(second).compareTo(declarationKey(first)) < 0 ? second : first;
         }
 
-        boolean secondToFirst =
-                typeUtils.isAssignable(
-                        secondReturn,
-                        firstReturn);
+        boolean secondToFirst = typeUtils.isAssignable(secondReturn, firstReturn);
+        boolean firstToSecond = typeUtils.isAssignable(firstReturn, secondReturn);
 
-        boolean firstToSecond =
-                typeUtils.isAssignable(
-                        firstReturn,
-                        secondReturn);
-
-        if (secondToFirst &&
-                !firstToSecond) {
-
+        if (secondToFirst && !firstToSecond) {
             return second;
         }
 
-        if (firstToSecond &&
-                !secondToFirst) {
-
+        if (firstToSecond && !secondToFirst) {
             return first;
         }
 
@@ -246,41 +162,24 @@ public final class InterfaceMethodResolver {
          * genuinely incompatible inheritance; use a stable declaration key
          * only to remove getAllMembers() ordering from generated output.
          */
-        return declarationKey(second)
-                .compareTo(
-                        declarationKey(first)) < 0
-                ? second
-                : first;
+        return declarationKey(second).compareTo(declarationKey(first)) < 0 ? second : first;
     }
 
 
-    private String signatureKey(
-            ResolvedMethod method) {
-
-        StringBuilder key =
-                new StringBuilder();
-
-        key.append(
-                method.declaration()
-                        .getSimpleName());
+    private String signatureKey(ResolvedMethod method) {
+        StringBuilder key = new StringBuilder();
+        key.append(method.declaration().getSimpleName());
 
         key.append('(');
 
-        List<? extends TypeMirror> parameters =
-                method.type()
-                        .getParameterTypes();
+        List<? extends TypeMirror> parameters = method.type().getParameterTypes();
 
-        for (int i = 0;
-             i < parameters.size();
-             i++) {
-
+        for (int i = 0; i < parameters.size(); i++) {
             if (i != 0) {
                 key.append(',');
             }
 
-            key.append(
-                    typeUtils.erasure(
-                            parameters.get(i)));
+            key.append(typeUtils.erasure(parameters.get(i)));
         }
 
         key.append(')');
@@ -289,24 +188,12 @@ public final class InterfaceMethodResolver {
     }
 
 
-    private String declarationKey(
-            ResolvedMethod method) {
+    private String declarationKey(ResolvedMethod method) {
+        ExecutableElement declaration = method.declaration();
+        Element enclosing = declaration.getEnclosingElement();
 
-        ExecutableElement declaration =
-                method.declaration();
-
-        Element enclosing =
-                declaration.getEnclosingElement();
-
-        String owner =
-                enclosing instanceof TypeElement
-                        ? ((TypeElement) enclosing)
-                        .getQualifiedName()
-                        .toString()
-                        : enclosing.toString();
-
-        return owner +
-                '#' +
-                declaration.toString();
+        String owner = enclosing instanceof TypeElement
+                ? ((TypeElement) enclosing).getQualifiedName().toString() : enclosing.toString();
+        return owner + '#' + declaration.toString();
     }
 }

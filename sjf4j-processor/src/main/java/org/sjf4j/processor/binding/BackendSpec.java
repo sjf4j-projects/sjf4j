@@ -4,7 +4,6 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.BindingFormat;
 import org.sjf4j.util.Asserts;
 
-
 /** Compile-time description of one concrete binding backend. */
 final class BackendSpec {
 
@@ -22,14 +21,8 @@ final class BackendSpec {
      */
     private final String libraryMarkerType;
 
-    BackendSpec(
-            BindingFormat format,
-            Backend backend,
-            String binderType,
-            String parserType,
-            String generatorType,
-            String libraryMarkerType) {
-
+    BackendSpec(BindingFormat format, Backend backend, String binderType,
+                String parserType, String generatorType, String libraryMarkerType) {
         this.format = Asserts.notNull(format, "format");
         this.backend = Asserts.notNull(backend, "backend");
         this.binderType = Asserts.notNull(binderType, "binderType");
@@ -85,8 +78,7 @@ final class BackendSpec {
             case FASTJSON2:
                 return "org.sjf4j.backend.fastjson2.binding.Fastjson2NameMatcher";
             default:
-                throw new IllegalStateException(
-                        "No compiled name matcher for backend " + backend);
+                throw new IllegalStateException("No compiled name matcher for backend " + backend);
         }
     }
 
@@ -110,8 +102,7 @@ final class BackendSpec {
             case SNAKE:
                 return "org.sjf4j.binding.CompiledName";
             default:
-                throw new IllegalStateException(
-                        "No compiled property names for backend " + backend);
+                throw new IllegalStateException("No compiled property names for backend " + backend);
         }
     }
 

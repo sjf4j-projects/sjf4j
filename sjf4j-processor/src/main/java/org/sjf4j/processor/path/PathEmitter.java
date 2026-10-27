@@ -66,24 +66,13 @@ final class PathEmitter {
             NavigatorMethodGenerator.GetPlan plan,
             GeneratedClass generated) {
 
-        TypeMirror currentType =
-                plan.root.asType();
-
-        List<Step> steps =
-                new ArrayList<Step>();
-
-        PathSegment[] segments =
-                plan.path.segments();
+        TypeMirror currentType = plan.root.asType();
+        List<Step> steps = new ArrayList<Step>();
+        PathSegment[] segments = plan.path.segments();
 
         for (int i = 1; i < segments.length; i++) {
-            Step step =
-                    resolveStep(
-                            currentType,
-                            segments[i],
-                            plan.pathParameters,
-                            plan.method,
-                            generated,
-                            "@GetByPath");
+            Step step = resolveStep(currentType, segments[i], plan.pathParameters,
+                    plan.method, generated, "@GetByPath");
 
             if (step == null) {
                 return null;
@@ -102,13 +91,11 @@ final class PathEmitter {
                 return null;
             }
 
-            step.resultType =
-                    step.access.readType();
+            step.resultType = step.access.readType();
 
             steps.add(step);
 
-            currentType =
-                    step.resultType;
+            currentType = step.resultType;
         }
 
         if (!types.isAssignableBoxedGeneric(
@@ -126,14 +113,8 @@ final class PathEmitter {
             return null;
         }
 
-        ResolvedGet resolved =
-                new ResolvedGet(
-                        plan,
-                        steps,
-                        currentType);
-
-        return out ->
-                emitGet(out, resolved);
+        ResolvedGet resolved = new ResolvedGet(plan, steps, currentType);
+        return out -> emitGet(out, resolved);
     }
 
 
@@ -147,31 +128,18 @@ final class PathEmitter {
             NavigatorMethodGenerator.PutPlan plan,
             GeneratedClass generated) {
 
-        TypeMirror currentType =
-                plan.root.asType();
-
-        PathSegment[] segments =
-                plan.path.segments();
-
-        List<Step> steps =
-                new ArrayList<Step>();
+        TypeMirror currentType = plan.root.asType();
+        PathSegment[] segments = plan.path.segments();
+        List<Step> steps = new ArrayList<Step>();
 
         /*
          * Phase 1:
          * resolve the complete intermediate path.
          */
         for (int i = 1; i < segments.length - 1; i++) {
-            PathSegment segment =
-                    segments[i];
-
-            Step step =
-                    resolveStep(
-                            currentType,
-                            segment,
-                            plan.pathParameters,
-                            plan.method,
-                            generated,
-                            plan.annotation);
+            PathSegment segment = segments[i];
+            Step step = resolveStep(currentType, segment, plan.pathParameters,
+                    plan.method, generated, plan.annotation);
 
             if (step == null) {
                 return null;
@@ -200,8 +168,7 @@ final class PathEmitter {
                     return null;
                 }
 
-                step.resultType =
-                        step.access.writeType();
+                step.resultType = step.access.writeType();
 
             } else {
                 if (step.access == null ||
@@ -232,27 +199,19 @@ final class PathEmitter {
                     return null;
                 }
 
-                step.resultType =
-                        step.access.readType();
+                step.resultType = step.access.readType();
             }
 
             steps.add(step);
 
-            currentType =
-                    step.resultType;
+            currentType = step.resultType;
         }
 
         /*
          * Resolve final write target.
          */
-        Step target =
-                resolveStep(
-                        currentType,
-                        segments[segments.length - 1],
-                        plan.pathParameters,
-                        plan.method,
-                        generated,
-                        plan.annotation);
+        Step target = resolveStep(currentType, segments[segments.length - 1],
+                plan.pathParameters, plan.method, generated, plan.annotation);
 
         if (target == null) {
             return null;
@@ -304,8 +263,7 @@ final class PathEmitter {
             }
         }
 
-        TypeMirror valueType =
-                target.access.writeType();
+        TypeMirror valueType = target.access.writeType();
 
         if (!types.isAssignableBoxedGeneric(
                 plan.value.asType(),
@@ -323,8 +281,7 @@ final class PathEmitter {
             return null;
         }
 
-        TypeMirror oldType =
-                oldType(target);
+        TypeMirror oldType = oldType(target);
 
         if (!validatePutReturn(
                 plan,
@@ -350,17 +307,9 @@ final class PathEmitter {
             return null;
         }
 
-        ResolvedPut resolved =
-                new ResolvedPut(
-                        plan,
-                        steps,
-                        currentType,
-                        target,
-                        valueType,
-                        oldType);
-
-        return out ->
-                emitPut(out, resolved);
+        ResolvedPut resolved = new ResolvedPut(plan, steps, currentType,
+                target, valueType, oldType);
+        return out -> emitPut(out, resolved);
     }
 
 
@@ -370,8 +319,7 @@ final class PathEmitter {
             TypeMirror oldType,
             GeneratedClass generated) {
 
-        TypeMirror returnType =
-                plan.method.getReturnType();
+        TypeMirror returnType = plan.method.getReturnType();
 
         if (returnType.getKind() == TypeKind.VOID) {
             return true;
@@ -417,10 +365,7 @@ final class PathEmitter {
          * value. Conditional put variants may also return null without writing.
          */
         if (returnType.getKind().isPrimitive()) {
-            boolean nullable =
-                    plan.ifParentPresent ||
-                            plan.ifAbsent ||
-                            !oldType.getKind().isPrimitive();
+            boolean nullable = plan.ifParentPresent || plan.ifAbsent || !oldType.getKind().isPrimitive();
 
             if (nullable) {
                 error(
@@ -450,8 +395,7 @@ final class PathEmitter {
             GeneratedClass generated) {
 
         for (int i = 0; i < steps.size(); i++) {
-            Step step =
-                    steps.get(i);
+            Step step = steps.get(i);
 
             PathSegment next =
                     i + 1 < steps.size()
@@ -459,13 +403,8 @@ final class PathEmitter {
                             : target.segment;
 
             if (step.segment instanceof PathSegment.Append) {
-                step.createExpression =
-                        resolveContainerCreation(
-                                step.resultType,
-                                next,
-                                plan.pathParameters,
-                                plan.method,
-                                generated);
+                step.createExpression = resolveContainerCreation(step.resultType, next,
+                        plan.pathParameters, plan.method, generated);
 
                 if (step.createExpression == null) {
                     return false;
@@ -480,23 +419,14 @@ final class PathEmitter {
                 continue;
             }
 
-            TypeMirror createType =
-                    ensureCreationType(
-                            step,
-                            plan.method,
-                            generated);
+            TypeMirror createType = ensureCreationType(step, plan.method, generated);
 
             if (createType == null) {
                 return false;
             }
 
-            step.createExpression =
-                    resolveContainerCreation(
-                            createType,
-                            next,
-                            plan.pathParameters,
-                            plan.method,
-                            generated);
+            step.createExpression = resolveContainerCreation(createType, next,
+                    plan.pathParameters, plan.method, generated);
 
             if (step.createExpression == null) {
                 return false;
@@ -516,11 +446,8 @@ final class PathEmitter {
             ExecutableElement method,
             GeneratedClass generated) {
 
-        TypeMirror readType =
-                step.access.readType();
-
-        TypeMirror writeType =
-                step.access.writeType();
+        TypeMirror readType = step.access.readType();
+        TypeMirror writeType = step.access.writeType();
 
         if (types.isAssignableBoxedGeneric(
                 readType,
@@ -568,27 +495,17 @@ final class PathEmitter {
         VariableElement parameter = null;
 
         if (segment instanceof PathSegment.Name) {
-            access =
-                    context.access.resolveName(
-                            ownerType,
-                            ((PathSegment.Name) segment).name);
+            access = context.access.resolveName(ownerType, ((PathSegment.Name) segment).name);
 
         } else if (segment instanceof PathSegment.Index) {
-            access =
-                    context.access.resolveIndex(
-                            ownerType);
+            access = context.access.resolveIndex(ownerType);
 
         } else if (segment instanceof PathSegment.Append) {
-            access =
-                    context.access.resolveAppend(
-                            ownerType);
+            access = context.access.resolveAppend(ownerType);
 
         } else if (segment instanceof PathSegment.Param) {
-            String name =
-                    ((PathSegment.Param) segment).param;
-
-            parameter =
-                    parameters.get(name);
+            String name = ((PathSegment.Param) segment).param;
+            parameter = parameters.get(name);
 
             if (parameter == null) {
                 error(
@@ -603,16 +520,12 @@ final class PathEmitter {
             }
 
             if (isString(parameter.asType())) {
-                access =
-                        context.access.resolveDynamicName(
-                                ownerType);
+                access = context.access.resolveDynamicName(ownerType);
 
             } else if (parameter.asType().getKind() ==
                     TypeKind.INT) {
 
-                access =
-                        context.access.resolveIndex(
-                                ownerType);
+                access = context.access.resolveIndex(ownerType);
 
             } else {
                 error(
@@ -641,8 +554,7 @@ final class PathEmitter {
                 access.kind() == NodeAccess.Kind.MAP &&
                 !types.hasSafeStringPathKey(ownerType)) {
 
-            TypeMirror key =
-                    types.mapDeclaredKeyType(ownerType);
+            TypeMirror key = types.mapDeclaredKeyType(ownerType);
 
             error(
                     method,
@@ -654,11 +566,7 @@ final class PathEmitter {
             return null;
         }
 
-        return new Step(
-                ownerType,
-                segment,
-                parameter,
-                access);
+        return new Step(ownerType, segment, parameter, access);
     }
 
 
@@ -672,25 +580,14 @@ final class PathEmitter {
             JavaWriter out,
             ResolvedGet resolved) {
 
-        ExecutableElement method =
-                resolved.plan.method;
-
-        NameAllocator names =
-                names(method);
+        ExecutableElement method = resolved.plan.method;
+        NameAllocator names = names(method);
 
         out.line("@Override");
-        out.beginBlock(
-                methodHeader(method));
+        out.beginBlock(methodHeader(method));
 
-        String root =
-                resolved.plan.root
-                        .getSimpleName()
-                        .toString();
-
-        String missing =
-                getMissing(
-                        method,
-                        resolved.plan);
+        String root = resolved.plan.root.getSimpleName().toString();
+        String missing = getMissing(method, resolved.plan);
 
         if (!resolved.plan.root
                 .asType()
@@ -704,25 +601,12 @@ final class PathEmitter {
                             missing);
         }
 
-        String current =
-                root;
+        String current = root;
 
         for (Step step : resolved.steps) {
-            String next =
-                    names.newName(
-                            stepHint(step));
-
-            emitRead(
-                    out,
-                    step,
-                    current,
-                    next,
-                    names,
-                    ReadMode.STRICT,
-                    missing);
-
-            current =
-                    next;
+            String next = names.newName(stepHint(step));
+            emitRead(out, step, current, next, names, ReadMode.STRICT, missing);
+            current = next;
         }
 
         out.line(
@@ -760,28 +644,15 @@ final class PathEmitter {
             JavaWriter out,
             ResolvedPut resolved) {
 
-        NavigatorMethodGenerator.PutPlan plan =
-                resolved.plan;
-
-        ExecutableElement method =
-                plan.method;
-
-        NameAllocator names =
-                names(method);
+        NavigatorMethodGenerator.PutPlan plan = resolved.plan;
+        ExecutableElement method = plan.method;
+        NameAllocator names = names(method);
 
         out.line("@Override");
-        out.beginBlock(
-                methodHeader(method));
+        out.beginBlock(methodHeader(method));
 
-        String root =
-                plan.root
-                        .getSimpleName()
-                        .toString();
-
-        String value =
-                plan.value
-                        .getSimpleName()
-                        .toString();
+        String root = plan.root.getSimpleName().toString();
+        String value = plan.value.getSimpleName().toString();
 
         String missing =
                 plan.ifParentPresent
@@ -800,49 +671,21 @@ final class PathEmitter {
                             missing);
         }
 
-        String current =
-                root;
+        String current = root;
 
         for (Step step : resolved.steps) {
-            String next =
-                    names.newName(
-                            stepHint(step));
-
-            emitRead(
-                    out,
-                    step,
-                    current,
-                    next,
-                    names,
-                    ReadMode.STRICT,
-                    missing);
-
-            current =
-                    next;
+            String next = names.newName(stepHint(step));
+            emitRead(out, step, current, next, names, ReadMode.STRICT, missing);
+            current = next;
         }
 
         boolean needOld =
                 method.getReturnType().getKind() != TypeKind.VOID &&
                         resolved.oldType != null;
 
-        String old =
-                needOld
-                        ? names.newName("oldValue")
-                        : null;
-
-        emitWrite(
-                out,
-                resolved.target,
-                current,
-                value,
-                old,
-                names);
-
-        emitOldReturn(
-                out,
-                method,
-                old,
-                resolved.oldType);
+        String old = needOld ? names.newName("oldValue") : null;
+        emitWrite(out, resolved.target, current, value, old, names);
+        emitOldReturn(out, method, old, resolved.oldType);
 
         out.endBlock();
     }
@@ -852,28 +695,15 @@ final class PathEmitter {
             JavaWriter out,
             ResolvedPut resolved) {
 
-        NavigatorMethodGenerator.PutPlan plan =
-                resolved.plan;
-
-        ExecutableElement method =
-                plan.method;
-
-        NameAllocator names =
-                names(method);
+        NavigatorMethodGenerator.PutPlan plan = resolved.plan;
+        ExecutableElement method = plan.method;
+        NameAllocator names = names(method);
 
         out.line("@Override");
-        out.beginBlock(
-                methodHeader(method));
+        out.beginBlock(methodHeader(method));
 
-        String root =
-                plan.root
-                        .getSimpleName()
-                        .toString();
-
-        String value =
-                plan.value
-                        .getSimpleName()
-                        .toString();
+        String root = plan.root.getSimpleName().toString();
+        String value = plan.value.getSimpleName().toString();
 
         out.line(
                 "org.sjf4j.util.Asserts.notNull(" +
@@ -882,13 +712,10 @@ final class PathEmitter {
                         JavaWriter.stringLiteral(root) +
                         ");");
 
-        String current =
-                root;
+        String current = root;
 
         for (Step step : resolved.steps) {
-            String next =
-                    names.newName(
-                            stepHint(step));
+            String next = names.newName(stepHint(step));
 
             /*
              * Intermediate append creates a fresh child immediately.
@@ -902,35 +729,19 @@ final class PathEmitter {
                                 step.createExpression +
                                 ";");
 
-                emitWrite(
-                        out,
-                        step,
-                        current,
-                        next,
-                        null,
-                        names);
+                emitWrite(out, step, current, next, null, names);
 
                 current = next;
                 continue;
             }
 
-            emitRead(
-                    out,
-                    step,
-                    current,
-                    next,
-                    names,
-                    ReadMode.ENSURE,
-                    null);
+            emitRead(out, step, current, next, names, ReadMode.ENSURE, null);
 
             if (!step.resultType
                     .getKind()
                     .isPrimitive()) {
 
-                out.beginBlock(
-                        "if (" +
-                                next +
-                                " == null)");
+                out.beginBlock("if (" + next + " == null)");
 
                 if (step.access.writable()) {
                     if (step.createExpression == null) {
@@ -944,58 +755,29 @@ final class PathEmitter {
                                     step.createExpression +
                                     ";");
 
-                    emitWrite(
-                            out,
-                            step,
-                            current,
-                            next,
-                            null,
-                            names);
+                    emitWrite(out, step, current, next, null, names);
 
                 } else {
-                    emitReadonlyEnsureFailure(
-                            out,
-                            step);
+                    emitReadonlyEnsureFailure(out, step);
                 }
 
                 out.endBlock();
             }
 
-            current =
-                    next;
+            current = next;
         }
 
         if (plan.ifAbsent) {
-            emitIfAbsent(
-                    out,
-                    resolved,
-                    current,
-                    value,
-                    names);
+            emitIfAbsent(out, resolved, current, value, names);
 
         } else {
             boolean needOld =
                     method.getReturnType().getKind() != TypeKind.VOID &&
                             resolved.oldType != null;
 
-            String old =
-                    needOld
-                            ? names.newName("oldValue")
-                            : null;
-
-            emitWrite(
-                    out,
-                    resolved.target,
-                    current,
-                    value,
-                    old,
-                    names);
-
-            emitOldReturn(
-                    out,
-                    method,
-                    old,
-                    resolved.oldType);
+            String old = needOld ? names.newName("oldValue") : null;
+            emitWrite(out, resolved.target, current, value, old, names);
+            emitOldReturn(out, method, old, resolved.oldType);
         }
 
         out.endBlock();
@@ -1017,17 +799,11 @@ final class PathEmitter {
             ReadMode mode,
             String missing) {
 
-        TypeMirror type =
-                step.access.readType();
+        TypeMirror type = step.access.readType();
 
         switch (step.access.kind()) {
             case PROPERTY:
-                emitPropertyRead(
-                        out,
-                        step.access.property(),
-                        owner,
-                        target,
-                        type);
+                emitPropertyRead(out, step.access.property(), owner, target, type);
                 break;
 
             case MAP:
@@ -1144,22 +920,13 @@ final class PathEmitter {
             String target,
             TypeMirror type) {
 
-        PropertyAccess read =
-                property.read();
+        PropertyAccess read = property.read();
 
         String expression;
-
         if (read.isMethod()) {
-            expression =
-                    owner +
-                            "." +
-                            read.memberName() +
-                            "()";
+            expression = owner + "." + read.memberName() + "()";
         } else {
-            expression =
-                    owner +
-                            "." +
-                            read.memberName();
+            expression = owner + "." + read.memberName();
         }
 
         out.line(
@@ -1184,26 +951,13 @@ final class PathEmitter {
             boolean array,
             boolean jsonArray) {
 
-        String size =
-                array
-                        ? owner + ".length"
-                        : owner + ".size()";
-
-        String index =
-                emitIndex(
-                        out,
-                        step,
-                        size,
-                        names);
+        String size = array ? owner + ".length" : owner + ".size()";
+        String index = emitIndex(out, step, size, names);
 
         String expression;
 
         if (array) {
-            expression =
-                    owner +
-                            "[" +
-                            index +
-                            "]";
+            expression = owner + "[" + index + "]";
 
         } else if (jsonArray) {
             expression =
@@ -1215,11 +969,7 @@ final class PathEmitter {
                                     ")");
 
         } else {
-            expression =
-                    owner +
-                            ".get(" +
-                            index +
-                            ")";
+            expression = owner + ".get(" + index + ")";
         }
 
         if (mode == ReadMode.ENSURE) {
@@ -1286,10 +1036,7 @@ final class PathEmitter {
             return expression;
         }
 
-        return "(" +
-                localType(type) +
-                ") " +
-                expression;
+        return "(" + localType(type) + ") " + expression;
     }
 
 
@@ -1330,45 +1077,21 @@ final class PathEmitter {
                             old);
                 }
 
-                emitPropertyWrite(
-                        out,
-                        step.access.property(),
-                        owner,
-                        value);
+                emitPropertyWrite(out, step.access.property(), owner, value);
                 return;
 
             case MAP: {
-                String expression =
-                        owner +
-                                ".put(" +
-                                nameExpression(step) +
-                                ", " +
-                                value +
-                                ")";
+                String expression = owner + ".put(" + nameExpression(step) + ", " + value + ")";
 
-                emitOptionalOld(
-                        out,
-                        step,
-                        old,
-                        expression);
+                emitOptionalOld(out, step, old, expression);
 
                 return;
             }
 
             case JSON_OBJECT: {
-                String expression =
-                        owner +
-                                ".put(" +
-                                nameExpression(step) +
-                                ", " +
-                                value +
-                                ")";
+                String expression = owner + ".put(" + nameExpression(step) + ", " + value + ")";
 
-                emitOptionalObjectOld(
-                        out,
-                        step,
-                        old,
-                        expression);
+                emitOptionalObjectOld(out, step, old, expression);
 
                 return;
             }
@@ -1376,13 +1099,7 @@ final class PathEmitter {
             case LIST:
             case ARRAY:
             case JSON_ARRAY:
-                emitIndexWrite(
-                        out,
-                        step,
-                        owner,
-                        value,
-                        old,
-                        names);
+                emitIndexWrite(out, step, owner, value, old, names);
                 return;
 
             case DYNAMIC: {
@@ -1409,11 +1126,7 @@ final class PathEmitter {
                                     ")";
                 }
 
-                emitOptionalObjectOld(
-                        out,
-                        step,
-                        old,
-                        expression);
+                emitOptionalObjectOld(out, step, old, expression);
 
                 return;
             }
@@ -1440,12 +1153,7 @@ final class PathEmitter {
             return;
         }
 
-        emitPropertyRead(
-                out,
-                step.access.property(),
-                owner,
-                old,
-                step.access.readType());
+        emitPropertyRead(out, step.access.property(), owner, old, step.access.readType());
     }
 
 
@@ -1455,8 +1163,7 @@ final class PathEmitter {
             String owner,
             String value) {
 
-        PropertyAccess write =
-                property.write();
+        PropertyAccess write = property.write();
 
         if (write.isMethod()) {
             out.line(
@@ -1514,8 +1221,7 @@ final class PathEmitter {
             return;
         }
 
-        TypeMirror type =
-                oldType(step);
+        TypeMirror type = oldType(step);
 
         out.line(
                 localType(type) +
@@ -1548,21 +1254,9 @@ final class PathEmitter {
                     "Append must use emitAppend");
         }
 
-        boolean array =
-                step.access.kind() ==
-                        NodeAccess.Kind.ARRAY;
-
-        String size =
-                array
-                        ? owner + ".length"
-                        : owner + ".size()";
-
-        String index =
-                emitIndex(
-                        out,
-                        step,
-                        size,
-                        names);
+        boolean array = step.access.kind() == NodeAccess.Kind.ARRAY;
+        String size = array ? owner + ".length" : owner + ".size()";
+        String index = emitIndex(out, step, size, names);
 
         if (array) {
             out.line(
@@ -1675,11 +1369,7 @@ final class PathEmitter {
         out.endBlock(" else {");
         out.indent();
 
-        String container =
-                step.access.kind() ==
-                        NodeAccess.Kind.JSON_ARRAY
-                        ? "JsonArray"
-                        : "List";
+        String container = step.access.kind() == NodeAccess.Kind.JSON_ARRAY ? "JsonArray" : "List";
 
         out.line(
                 "throw new org.sjf4j.exception.NodeException(" +
@@ -1746,36 +1436,17 @@ final class PathEmitter {
             String value,
             NameAllocator names) {
 
-        Step target =
-                resolved.target;
+        Step target = resolved.target;
 
         if (target.segment instanceof PathSegment.Append) {
-            emitWrite(
-                    out,
-                    target,
-                    owner,
-                    value,
-                    null,
-                    names);
-
-            emitNullReturn(
-                    out,
-                    resolved.plan.method);
+            emitWrite(out, target, owner, value, null, names);
+            emitNullReturn(out, resolved.plan.method);
 
             return;
         }
 
-        String old =
-                names.newName("oldValue");
-
-        emitRead(
-                out,
-                target,
-                owner,
-                old,
-                names,
-                ReadMode.ENSURE,
-                null);
+        String old = names.newName("oldValue");
+        emitRead(out, target, owner, old, names, ReadMode.ENSURE, null);
 
         out.beginBlock(
                 "if (" +
@@ -1796,17 +1467,8 @@ final class PathEmitter {
 
         out.endBlock();
 
-        emitWrite(
-                out,
-                target,
-                owner,
-                value,
-                null,
-                names);
-
-        emitNullReturn(
-                out,
-                resolved.plan.method);
+        emitWrite(out, target, owner, value, null, names);
+        emitNullReturn(out, resolved.plan.method);
     }
 
 
@@ -1823,10 +1485,7 @@ final class PathEmitter {
             ExecutableElement method,
             GeneratedClass generated) {
 
-        boolean objectShape =
-                isObjectSegment(
-                        next,
-                        parameters);
+        boolean objectShape = isObjectSegment(next, parameters);
 
         if (type.getKind() == TypeKind.ARRAY) {
             error(
@@ -1845,36 +1504,25 @@ final class PathEmitter {
         }
 
         if (objectShape) {
-            if (types.isSameErasure(
-                    type,
-                    mapType)) {
+            if (types.isSameErasure(type, mapType)) {
 
                 return "new java.util.LinkedHashMap<>()";
             }
 
-            if (types.isSameErasure(
-                    type,
-                    jsonObjectType)) {
+            if (types.isSameErasure(type, jsonObjectType)) {
 
                 return "new org.sjf4j.JsonObject()";
             }
 
-            return newDeclared(
-                    type,
-                    method,
-                    generated);
+            return newDeclared(type, method, generated);
         }
 
-        if (types.isSameErasure(
-                type,
-                listType)) {
+        if (types.isSameErasure(type, listType)) {
 
             return "new java.util.ArrayList<>()";
         }
 
-        if (types.isSameErasure(
-                type,
-                jsonArrayType)) {
+        if (types.isSameErasure(type, jsonArrayType)) {
 
             return "new org.sjf4j.JsonArray()";
         }
@@ -1887,10 +1535,7 @@ final class PathEmitter {
                         jsonArrayType) ||
                 types.isExternalNode(type)) {
 
-            return newDeclared(
-                    type,
-                    method,
-                    generated);
+            return newDeclared(type, method, generated);
         }
 
         error(
@@ -1908,8 +1553,7 @@ final class PathEmitter {
             ExecutableElement method,
             GeneratedClass generated) {
 
-        TypeElement element =
-                types.typeElement(type);
+        TypeElement element = types.typeElement(type);
 
         if (element == null) {
             error(
@@ -1950,8 +1594,7 @@ final class PathEmitter {
             return null;
         }
 
-        PackageElement generatedPackage =
-                context.elements.getPackageOf(method);
+        PackageElement generatedPackage = context.elements.getPackageOf(method);
 
         if (!isTypeAccessible(
                 element,
@@ -1981,16 +1624,9 @@ final class PathEmitter {
             return null;
         }
 
-        String erased =
-                context.typeUtils
-                        .erasure(type)
-                        .toString();
+        String erased = context.typeUtils.erasure(type).toString();
 
-        return "new " +
-                erased +
-                (element.getTypeParameters().isEmpty()
-                        ? "()"
-                        : "<>()");
+        return "new " + erased + (element.getTypeParameters().isEmpty() ? "()" : "<>()");
     }
 
 
@@ -1998,12 +1634,10 @@ final class PathEmitter {
             TypeElement type,
             PackageElement generatedPackage) {
 
-        Element current =
-                type;
+        Element current = type;
 
         while (current instanceof TypeElement) {
-            TypeElement element =
-                    (TypeElement) current;
+            TypeElement element = (TypeElement) current;
 
             if (!element.getModifiers()
                     .contains(Modifier.PUBLIC)) {
@@ -2014,8 +1648,7 @@ final class PathEmitter {
                     return false;
                 }
 
-                PackageElement ownerPackage =
-                        context.elements.getPackageOf(element);
+                PackageElement ownerPackage = context.elements.getPackageOf(element);
 
                 if (!generatedPackage.equals(
                         ownerPackage)) {
@@ -2024,8 +1657,7 @@ final class PathEmitter {
                 }
             }
 
-            current =
-                    element.getEnclosingElement();
+            current = element.getEnclosingElement();
         }
 
         return true;
@@ -2038,25 +1670,17 @@ final class PathEmitter {
 
         boolean foundConstructor = false;
 
-        PackageElement typePackage =
-                context.elements.getPackageOf(type);
+        PackageElement typePackage = context.elements.getPackageOf(type);
+        boolean samePackage = generatedPackage.equals(typePackage);
 
-        boolean samePackage =
-                generatedPackage.equals(typePackage);
-
-        for (Element member :
-                type.getEnclosedElements()) {
-
-            if (member.getKind() !=
-                    ElementKind.CONSTRUCTOR) {
-
+        for (Element member : type.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.CONSTRUCTOR) {
                 continue;
             }
 
             foundConstructor = true;
 
-            ExecutableElement constructor =
-                    (ExecutableElement) member;
+            ExecutableElement constructor = (ExecutableElement) member;
 
             if (!constructor.getParameters()
                     .isEmpty()) {
@@ -2098,13 +1722,10 @@ final class PathEmitter {
             String size,
             NameAllocator names) {
 
-        String index =
-                names.newName("index");
+        String index = names.newName("index");
 
         if (step.segment instanceof PathSegment.Index) {
-            int value =
-                    ((PathSegment.Index)
-                            step.segment).index;
+            int value = ((PathSegment.Index) step.segment).index;
 
             out.line(
                     "int " +
@@ -2116,10 +1737,7 @@ final class PathEmitter {
                             ";");
 
         } else {
-            String parameter =
-                    step.parameter
-                            .getSimpleName()
-                            .toString();
+            String parameter = step.parameter.getSimpleName().toString();
 
             out.line(
                     "int " +
@@ -2139,23 +1757,16 @@ final class PathEmitter {
     }
 
 
-    private static String staticIndex(
-            int index,
-            String size) {
-
+    private static String staticIndex(int index, String size) {
         if (index >= 0) {
             return Integer.toString(index);
         }
 
         if (index == Integer.MIN_VALUE) {
-            return size +
-                    " + " +
-                    index;
+            return size + " + " + index;
         }
 
-        return size +
-                " - " +
-                (-index);
+        return size + " - " + (-index);
     }
 
 
@@ -2168,9 +1779,7 @@ final class PathEmitter {
                             step.segment).name);
         }
 
-        return step.parameter
-                .getSimpleName()
-                .toString();
+        return step.parameter.getSimpleName().toString();
     }
 
 
@@ -2183,9 +1792,7 @@ final class PathEmitter {
                             step.segment).index);
         }
 
-        return step.parameter
-                .getSimpleName()
-                .toString();
+        return step.parameter.getSimpleName().toString();
     }
 
 
@@ -2198,11 +1805,8 @@ final class PathEmitter {
             return true;
         }
 
-        return step.segment instanceof PathSegment.Param &&
-                step.parameter != null &&
-                step.parameter
-                        .asType()
-                        .getKind() == TypeKind.INT;
+        return step.segment instanceof PathSegment.Param && step.parameter != null
+                && step.parameter.asType().getKind() == TypeKind.INT;
     }
 
 
@@ -2215,10 +1819,7 @@ final class PathEmitter {
         }
 
         if (segment instanceof PathSegment.Param) {
-            VariableElement parameter =
-                    parameters.get(
-                            ((PathSegment.Param)
-                                    segment).param);
+            VariableElement parameter = parameters.get(((PathSegment.Param) segment).param);
 
             return parameter != null &&
                     isString(
@@ -2232,8 +1833,7 @@ final class PathEmitter {
     private String methodHeader(
             ExecutableElement method) {
 
-        StringBuilder out =
-                new StringBuilder();
+        StringBuilder out = new StringBuilder();
 
         out.append("public ")
                 .append(method.getReturnType())
@@ -2241,16 +1841,14 @@ final class PathEmitter {
                 .append(method.getSimpleName())
                 .append('(');
 
-        List<? extends VariableElement> parameters =
-                method.getParameters();
+        List<? extends VariableElement> parameters = method.getParameters();
 
         for (int i = 0; i < parameters.size(); i++) {
             if (i != 0) {
                 out.append(", ");
             }
 
-            VariableElement parameter =
-                    parameters.get(i);
+            VariableElement parameter = parameters.get(i);
 
             out.append(parameter.asType())
                     .append(' ')
@@ -2266,16 +1864,10 @@ final class PathEmitter {
     private NameAllocator names(
             ExecutableElement method) {
 
-        NameAllocator names =
-                new NameAllocator();
+        NameAllocator names = new NameAllocator();
 
-        for (VariableElement parameter :
-                method.getParameters()) {
-
-            names.reserve(
-                    parameter
-                            .getSimpleName()
-                            .toString());
+        for (VariableElement parameter : method.getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
         }
 
         return names;
@@ -2300,14 +1892,9 @@ final class PathEmitter {
         }
 
         return "throw new org.sjf4j.exception.NodeException(" +
-                JavaWriter.stringLiteral(
-                        "@GetByPath primitive result is missing: method " +
-                                method.getSimpleName() +
-                                " returns " +
-                                method.getReturnType() +
-                                " for path " +
-                                plan.path.toExpr()) +
-                ");";
+                JavaWriter.stringLiteral("@GetByPath primitive result is missing: method " +
+                        method.getSimpleName() + " returns " + method.getReturnType() +
+                        " for path " + plan.path.toExpr()) + ");";
     }
 
 
@@ -2315,23 +1902,13 @@ final class PathEmitter {
             NavigatorMethodGenerator.PutPlan plan) {
 
         return "throw new org.sjf4j.exception.NodeException(" +
-                JavaWriter.stringLiteral(
-                        plan.annotation +
-                                " missing parent: method " +
-                                plan.method.getSimpleName() +
-                                " for path " +
-                                plan.path.toExpr()) +
-                ");";
+                JavaWriter.stringLiteral(plan.annotation + " missing parent: method " +
+                        plan.method.getSimpleName() + " for path " + plan.path.toExpr()) + ");";
     }
 
 
-    private String nullReturn(
-            ExecutableElement method) {
-
-        return method.getReturnType()
-                .getKind() == TypeKind.VOID
-                ? "return;"
-                : "return null;";
+    private String nullReturn(ExecutableElement method) {
+        return method.getReturnType().getKind() == TypeKind.VOID ? "return;" : "return null;";
     }
 
 
@@ -2378,9 +1955,7 @@ final class PathEmitter {
     }
 
 
-    private TypeMirror oldType(
-            Step step) {
-
+    private TypeMirror oldType(Step step) {
         if (step.segment instanceof PathSegment.Append) {
             return null;
         }
@@ -2403,34 +1978,23 @@ final class PathEmitter {
      * --------------------------------------------------------------
      */
 
-    private String localType(
-            TypeMirror type) {
-
-        return types.concrete(type)
-                .toString();
+    private String localType(TypeMirror type) {
+        return types.concrete(type).toString();
     }
 
 
-    private boolean isString(
-            TypeMirror type) {
-
-        return types.isSameErasure(
-                type,
-                stringType);
+    private boolean isString(TypeMirror type) {
+        return types.isSameErasure(type, stringType);
     }
 
 
-    private String stepHint(
-            Step step) {
-
+    private String stepHint(Step step) {
         if (step.segment instanceof PathSegment.Name) {
-            return ((PathSegment.Name)
-                    step.segment).name;
+            return ((PathSegment.Name) step.segment).name;
         }
 
         if (step.segment instanceof PathSegment.Param) {
-            return ((PathSegment.Param)
-                    step.segment).param;
+            return ((PathSegment.Param) step.segment).param;
         }
 
         if (step.segment instanceof PathSegment.Append) {
@@ -2464,10 +2028,7 @@ final class PathEmitter {
             Step step,
             boolean read) {
 
-        String mode =
-                read
-                        ? "readable"
-                        : "writable";
+        String mode = read ? "readable" : "writable";
 
         if (step.segment instanceof PathSegment.Name) {
             error(
@@ -2510,9 +2071,7 @@ final class PathEmitter {
         }
 
         if (step.segment instanceof PathSegment.Param) {
-            String name =
-                    ((PathSegment.Param)
-                            step.segment).param;
+            String name = ((PathSegment.Param) step.segment).param;
 
             if (step.parameter != null &&
                     isString(
@@ -2568,12 +2127,8 @@ final class PathEmitter {
     }
 
 
-    private TypeMirror type(
-            String qualifiedName) {
-
-        return context.elements
-                .getTypeElement(qualifiedName)
-                .asType();
+    private TypeMirror type(String qualifiedName) {
+        return context.elements.getTypeElement(qualifiedName).asType();
     }
 
 

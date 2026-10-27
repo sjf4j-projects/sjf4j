@@ -46,31 +46,12 @@ public final class ProcessorContext {
         this.messager = environment.getMessager();
         this.filer = environment.getFiler();
 
-        this.types =
-                new TypeSystem(typeUtils, elements);
+        this.types = new TypeSystem(typeUtils, elements);
         this.discovery = new RegistryDiscovery(this);
-
-        this.annotations =
-                new NodeAnnotations();
-
-        this.properties =
-                new PropertyResolver(
-                        typeUtils,
-                        elements,
-                        messager,
-                        types,
-                        annotations);
-
-        this.access =
-                new NodeAccessResolver(
-                        types,
-                        properties);
-
-        this.methods =
-                new InterfaceMethodResolver(
-                        typeUtils,
-                        elements,
-                        types);
+        this.annotations = new NodeAnnotations();
+        this.properties = new PropertyResolver(typeUtils, elements, messager, types, annotations);
+        this.access = new NodeAccessResolver(types, properties);
+        this.methods = new InterfaceMethodResolver(typeUtils, elements, types);
     }
 
     /** Per-interface, immutable-source metadata view. */

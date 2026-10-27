@@ -38,26 +38,20 @@ public final class NavigatorGenerator {
             return;
         }
 
-        List<ResolvedMethod> methods =
-                context.methods.abstractMethods(type);
+        List<ResolvedMethod> methods = context.methods.abstractMethods(type);
 
-        if (hasGenericInheritedAbstractMethod(
-                type,
-                methods)) {
+        if (hasGenericInheritedAbstractMethod(type, methods)) {
             return;
         }
 
-        GeneratedClass generated =
-                GeneratedClass.forInterface(context, type);
+        GeneratedClass generated = GeneratedClass.forInterface(context, type);
 
         // Keep the factory constructor contract uniform across compiled interfaces.
         // Navigation currently has no RuntimeContext-dependent operations.
         generated.enableRuntimeContext();
 
         for (ResolvedMethod method : methods) {
-            methodGenerator.generate(
-                    method.declaration(),
-                    generated);
+            methodGenerator.generate(method.declaration(), generated);
         }
 
         generated.write();
@@ -69,19 +63,15 @@ public final class NavigatorGenerator {
             List<ResolvedMethod> methods) {
 
         for (ResolvedMethod resolved : methods) {
-            ExecutableElement method =
-                    resolved.declaration();
-
-            Element owner =
-                    method.getEnclosingElement();
+            ExecutableElement method = resolved.declaration();
+            Element owner = method.getEnclosingElement();
 
             if (!(owner instanceof TypeElement) ||
                     owner.equals(type)) {
                 continue;
             }
 
-            TypeElement ownerType =
-                    (TypeElement) owner;
+            TypeElement ownerType = (TypeElement) owner;
 
             if (ownerType.getTypeParameters().isEmpty()) {
                 continue;

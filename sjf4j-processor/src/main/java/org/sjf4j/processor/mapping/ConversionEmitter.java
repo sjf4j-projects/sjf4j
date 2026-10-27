@@ -38,29 +38,15 @@ public final class ConversionEmitter
 
     private final ConversionCompiler compiler;
 
-    private final IdentityHashMap<
-            ConverterResolver.Conversion,
-            ConversionCompiler.CompiledConversion> compiled =
+    private final IdentityHashMap<ConverterResolver.Conversion, ConversionCompiler.CompiledConversion> compiled =
             new IdentityHashMap<>();
+    private final Map<String, String> importedMapperFields = new LinkedHashMap<>();
 
-    private final Map<String, String> importedMapperFields =
-            new LinkedHashMap<>();
-
-    public ConversionEmitter(
-            ProcessorContext context,
-            TypeElement mapper,
-            List<MappingPlan> plans,
-            CompiledMetadata metadata) {
-
+    public ConversionEmitter(ProcessorContext context, TypeElement mapper,
+                             List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
         this.types = context.types;
-
-        this.compiler =
-                new ConversionCompiler(
-                        context,
-                        mapper,
-                        plans,
-                        metadata);
+        this.compiler = new ConversionCompiler(context, mapper, plans, metadata);
     }
 
 
@@ -75,131 +61,66 @@ public final class ConversionEmitter
      * generated fields required by imported mappers and runtime-only fallback
      * conversions.
      */
-    public boolean prepare(
-            List<MappingCompiler.CompiledMethod> methods,
-            GeneratedClass generated) {
-
-        for (MappingCompiler.CompiledMethod method :
-                methods) {
-
-            if (!prepare(
-                    method,
-                    generated)) {
-
-                return false;
-            }
+    public boolean prepare(List<MappingCompiler.CompiledMethod> methods, GeneratedClass generated) {
+        for (MappingCompiler.CompiledMethod method : methods) {
+            if (!prepare(method, generated)) return false;
         }
 
-        registerFields(
-                generated);
-
+        registerFields(generated);
         return true;
     }
 
-
-    private boolean prepare(
-            MappingCompiler.CompiledMethod method,
-            GeneratedClass generated) {
-
-        if (method.kind() ==
-                MappingCompiler.CompiledMethod.Kind.ROOT) {
-
-            return prepare(
-                    method.plan(),
-                    method.rootConversion(),
-                    generated);
+    private boolean prepare(MappingCompiler.CompiledMethod method, GeneratedClass generated) {
+        if (method.kind() == MappingCompiler.CompiledMethod.Kind.ROOT) {
+            return prepare(method.plan(), method.rootConversion(), generated);
         }
 
-        for (MappingCompiler.ConstructorArgument argument :
-                method.constructorArguments()) {
-
-            if (!prepare(
-                    method.plan(),
-                    argument.value(),
-                    generated)) {
-
-                return false;
-            }
+        for (MappingCompiler.ConstructorArgument argument : method.constructorArguments()) {
+            if (!prepare(method.plan(), argument.value(), generated)) return false;
         }
 
-        for (MappingCompiler.Assignment assignment :
-                method.assignments()) {
-
-            if (!prepare(
-                    method.plan(),
-                    assignment.value(),
-                    generated)) {
-
-                return false;
-            }
+        for (MappingCompiler.Assignment assignment : method.assignments()) {
+            if (!prepare(method.plan(), assignment.value(), generated)) return false;
         }
 
         return true;
     }
 
 
-    private boolean prepare(
-            MappingPlan plan,
-            MappingCompiler.Value value,
-            GeneratedClass generated) {
-
-        if (value.kind() !=
-                MappingCompiler.Value.Kind.READ) {
-
+    private boolean prepare(MappingPlan plan, MappingCompiler.Value value, GeneratedClass generated) {
+        if (value.kind() != MappingCompiler.Value.Kind.READ) {
             return true;
         }
-
-        return prepare(
-                plan,
-                value.conversion(),
-                generated);
+        return prepare(plan, value.conversion(), generated);
     }
 
 
-    private boolean prepare(
-            MappingPlan plan,
-            ConverterResolver.Conversion conversion,
-            GeneratedClass generated) {
-
+    private boolean prepare(MappingPlan plan, ConverterResolver.Conversion conversion,
+                            GeneratedClass generated) {
         if (conversion == null) {
             return false;
         }
 
-        if (compiled.containsKey(
-                conversion)) {
+        if (compiled.containsKey(conversion)) return true;
 
-            return true;
-        }
-
-        ConversionCompiler.CompiledConversion resolved =
-                compiler.compile(
-                        plan,
-                        conversion,
-                        generated);
+        ConversionCompiler.CompiledConversion resolved = compiler.compile(plan, conversion, generated);
 
         if (resolved == null) {
             return false;
         }
 
-        compiled.put(
-                conversion,
-                resolved);
-
-        inspect(
-                resolved);
+        compiled.put(conversion, resolved);
+        inspect(resolved);
 
         return true;
     }
 
 
-    private void inspect(
-            ConversionCompiler.CompiledConversion conversion) {
-
+    private void inspect(ConversionCompiler.CompiledConversion conversion) {
         switch (conversion.kind()) {
             case METHOD:
                 if (conversion.mapperType() != null) {
-                    registerImportedMapper(
-                            conversion.mapperType());
+                    registerImportedMapper(conversion.mapperType());
                 }
                 return;
 
@@ -210,24 +131,17 @@ public final class ConversionEmitter
                 return;
 
             case CONTAINER:
-                inspect(
-                        conversion.elementConversion());
+                inspect(conversion.elementConversion());
                 return;
 
             case MAP:
-                inspect(
-                        conversion.keyConversion());
-
-                inspect(
-                        conversion.valueConversion());
+                inspect(conversion.keyConversion());
+                inspect(conversion.valueConversion());
                 return;
 
             case STRUCTURAL:
-                for (ConversionCompiler.StructuralArgument argument :
-                        conversion.arguments()) {
-
-                    inspect(
-                            argument.conversion());
+                for (ConversionCompiler.StructuralArgument argument : conversion.arguments()) {
+                    inspect(argument.conversion());
                 }
 
                 for (ConversionCompiler.StructuralProperty property :
@@ -242,15 +156,11 @@ public final class ConversionEmitter
 
                 if (dynamic != null) {
                     if (dynamic.valueConversion() != null) {
-                        inspect(
-                                dynamic.valueConversion());
+                        inspect(dynamic.valueConversion());
                     }
 
-                    for (ConversionCompiler.DynamicProperty property :
-                            dynamic.properties()) {
-
-                        inspect(
-                                property.conversion());
+                    for (ConversionCompiler.DynamicProperty property : dynamic.properties()) {
+                        inspect(property.conversion());
                     }
                 }
 
@@ -260,72 +170,39 @@ public final class ConversionEmitter
                 return;
 
             default:
-                throw new AssertionError(
-                        conversion.kind());
+                throw new AssertionError(conversion.kind());
         }
     }
 
 
-    private void registerImportedMapper(
-            TypeElement mapper) {
-
-        String type =
-                mapper.getQualifiedName()
-                        .toString();
-
-        if (importedMapperFields.containsKey(
-                type)) {
-
+    private void registerImportedMapper(TypeElement mapper) {
+        String type = mapper.getQualifiedName().toString();
+        if (importedMapperFields.containsKey(type)) {
             return;
         }
 
-        String base =
-                "_sjf4j_mapper_" +
-                        mapper.getSimpleName();
-
-        String name =
-                base;
-
+        String base = "_sjf4j_mapper_" + mapper.getSimpleName();
+        String name = base;
         int index = 2;
 
-        while (importedMapperFields
-                .containsValue(name)) {
-
-            name =
-                    base +
-                            index++;
+        while (importedMapperFields.containsValue(name)) {
+            name = base + index++;
         }
 
-        importedMapperFields.put(
-                type,
-                name);
+        importedMapperFields.put(type, name);
     }
 
 
-    private void registerFields(
-            GeneratedClass generated) {
+    private void registerFields(GeneratedClass generated) {
+        for (Map.Entry<String, String> entry : importedMapperFields.entrySet()) {
+            String type = entry.getKey();
+            String field = entry.getValue();
 
-        for (Map.Entry<String, String> entry :
-                importedMapperFields.entrySet()) {
-
-            String type =
-                    entry.getKey();
-
-            String field =
-                    entry.getValue();
-
-            generated.addField(out ->
-                    out.line(
-                            "private final " +
-                                    type +
-                                    " " +
-                                    field +
-                                    ";"));
+            generated.addField(out -> out.line("private final " + type + " " + field + ";"));
             generated.addContextInitializer(out ->
                     out.line("this." + field + " = org.sjf4j.CompiledInstances.create(" +
                             type + ".class, context);"));
         }
-
     }
 
 
@@ -336,188 +213,71 @@ public final class ConversionEmitter
      */
 
     @Override
-    public String emit(
-            JavaWriter out,
-            NameAllocator names,
-            MappingPlan plan,
-            ConverterResolver.Conversion conversion,
-            String source,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            GeneratedClass generated) {
-
-        ConversionCompiler.CompiledConversion resolved =
-                compiled.get(
-                        conversion);
+    public String emit(JavaWriter out, NameAllocator names, MappingPlan plan,
+                       ConverterResolver.Conversion conversion, String source,
+                       TypeMirror sourceType, TypeMirror targetType, GeneratedClass generated) {
+        ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
 
         if (resolved == null) {
-            throw new IllegalStateException(
-                    "conversion was not prepared: " +
-                            sourceType +
-                            " -> " +
-                            targetType);
+            throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
         }
 
-        return emit(
-                out,
-                names,
-                resolved,
-                source);
+        return emit(out, names, resolved, source);
     }
 
 
     @Override
-    public void emitMapUpdate(
-            JavaWriter out,
-            NameAllocator names,
-            MappingPlan plan,
-            ConverterResolver.Conversion conversion,
-            String source,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            String target,
-            String policy,
-            GeneratedClass generated) {
-
-        ConversionCompiler.CompiledConversion resolved =
-                compiled.get(
-                        conversion);
+    public void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
+                              ConverterResolver.Conversion conversion, String source, TypeMirror sourceType,
+                              TypeMirror targetType, String target, String policy, GeneratedClass generated) {
+        ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
 
         if (resolved == null) {
-            throw new IllegalStateException(
-                    "conversion was not prepared: " +
-                            sourceType +
-                            " -> " +
-                            targetType);
+            throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
         }
 
-        if (resolved.kind() !=
-                ConversionCompiler.CompiledConversion.Kind.MAP) {
-            throw new IllegalArgumentException(
-                    "root map update requires a map conversion");
+        if (resolved.kind() != ConversionCompiler.CompiledConversion.Kind.MAP) {
+            throw new IllegalArgumentException("root map update requires a map conversion");
         }
 
-        out.beginBlock(
-                "if (" +
-                        source +
-                        " != null)");
+        out.beginBlock("if (" + source + " != null)");
+        String entry = names.newName("entry");
 
-        String entry =
-                names.newName(
-                        "entry");
-
-        if (types.isCompileTimeUnknown(
-                resolved.sourceKeyType()) &&
-                types.isCompileTimeUnknown(
-                        resolved.sourceValueType())) {
-
-            String entryObject =
-                    names.newName(
-                            "entryObject");
-
-            out.line(
-                    "for (Object " +
-                            entryObject +
-                            " : ((java.util.Map) " +
-                            source +
-                            ").entrySet()) {");
+        if (types.isCompileTimeUnknown(resolved.sourceKeyType()) &&
+                types.isCompileTimeUnknown(resolved.sourceValueType())) {
+            String entryObject = names.newName("entryObject");
+            out.line("for (Object " + entryObject + " : ((java.util.Map) " + source + ").entrySet()) {");
 
             out.indent();
-
-            out.line(
-                    "java.util.Map.Entry<?, ?> " +
-                            entry +
-                            " = (java.util.Map.Entry<?, ?>) " +
-                            entryObject +
-                            ";");
+            out.line("java.util.Map.Entry<?, ?> " + entry +
+                    " = (java.util.Map.Entry<?, ?>) " + entryObject + ";");
 
         } else {
-            out.line(
-                    "for (java.util.Map.Entry<?, ?> " +
-                            entry +
-                            " : " +
-                            source +
-                            ".entrySet()) {");
+            out.line("for (java.util.Map.Entry<?, ?> " + entry + " : " + source + ".entrySet()) {");
 
             out.indent();
         }
 
-        String rawKey =
-                names.newName(
-                        "key");
-
-        out.line(
-                localType(
-                        resolved.sourceKeyType()) +
-                        " " +
-                        rawKey +
-                        " = " +
-                        cast(
-                                resolved.sourceKeyType(),
-                                entry + ".getKey()") +
-                        ";");
-
-        String key =
-                emit(
-                        out,
-                        names,
-                        resolved.keyConversion(),
-                        rawKey);
+        String rawKey = names.newName("key");
+        out.line(localType(resolved.sourceKeyType()) + " " + rawKey + " = " +
+                cast(resolved.sourceKeyType(), entry + ".getKey()") + ";");
+        String key = emit(out, names, resolved.keyConversion(), rawKey);
 
         if ("PUT_IF_ABSENT".equals(policy)) {
-            out.beginBlock(
-                    "if (!" +
-                            target +
-                            ".containsKey(" +
-                            key +
-                            ") || " +
-                            target +
-                            ".get(" +
-                            key +
-                            ") == null)");
+            out.beginBlock("if (!" + target + ".containsKey(" + key + ") || " +
+                    target + ".get(" + key + ") == null)");
 
         } else if ("PUT_IF_PRESENT".equals(policy)) {
-            out.beginBlock(
-                    "if (" +
-                            target +
-                            ".containsKey(" +
-                            key +
-                            ") && " +
-                            target +
-                            ".get(" +
-                            key +
-                            ") != null)");
+            out.beginBlock("if (" + target + ".containsKey(" + key + ") && " +
+                    target + ".get(" + key + ") != null)");
         }
 
-        String rawValue =
-                names.newName(
-                        "value");
+        String rawValue = names.newName("value");
+        out.line(localType(resolved.sourceValueType()) + " " + rawValue + " = " +
+                cast(resolved.sourceValueType(), entry + ".getValue()") + ";");
 
-        out.line(
-                localType(
-                        resolved.sourceValueType()) +
-                        " " +
-                        rawValue +
-                        " = " +
-                        cast(
-                                resolved.sourceValueType(),
-                                entry + ".getValue()") +
-                        ";");
-
-        String value =
-                emit(
-                        out,
-                        names,
-                        resolved.valueConversion(),
-                        rawValue);
-
-        out.line(
-                target +
-                        ".put(" +
-                        key +
-                        ", " +
-                        value +
-                        ");");
+        String value = emit(out, names, resolved.valueConversion(), rawValue);
+        out.line(target + ".put(" + key + ", " + value + ");");
 
         if (!"PUT".equals(policy)) {
             out.endBlock();
@@ -535,116 +295,57 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emit(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source) {
+    private String emit(JavaWriter out, NameAllocator names,
+                        ConversionCompiler.CompiledConversion conversion, String source) {
 
         switch (conversion.kind()) {
             case DIRECT:
                 return source;
 
             case METHOD:
-                return emitMethod(
-                        conversion,
-                        source);
+                return emitMethod(conversion, source);
 
             case SCALAR:
-                return emitScalar(
-                        out,
-                        names,
-                        conversion,
-                        source);
+                return emitScalar(out, names, conversion, source);
 
             case VALUE_CODEC:
-                return emitNodeMapperTo(
-                        out,
-                        names,
-                        conversion.targetType(),
-                        source,
-                        "codec");
+                return emitNodeMapperTo(out, names, conversion.targetType(), source, "codec");
 
             case CODEC_ENCODE:
-                return emitCodecRaw(
-                        out,
-                        names,
-                        conversion.targetType(),
-                        source);
+                return emitCodecRaw(out, names, conversion.targetType(), source);
 
             case ONE_OF:
-                return emitNodeMapperTo(
-                        out,
-                        names,
-                        conversion.targetType(),
-                        source,
-                        "oneOf");
+                return emitNodeMapperTo(out, names, conversion.targetType(), source, "oneOf");
 
             case CONTAINER:
-                return emitContainer(
-                        out,
-                        names,
-                        conversion,
-                        source);
+                return emitContainer(out, names, conversion, source);
 
             case MAP:
-                return emitMap(
-                        out,
-                        names,
-                        conversion,
-                        source);
+                return emitMap(out, names, conversion, source);
 
             case STRUCTURAL:
-                return emitStructural(
-                        out,
-                        names,
-                        conversion,
-                        source);
+                return emitStructural(out, names, conversion, source);
 
             default:
-                throw new AssertionError(
-                        conversion.kind());
+                throw new AssertionError(conversion.kind());
         }
     }
 
 
-    private String emitMethod(
-            ConversionCompiler.CompiledConversion conversion,
-            String source) {
-
-        ExecutableElement method =
-                conversion.method();
-
-        if (conversion.mapperType() ==
-                null) {
-
-            return method.getSimpleName() +
-                    "(" +
-                    source +
-                    ")";
+    private String emitMethod(ConversionCompiler.CompiledConversion conversion, String source) {
+        ExecutableElement method = conversion.method();
+        if (conversion.mapperType() == null) {
+            return method.getSimpleName() + "(" + source + ")";
         }
 
-        String type =
-                conversion.mapperType()
-                        .getQualifiedName()
-                        .toString();
-
-        String field =
-                importedMapperFields.get(
-                        type);
+        String type = conversion.mapperType().getQualifiedName().toString();
+        String field = importedMapperFields.get(type);
 
         if (field == null) {
-            throw new IllegalStateException(
-                    "imported mapper was not prepared: " +
-                            type);
+            throw new IllegalStateException("imported mapper was not prepared: " + type);
         }
 
-        return field +
-                "." +
-                method.getSimpleName() +
-                "(" +
-                source +
-                ")";
+        return field + "." + method.getSimpleName() + "(" + source + ")";
     }
 
 
@@ -654,50 +355,23 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitScalar(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source) {
-
-        TypeMirror sourceType =
-                types.boxed(
-                        conversion.sourceType());
-
-        TypeMirror targetType =
-                types.boxed(
-                        conversion.targetType());
-
-        String sourceName =
-                rawName(sourceType);
-
-        String targetName =
-                rawName(targetType);
+    private String emitScalar(JavaWriter out, NameAllocator names,
+                              ConversionCompiler.CompiledConversion conversion, String source) {
+        TypeMirror sourceType = types.boxed(conversion.sourceType());
+        TypeMirror targetType = types.boxed(conversion.targetType());
+        String sourceName = rawName(sourceType);
+        String targetName = rawName(targetType);
 
         /*
          * A value declared as Object has no compile-time NodeKind. Keep the
          * generated fallback inside the OBNT layer instead of routing through
          * a binder: NodeMapper performs strict runtime value-kind conversion.
          */
-        if (types.nodeKind(
-                conversion.sourceType()) ==
-                NodeKind.COMPILE_TIME_UNKNOWN) {
-
-            String value =
-                    names.newName(
-                            "converted");
-
-            out.line(
-                    localType(targetType) +
-                            " " +
-                            value +
-                            " = " +
-                            mapperToCast(targetType) +
-                            "org.sjf4j.node.NodeMapper.to(" +
-                            source +
-                            ", " +
-                            classLiteral(targetType) +
-                            ", this.context);");
+        if (types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN) {
+            String value = names.newName("converted");
+            out.line(localType(targetType) + " " + value + " = " + mapperToCast(targetType) +
+                    "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
+                    ", this.context);");
 
             return value;
         }
@@ -705,26 +379,11 @@ public final class ConversionEmitter
         /*
          * Number -> Number
          */
-        if (isNumber(sourceName) &&
-                isNumber(targetName)) {
-
-            String value =
-                    names.newName(
-                            "converted");
-
-            out.line(
-                    localType(targetType) +
-                            " " +
-                            value +
-                            " = " +
-                            source +
-                            " == null ? null : (" +
-                            localType(targetType) +
-                            ") org.sjf4j.util.Numbers.to((java.lang.Number) " +
-                            source +
-                            ", " +
-                            classLiteral(targetType) +
-                            ");");
+        if (isNumber(sourceName) && isNumber(targetName)) {
+            String value = names.newName("converted");
+            out.line(localType(targetType) + " " + value + " = " + source + " == null ? null : (" +
+                    localType(targetType) + ") org.sjf4j.util.Numbers.to((java.lang.Number) " + source +
+                    ", " + classLiteral(targetType) + ");");
 
             return value;
         }
@@ -732,23 +391,10 @@ public final class ConversionEmitter
         /*
          * char / Character -> String
          */
-        if ("java.lang.String".equals(
-                targetName) &&
-                "java.lang.Character".equals(
-                        sourceName)) {
-
-            String value =
-                    names.newName(
-                            "converted");
-
-            out.line(
-                    "java.lang.String " +
-                            value +
-                            " = " +
-                            source +
-                            " == null ? null : java.lang.String.valueOf(" +
-                            source +
-                            ");");
+        if ("java.lang.String".equals(targetName) && "java.lang.Character".equals(sourceName)) {
+            String value = names.newName("converted");
+            out.line("java.lang.String " + value + " = " + source +
+                    " == null ? null : java.lang.String.valueOf(" + source + ");");
 
             return value;
         }
@@ -756,22 +402,9 @@ public final class ConversionEmitter
         /*
          * enum -> String
          */
-        if ("java.lang.String".equals(
-                targetName) &&
-                isEnum(sourceType)) {
-
-            String value =
-                    names.newName(
-                            "converted");
-
-            out.line(
-                    "java.lang.String " +
-                            value +
-                            " = " +
-                            source +
-                            " == null ? null : " +
-                            source +
-                            ".name();");
+        if ("java.lang.String".equals(targetName) && isEnum(sourceType)) {
+            String value = names.newName("converted");
+            out.line("java.lang.String " + value + " = " + source + " == null ? null : " + source + ".name();");
 
             return value;
         }
@@ -779,23 +412,10 @@ public final class ConversionEmitter
         /*
          * String -> Character
          */
-        if ("java.lang.String".equals(
-                sourceName) &&
-                "java.lang.Character".equals(
-                        targetName)) {
-
-            String value =
-                    names.newName(
-                            "converted");
-
-            out.line(
-                    "java.lang.Character " +
-                            value +
-                            " = " +
-                            source +
-                            " == null ? null : " +
-                            source +
-                            ".charAt(0);");
+        if ("java.lang.String".equals(sourceName) && "java.lang.Character".equals(targetName)) {
+            String value = names.newName("converted");
+            out.line("java.lang.Character " + value + " = " + source +
+                    " == null ? null : " + source + ".charAt(0);");
 
             return value;
         }
@@ -803,25 +423,10 @@ public final class ConversionEmitter
         /*
          * String -> enum
          */
-        if ("java.lang.String".equals(
-                sourceName) &&
-                isEnum(targetType)) {
-
-            String value =
-                    names.newName(
-                            "converted");
-
-            out.line(
-                    localType(targetType) +
-                            " " +
-                            value +
-                            " = " +
-                            source +
-                            " == null ? null : " +
-                            localType(targetType) +
-                            ".valueOf(" +
-                            source +
-                            ");");
+        if ("java.lang.String".equals(sourceName) && isEnum(targetType)) {
+            String value = names.newName("converted");
+            out.line(localType(targetType) + " " + value + " = " + source + " == null ? null : " +
+                    localType(targetType) + ".valueOf(" + source + ");");
 
             return value;
         }
@@ -829,23 +434,14 @@ public final class ConversionEmitter
         /*
          * Boolean -> Boolean should normally have resolved as DIRECT.
          */
-        if ("java.lang.Boolean".equals(
-                sourceName) &&
-                "java.lang.Boolean".equals(
-                        targetName)) {
-
+        if ("java.lang.Boolean".equals(sourceName) && "java.lang.Boolean".equals(targetName)) {
             return source;
         }
 
         /*
          * @NodeValue / registered scalar codecs.
          */
-        return emitNodeMapperTo(
-                out,
-                names,
-                conversion.targetType(),
-                source,
-                "converted");
+        return emitNodeMapperTo(out, names, conversion.targetType(), source, "converted");
     }
 
 
@@ -855,105 +451,34 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitContainer(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source) {
+    private String emitContainer(JavaWriter out, NameAllocator names,
+                                 ConversionCompiler.CompiledConversion conversion, String source) {
+        TypeMirror sourceType = conversion.sourceType();
+        TypeMirror targetType = conversion.targetType();
+        NodeKind sourceKind = types.nodeKind(sourceType);
+        NodeKind targetKind = types.nodeKind(targetType);
+        String result = names.newName("converted");
+        String targetLocalType = localType(targetType);
 
-        TypeMirror sourceType =
-                conversion.sourceType();
+        out.line(targetLocalType + " " + result + " = null;");
+        out.beginBlock("if (" + source + " != null)");
 
-        TypeMirror targetType =
-                conversion.targetType();
+        String size = names.newName("size");
+        out.line("int " + size + " = " + sizeExpression(source, sourceKind) + ";");
 
-        NodeKind sourceKind =
-                types.nodeKind(
-                        sourceType);
-
-        NodeKind targetKind =
-                types.nodeKind(
-                        targetType);
-
-        String result =
-                names.newName(
-                        "converted");
-
-        String targetLocalType =
-                localType(targetType);
-
-        out.line(
-                targetLocalType +
-                        " " +
-                        result +
-                        " = null;");
-
-        out.beginBlock(
-                "if (" +
-                        source +
-                        " != null)");
-
-        String size =
-                names.newName("size");
-
-        out.line(
-                "int " +
-                        size +
-                        " = " +
-                        sizeExpression(
-                                source,
-                                sourceKind) +
-                        ";");
-
-        if (targetKind ==
-                NodeKind.ARRAY_ARRAY) {
-
-            TypeMirror component =
-                    ((ArrayType)
-                            types.concrete(
-                                    targetType))
-                            .getComponentType();
-
-            out.line(
-                    result +
-                            " = new " +
-                            component +
-                            "[" +
-                            size +
-                            "];");
+        if (targetKind == NodeKind.ARRAY_ARRAY) {
+            TypeMirror component = ((ArrayType) types.concrete(targetType)).getComponentType();
+            out.line(result + " = new " + component + "[" + size + "];");
 
         } else {
-            out.line(
-                    result +
-                            " = " +
-                            newContainerExpression(
-                                    targetType,
-                                    targetKind,
-                                    size) +
-                            ";");
+            out.line(result + " = " + newContainerExpression(targetType, targetKind, size) + ";");
         }
 
-        if (sourceKind ==
-                NodeKind.ARRAY_SET) {
-
-            emitSetLoop(
-                    out,
-                    names,
-                    conversion,
-                    source,
-                    result,
-                    targetKind);
+        if (sourceKind == NodeKind.ARRAY_SET) {
+            emitSetLoop(out, names, conversion, source, result, targetKind);
 
         } else {
-            emitIndexedContainerLoop(
-                    out,
-                    names,
-                    conversion,
-                    source,
-                    result,
-                    sourceKind,
-                    targetKind,
-                    size);
+            emitIndexedContainerLoop(out, names, conversion, source, result, sourceKind, targetKind, size);
         }
 
         out.endBlock();
@@ -962,138 +487,53 @@ public final class ConversionEmitter
     }
 
 
-    private void emitIndexedContainerLoop(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source,
-            String result,
-            NodeKind sourceKind,
-            NodeKind targetKind,
-            String size) {
-
-        String index =
-                names.newName("i");
-
-        out.line(
-                "for (int " +
-                        index +
-                        " = 0; " +
-                        index +
-                        " < " +
-                        size +
-                        "; " +
-                        index +
-                        "++) {");
+    private void emitIndexedContainerLoop(JavaWriter out, NameAllocator names,
+                                          ConversionCompiler.CompiledConversion conversion,
+                                          String source, String result, NodeKind sourceKind,
+                                          NodeKind targetKind, String size) {
+        String index = names.newName("i");
+        out.line("for (int " + index + " = 0; " + index + " < " + size + "; " + index + "++) {");
 
         out.indent();
 
-        String item =
-                names.newName("item");
+        String item = names.newName("item");
 
-        out.line(
-                localType(
-                        conversion.sourceElementType()) +
-                        " " +
-                        item +
-                        " = " +
-                        sourceElementExpression(
-                                source,
-                                index,
-                                sourceKind,
-                                conversion.sourceElementType()) +
-                        ";");
+        out.line(localType(conversion.sourceElementType()) + " " + item + " = " +
+                sourceElementExpression(source, index, sourceKind, conversion.sourceElementType()) + ";");
 
-        String converted =
-                emit(
-                        out,
-                        names,
-                        conversion.elementConversion(),
-                        item);
-
-        emitContainerAdd(
-                out,
-                result,
-                targetKind,
-                index,
-                converted);
+        String converted = emit(out, names, conversion.elementConversion(), item);
+        emitContainerAdd(out, result, targetKind, index, converted);
 
         out.dedent();
         out.line("}");
     }
 
 
-    private void emitSetLoop(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source,
-            String result,
-            NodeKind targetKind) {
+    private void emitSetLoop(JavaWriter out, NameAllocator names,
+                             ConversionCompiler.CompiledConversion conversion, String source,
+                             String result, NodeKind targetKind) {
+        String item = names.newName("item");
+        String index = names.newName("i");
 
-        String item =
-                names.newName("item");
+        out.line("int " + index + " = 0;");
 
-        String index =
-                names.newName("i");
-
-        out.line(
-                "int " +
-                        index +
-                        " = 0;");
-
-        out.line(
-                "for (" +
-                        localType(
-                                conversion.sourceElementType()) +
-                        " " +
-                        item +
-                        " : " +
-                        source +
-                        ") {");
+        out.line("for (" + localType(conversion.sourceElementType()) + " " + item + " : " + source + ") {");
 
         out.indent();
 
-        String converted =
-                emit(
-                        out,
-                        names,
-                        conversion.elementConversion(),
-                        item);
-
-        emitContainerAdd(
-                out,
-                result,
-                targetKind,
-                index,
-                converted);
-
-        out.line(
-                index +
-                        "++;");
+        String converted = emit(out, names, conversion.elementConversion(), item);
+        emitContainerAdd(out, result, targetKind, index, converted);
+        out.line(index + "++;");
 
         out.dedent();
         out.line("}");
     }
 
 
-    private void emitContainerAdd(
-            JavaWriter out,
-            String result,
-            NodeKind targetKind,
-            String index,
-            String value) {
-
-        if (targetKind ==
-                NodeKind.ARRAY_ARRAY) {
-
-            out.line(
-                    result +
-                            "[" +
-                            index +
-                            "] = " +
-                            value +
-                            ";");
+    private void emitContainerAdd(JavaWriter out, String result, NodeKind targetKind,
+                                  String index, String value) {
+        if (targetKind == NodeKind.ARRAY_ARRAY) {
+            out.line(result + "[" + index + "] = " + value + ";");
 
             return;
         }
@@ -1103,17 +543,11 @@ public final class ConversionEmitter
             case ARRAY_SET:
             case ARRAY_JSON_ARRAY:
             case ARRAY_JAJO:
-                out.line(
-                        result +
-                                ".add(" +
-                                value +
-                                ");");
+                out.line(result + ".add(" + value + ");");
                 return;
 
             default:
-                throw new IllegalStateException(
-                        "unsupported target container " +
-                                targetKind);
+                throw new IllegalStateException("unsupported target container " + targetKind);
         }
     }
 
@@ -1124,126 +558,41 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitMap(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source) {
+    private String emitMap(JavaWriter out, NameAllocator names,
+                           ConversionCompiler.CompiledConversion conversion, String source) {
+        String result = names.newName("converted");
 
-        String result =
-                names.newName(
-                        "converted");
+        out.line(localType(conversion.targetType()) + " " + result + " = null;");
+        out.beginBlock("if (" + source + " != null)");
+        out.line(result + " = " + newMapExpression(conversion.targetType()) + ";");
 
-        out.line(
-                localType(
-                        conversion.targetType()) +
-                        " " +
-                        result +
-                        " = null;");
-
-        out.beginBlock(
-                "if (" +
-                        source +
-                        " != null)");
-
-        out.line(
-                result +
-                        " = " +
-                        newMapExpression(
-                                conversion.targetType()) +
-                        ";");
-
-        String entry =
-                names.newName(
-                        "entry");
-
-        if (types.isCompileTimeUnknown(
-                conversion.sourceKeyType()) &&
-                types.isCompileTimeUnknown(
-                        conversion.sourceValueType())) {
-
-            String entryObject =
-                    names.newName(
-                            "entryObject");
-
-            out.line(
-                    "for (Object " +
-                            entryObject +
-                            " : ((java.util.Map) " +
-                            source +
-                            ").entrySet()) {");
+        String entry = names.newName("entry");
+        if (types.isCompileTimeUnknown(conversion.sourceKeyType()) &&
+                types.isCompileTimeUnknown(conversion.sourceValueType())) {
+            String entryObject = names.newName("entryObject");
+            out.line("for (Object " + entryObject + " : ((java.util.Map) " + source + ").entrySet()) {");
 
             out.indent();
 
-            out.line(
-                    "java.util.Map.Entry<?, ?> " +
-                            entry +
-                            " = (java.util.Map.Entry<?, ?>) " +
-                            entryObject +
-                            ";");
+            out.line("java.util.Map.Entry<?, ?> " + entry +
+                    " = (java.util.Map.Entry<?, ?>) " + entryObject + ";");
 
         } else {
-            out.line(
-                    "for (java.util.Map.Entry<?, ?> " +
-                            entry +
-                            " : " +
-                            source +
-                            ".entrySet()) {");
+            out.line("for (java.util.Map.Entry<?, ?> " + entry + " : " + source + ".entrySet()) {");
 
             out.indent();
         }
 
-        String rawKey =
-                names.newName(
-                        "key");
+        String rawKey = names.newName("key");
+        out.line(localType(conversion.sourceKeyType()) + " " + rawKey + " = " +
+                cast(conversion.sourceKeyType(), entry + ".getKey()") + ";");
+        String rawValue = names.newName("value");
+        out.line(localType(conversion.sourceValueType()) + " " + rawValue + " = " +
+                cast(conversion.sourceValueType(), entry + ".getValue()") + ";");
 
-        out.line(
-                localType(
-                        conversion.sourceKeyType()) +
-                        " " +
-                        rawKey +
-                        " = " +
-                        cast(
-                                conversion.sourceKeyType(),
-                                entry + ".getKey()") +
-                        ";");
-
-        String rawValue =
-                names.newName(
-                        "value");
-
-        out.line(
-                localType(
-                        conversion.sourceValueType()) +
-                        " " +
-                        rawValue +
-                        " = " +
-                        cast(
-                                conversion.sourceValueType(),
-                                entry + ".getValue()") +
-                        ";");
-
-        String key =
-                emit(
-                        out,
-                        names,
-                        conversion.keyConversion(),
-                        rawKey);
-
-        String value =
-                emit(
-                        out,
-                        names,
-                        conversion.valueConversion(),
-                        rawValue);
-
-        out.line(
-                result +
-                        ".put(" +
-                        key +
-                        ", " +
-                        value +
-                        ");");
+        String key = emit(out, names, conversion.keyConversion(), rawKey);
+        String value = emit(out, names, conversion.valueConversion(), rawValue);
+        out.line(result + ".put(" + key + ", " + value + ");");
 
         out.dedent();
         out.line("}");
@@ -1260,34 +609,19 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitStructural(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source) {
-
-        ConversionCompiler.DynamicObjectPlan dynamic =
-                conversion.dynamicObject();
+    private String emitStructural(JavaWriter out, NameAllocator names,
+                                  ConversionCompiler.CompiledConversion conversion, String source) {
+        ConversionCompiler.DynamicObjectPlan dynamic = conversion.dynamicObject();
 
         if (conversion.creation() != null) {
-            return emitTypedObject(
-                    out,
-                    names,
-                    conversion,
-                    source);
+            return emitTypedObject(out, names, conversion, source);
         }
 
         if (dynamic != null) {
-            return emitDynamicObject(
-                    out,
-                    names,
-                    conversion,
-                    dynamic,
-                    source);
+            return emitDynamicObject(out, names, conversion, dynamic, source);
         }
 
-        throw new IllegalStateException(
-                "structural conversion has neither creator nor dynamic plan");
+        throw new IllegalStateException("structural conversion has neither creator nor dynamic plan");
     }
 
 
@@ -1297,129 +631,54 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitTypedObject(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source) {
+    private String emitTypedObject(JavaWriter out, NameAllocator names,
+                                   ConversionCompiler.CompiledConversion conversion, String source) {
+        String result = names.newName("converted");
+        TypeMirror workingType = conversion.workingTargetType();
 
-        String result =
-                names.newName(
-                        "converted");
-
-        TypeMirror workingType =
-                conversion.workingTargetType();
-
-        out.line(
-                localType(
-                        workingType) +
-                        " " +
-                        result +
-                        " = null;");
-
-        out.beginBlock(
-                "if (" +
-                        source +
-                        " != null)");
-
-        boolean runtimeSource =
-                types.nodeKind(
-                        conversion.sourceType()) ==
-                        NodeKind.COMPILE_TIME_UNKNOWN;
+        out.line(localType(workingType) + " " + result + " = null;");
+        out.beginBlock("if (" + source + " != null)");
+        boolean runtimeSource = types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN;
 
         if (runtimeSource) {
-            out.beginBlock(
-                    "if (" +
-                            source +
-                            " instanceof " +
-                            rawName(workingType) +
-                            ")");
-
-            out.line(
-                    result +
-                            " = (" +
-                            localType(workingType) +
-                            ") " +
-                            source +
-                            ";");
+            out.beginBlock("if (" + source + " instanceof " + rawName(workingType) + ")");
+            out.line(result + " = (" + localType(workingType) + ") " + source + ";");
 
             out.endBlock();
             out.beginBlock("else");
         }
 
-        CreatorResolver.Creation creation =
-                conversion.creation();
+        CreatorResolver.Creation creation = conversion.creation();
 
         if (creation == null) {
-            throw new IllegalStateException(
-                    "typed structural conversion has no creator");
+            throw new IllegalStateException("typed structural conversion has no creator");
         }
 
         switch (creation.kind()) {
             case NO_ARGS:
-                out.line(
-                        result +
-                                " = new " +
-                                workingType +
-                                "();");
+                out.line(result + " = new " + workingType + "();");
                 break;
 
             case FACTORY:
-                out.line(
-                        result +
-                                " = " +
-                                factoryExpression(
-                                        creation) +
-                                ";");
+                out.line(result + " = " + factoryExpression(creation) + ";");
                 break;
 
             case CONSTRUCTOR:
-                emitStructuralConstructor(
-                        out,
-                        names,
-                        conversion,
-                        source,
-                        result);
+                emitStructuralConstructor(out, names, conversion, source, result);
                 break;
 
             default:
-                throw new AssertionError(
-                        creation.kind());
+                throw new AssertionError(creation.kind());
         }
 
-        for (ConversionCompiler.StructuralProperty property :
-                conversion.properties()) {
-
-            String raw =
-                    emitAccessRead(
-                            out,
-                            names,
-                            source,
-                            property.name(),
-                            property.source());
-
-            String value =
-                    emit(
-                            out,
-                            names,
-                            property.conversion(),
-                            raw);
-
-            emitAccessWrite(
-                    out,
-                    result,
-                    property.name(),
-                    property.target(),
-                    value);
+        for (ConversionCompiler.StructuralProperty property : conversion.properties()) {
+            String raw = emitAccessRead(out, names, source, property.name(), property.source());
+            String value = emit(out, names, property.conversion(), raw);
+            emitAccessWrite(out, result, property.name(), property.target(), value);
         }
 
         if (conversion.dynamicObject() != null) {
-            emitDynamicMembers(
-                    out,
-                    names,
-                    conversion.dynamicObject(),
-                    source,
-                    result);
+            emitDynamicMembers(out, names, conversion.dynamicObject(), source, result);
         }
 
         if (runtimeSource) {
@@ -1432,67 +691,32 @@ public final class ConversionEmitter
     }
 
 
-    private void emitStructuralConstructor(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            String source,
-            String result) {
+    private void emitStructuralConstructor(JavaWriter out, NameAllocator names,
+                                           ConversionCompiler.CompiledConversion conversion,
+                                           String source, String result) {
+        List<ConversionCompiler.StructuralArgument> arguments = conversion.arguments();
+        List<String> values = new ArrayList<>(arguments.size());
 
-        List<ConversionCompiler.StructuralArgument> arguments =
-                conversion.arguments();
-
-        List<String> values =
-                new ArrayList<>(
-                        arguments.size());
-
-        for (ConversionCompiler.StructuralArgument argument :
-                arguments) {
-
-            String raw =
-                    emitAccessRead(
-                            out,
-                            names,
-                            source,
-                            argument.name(),
-                            argument.source());
-
-            values.add(
-                    emit(
-                            out,
-                            names,
-                            argument.conversion(),
-                            raw));
+        for (ConversionCompiler.StructuralArgument argument : arguments) {
+            String raw = emitAccessRead(out, names, source, argument.name(), argument.source());
+            values.add(emit(out, names, argument.conversion(), raw));
         }
 
-        StringBuilder expression =
-                new StringBuilder();
+        StringBuilder expression = new StringBuilder();
+        expression.append("new ").append(conversion.workingTargetType()).append('(');
 
-        expression.append(
-                        "new ")
-                .append(
-                        conversion.workingTargetType())
-                .append('(');
-
-        for (int i = 0;
-             i < values.size();
-             i++) {
+        for (int i = 0; i < values.size(); i++) {
 
             if (i != 0) {
                 expression.append(", ");
             }
 
-            expression.append(
-                    values.get(i));
+            expression.append(values.get(i));
         }
 
         expression.append(')');
 
-        out.line(
-                result +
-                        " = " +
-                        expression +
-                        ";");
+        out.line(result + " = " + expression + ";");
     }
 
 
@@ -1502,74 +726,23 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitDynamicObject(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.CompiledConversion conversion,
-            ConversionCompiler.DynamicObjectPlan dynamic,
-            String source) {
+    private String emitDynamicObject(JavaWriter out, NameAllocator names,
+                                     ConversionCompiler.CompiledConversion conversion,
+                                     ConversionCompiler.DynamicObjectPlan dynamic, String source) {
+        String result = names.newName("converted");
+        out.line(localType(conversion.targetType()) + " " + result + " = null;");
+        out.beginBlock("if (" + source + " != null)");
+        out.line(result + " = " + newObjectExpression(conversion.targetType()) + ";");
 
-        String result =
-                names.newName(
-                        "converted");
-
-        out.line(
-                localType(
-                        conversion.targetType()) +
-                        " " +
-                        result +
-                        " = null;");
-
-        out.beginBlock(
-                "if (" +
-                        source +
-                        " != null)");
-
-        out.line(
-                result +
-                        " = " +
-                        newObjectExpression(
-                                conversion.targetType()) +
-                        ";");
-
-        if (dynamic.kind() ==
-                ConversionCompiler.DynamicObjectPlan.Kind.STATIC_PROPERTIES) {
-
-            for (ConversionCompiler.DynamicProperty property :
-                    dynamic.properties()) {
-
-                String raw =
-                        emitAccessRead(
-                                out,
-                                names,
-                                source,
-                                property.name(),
-                                property.source());
-
-                String value =
-                        emit(
-                                out,
-                                names,
-                                property.conversion(),
-                                raw);
-
-                out.line(
-                        result +
-                                ".put(" +
-                                JavaWriter.stringLiteral(
-                                        property.name()) +
-                                ", " +
-                                value +
-                                ");");
+        if (dynamic.kind() == ConversionCompiler.DynamicObjectPlan.Kind.STATIC_PROPERTIES) {
+            for (ConversionCompiler.DynamicProperty property : dynamic.properties()) {
+                String raw = emitAccessRead(out, names, source, property.name(), property.source());
+                String value = emit(out, names, property.conversion(), raw);
+                out.line(result + ".put(" + JavaWriter.stringLiteral(property.name()) + ", " + value + ");");
             }
 
         } else {
-            emitDynamicMembers(
-                    out,
-                    names,
-                    dynamic,
-                    source,
-                    result);
+            emitDynamicMembers(out, names, dynamic, source, result);
         }
 
         out.endBlock();
@@ -1578,137 +751,63 @@ public final class ConversionEmitter
     }
 
 
-    private void emitDynamicMembers(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.DynamicObjectPlan dynamic,
-            String source,
-            String result) {
-
+    private void emitDynamicMembers(JavaWriter out, NameAllocator names,
+                                    ConversionCompiler.DynamicObjectPlan dynamic, String source, String result) {
         switch (dynamic.kind()) {
             case ENTRIES:
-                emitDirectDynamicMembers(
-                        out,
-                        names,
-                        dynamic,
-                        source,
-                        result);
+                emitDirectDynamicMembers(out, names, dynamic, source, result);
                 return;
 
             case DYNAMIC_MEMBERS:
-                emitJojoDynamicMembers(
-                        out,
-                        names,
-                        dynamic,
-                        source,
-                        result);
+                emitJojoDynamicMembers(out, names, dynamic, source, result);
                 return;
 
             case RUNTIME_ENTRIES:
-                emitRuntimeDynamicMembers(
-                        out,
-                        names,
-                        dynamic,
-                        source,
-                        result);
+                emitRuntimeDynamicMembers(out, names, dynamic, source, result);
                 return;
 
             default:
-                throw new IllegalStateException(
-                        "unsupported dynamic member plan " +
-                                dynamic.kind());
+                throw new IllegalStateException("unsupported dynamic member plan " + dynamic.kind());
         }
     }
 
 
-    private void emitDirectDynamicMembers(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.DynamicObjectPlan dynamic,
-            String source,
-            String result) {
-
-        String entry =
-                names.newName(
-                        "entry");
-
-        if (dynamic.sourceKind() ==
-                NodeKind.OBJECT_MAP) {
-
-            out.line(
-                    "for (java.util.Map.Entry<?, ?> " +
-                            entry +
-                            " : " +
-                            source +
-                            ".entrySet()) {");
+    private void emitDirectDynamicMembers(JavaWriter out, NameAllocator names,
+                                          ConversionCompiler.DynamicObjectPlan dynamic,
+                                          String source, String result) {
+        String entry = names.newName("entry");
+        if (dynamic.sourceKind() == NodeKind.OBJECT_MAP) {
+            out.line("for (java.util.Map.Entry<?, ?> " + entry + " : " + source + ".entrySet()) {");
 
         } else {
-            out.line(
-                    "for (java.util.Map.Entry<String, Object> " +
-                            entry +
-                            " : " +
-                            source +
-                            ".entrySet()) {");
+            out.line("for (java.util.Map.Entry<String, Object> " + entry + " : " + source + ".entrySet()) {");
         }
 
         out.indent();
 
-        emitDynamicMember(
-                out,
-                names,
-                dynamic,
-                dynamic.sourceKind() ==
-                        NodeKind.OBJECT_MAP
-                        ? "(String) " + entry + ".getKey()"
-                        : entry + ".getKey()",
-                dynamic.sourceKind() ==
-                        NodeKind.OBJECT_MAP
-                        ? cast(
-                        dynamic.valueConversion()
-                                .sourceType(),
-                        entry + ".getValue()")
-                        : entry + ".getValue()",
-                result);
+        emitDynamicMember(out, names, dynamic,
+                dynamic.sourceKind() == NodeKind.OBJECT_MAP
+                        ? "(String) " + entry + ".getKey()" : entry + ".getKey()",
+                dynamic.sourceKind() == NodeKind.OBJECT_MAP
+                        ? cast(dynamic.valueConversion().sourceType(), entry + ".getValue()")
+                        : entry + ".getValue()", result);
 
         out.dedent();
         out.line("}");
     }
 
 
-    private void emitJojoDynamicMembers(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.DynamicObjectPlan dynamic,
-            String source,
-            String result) {
-
-        out.beginBlock(
-                "if (" +
-                        "org.sjf4j.InternalAccess.dynamicMembers(" +
-                        source +
-                        ") != null)");
-
-        String entry =
-                names.newName(
-                        "entry");
-
-        out.line(
-                "for (java.util.Map.Entry<String, Object> " +
-                        entry +
-                        " : " +
-                        "org.sjf4j.InternalAccess.dynamicMembers(" +
-                        source +
-                        ").entrySet()) {");
+    private void emitJojoDynamicMembers(JavaWriter out, NameAllocator names,
+                                        ConversionCompiler.DynamicObjectPlan dynamic,
+                                        String source, String result) {
+        out.beginBlock("if (" + "org.sjf4j.InternalAccess.dynamicMembers(" + source + ") != null)");
+        String entry = names.newName("entry");
+        out.line("for (java.util.Map.Entry<String, Object> " + entry + " : " +
+                "org.sjf4j.InternalAccess.dynamicMembers(" + source + ").entrySet()) {");
 
         out.indent();
 
-        emitDynamicMember(
-                out,
-                names,
-                dynamic,
-                entry + ".getKey()",
-                entry + ".getValue()",
-                result);
+        emitDynamicMember(out, names, dynamic, entry + ".getKey()", entry + ".getValue()", result);
 
         out.dedent();
         out.line("}");
@@ -1717,99 +816,47 @@ public final class ConversionEmitter
     }
 
 
-    private void emitRuntimeDynamicMembers(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.DynamicObjectPlan dynamic,
-            String source,
-            String result) {
-
-        String entry =
-                names.newName(
-                        "entry");
-
-        out.line(
-                "for (java.util.Map.Entry<String, Object> " +
-                        entry +
-                        " : org.sjf4j.node.NodeWalker.entrySetInObject(" +
-                        source +
-                        ")) {");
+    private void emitRuntimeDynamicMembers(JavaWriter out, NameAllocator names,
+                                           ConversionCompiler.DynamicObjectPlan dynamic,
+                                           String source, String result) {
+        String entry = names.newName("entry");
+        out.line("for (java.util.Map.Entry<String, Object> " + entry +
+                " : org.sjf4j.node.NodeWalker.entrySetInObject(" + source + ")) {");
 
         out.indent();
 
-        emitDynamicMember(
-                out,
-                names,
-                dynamic,
-                entry + ".getKey()",
-                entry + ".getValue()",
-                result);
+        emitDynamicMember(out, names, dynamic, entry + ".getKey()", entry + ".getValue()", result);
 
         out.dedent();
         out.line("}");
     }
 
 
-    private void emitDynamicMember(
-            JavaWriter out,
-            NameAllocator names,
-            ConversionCompiler.DynamicObjectPlan dynamic,
-            String keyExpression,
-            String valueExpression,
-            String result) {
+    private void emitDynamicMember(JavaWriter out, NameAllocator names,
+                                   ConversionCompiler.DynamicObjectPlan dynamic,
+                                   String keyExpression, String valueExpression, String result) {
+        String key = names.newName("key");
+        out.line("String " + key + " = " + keyExpression + ";");
 
-        String key =
-                names.newName(
-                        "key");
-
-        out.line(
-                "String " +
-                        key +
-                        " = " +
-                        keyExpression +
-                        ";");
-
-        if (!dynamic.excludedNames()
-                .isEmpty()) {
-
-            StringBuilder condition =
-                    new StringBuilder();
-
-            for (String excluded :
-                    dynamic.excludedNames()) {
+        if (!dynamic.excludedNames().isEmpty()) {
+            StringBuilder condition = new StringBuilder();
+            for (String excluded : dynamic.excludedNames()) {
 
                 if (condition.length() != 0) {
                     condition.append(" || ");
                 }
 
-                condition.append(
-                                JavaWriter.stringLiteral(
-                                        excluded))
+                condition.append(JavaWriter.stringLiteral(excluded))
                         .append(".equals(")
                         .append(key)
                         .append(')');
             }
 
-            out.line(
-                    "if (" +
-                            condition +
-                            ") continue;");
+            out.line("if (" + condition + ") continue;");
         }
 
-        String value =
-                emit(
-                        out,
-                        names,
-                        dynamic.valueConversion(),
-                        valueExpression);
-
-        out.line(
-                result +
-                        ".put(" +
-                        key +
-                        ", " +
-                        value +
-                        ");");
+        String value = emit(out, names, dynamic.valueConversion(), valueExpression);
+        out.line(result + ".put(" + key + ", " + value + ");");
     }
 
 
@@ -1820,11 +867,7 @@ public final class ConversionEmitter
      */
 
     /** Encode a logical value before projecting its Map/List raw container. */
-    private String emitCodecRaw(
-            JavaWriter out,
-            NameAllocator names,
-            TypeMirror targetType,
-            String source) {
+    private String emitCodecRaw(JavaWriter out, NameAllocator names, TypeMirror targetType, String source) {
 
         String result = names.newName("raw");
         out.line(localType(targetType) + " " + result + " = ("
@@ -1834,49 +877,22 @@ public final class ConversionEmitter
     }
 
 
-    private String emitNodeMapperTo(
-            JavaWriter out,
-            NameAllocator names,
-            TypeMirror targetType,
-            String source,
-            String hint) {
-
-        String result =
-                names.newName(
-                        hint);
-
-        out.line(
-                localType(
-                        targetType) +
-                        " " +
-                        result +
-                        " = " +
-                        mapperToCast(targetType) +
-                        "org.sjf4j.node.NodeMapper.to(" +
-                        source +
-                        ", " +
-                        classLiteral(
-                                targetType) +
-                        ", this.context);");
+    private String emitNodeMapperTo(JavaWriter out, NameAllocator names, TypeMirror targetType,
+                                    String source, String hint) {
+        String result = names.newName(hint);
+        out.line(localType(targetType) + " " + result + " = " + mapperToCast(targetType) +
+                "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
+                ", this.context);");
 
         return result;
     }
 
 
-    private String mapperToCast(
-            TypeMirror targetType) {
-
-        if (!(targetType instanceof DeclaredType) ||
-                ((DeclaredType) targetType)
-                        .getTypeArguments()
-                        .isEmpty()) {
-
+    private String mapperToCast(TypeMirror targetType) {
+        if (!(targetType instanceof DeclaredType) || ((DeclaredType) targetType).getTypeArguments().isEmpty()) {
             return "";
         }
-
-        return "(" +
-                localType(targetType) +
-                ") ";
+        return "(" + localType(targetType) + ") ";
     }
 
 
@@ -1886,125 +902,54 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String emitAccessRead(
-            JavaWriter out,
-            NameAllocator names,
-            String owner,
-            String name,
-            NodeAccess access) {
-
-        String result =
-                names.newName(
-                        name);
-
-        out.line(
-                localType(
-                        access.readType()) +
-                        " " +
-                        result +
-                        " = " +
-                        accessReadExpression(
-                                owner,
-                                name,
-                                access) +
-                        ";");
+    private String emitAccessRead(JavaWriter out, NameAllocator names, String owner,
+                                  String name, NodeAccess access) {
+        String result = names.newName(name);
+        out.line(localType(access.readType()) + " " + result + " = " +
+                accessReadExpression(owner, name, access) + ";");
 
         return result;
     }
 
 
-    private String accessReadExpression(
-            String owner,
-            String name,
-            NodeAccess access) {
-
-        String key =
-                JavaWriter.stringLiteral(
-                        name);
+    private String accessReadExpression(String owner, String name, NodeAccess access) {
+        String key = JavaWriter.stringLiteral(name);
 
         switch (access.kind()) {
             case PROPERTY: {
-                PropertyAccess read =
-                        access.property()
-                                .read();
-
-                return read.isMethod()
-                        ? owner +
-                        "." +
-                        read.memberName() +
-                        "()"
-                        : owner +
-                        "." +
-                        read.memberName();
+                PropertyAccess read = access.property().read();
+                return read.isMethod() ? owner + "." + read.memberName() + "()"
+                        : owner + "." + read.memberName();
             }
 
             case MAP:
-                return cast(
-                        access.readType(),
-                        owner +
-                                ".get(" +
-                                key +
-                                ")");
+                return cast(access.readType(), owner + ".get(" + key + ")");
 
             case JSON_OBJECT:
-                return cast(
-                        access.readType(),
-                        owner +
-                                ".getNode(" +
-                                key +
-                                ")");
+                return cast(access.readType(), owner + ".getNode(" + key + ")");
 
             case DYNAMIC:
-                return cast(
-                        access.readType(),
-                        "org.sjf4j.node.NodeWalker.getInObject(" +
-                                owner +
-                                ", " +
-                                key +
-                                ")");
+                return cast(access.readType(),
+                        "org.sjf4j.node.NodeWalker.getInObject(" + owner + ", " + key + ")");
 
             default:
-                throw new IllegalStateException(
-                        "unsupported structural read: " +
-                                access.kind());
+                throw new IllegalStateException("unsupported structural read: " + access.kind());
         }
     }
 
 
-    private void emitAccessWrite(
-            JavaWriter out,
-            String owner,
-            String name,
-            NodeAccess access,
-            String value) {
-
-        String key =
-                JavaWriter.stringLiteral(
-                        name);
+    private void emitAccessWrite(JavaWriter out, String owner, String name, NodeAccess access, String value) {
+        String key = JavaWriter.stringLiteral(name);
 
         switch (access.kind()) {
             case PROPERTY: {
-                PropertyAccess write =
-                        access.property()
-                                .write();
+                PropertyAccess write = access.property().write();
 
                 if (write.isMethod()) {
-                    out.line(
-                            owner +
-                                    "." +
-                                    write.memberName() +
-                                    "(" +
-                                    value +
-                                    ");");
+                    out.line(owner + "." + write.memberName() + "(" + value + ");");
 
                 } else {
-                    out.line(
-                            owner +
-                                    "." +
-                                    write.memberName() +
-                                    " = " +
-                                    value +
-                                    ";");
+                    out.line(owner + "." + write.memberName() + " = " + value + ";");
                 }
 
                 return;
@@ -2012,30 +957,15 @@ public final class ConversionEmitter
 
             case MAP:
             case JSON_OBJECT:
-                out.line(
-                        owner +
-                                ".put(" +
-                                key +
-                                ", " +
-                                value +
-                                ");");
+                out.line(owner + ".put(" + key + ", " + value + ");");
                 return;
 
             case DYNAMIC:
-                out.line(
-                        "org.sjf4j.node.NodeWalker.putInObject(" +
-                                owner +
-                                ", " +
-                                key +
-                                ", " +
-                                value +
-                                ");");
+                out.line("org.sjf4j.node.NodeWalker.putInObject(" + owner + ", " + key + ", " + value + ");");
                 return;
 
             default:
-                throw new IllegalStateException(
-                        "unsupported structural write: " +
-                                access.kind());
+                throw new IllegalStateException("unsupported structural write: " + access.kind());
         }
     }
 
@@ -2046,159 +976,92 @@ public final class ConversionEmitter
      * --------------------------------------------------------------
      */
 
-    private String sourceElementExpression(
-            String source,
-            String index,
-            NodeKind kind,
-            TypeMirror elementType) {
+    private String sourceElementExpression(String source, String index, NodeKind kind, TypeMirror elementType) {
 
         switch (kind) {
             case ARRAY_ARRAY:
-                return source +
-                        "[" +
-                        index +
-                        "]";
+                return source + "[" + index + "]";
 
             case ARRAY_LIST:
-                return source +
-                        ".get(" +
-                        index +
-                        ")";
+                return source + ".get(" + index + ")";
 
             case ARRAY_JSON_ARRAY:
             case ARRAY_JAJO:
-                return cast(
-                        elementType,
-                        source +
-                                ".getNode(" +
-                                index +
-                                ")");
+                return cast(elementType, source + ".getNode(" + index + ")");
 
             case COMPILE_TIME_UNKNOWN:
-                return cast(
-                        elementType,
-                        "org.sjf4j.node.NodeWalker.getInArray(" +
-                                source +
-                                ", " +
-                                index +
-                                ")");
+                return cast(elementType, "org.sjf4j.node.NodeWalker.getInArray(" + source + ", " + index + ")");
 
             default:
-                throw new IllegalStateException(
-                        "unsupported indexed source container " +
-                                kind);
+                throw new IllegalStateException("unsupported indexed source container " + kind);
         }
     }
 
 
-    private String sizeExpression(
-            String source,
-            NodeKind kind) {
+    private String sizeExpression(String source, NodeKind kind) {
 
         switch (kind) {
             case ARRAY_ARRAY:
-                return source +
-                        ".length";
+                return source + ".length";
 
             case ARRAY_LIST:
             case ARRAY_SET:
             case ARRAY_JSON_ARRAY:
             case ARRAY_JAJO:
-                return source +
-                        ".size()";
+                return source + ".size()";
 
             case COMPILE_TIME_UNKNOWN:
-                return "org.sjf4j.node.NodeWalker.sizeInArray(" +
-                        source +
-                        ")";
+                return "org.sjf4j.node.NodeWalker.sizeInArray(" + source + ")";
 
             default:
-                throw new IllegalStateException(
-                        "unsupported source container " +
-                                kind);
+                throw new IllegalStateException("unsupported source container " + kind);
         }
     }
 
 
-    private String newContainerExpression(
-            TypeMirror type,
-            NodeKind kind,
-            String size) {
+    private String newContainerExpression(TypeMirror type, NodeKind kind, String size) {
 
         switch (kind) {
             case ARRAY_LIST:
-                if (types.isSameErasure(
-                        type,
-                        types.listType())) {
-
-                    return "new java.util.ArrayList<>(" +
-                            size +
-                            ")";
+                if (types.isSameErasure(type, types.listType())) {
+                    return "new java.util.ArrayList<>(" + size + ")";
                 }
 
-                if (isInterfaceOrAbstract(
-                        type)) {
-
-                    return "new java.util.ArrayList<>(" +
-                            size +
-                            ")";
+                if (isInterfaceOrAbstract(type)) {
+                    return "new java.util.ArrayList<>(" + size + ")";
                 }
 
-                return "new " +
-                        type +
-                        "()";
+                return "new " + type + "()";
 
             case ARRAY_SET:
-                if (isInterfaceOrAbstract(
-                        type)) {
-
-                    return "new java.util.LinkedHashSet<>(" +
-                            size +
-                            ")";
+                if (isInterfaceOrAbstract(type)) {
+                    return "new java.util.LinkedHashSet<>(" + size + ")";
                 }
 
-                return "new " +
-                        type +
-                        "()";
+                return "new " + type + "()";
 
             case ARRAY_JSON_ARRAY:
                 return "new org.sjf4j.JsonArray()";
 
             case ARRAY_JAJO:
-                return "new " +
-                        type +
-                        "()";
+                return "new " + type + "()";
 
             default:
-                throw new IllegalStateException(
-                        "unsupported target container " +
-                                kind);
+                throw new IllegalStateException("unsupported target container " + kind);
         }
     }
 
 
-    private String newMapExpression(
-            TypeMirror type) {
-
-        if (types.isSameErasure(
-                type,
-                types.mapType()) ||
-                isInterfaceOrAbstract(type)) {
-
+    private String newMapExpression(TypeMirror type) {
+        if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) {
             return "new java.util.LinkedHashMap<>()";
         }
-
-        return "new " +
-                type +
-                "()";
+        return "new " + type + "()";
     }
 
 
-    private String newObjectExpression(
-            TypeMirror type) {
-
-        NodeKind kind =
-                types.nodeKind(type);
+    private String newObjectExpression(TypeMirror type) {
+        NodeKind kind = types.nodeKind(type);
 
         switch (kind) {
             case OBJECT_MAP:
@@ -2208,105 +1071,56 @@ public final class ConversionEmitter
                 return "new org.sjf4j.JsonObject()";
 
             default:
-                throw new IllegalStateException(
-                        "unsupported dynamic object target " +
-                                type);
+                throw new IllegalStateException("unsupported dynamic object target " + type);
         }
     }
 
 
-    private String factoryExpression(
-            CreatorResolver.Creation creation) {
-
-        ExecutableElement factory =
-                creation.factory();
-
-        if (creation.factoryOwner() ==
-                null) {
-
-            return factory.getSimpleName() +
-                    "()";
+    private String factoryExpression(CreatorResolver.Creation creation) {
+        ExecutableElement factory = creation.factory();
+        if (creation.factoryOwner() == null) {
+            return factory.getSimpleName() + "()";
         }
 
-        return creation.factoryOwner()
-                .getQualifiedName() +
-                "." +
-                factory.getSimpleName() +
-                "()";
+        return creation.factoryOwner().getQualifiedName() + "." + factory.getSimpleName() + "()";
     }
 
 
-    private String localType(
-            TypeMirror type) {
-
-        return types.boxed(
-                        types.concrete(type))
-                .toString();
+    private String localType(TypeMirror type) {
+        return types.boxed(types.concrete(type)).toString();
     }
 
 
-    private String classLiteral(
-            TypeMirror type) {
-
-        TypeMirror boxed =
-                types.boxed(
-                        types.concrete(type));
-
-        return context.typeUtils
-                .erasure(boxed)
-                .toString() +
-                ".class";
+    private String classLiteral(TypeMirror type) {
+        TypeMirror boxed = types.boxed(types.concrete(type));
+        return context.typeUtils.erasure(boxed).toString() + ".class";
     }
 
 
-    private String cast(
-            TypeMirror type,
-            String expression) {
-
-        TypeMirror concrete =
-                types.concrete(type);
+    private String cast(TypeMirror type, String expression) {
+        TypeMirror concrete = types.concrete(type);
 
         if (types.isObject(concrete)) {
             return expression;
         }
 
-        return "(" +
-                localType(concrete) +
-                ") " +
-                expression;
+        return "(" + localType(concrete) + ") " + expression;
     }
 
 
-    private String rawName(
-            TypeMirror type) {
-
-        TypeMirror boxed =
-                types.boxed(
-                        types.concrete(type));
-
-        return context.typeUtils
-                .erasure(boxed)
-                .toString();
+    private String rawName(TypeMirror type) {
+        TypeMirror boxed = types.boxed(types.concrete(type));
+        return context.typeUtils.erasure(boxed).toString();
     }
 
 
-    private boolean isEnum(
-            TypeMirror type) {
-
-        TypeElement element =
-                types.typeElement(
-                        types.concrete(type));
-
-        return element != null &&
-                "ENUM".equals(
-                        element.getKind()
-                                .name());
+    private boolean isEnum(TypeMirror type) {
+        TypeElement element = types.typeElement(types.concrete(type));
+        return element != null && "ENUM".equals(element.getKind().name());
     }
 
 
-    private boolean isNumber(
-            String name) {
-
+    private boolean isNumber(String name) {
         return "java.lang.Byte".equals(name) ||
                 "java.lang.Short".equals(name) ||
                 "java.lang.Integer".equals(name) ||
@@ -2319,18 +1133,9 @@ public final class ConversionEmitter
     }
 
 
-    private boolean isInterfaceOrAbstract(
-            TypeMirror type) {
-
-        TypeElement element =
-                types.typeElement(
-                        types.concrete(type));
-
-        return element == null ||
-                element.getKind()
-                        .isInterface() ||
-                element.getModifiers()
-                        .contains(
-                                Modifier.ABSTRACT);
+    private boolean isInterfaceOrAbstract(TypeMirror type) {
+        TypeElement element = types.typeElement(types.concrete(type));
+        return element == null || element.getKind().isInterface() ||
+                element.getModifiers().contains(Modifier.ABSTRACT);
     }
 }

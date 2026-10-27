@@ -3,7 +3,6 @@ package org.sjf4j.processor.binding;
 import org.sjf4j.processor.property.PropertyAccess;
 import org.sjf4j.util.Asserts;
 
-
 /**
  * One compiled POJO property for a read or write binding.
  */
@@ -18,12 +17,7 @@ final class BindingProperty {
     private final int creatorCount;
     private final int pendingIndex;
 
-    BindingProperty(
-            String name,
-            String[] aliases,
-            PropertyAccess access,
-            BindingValue value) {
-
+    BindingProperty(String name, String[] aliases, PropertyAccess access, BindingValue value) {
         this.name = Asserts.notNull(name, "name");
         this.aliases = Asserts.notNull(aliases, "aliases");
         this.access = Asserts.notNull(access, "access");

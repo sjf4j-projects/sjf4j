@@ -21,6 +21,7 @@ final class Fastjson2WriteEmitter {
     }
 
     private final Set<FastjsonMode> fastjsonModes = EnumSet.noneOf(FastjsonMode.class);
+
     void registerWriteOutput(BindingPlan.WriteOutput output) {
         switch (output) {
             case STRING:
@@ -36,7 +37,6 @@ final class Fastjson2WriteEmitter {
         }
     }
 
-
     private static boolean fixedRawName(String name) {
         int length = name.length();
         if (length < 2 || length > 16) return false;
@@ -47,16 +47,9 @@ final class Fastjson2WriteEmitter {
         return true;
     }
 
-
     /** Emits Fastjson2 code through one buffer shared by native and codec writes. */
-    void emitMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            String target,
-            BindingPlan.WriteOutput output,
-            NameAllocator names) {
-
+    void emitMethod(JavaWriter out, BindingValue value, String source, String target,
+                    BindingPlan.WriteOutput output, NameAllocator names) {
         boolean utf8 = output == BindingPlan.WriteOutput.BYTES
                 || output == BindingPlan.WriteOutput.OUTPUT_STREAM;
         FastjsonMode mode = utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16;
@@ -118,7 +111,6 @@ final class Fastjson2WriteEmitter {
         }
         out.endBlock();
     }
-
 
     private String fastjsonHelperName(BindingValue value, FastjsonMode mode) {
         return value.helperName() + mode.suffix;
@@ -220,8 +212,7 @@ final class Fastjson2WriteEmitter {
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
         } else {
-            StructuralWriteEmitter structure =
-                    new StructuralWriteEmitter(new ModeOperations(mode));
+            StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode));
             if (value.kind() != BindingValue.Kind.ONE_OF) {
                 out.beginBlock("if (value == null)");
                 out.line("w.writeNull();");
@@ -356,7 +347,6 @@ final class Fastjson2WriteEmitter {
             out.endBlock();
         }
     }
-
 
     void emitHelper(JavaWriter out, BindingValue value) {
         for (FastjsonMode mode : fastjsonModes) {

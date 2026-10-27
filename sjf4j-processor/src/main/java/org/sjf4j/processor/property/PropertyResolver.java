@@ -87,8 +87,7 @@ public final class PropertyResolver {
 
         String cacheKey = owner.toString();
 
-        Map<String, Property> cached =
-                cache.get(cacheKey);
+        Map<String, Property> cached = cache.get(cacheKey);
 
         if (cached != null) {
             return cached;
@@ -97,8 +96,7 @@ public final class PropertyResolver {
         DeclaredType declaredOwner = (DeclaredType) owner;
         boolean jojo = kind == NodeKind.OBJECT_JOJO;
 
-        Map<String, Builder> builders =
-                new LinkedHashMap<String, Builder>();
+        Map<String, Builder> builders = new LinkedHashMap<String, Builder>();
 
         for (Element member : elements.getAllMembers(type)) {
             if (jojo && isJsonBaseMember(member)) {
@@ -130,29 +128,16 @@ public final class PropertyResolver {
         Map<String, Property> result =
                 new LinkedHashMap<String, Property>(builders.size());
 
-        for (Map.Entry<String, Builder> entry
-                : builders.entrySet()) {
-
+        for (Map.Entry<String, Builder> entry : builders.entrySet()) {
             Builder builder = entry.getValue();
 
-            result.put(
-                    entry.getKey(),
-                    new Property(
-                            entry.getKey(),
-                            builder.read == null
-                                    ? null
-                                    : builder.read.access,
-                            builder.write == null
-                                    ? null
-                                    : builder.write.access));
+            result.put(entry.getKey(), new Property(entry.getKey(),
+                    builder.read == null ? null : builder.read.access,
+                    builder.write == null ? null : builder.write.access));
         }
 
-        Map<String, Property> resolved =
-                Collections.unmodifiableMap(result);
-
-        cache.put(
-                cacheKey,
-                resolved);
+        Map<String, Property> resolved = Collections.unmodifiableMap(result);
+        cache.put(cacheKey, resolved);
 
         return resolved;
     }
@@ -174,25 +159,12 @@ public final class PropertyResolver {
             DeclaredType owner,
             VariableElement field) {
 
-        String javaName =
-                field.getSimpleName().toString();
-
-        String explicitName =
-                annotations.explicitPropertyName(field);
-
-        String propertyName =
-                explicitName == null
-                        ? javaName
-                        : explicitName;
-
-        int priority =
-                priority(explicitName != null, false);
-
-        TypeMirror fieldType =
-                typeUtils.asMemberOf(owner, field);
-
-        PropertyAccess access =
-                new PropertyAccess(field, fieldType);
+        String javaName = field.getSimpleName().toString();
+        String explicitName = annotations.explicitPropertyName(field);
+        String propertyName = explicitName == null ? javaName : explicitName;
+        int priority = priority(explicitName != null, false);
+        TypeMirror fieldType = typeUtils.asMemberOf(owner, field);
+        PropertyAccess access = new PropertyAccess(field, fieldType);
 
         builder(builders, propertyName, type)
                 .offerRead(access, priority);
@@ -209,13 +181,8 @@ public final class PropertyResolver {
             DeclaredType owner,
             ExecutableElement method) {
 
-        ExecutableType resolved =
-                (ExecutableType) typeUtils.asMemberOf(
-                        owner,
-                        method);
-
-        String explicitName =
-                annotations.explicitPropertyName(method);
+        ExecutableType resolved = (ExecutableType) typeUtils.asMemberOf(owner, method);
+        String explicitName = annotations.explicitPropertyName(method);
 
         /*
          * Getter:
@@ -229,29 +196,14 @@ public final class PropertyResolver {
                 && resolved.getReturnType().getKind()
                 != TypeKind.VOID) {
 
-            String baseName =
-                    getterPropertyName(
-                            type,
-                            method,
-                            resolved.getReturnType());
+            String baseName = getterPropertyName(type, method, resolved.getReturnType());
 
             if (explicitName != null || baseName != null) {
-                String propertyName =
-                        explicitName == null
-                                ? baseName
-                                : explicitName;
-
-                int priority =
-                        priority(
-                                explicitName != null,
-                                true);
+                String propertyName = explicitName == null ? baseName : explicitName;
+                int priority = priority(explicitName != null, true);
 
                 builder(builders, propertyName, type)
-                        .offerRead(
-                                new PropertyAccess(
-                                        method,
-                                        resolved.getReturnType()),
-                                priority);
+                        .offerRead(new PropertyAccess(method, resolved.getReturnType()), priority);
             }
         }
 
@@ -267,27 +219,14 @@ public final class PropertyResolver {
                 && resolved.getReturnType().getKind()
                 == TypeKind.VOID) {
 
-            String baseName =
-                    setterPropertyName(method);
+            String baseName = setterPropertyName(method);
 
             if (baseName != null) {
-                String propertyName =
-                        explicitName == null
-                                ? baseName
-                                : explicitName;
-
-                int priority =
-                        priority(
-                                explicitName != null,
-                                true);
+                String propertyName = explicitName == null ? baseName : explicitName;
+                int priority = priority(explicitName != null, true);
 
                 builder(builders, propertyName, type)
-                        .offerWrite(
-                                new PropertyAccess(
-                                        method,
-                                        resolved
-                                                .getParameterTypes()
-                                                .get(0)),
+                        .offerWrite(new PropertyAccess(method, resolved.getParameterTypes().get(0)),
                                 priority);
             }
         }
@@ -298,8 +237,7 @@ public final class PropertyResolver {
             ExecutableElement method,
             TypeMirror returnType) {
 
-        String name =
-                method.getSimpleName().toString();
+        String name = method.getSimpleName().toString();
 
         if (name.equals("getClass")) {
             return null;
@@ -327,8 +265,7 @@ public final class PropertyResolver {
     private String setterPropertyName(
             ExecutableElement method) {
 
-        String name =
-                method.getSimpleName().toString();
+        String name = method.getSimpleName().toString();
 
         if (name.startsWith("set")
                 && name.length() > 3) {
@@ -347,12 +284,8 @@ public final class PropertyResolver {
         }
 
         for (Element element : type.getEnclosedElements()) {
-            if ("RECORD_COMPONENT".equals(
-                    element.getKind().name())
-                    && element
-                    .getSimpleName()
-                    .contentEquals(methodName)) {
-
+            if ("RECORD_COMPONENT".equals(element.getKind().name())
+                    && element.getSimpleName().contentEquals(methodName)) {
                 return true;
             }
         }
@@ -367,10 +300,7 @@ public final class PropertyResolver {
             return false;
         }
 
-        String name =
-                ((TypeElement) owner)
-                        .getQualifiedName()
-                        .toString();
+        String name = ((TypeElement) owner).getQualifiedName().toString();
 
         return name.equals(JSON_OBJECT)
                 || name.equals(JSON_CONTAINER)
@@ -382,12 +312,8 @@ public final class PropertyResolver {
      *
      * explicit method > explicit field > method > field
      */
-    private int priority(
-            boolean explicit,
-            boolean method) {
-
-        return (explicit ? 2 : 0)
-                + (method ? 1 : 0);
+    private int priority(boolean explicit, boolean method) {
+        return (explicit ? 2 : 0) + (method ? 1 : 0);
     }
 
     private Builder builder(
@@ -424,10 +350,7 @@ public final class PropertyResolver {
         final PropertyAccess access;
         final int priority;
 
-        Candidate(
-                PropertyAccess access,
-                int priority) {
-
+        Candidate(PropertyAccess access, int priority) {
             this.access = access;
             this.priority = priority;
         }
@@ -443,36 +366,19 @@ public final class PropertyResolver {
         Candidate write;
 
 
-        Builder(
-                TypeElement owner,
-                String name) {
-
+        Builder(TypeElement owner, String name) {
             this.owner = owner;
             this.name = name;
         }
 
 
-        void offerRead(
-                PropertyAccess access,
-                int priority) {
-
-            read = offer(
-                    read,
-                    access,
-                    priority,
-                    true);
+        void offerRead(PropertyAccess access, int priority) {
+            read = offer(read, access, priority, true);
         }
 
 
-        void offerWrite(
-                PropertyAccess access,
-                int priority) {
-
-            write = offer(
-                    write,
-                    access,
-                    priority,
-                    false);
+        void offerWrite(PropertyAccess access, int priority) {
+            write = offer(write, access, priority, false);
         }
 
 
@@ -482,49 +388,28 @@ public final class PropertyResolver {
                 int priority,
                 boolean readable) {
 
-            if (current == null ||
-                    priority > current.priority) {
-
-                return new Candidate(
-                        candidate,
-                        priority);
+            if (current == null || priority > current.priority) {
+                return new Candidate(candidate, priority);
             }
 
             if (priority < current.priority) {
                 return current;
             }
 
-            int specificity =
-                    compareSpecificity(
-                            owner,
-                            current.access,
-                            candidate,
-                            readable);
+            int specificity = compareSpecificity(owner, current.access, candidate, readable);
 
             if (specificity < 0) {
                 return current;
             }
 
             if (specificity > 0) {
-                return new Candidate(
-                        candidate,
-                        priority);
+                return new Candidate(candidate, priority);
             }
 
-            reportAmbiguous(
-                    name,
-                    readable,
-                    current.access,
-                    candidate);
+            reportAmbiguous(name, readable, current.access, candidate);
 
-            return candidateKey(candidate)
-                    .compareTo(
-                            candidateKey(
-                                    current.access)) < 0
-                    ? new Candidate(
-                    candidate,
-                    priority)
-                    : current;
+            return candidateKey(candidate).compareTo(candidateKey(current.access)) < 0
+                    ? new Candidate(candidate, priority) : current;
         }
     }
 
@@ -538,32 +423,22 @@ public final class PropertyResolver {
             PropertyAccess candidate,
             boolean readable) {
 
-        if (current.member().equals(
-                candidate.member())) {
+        if (current.member().equals(candidate.member())) {
             return -1;
         }
 
         if (current.isMethod() &&
                 candidate.isMethod()) {
 
-            ExecutableElement currentMethod =
-                    (ExecutableElement) current.member();
-
-            ExecutableElement candidateMethod =
-                    (ExecutableElement) candidate.member();
+            ExecutableElement currentMethod = (ExecutableElement) current.member();
+            ExecutableElement candidateMethod = (ExecutableElement) candidate.member();
 
             try {
-                if (elements.overrides(
-                        candidateMethod,
-                        currentMethod,
-                        owner)) {
+                if (elements.overrides(candidateMethod, currentMethod, owner)) {
                     return 1;
                 }
 
-                if (elements.overrides(
-                        currentMethod,
-                        candidateMethod,
-                        owner)) {
+                if (elements.overrides(currentMethod, candidateMethod, owner)) {
                     return -1;
                 }
             } catch (IllegalArgumentException ignored) {
@@ -571,30 +446,17 @@ public final class PropertyResolver {
             }
 
             if (readable) {
-                int booleanGetter =
-                        compareBooleanGetter(
-                                currentMethod,
-                                candidateMethod);
+                int booleanGetter = compareBooleanGetter(currentMethod, candidateMethod);
 
                 if (booleanGetter != 0) {
                     return booleanGetter;
                 }
             }
 
-            if (sameMethodSignature(
-                    current,
-                    candidate)) {
-
+            if (sameMethodSignature(current, candidate)) {
                 if (readable) {
-                    boolean candidateToCurrent =
-                            typeUtils.isAssignable(
-                                    candidate.type(),
-                                    current.type());
-
-                    boolean currentToCandidate =
-                            typeUtils.isAssignable(
-                                    current.type(),
-                                    candidate.type());
+                    boolean candidateToCurrent = typeUtils.isAssignable(candidate.type(), current.type());
+                    boolean currentToCandidate = typeUtils.isAssignable(current.type(), candidate.type());
 
                     if (candidateToCurrent &&
                             !currentToCandidate) {
@@ -611,11 +473,7 @@ public final class PropertyResolver {
                  * Equivalent diamond declarations represent one Java member
                  * contract and are not an ambiguous node property.
                  */
-                return candidateKey(candidate)
-                        .compareTo(
-                                candidateKey(current)) < 0
-                        ? 1
-                        : -1;
+                return candidateKey(candidate).compareTo(candidateKey(current)) < 0 ? 1 : -1;
             }
 
             return 0;
@@ -624,24 +482,16 @@ public final class PropertyResolver {
         if (current.isField() &&
                 candidate.isField()) {
 
-            TypeElement currentOwner =
-                    memberOwner(current.member());
-
-            TypeElement candidateOwner =
-                    memberOwner(candidate.member());
+            TypeElement currentOwner = memberOwner(current.member());
+            TypeElement candidateOwner = memberOwner(candidate.member());
 
             if (currentOwner != null &&
                     candidateOwner != null) {
 
                 boolean candidateToCurrent =
-                        typeUtils.isSubtype(
-                                candidateOwner.asType(),
-                                currentOwner.asType());
-
+                        typeUtils.isSubtype(candidateOwner.asType(), currentOwner.asType());
                 boolean currentToCandidate =
-                        typeUtils.isSubtype(
-                                currentOwner.asType(),
-                                candidateOwner.asType());
+                        typeUtils.isSubtype(currentOwner.asType(), candidateOwner.asType());
 
                 if (candidateToCurrent &&
                         !currentToCandidate) {
@@ -663,33 +513,17 @@ public final class PropertyResolver {
             ExecutableElement current,
             ExecutableElement candidate) {
 
-        String currentName =
-                current.getSimpleName()
-                        .toString();
-
-        String candidateName =
-                candidate.getSimpleName()
-                        .toString();
-
-        boolean currentIs =
-                isBooleanGetterName(currentName);
-
-        boolean candidateIs =
-                isBooleanGetterName(candidateName);
+        String currentName = current.getSimpleName().toString();
+        String candidateName = candidate.getSimpleName().toString();
+        boolean currentIs = isBooleanGetterName(currentName);
+        boolean candidateIs = isBooleanGetterName(candidateName);
 
         if (currentIs == candidateIs) {
             return 0;
         }
 
-        String isName =
-                currentIs
-                        ? currentName
-                        : candidateName;
-
-        String otherName =
-                currentIs
-                        ? candidateName
-                        : currentName;
+        String isName = currentIs ? currentName : candidateName;
+        String otherName = currentIs ? candidateName : currentName;
 
         if (!otherName.startsWith("get") ||
                 otherName.length() <= 3 ||
@@ -702,11 +536,8 @@ public final class PropertyResolver {
     }
 
 
-    private boolean isBooleanGetterName(
-            String name) {
-
-        return name.startsWith("is") &&
-                name.length() > 2;
+    private boolean isBooleanGetterName(String name) {
+        return name.startsWith("is") && name.length() > 2;
     }
 
 
@@ -714,23 +545,16 @@ public final class PropertyResolver {
             PropertyAccess first,
             PropertyAccess second) {
 
-        ExecutableElement firstMethod =
-                (ExecutableElement) first.member();
+        ExecutableElement firstMethod = (ExecutableElement) first.member();
+        ExecutableElement secondMethod = (ExecutableElement) second.member();
 
-        ExecutableElement secondMethod =
-                (ExecutableElement) second.member();
-
-        if (!firstMethod.getSimpleName()
-                .contentEquals(
-                        secondMethod.getSimpleName())) {
+        if (!firstMethod.getSimpleName().contentEquals(secondMethod.getSimpleName())) {
             return false;
         }
 
-        int parameters =
-                firstMethod.getParameters().size();
+        int parameters = firstMethod.getParameters().size();
 
-        if (parameters !=
-                secondMethod.getParameters().size()) {
+        if (parameters != secondMethod.getParameters().size()) {
             return false;
         }
 
@@ -751,8 +575,7 @@ public final class PropertyResolver {
     private TypeElement memberOwner(
             Element member) {
 
-        Element owner =
-                member.getEnclosingElement();
+        Element owner = member.getEnclosingElement();
 
         return owner instanceof TypeElement
                 ? (TypeElement) owner
@@ -783,8 +606,7 @@ public final class PropertyResolver {
     private String memberDescription(
             PropertyAccess access) {
 
-        TypeElement owner =
-                memberOwner(access.member());
+        TypeElement owner = memberOwner(access.member());
 
         return (owner == null
                 ? ""
@@ -796,9 +618,7 @@ public final class PropertyResolver {
     private String candidateKey(
             PropertyAccess access) {
 
-        return memberDescription(access) +
-                ':' +
-                access.type();
+        return memberDescription(access) + ':' + access.type();
     }
 
 }

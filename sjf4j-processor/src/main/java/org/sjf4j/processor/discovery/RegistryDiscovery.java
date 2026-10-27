@@ -40,7 +40,9 @@ public final class RegistryDiscovery {
     /** Collects registry holders declared in this compilation round. */
     public void collect(RoundEnvironment roundEnv) {
         for (Element element : roundEnv.getElementsAnnotatedWith(NodeValue.class)) {
-            if (element.getKind() != ElementKind.FIELD) continue;
+            if (element.getKind() != ElementKind.FIELD) {
+                continue;
+            }
             Element holder = element.getEnclosingElement();
             if (holder instanceof TypeElement) {
                 TypeElement type = (TypeElement) holder;
@@ -74,12 +76,16 @@ public final class RegistryDiscovery {
         for (AnnotationMirror annotation : owner.getAnnotationMirrors()) {
             Element declaration = annotation.getAnnotationType().asElement();
             if (!(declaration instanceof TypeElement)
-                    || !((TypeElement) declaration).getQualifiedName().contentEquals(
-                            BindingOptions.class.getName())) continue;
+                    || !((TypeElement) declaration).getQualifiedName()
+                            .contentEquals(BindingOptions.class.getName())) {
+                continue;
+            }
 
             for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
                     context.elements.getElementValuesWithDefaults(annotation).entrySet()) {
-                if (!entry.getKey().getSimpleName().contentEquals("registries")) continue;
+                if (!entry.getKey().getSimpleName().contentEquals("registries")) {
+                    continue;
+                }
 
                 for (Object item : (List<?>) entry.getValue().getValue()) {
                     TypeMirror type = (TypeMirror) ((AnnotationValue) item).getValue();

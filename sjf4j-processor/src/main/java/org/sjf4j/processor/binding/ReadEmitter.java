@@ -11,24 +11,17 @@ import javax.lang.model.element.VariableElement;
 /** Emits direct concrete-parser binding code. */
 final class ReadEmitter {
 
-    private static final String STREAMING_IO =
-            "org.sjf4j.binding.StreamingIO";
-
-    private static final String NAME_MATCHER =
-            "org.sjf4j.binding.NameMatcher";
+    private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
+    private static final String NAME_MATCHER = "org.sjf4j.binding.NameMatcher";
 
     private final ProcessorContext context;
     private final BackendSpec backend;
     private final Fastjson2PojoReadEmitter fastjson2Pojo;
 
-    ReadEmitter(
-            ProcessorContext context,
-            BackendSpec backend) {
-
+    ReadEmitter(ProcessorContext context, BackendSpec backend) {
         this.context = context;
         this.backend = backend;
-        this.fastjson2Pojo = backend.backend()
-                == Backend.FASTJSON2
+        this.fastjson2Pojo = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2PojoReadEmitter() : null;
     }
 
@@ -36,27 +29,14 @@ final class ReadEmitter {
         return backend.usesNameMatcher();
     }
 
-    void emitMethod(
-            JavaWriter out,
-            BindingCompiler.CompiledMethod compiled) {
-
+    void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
         BindingPlan plan = compiled.plan();
         BindingValue value = compiled.value();
 
-        BindingSource.beginOverride(
-                out,
-                plan.method());
-
-        String input =
-                BindingSource.parameterName(
-                        plan,
-                        0);
-
-        NameAllocator names =
-                methodNames(plan);
-
-        String parser =
-                names.newName("parser");
+        BindingSource.beginOverride(out, plan.method());
+        String input = BindingSource.parameterName(plan, 0);
+        NameAllocator names = methodNames(plan);
+        String parser = names.newName("parser");
 
         out.beginBlock("try (" + backend.parserType() + " " + parser
                 + " = this.binder.createParser(" + input + "))");
@@ -66,35 +46,19 @@ final class ReadEmitter {
         BindingSource.endOverride(out);
     }
 
-    private void emitReadBody(
-            JavaWriter out,
-            BindingPlan plan,
-            BindingValue value,
-            String parser,
-            NameAllocator names) {
-
-        String result =
-                names.newName("result");
+    private void emitReadBody(JavaWriter out, BindingPlan plan, BindingValue value,
+                              String parser, NameAllocator names) {
+        String result = names.newName("result");
 
         out.line(parser + ".start();");
 
-        out.line(
-                plan.valueType() +
-                        " " + result +
-                        " = " +
-                        readExpression(
-                                value,
-                                parser) +
-                        ";");
+        out.line(plan.valueType() + " " + result + " = " + readExpression(value, parser) + ";");
 
         out.line(parser + ".end();");
         out.line("return " + result + ";");
     }
 
-    void emitNameMatcherField(
-            JavaWriter out,
-            BindingValue value) {
-
+    void emitNameMatcherField(JavaWriter out, BindingValue value) {
         if (!backend.usesNameMatcher() ||
                 (value.kind() != BindingValue.Kind.POJO && value.kind() != BindingValue.Kind.JOJO) ||
                 value.properties().isEmpty()) {
@@ -129,18 +93,9 @@ final class ReadEmitter {
         out.line(line.toString());
     }
 
-    void emitHelper(
-            JavaWriter out,
-            BindingValue value) {
-
-        out.beginBlock(
-                "private " +
-                        value.type() +
-                        " " +
-                        value.helperName() +
-                        "(" +
-                        backend.parserType() +
-                        " parser) throws java.io.IOException");
+    void emitHelper(JavaWriter out, BindingValue value) {
+        out.beginBlock("private " + value.type() + " " + value.helperName()
+                + "(" + backend.parserType() + " parser) throws java.io.IOException");
 
         switch (value.kind()) {
             case POJO:
@@ -175,9 +130,7 @@ final class ReadEmitter {
                 break;
 
             default:
-                throw new AssertionError(
-                        "No read helper for " +
-                                value.kind());
+                throw new AssertionError("No read helper for " + value.kind());
         }
 
         out.endBlock();
@@ -332,9 +285,7 @@ final class ReadEmitter {
         return value.primitive() ? decoded : "(" + raw + " == null ? null : " + decoded + ")";
     }
 
-    private void emitPojo(
-            JavaWriter out,
-            BindingValue value) {
+    private void emitPojo(JavaWriter out, BindingValue value) {
         emitPojo(out, value, false, null);
     }
 
@@ -347,11 +298,7 @@ final class ReadEmitter {
 
         if (!insideObject) emitObjectStart(out);
 
-        out.line(
-                value.type() +
-                        " value = new " +
-                        value.type() +
-                        "();");
+        out.line(value.type() + " value = new " + value.type() + "();");
         if (consumedDiscriminator != null) emitOneOfPrefixReplay(out, value);
 
         if (fastjson2Pojo != null && !value.properties().isEmpty()) {
@@ -362,19 +309,14 @@ final class ReadEmitter {
                 out.line("int expectedNameIndex = 0;");
             }
 
-            out.beginBlock(
-                    "while ((nameIndex = parser.nextNameMatch(" +
-                            matcherFieldName(value) +
-                            (backend.usesExpectedNameMatch()
-                                    ? ", expectedNameIndex"
-                                    : "") +
-                            ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            out.beginBlock("while ((nameIndex = parser.nextNameMatch(" + matcherFieldName(value)
+                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
+                    + ")) != " + NAME_MATCHER + ".OBJECT_END)");
 
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
             out.line("String name;");
-            out.beginBlock(
-                    "while ((name = parser.nextName()) != null)");
+            out.beginBlock("while ((name = parser.nextName()) != null)");
 
             emitStringPojoProperty(out, value, consumedDiscriminator);
         }
@@ -525,18 +467,12 @@ final class ReadEmitter {
         out.endBlock();
     }
 
-    private void emitStringPojoProperty(
-            JavaWriter out,
-            BindingValue value, String consumedDiscriminator) {
-
+    private void emitStringPojoProperty(JavaWriter out, BindingValue value,
+                                        String consumedDiscriminator) {
         out.beginBlock("switch (name)");
 
         for (BindingProperty property : value.properties()) {
-            out.line(
-                    "case " +
-                            JavaWriter.stringLiteral(
-                                    property.name()) +
-                            ":");
+            out.line("case " + JavaWriter.stringLiteral(property.name()) + ":");
 
             out.indent();
 
@@ -604,10 +540,8 @@ final class ReadEmitter {
         return value.helperName() + "_names";
     }
 
-    void emitPropertyRead(JavaWriter out, BindingProperty property,
-                          String owner, String parser) {
-        emitPropertyReadExpression(out, property, owner,
-                readExpression(property.value(), parser));
+    void emitPropertyRead(JavaWriter out, BindingProperty property, String owner, String parser) {
+        emitPropertyReadExpression(out, property, owner, readExpression(property.value(), parser));
     }
 
     /** Reuses the normal POJO assignment semantics for backend-native reads. */
@@ -653,10 +587,7 @@ final class ReadEmitter {
         out.line("return size == value.length ? value : java.util.Arrays.copyOf(value, size);");
     }
 
-    private void emitList(
-            JavaWriter out,
-            BindingValue value) {
-
+    private void emitList(JavaWriter out, BindingValue value) {
         // Raw List<Object> is already handled by each backend's raw parser.
         if (context.typeUtils.erasure(value.type()).toString().equals("java.util.List")
                 && context.types.isObject(value.elementValue().type())) {
@@ -667,52 +598,26 @@ final class ReadEmitter {
 
         emitArrayStart(out);
 
-        out.line(
-                value.type() +
-                        " value = new java.util.ArrayList<>();");
-
-        out.beginBlock(
-                "while (!parser.nextIfArrayEnd())");
-
-        out.line(
-                "value.add(" +
-                        readExpression(
-                                value.elementValue(),
-                                "parser") +
-                        ");");
+        out.line(value.type() + " value = new java.util.ArrayList<>();");
+        out.beginBlock("while (!parser.nextIfArrayEnd())");
+        out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
 
         out.endBlock();
         out.line("return value;");
     }
 
-    private void emitSet(
-            JavaWriter out,
-            BindingValue value) {
-
+    private void emitSet(JavaWriter out, BindingValue value) {
         emitArrayStart(out);
 
-        out.line(
-                value.type() +
-                        " value = new java.util.LinkedHashSet<>();");
-
-        out.beginBlock(
-                "while (!parser.nextIfArrayEnd())");
-
-        out.line(
-                "value.add(" +
-                        readExpression(
-                                value.elementValue(),
-                                "parser") +
-                        ");");
+        out.line(value.type() + " value = new java.util.LinkedHashSet<>();");
+        out.beginBlock("while (!parser.nextIfArrayEnd())");
+        out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
 
         out.endBlock();
         out.line("return value;");
     }
 
-    private void emitMap(
-            JavaWriter out,
-            BindingValue value) {
-
+    private void emitMap(JavaWriter out, BindingValue value) {
         // Raw Map<String, Object> uses the same backend-independent strategy
         // as List<Object>; typed containers keep their compiled element plan.
         if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
@@ -724,20 +629,11 @@ final class ReadEmitter {
 
         emitObjectStart(out);
 
-        out.line(
-                value.type() +
-                        " value = new java.util.LinkedHashMap<>();");
+        out.line(value.type() + " value = new java.util.LinkedHashMap<>();");
 
         out.line("String name;");
-        out.beginBlock(
-                "while ((name = parser.nextName()) != null)");
-
-        out.line(
-                "value.put(name, " +
-                        readExpression(
-                                value.mapValue(),
-                                "parser") +
-                        ");");
+        out.beginBlock("while ((name = parser.nextName()) != null)");
+        out.line("value.put(name, " + readExpression(value.mapValue(), "parser") + ");");
 
         out.endBlock();
         out.line("return value;");
@@ -780,13 +676,9 @@ final class ReadEmitter {
         }
     }
 
-    private String readExpression(
-            BindingValue value,
-            String parser) {
-
+    private String readExpression(BindingValue value, String parser) {
         if (value.helperRequired()) {
-            return value.helperName() +
-                    "(" + parser + ")";
+            return value.helperName() + "(" + parser + ")";
         }
 
         switch (value.kind()) {
@@ -874,11 +766,8 @@ final class ReadEmitter {
 
             case ENUM:
                 // Keep string, ordinal and null semantics aligned with StreamingIO.
-                return "(" + value.type() + ") " +
-                        STREAMING_IO +
-                        ".readEnum(" + parser + ", " +
-                        value.type() + ".class, " +
-                        "this.context)";
+                return "(" + value.type() + ") " + STREAMING_IO + ".readEnum(" + parser + ", "
+                        + value.type() + ".class, this.context)";
 
             case ONE_OF:
                 if (value.oneOfKey() != null) {
@@ -889,57 +778,28 @@ final class ReadEmitter {
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) {
-                    return "(" + value.type() + ") " +
-                            parser + ".readRaw()";
+                    return "(" + value.type() + ") " + parser + ".readRaw()";
                 }
-                return "(" + value.type() + ") " +
-                        STREAMING_IO +
-                        ".readNode(" +
-                        parser + ", " +
-                        context.typeUtils
-                                .erasure(value.type()) +
-                        ".class, " +
-                        "this.context)";
+                return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
+                        + context.typeUtils.erasure(value.type()) + ".class, this.context)";
 
             default:
-                throw new AssertionError(
-                        "Unsupported read kind " +
-                                value.kind());
+                throw new AssertionError("Unsupported read kind " + value.kind());
         }
     }
 
-    private String assignment(
-            PropertyAccess access,
-            String owner,
-            String expression) {
-
+    private String assignment(PropertyAccess access, String owner, String expression) {
         if (access.isMethod()) {
-            return owner + '.' +
-                    access.memberName() +
-                    '(' + expression +
-                    ");";
+            return owner + '.' + access.memberName() + '(' + expression + ");";
         }
 
-        return owner + '.' +
-                access.memberName() +
-                " = " + expression +
-                ";";
+        return owner + '.' + access.memberName() + " = " + expression + ";";
     }
 
-    private NameAllocator methodNames(
-            BindingPlan plan) {
-
-        NameAllocator names =
-                new NameAllocator();
-
-        for (VariableElement parameter :
-                plan.method()
-                        .declaration()
-                        .getParameters()) {
-
-            names.reserve(
-                    parameter.getSimpleName()
-                            .toString());
+    private NameAllocator methodNames(BindingPlan plan) {
+        NameAllocator names = new NameAllocator();
+        for (VariableElement parameter : plan.method().declaration().getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
         }
 
         return names;

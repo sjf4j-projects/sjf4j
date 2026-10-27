@@ -11,7 +11,6 @@ import java.util.Set;
 /** Emits direct concrete-generator binding code. */
 final class WriteEmitter {
 
-
     private final BackendSpec backend;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
@@ -68,20 +67,10 @@ final class WriteEmitter {
         return value.helperName() + "_name_" + index;
     }
 
-    void emitMethod(
-            JavaWriter out,
-            BindingCompiler.CompiledMethod compiled) {
-
+    void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
         BindingPlan plan = compiled.plan();
-
-        BindingSource.beginOverride(
-                out,
-                plan.method());
-
-        String source =
-                BindingSource.parameterName(
-                        plan,
-                        0);
+        BindingSource.beginOverride(out, plan.method());
+        String source = BindingSource.parameterName(plan, 0);
 
         // Only the streaming-only backends retain whole-root fallback rules.
         // JSON native backends compile structural nodes and fall back locally.
@@ -128,8 +117,7 @@ final class WriteEmitter {
             }
         }
 
-        NameAllocator names =
-                methodNames(plan);
+        NameAllocator names = methodNames(plan);
 
         if (backend.backend() == Backend.FASTJSON2) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
@@ -142,43 +130,28 @@ final class WriteEmitter {
 
         switch (plan.writeOutput()) {
             case STRING:
-                emitStringMethod(
-                        out,
-                        compiled.value(),
-                        source,
-                        names);
+                emitStringMethod(out, compiled.value(), source, names);
                 break;
 
             case BYTES:
-                emitBytesMethod(
-                        out,
-                        compiled.value(),
-                        source,
-                        names);
+                emitBytesMethod(out, compiled.value(), source, names);
                 break;
 
             case WRITER:
             case OUTPUT_STREAM:
-                emitStreamMethod(
-                        out,
-                        compiled.value(),
-                        source,
-                        BindingSource.parameterName(
-                                plan,
-                                1),
-                        names);
+                emitStreamMethod(out, compiled.value(), source,
+                        BindingSource.parameterName(plan, 1), names);
                 break;
 
             default:
-                throw new AssertionError(
-                        plan.writeOutput());
+                throw new AssertionError(plan.writeOutput());
         }
 
         BindingSource.endOverride(out);
     }
 
-    private void emitStringMethod(
-            JavaWriter out, BindingValue value, String source, NameAllocator names) {
+    private void emitStringMethod(JavaWriter out, BindingValue value, String source,
+                                  NameAllocator names) {
         String output = names.newName("output");
         String generator = names.newName("generator");
 
@@ -196,8 +169,8 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    private void emitBytesMethod(
-            JavaWriter out, BindingValue value, String source, NameAllocator names) {
+    private void emitBytesMethod(JavaWriter out, BindingValue value, String source,
+                                 NameAllocator names) {
         String output = names.newName("output");
         String generator = names.newName("generator");
 
@@ -227,15 +200,9 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    private void emitStreamMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            String output,
-            NameAllocator names) {
-
-        String generator =
-                names.newName("generator");
+    private void emitStreamMethod(JavaWriter out, BindingValue value, String source,
+                                  String output, NameAllocator names) {
+        String generator = names.newName("generator");
 
         out.beginBlock("try (" + backend.generatorType() + " " + generator
                 + " = this.binder.createGenerator(" + output + "))");
@@ -243,13 +210,8 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    private void emitWriteBody(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            String generator,
-            NameAllocator names) {
-
+    private void emitWriteBody(JavaWriter out, BindingValue value, String source,
+                               String generator, NameAllocator names) {
         out.line(generator + ".start();");
 
         if (isJackson()) {
@@ -404,34 +366,19 @@ final class WriteEmitter {
         return usesSharedStructure() || streaming.requiresWriteHelper(value);
     }
 
-    static String access(
-            PropertyAccess access,
-            String owner) {
-
+    static String access(PropertyAccess access, String owner) {
         if (access.isMethod()) {
-            return owner + '.' +
-                    access.memberName() +
-                    "()";
+            return owner + '.' + access.memberName() + "()";
         }
 
-        return owner + '.' +
-                access.memberName();
+        return owner + '.' + access.memberName();
     }
 
-    private NameAllocator methodNames(
-            BindingPlan plan) {
-
-        NameAllocator names =
-                new NameAllocator();
-
+    private NameAllocator methodNames(BindingPlan plan) {
+        NameAllocator names = new NameAllocator();
         for (javax.lang.model.element.VariableElement parameter :
-                plan.method()
-                        .declaration()
-                        .getParameters()) {
-
-            names.reserve(
-                    parameter.getSimpleName()
-                            .toString());
+                plan.method().declaration().getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
         }
 
         return names;

@@ -90,8 +90,7 @@ final class BindingHelperEmitter {
                 && value.codecName() == null && value.codecPattern() == null;
         if (autoRead) {
             String set = value.helperName() + "Set";
-            generated.addField(out -> out.line(
-                    "private final org.sjf4j.value.ValueSet " + set + ";"));
+            generated.addField(out -> out.line("private final org.sjf4j.value.ValueSet " + set + ";"));
             generated.addContextInitializer(out -> out.line(
                     "this." + set + " = org.sjf4j.meta.TypeRegistry.registerTypeInfo("
                             + value.type() + ".class).valueSet;"));

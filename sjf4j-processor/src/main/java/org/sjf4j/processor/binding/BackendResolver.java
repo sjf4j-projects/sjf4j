@@ -21,18 +21,11 @@ final class BackendResolver {
         this.context = context;
     }
 
-    BackendSpec resolve(
-            TypeElement type,
-            GeneratedClass generated) {
-
-        CompiledBinder annotation =
-                type.getAnnotation(CompiledBinder.class);
+    BackendSpec resolve(TypeElement type, GeneratedClass generated) {
+        CompiledBinder annotation = type.getAnnotation(CompiledBinder.class);
 
         if (annotation == null) {
-            error(
-                    type,
-                    generated,
-                    "Missing @CompiledBinder annotation");
+            error(type, generated, "Missing @CompiledBinder annotation");
             return null;
         }
 
@@ -48,23 +41,17 @@ final class BackendResolver {
                 }
             }
 
-            error(
-                    type,
-                    generated,
-                    "No usable " + format +
-                            " backend is visible on the compilation classpath; " +
-                            "add an SJF4J backend adapter and its native library");
+            error(type, generated, "No usable " + format +
+                    " backend is visible on the compilation classpath; " +
+                    "add an SJF4J backend adapter and its native library");
             return null;
         }
 
         BackendSpec selected = group.find(backend);
 
         if (selected == null) {
-            error(
-                    type,
-                    generated,
-                    "Binding backend " + backend +
-                            " does not support format " + format);
+            error(type, generated, "Binding backend " + backend +
+                    " does not support format " + format);
             return null;
         }
 
@@ -74,39 +61,25 @@ final class BackendResolver {
          * library is intentionally absent.
          */
         if (!libraryVisible(selected)) {
-            error(
-                    type,
-                    generated,
-                    "Binding backend " + backend +
-                            " requires native library type " +
-                            selected.libraryMarkerType() +
-                            " on the compilation classpath");
+            error(type, generated, "Binding backend " + backend +
+                    " requires native library type " + selected.libraryMarkerType() +
+                    " on the compilation classpath");
             return null;
         }
 
         if (!adapterVisible(selected)) {
-            error(
-                    type,
-                    generated,
-                    "Binding backend " + backend +
-                            " is not available on the compilation classpath; " +
-                            "ensure the SJF4J backend adapter " +
-                            selected.binderType() +
-                            " and its Reader/Writer types are present");
+            error(type, generated, "Binding backend " + backend +
+                    " is not available on the compilation classpath; " +
+                    "ensure the SJF4J backend adapter " + selected.binderType() +
+                    " and its Reader/Writer types are present");
             return null;
         }
 
-        TypeElement binder =
-                context.elements.getTypeElement(
-                        selected.binderType());
+        TypeElement binder = context.elements.getTypeElement(selected.binderType());
 
         if (!hasPublicNoArgsConstructor(binder)) {
-            error(
-                    type,
-                    generated,
-                    "Binding backend " + backend +
-                            " must expose a public no-arg constructor: " +
-                            selected.binderType());
+            error(type, generated, "Binding backend " + backend +
+                    " must expose a public no-arg constructor: " + selected.binderType());
             return null;
         }
 
@@ -119,73 +92,53 @@ final class BackendResolver {
      * to complete adapter classes whose optional dependencies are absent.
      */
     private boolean usable(BackendSpec spec) {
-        if (!libraryVisible(spec) ||
-                !adapterVisible(spec)) {
+        if (!libraryVisible(spec) || !adapterVisible(spec)) {
             return false;
         }
 
-        TypeElement binder =
-                context.elements.getTypeElement(
-                        spec.binderType());
+        TypeElement binder = context.elements.getTypeElement(spec.binderType());
 
         return hasPublicNoArgsConstructor(binder);
     }
 
     private boolean libraryVisible(BackendSpec spec) {
         String marker = spec.libraryMarkerType();
-        return marker == null ||
-                context.elements.getTypeElement(marker) != null;
+        return marker == null || context.elements.getTypeElement(marker) != null;
     }
 
     private boolean adapterVisible(BackendSpec spec) {
-        return context.elements.getTypeElement(
-                spec.binderType()) != null &&
-                context.elements.getTypeElement(
-                        spec.parserType()) != null &&
-                context.elements.getTypeElement(
-                        spec.generatorType()) != null;
+        return context.elements.getTypeElement(spec.binderType()) != null &&
+                context.elements.getTypeElement(spec.parserType()) != null &&
+                context.elements.getTypeElement(spec.generatorType()) != null;
     }
 
-    private boolean hasPublicNoArgsConstructor(
-            TypeElement type) {
-
+    private boolean hasPublicNoArgsConstructor(TypeElement type) {
         if (type == null) {
             return false;
         }
 
         boolean declared = false;
 
-        for (Element element :
-                type.getEnclosedElements()) {
-
-            if (element.getKind() !=
-                    ElementKind.CONSTRUCTOR) {
+        for (Element element : type.getEnclosedElements()) {
+            if (element.getKind() != ElementKind.CONSTRUCTOR) {
                 continue;
             }
 
             declared = true;
 
-            ExecutableElement constructor =
-                    (ExecutableElement) element;
+            ExecutableElement constructor = (ExecutableElement) element;
 
             if (constructor.getParameters().isEmpty() &&
-                    constructor.getModifiers().contains(
-                            Modifier.PUBLIC)) {
+                    constructor.getModifiers().contains(Modifier.PUBLIC)) {
                 return true;
             }
         }
 
         /* Public classes with no declared constructor have a public default one. */
-        return !declared &&
-                type.getModifiers().contains(
-                        Modifier.PUBLIC);
+        return !declared && type.getModifiers().contains(Modifier.PUBLIC);
     }
 
-    private void error(
-            TypeElement type,
-            GeneratedClass generated,
-            String message) {
-
+    private void error(TypeElement type, GeneratedClass generated, String message) {
         context.error(type, message);
         generated.invalidate();
     }

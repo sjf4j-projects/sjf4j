@@ -22,35 +22,21 @@ public final class BindingGenerator {
 
     public BindingGenerator(ProcessorContext context) {
         this.context = context;
-        this.methodGenerator =
-                new BindingMethodGenerator(context);
-        this.backendResolver =
-                new BackendResolver(context);
+        this.methodGenerator = new BindingMethodGenerator(context);
+        this.backendResolver = new BackendResolver(context);
     }
 
     /** Generates a binder implementation for one annotated interface. */
     public void generate(TypeElement type) {
-        if (!type.getTypeParameters()
-                .isEmpty()) {
-
-            context.error(
-                    type,
-                    "@CompiledBinder interface cannot declare type parameters");
+        if (!type.getTypeParameters().isEmpty()) {
+            context.error(type, "@CompiledBinder interface cannot declare type parameters");
             return;
         }
 
-        GeneratedClass generated =
-                GeneratedClass.forInterface(
-                        context,
-                        type);
+        GeneratedClass generated = GeneratedClass.forInterface(context, type);
+        BackendSpec backend = backendResolver.resolve(type, generated);
 
-        BackendSpec backend =
-                backendResolver.resolve(
-                        type,
-                        generated);
-
-        if (backend == null ||
-                !generated.isValid()) {
+        if (backend == null || !generated.isValid()) {
             return;
         }
 
@@ -60,28 +46,13 @@ public final class BindingGenerator {
         generated.addContextInitializer(out ->
                 out.line("this.binder = new " + backend.binderType() + "(context);"));
 
-        List<ResolvedMethod> resolvedMethods =
-                context.methods.abstractMethods(type);
+        List<ResolvedMethod> resolvedMethods = context.methods.abstractMethods(type);
+        List<BindingPlan> plans = new ArrayList<BindingPlan>(resolvedMethods.size());
+        NameAllocator names = new NameAllocator();
 
-        List<BindingPlan> plans =
-                new ArrayList<BindingPlan>(
-                        resolvedMethods.size());
-
-        NameAllocator names =
-                new NameAllocator();
-
-        for (ResolvedMethod resolved :
-                resolvedMethods) {
-
-            names.reserve(
-                    resolved.declaration()
-                            .getSimpleName()
-                            .toString());
-
-            BindingPlan plan =
-                    methodGenerator.analyze(
-                            resolved,
-                            generated);
+        for (ResolvedMethod resolved : resolvedMethods) {
+            names.reserve(resolved.declaration().getSimpleName().toString());
+            BindingPlan plan = methodGenerator.analyze(resolved, generated);
 
             if (plan != null) {
                 plans.add(plan);
@@ -92,22 +63,13 @@ public final class BindingGenerator {
             return;
         }
 
-        BindingCompiler compiler =
-                new BindingCompiler(
-                        context,
-                        names,
-                        context.metadata(type),
-                        backend.backend());
-
+        BindingCompiler compiler = new BindingCompiler(
+                context, names, context.metadata(type), backend.backend());
         List<BindingCompiler.CompiledMethod> compiled =
-                new ArrayList<BindingCompiler.CompiledMethod>(
-                        plans.size());
+                new ArrayList<BindingCompiler.CompiledMethod>(plans.size());
 
         for (BindingPlan plan : plans) {
-            BindingCompiler.CompiledMethod method =
-                    compiler.compile(
-                            plan,
-                            generated);
+            BindingCompiler.CompiledMethod method = compiler.compile(plan, generated);
 
             if (method != null) {
                 compiled.add(method);
@@ -118,25 +80,14 @@ public final class BindingGenerator {
             return;
         }
 
-        BindingEmitter emitter =
-                new BindingEmitter(
-                        context,
-                        backend);
+        BindingEmitter emitter = new BindingEmitter(context, backend);
 
-        for (BindingCompiler.CompiledMethod method :
-                compiled) {
-
-            emitter.emitMethod(
-                    method,
-                    generated);
+        for (BindingCompiler.CompiledMethod method : compiled) {
+            emitter.emitMethod(method, generated);
         }
 
-        for (BindingValue helper :
-                compiler.helpers()) {
-
-            emitter.emitHelper(
-                    helper,
-                    generated);
+        for (BindingValue helper : compiler.helpers()) {
+            emitter.emitHelper(helper, generated);
         }
 
         generated.write();

@@ -31,17 +31,10 @@ public final class GeneratedClass {
     private final String qualifiedName;
     private final String originName;
 
-    private final List<Member> fields =
-            new ArrayList<Member>();
-
-    private final List<Member> methods =
-            new ArrayList<Member>();
-
-    private final List<Member> helpers =
-            new ArrayList<Member>();
-
-    private final List<Member> contextInitializers =
-            new ArrayList<Member>();
+    private final List<Member> fields = new ArrayList<Member>();
+    private final List<Member> methods = new ArrayList<Member>();
+    private final List<Member> helpers = new ArrayList<Member>();
+    private final List<Member> contextInitializers = new ArrayList<Member>();
 
     private boolean runtimeContextConstructor;
 
@@ -53,27 +46,12 @@ public final class GeneratedClass {
             TypeElement origin,
             String suffix) {
 
-        this.context =
-                Asserts.notNull(
-                        context,
-                        "context");
+        this.context = Asserts.notNull(context, "context");
+        this.origin = Asserts.notNull(origin, "origin");
+        Asserts.notNull(suffix, "suffix");
+        PackageElement pkg = context.elements.getPackageOf(origin);
 
-        this.origin =
-                Asserts.notNull(
-                        origin,
-                        "origin");
-
-        Asserts.notNull(
-                suffix,
-                "suffix");
-
-        PackageElement pkg =
-                context.elements.getPackageOf(origin);
-
-        this.packageName =
-                pkg.isUnnamed()
-                        ? ""
-                        : pkg.getQualifiedName().toString();
+        this.packageName = pkg.isUnnamed() ? "" : pkg.getQualifiedName().toString();
 
         /*
          * Use the binary name so nested interfaces remain unique:
@@ -84,32 +62,13 @@ public final class GeneratedClass {
          *
          *   Outer$Inner_Impl
          */
-        String binaryName =
-                context.elements
-                        .getBinaryName(origin)
-                        .toString();
-
-        String packagePrefix =
-                packageName.isEmpty()
-                        ? ""
-                        : packageName + '.';
-
-        String binarySimpleName =
-                packageName.isEmpty()
-                        ? binaryName
-                        : binaryName.substring(
-                        packagePrefix.length());
-
-        this.simpleName =
-                binarySimpleName + suffix;
-
-        this.qualifiedName =
-                packageName.isEmpty()
-                        ? simpleName
-                        : packageName + '.' + simpleName;
-
-        this.originName =
-                origin.getQualifiedName().toString();
+        String binaryName = context.elements.getBinaryName(origin).toString();
+        String packagePrefix = packageName.isEmpty() ? "" : packageName + '.';
+        String binarySimpleName = packageName.isEmpty()
+                ? binaryName : binaryName.substring(packagePrefix.length());
+        this.simpleName = binarySimpleName + suffix;
+        this.qualifiedName = packageName.isEmpty() ? simpleName : packageName + '.' + simpleName;
+        this.originName = origin.getQualifiedName().toString();
     }
 
 
@@ -126,10 +85,7 @@ public final class GeneratedClass {
             ProcessorContext context,
             TypeElement origin) {
 
-        return new GeneratedClass(
-                context,
-                origin,
-                IMPL_SUFFIX);
+        return new GeneratedClass(context, origin, IMPL_SUFFIX);
     }
 
     /**
@@ -140,10 +96,7 @@ public final class GeneratedClass {
             TypeElement origin,
             String suffix) {
 
-        return new GeneratedClass(
-                context,
-                origin,
-                suffix);
+        return new GeneratedClass(context, origin, suffix);
     }
 
 
@@ -181,24 +134,15 @@ public final class GeneratedClass {
      */
 
     public void addField(Member member) {
-        fields.add(
-                Asserts.notNull(
-                        member,
-                        "member"));
+        fields.add(Asserts.notNull(member, "member"));
     }
 
     public void addMethod(Member member) {
-        methods.add(
-                Asserts.notNull(
-                        member,
-                        "member"));
+        methods.add(Asserts.notNull(member, "member"));
     }
 
     public void addHelper(Member member) {
-        helpers.add(
-                Asserts.notNull(
-                        member,
-                        "member"));
+        helpers.add(Asserts.notNull(member, "member"));
     }
 
     /**
@@ -254,20 +198,10 @@ public final class GeneratedClass {
         }
 
         try {
-            JavaFileObject file =
-                    context.filer.createSourceFile(
-                            qualifiedName,
-                            origin);
+            JavaFileObject file = context.filer.createSourceFile(qualifiedName, origin);
+            Writer writer = file.openWriter();
 
-            Writer writer =
-                    file.openWriter();
-
-            try (JavaWriter out =
-                         new JavaWriter(
-                                 writer,
-                                 packageName,
-                                 simpleName)) {
-
+            try (JavaWriter out = new JavaWriter(writer, packageName, simpleName)) {
                 writeClass(out);
             }
 
@@ -286,19 +220,11 @@ public final class GeneratedClass {
         out.line("// Generated by SJF4J");
 
         if (!packageName.isEmpty()) {
-            out.line(
-                    "package " +
-                            packageName +
-                            ";");
-
+            out.line("package " + packageName + ";");
             out.blank();
         }
 
-        out.beginBlock(
-                "public final class " +
-                        simpleName +
-                        " implements " +
-                        originName);
+        out.beginBlock("public final class " + simpleName + " implements " + originName);
 
         writeMembers(out);
 
@@ -354,10 +280,7 @@ public final class GeneratedClass {
     }
 
 
-    private static void writeGroup(
-            JavaWriter out,
-            List<Member> members) {
-
+    private static void writeGroup(JavaWriter out, List<Member> members) {
         for (int i = 0; i < members.size(); i++) {
             if (i > 0) {
                 out.blank();

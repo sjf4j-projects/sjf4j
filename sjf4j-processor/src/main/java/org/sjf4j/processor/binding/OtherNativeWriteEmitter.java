@@ -140,7 +140,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
-        out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", this.context);");
+            out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", this.context);");
     }
 
     @Override
@@ -184,8 +184,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
                     out.endBlock(" else {");
                     out.indent();
                     out.line(nativeGenerator + "." + method + "(" + item + "."
-                            + (child.kind() == BindingValue.Kind.ENUM ? "name()" : "toString()")
-                            + ");");
+                            + (child.kind() == BindingValue.Kind.ENUM ? "name()" : "toString()") + ");");
                     out.endBlock();
                     out.endBlock();
                 }

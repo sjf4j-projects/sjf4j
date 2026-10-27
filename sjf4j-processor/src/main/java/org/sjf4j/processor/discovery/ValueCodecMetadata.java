@@ -11,7 +11,7 @@ public final class ValueCodecMetadata {
     public final VariableElement declaration;
 
     ValueCodecMetadata(TypeMirror valueType, TypeMirror rawType,
-                       String format, VariableElement declaration) {
+            String format, VariableElement declaration) {
         this.valueType = valueType;
         this.rawType = rawType;
         this.format = format;

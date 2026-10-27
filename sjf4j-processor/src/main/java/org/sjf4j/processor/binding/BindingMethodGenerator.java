@@ -35,42 +35,26 @@ final class BindingMethodGenerator {
         this.ioExceptionType = requiredType("java.io.IOException");
     }
 
-    BindingPlan analyze(
-            ResolvedMethod resolved,
-            GeneratedClass generated) {
-
-        ExecutableElement method =
-                resolved.declaration();
-
-        boolean read =
-                method.getAnnotation(ReadFrom.class) != null;
-
-        boolean write =
-                method.getAnnotation(WriteTo.class) != null;
+    BindingPlan analyze(ResolvedMethod resolved, GeneratedClass generated) {
+        ExecutableElement method = resolved.declaration();
+        boolean read = method.getAnnotation(ReadFrom.class) != null;
+        boolean write = method.getAnnotation(WriteTo.class) != null;
 
         if (read == write) {
-            error(
-                    method,
-                    generated,
-                    "Binder method must declare exactly one of @ReadFrom or @WriteTo");
+            error(method, generated, "Binder method must declare exactly one of @ReadFrom or @WriteTo");
             return null;
         }
 
         if (!isResolvedSignature(resolved)) {
-            error(
-                    method,
-                    generated,
+            error(method, generated,
                     "Binder method contains unresolved type variables after interface specialization: " +
                             resolved.type());
             return null;
         }
 
         if (!declaresIOException(resolved.type())) {
-            error(
-                    method,
-                    generated,
-                    "@" + (read ? "ReadFrom" : "WriteTo") +
-                            " method must declare java.io.IOException or a supertype");
+            error(method, generated, "@" + (read ? "ReadFrom" : "WriteTo") +
+                    " method must declare java.io.IOException or a supertype");
             return null;
         }
 
@@ -79,129 +63,73 @@ final class BindingMethodGenerator {
                 : analyzeWrite(resolved, generated);
     }
 
-    private BindingPlan analyzeRead(
-            ResolvedMethod resolved,
-            GeneratedClass generated) {
-
-        ExecutableElement method =
-                resolved.declaration();
-
-        ExecutableType type =
-                resolved.type();
-
-        List<? extends TypeMirror> parameters =
-                type.getParameterTypes();
+    private BindingPlan analyzeRead(ResolvedMethod resolved, GeneratedClass generated) {
+        ExecutableElement method = resolved.declaration();
+        ExecutableType type = resolved.type();
+        List<? extends TypeMirror> parameters = type.getParameterTypes();
 
         if (parameters.size() != 1) {
-            error(
-                    method,
-                    generated,
-                    "@ReadFrom method must have exactly one input parameter");
+            error(method, generated, "@ReadFrom method must have exactly one input parameter");
             return null;
         }
 
-        BindingPlan.ReadInput input =
-                readInput(parameters.get(0));
+        BindingPlan.ReadInput input = readInput(parameters.get(0));
 
         if (input == null) {
-            error(
-                    method,
-                    generated,
-                    "@ReadFrom input must be String, byte[], InputStream, or Reader");
+            error(method, generated, "@ReadFrom input must be String, byte[], InputStream, or Reader");
             return null;
         }
 
-        TypeMirror returnType =
-                type.getReturnType();
+        TypeMirror returnType = type.getReturnType();
 
         if (returnType.getKind() == TypeKind.VOID) {
-            error(
-                    method,
-                    generated,
-                    "@ReadFrom method must return the bound value");
+            error(method, generated, "@ReadFrom method must return the bound value");
             return null;
         }
 
-        return BindingPlan.readFrom(
-                resolved,
-                returnType,
-                input);
+        return BindingPlan.readFrom(resolved, returnType, input);
     }
 
-    private BindingPlan analyzeWrite(
-            ResolvedMethod resolved,
-            GeneratedClass generated) {
-
-        ExecutableElement method =
-                resolved.declaration();
-
-        ExecutableType type =
-                resolved.type();
-
-        List<? extends TypeMirror> parameters =
-                type.getParameterTypes();
-
-        TypeMirror returnType =
-                type.getReturnType();
+    private BindingPlan analyzeWrite(ResolvedMethod resolved, GeneratedClass generated) {
+        ExecutableElement method = resolved.declaration();
+        ExecutableType type = resolved.type();
+        List<? extends TypeMirror> parameters = type.getParameterTypes();
+        TypeMirror returnType = type.getReturnType();
 
         if (parameters.size() == 1) {
-            BindingPlan.WriteOutput output =
-                    returnOutput(returnType);
+            BindingPlan.WriteOutput output = returnOutput(returnType);
 
             if (output == null) {
-                error(
-                        method,
-                        generated,
-                        "Single-parameter @WriteTo method must return String or byte[]");
+                error(method, generated, "Single-parameter @WriteTo method must return String or byte[]");
                 return null;
             }
 
-            return BindingPlan.writeTo(
-                    resolved,
-                    parameters.get(0),
-                    output);
+            return BindingPlan.writeTo(resolved, parameters.get(0), output);
         }
 
         if (parameters.size() == 2) {
-            if (returnType.getKind() !=
-                    TypeKind.VOID) {
-                error(
-                        method,
-                        generated,
-                        "Two-parameter @WriteTo method must return void");
+            if (returnType.getKind() != TypeKind.VOID) {
+                error(method, generated, "Two-parameter @WriteTo method must return void");
                 return null;
             }
 
-            BindingPlan.WriteOutput output =
-                    streamOutput(parameters.get(1));
+            BindingPlan.WriteOutput output = streamOutput(parameters.get(1));
 
             if (output == null) {
-                error(
-                        method,
-                        generated,
-                        "Second @WriteTo parameter must be OutputStream or Writer");
+                error(method, generated, "Second @WriteTo parameter must be OutputStream or Writer");
                 return null;
             }
 
-            return BindingPlan.writeTo(
-                    resolved,
-                    parameters.get(0),
-                    output);
+            return BindingPlan.writeTo(resolved, parameters.get(0), output);
         }
 
-        error(
-                method,
-                generated,
+        error(method, generated,
                 "@WriteTo method must have one value parameter, optionally followed by an OutputStream or Writer");
         return null;
     }
 
-    private BindingPlan.ReadInput readInput(
-            TypeMirror type) {
-
-        if (context.types.isSameErasure(
-                type,
-                stringType)) {
+    private BindingPlan.ReadInput readInput(TypeMirror type) {
+        if (context.types.isSameErasure(type, stringType)) {
             return BindingPlan.ReadInput.STRING;
         }
 
@@ -209,27 +137,19 @@ final class BindingMethodGenerator {
             return BindingPlan.ReadInput.BYTES;
         }
 
-        if (context.typeUtils.isAssignable(
-                type,
-                inputStreamType)) {
+        if (context.typeUtils.isAssignable(type, inputStreamType)) {
             return BindingPlan.ReadInput.INPUT_STREAM;
         }
 
-        if (context.typeUtils.isAssignable(
-                type,
-                readerType)) {
+        if (context.typeUtils.isAssignable(type, readerType)) {
             return BindingPlan.ReadInput.READER;
         }
 
         return null;
     }
 
-    private BindingPlan.WriteOutput returnOutput(
-            TypeMirror type) {
-
-        if (context.types.isSameErasure(
-                type,
-                stringType)) {
+    private BindingPlan.WriteOutput returnOutput(TypeMirror type) {
+        if (context.types.isSameErasure(type, stringType)) {
             return BindingPlan.WriteOutput.STRING;
         }
 
@@ -240,18 +160,12 @@ final class BindingMethodGenerator {
         return null;
     }
 
-    private BindingPlan.WriteOutput streamOutput(
-            TypeMirror type) {
-
-        if (context.typeUtils.isAssignable(
-                type,
-                outputStreamType)) {
+    private BindingPlan.WriteOutput streamOutput(TypeMirror type) {
+        if (context.typeUtils.isAssignable(type, outputStreamType)) {
             return BindingPlan.WriteOutput.OUTPUT_STREAM;
         }
 
-        if (context.typeUtils.isAssignable(
-                type,
-                writerType)) {
+        if (context.typeUtils.isAssignable(type, writerType)) {
             return BindingPlan.WriteOutput.WRITER;
         }
 
@@ -263,36 +177,23 @@ final class BindingMethodGenerator {
             return false;
         }
 
-        return ((ArrayType) type)
-                .getComponentType()
-                .getKind() == TypeKind.BYTE;
+        return ((ArrayType) type).getComponentType().getKind() == TypeKind.BYTE;
     }
 
-    private boolean isResolvedSignature(
-            ResolvedMethod method) {
-
-        ExecutableType type =
-                method.type();
-
-        if (!context.types.isFullyResolved(
-                type.getReturnType())) {
+    private boolean isResolvedSignature(ResolvedMethod method) {
+        ExecutableType type = method.type();
+        if (!context.types.isFullyResolved(type.getReturnType())) {
             return false;
         }
 
-        for (TypeMirror parameter :
-                type.getParameterTypes()) {
-
-            if (!context.types.isFullyResolved(
-                    parameter)) {
+        for (TypeMirror parameter : type.getParameterTypes()) {
+            if (!context.types.isFullyResolved(parameter)) {
                 return false;
             }
         }
 
-        for (TypeMirror thrown :
-                type.getThrownTypes()) {
-
-            if (!context.types.isFullyResolved(
-                    thrown)) {
+        for (TypeMirror thrown : type.getThrownTypes()) {
+            if (!context.types.isFullyResolved(thrown)) {
                 return false;
             }
         }
@@ -300,15 +201,9 @@ final class BindingMethodGenerator {
         return true;
     }
 
-    private boolean declaresIOException(
-            ExecutableType type) {
-
-        for (TypeMirror thrown :
-                type.getThrownTypes()) {
-
-            if (context.typeUtils.isAssignable(
-                    ioExceptionType,
-                    thrown)) {
+    private boolean declaresIOException(ExecutableType type) {
+        for (TypeMirror thrown : type.getThrownTypes()) {
+            if (context.typeUtils.isAssignable(ioExceptionType, thrown)) {
                 return true;
             }
         }
@@ -317,16 +212,10 @@ final class BindingMethodGenerator {
     }
 
     private TypeMirror requiredType(String name) {
-        return context.elements
-                .getTypeElement(name)
-                .asType();
+        return context.elements.getTypeElement(name).asType();
     }
 
-    private void error(
-            ExecutableElement method,
-            GeneratedClass generated,
-            String message) {
-
+    private void error(ExecutableElement method, GeneratedClass generated, String message) {
         context.error(method, message);
         generated.invalidate();
     }

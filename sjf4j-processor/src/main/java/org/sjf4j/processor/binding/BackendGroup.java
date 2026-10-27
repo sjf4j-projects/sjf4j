@@ -20,13 +20,9 @@ final class BackendGroup {
     private final BindingFormat format;
     private final List<BackendSpec> backends;
 
-    BackendGroup(
-            BindingFormat format,
-            List<BackendSpec> backends) {
-
+    BackendGroup(BindingFormat format, List<BackendSpec> backends) {
         this.format = Asserts.notNull(format, "format");
-        this.backends = Collections.unmodifiableList(
-                new ArrayList<BackendSpec>(backends));
+        this.backends = Collections.unmodifiableList(new ArrayList<BackendSpec>(backends));
     }
 
     BindingFormat format() {
