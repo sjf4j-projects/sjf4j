@@ -59,7 +59,8 @@ class CompiledTemporalStreamingTest {
             sources.put("fixture/Binder.java",
                     "package fixture; import java.time.*;"
                             + "import org.sjf4j.annotation.binding.*;"
-                            + "@CompiledBinder(backend=Backend." + backend + ")"
+                            + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")}) "
+                     + "@CompiledBinder(backend=Backend." + backend + ")"
                             + "public interface Binder {"
                             + " @ReadFrom Bean readString(String json) throws java.io.IOException;"
                             + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;"
@@ -73,8 +74,8 @@ class CompiledTemporalStreamingTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
 
             String source = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(source.contains(".streamParser.read("), backend);
-            assertTrue(source.contains(".streamGenerator.write("), backend);
+            assertFalse(source.contains(".streamParser.read("), backend);
+            assertFalse(source.contains(".streamGenerator.write("), backend);
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> beanClass = loader.loadClass("fixture.Bean");
                 Class binderClass = loader.loadClass("fixture.Binder");
