@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 /**
  * Resolves compile-time value conversion for object mapping.
  *
@@ -35,7 +34,6 @@ import java.util.Set;
 public final class ConverterResolver {
 
     private static final String COMPILED_MAPPER = "org.sjf4j.annotation.mapping.CompiledMapper";
-
 
     private final ProcessorContext context;
     private final TypeSystem types;
@@ -47,7 +45,6 @@ public final class ConverterResolver {
     private final List<MethodCandidate> localMethods;
     private final List<ImportedMapper> importedMappers;
 
-
     public ConverterResolver(ProcessorContext context, TypeElement mapper,
                              List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
@@ -58,7 +55,6 @@ public final class ConverterResolver {
         this.localMethods = Collections.unmodifiableList(resolveLocalMethods());
         this.importedMappers = Collections.unmodifiableList(resolveImportedMappers());
     }
-
 
     /**
      * Validates imported mapper declarations.
@@ -83,7 +79,6 @@ public final class ConverterResolver {
         return valid;
     }
 
-
     private boolean validateReferences(MappingPlan plan, GeneratedClass generated) {
         boolean valid = true;
 
@@ -101,14 +96,11 @@ public final class ConverterResolver {
         return valid;
     }
 
-
     private boolean validateReference(MappingPlan plan, String reference, String member,
                                       GeneratedClass generated) {
         String[] names = qualifiedReference(plan, reference, member, generated);
 
-        if (names == null) {
-            return false;
-        }
+        if (names == null) return false;
 
         if (!referencedMethods(names[0], names[1]).isEmpty()) return true;
 
@@ -116,7 +108,6 @@ public final class ConverterResolver {
 
         return false;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -140,7 +131,6 @@ public final class ConverterResolver {
         return resolve(plan, rule, sourceType, targetType, generated, false);
     }
 
-
     /**
      * Resolves a root conversion. The root method itself wins over other
      * automatic local candidates so MappingCompiler can expand it structurally.
@@ -149,7 +139,6 @@ public final class ConverterResolver {
                                   GeneratedClass generated) {
         return resolve(plan, null, sourceType, targetType, generated, true);
     }
-
 
     private Conversion resolve(MappingPlan plan, MappingPlan.Rule rule, TypeMirror sourceType,
                                TypeMirror targetType, GeneratedClass generated, boolean root) {
@@ -186,9 +175,7 @@ public final class ConverterResolver {
         /*
          * nestedMapper is explicit rather than a preference.
          */
-        if (rule != null && !rule.nestedMapper().isEmpty()) {
-            return resolveExplicitMethod(plan, rule.nestedMapper(), sourceType, targetType, generated);
-        }
+        if (rule != null && !rule.nestedMapper().isEmpty()) return resolveExplicitMethod(plan, rule.nestedMapper(), sourceType, targetType, generated);
 
         /*
          * Method-level converter preferences.
@@ -196,43 +183,31 @@ public final class ConverterResolver {
         List<String> using = using(plan);
         Conversion preferred = resolvePreferred(using, sourceType, targetType, plan, generated);
 
-        if (!generated.isValid()) {
-            return null;
-        }
+        if (!generated.isValid()) return null;
 
-        if (preferred != null) {
-            return preferred;
-        }
+        if (preferred != null) return preferred;
 
         /*
          * Type-level @OneOf is a structural dispatch strategy rather than an
          * ordinary mapper method.
          */
-        if (context.annotations.hasOneOf(types.concrete(targetType))) {
-            return Conversion.oneOf(sourceType, targetType);
-        }
+        if (context.annotations.hasOneOf(types.concrete(targetType))) return Conversion.oneOf(sourceType, targetType);
 
         /*
          * Local mapper methods.
          */
         if (root) {
             for (MethodCandidate candidate : localMethods) {
-                if (candidate.method == plan.method() && compatible(candidate, sourceType, targetType)) {
-                    return Conversion.method(sourceType, targetType, candidate.method, null);
-                }
+                if (candidate.method == plan.method() && compatible(candidate, sourceType, targetType)) return Conversion.method(sourceType, targetType, candidate.method, null);
             }
         }
 
         MethodCandidate local = selectBestMethod(localMethods, sourceType, targetType,
                 plan, generated, "local mapper");
 
-        if (local == INVALID_METHOD) {
-            return null;
-        }
+        if (local == INVALID_METHOD) return null;
 
-        if (local != null) {
-            return Conversion.method(sourceType, targetType, local.method, null);
-        }
+        if (local != null) return Conversion.method(sourceType, targetType, local.method, null);
 
         /*
          * Imported mapper methods.
@@ -241,22 +216,16 @@ public final class ConverterResolver {
         MethodCandidate importedMethod = selectBestMethod(imported, sourceType, targetType,
                 plan, generated, "imported mapper");
 
-        if (importedMethod == INVALID_METHOD) {
-            return null;
-        }
+        if (importedMethod == INVALID_METHOD) return null;
 
-        if (importedMethod != null) {
-            return Conversion.method(sourceType, targetType, importedMethod.method, importedMethod.owner);
-        }
+        if (importedMethod != null) return Conversion.method(sourceType, targetType, importedMethod.method, importedMethod.owner);
 
         /*
          * Logical values are codec leaves, even when their raw representation
          * is a Map or List. Explicit/local/imported mapper methods above retain
          * their precedence over automatic codec conversion.
          */
-        if (isCodecConversion(sourceType, targetType)) {
-            return resolveCodecConversion(plan, sourceType, targetType, generated);
-        }
+        if (isCodecConversion(sourceType, targetType)) return resolveCodecConversion(plan, sourceType, targetType, generated);
 
         /*
          * Recursive container conversion. Container generic arguments are
@@ -264,9 +233,7 @@ public final class ConverterResolver {
          * ? extends T may contribute a readable source element type but never
          * a writable target element type.
          */
-        if (isContainerConversion(sourceType, targetType)) {
-            return Conversion.container(sourceType, targetType);
-        }
+        if (isContainerConversion(sourceType, targetType)) return Conversion.container(sourceType, targetType);
 
         /*
          * Outside container conversion, unresolved generic structure remains
@@ -283,22 +250,17 @@ public final class ConverterResolver {
         /*
          * Strict scalar conversion.
          */
-        if (isScalarConversion(sourceType, targetType)) {
-            return Conversion.scalar(sourceType, targetType);
-        }
+        if (isScalarConversion(sourceType, targetType)) return Conversion.scalar(sourceType, targetType);
 
         /*
          * Structural OBNT conversion.
          */
-        if (isStructuralConversion(sourceType, targetType)) {
-            return Conversion.structural(sourceType, targetType);
-        }
+        if (isStructuralConversion(sourceType, targetType)) return Conversion.structural(sourceType, targetType);
 
         error(plan.method(), generated, "cannot map value from " + sourceType + " to " + targetType);
 
         return null;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -310,9 +272,7 @@ public final class ConverterResolver {
                                              TypeMirror targetType, GeneratedClass generated) {
         String[] names = qualifiedReference(plan, reference, "nestedMapper", generated);
 
-        if (names == null) {
-            return null;
-        }
+        if (names == null) return null;
 
         List<MethodCandidate> candidates = referencedMethods(names[0], names[1]);
 
@@ -334,13 +294,10 @@ public final class ConverterResolver {
         MethodCandidate candidate = selectBestMethod(candidates, sourceType, targetType,
                 plan, generated, "nestedMapper '" + reference + "'");
 
-        if (candidate == null || candidate == INVALID_METHOD) {
-            return null;
-        }
+        if (candidate == null || candidate == INVALID_METHOD) return null;
 
         return Conversion.method(sourceType, targetType, candidate.method, candidate.owner);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -353,9 +310,7 @@ public final class ConverterResolver {
         for (String reference : using) {
             String[] names = qualifiedReference(plan, reference, "using", generated);
 
-            if (names == null) {
-                return null;
-            }
+            if (names == null) return null;
 
             List<MethodCandidate> candidates = referencedMethods(names[0], names[1]);
 
@@ -367,20 +322,14 @@ public final class ConverterResolver {
 
             candidates = compatibleMethods(candidates, sourceType, targetType);
 
-            if (candidates.isEmpty()) {
-                continue;
-            }
+            if (candidates.isEmpty()) continue;
 
             MethodCandidate candidate = selectBestMethod(candidates, sourceType, targetType,
                     plan, generated, "preferred mapper '" + reference + "'");
 
-            if (candidate == INVALID_METHOD) {
-                return null;
-            }
+            if (candidate == INVALID_METHOD) return null;
 
-            if (candidate != null) {
-                return Conversion.method(sourceType, targetType, candidate.method, candidate.owner);
-            }
+            if (candidate != null) return Conversion.method(sourceType, targetType, candidate.method, candidate.owner);
         }
 
         /*
@@ -389,7 +338,6 @@ public final class ConverterResolver {
          */
         return null;
     }
-
 
     private String[] qualifiedReference(MappingPlan plan, String reference, String member,
                                         GeneratedClass generated) {
@@ -412,9 +360,8 @@ public final class ConverterResolver {
         return new String[]{reference.substring(0, separator), reference.substring(separator + 2)};
     }
 
-
     private List<MethodCandidate> referencedMethods(String mapperName, String methodName) {
-        List<MethodCandidate> result = new ArrayList<MethodCandidate>();
+        List<MethodCandidate> result = new ArrayList<>();
 
         if ("this".equals(mapperName)) {
             addNamedMethods(result, localMethods, methodName);
@@ -431,7 +378,6 @@ public final class ConverterResolver {
         return result;
     }
 
-
     private void addNamedMethods(List<MethodCandidate> result, List<MethodCandidate> methods,
                                  String methodName) {
         for (MethodCandidate candidate : methods) {
@@ -441,10 +387,9 @@ public final class ConverterResolver {
         }
     }
 
-
     private List<MethodCandidate> compatibleMethods(List<MethodCandidate> candidates,
                                                     TypeMirror sourceType, TypeMirror targetType) {
-        List<MethodCandidate> result = new ArrayList<MethodCandidate>();
+        List<MethodCandidate> result = new ArrayList<>();
 
         for (MethodCandidate candidate : candidates) {
             if (compatible(candidate, sourceType, targetType)) {
@@ -455,17 +400,13 @@ public final class ConverterResolver {
         return result;
     }
 
-
     private List<String> using(MappingPlan plan) {
         AnnotationMirror options = plan.options();
 
-        if (options == null) {
-            return Collections.emptyList();
-        }
+        if (options == null) return Collections.emptyList();
 
         return stringArrayValue(options, "using");
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -475,11 +416,10 @@ public final class ConverterResolver {
 
     private static final MethodCandidate INVALID_METHOD = new MethodCandidate(null, null, null, null);
 
-
     private MethodCandidate selectBestMethod(List<MethodCandidate> candidates, TypeMirror sourceType,
                                              TypeMirror targetType, MappingPlan plan,
                                              GeneratedClass generated, String description) {
-        List<MethodCandidate> compatible = new ArrayList<MethodCandidate>();
+        List<MethodCandidate> compatible = new ArrayList<>();
 
         for (MethodCandidate candidate : candidates) {
             if (candidate != null && compatible(candidate, sourceType, targetType)) {
@@ -487,9 +427,7 @@ public final class ConverterResolver {
             }
         }
 
-        if (compatible.isEmpty()) {
-            return null;
-        }
+        if (compatible.isEmpty()) return null;
 
         MethodCandidate best = compatible.get(0);
         for (int i = 1; i < compatible.size(); i++) {
@@ -513,7 +451,6 @@ public final class ConverterResolver {
         return best;
     }
 
-
     /**
      * Returns positive when first is preferred, negative when second is
      * preferred, or zero when neither is more specific.
@@ -523,39 +460,28 @@ public final class ConverterResolver {
         boolean firstExactSource = types.isSameErasure(first.sourceType, sourceType);
         boolean secondExactSource = types.isSameErasure(second.sourceType, sourceType);
 
-        if (firstExactSource != secondExactSource) {
-            return firstExactSource ? 1 : -1;
-        }
+        if (firstExactSource != secondExactSource) return firstExactSource ? 1 : -1;
 
         boolean firstSourceMoreSpecific = types.isAssignableErasure(first.sourceType, second.sourceType);
         boolean secondSourceMoreSpecific = types.isAssignableErasure(second.sourceType, first.sourceType);
 
-        if (firstSourceMoreSpecific != secondSourceMoreSpecific) {
-            return firstSourceMoreSpecific ? 1 : -1;
-        }
+        if (firstSourceMoreSpecific != secondSourceMoreSpecific) return firstSourceMoreSpecific ? 1 : -1;
 
         boolean firstExactTarget = types.isSameErasure(first.targetType, targetType);
         boolean secondExactTarget = types.isSameErasure(second.targetType, targetType);
 
-        if (firstExactTarget != secondExactTarget) {
-            return firstExactTarget ? 1 : -1;
-        }
+        if (firstExactTarget != secondExactTarget) return firstExactTarget ? 1 : -1;
 
         boolean firstTargetMoreSpecific = types.isAssignableErasure(first.targetType, second.targetType);
         boolean secondTargetMoreSpecific = types.isAssignableErasure(second.targetType, first.targetType);
 
-        if (firstTargetMoreSpecific != secondTargetMoreSpecific) {
-            return firstTargetMoreSpecific ? 1 : -1;
-        }
+        if (firstTargetMoreSpecific != secondTargetMoreSpecific) return firstTargetMoreSpecific ? 1 : -1;
 
         return 0;
     }
 
-
     private boolean compatible(MethodCandidate candidate, TypeMirror sourceType, TypeMirror targetType) {
-        if (candidate.sourceType == null || candidate.targetType == null) {
-            return false;
-        }
+        if (candidate.sourceType == null || candidate.targetType == null) return false;
 
         /*
          * Generated call:
@@ -564,9 +490,7 @@ public final class ConverterResolver {
          *
          * Therefore sourceValue must be assignable to the method parameter.
          */
-        if (!types.isAssignableBoxedGeneric(sourceType, candidate.sourceType)) {
-            return false;
-        }
+        if (!types.isAssignableBoxedGeneric(sourceType, candidate.sourceType)) return false;
 
         /*
          * Method result must be assignable to the requested target.
@@ -574,15 +498,11 @@ public final class ConverterResolver {
         return types.isAssignableBoxedGeneric(candidate.targetType, targetType);
     }
 
-
     private String methodName(MethodCandidate candidate) {
-        if (candidate.owner == null) {
-            return candidate.method.getSimpleName().toString();
-        }
+        if (candidate.owner == null) return candidate.method.getSimpleName().toString();
 
         return candidate.owner.getSimpleName() + "::" + candidate.method.getSimpleName();
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -591,26 +511,20 @@ public final class ConverterResolver {
      */
 
     private List<MethodCandidate> resolveLocalMethods() {
-        List<MethodCandidate> result = new ArrayList<MethodCandidate>();
+        List<MethodCandidate> result = new ArrayList<>();
 
         for (MappingPlan plan : plans) {
 
-            if (!plan.create()) {
-                continue;
-            }
+            if (!plan.create()) continue;
 
-            if (plan.sources().size() != 1) {
-                continue;
-            }
+            if (plan.sources().size() != 1) continue;
 
             ExecutableElement method = plan.method();
             result.add(new MethodCandidate(null, method, plan.primarySourceType(), plan.targetType()));
         }
 
         for (Element member : mapper.getEnclosedElements()) {
-            if (member.getKind() != ElementKind.METHOD) {
-                continue;
-            }
+            if (member.getKind() != ElementKind.METHOD) continue;
 
             ExecutableElement method = (ExecutableElement) member;
 
@@ -634,7 +548,6 @@ public final class ConverterResolver {
         return result;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Imported Mappers
@@ -644,26 +557,20 @@ public final class ConverterResolver {
     private List<ImportedMapper> resolveImportedMappers() {
         AnnotationMirror compiledMapper = findAnnotation(mapper, COMPILED_MAPPER);
 
-        if (compiledMapper == null) {
-            return Collections.emptyList();
-        }
+        if (compiledMapper == null) return Collections.emptyList();
 
         List<TypeMirror> importedTypes = typeArrayValue(compiledMapper, "importing");
-        List<ImportedMapper> result = new ArrayList<ImportedMapper>();
-        Set<String> seen = new LinkedHashSet<String>();
+        List<ImportedMapper> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
 
         for (TypeMirror importedType : importedTypes) {
             TypeElement imported = types.typeElement(types.concrete(importedType));
 
-            if (imported == null) {
-                continue;
-            }
+            if (imported == null) continue;
 
             String name = imported.getQualifiedName().toString();
 
-            if (!seen.add(name)) {
-                continue;
-            }
+            if (!seen.add(name)) continue;
 
             result.add(new ImportedMapper(imported, resolveImportedMethods(imported)));
         }
@@ -671,37 +578,24 @@ public final class ConverterResolver {
         return result;
     }
 
-
     private List<MethodCandidate> resolveImportedMethods(TypeElement imported) {
-        List<MethodCandidate> result = new ArrayList<MethodCandidate>();
+        List<MethodCandidate> result = new ArrayList<>();
 
         for (Element member : context.elements.getAllMembers(imported)) {
-            if (member.getKind() != ElementKind.METHOD) {
-                continue;
-            }
+            if (member.getKind() != ElementKind.METHOD) continue;
 
             ExecutableElement method = (ExecutableElement) member;
-            if (method.getModifiers().contains(Modifier.STATIC)) {
-                continue;
-            }
+            if (method.getModifiers().contains(Modifier.STATIC)) continue;
 
-            if (method.getReturnType().getKind() == TypeKind.VOID) {
-                continue;
-            }
+            if (method.getReturnType().getKind() == TypeKind.VOID) continue;
 
-            if (method.getParameters().size() != 1) {
-                continue;
-            }
+            if (method.getParameters().size() != 1) continue;
 
-            if (!method.getTypeParameters().isEmpty()) {
-                continue;
-            }
+            if (!method.getTypeParameters().isEmpty()) continue;
 
             javax.lang.model.type.ExecutableType methodType = types.resolveMethodType(imported.asType(), method);
 
-            if (methodType == null) {
-                continue;
-            }
+            if (methodType == null) continue;
 
             result.add(new MethodCandidate(imported, method,
                     methodType.getParameterTypes().get(0), methodType.getReturnType()));
@@ -710,14 +604,11 @@ public final class ConverterResolver {
         return result;
     }
 
-
     private List<MethodCandidate> compatibleImportedMethods(TypeMirror sourceType, TypeMirror targetType) {
-        List<MethodCandidate> result = new ArrayList<MethodCandidate>();
+        List<MethodCandidate> result = new ArrayList<>();
 
         for (ImportedMapper imported : importedMappers) {
-            if (!hasAnnotation(imported.type, COMPILED_MAPPER)) {
-                continue;
-            }
+            if (!hasAnnotation(imported.type, COMPILED_MAPPER)) continue;
 
             for (MethodCandidate candidate : imported.methods) {
                 if (compatible(candidate, sourceType, targetType)) {
@@ -729,11 +620,9 @@ public final class ConverterResolver {
         return result;
     }
 
-
     private boolean matchesMapperName(TypeElement mapper, String name) {
         return mapper.getSimpleName().contentEquals(name) || mapper.getQualifiedName().contentEquals(name);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -820,17 +709,13 @@ public final class ConverterResolver {
     }
 
     private TypeMirror codecRawType(TypeMirror type) {
-        if (types.isNodeValue(type)) {
-            return types.nodeValueRawType(type);
-        }
+        if (types.isNodeValue(type)) return types.nodeValueRawType(type);
         // An empty format or @NodeValue(defaultCodec = true) establishes the
         // raw representation. Named-only formats retain runtime validation.
         ValueCodecMetadata codec = metadata.valueCodec(type, null);
         if (codec == null) return null;
         NodeValue declaration = codec.declaration.getAnnotation(NodeValue.class);
-        if (!codec.format.isEmpty() && (declaration == null || !declaration.defaultCodec())) {
-            return null;
-        }
+        if (!codec.format.isEmpty() && (declaration == null || !declaration.defaultCodec())) return null;
         return codec.rawType;
     }
 
@@ -839,9 +724,7 @@ public final class ConverterResolver {
         // Built-in scalars and native containers win over inherited registrations.
         // @NodeValue-declared classes can expose a scalar raw shape without
         // becoming String/Number/Boolean Java representations themselves.
-        if (kind == NodeKind.OBJECT_POJO) {
-            return types.isNodeValue(type) || metadata.hasValueCodec(type);
-        }
+        if (kind == NodeKind.OBJECT_POJO) return types.isNodeValue(type) || metadata.hasValueCodec(type);
         if (!types.isNodeValue(type)) return false;
         return kind == NodeKind.UNKNOWN
                 || kind == NodeKind.VALUE_STRING
@@ -849,50 +732,38 @@ public final class ConverterResolver {
                 || kind == NodeKind.VALUE_BOOLEAN;
     }
 
-
     private boolean isScalarConversion(TypeMirror source, TypeMirror target) {
         source = types.concrete(source);
         target = types.concrete(target);
         NodeKind sourceKind = types.nodeKind(source);
 
-        if (sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) {
-            return isScalar(target);
-        }
+        if (sourceKind == NodeKind.COMPILE_TIME_UNKNOWN) return isScalar(target);
 
         NodeKind targetKind = types.nodeKind(target);
 
         /*
          * Number -> Number
          */
-        if (isNumberKind(sourceKind) && isNumberKind(targetKind)) {
-            return true;
-        }
+        if (isNumberKind(sourceKind) && isNumberKind(targetKind)) return true;
 
         /*
          * String / char / enum / string-backed @NodeValue conversions.
          */
-        if (isStringKind(sourceKind) && isStringKind(targetKind)) {
-            return true;
-        }
+        if (isStringKind(sourceKind) && isStringKind(targetKind)) return true;
 
         /*
          * Boolean is intentionally strict. Non-boolean coercions are not
          * generated.
          */
-        if (isBooleanKind(sourceKind) && isBooleanKind(targetKind)) {
-            return true;
-        }
+        if (isBooleanKind(sourceKind) && isBooleanKind(targetKind)) return true;
 
         /*
          * @NodeValue participates according to its compile-time raw JSON kind.
          */
-        if (types.isNodeValue(source) || types.isNodeValue(target)) {
-            return sameScalarFamily(sourceKind, targetKind);
-        }
+        if (types.isNodeValue(source) || types.isNodeValue(target)) return sameScalarFamily(sourceKind, targetKind);
 
         return false;
     }
-
 
     private boolean isScalar(TypeMirror type) {
         NodeKind kind = types.nodeKind(type);
@@ -902,7 +773,6 @@ public final class ConverterResolver {
                 || isBooleanKind(kind)
                 || kind == NodeKind.VALUE_NULL;
     }
-
 
     private boolean sameScalarFamily(NodeKind first, NodeKind second) {
         return isStringKind(first) &&
@@ -914,7 +784,6 @@ public final class ConverterResolver {
                 || first == NodeKind.VALUE_NULL &&
                 second == NodeKind.VALUE_NULL;
     }
-
 
     private boolean isStringKind(NodeKind kind) {
         switch (kind) {
@@ -929,7 +798,6 @@ public final class ConverterResolver {
         }
     }
 
-
     private boolean isNumberKind(NodeKind kind) {
         switch (kind) {
             case VALUE_NUMBER:
@@ -941,7 +809,6 @@ public final class ConverterResolver {
         }
     }
 
-
     private boolean isBooleanKind(NodeKind kind) {
         switch (kind) {
             case VALUE_BOOLEAN:
@@ -952,7 +819,6 @@ public final class ConverterResolver {
                 return false;
         }
     }
-
 
     private boolean isContainerConversion(TypeMirror source, TypeMirror target) {
         NodeKind sourceKind = types.nodeKind(source);
@@ -974,7 +840,6 @@ public final class ConverterResolver {
         return sourceKind == NodeKind.OBJECT_MAP &&
                 targetKind == NodeKind.OBJECT_MAP;
     }
-
 
     /**
      * Raw Java containers expose Object members to the mapper type system. Do
@@ -1001,7 +866,6 @@ public final class ConverterResolver {
         return false;
     }
 
-
     private boolean requiresRuntimeMemberConversion(TypeMirror source, TypeMirror target) {
 
         return source != null &&
@@ -1009,7 +873,6 @@ public final class ConverterResolver {
                 types.isCompileTimeUnknown(source) &&
                 !types.isObject(target);
     }
-
 
     private boolean isStructuralConversion(TypeMirror source, TypeMirror target) {
 
@@ -1034,23 +897,17 @@ public final class ConverterResolver {
         for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
             Element type = annotation.getAnnotationType().asElement();
 
-            if (!(type instanceof TypeElement)) {
-                continue;
-            }
+            if (!(type instanceof TypeElement)) continue;
 
-            if (((TypeElement) type).getQualifiedName().contentEquals(qualifiedName)) {
-                return annotation;
-            }
+            if (((TypeElement) type).getQualifiedName().contentEquals(qualifiedName)) return annotation;
         }
 
         return null;
     }
 
-
     private boolean hasAnnotation(Element element, String qualifiedName) {
         return findAnnotation(element, qualifiedName) != null;
     }
-
 
     private AnnotationValue annotationValue(AnnotationMirror annotation, String name) {
         Map<? extends ExecutableElement, ? extends AnnotationValue> values =
@@ -1063,15 +920,12 @@ public final class ConverterResolver {
         return null;
     }
 
-
     @SuppressWarnings("unchecked")
     private List<String> stringArrayValue(AnnotationMirror annotation, String name) {
         AnnotationValue value = annotationValue(annotation, name);
-        if (value == null || !(value.getValue() instanceof List)) {
-            return Collections.emptyList();
-        }
+        if (value == null || !(value.getValue() instanceof List)) return Collections.emptyList();
 
-        List<String> result = new ArrayList<String>();
+        List<String> result = new ArrayList<>();
 
         for (AnnotationValue item : (List<? extends AnnotationValue>) value.getValue()) {
             Object raw = item.getValue();
@@ -1088,15 +942,12 @@ public final class ConverterResolver {
         return result;
     }
 
-
     @SuppressWarnings("unchecked")
     private List<TypeMirror> typeArrayValue(AnnotationMirror annotation, String name) {
         AnnotationValue value = annotationValue(annotation, name);
-        if (value == null || !(value.getValue() instanceof List)) {
-            return Collections.emptyList();
-        }
+        if (value == null || !(value.getValue() instanceof List)) return Collections.emptyList();
 
-        List<TypeMirror> result = new ArrayList<TypeMirror>();
+        List<TypeMirror> result = new ArrayList<>();
 
         for (AnnotationValue item : (List<? extends AnnotationValue>) value.getValue()) {
             Object raw = item.getValue();
@@ -1109,7 +960,6 @@ public final class ConverterResolver {
         return result;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Diagnostics
@@ -1120,7 +970,6 @@ public final class ConverterResolver {
         generated.invalidate();
         context.error(element, generated.originName() + ": " + message);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1144,7 +993,6 @@ public final class ConverterResolver {
             STRUCTURAL
         }
 
-
         private final Kind kind;
 
         private final TypeMirror sourceType;
@@ -1163,7 +1011,6 @@ public final class ConverterResolver {
          */
         private final TypeElement mapperType;
 
-
         private Conversion(Kind kind, TypeMirror sourceType, TypeMirror targetType,
                            ExecutableElement method, TypeElement mapperType) {
             this.kind = kind;
@@ -1173,47 +1020,38 @@ public final class ConverterResolver {
             this.mapperType = mapperType;
         }
 
-
         static Conversion direct(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.DIRECT, sourceType, targetType, null, null);
         }
-
 
         static Conversion method(TypeMirror sourceType, TypeMirror targetType,
                                  ExecutableElement method, TypeElement mapperType) {
             return new Conversion(Kind.METHOD, sourceType, targetType, method, mapperType);
         }
 
-
         static Conversion oneOf(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.ONE_OF, sourceType, targetType, null, null);
         }
-
 
         static Conversion scalar(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.SCALAR, sourceType, targetType, null, null);
         }
 
-
         static Conversion valueCodec(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.VALUE_CODEC, sourceType, targetType, null, null);
         }
-
 
         static Conversion codecEncode(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.CODEC_ENCODE, sourceType, targetType, null, null);
         }
 
-
         static Conversion container(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.CONTAINER, sourceType, targetType, null, null);
         }
 
-
         static Conversion structural(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.STRUCTURAL, sourceType, targetType, null, null);
         }
-
 
         Kind kind() {
             return kind;
@@ -1240,7 +1078,6 @@ public final class ConverterResolver {
         }
     }
 
-
     private static final class MethodCandidate {
 
         /*
@@ -1253,7 +1090,6 @@ public final class ConverterResolver {
         final TypeMirror sourceType;
         final TypeMirror targetType;
 
-
         MethodCandidate(TypeElement owner, ExecutableElement method,
                         TypeMirror sourceType, TypeMirror targetType) {
             this.owner = owner;
@@ -1263,12 +1099,10 @@ public final class ConverterResolver {
         }
     }
 
-
     private static final class ImportedMapper {
 
         final TypeElement type;
         final List<MethodCandidate> methods;
-
 
         ImportedMapper(TypeElement type, List<MethodCandidate> methods) {
             this.type = type;
