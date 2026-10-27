@@ -8,6 +8,7 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
@@ -43,6 +44,26 @@ public class CompiledJacksonNullOmissionTest {
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Compiled {
+        @WriteTo String writePojo(TestBean value) throws IOException;
+        @WriteTo byte[] writePojoUtf8(TestBean value) throws IOException;
+        @WriteTo String writeList(List<TestBean> value) throws IOException;
+        @WriteTo String writeMap(Map<String, TestBean> value) throws IOException;
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON2)
+    @BindingOptions(includeNulls = false)
+    public interface Jackson2Omitting {
+        @WriteTo String writePojo(TestBean value) throws IOException;
+        @WriteTo byte[] writePojoUtf8(TestBean value) throws IOException;
+        @WriteTo void writePojo(TestBean value, Writer output) throws IOException;
+        @WriteTo void writePojo(TestBean value, OutputStream output) throws IOException;
+        @WriteTo String writeList(List<TestBean> value) throws IOException;
+        @WriteTo String writeMap(Map<String, TestBean> value) throws IOException;
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON3)
+    @BindingOptions(includeNulls = false)
+    public interface Jackson3Omitting {
         @WriteTo String writePojo(TestBean value) throws IOException;
         @WriteTo byte[] writePojoUtf8(TestBean value) throws IOException;
         @WriteTo String writeList(List<TestBean> value) throws IOException;
@@ -109,10 +130,8 @@ public class CompiledJacksonNullOmissionTest {
     @Test
     public void jackson2CompiledRespectsBothPolicies() throws IOException {
         TestBean bean = sample();
-        Jackson2Compiled including = CompiledInstances.create(Jackson2Compiled.class,
-                new RuntimeContext(true));
-        Jackson2Compiled omitting = CompiledInstances.create(Jackson2Compiled.class,
-                new RuntimeContext(false));
+        Jackson2Compiled including = CompiledInstances.global(Jackson2Compiled.class);
+        Jackson2Omitting omitting = CompiledInstances.global(Jackson2Omitting.class);
         Jackson2Binder runtime = new Jackson2Binder(new JsonFactory(), new RuntimeContext(false));
 
         equivalent(runtime.writeNodeAsString(bean), omitting.writePojo(bean));
@@ -142,10 +161,8 @@ public class CompiledJacksonNullOmissionTest {
     @Test
     public void jackson3CompiledRespectsBothPolicies() throws IOException {
         TestBean bean = sample();
-        Jackson3Compiled including = CompiledInstances.create(Jackson3Compiled.class,
-                new RuntimeContext(true));
-        Jackson3Compiled omitting = CompiledInstances.create(Jackson3Compiled.class,
-                new RuntimeContext(false));
+        Jackson3Compiled including = CompiledInstances.global(Jackson3Compiled.class);
+        Jackson3Omitting omitting = CompiledInstances.global(Jackson3Omitting.class);
         Jackson3Binder runtime = new Jackson3Binder(
                 new tools.jackson.core.json.JsonFactory(), new RuntimeContext(false));
 
