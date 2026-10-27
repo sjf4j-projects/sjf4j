@@ -272,9 +272,9 @@ public final class Nodes {
      * Converts an OBNT value to an object node represented by {@link JsonObject}.
      * <p>
      * Existing {@link JsonObject} instances are returned as-is. {@link Map}
-     * inputs are wrapped as the dynamic backing map. Other object node representations
-     * are materialized into a new {@link JsonObject} by copying their readable
-     * entries.
+     * inputs are copied into a new outer container. Other object node
+     * representations are materialized from their gettable members. Nested
+     * values retain their original references; this is not a deep copy.
      */
     public static JsonObject toJsonObject(Object node) {
         return NodeMapper.toJsonObject(node, RuntimeContext.EMPTY);
@@ -285,14 +285,14 @@ public final class Nodes {
      * <p>
      * Existing {@link Map} instances are returned as-is. {@link JsonObject}
      * and other object node representations are projected into a new outer map by
-     * readable entries; entry values are not recursively converted.
+     * gettable members; entry values are not recursively converted.
      */
     public static Map<String, Object> toMap(Object node) {
         return NodeMapper.toMap(node, RuntimeContext.EMPTY);
     }
 
     /**
-     * Converts object entries to the requested value type. Unlike
+     * Converts object members to the requested value type. Unlike
      * {@link #toMap(Object)}, this may convert entry values.
      */
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
@@ -303,9 +303,9 @@ public final class Nodes {
      * Converts an OBNT value to an array node represented by {@link JsonArray}.
      * <p>
      * Existing {@link JsonArray} instances are returned as-is. {@link List}
-     * inputs are wrapped as the backing list. Other array node representations are
-     * materialized into a new {@link JsonArray} by copying their readable
-     * elements.
+     * inputs are copied into a new outer container. Other array node
+     * representations are materialized from their elements. Nested
+     * values retain their original references; this is not a deep copy.
      */
     public static JsonArray toJsonArray(Object node) {
         return NodeMapper.toJsonArray(node, RuntimeContext.EMPTY);
@@ -361,7 +361,8 @@ public final class Nodes {
 
     /**
      * Adapts a node to the requested class using strict scalar conversion.
-     * Compatible values may be returned without copying.
+     * Compatible values may be returned without copying. Map to JsonObject and
+     * List to JsonArray copy only the outer container, retaining nested values.
      */
     public static <T> T to(Object node, Class<T> clazz) {
         return NodeMapper.to(node, clazz, RuntimeContext.EMPTY);
@@ -390,7 +391,7 @@ public final class Nodes {
     /**
      * Compares two values using OBNT semantics instead of Java type identity.
      * <p>
-     * Object nodes are compared by readable key/value pairs, array nodes are
+     * Object nodes are compared by gettable key/value pairs, array nodes are
      * compared by order and element values, and number value nodes are
      * compared by numeric value (not boxed type).
      */
@@ -451,7 +452,7 @@ public final class Nodes {
      * Computes a hash code aligned with {@link #equals(Object, Object)}
      * OBNT semantics.
      * <p>
-     * Object nodes are hashed from readable key/value pairs (order-insensitive
+     * Object nodes are hashed from gettable key/value pairs (order-insensitive
      * for object members), while array nodes are hashed in iteration order.
      */
     public static int hash(Object node) {
@@ -565,7 +566,7 @@ public final class Nodes {
         if (ti.pojoInfo != null) {
             PojoInfo pi = ti.pojoInfo;
             Map<String, Object> dynamic = pi.isJojo
-                    ? ((JsonObject) node).dynamicProperties : null;
+                    ? ((JsonObject) node).dynamicMembers : null;
             int capacity = pi.gettableProperties.length
                     + (dynamic == null ? 0 : dynamic.size());
             TypeRegistry.PojoCreationSession session =
@@ -582,7 +583,7 @@ public final class Nodes {
                 }
             }
 
-            // JOJO adds dynamic entries without iterating over static properties
+            // JOJO adds dynamic members without iterating over static properties
             // a second time or treating them as dynamic keys.
             if (dynamic != null) {
                 for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
@@ -652,9 +653,9 @@ public final class Nodes {
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             sb.append("[");
-            for (int i = 0, len = list.size(); i < len; i++) {
-                Object v = list.get(i);
-                if (i > 0) sb.append(", ");
+            int i = 0;
+            for (Object v : list) {
+                if (i++ > 0) sb.append(", ");
                 _inspect(v, sb, shapeOnly);
             }
             sb.append("]");
@@ -828,7 +829,7 @@ public final class Nodes {
      */
 
     /**
-     * Visits each readable entry in an object node.
+     * Visits each gettable member in an object node.
      */
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
         NodeWalker.forEachObject(node, consumer);
@@ -836,7 +837,7 @@ public final class Nodes {
 
 
     /**
-     * Returns true if any readable object entry matches the predicate.
+     * Returns true if any gettable object member matches the predicate.
      */
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
         return NodeWalker.anyMatchInObject(node, predicate);
@@ -846,7 +847,7 @@ public final class Nodes {
     /**
      * Replaces object-entry values in place using the given mapper.
      * <p>
-     * The mapper receives each readable-and-writable entry key and current value,
+     * The mapper receives each gettable-and-settable entry key and current value,
      * and returns the new value to store. Returns true when at least one entry
      * changes by reference.
      */
@@ -855,10 +856,10 @@ public final class Nodes {
     }
 
     /**
-     * Removes object properties that match the predicate.
+     * Removes object members that match the predicate.
      * <p>
-     * This operation applies to removable object properties only. Declared POJO
-     * properties are not considered removable properties and therefore are left
+     * This operation applies to removable object members only. Declared POJO
+     * properties are not considered removable members and therefore are left
      * unchanged. For supported backend-native object tree representations,
      * matching keys are collected first and removed afterward so live key views
      * remain safe to traverse.
@@ -883,7 +884,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the number of readable members in an object node.
+     * Returns the number of gettable members in an object node.
      */
     public static int sizeInObject(Object node) {
         return NodeWalker.sizeInObject(node);
@@ -897,7 +898,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the readable key set for an object node.
+     * Returns the gettable key set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return their live key views. POJO inputs
      * return the structural gettable-property key view; callers must treat it as
@@ -908,7 +909,7 @@ public final class Nodes {
     }
 
     /**
-     * Returns the readable entry set for an object node.
+     * Returns the gettable entry set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return live entry views. POJO inputs
      * return a read-only projection of gettable properties; modifying returned
@@ -926,9 +927,8 @@ public final class Nodes {
     }
 
     /**
-     * Returns true when an object node contains a readable key.
+     * Returns true when an object node contains a gettable key.
      */
-    @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
         return NodeWalker.containsInObject(node, key);
     }
@@ -945,7 +945,7 @@ public final class Nodes {
     /**
      * Gets a value by key from an object node.
      * <p>
-     * Only readable members participate in this view. For POJO representations, properties
+     * Only gettable members participate in this view. For POJO representations, properties
      * without a getter behave as absent and return {@code null}.
      */
     public static Object getInObject(Object node, String key) {

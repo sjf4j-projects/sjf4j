@@ -3,7 +3,7 @@ package org.sjf4j.node;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.Nodes;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
@@ -39,7 +39,7 @@ public class NodeWalker {
 
 
     /**
-     * Visits each readable entry in an object node.
+     * Visits each gettable member in an object node.
      */
     @SuppressWarnings("unchecked")
     public static void forEachObject(Object node, BiConsumer<String, Object> consumer) {
@@ -75,7 +75,7 @@ public class NodeWalker {
 
 
     /**
-     * Returns true if any readable object entry matches the predicate.
+     * Returns true if any gettable object entry matches the predicate.
      */
     @SuppressWarnings("unchecked")
     public static boolean anyMatchInObject(Object node, BiPredicate<String, Object> predicate) {
@@ -115,7 +115,7 @@ public class NodeWalker {
     /**
      * Replaces object-entry values in place using the given mapper.
      * <p>
-     * The mapper receives each readable-and-writable entry key and current value,
+     * The mapper receives each gettable-and-settable entry key and current value,
      * and returns the new value to store. Returns true when at least one entry
      * changes by reference.
      */
@@ -162,10 +162,10 @@ public class NodeWalker {
     }
 
     /**
-     * Removes object properties that match the predicate.
+     * Removes object members that match the predicate.
      * <p>
-     * This operation applies to removable object properties only. Declared POJO
-     * properties are not considered removable properties and therefore are left
+     * This operation applies to removable object members only. Declared POJO
+     * properties are not considered removable members and therefore are left
      * unchanged. For supported backend-native object tree representations,
      * matching keys are collected first and removed afterward so live key views
      * remain safe to traverse.
@@ -205,7 +205,8 @@ public class NodeWalker {
         Asserts.notNull(consumer, "consumer");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            for (int i = 0, len = list.size(); i < len; i++) consumer.accept(i, list.get(i));
+            int i = 0;
+            for (Object value : list) consumer.accept(i++, value);
             return;
         }
         if (node instanceof JsonArray) {
@@ -243,8 +244,9 @@ public class NodeWalker {
         Asserts.notNull(predicate, "predicate");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            for (int i = 0, len = list.size(); i < len; i++) {
-                if (predicate.test(i, list.get(i))) return true;
+            int i = 0;
+            for (Object value : list) {
+                if (predicate.test(i++, value)) return true;
             }
             return false;
         }
@@ -281,7 +283,7 @@ public class NodeWalker {
     }
 
     /**
-     * Returns the number of readable members in an object node.
+     * Returns the number of gettable members in an object node.
      */
     public static int sizeInObject(Object node) {
         Asserts.notNull(node, "node");
@@ -332,7 +334,7 @@ public class NodeWalker {
     }
 
     /**
-     * Returns the readable key set for an object node.
+     * Returns the gettable key set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return their live key views. POJO inputs
       * return the structural gettable-property key view; callers must treat it as
@@ -396,7 +398,7 @@ public class NodeWalker {
     }
 
     /**
-     * Returns the readable entry set for an object node.
+     * Returns the gettable member set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return live entry views. POJO inputs
       * return a read-only projection of gettable properties; modifying returned
@@ -491,7 +493,7 @@ public class NodeWalker {
     }
 
     /**
-     * Returns true when an object node contains a readable key.
+     * Returns true when an object node contains a gettable key.
      */
     @SuppressWarnings("unchecked")
     public static boolean containsInObject(Object node, String key) {
@@ -531,7 +533,7 @@ public class NodeWalker {
     /**
      * Gets a value by key from an object node.
      * <p>
-     * Only readable members participate in this view. For POJO representations, properties
+     * Only gettable members participate in this view. For POJO representations, properties
      * without a getter behave as absent and return {@code null}.
      */
     public static Object getInObject(Object node, String key) {
@@ -564,7 +566,7 @@ public class NodeWalker {
     public static <T> T getInObject(Object node, String key, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Object sub = getInObject(node, key);
-        return Nodes.to(sub, clazz);
+        return NodeMapper.to(sub, clazz, RuntimeContext.EMPTY);
     }
 
     /**
@@ -619,7 +621,7 @@ public class NodeWalker {
     public static <T> T getInArray(Object node, int idx, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Object sub = getInArray(node, idx);
-        return Nodes.to(sub, clazz);
+        return NodeMapper.to(sub, clazz, RuntimeContext.EMPTY);
     }
 
     /**
@@ -648,7 +650,7 @@ public class NodeWalker {
     }
 
     /**
-     * Resolves readable object-child access and fills {@link Access}.
+     * Resolves gettable object-child access and fills {@link Access}.
      * <p>
      * The output distinguishes present-null from missing values under read
       * semantics. Settable-only POJO properties are not gettable and therefore are
@@ -701,7 +703,7 @@ public class NodeWalker {
     }
 
     /**
-     * Resolves writable object-child access and fills {@link Access} with node/type metadata.
+     * Resolves settable object-child access and fills {@link Access} with node/type metadata.
      * <p>
      * The output describes the current child value, inferred static type, and
      * whether public write APIs can create or replace content at this location.
@@ -762,7 +764,7 @@ public class NodeWalker {
     }
 
     /**
-     * Resolves readable array-child access and fills {@link Access}.
+     * Resolves gettable array-child access and fills {@link Access}.
      * <p>
      * The output distinguishes present-null from missing values under read
      * semantics. Negative indexes are normalized.
@@ -818,7 +820,7 @@ public class NodeWalker {
     }
 
     /**
-     * Resolves writable array-child access and fills {@link Access} with node/type metadata.
+     * Resolves settable array-child access and fills {@link Access} with node/type metadata.
      * <p>
      * Negative indexes are normalized. Indexed access follows {@link #putInArray(Object, int, Object)}
      * put semantics: existing normalized indexes are puttable, and for appendable array nodes
@@ -976,7 +978,7 @@ public class NodeWalker {
                     fi.invokeSetter(node, value);
                     return null;
                 }
-                throw new NodeException("property '" + key + "' is not writable");
+                throw new NodeException("property '" + key + "' is not settable");
             } else {
                 throw new NodeException("unknown field '" + key + "' in POJO '" +
                         node.getClass().getName() + "'");

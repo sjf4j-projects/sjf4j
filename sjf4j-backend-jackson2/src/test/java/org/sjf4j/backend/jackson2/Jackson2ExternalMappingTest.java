@@ -70,10 +70,10 @@ class Jackson2ExternalMappingTest {
     }
 
     @Test
-    void convertsJojoWithDeclaredPropertiesAndNoDynamicEntries() {
+    void convertsJojoWithDeclaredPropertiesAndNoDynamicMembers() {
         DeclaredOnlyJojo source = new DeclaredOnlyJojo();
         source.name = "Ada";
-        assertNull(InternalAccess.dynamicProperties(source));
+        assertNull(InternalAccess.dynamicMembers(source));
 
         JsonNode converted = (JsonNode) NodeMapper.convert(source, JsonNode.class, false, RuntimeContext.EMPTY);
 

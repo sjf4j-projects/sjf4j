@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -29,10 +30,31 @@ class JsonArrayApiSurfaceTest {
         TypedIntegerArray(Object node) {
                 addAll(node);
             }
+        TypedIntegerArray(List<?> list) {
+            super(list);
+        }
         @Override
         public Class<?> elementClass() {
                 return Integer.class;
             }
+    }
+
+    @Test
+    void typedConstructorCopiesLinkedListAndReportsOriginalIndex() {
+        List<Object> source = new LinkedList<Object>(Arrays.asList(1, null, 3)) {
+            @Override
+            public Object get(int index) {
+                throw new AssertionError("indexed read on sequential list");
+            }
+        };
+        TypedIntegerArray array = new TypedIntegerArray(source);
+        source.set(0, 9);
+        assertEquals(Arrays.asList(1, null, 3), array.toList());
+
+        NodeException error = assertThrows(NodeException.class,
+                () -> new TypedIntegerArray(new LinkedList<>(Arrays.asList(1, null, "wrong"))));
+        assertEquals("element type mismatch at [2]: expected java.lang.Integer, but was java.lang.String",
+                error.getMessage());
     }
 
     @Test

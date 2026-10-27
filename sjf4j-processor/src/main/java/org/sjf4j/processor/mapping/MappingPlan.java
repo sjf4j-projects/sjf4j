@@ -10,8 +10,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-
 
 /**
  * Immutable compile-time description of one mapper method.
@@ -23,13 +21,11 @@ final class MappingPlan {
         UPDATE
     }
 
-
     enum WriteMode {
         STRICT,
         IF_PARENT_PRESENT,
         ENSURE
     }
-
 
     private final ExecutableElement method;
     private final ExecutableType methodType;
@@ -44,66 +40,23 @@ final class MappingPlan {
 
     private final AnnotationMirror options;
 
-
-    MappingPlan(
-            ExecutableElement method,
-            ExecutableType methodType,
-            Kind kind,
-            TypeMirror targetType,
-            VariableElement targetParameter,
-            List<VariableElement> sources,
-            List<TypeMirror> sourceTypes,
-            List<Rule> rules,
-            AnnotationMirror options) {
-
-        this.method =
-                Asserts.notNull(
-                        method,
-                        "method");
-
-        this.methodType =
-                Asserts.notNull(
-                        methodType,
-                        "methodType");
-
-        this.kind =
-                Asserts.notNull(
-                        kind,
-                        "kind");
-
-        this.targetType =
-                Asserts.notNull(
-                        targetType,
-                        "targetType");
-
-        this.targetParameter =
-                targetParameter;
-
-        this.sources =
-                Collections.unmodifiableList(
-                        new ArrayList<VariableElement>(
-                                sources));
-
-        this.sourceTypes =
-                Collections.unmodifiableList(
-                        new ArrayList<TypeMirror>(
-                                sourceTypes));
-
-        if (this.sources.size() !=
-                this.sourceTypes.size()) {
-            throw new IllegalArgumentException(
-                    "sources and sourceTypes must have the same size");
+    MappingPlan(ExecutableElement method, ExecutableType methodType, Kind kind,
+                TypeMirror targetType, VariableElement targetParameter,
+                List<VariableElement> sources, List<TypeMirror> sourceTypes,
+                List<Rule> rules, AnnotationMirror options) {
+        this.method = Asserts.notNull(method, "method");
+        this.methodType = Asserts.notNull(methodType, "methodType");
+        this.kind = Asserts.notNull(kind, "kind");
+        this.targetType = Asserts.notNull(targetType, "targetType");
+        this.targetParameter = targetParameter;
+        this.sources = Collections.unmodifiableList(new ArrayList<VariableElement>(sources));
+        this.sourceTypes = Collections.unmodifiableList(new ArrayList<TypeMirror>(sourceTypes));
+        if (this.sources.size() != this.sourceTypes.size()) {
+            throw new IllegalArgumentException("sources and sourceTypes must have the same size");
         }
-
-        this.rules =
-                Collections.unmodifiableList(
-                        new ArrayList<Rule>(
-                                rules));
-
-        this.options =
-                options;
+        this.rules = Collections.unmodifiableList(new ArrayList<Rule>(rules));
+        this.options = options;
     }
-
 
     ExecutableElement method() {
         return method;
@@ -147,9 +100,7 @@ final class MappingPlan {
                 return sourceTypes.get(i);
             }
         }
-
-        throw new IllegalArgumentException(
-                "unknown source parameter: " + source);
+        throw new IllegalArgumentException("unknown source parameter: " + source);
     }
 
     VariableElement primarySource() {
@@ -167,7 +118,6 @@ final class MappingPlan {
     AnnotationMirror options() {
         return options;
     }
-
 
     static final class Rule {
 
@@ -190,65 +140,22 @@ final class MappingPlan {
         private final boolean arrayExplicit;
         private final boolean objectExplicit;
 
-
-        Rule(
-                AnnotationMirror annotation,
-                WriteMode mode,
-                String target,
-                String source,
-                List<String> sources,
-                String compute,
-                String nestedMapper,
-                boolean ignore,
-                String arrayPolicy,
-                String objectPolicy,
-                boolean arrayExplicit,
-                boolean objectExplicit) {
-
-            this.annotation =
-                    Asserts.notNull(
-                            annotation,
-                            "annotation");
-
-            this.mode =
-                    Asserts.notNull(
-                            mode,
-                            "mode");
-
-            this.target =
-                    Asserts.notNull(
-                            target,
-                            "target");
-
-            this.source =
-                    source == null
-                            ? ""
-                            : source;
-
-            this.sources =
-                    Collections.unmodifiableList(
-                            new ArrayList<String>(
-                                    sources));
-
-            this.compute =
-                    compute == null
-                            ? ""
-                            : compute;
-
-            this.nestedMapper =
-                    nestedMapper == null
-                            ? ""
-                            : nestedMapper;
-
+        Rule(AnnotationMirror annotation, WriteMode mode, String target, String source,
+             List<String> sources, String compute, String nestedMapper, boolean ignore,
+             String arrayPolicy, String objectPolicy, boolean arrayExplicit, boolean objectExplicit) {
+            this.annotation = Asserts.notNull(annotation, "annotation");
+            this.mode = Asserts.notNull(mode, "mode");
+            this.target = Asserts.notNull(target, "target");
+            this.source = source == null ? "" : source;
+            this.sources = Collections.unmodifiableList(new ArrayList<String>(sources));
+            this.compute = compute == null ? "" : compute;
+            this.nestedMapper = nestedMapper == null ? "" : nestedMapper;
             this.ignore = ignore;
-
             this.arrayPolicy = arrayPolicy;
             this.objectPolicy = objectPolicy;
-
             this.arrayExplicit = arrayExplicit;
             this.objectExplicit = objectExplicit;
         }
-
 
         AnnotationMirror annotation() {
             return annotation;
@@ -299,9 +206,7 @@ final class MappingPlan {
         }
 
         boolean targetPath() {
-            return !target.isEmpty() &&
-                    (target.charAt(0) == '$' ||
-                            target.charAt(0) == '/');
+            return !target.isEmpty() && (target.charAt(0) == '$' || target.charAt(0) == '/');
         }
 
         boolean computed() {

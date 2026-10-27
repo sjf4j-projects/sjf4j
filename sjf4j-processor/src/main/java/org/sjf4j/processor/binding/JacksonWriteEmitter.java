@@ -159,8 +159,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      * needs Codec/Runtime handling. Structural helpers always accept
      * (generator, value), never a separately passed native nativeGenerator.
      */
-    private void emitValue(JavaWriter out, BindingValue child,
-                           String expression, String generator, String nativeGenerator, String item) {
+    private void emitValue(JavaWriter out, BindingValue child, String expression,
+                           String generator, String nativeGenerator, String item) {
         if (child.helperRequired()) {
             out.line(child.helperName() + "(" + generator + ", " + expression + ");");
             return;
@@ -170,8 +170,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 CodecWriteEmitter.emit(out, child, expression, generator, nativeGenerator, backend.backend());
                 return;
             case RUNTIME:
-                out.line(STREAMING_IO + ".writeNode(" + generator + ", " + expression
-                        + ", this.context);");
+                out.line(STREAMING_IO + ".writeNode(" + generator + ", "
+                        + expression + ", this.context);");
                 return;
             case STRING:
                 out.line("_writeString(" + nativeGenerator + ", " + expression + ");");
@@ -186,8 +186,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 out.line(nativeGenerator + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(nativeGenerator + ".writeString("
-                        + writes.enumField(child) + "[" + item + ".ordinal()]);");
+                out.line(nativeGenerator + ".writeString(" + writes.enumField(child) + "[" + item + ".ordinal()]);");
                 out.endBlock();
                 out.endBlock();
                 return;

@@ -36,6 +36,61 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 @Slf4j
 class JsonObjectTest {
 
+    @Test
+    void mapConstructorAndToMapAreShallowSnapshots() {
+        JsonArray child = JsonArray.of(1);
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put("child", child);
+        source.put("value", 1);
+
+        JsonObject object = new JsonObject(source);
+        source.put("value", 2);
+        source.put("sourceOnly", true);
+        object.put("nodeOnly", true);
+        assertEquals(1, object.getInt("value"));
+        assertFalse(object.containsKey("sourceOnly"));
+        assertFalse(source.containsKey("nodeOnly"));
+        assertSame(child, object.getNode("child"));
+
+        Map<String, Object> snapshot = object.toMap();
+        snapshot.put("value", 3);
+        object.put("nodeOnly", false);
+        assertEquals(1, object.getInt("value"));
+        assertEquals(3, snapshot.get("value"));
+        assertEquals(true, snapshot.get("nodeOnly"));
+        assertSame(child, snapshot.get("child"));
+        child.add(2);
+        assertEquals(2, ((JsonArray) snapshot.get("child")).size());
+        assertThrows(NullPointerException.class, () -> new JsonObject((Map<String, Object>) null));
+    }
+
+    @Test
+    void nodeGettersCopyRawContainersButReuseExistingNodes() {
+        Map<String, Object> rawObject = new LinkedHashMap<>();
+        rawObject.put("value", 1);
+        List<Object> rawArray = new ArrayList<>();
+        rawArray.add(1);
+        JsonObject childObject = JsonObject.of("value", 1);
+        JsonArray childArray = JsonArray.of(1);
+        JsonObject parent = JsonObject.of("rawObject", rawObject, "rawArray", rawArray,
+                "childObject", childObject, "childArray", childArray);
+
+        JsonObject mappedObject = parent.getJsonObject("rawObject");
+        JsonArray mappedArray = parent.getJsonArray("rawArray");
+        mappedObject.put("value", 2);
+        mappedArray.set(0, 2);
+        assertEquals(1, rawObject.get("value"));
+        assertEquals(1, rawArray.get(0));
+        rawObject.put("later", true);
+        rawArray.add(3);
+        assertFalse(mappedObject.containsKey("later"));
+        assertEquals(1, mappedArray.size());
+        assertSame(rawObject, parent.getNode("rawObject"));
+        assertSame(rawArray, parent.getNode("rawArray"));
+        assertSame(childObject, parent.getJsonObject("childObject"));
+        assertSame(childArray, parent.getJsonArray("childArray"));
+    }
+
     static class ImplicitSuperJojo extends JsonObject {
         public String name;
     }
@@ -354,7 +409,7 @@ class JsonObjectTest {
 
         JsonObject jo4 = JsonObject.fromJson("{\"num\":5,\"duck\":[\"gaga\",\"haha\"],\"attr\":{\"aa\":\"bb\",\"cc\":\"dd\"}}");
         JsonObject jo5 = jo4.deepCopy();
-        jo4.getJsonObject("attr").put("aa", "jj");
+        jo4.ensurePutByPath("$.attr.aa", "jj");
 //        System.out.println(jo5);
         assertEquals("jj", jo4.getJsonObject("attr").getString("aa"));
         assertEquals("bb", jo5.getJsonObject("attr").getString("aa"));
@@ -703,7 +758,7 @@ class JsonObjectTest {
         assertEquals("c", keys.get(2));
     }
 
-    @Test public void testReadableAndWritableViews() {
+    @Test public void testGettableAndSettableViews() {
         AccessModeJojo jo = new AccessModeJojo();
         jo.setReadWrite("rw");
         jo.setWriteOnly("secret-1");
@@ -811,13 +866,13 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo1.toJson());
-        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicProperties(jo1));
+        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(jo1));
         assertInstanceOf(LinkedHashMap.class, jo1.toMap());
 
         JsonObject jo2 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
-        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicProperties(jo2));
+        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(jo2));
         assertInstanceOf(LinkedHashMap.class, jo2.toMap());
         assertEquals(jo1, jo2);
     }

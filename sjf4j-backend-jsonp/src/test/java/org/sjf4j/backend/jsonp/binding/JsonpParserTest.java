@@ -46,7 +46,7 @@ class JsonpParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -72,7 +72,7 @@ class JsonpParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -95,7 +95,7 @@ class JsonpParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -117,7 +117,7 @@ class JsonpParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -136,7 +136,7 @@ class JsonpParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -165,7 +165,7 @@ class JsonpParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -181,7 +181,7 @@ class JsonpParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -191,7 +191,7 @@ class JsonpParserTest {
                 assertThrows(Exception.class, parser::nextIfNull);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -212,7 +212,7 @@ class JsonpParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -231,7 +231,7 @@ class JsonpParserTest {
                     return method.invoke(nativeParser, arguments);
                 });
         JsonpParser parser = new JsonpParser(tracked);
-        parser.release();
+        parser.close();
         assertTrue(closed.get());
     }
 
@@ -256,7 +256,7 @@ class JsonpParserTest {
                 assertTrue(error.getMessage().contains("composite end"));
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -281,7 +281,7 @@ class JsonpParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -298,7 +298,7 @@ class JsonpParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }

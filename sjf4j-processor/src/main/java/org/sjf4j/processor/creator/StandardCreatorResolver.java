@@ -100,8 +100,7 @@ public final class StandardCreatorResolver {
      * @JsonCreator wins over the no-args path. Unannotated argument constructors
      * remain unsupported; mapper creator selection is unchanged.
      */
-    public CreatorPlan resolveBinding(TypeMirror targetType, Element origin,
-                                      Consumer<String> error) {
+    public CreatorPlan resolveBinding(TypeMirror targetType, Element origin, Consumer<String> error) {
         TypeMirror target = types.concrete(targetType);
         TypeElement type = types.typeElement(target);
         if (type == null || !isTypeAccessible(type, context.elements.getPackageOf(origin))) {
@@ -151,8 +150,7 @@ public final class StandardCreatorResolver {
             error.accept("Creator factory must be static and return " + target + ": " + selected);
             return null;
         }
-        return CreatorPlan.staticFactory(target, target, selected,
-                resolvedParameterTypes(target, selected));
+        return CreatorPlan.staticFactory(target, target, selected, resolvedParameterTypes(target, selected));
     }
 
     private CreatorPlan constructorPlan(TypeMirror declaredType, TypeMirror workingType,
@@ -164,8 +162,7 @@ public final class StandardCreatorResolver {
     private List<? extends TypeMirror> resolvedParameterTypes(TypeMirror owner, ExecutableElement constructor) {
         if (owner instanceof DeclaredType) {
             try {
-                ExecutableType type = (ExecutableType) context.typeUtils.asMemberOf(
-                        (DeclaredType) owner, constructor);
+                ExecutableType type = (ExecutableType) context.typeUtils.asMemberOf((DeclaredType) owner, constructor);
                 return new ArrayList<>(type.getParameterTypes());
             } catch (IllegalArgumentException ignored) {
                 // Fall through to the declared parameter types.
@@ -188,8 +185,7 @@ public final class StandardCreatorResolver {
         return result;
     }
 
-    private static ExecutableElement recordConstructor(TypeElement type,
-                                                        List<ExecutableElement> constructors) {
+    private static ExecutableElement recordConstructor(TypeElement type, List<ExecutableElement> constructors) {
         List<Element> components = new ArrayList<>();
         for (Element element : type.getEnclosedElements()) {
             if ("RECORD_COMPONENT".equals(element.getKind().name())) {

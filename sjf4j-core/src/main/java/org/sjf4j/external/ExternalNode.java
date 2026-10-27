@@ -24,7 +24,7 @@ import java.util.function.BiPredicate;
  * <p>{@code N} is the root external type; every child and scalar value is
  * exposed unchanged as {@link Object}. Entry points expect a non-null Java
  * node. JSON null is instead a native node with {@link JsonType#NULL}: scalar
- * conversions return Java {@code null}, while object fields and array elements
+ * conversions return Java {@code null}, while object members and array elements
  * expose that native null node. Invalid shapes and external write values throw
  * {@link NodeException}.</p>
  *
@@ -103,12 +103,12 @@ public interface ExternalNode<N> {
         throw unsupported("toBoolean");
     }
 
-    /** Visits object entries. */
+    /** Visits object members. */
     default void forEachObject(N node, BiConsumer<String, Object> consumer) {
         throw unsupported("forEachObject");
     }
 
-    /** Returns whether an object entry matches. */
+    /** Returns whether an object member matches. */
     default boolean anyMatchObject(N node, BiPredicate<String, Object> predicate) {
         throw unsupported("anyMatchObject");
     }
@@ -118,7 +118,7 @@ public interface ExternalNode<N> {
         throw unsupported("replaceAllInObject");
     }
 
-    /** Removes matching object entries. */
+    /** Removes matching object members. */
     default boolean removeIfInObject(N node, BiPredicate<String, Object> predicate) {
         throw unsupported("removeIfInObject");
     }
@@ -173,22 +173,22 @@ public interface ExternalNode<N> {
         throw unsupported("getInArray");
     }
 
-    /** Fills {@code out} with readable object-child metadata. */
+    /** Fills {@code out} with gettable object-child metadata. */
     default void getAccessInObject(N node, String key, NodeWalker.Access out) {
         throw unsupported("getAccessInObject");
     }
 
-    /** Fills {@code out} with writable object-child metadata. */
+    /** Fills {@code out} with settable object-child metadata. */
     default void putAccessInObject(N node, String key, NodeWalker.Access out) {
         throw unsupported("putAccessInObject");
     }
 
-    /** Fills {@code out} with readable array-child metadata. */
+    /** Fills {@code out} with gettable array-child metadata. */
     default void getAccessInArray(N node, int idx, NodeWalker.Access out) {
         throw unsupported("getAccessInArray");
     }
 
-    /** Fills {@code out} with writable array-child metadata; null index means append. */
+    /** Fills {@code out} with settable array-child metadata; null index means append. */
     default void putAccessInArray(N node, Integer idx, NodeWalker.Access out) {
         throw unsupported("putAccessInArray");
     }

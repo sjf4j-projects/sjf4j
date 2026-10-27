@@ -15,7 +15,6 @@ public final class NameAllocator {
 
     private final Set<String> used = new HashSet<String>();
 
-
     /**
      * Reserves an existing Java identifier.
      */
@@ -90,10 +89,7 @@ public final class NameAllocator {
                     out.append('_');
                 }
             } else {
-                out.append(
-                        Character.isJavaIdentifierPart(c)
-                                ? c
-                                : '_');
+                out.append(Character.isJavaIdentifierPart(c) ? c : '_');
             }
         }
 

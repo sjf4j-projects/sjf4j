@@ -14,13 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `Format`, `BinderProvider`, and `BinderFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
 
 ### Changed
-- Fixed external conversion of JOJOs without dynamic properties and clarified JSON-P native-node source/target behavior.
+- Fixed external conversion of JOJOs without dynamic members and clarified JSON-P native-node source/target behavior.
 - Updated JSON-P streaming bindings and optimized structured property serialization; Jackson 2 benchmarks now include Blackbird comparisons.
 - Aligned streaming backends with the current reader/writer APIs, added primitive-array binding paths, and improved SnakeYAML JSON-compatible validation.
 - Improved typed serialization for map, collection, and array property values.
 - Fixed serialization of runtime-subclass arrays and optimized Fastjson2 compiled property names for UTF-8 output.
 
 ### Breaking Changes
+- Renamed `JsonObject.dynamicProperties()` and `InternalAccess.dynamicProperties(...)` to `dynamicMembers(...)`. Update callers and recompile generated binders/mappers against the new API; old binaries are not compatible.
 - Updated streaming reader/writer APIs and backend adapters; custom implementations must migrate to the current token, read, write, and direct-output methods.
 - Renamed `NodeKind.VALUE_CODEC` to `VALUE_BINDING` and `JsonType.isValue()` to `isScalar()`; value bindings may now represent scalar, object, or array JSON shapes.
 - Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.

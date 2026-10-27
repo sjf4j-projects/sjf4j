@@ -52,7 +52,7 @@ class Jackson3BinderTest {
                     generator.end();
 
                 } finally {
-                    generator.release();
+                    generator.close();
                 }
             }
             detached = chars.getAndRecycle();
@@ -71,7 +71,7 @@ class Jackson3BinderTest {
                     generator.end();
 
                 } finally {
-                    generator.release();
+                    generator.close();
                 }
             }
             detachedUtf8 = bytes.getAndRecycle();
@@ -136,13 +136,13 @@ class Jackson3BinderTest {
                 assertInstanceOf(Jackson3Parser.class, parser);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         Jackson3Generator generator = binder.createGenerator(output);
         assertInstanceOf(Jackson3Generator.class, generator);
         generator.writeNull();
-        generator.release();
+        generator.close();
         assertEquals("null", output.toString());
     }
 
@@ -158,7 +158,7 @@ class Jackson3BinderTest {
                 generator.writeNull();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         {
@@ -167,7 +167,7 @@ class Jackson3BinderTest {
                 generator.writeNull();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
 
@@ -215,7 +215,7 @@ class Jackson3BinderTest {
                 assertThrows(Exception.class, parser::nextIfNull);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -245,7 +245,7 @@ class Jackson3BinderTest {
                 assertTrue(parser.nextIfNull());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         assertTrue(nativeParser.isClosed());
@@ -258,7 +258,7 @@ class Jackson3BinderTest {
                 generator.writeNull();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertTrue(nativeGenerator.isClosed());
@@ -329,7 +329,7 @@ class Jackson3BinderTest {
         assertEquals("Ada", result.name);
         assertEquals(true, ((Map<?, ?>) result.getNode("unknown_before")).get("flag"));
         assertEquals(2, ((List<?>) result.getNode("unknown_after")).size());
-        assertFalse(result.dynamicProperties().containsKey("legacy_name"));
+        assertFalse(result.dynamicMembers().containsKey("legacy_name"));
     }
 
     @Test

@@ -4,7 +4,7 @@ import org.sjf4j.util.Asserts;
 
 
 /**
- * Reusable property name prepared for a streaming writer. Backend subclasses
+ * Reusable member name prepared for a streaming writer. Backend subclasses
  * may additionally cache the encoded form of the name.
  */
 public class CompiledName {
@@ -16,7 +16,7 @@ public class CompiledName {
         this.name = Asserts.notNull(name, "name");
     }
 
-    /** Returns the original property name. */
+    /** Returns the original member name. */
     public final String name() {
         return name;
     }

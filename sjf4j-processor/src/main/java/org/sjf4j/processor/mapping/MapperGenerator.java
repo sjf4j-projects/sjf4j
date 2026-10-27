@@ -28,8 +28,7 @@ public final class MapperGenerator {
 
     public MapperGenerator(ProcessorContext context) {
         this.context = context;
-        this.methodGenerator =
-                new MapperMethodGenerator(context);
+        this.methodGenerator = new MapperMethodGenerator(context);
     }
 
 
@@ -37,21 +36,12 @@ public final class MapperGenerator {
      * Generates one compiled mapper implementation.
      */
     public void generate(TypeElement type) {
-        if (!type.getTypeParameters()
-                .isEmpty()) {
-
-            context.error(
-                    type,
-                    "@CompiledMapper interface cannot declare type parameters");
-
+        if (!type.getTypeParameters().isEmpty()) {
+            context.error(type, "@CompiledMapper interface cannot declare type parameters");
             return;
         }
 
-        GeneratedClass generated =
-                GeneratedClass.forInterface(
-                        context,
-                        type);
-
+        GeneratedClass generated = GeneratedClass.forInterface(context, type);
         generated.enableRuntimeContext();
 
         /*
@@ -59,10 +49,7 @@ public final class MapperGenerator {
          * 1. Analyze methods
          * --------------------------------------------------------------
          */
-        List<MappingPlan> plans =
-                analyze(
-                        type,
-                        generated);
+        List<MappingPlan> plans = analyze(type, generated);
 
         if (!generated.isValid()) {
             return;
@@ -75,34 +62,15 @@ public final class MapperGenerator {
          * 2. Compile mapping semantics
          * --------------------------------------------------------------
          */
-        MappingCompiler compiler =
-                new MappingCompiler(
-                        context,
-                        type,
-                        plans,
-                        metadata);
+        MappingCompiler compiler = new MappingCompiler(context, type, plans, metadata);
 
-        if (!compiler.validate(
-                generated)) {
+        if (!compiler.validate(generated)) return;
 
-            return;
-        }
+        List<MappingCompiler.CompiledMethod> methods = new ArrayList<MappingCompiler.CompiledMethod>(plans.size());
 
-        List<MappingCompiler.CompiledMethod> methods =
-                new ArrayList<MappingCompiler.CompiledMethod>(
-                        plans.size());
-
-        for (MappingPlan plan :
-                plans) {
-
-            MappingCompiler.CompiledMethod method =
-                    compiler.compile(
-                            plan,
-                            generated);
-
-            if (method != null) {
-                methods.add(method);
-            }
+        for (MappingPlan plan : plans) {
+            MappingCompiler.CompiledMethod method = compiler.compile(plan, generated);
+            if (method != null) methods.add(method);
         }
 
         if (!generated.isValid()) {
@@ -114,19 +82,9 @@ public final class MapperGenerator {
          * 3. Compile recursive conversions
          * --------------------------------------------------------------
          */
-        ConversionEmitter conversionEmitter =
-                new ConversionEmitter(
-                        context,
-                        type,
-                        plans,
-                        metadata);
+        ConversionEmitter conversionEmitter = new ConversionEmitter(context, type, plans, metadata);
 
-        if (!conversionEmitter.prepare(
-                methods,
-                generated)) {
-
-            return;
-        }
+        if (!conversionEmitter.prepare(methods, generated)) return;
 
         if (!generated.isValid()) {
             return;
@@ -137,17 +95,10 @@ public final class MapperGenerator {
          * 4. Emit methods
          * --------------------------------------------------------------
          */
-        MappingEmitter emitter =
-                new MappingEmitter(
-                        context,
-                        conversionEmitter);
+        MappingEmitter emitter = new MappingEmitter(context, conversionEmitter);
 
-        for (MappingCompiler.CompiledMethod method :
-                methods) {
-
-            emitter.emit(
-                    method,
-                    generated);
+        for (MappingCompiler.CompiledMethod method : methods) {
+            emitter.emit(method, generated);
         }
 
         /*
@@ -165,23 +116,15 @@ public final class MapperGenerator {
      * --------------------------------------------------------------
      */
 
-    private List<MappingPlan> analyze(
-            TypeElement type,
-            GeneratedClass generated) {
-
-        List<ResolvedMethod> methods =
-                context.methods.abstractMethods(type);
-
-        List<MappingPlan> plans =
-                new ArrayList<MappingPlan>(
-                        methods.size());
+    private List<MappingPlan> analyze(TypeElement type, GeneratedClass generated) {
+        List<ResolvedMethod> methods = context.methods.abstractMethods(type);
+        List<MappingPlan> plans = new ArrayList<MappingPlan>(methods.size());
 
         for (ResolvedMethod resolved : methods) {
             if (!isResolvedSignature(resolved)) {
                 ExecutableElement method = resolved.declaration();
 
-                context.error(
-                        method,
+                context.error(method,
                         "Mapper method contains unresolved type variables after interface specialization: " +
                                 resolved.type());
 
@@ -189,51 +132,25 @@ public final class MapperGenerator {
                 continue;
             }
 
-            MappingPlan plan =
-                    methodGenerator.analyze(
-                            resolved,
-                            generated);
-
-            if (plan != null) {
-                plans.add(plan);
-            }
+            MappingPlan plan = methodGenerator.analyze(resolved, generated);
+            if (plan != null) plans.add(plan);
         }
 
         return plans;
     }
 
 
-    private boolean isResolvedSignature(
-            ResolvedMethod method) {
+    private boolean isResolvedSignature(ResolvedMethod method) {
+        ExecutableType type = method.type();
+        if (!context.types.isFullyResolved(type.getReturnType())) return false;
 
-        ExecutableType type =
-                method.type();
-
-        if (!context.types.isFullyResolved(
-                type.getReturnType())) {
-            return false;
+        for (TypeMirror parameter : type.getParameterTypes()) {
+            if (!context.types.isFullyResolved(parameter)) return false;
         }
 
-        for (TypeMirror parameter :
-                type.getParameterTypes()) {
-
-            if (!context.types.isFullyResolved(
-                    parameter)) {
-                return false;
-            }
+        for (TypeMirror thrown : type.getThrownTypes()) {
+            if (!context.types.isFullyResolved(thrown)) return false;
         }
-
-        for (TypeMirror thrown :
-                type.getThrownTypes()) {
-
-            if (!context.types.isFullyResolved(
-                    thrown)) {
-                return false;
-            }
-        }
-
         return true;
     }
-
-
 }

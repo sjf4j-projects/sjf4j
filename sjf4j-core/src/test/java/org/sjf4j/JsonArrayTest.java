@@ -2,17 +2,15 @@ package org.sjf4j;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.JsonArray;
-import org.sjf4j.JsonObject;
-import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,6 +19,66 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 @Slf4j
 class JsonArrayTest {
+
+    @Test
+    void listConstructorAndToListAreShallowSnapshots() {
+        JsonObject child = JsonObject.of("value", 1);
+        List<Object> source = new ArrayList<>();
+        source.add(child);
+        source.add(1);
+
+        JsonArray array = new JsonArray(source);
+        source.set(1, 2);
+        source.add(3);
+        assertEquals(1, array.getInt(1));
+        assertEquals(2, array.size());
+        array.set(1, 4);
+        array.add(5);
+        assertEquals(3, source.size());
+        assertEquals(3, array.size());
+        assertEquals(2, source.get(1));
+        assertEquals(3, source.get(2));
+        assertEquals(4, array.getInt(1));
+        assertSame(child, array.getNode(0));
+
+        List<Object> snapshot = array.toList();
+        snapshot.set(1, 6);
+        array.add(7);
+        assertEquals(4, array.getInt(1));
+        assertEquals(6, snapshot.get(1));
+        assertEquals(3, snapshot.size());
+        assertSame(child, snapshot.get(0));
+        child.put("value", 8);
+        assertEquals(8, ((JsonObject) snapshot.get(0)).getInt("value"));
+        assertTrue(new JsonArray(null).isEmpty());
+        assertTrue(new JsonArray(new ArrayList<>()).isEmpty());
+    }
+
+    @Test
+    void nodeGettersCopyRawContainersButReuseExistingNodes() {
+        Map<String, Object> rawObject = new LinkedHashMap<>();
+        rawObject.put("value", 1);
+        List<Object> rawArray = new ArrayList<>();
+        rawArray.add(1);
+        JsonObject childObject = JsonObject.of("value", 1);
+        JsonArray childArray = JsonArray.of(1);
+        JsonArray parent = JsonArray.of(rawObject, rawArray, childObject, childArray);
+
+        JsonObject mappedObject = parent.getJsonObject(0);
+        JsonArray mappedArray = parent.getJsonArray(1);
+        mappedObject.put("value", 2);
+        mappedArray.set(0, 2);
+        assertEquals(1, rawObject.get("value"));
+        assertEquals(1, rawArray.get(0));
+        rawObject.put("later", true);
+        rawArray.add(3);
+        assertFalse(mappedObject.containsKey("later"));
+        assertEquals(1, mappedArray.size());
+        assertSame(rawObject, parent.getNode(0));
+        assertSame(rawArray, parent.getNode(1));
+        assertSame(childObject, parent.getJsonObject(2));
+        assertSame(childArray, parent.getJsonArray(3));
+    }
 
     static class ThrowingGetterJsonArray extends JsonArray {
         BindingException failure;
@@ -213,14 +271,14 @@ class JsonArrayTest {
         JsonArray a2 = a1.deepCopy();
 
         assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInt(1));
-        a1.getJsonArray(2).getJsonArray(1).set(1, 7);
+        a1.ensurePutByPath("$[2][1][1]", 7);
         assertEquals(7, a1.getJsonArray(2).getJsonArray(1).getInt(1));
         assertEquals(6, a2.getJsonArray(2).getJsonArray(1).getInt(1));
     }
 
     private static final class InspectableJsonArray extends JsonArray {
         private List<Object> backingList() {
-                return dynamicList;
+                return dynamicElements;
             }
     }
 

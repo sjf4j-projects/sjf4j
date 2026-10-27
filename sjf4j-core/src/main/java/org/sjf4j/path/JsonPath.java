@@ -50,7 +50,7 @@ import java.util.function.Function;
  * declared property. Array writes are limited by
  * the underlying representation: lists and {@link JsonArray} can append, Java
  * arrays cannot, and sets do not support indexed writes. Multi-match paths are
- * writable only by {@link #compute(Object, BiFunction)}.
+ * settable only by {@link #compute(Object, BiFunction)}.
  */
 public class JsonPath {
 
@@ -1256,10 +1256,10 @@ public class JsonPath {
             _computeLast(parent, lastToken, computer);
             return 1;
         }
-        List<Object> parents = new ArrayList<>();
+        ArrayList<Object> parents = new ArrayList<>();
         _findAll(container, container, 1, segments.length - 1, parents, Function.identity(), new NodeWalker.Access());
-        for (Object parent : parents) {
-            _computeLast(parent, lastToken, computer);
+        for (int i = 0, len = parents.size(); i < len; i++) {
+            _computeLast(parents.get(i), lastToken, computer);
         }
         return parents.size();
     }

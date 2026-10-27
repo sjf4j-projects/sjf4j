@@ -8,7 +8,7 @@ import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
 /**
- * A resolved Java member used to read or write a node property.
+ * A resolved Java member used to read or write a node member.
  */
 public final class PropertyAccess {
 

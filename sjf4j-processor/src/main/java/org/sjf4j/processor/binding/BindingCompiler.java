@@ -57,18 +57,11 @@ final class BindingCompiler {
     private final TypeMirror linkedHashSetType;
     private final TypeMirror linkedHashMapType;
 
-    private final Map<String, BindingValue> cache =
-            new LinkedHashMap<String, BindingValue>();
+    private final Map<String, BindingValue> cache = new LinkedHashMap<String, BindingValue>();
+    private final List<BindingValue> helpers = new ArrayList<BindingValue>();
 
-    private final List<BindingValue> helpers =
-            new ArrayList<BindingValue>();
-
-    BindingCompiler(
-            ProcessorContext context,
-            NameAllocator names,
-            CompiledMetadata metadata,
-            Backend backend) {
-
+    BindingCompiler(ProcessorContext context, NameAllocator names,
+                    CompiledMetadata metadata, Backend backend) {
         this.context = context;
         this.names = names;
         this.metadata = metadata;
@@ -81,16 +74,9 @@ final class BindingCompiler {
         this.linkedHashMapType = requiredType("java.util.LinkedHashMap");
     }
 
-    CompiledMethod compile(
-            BindingPlan plan,
-            GeneratedClass generated) {
-
-        BindingValue value =
-                compileValue(
-                        plan.direction(),
-                        plan.valueType(),
-                        plan.method().declaration(),
-                        generated);
+    CompiledMethod compile(BindingPlan plan, GeneratedClass generated) {
+        BindingValue value = compileValue(plan.direction(), plan.valueType(),
+                plan.method().declaration(), generated);
 
         return value == null
                 ? null
@@ -101,40 +87,24 @@ final class BindingCompiler {
         return Collections.unmodifiableList(helpers);
     }
 
-    private BindingValue compileValue(
-            BindingPlan.Direction direction,
-            TypeMirror inputType,
-            ExecutableElement method,
-            GeneratedClass generated) {
+    private BindingValue compileValue(BindingPlan.Direction direction, TypeMirror inputType,
+                                      ExecutableElement method, GeneratedClass generated) {
         return compileValue(direction, inputType, method, generated, null, null);
     }
 
     /** Codec selection is part of the value plan, never a backend decision. */
-    private BindingValue compileValue(
-            BindingPlan.Direction direction,
-            TypeMirror inputType,
-            ExecutableElement method,
-            GeneratedClass generated,
-            String codecName,
-            String codecPattern) {
-
+    private BindingValue compileValue(BindingPlan.Direction direction, TypeMirror inputType,
+                                      ExecutableElement method, GeneratedClass generated,
+                                      String codecName, String codecPattern) {
         if (inputType == null) {
-            error(
-                    method,
-                    generated,
-                    "Cannot resolve binding type");
+            error(method, generated, "Cannot resolve binding type");
             return null;
         }
 
-        TypeMirror type =
-                context.types.concrete(inputType);
-
-        String key =
-                direction.name() + ':' + type.toString()
-                        + ':' + codecName + ':' + codecPattern;
-
-        BindingValue existing =
-                cache.get(key);
+        TypeMirror type = context.types.concrete(inputType);
+        String key = direction.name() + ':' + type.toString()
+                + ':' + codecName + ':' + codecPattern;
+        BindingValue existing = cache.get(key);
 
         if (existing != null) {
             return existing;
@@ -168,12 +138,8 @@ final class BindingCompiler {
             return null;
         }
 
-        BindingValue value =
-                new BindingValue(
-                        direction,
-                        type,
-                        kind,
-                        type.getKind().isPrimitive());
+        BindingValue value = new BindingValue(direction, type, kind,
+                type.getKind().isPrimitive());
 
         /*
          * Cache the placeholder before recursively compiling children so
@@ -194,12 +160,7 @@ final class BindingCompiler {
 
         if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC
                 || kind == BindingValue.Kind.ONE_OF) {
-            value.helperName(
-                    names.newName(
-                            helperSuggestion(
-                                    direction,
-                                    type)));
-
+            value.helperName(names.newName(helperSuggestion(direction, type)));
             helpers.add(value);
         }
 
@@ -211,10 +172,7 @@ final class BindingCompiler {
                         options == null || options.writeDynamic());
                 // JOJO declared members use the existing POJO property compiler.
             case POJO:
-                if (!compilePojo(
-                        value,
-                        method,
-                        generated)) {
+                if (!compilePojo(value, method, generated)) {
                     return null;
                 }
                 break;
@@ -238,19 +196,13 @@ final class BindingCompiler {
 
             case LIST:
             case SET:
-                if (!compileElement(
-                        value,
-                        method,
-                        generated)) {
+                if (!compileElement(value, method, generated)) {
                     return null;
                 }
                 break;
 
             case MAP:
-                if (!compileMap(
-                        value,
-                        method,
-                        generated)) {
+                if (!compileMap(value, method, generated)) {
                     return null;
                 }
                 break;
@@ -262,14 +214,9 @@ final class BindingCompiler {
         return value;
     }
 
-    private BindingValue.Kind resolveKind(
-            BindingPlan.Direction direction,
-            TypeMirror type,
-            ExecutableElement method,
-            GeneratedClass generated) {
-
-        TypeKind javaKind =
-                type.getKind();
+    private BindingValue.Kind resolveKind(BindingPlan.Direction direction, TypeMirror type,
+                                          ExecutableElement method, GeneratedClass generated) {
+        TypeKind javaKind = type.getKind();
 
         if (javaKind == TypeKind.ARRAY) {
             // The read plan has a concrete element type; write currently uses
@@ -305,10 +252,7 @@ final class BindingCompiler {
             }
         }
 
-        String erased =
-                context.typeUtils
-                        .erasure(type)
-                        .toString();
+        String erased = context.typeUtils.erasure(type).toString();
 
         if ("java.lang.String".equals(erased)) {
             return BindingValue.Kind.STRING;
@@ -347,8 +291,7 @@ final class BindingCompiler {
             return BindingValue.Kind.BIG_DECIMAL;
         }
 
-        TypeElement element =
-                context.types.typeElement(type);
+        TypeElement element = context.types.typeElement(type);
 
         if (element != null &&
                 element.getKind() == ElementKind.ENUM) {
@@ -388,8 +331,7 @@ final class BindingCompiler {
 
             case OBJECT_JOJO:
             case OBJECT_POJO:
-                if (direction ==
-                        BindingPlan.Direction.WRITE_TO) {
+                if (direction == BindingPlan.Direction.WRITE_TO) {
                     return nodeKind == NodeKind.OBJECT_JOJO
                             ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
                 }
@@ -863,11 +805,8 @@ final class BindingCompiler {
         return result;
     }
 
-    private boolean compilePojo(
-            BindingValue value,
-            ExecutableElement method,
-            GeneratedClass generated) {
-
+    private boolean compilePojo(BindingValue value, ExecutableElement method,
+                                GeneratedClass generated) {
         TypeElement element = context.types.typeElement(value.type());
         if (value.direction() == BindingPlan.Direction.READ_FROM
                 && element != null && "RECORD".equals(element.getKind().name())) {
@@ -887,25 +826,15 @@ final class BindingCompiler {
             }
         }
 
-        Map<String, Property> properties =
-                context.properties.resolve(
-                        value.type());
-
-        List<BindingProperty> compiled =
-                new ArrayList<BindingProperty>(
-                        properties.size());
+        Map<String, Property> properties = context.properties.resolve(value.type());
+        List<BindingProperty> compiled = new ArrayList<BindingProperty>(properties.size());
 
         Map<String, String> claimedNames = new LinkedHashMap<String, String>();
         List<String> ignored = new ArrayList<String>();
 
-        for (Property property :
-                properties.values()) {
-
-            PropertyAccess access =
-                    value.direction() ==
-                            BindingPlan.Direction.READ_FROM
-                            ? property.write()
-                            : property.read();
+        for (Property property : properties.values()) {
+            PropertyAccess access = value.direction() == BindingPlan.Direction.READ_FROM
+                    ? property.write() : property.read();
 
             if (access == null) {
                 if (value.kind() == BindingValue.Kind.JOJO
@@ -965,11 +894,7 @@ final class BindingCompiler {
                     ? compileMemberOneOf(value, property.name(), access.type(),
                             memberOneOf(property.read()) != null ? memberOneOf(property.read())
                                     : memberOneOf(property.write()), method, generated)
-                    : compileValue(
-                            value.direction(),
-                            access.type(),
-                            method,
-                            generated,
+                    : compileValue(value.direction(), access.type(), method, generated,
                             selectedCodecName(readAnnotation, writeAnnotation),
                             selectedCodecPattern(readAnnotation, writeAnnotation));
 
@@ -977,12 +902,7 @@ final class BindingCompiler {
                 return false;
             }
 
-            compiled.add(
-                    new BindingProperty(
-                            property.name(),
-                            aliases,
-                            access,
-                            propertyValue));
+            compiled.add(new BindingProperty(property.name(), aliases, access, propertyValue));
         }
 
         value.properties(compiled);
@@ -1237,37 +1157,21 @@ final class BindingCompiler {
         return memberOneOf(access) != null;
     }
 
-    private boolean compileElement(
-            BindingValue value,
-            ExecutableElement method,
-            GeneratedClass generated) {
-
+    private boolean compileElement(BindingValue value, ExecutableElement method,
+                                   GeneratedClass generated) {
         TypeMirror elementType;
 
         if (value.kind() == BindingValue.Kind.LIST) {
-            elementType =
-                    value.direction() ==
-                            BindingPlan.Direction.READ_FROM
-                            ? context.types.listWriteElementType(
-                                    value.type())
-                            : context.types.listReadElementType(
-                                    value.type());
+            elementType = value.direction() == BindingPlan.Direction.READ_FROM
+                    ? context.types.listWriteElementType(value.type())
+                    : context.types.listReadElementType(value.type());
         } else {
-            elementType =
-                    value.direction() ==
-                            BindingPlan.Direction.READ_FROM
-                            ? context.types.setWriteElementType(
-                                    value.type())
-                            : context.types.setReadElementType(
-                                    value.type());
+            elementType = value.direction() == BindingPlan.Direction.READ_FROM
+                    ? context.types.setWriteElementType(value.type())
+                    : context.types.setReadElementType(value.type());
         }
 
-        BindingValue elementValue =
-                compileValue(
-                        value.direction(),
-                        elementType,
-                        method,
-                        generated);
+        BindingValue elementValue = compileValue(value.direction(), elementType, method, generated);
 
         if (elementValue == null) {
             return false;
@@ -1277,25 +1181,12 @@ final class BindingCompiler {
         return true;
     }
 
-    private boolean compileMap(
-            BindingValue value,
-            ExecutableElement method,
-            GeneratedClass generated) {
-
-        TypeMirror mapValueType =
-                value.direction() ==
-                        BindingPlan.Direction.READ_FROM
-                        ? context.types.mapWriteValueType(
-                                value.type())
-                        : context.types.mapReadValueType(
-                                value.type());
-
-        BindingValue mapValue =
-                compileValue(
-                        value.direction(),
-                        mapValueType,
-                        method,
-                        generated);
+    private boolean compileMap(BindingValue value, ExecutableElement method,
+                               GeneratedClass generated) {
+        TypeMirror mapValueType = value.direction() == BindingPlan.Direction.READ_FROM
+                ? context.types.mapWriteValueType(value.type())
+                : context.types.mapReadValueType(value.type());
+        BindingValue mapValue = compileValue(value.direction(), mapValueType, method, generated);
 
         if (mapValue == null) {
             return false;
@@ -1305,137 +1196,68 @@ final class BindingCompiler {
         return true;
     }
 
-    private boolean directList(
-            BindingPlan.Direction direction,
-            TypeMirror type) {
-
+    private boolean directList(BindingPlan.Direction direction, TypeMirror type) {
         if (direction == BindingPlan.Direction.READ_FROM) {
-            TypeMirror elementType =
-                    context.types.listWriteElementType(type);
-
-            return elementType != null &&
-                    canAssignImplementation(
-                            arrayListType,
-                            type);
+            TypeMirror elementType = context.types.listWriteElementType(type);
+            return elementType != null && canAssignImplementation(arrayListType, type);
         }
 
         return context.types.listReadElementType(type) != null;
     }
 
-    private boolean directSet(
-            BindingPlan.Direction direction,
-            TypeMirror type) {
-
+    private boolean directSet(BindingPlan.Direction direction, TypeMirror type) {
         if (direction == BindingPlan.Direction.READ_FROM) {
-            TypeMirror elementType =
-                    context.types.setWriteElementType(type);
-
-            return elementType != null &&
-                    canAssignImplementation(
-                            linkedHashSetType,
-                            type);
+            TypeMirror elementType = context.types.setWriteElementType(type);
+            return elementType != null && canAssignImplementation(linkedHashSetType, type);
         }
 
         return context.types.setReadElementType(type) != null;
     }
 
-    private boolean directMap(
-            BindingPlan.Direction direction,
-            TypeMirror type) {
-
+    private boolean directMap(BindingPlan.Direction direction, TypeMirror type) {
         if (direction == BindingPlan.Direction.READ_FROM) {
-            TypeMirror keyType =
-                    context.types.mapWriteKeyType(type);
-
-            TypeMirror valueType =
-                    context.types.mapWriteValueType(type);
-
-            return keyType != null &&
-                    valueType != null &&
-                    context.typeUtils.isAssignable(
-                            stringType,
-                            keyType) &&
-                    canAssignImplementation(
-                            linkedHashMapType,
-                            type);
+            TypeMirror keyType = context.types.mapWriteKeyType(type);
+            TypeMirror valueType = context.types.mapWriteValueType(type);
+            return keyType != null && valueType != null &&
+                    context.typeUtils.isAssignable(stringType, keyType) &&
+                    canAssignImplementation(linkedHashMapType, type);
         }
 
-        TypeMirror keyType =
-                context.types.mapReadKeyType(type);
-
-        TypeMirror valueType =
-                context.types.mapReadValueType(type);
-
-        return keyType != null &&
-                valueType != null &&
-                context.types.isSameErasure(
-                        keyType,
-                        stringType);
+        TypeMirror keyType = context.types.mapReadKeyType(type);
+        TypeMirror valueType = context.types.mapReadValueType(type);
+        return keyType != null && valueType != null &&
+                context.types.isSameErasure(keyType, stringType);
     }
 
-    private boolean canAssignImplementation(
-            TypeMirror implementation,
-            TypeMirror target) {
-
-        return context.typeUtils.isAssignable(
-                context.typeUtils.erasure(
-                        implementation),
-                context.typeUtils.erasure(
-                        target));
+    private boolean canAssignImplementation(TypeMirror implementation, TypeMirror target) {
+        return context.typeUtils.isAssignable(context.typeUtils.erasure(implementation),
+                context.typeUtils.erasure(target));
     }
 
-    private BindingValue.Kind unsupported(
-            ExecutableElement method,
-            GeneratedClass generated,
-            TypeMirror type,
-            String reason) {
-
-        error(
-                method,
-                generated,
-                "Cannot generate direct " +
-                        "binding for " + type +
-                        ": " + reason);
+    private BindingValue.Kind unsupported(ExecutableElement method, GeneratedClass generated,
+                                          TypeMirror type, String reason) {
+        error(method, generated, "Cannot generate direct " +
+                "binding for " + type + ": " + reason);
 
         return null;
     }
 
-    private void error(
-            ExecutableElement method,
-            GeneratedClass generated,
-            String message) {
-
+    private void error(ExecutableElement method, GeneratedClass generated, String message) {
         context.error(method, message);
         generated.invalidate();
     }
 
-    private String helperSuggestion(
-            BindingPlan.Direction direction,
-            TypeMirror type) {
-
-        TypeElement element =
-                context.types.typeElement(type);
-
-        String simple =
-                element == null
-                        ? "Value"
-                        : element.getSimpleName()
-                                .toString();
-
-        return direction ==
-                BindingPlan.Direction.READ_FROM
-                ? "_read" + simple
-                : "_write" + simple;
+    private String helperSuggestion(BindingPlan.Direction direction, TypeMirror type) {
+        TypeElement element = context.types.typeElement(type);
+        String simple = element == null ? "Value" : element.getSimpleName().toString();
+        return direction == BindingPlan.Direction.READ_FROM ? "_read" + simple : "_write" + simple;
     }
 
     private TypeMirror requiredType(String name) {
-        TypeElement element =
-                context.elements.getTypeElement(name);
+        TypeElement element = context.elements.getTypeElement(name);
 
         if (element == null) {
-            throw new IllegalStateException(
-                    "Required type is not available: " +
-                            name);
+            throw new IllegalStateException("Required type is not available: " + name);
         }
 
         return element.asType();
@@ -1446,10 +1268,7 @@ final class BindingCompiler {
         private final BindingPlan plan;
         private final BindingValue value;
 
-        CompiledMethod(
-                BindingPlan plan,
-                BindingValue value) {
-
+        CompiledMethod(BindingPlan plan, BindingValue value) {
             this.plan = plan;
             this.value = value;
         }

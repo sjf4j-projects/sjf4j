@@ -35,7 +35,7 @@ class GsonParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -54,7 +54,7 @@ class GsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -73,7 +73,7 @@ class GsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -89,7 +89,7 @@ class GsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -103,7 +103,7 @@ class GsonParserTest {
                 assertEquals("cannot read null as char", error.getMessage());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -125,7 +125,7 @@ class GsonParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -138,7 +138,7 @@ class GsonParserTest {
                 assertTrue(parser.nextIfArrayEnd());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -169,7 +169,7 @@ class GsonParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -182,7 +182,7 @@ class GsonParserTest {
                 assertThrows(IOException.class, parser::readRaw);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -199,7 +199,7 @@ class GsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -230,7 +230,7 @@ class GsonParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }

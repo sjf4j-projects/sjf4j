@@ -10,6 +10,7 @@ import org.sjf4j.node.NodeMapperFixtures.IntJajo;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -49,6 +50,55 @@ class NodeMapperIndexedConversionTest {
 
             Set<Long> set = (Set<Long>) NodeMapper.convert(source, longSet, false, RuntimeContext.EMPTY);
             assertEquals(new LinkedHashSet<>(Arrays.asList(1L, 2L)), set);
+        }
+    }
+
+    @Test
+    void sequentialListConvertsWithoutIndexedReads() {
+        List<Object> source = new NoIndexedLinkedList(Arrays.asList(1, 2, 2));
+        Type longs = new TypeReference<List<Long>>() {}.getType();
+        Type longSet = new TypeReference<Set<Long>>() {}.getType();
+
+        assertEquals(Arrays.asList(1L, 2L, 2L),
+                NodeMapper.convert(source, longs, false, RuntimeContext.EMPTY));
+        assertEquals(Arrays.asList(1, 2, 2),
+                ((JsonArray) NodeMapper.convert(source, JsonArray.class, false, RuntimeContext.EMPTY)).toList());
+        assertEquals(Arrays.asList(1, 2, 2),
+                ((IntJajo) NodeMapper.convert(source, IntJajo.class, false, RuntimeContext.EMPTY)).toList());
+        assertArrayEquals(new int[]{1, 2, 2},
+                (int[]) NodeMapper.convert(source, int[].class, false, RuntimeContext.EMPTY));
+        assertEquals(new LinkedHashSet<>(Arrays.asList(1L, 2L)),
+                NodeMapper.convert(source, longSet, false, RuntimeContext.EMPTY));
+
+        BindingException error = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new NoIndexedLinkedList(Arrays.asList(1, true)),
+                        longs, false, RuntimeContext.EMPTY));
+        assertTrue(error.getMessage().contains("$[1]"));
+    }
+
+    @Test
+    void jsonArraySourceStillReadsThroughGetNodeOverride() {
+        JsonArray source = new JsonArray() {
+            @Override
+            public Object getNode(int index) {
+                return ((Integer) super.getNode(index)) + 1;
+            }
+        };
+        source.add(1);
+        source.add(2);
+
+        assertEquals(Arrays.asList(2, 3), NodeMapper.convert(source,
+                new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY));
+    }
+
+    private static final class NoIndexedLinkedList extends LinkedList<Object> {
+        NoIndexedLinkedList(List<?> values) {
+            addAll(values);
+        }
+
+        @Override
+        public Object get(int index) {
+            throw new AssertionError("indexed read on sequential list");
         }
     }
 

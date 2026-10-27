@@ -512,7 +512,7 @@ public class HandWriteBenchmark {
             Jackson2HandPojoSerializedWriter.writeUser(generator, USER);
             generator.close();
             final byte[] bs =  output.toByteArray();
-            output.release();
+            output.close();
             return bs;
         }
     }

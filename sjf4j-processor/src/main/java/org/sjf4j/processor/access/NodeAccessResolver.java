@@ -21,62 +21,37 @@ public final class NodeAccessResolver {
     private final PropertyResolver properties;
 
 
-    public NodeAccessResolver(
-            TypeSystem types,
-            PropertyResolver properties) {
-
-        this.types =
-                Asserts.notNull(
-                        types,
-                        "types");
-
-        this.properties =
-                Asserts.notNull(
-                        properties,
-                        "properties");
+    public NodeAccessResolver(TypeSystem types, PropertyResolver properties) {
+        this.types = Asserts.notNull(types, "types");
+        this.properties = Asserts.notNull(properties, "properties");
     }
 
 
     /**
-     * Resolves a statically known object property name.
+     * Resolves a statically known object member name.
      *
      * <p>For JOJO types, declared Java properties take precedence over the
      * dynamic JsonObject namespace. A declared read-only or write-only property
      * therefore remains read-only or write-only instead of falling back to a
      * dynamic key.</p>
      */
-    public NodeAccess resolveName(
-            TypeMirror owner,
-            String name) {
-
-        if (owner == null ||
-                name == null) {
-
+    public NodeAccess resolveName(TypeMirror owner, String name) {
+        if (owner == null || name == null) {
             return null;
         }
 
-        owner =
-                types.concrete(owner);
-
-        NodeKind kind =
-                types.nodeKind(owner);
+        owner = types.concrete(owner);
+        NodeKind kind = types.nodeKind(owner);
 
         switch (kind) {
             case OBJECT_POJO:
-                return property(
-                        owner,
-                        name);
+                return property(owner, name);
 
             case OBJECT_JOJO: {
-                Property property =
-                        properties.resolve(
-                                owner,
-                                name);
+                Property property = properties.resolve(owner, name);
 
                 return property != null
-                        ? property(
-                        owner,
-                        property)
+                        ? property(owner, property)
                         : jsonObject(owner);
             }
 
@@ -105,18 +80,13 @@ public final class NodeAccessResolver {
      * <p>POJO properties cannot be resolved dynamically. JOJO is supported
      * because its JsonObject namespace remains dynamic.</p>
      */
-    public NodeAccess resolveDynamicName(
-            TypeMirror owner) {
-
+    public NodeAccess resolveDynamicName(TypeMirror owner) {
         if (owner == null) {
             return null;
         }
 
-        owner =
-                types.concrete(owner);
-
-        NodeKind kind =
-                types.nodeKind(owner);
+        owner = types.concrete(owner);
+        NodeKind kind = types.nodeKind(owner);
 
         switch (kind) {
             case OBJECT_JOJO:
@@ -144,18 +114,13 @@ public final class NodeAccessResolver {
      *
      * <p>Set deliberately has no indexed access.</p>
      */
-    public NodeAccess resolveIndex(
-            TypeMirror owner) {
-
+    public NodeAccess resolveIndex(TypeMirror owner) {
         if (owner == null) {
             return null;
         }
 
-        owner =
-                types.concrete(owner);
-
-        NodeKind kind =
-                types.nodeKind(owner);
+        owner = types.concrete(owner);
+        NodeKind kind = types.nodeKind(owner);
 
         switch (kind) {
             case ARRAY_ARRAY:
@@ -186,18 +151,13 @@ public final class NodeAccessResolver {
      *
      * <p>Java arrays and Set deliberately do not support append.</p>
      */
-    public NodeAccess resolveAppend(
-            TypeMirror owner) {
-
+    public NodeAccess resolveAppend(TypeMirror owner) {
         if (owner == null) {
             return null;
         }
 
-        owner =
-                types.concrete(owner);
-
-        NodeKind kind =
-                types.nodeKind(owner);
+        owner = types.concrete(owner);
+        NodeKind kind = types.nodeKind(owner);
 
         switch (kind) {
             case ARRAY_LIST:
@@ -226,42 +186,24 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess property(
-            TypeMirror owner,
-            String name) {
-
-        Property property =
-                properties.resolve(
-                        owner,
-                        name);
+    private NodeAccess property(TypeMirror owner, String name) {
+        Property property = properties.resolve(owner, name);
 
         return property == null
                 ? null
-                : property(
-                owner,
-                property);
+                : property(owner, property);
     }
 
 
-    private NodeAccess property(
-            TypeMirror owner,
-            Property property) {
-
-        PropertyAccess read =
-                property.read();
-
-        PropertyAccess write =
-                property.write();
+    private NodeAccess property(TypeMirror owner, Property property) {
+        PropertyAccess read = property.read();
+        PropertyAccess write = property.write();
 
         return new NodeAccess(
                 NodeAccess.Kind.PROPERTY,
                 owner,
-                read == null
-                        ? null
-                        : read.type(),
-                write == null
-                        ? null
-                        : write.type(),
+                read == null ? null : read.type(),
+                write == null ? null : write.type(),
                 property);
     }
 
@@ -272,8 +214,7 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess map(
-            TypeMirror owner) {
+    private NodeAccess map(TypeMirror owner) {
         return new NodeAccess(
                 NodeAccess.Kind.MAP,
                 owner,
@@ -289,11 +230,8 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess jsonObject(
-            TypeMirror owner) {
-
-        TypeMirror valueType =
-                types.objectType();
+    private NodeAccess jsonObject(TypeMirror owner) {
+        TypeMirror valueType = types.objectType();
 
         return new NodeAccess(
                 NodeAccess.Kind.JSON_OBJECT,
@@ -310,8 +248,7 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess list(
-            TypeMirror owner) {
+    private NodeAccess list(TypeMirror owner) {
         return new NodeAccess(
                 NodeAccess.Kind.LIST,
                 owner,
@@ -327,12 +264,8 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess array(
-            TypeMirror owner) {
-
-        TypeMirror elementType =
-                ((ArrayType) owner)
-                        .getComponentType();
+    private NodeAccess array(TypeMirror owner) {
+        TypeMirror elementType = ((ArrayType) owner).getComponentType();
 
         return new NodeAccess(
                 NodeAccess.Kind.ARRAY,
@@ -349,11 +282,8 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess jsonArray(
-            TypeMirror owner) {
-
-        TypeMirror valueType =
-                types.objectType();
+    private NodeAccess jsonArray(TypeMirror owner) {
+        TypeMirror valueType = types.objectType();
 
         return new NodeAccess(
                 NodeAccess.Kind.JSON_ARRAY,
@@ -370,11 +300,8 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess dynamic(
-            TypeMirror owner) {
-
-        TypeMirror valueType =
-                types.objectType();
+    private NodeAccess dynamic(TypeMirror owner) {
+        TypeMirror valueType = types.objectType();
 
         return new NodeAccess(
                 NodeAccess.Kind.DYNAMIC,
@@ -391,9 +318,7 @@ public final class NodeAccessResolver {
      * --------------------------------------------------------------
      */
 
-    private NodeAccess unknown(
-            TypeMirror owner) {
-
+    private NodeAccess unknown(TypeMirror owner) {
         return null;
     }
 }

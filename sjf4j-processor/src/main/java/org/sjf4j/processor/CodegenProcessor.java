@@ -51,28 +51,14 @@ public final class CodegenProcessor extends AbstractProcessor {
     }
 
     @Override
-    public synchronized void init(
-            ProcessingEnvironment processingEnv) {
-
+    public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-
-        this.context =
-                new ProcessorContext(processingEnv);
-
-        this.annotationValidator =
-                new AnnotationValidator(context);
-
-        this.navigatorGenerator =
-                new NavigatorGenerator(context);
-
-        this.mapperGenerator =
-                new MapperGenerator(context);
-
-        this.jdbcMapperGenerator =
-                new JdbcMapperGenerator(context);
-
-        this.bindingGenerator =
-                new BindingGenerator(context);
+        this.context = new ProcessorContext(processingEnv);
+        this.annotationValidator = new AnnotationValidator(context);
+        this.navigatorGenerator = new NavigatorGenerator(context);
+        this.mapperGenerator = new MapperGenerator(context);
+        this.jdbcMapperGenerator = new JdbcMapperGenerator(context);
+        this.bindingGenerator = new BindingGenerator(context);
     }
 
     /** Processes each discovered interface; other processors may see the same annotations. */
@@ -81,61 +67,36 @@ public final class CodegenProcessor extends AbstractProcessor {
             Set<? extends TypeElement> annotations,
             RoundEnvironment roundEnv) {
 
-        annotationValidator.validate(
-                annotations,
-                roundEnv);
+        annotationValidator.validate(annotations, roundEnv);
 
         // Discovery precedes generation within each annotation processing round.
         context.discovery.collect(roundEnv);
 
-        processInterfaces(
-                roundEnv,
-                CompiledNavigator.class,
-                navigatorGenerator::generate);
-
-        processInterfaces(
-                roundEnv,
-                CompiledMapper.class,
-                this::generateMapper);
-
-        processInterfaces(
-                roundEnv,
-                CompiledJdbcMapper.class,
-                this::generateJdbcMapper);
-
-        processInterfaces(
-                roundEnv,
-                CompiledBinder.class,
-                bindingGenerator::generate);
+        processInterfaces(roundEnv, CompiledNavigator.class, navigatorGenerator::generate);
+        processInterfaces(roundEnv, CompiledMapper.class, this::generateMapper);
+        processInterfaces(roundEnv, CompiledJdbcMapper.class, this::generateJdbcMapper);
+        processInterfaces(roundEnv, CompiledBinder.class, bindingGenerator::generate);
 
         return false;
     }
 
-    private void generateMapper(
-            TypeElement type) {
-
-        if (type.getAnnotation(
-                CompiledJdbcMapper.class) != null) {
-
+    private void generateMapper(TypeElement type) {
+        if (type.getAnnotation(CompiledJdbcMapper.class) != null) {
             context.error(
                     type,
                     "An interface cannot be annotated with both " +
                             "@CompiledMapper and @CompiledJdbcMapper");
-
             return;
         }
 
         mapperGenerator.generate(type);
     }
 
-    private void generateJdbcMapper(
-            TypeElement type) {
-
+    private void generateJdbcMapper(TypeElement type) {
         /*
          * The CompiledMapper pass reports the conflict once.
          */
-        if (type.getAnnotation(
-                CompiledMapper.class) != null) {
+        if (type.getAnnotation(CompiledMapper.class) != null) {
             return;
         }
 
@@ -147,24 +108,14 @@ public final class CodegenProcessor extends AbstractProcessor {
             Class<A> annotationType,
             Consumer<TypeElement> generator) {
 
-        for (Element element :
-                roundEnv.getElementsAnnotatedWith(
-                        annotationType)) {
-
-            if (element.getKind() !=
-                    ElementKind.INTERFACE) {
-
+        for (Element element : roundEnv.getElementsAnnotatedWith(annotationType)) {
+            if (element.getKind() != ElementKind.INTERFACE) {
                 context.error(
                         element,
-                        "@" +
-                                annotationType.getSimpleName() +
-                                " can be applied only to interfaces");
-
+                        "@" + annotationType.getSimpleName() + " can be applied only to interfaces");
                 continue;
             }
-
-            generator.accept(
-                    (TypeElement) element);
+            generator.accept((TypeElement) element);
         }
     }
 }

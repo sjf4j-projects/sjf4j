@@ -41,81 +41,47 @@ public final class ConversionCompiler {
     private final ConverterResolver converters;
 
 
-    public ConversionCompiler(
-            ProcessorContext context,
-            TypeElement mapper,
-            List<MappingPlan> plans,
-            CompiledMetadata metadata) {
-
+    public ConversionCompiler(ProcessorContext context, TypeElement mapper,
+                              List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
         this.types = context.types;
         this.mapper = mapper;
-
-        this.creators =
-                new CreatorResolver(context);
-
-        this.converters =
-                new ConverterResolver(
-                        context,
-                        mapper,
-                        plans,
-                        metadata);
+        this.creators = new CreatorResolver(context);
+        this.converters = new ConverterResolver(context, mapper, plans, metadata);
     }
 
 
     /**
      * Compiles a previously selected conversion.
      */
-    public CompiledConversion compile(
-            MappingPlan plan,
-            ConverterResolver.Conversion conversion,
-            GeneratedClass generated) {
-
-        return compile(
-                plan,
-                conversion,
-                generated,
-                new LinkedHashSet<String>());
+    public CompiledConversion compile(MappingPlan plan, ConverterResolver.Conversion conversion,
+                                      GeneratedClass generated) {
+        return compile(plan, conversion, generated, new LinkedHashSet<String>());
     }
 
 
-    private CompiledConversion compile(
-            MappingPlan plan,
-            ConverterResolver.Conversion conversion,
-            GeneratedClass generated,
-            Set<String> stack) {
-
+    private CompiledConversion compile(MappingPlan plan, ConverterResolver.Conversion conversion,
+                                       GeneratedClass generated, Set<String> stack) {
         if (conversion == null) {
             return null;
         }
 
         switch (conversion.kind()) {
             case DIRECT:
-                return CompiledConversion.direct(
-                        conversion.sourceType(),
-                        conversion.targetType());
+                return CompiledConversion.direct(conversion.sourceType(), conversion.targetType());
 
             case METHOD:
-                return CompiledConversion.method(
-                        conversion.sourceType(),
-                        conversion.targetType(),
-                        conversion.method(),
-                        conversion.mapperType());
+                return CompiledConversion.method(conversion.sourceType(), conversion.targetType(),
+                        conversion.method(), conversion.mapperType());
 
             case SCALAR:
-                return CompiledConversion.scalar(
-                        conversion.sourceType(),
-                        conversion.targetType());
+                return CompiledConversion.scalar(conversion.sourceType(), conversion.targetType());
 
             case VALUE_CODEC:
-                return CompiledConversion.valueCodec(
-                        conversion.sourceType(),
-                        conversion.targetType());
+                return CompiledConversion.valueCodec(conversion.sourceType(), conversion.targetType());
 
             case CODEC_ENCODE:
-                return CompiledConversion.codecEncode(
-                        conversion.sourceType(),
-                        conversion.targetType());
+                return CompiledConversion.codecEncode(conversion.sourceType(), conversion.targetType());
 
             case ONE_OF:
                 /*
@@ -123,29 +89,16 @@ public final class ConversionCompiler {
                  * discriminator dispatch can be emitted without discovering
                  * further Java structure.
                  */
-                return CompiledConversion.oneOf(
-                        conversion.sourceType(),
-                        conversion.targetType());
+                return CompiledConversion.oneOf(conversion.sourceType(), conversion.targetType());
 
             case CONTAINER:
-                return compileContainer(
-                        plan,
-                        conversion.sourceType(),
-                        conversion.targetType(),
-                        generated,
-                        stack);
+                return compileContainer(plan, conversion.sourceType(), conversion.targetType(), generated, stack);
 
             case STRUCTURAL:
-                return compileStructural(
-                        plan,
-                        conversion.sourceType(),
-                        conversion.targetType(),
-                        generated,
-                        stack);
+                return compileStructural(plan, conversion.sourceType(), conversion.targetType(), generated, stack);
 
             default:
-                throw new AssertionError(
-                        conversion.kind());
+                throw new AssertionError(conversion.kind());
         }
     }
 
@@ -156,185 +109,91 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private CompiledConversion compileContainer(
-            MappingPlan plan,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            GeneratedClass generated,
-            Set<String> stack) {
-
-        NodeKind sourceKind =
-                types.nodeKind(sourceType);
-
-        NodeKind targetKind =
-                types.nodeKind(targetType);
+    private CompiledConversion compileContainer(MappingPlan plan, TypeMirror sourceType,
+                                                TypeMirror targetType, GeneratedClass generated,
+                                                Set<String> stack) {
+        NodeKind sourceKind = types.nodeKind(sourceType);
+        NodeKind targetKind = types.nodeKind(targetType);
 
         /*
          * Map -> Map is a key/value container conversion.
          */
-        if (sourceKind == NodeKind.OBJECT_MAP &&
-                targetKind == NodeKind.OBJECT_MAP) {
+        if (sourceKind == NodeKind.OBJECT_MAP && targetKind == NodeKind.OBJECT_MAP) {
+            TypeMirror sourceKey = types.mapReadKeyType(sourceType);
+            TypeMirror sourceValue = types.mapReadValueType(sourceType);
+            TypeMirror targetKey = types.mapWriteKeyType(targetType);
+            TypeMirror targetValue = types.mapWriteValueType(targetType);
 
-            TypeMirror sourceKey =
-                    types.mapReadKeyType(
-                            sourceType);
-
-            TypeMirror sourceValue =
-                    types.mapReadValueType(
-                            sourceType);
-
-            TypeMirror targetKey =
-                    types.mapWriteKeyType(
-                            targetType);
-
-            TypeMirror targetValue =
-                    types.mapWriteValueType(
-                            targetType);
-
-            if (sourceKey == null ||
-                    sourceValue == null) {
-
-                error(
-                        plan.method(),
-                        generated,
-                        "source Map key/value type is not readable: " +
-                                sourceType);
-
+            if (sourceKey == null || sourceValue == null) {
+                error(plan.method(), generated, "source Map key/value type is not readable: " + sourceType);
                 return null;
             }
 
-            if (targetKey == null ||
-                    targetValue == null) {
-
-                error(
-                        plan.method(),
-                        generated,
-                        "target Map key/value type is not writable: " +
-                                targetType);
-
+            if (targetKey == null || targetValue == null) {
+                error(plan.method(), generated, "target Map key/value type is not writable: " + targetType);
                 return null;
             }
 
             ConverterResolver.Conversion keyConversion =
-                    converters.resolve(
-                            plan,
-                            null,
-                            sourceKey,
-                            targetKey,
-                            generated);
+                    converters.resolve(plan, null, sourceKey, targetKey, generated);
 
             if (keyConversion == null) {
                 return null;
             }
 
             ConverterResolver.Conversion valueConversion =
-                    converters.resolve(
-                            plan,
-                            null,
-                            sourceValue,
-                            targetValue,
-                            generated);
+                    converters.resolve(plan, null, sourceValue, targetValue, generated);
 
             if (valueConversion == null) {
                 return null;
             }
 
-            CompiledConversion key =
-                    compile(
-                            plan,
-                            keyConversion,
-                            generated,
-                            stack);
+            CompiledConversion key = compile(plan, keyConversion, generated, stack);
 
             if (key == null) {
                 return null;
             }
 
-            CompiledConversion value =
-                    compile(
-                            plan,
-                            valueConversion,
-                            generated,
-                            stack);
+            CompiledConversion value = compile(plan, valueConversion, generated, stack);
 
             if (value == null) {
                 return null;
             }
 
-            return CompiledConversion.map(
-                    sourceType,
-                    targetType,
-                    sourceKey,
-                    sourceValue,
-                    targetKey,
-                    targetValue,
-                    key,
-                    value);
+            return CompiledConversion.map(sourceType, targetType, sourceKey, sourceValue,
+                    targetKey, targetValue, key, value);
         }
 
-        TypeMirror sourceElement =
-                sourceKind == NodeKind.COMPILE_TIME_UNKNOWN
-                        ? types.objectType()
-                        : types.readElementType(
-                        sourceType);
+        TypeMirror sourceElement = sourceKind == NodeKind.COMPILE_TIME_UNKNOWN
+                ? types.objectType() : types.readElementType(sourceType);
 
         if (sourceElement == null) {
-            error(
-                    plan.method(),
-                    generated,
-                    "source container element type is not readable: " +
-                            sourceType);
-
+            error(plan.method(), generated, "source container element type is not readable: " + sourceType);
             return null;
         }
 
-        TypeMirror targetElement =
-                types.writeElementType(
-                        targetType);
+        TypeMirror targetElement = types.writeElementType(targetType);
 
         if (targetElement == null) {
-            error(
-                    plan.method(),
-                    generated,
-                    "target container element type is not writable: " +
-                            targetType);
-
+            error(plan.method(), generated, "target container element type is not writable: " + targetType);
             return null;
         }
 
         ConverterResolver.Conversion elementConversion =
-                converters.resolve(
-                        plan,
-                        null,
-                        sourceElement,
-                        targetElement,
-                        generated);
+                converters.resolve(plan, null, sourceElement, targetElement, generated);
 
         if (elementConversion == null) {
             return null;
         }
 
-        CompiledConversion element =
-                compile(
-                        plan,
-                        elementConversion,
-                        generated,
-                        stack);
+        CompiledConversion element = compile(plan, elementConversion, generated, stack);
 
         if (element == null) {
             return null;
         }
 
-        return CompiledConversion.container(
-                sourceType,
-                targetType,
-                sourceElement,
-                targetElement,
-                element);
+        return CompiledConversion.container(sourceType, targetType, sourceElement, targetElement, element);
     }
-
-
-
 
     /*
      * --------------------------------------------------------------
@@ -342,25 +201,12 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private CompiledConversion compileStructural(
-            MappingPlan parentPlan,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            GeneratedClass generated,
-            Set<String> stack) {
-
-        sourceType =
-                types.concrete(
-                        sourceType);
-
-        targetType =
-                types.concrete(
-                        targetType);
-
-        String key =
-                structuralKey(
-                        sourceType,
-                        targetType);
+    private CompiledConversion compileStructural(MappingPlan parentPlan, TypeMirror sourceType,
+                                                 TypeMirror targetType, GeneratedClass generated,
+                                                 Set<String> stack) {
+        sourceType = types.concrete(sourceType);
+        targetType = types.concrete(targetType);
+        String key = structuralKey(sourceType, targetType);
 
         /*
          * A recursive structural pair without an explicit mapper method would
@@ -369,41 +215,22 @@ public final class ConversionCompiler {
          * METHOD before STRUCTURAL.
          */
         if (!stack.add(key)) {
-            error(
-                    parentPlan.method(),
-                    generated,
-                    "recursive structural mapping " +
-                            sourceType +
-                            " -> " +
-                            targetType +
-                            " requires an explicit mapper method");
-
+            error(parentPlan.method(), generated, "recursive structural mapping " + sourceType +
+                    " -> " + targetType + " requires an explicit mapper method");
             return null;
         }
 
         try {
-            NodeKind sourceKind =
-                    types.nodeKind(
-                            sourceType);
-
-            NodeKind targetKind =
-                    types.nodeKind(
-                            targetType);
+            NodeKind sourceKind = types.nodeKind(sourceType);
+            NodeKind targetKind = types.nodeKind(targetType);
 
             /*
              * JOJO is a hybrid target: declared properties are compiled like a
              * POJO and the unconsumed source object members are copied into its
              * dynamic namespace.
              */
-            if (targetKind ==
-                    NodeKind.OBJECT_JOJO) {
-
-                return compileToTypedObject(
-                        parentPlan,
-                        sourceType,
-                        targetType,
-                        generated,
-                        stack);
+            if (targetKind == NodeKind.OBJECT_JOJO) {
+                return compileToTypedObject(parentPlan, sourceType, targetType, generated, stack);
             }
 
             /*
@@ -411,29 +238,15 @@ public final class ConversionCompiler {
              * included deliberately; only that source kind needs runtime OBNT
              * dispatch through Nodes.
              */
-            if (isDynamicObjectSource(sourceKind) &&
-                    isDynamicObjectTarget(targetKind)) {
-
-                return compileDynamicObject(
-                        parentPlan,
-                        sourceType,
-                        targetType,
-                        generated,
-                        stack);
+            if (isDynamicObjectSource(sourceKind) && isDynamicObjectTarget(targetKind)) {
+                return compileDynamicObject(parentPlan, sourceType, targetType, generated, stack);
             }
 
             /*
              * Plain Java properties -> Map / JsonObject.
              */
-            if (isPojoLike(sourceKind) &&
-                    isDynamicObjectTarget(targetKind)) {
-
-                return compilePojoToDynamic(
-                        parentPlan,
-                        sourceType,
-                        targetType,
-                        generated,
-                        stack);
+            if (isPojoLike(sourceKind) && isDynamicObjectTarget(targetKind)) {
+                return compilePojoToDynamic(parentPlan, sourceType, targetType, generated, stack);
             }
 
             /*
@@ -442,22 +255,11 @@ public final class ConversionCompiler {
              * Nodes.getInObject at generated-code runtime.
              */
             if (isTypedObject(targetKind)) {
-                return compileToTypedObject(
-                        parentPlan,
-                        sourceType,
-                        targetType,
-                        generated,
-                        stack);
+                return compileToTypedObject(parentPlan, sourceType, targetType, generated, stack);
             }
 
-            error(
-                    parentPlan.method(),
-                    generated,
-                    "unsupported structural mapping " +
-                            sourceType +
-                            " -> " +
-                            targetType);
-
+            error(parentPlan.method(), generated,
+                    "unsupported structural mapping " + sourceType + " -> " + targetType);
             return null;
 
         } finally {
@@ -472,143 +274,71 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private CompiledConversion compileToTypedObject(
-            MappingPlan parentPlan,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            GeneratedClass generated,
-            Set<String> stack) {
-
-        MappingPlan nestedPlan =
-                nestedPlan(
-                        parentPlan,
-                        targetType);
-
-        CreatorResolver.Creation creation =
-                creators.resolve(
-                        mapper,
-                        nestedPlan,
-                        generated);
+    private CompiledConversion compileToTypedObject(MappingPlan parentPlan, TypeMirror sourceType,
+                                                    TypeMirror targetType, GeneratedClass generated,
+                                                    Set<String> stack) {
+        MappingPlan nestedPlan = nestedPlan(parentPlan, targetType);
+        CreatorResolver.Creation creation = creators.resolve(mapper, nestedPlan, generated);
 
         if (creation == null) {
             return null;
         }
 
-        TypeMirror workingTarget =
-                creation.targetType();
-
-        List<StructuralArgument> arguments =
-                new ArrayList<StructuralArgument>();
-
-        Set<String> consumed =
-                new LinkedHashSet<String>();
+        TypeMirror workingTarget = creation.targetType();
+        List<StructuralArgument> arguments = new ArrayList<StructuralArgument>();
+        Set<String> consumed = new LinkedHashSet<String>();
 
         /*
          * Constructor / record arguments.
          */
-        if (creation.kind() ==
-                CreatorResolver.Creation.Kind.CONSTRUCTOR) {
+        if (creation.kind() == CreatorResolver.Creation.Kind.CONSTRUCTOR) {
+            ExecutableElement constructor = creation.constructor();
+            List<? extends VariableElement> parameters = constructor.getParameters();
+            List<? extends TypeMirror> parameterTypes = creation.parameterTypes();
 
-            ExecutableElement constructor =
-                    creation.constructor();
+            for (int i = 0; i < parameters.size(); i++) {
+                VariableElement parameter = parameters.get(i);
+                String name = context.annotations.propertyName(parameter, parameter.getSimpleName().toString());
+                NodeAccess source = context.access.resolveName(sourceType, name);
 
-            List<? extends VariableElement> parameters =
-                    constructor.getParameters();
-
-            List<? extends TypeMirror> parameterTypes =
-                    creation.parameterTypes();
-
-            for (int i = 0;
-                 i < parameters.size();
-                 i++) {
-
-                VariableElement parameter =
-                        parameters.get(i);
-
-                String name =
-                        context.annotations
-                                .propertyName(
-                                        parameter,
-                                        parameter
-                                                .getSimpleName()
-                                                .toString());
-
-                NodeAccess source =
-                        context.access
-                                .resolveName(
-                                        sourceType,
-                                        name);
-
-                if (source == null ||
-                        !source.readable()) {
-
-                    error(
-                            parentPlan.method(),
-                            generated,
-                            "cannot resolve source property '" +
-                                    name +
-                                    "' for constructor of " +
-                                    workingTarget);
+                if (source == null || !source.readable()) {
+                    error(parentPlan.method(), generated,
+                            "cannot resolve source property '" + name + "' for constructor of " + workingTarget);
 
                     return null;
                 }
 
-                TypeMirror argumentType =
-                        parameterTypes.get(i);
-
+                TypeMirror argumentType = parameterTypes.get(i);
                 CompiledConversion conversion =
-                        compileNested(
-                                parentPlan,
-                                source.readType(),
-                                argumentType,
-                                generated,
-                                stack);
+                        compileNested(parentPlan, source.readType(), argumentType, generated, stack);
 
                 if (conversion == null) {
                     return null;
                 }
 
-                arguments.add(
-                        new StructuralArgument(
-                                name,
-                                source,
-                                argumentType,
-                                conversion));
-
+                arguments.add(new StructuralArgument(name, source, argumentType, conversion));
                 consumed.add(name);
             }
         }
 
-        List<StructuralProperty> properties =
-                new ArrayList<StructuralProperty>();
+        List<StructuralProperty> properties = new ArrayList<StructuralProperty>();
+        Map<String, Property> targetProperties = context.properties.resolve(workingTarget);
 
-        Map<String, Property> targetProperties =
-                context.properties
-                        .resolve(
-                                workingTarget);
-
-        for (Property property :
-                targetProperties.values()) {
+        for (Property property : targetProperties.values()) {
 
             if (!property.settable()) {
                 continue;
             }
 
-            String name =
-                    property.name();
+            String name = property.name();
 
             if (consumed.contains(name)) {
                 continue;
             }
 
-            NodeAccess source =
-                    context.access
-                            .resolveName(
-                                    sourceType,
-                                    name);
+            NodeAccess source = context.access.resolveName(sourceType, name);
 
-            if (source == null ||
-                    !source.readable()) {
+            if (source == null || !source.readable()) {
 
                 /*
                  * Structural auto mapping ignores unmatched source properties.
@@ -616,57 +346,29 @@ public final class ConversionCompiler {
                 continue;
             }
 
-            NodeAccess target =
-                    context.access
-                            .resolveName(
-                                    workingTarget,
-                                    name);
+            NodeAccess target = context.access.resolveName(workingTarget, name);
 
-            if (target == null ||
-                    !target.writable()) {
+            if (target == null || !target.writable()) {
 
                 continue;
             }
 
             CompiledConversion conversion =
-                    compileNested(
-                            parentPlan,
-                            source.readType(),
-                            target.writeType(),
-                            generated,
-                            stack);
+                    compileNested(parentPlan, source.readType(), target.writeType(), generated, stack);
 
             if (conversion == null) {
                 return null;
             }
 
-            properties.add(
-                    new StructuralProperty(
-                            name,
-                            source,
-                            target,
-                            conversion));
+            properties.add(new StructuralProperty(name, source, target, conversion));
         }
 
-        DynamicObjectPlan dynamicObject =
-                types.nodeKind(workingTarget) ==
-                        NodeKind.OBJECT_JOJO
-                        ? compileJojoRemainder(
-                        parentPlan,
-                        sourceType,
-                        targetProperties.keySet(),
-                        generated,
-                        stack)
-                        : null;
+        DynamicObjectPlan dynamicObject = types.nodeKind(workingTarget) == NodeKind.OBJECT_JOJO
+                ? compileJojoRemainder(parentPlan, sourceType, targetProperties.keySet(), generated, stack)
+                : null;
 
-        return CompiledConversion.structural(
-                sourceType,
-                targetType,
-                workingTarget,
-                creation,
-                arguments,
-                properties,
-                dynamicObject);
+        return CompiledConversion.structural(sourceType, targetType, workingTarget, creation,
+                arguments, properties, dynamicObject);
     }
 
 
@@ -676,90 +378,46 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private CompiledConversion compilePojoToDynamic(
-            MappingPlan plan,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            GeneratedClass generated,
-            Set<String> stack) {
-
-        TypeMirror targetValue =
-                dynamicObjectWriteType(
-                        targetType);
+    private CompiledConversion compilePojoToDynamic(MappingPlan plan, TypeMirror sourceType,
+                                                    TypeMirror targetType, GeneratedClass generated,
+                                                    Set<String> stack) {
+        TypeMirror targetValue = dynamicObjectWriteType(targetType);
 
         if (targetValue == null) {
-            error(
-                    plan.method(),
-                    generated,
-                    "target object type is not writable: " +
-                            targetType);
+            error(plan.method(), generated, "target object type is not writable: " + targetType);
 
             return null;
         }
 
-        List<DynamicProperty> properties =
-                new ArrayList<DynamicProperty>();
+        List<DynamicProperty> properties = new ArrayList<DynamicProperty>();
+        Map<String, Property> sourceProperties = context.properties.resolve(sourceType);
 
-        Map<String, Property> sourceProperties =
-                context.properties
-                        .resolve(
-                                sourceType);
-
-        for (Property property :
-                sourceProperties.values()) {
+        for (Property property : sourceProperties.values()) {
 
             if (!property.gettable()) {
                 continue;
             }
 
-            String name =
-                    property.name();
+            String name = property.name();
+            NodeAccess source = context.access.resolveName(sourceType, name);
 
-            NodeAccess source =
-                    context.access
-                            .resolveName(
-                                    sourceType,
-                                    name);
-
-            if (source == null ||
-                    !source.readable()) {
+            if (source == null || !source.readable()) {
 
                 continue;
             }
 
-            CompiledConversion conversion =
-                    compileNested(
-                            plan,
-                            source.readType(),
-                            targetValue,
-                            generated,
-                            stack);
+            CompiledConversion conversion = compileNested(plan, source.readType(), targetValue, generated, stack);
 
             if (conversion == null) {
                 return null;
             }
 
-            properties.add(
-                    new DynamicProperty(
-                            name,
-                            source,
-                            conversion));
+            properties.add(new DynamicProperty(name, source, conversion));
         }
 
-        return CompiledConversion.structural(
-                sourceType,
-                targetType,
-                targetType,
-                null,
-                null,
-                null,
-                new DynamicObjectPlan(
-                        DynamicObjectPlan.Kind.STATIC_PROPERTIES,
-                        types.nodeKind(sourceType),
-                        targetValue,
-                        properties,
-                        null,
-                        Collections.<String>emptySet()));
+        return CompiledConversion.structural(sourceType, targetType, targetType, null, null, null,
+                new DynamicObjectPlan(DynamicObjectPlan.Kind.STATIC_PROPERTIES, types.nodeKind(sourceType),
+                        targetValue, properties, null, Collections.<String>emptySet()));
     }
 
 
@@ -769,61 +427,28 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private CompiledConversion compileDynamicObject(
-            MappingPlan plan,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            GeneratedClass generated,
-            Set<String> stack) {
+    private CompiledConversion compileDynamicObject(MappingPlan plan, TypeMirror sourceType,
+                                                    TypeMirror targetType, GeneratedClass generated,
+                                                    Set<String> stack) {
+        TypeMirror sourceValue = dynamicObjectReadType(sourceType);
+        TypeMirror targetValue = dynamicObjectWriteType(targetType);
 
-        TypeMirror sourceValue =
-                dynamicObjectReadType(
-                        sourceType);
-
-        TypeMirror targetValue =
-                dynamicObjectWriteType(
-                        targetType);
-
-        if (sourceValue == null ||
-                targetValue == null) {
-
-            error(
-                    plan.method(),
-                    generated,
-                    "cannot resolve dynamic object value type for " +
-                            sourceType +
-                            " -> " +
-                            targetType);
+        if (sourceValue == null || targetValue == null) {
+            error(plan.method(), generated,
+                    "cannot resolve dynamic object value type for " + sourceType + " -> " + targetType);
 
             return null;
         }
 
-        CompiledConversion valueConversion =
-                compileNested(
-                        plan,
-                        sourceValue,
-                        targetValue,
-                        generated,
-                        stack);
+        CompiledConversion valueConversion = compileNested(plan, sourceValue, targetValue, generated, stack);
 
         if (valueConversion == null) {
             return null;
         }
 
-        return CompiledConversion.structural(
-                sourceType,
-                targetType,
-                targetType,
-                null,
-                null,
-                null,
-                new DynamicObjectPlan(
-                        dynamicKind(sourceType, false),
-                        types.nodeKind(sourceType),
-                        targetValue,
-                        null,
-                        valueConversion,
-                        Collections.<String>emptySet()));
+        return CompiledConversion.structural(sourceType, targetType, targetType, null, null, null,
+                new DynamicObjectPlan(dynamicKind(sourceType, false), types.nodeKind(sourceType),
+                        targetValue, null, valueConversion, Collections.<String>emptySet()));
     }
 
 
@@ -833,15 +458,10 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private DynamicObjectPlan compileJojoRemainder(
-            MappingPlan plan,
-            TypeMirror sourceType,
-            Set<String> excludedNames,
-            GeneratedClass generated,
-            Set<String> stack) {
-
-        NodeKind sourceKind =
-                types.nodeKind(sourceType);
+    private DynamicObjectPlan compileJojoRemainder(MappingPlan plan, TypeMirror sourceType,
+                                                   Set<String> excludedNames, GeneratedClass generated,
+                                                   Set<String> stack) {
+        NodeKind sourceKind = types.nodeKind(sourceType);
 
         switch (sourceKind) {
             case OBJECT_MAP:
@@ -854,47 +474,28 @@ public final class ConversionCompiler {
                 return null;
         }
 
-        TypeMirror sourceValue =
-                dynamicObjectReadType(
-                        sourceType);
+        TypeMirror sourceValue = dynamicObjectReadType(sourceType);
 
         if (sourceValue == null) {
             return null;
         }
 
         CompiledConversion valueConversion =
-                compileNested(
-                        plan,
-                        sourceValue,
-                        types.objectType(),
-                        generated,
-                        stack);
+                compileNested(plan, sourceValue, types.objectType(), generated, stack);
 
         if (valueConversion == null) {
             return null;
         }
 
-        return new DynamicObjectPlan(
-                dynamicKind(sourceType, true),
-                sourceKind,
-                types.objectType(),
-                null,
-                valueConversion,
-                excludedNames);
+        return new DynamicObjectPlan(dynamicKind(sourceType, true), sourceKind,
+                types.objectType(), null, valueConversion, excludedNames);
     }
 
 
-    private DynamicObjectPlan.Kind dynamicKind(
-            TypeMirror sourceType,
-            boolean remainder) {
-
-        NodeKind kind =
-                types.nodeKind(sourceType);
-
-        if (remainder &&
-                kind == NodeKind.OBJECT_JOJO) {
-
-            return DynamicObjectPlan.Kind.DYNAMIC_ENTRIES;
+    private DynamicObjectPlan.Kind dynamicKind(TypeMirror sourceType, boolean remainder) {
+        NodeKind kind = types.nodeKind(sourceType);
+        if (remainder && kind == NodeKind.OBJECT_JOJO) {
+            return DynamicObjectPlan.Kind.DYNAMIC_MEMBERS;
         }
 
         switch (kind) {
@@ -907,9 +508,7 @@ public final class ConversionCompiler {
                 return DynamicObjectPlan.Kind.RUNTIME_ENTRIES;
 
             default:
-                throw new IllegalStateException(
-                        "unsupported dynamic object source " +
-                                sourceType);
+                throw new IllegalStateException("unsupported dynamic object source " + sourceType);
         }
     }
 
@@ -920,30 +519,16 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private CompiledConversion compileNested(
-            MappingPlan plan,
-            TypeMirror sourceType,
-            TypeMirror targetType,
-            GeneratedClass generated,
-            Set<String> stack) {
-
-        ConverterResolver.Conversion selected =
-                converters.resolve(
-                        plan,
-                        null,
-                        sourceType,
-                        targetType,
-                        generated);
+    private CompiledConversion compileNested(MappingPlan plan, TypeMirror sourceType,
+                                             TypeMirror targetType, GeneratedClass generated,
+                                             Set<String> stack) {
+        ConverterResolver.Conversion selected = converters.resolve(plan, null, sourceType, targetType, generated);
 
         if (selected == null) {
             return null;
         }
 
-        return compile(
-                plan,
-                selected,
-                generated,
-                stack);
+        return compile(plan, selected, generated, stack);
     }
 
 
@@ -953,16 +538,12 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private TypeMirror dynamicObjectReadType(
-            TypeMirror type) {
-
-        NodeKind kind =
-                types.nodeKind(type);
+    private TypeMirror dynamicObjectReadType(TypeMirror type) {
+        NodeKind kind = types.nodeKind(type);
 
         switch (kind) {
             case OBJECT_MAP:
-                return types.mapReadValueType(
-                        type);
+                return types.mapReadValueType(type);
 
             case OBJECT_JSON_OBJECT:
             case OBJECT_JOJO:
@@ -975,16 +556,12 @@ public final class ConversionCompiler {
     }
 
 
-    private TypeMirror dynamicObjectWriteType(
-            TypeMirror type) {
-
-        NodeKind kind =
-                types.nodeKind(type);
+    private TypeMirror dynamicObjectWriteType(TypeMirror type) {
+        NodeKind kind = types.nodeKind(type);
 
         switch (kind) {
             case OBJECT_MAP:
-                return types.mapWriteValueType(
-                        type);
+                return types.mapWriteValueType(type);
 
             case OBJECT_JSON_OBJECT:
             case OBJECT_JOJO:
@@ -1002,20 +579,10 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private MappingPlan nestedPlan(
-            MappingPlan parent,
-            TypeMirror targetType) {
-
-        return new MappingPlan(
-                parent.method(),
-                parent.methodType(),
-                MappingPlan.Kind.CREATE,
-                targetType,
-                null,
-                parent.sources(),
-                parent.sourceTypes(),
-                Collections.<MappingPlan.Rule>emptyList(),
-                parent.options());
+    private MappingPlan nestedPlan(MappingPlan parent, TypeMirror targetType) {
+        return new MappingPlan(parent.method(), parent.methodType(), MappingPlan.Kind.CREATE,
+                targetType, null, parent.sources(), parent.sourceTypes(),
+                Collections.<MappingPlan.Rule>emptyList(), parent.options());
     }
 
 
@@ -1025,24 +592,17 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private boolean isPojoLike(
-            NodeKind kind) {
-
+    private boolean isPojoLike(NodeKind kind) {
         return kind == NodeKind.OBJECT_POJO;
     }
 
 
-    private boolean isTypedObject(
-            NodeKind kind) {
-
-        return kind == NodeKind.OBJECT_POJO ||
-                kind == NodeKind.OBJECT_JOJO;
+    private boolean isTypedObject(NodeKind kind) {
+        return kind == NodeKind.OBJECT_POJO || kind == NodeKind.OBJECT_JOJO;
     }
 
 
-    private boolean isDynamicObjectSource(
-            NodeKind kind) {
-
+    private boolean isDynamicObjectSource(NodeKind kind) {
         return kind == NodeKind.OBJECT_MAP ||
                 kind == NodeKind.OBJECT_JSON_OBJECT ||
                 kind == NodeKind.OBJECT_JOJO ||
@@ -1050,21 +610,13 @@ public final class ConversionCompiler {
     }
 
 
-    private boolean isDynamicObjectTarget(
-            NodeKind kind) {
-
-        return kind == NodeKind.OBJECT_MAP ||
-                kind == NodeKind.OBJECT_JSON_OBJECT;
+    private boolean isDynamicObjectTarget(NodeKind kind) {
+        return kind == NodeKind.OBJECT_MAP || kind == NodeKind.OBJECT_JSON_OBJECT;
     }
 
 
-    private String structuralKey(
-            TypeMirror source,
-            TypeMirror target) {
-
-        return source.toString() +
-                " -> " +
-                target.toString();
+    private String structuralKey(TypeMirror source, TypeMirror target) {
+        return source.toString() + " -> " + target.toString();
     }
 
 
@@ -1074,18 +626,9 @@ public final class ConversionCompiler {
      * --------------------------------------------------------------
      */
 
-    private void error(
-            Element element,
-            GeneratedClass generated,
-            String message) {
-
+    private void error(Element element, GeneratedClass generated, String message) {
         generated.invalidate();
-
-        context.error(
-                element,
-                generated.originName() +
-                        ": " +
-                        message);
+        context.error(element, generated.originName() + ": " + message);
     }
 
 
@@ -1151,26 +694,15 @@ public final class ConversionCompiler {
         private final DynamicObjectPlan dynamicObject;
 
 
-        private CompiledConversion(
-                Kind kind,
-                TypeMirror sourceType,
-                TypeMirror targetType,
-                ExecutableElement method,
-                TypeElement mapperType,
-                TypeMirror sourceElementType,
-                TypeMirror targetElementType,
-                CompiledConversion elementConversion,
-                TypeMirror sourceKeyType,
-                TypeMirror sourceValueType,
-                TypeMirror targetKeyType,
-                TypeMirror targetValueType,
-                CompiledConversion keyConversion,
-                CompiledConversion valueConversion,
-                TypeMirror workingTargetType,
-                CreatorResolver.Creation creation,
-                List<StructuralArgument> arguments,
-                List<StructuralProperty> properties,
-                DynamicObjectPlan dynamicObject) {
+        private CompiledConversion(Kind kind, TypeMirror sourceType, TypeMirror targetType,
+                                   ExecutableElement method, TypeElement mapperType,
+                                   TypeMirror sourceElementType, TypeMirror targetElementType,
+                                   CompiledConversion elementConversion, TypeMirror sourceKeyType,
+                                   TypeMirror sourceValueType, TypeMirror targetKeyType,
+                                   TypeMirror targetValueType, CompiledConversion keyConversion,
+                                   CompiledConversion valueConversion, TypeMirror workingTargetType,
+                                   CreatorResolver.Creation creation, List<StructuralArgument> arguments,
+                                   List<StructuralProperty> properties, DynamicObjectPlan dynamicObject) {
 
             this.kind = kind;
 
@@ -1195,71 +727,39 @@ public final class ConversionCompiler {
             this.workingTargetType = workingTargetType;
             this.creation = creation;
 
-            this.arguments =
-                    immutable(arguments);
-
-            this.properties =
-                    immutable(properties);
-
-            this.dynamicObject =
-                    dynamicObject;
+            this.arguments = immutable(arguments);
+            this.properties = immutable(properties);
+            this.dynamicObject = dynamicObject;
         }
 
 
-        static CompiledConversion direct(
-                TypeMirror source,
-                TypeMirror target) {
-
-            return simple(
-                    Kind.DIRECT,
-                    source,
-                    target);
+        static CompiledConversion direct(TypeMirror source, TypeMirror target) {
+            return simple(Kind.DIRECT, source, target);
         }
 
 
-        static CompiledConversion scalar(
-                TypeMirror source,
-                TypeMirror target) {
-
-            return simple(
-                    Kind.SCALAR,
-                    source,
-                    target);
+        static CompiledConversion scalar(TypeMirror source, TypeMirror target) {
+            return simple(Kind.SCALAR, source, target);
         }
 
 
-        static CompiledConversion valueCodec(
-                TypeMirror source,
-                TypeMirror target) {
-
+        static CompiledConversion valueCodec(TypeMirror source, TypeMirror target) {
             return simple(Kind.VALUE_CODEC, source, target);
         }
 
 
-        static CompiledConversion codecEncode(
-                TypeMirror source,
-                TypeMirror target) {
-
+        static CompiledConversion codecEncode(TypeMirror source, TypeMirror target) {
             return simple(Kind.CODEC_ENCODE, source, target);
         }
 
 
-        static CompiledConversion oneOf(
-                TypeMirror source,
-                TypeMirror target) {
-
-            return simple(
-                    Kind.ONE_OF,
-                    source,
-                    target);
+        static CompiledConversion oneOf(TypeMirror source, TypeMirror target) {
+            return simple(Kind.ONE_OF, source, target);
         }
 
 
-        static CompiledConversion method(
-                TypeMirror source,
-                TypeMirror target,
-                ExecutableElement method,
-                TypeElement mapperType) {
+        static CompiledConversion method(TypeMirror source, TypeMirror target,
+                                         ExecutableElement method, TypeElement mapperType) {
 
             return new CompiledConversion(
                     Kind.METHOD,
@@ -1284,12 +784,8 @@ public final class ConversionCompiler {
         }
 
 
-        static CompiledConversion container(
-                TypeMirror source,
-                TypeMirror target,
-                TypeMirror sourceElement,
-                TypeMirror targetElement,
-                CompiledConversion elementConversion) {
+        static CompiledConversion container(TypeMirror source, TypeMirror target, TypeMirror sourceElement,
+                                            TypeMirror targetElement, CompiledConversion elementConversion) {
 
             return new CompiledConversion(
                     Kind.CONTAINER,
@@ -1314,15 +810,9 @@ public final class ConversionCompiler {
         }
 
 
-        static CompiledConversion map(
-                TypeMirror source,
-                TypeMirror target,
-                TypeMirror sourceKey,
-                TypeMirror sourceValue,
-                TypeMirror targetKey,
-                TypeMirror targetValue,
-                CompiledConversion keyConversion,
-                CompiledConversion valueConversion) {
+        static CompiledConversion map(TypeMirror source, TypeMirror target, TypeMirror sourceKey,
+                                      TypeMirror sourceValue, TypeMirror targetKey, TypeMirror targetValue,
+                                      CompiledConversion keyConversion, CompiledConversion valueConversion) {
 
             return new CompiledConversion(
                     Kind.MAP,
@@ -1347,14 +837,9 @@ public final class ConversionCompiler {
         }
 
 
-        static CompiledConversion structural(
-                TypeMirror source,
-                TypeMirror target,
-                TypeMirror workingTarget,
-                CreatorResolver.Creation creation,
-                List<StructuralArgument> arguments,
-                List<StructuralProperty> properties,
-                DynamicObjectPlan dynamicObject) {
+        static CompiledConversion structural(TypeMirror source, TypeMirror target, TypeMirror workingTarget,
+                                             CreatorResolver.Creation creation, List<StructuralArgument> arguments,
+                                             List<StructuralProperty> properties, DynamicObjectPlan dynamicObject) {
 
             return new CompiledConversion(
                     Kind.STRUCTURAL,
@@ -1379,10 +864,7 @@ public final class ConversionCompiler {
         }
 
 
-        private static CompiledConversion simple(
-                Kind kind,
-                TypeMirror source,
-                TypeMirror target) {
+        private static CompiledConversion simple(Kind kind, TypeMirror source, TypeMirror target) {
 
             return new CompiledConversion(
                     kind,
@@ -1484,13 +966,9 @@ public final class ConversionCompiler {
         }
 
 
-        private static <T> List<T> immutable(
-                List<T> values) {
-
-            return values == null
-                    ? Collections.<T>emptyList()
-                    : Collections.unmodifiableList(
-                    new ArrayList<T>(values));
+        private static <T> List<T> immutable(List<T> values) {
+            return values == null ? Collections.<T>emptyList()
+                    : Collections.unmodifiableList(new ArrayList<T>(values));
         }
     }
 
@@ -1511,12 +989,8 @@ public final class ConversionCompiler {
         private final CompiledConversion conversion;
 
 
-        StructuralArgument(
-                String name,
-                NodeAccess source,
-                TypeMirror targetType,
-                CompiledConversion conversion) {
-
+        StructuralArgument(String name, NodeAccess source, TypeMirror targetType,
+                           CompiledConversion conversion) {
             this.name = name;
             this.source = source;
             this.targetType = targetType;
@@ -1552,12 +1026,8 @@ public final class ConversionCompiler {
         private final CompiledConversion conversion;
 
 
-        StructuralProperty(
-                String name,
-                NodeAccess source,
-                NodeAccess target,
-                CompiledConversion conversion) {
-
+        StructuralProperty(String name, NodeAccess source, NodeAccess target,
+                           CompiledConversion conversion) {
             this.name = name;
             this.source = source;
             this.target = target;
@@ -1591,11 +1061,7 @@ public final class ConversionCompiler {
         private final CompiledConversion conversion;
 
 
-        DynamicProperty(
-                String name,
-                NodeAccess source,
-                CompiledConversion conversion) {
-
+        DynamicProperty(String name, NodeAccess source, CompiledConversion conversion) {
             this.name = name;
             this.source = source;
             this.conversion = conversion;
@@ -1621,7 +1087,7 @@ public final class ConversionCompiler {
         enum Kind {
             STATIC_PROPERTIES,
             ENTRIES,
-            DYNAMIC_ENTRIES,
+            DYNAMIC_MEMBERS,
             RUNTIME_ENTRIES
         }
 
@@ -1638,35 +1104,17 @@ public final class ConversionCompiler {
         private final Set<String> excludedNames;
 
 
-        DynamicObjectPlan(
-                Kind kind,
-                NodeKind sourceKind,
-                TypeMirror targetValueType,
-                List<DynamicProperty> properties,
-                CompiledConversion valueConversion,
-                Set<String> excludedNames) {
-
+        DynamicObjectPlan(Kind kind, NodeKind sourceKind, TypeMirror targetValueType,
+                          List<DynamicProperty> properties, CompiledConversion valueConversion,
+                          Set<String> excludedNames) {
             this.kind = kind;
             this.sourceKind = sourceKind;
-            this.targetValueType =
-                    targetValueType;
-
-            this.properties =
-                    properties == null
-                            ? Collections.<DynamicProperty>emptyList()
-                            : Collections.unmodifiableList(
-                            new ArrayList<DynamicProperty>(
-                                    properties));
-
-            this.valueConversion =
-                    valueConversion;
-
-            this.excludedNames =
-                    excludedNames == null
-                            ? Collections.<String>emptySet()
-                            : Collections.unmodifiableSet(
-                            new LinkedHashSet<String>(
-                                    excludedNames));
+            this.targetValueType = targetValueType;
+            this.properties = properties == null ? Collections.<DynamicProperty>emptyList()
+                    : Collections.unmodifiableList(new ArrayList<DynamicProperty>(properties));
+            this.valueConversion = valueConversion;
+            this.excludedNames = excludedNames == null ? Collections.<String>emptySet()
+                    : Collections.unmodifiableSet(new LinkedHashSet<String>(excludedNames));
         }
 
 

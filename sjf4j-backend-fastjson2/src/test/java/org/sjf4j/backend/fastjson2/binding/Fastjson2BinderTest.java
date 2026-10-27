@@ -53,7 +53,7 @@ class Fastjson2BinderTest {
             assertEquals(StreamingParser.Token.EOF, parser.peekToken());
             parser.end();
         } finally {
-            parser.release();
+            parser.close();
         }
     }
 
@@ -64,7 +64,7 @@ class Fastjson2BinderTest {
             BindingException error = assertThrows(BindingException.class, parser::readRaw);
             assertEquals("unexpected token 'EOF'", error.getMessage());
         } finally {
-            parser.release();
+            parser.close();
         }
     }
 
@@ -79,7 +79,7 @@ class Fastjson2BinderTest {
             assertEquals("next", parser.readString());
             parser.readArrayEnd();
         } finally {
-            parser.release();
+            parser.close();
         }
     }
 
@@ -190,7 +190,7 @@ class Fastjson2BinderTest {
                 return utf8 ? new String(generator.toBytes(), StandardCharsets.UTF_8) : generator.toString();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
     }
@@ -247,13 +247,14 @@ class Fastjson2BinderTest {
                 assertTrue(parser.nextIfNull());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         Fastjson2Generator generator = binder.createGenerator(text);
         generator.writeStringValue("héllo");
         generator.end();
-        generator.release();
+        assertEquals("", text.toString());
+        generator.close();
         assertEquals("\"héllo\"", text.toString());
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -264,7 +265,7 @@ class Fastjson2BinderTest {
                 byteWriter.end();
 
             } finally {
-                byteWriter.release();
+                byteWriter.close();
             }
         }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
@@ -277,7 +278,7 @@ class Fastjson2BinderTest {
         try {
             assertTrue(parser.nextIfNull());
         } finally {
-            parser.release();
+            parser.close();
         }
         assertThrows(NullPointerException.class, () -> new Fastjson2Binder(null, JSONFactory.createWriteContext()));
         assertThrows(NullPointerException.class, () -> new Fastjson2Binder(JSONFactory.createReadContext(), null));
@@ -300,7 +301,7 @@ class Fastjson2BinderTest {
                 generator.writeNull();
                 generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         {
@@ -310,7 +311,7 @@ class Fastjson2BinderTest {
                 generator.writeNull();
                 generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
 
@@ -331,7 +332,7 @@ class Fastjson2BinderTest {
         assertEquals("Ada", result.name);
         assertEquals(true, ((Map<?, ?>) result.getNode("unknown_before")).get("flag"));
         assertEquals(2, ((List<?>) result.getNode("unknown_after")).size());
-        assertFalse(result.dynamicProperties().containsKey("legacy_name"));
+        assertFalse(result.dynamicMembers().containsKey("legacy_name"));
     }
 
     @Test

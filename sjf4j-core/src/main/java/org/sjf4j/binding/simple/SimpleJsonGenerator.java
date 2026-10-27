@@ -59,7 +59,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
     }
 
     /**
-     * Writes object field name.
+     * Writes object member name.
      */
     @Override
     public void writeName(String name) throws IOException {
@@ -147,7 +147,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Flushes writer output.
      */
     @Override
-    public void end() throws IOException {
+    public void flush() throws IOException {
         writer.flush();
     }
 
@@ -242,10 +242,10 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
 
 
     /**
-     * Closes underlying writer.
+     * Flushes pending JSON output without closing the caller-owned writer.
      */
     @Override
-    public void release() {
-        // The output writer belongs to the caller.
+    public void close() throws IOException {
+        flush();
     }
 }

@@ -15,14 +15,12 @@ import java.util.Set;
 /** Emits direct concrete-generator binding code. */
 final class WriteEmitter {
 
-
     private final BackendSpec backend;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
     private final StreamingWriteEmitter streaming;
 
-    /** One ordinal-indexed, pre-serialized table per Enum type in a native generated binder. */
     private final Map<String, String> enumFields = new LinkedHashMap<String, String>();
 
     WriteEmitter(BackendSpec backend) {
@@ -53,48 +51,37 @@ final class WriteEmitter {
         }
     }
 
-    /** Register all statically typed Enum leaves before the generated class is written. */
-    void registerEnums(BindingValue value) {
+    void registerEnums(BindingValue root) {
         if (jackson == null && fastjson2 == null) return;
         Set<BindingValue> seen = Collections.newSetFromMap(
                 new IdentityHashMap<BindingValue, Boolean>());
-        registerEnums(value, seen);
+        registerEnums(root, seen);
     }
 
     private void registerEnums(BindingValue value, Set<BindingValue> seen) {
         if (value == null || !seen.add(value)
                 || value.direction() != BindingPlan.Direction.WRITE_TO) return;
         if (value.kind() == BindingValue.Kind.ENUM) {
-            String name = value.type().toString();
-            if (!enumFields.containsKey(name)) {
-                enumFields.put(name, "_enum_" + enumFields.size());
-            }
+            String type = value.type().toString();
+            if (!enumFields.containsKey(type)) enumFields.put(type, "_enum_" + enumFields.size());
         }
-        for (BindingProperty property : value.properties()) {
-            registerEnums(property.value(), seen);
-        }
+        for (BindingProperty property : value.properties()) registerEnums(property.value(), seen);
         registerEnums(value.elementValue(), seen);
         registerEnums(value.mapValue(), seen);
-        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-            registerEnums(subtype.compiled, seen);
-        }
+        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) registerEnums(subtype.compiled, seen);
     }
 
     String enumField(BindingValue value) {
-        String field = enumFields.get(value.type().toString());
-        if (field == null) {
-            throw new IllegalStateException("Missing compiled Enum field for " + value.type());
-        }
-        return field;
+        String result = enumFields.get(value.type().toString());
+        if (result == null) throw new IllegalStateException("Unregistered Enum: " + value.type());
+        return result;
     }
 
-    boolean hasEnumFields() {
-        return !enumFields.isEmpty();
-    }
+    boolean hasEnumFields() { return !enumFields.isEmpty(); }
 
     void emitEnumFields(JavaWriter out) {
         if (fastjson2 != null) {
-            emitFastjson2EnumFields(out);
+            fastjson2.emitEnumFields(out, enumFields);
             return;
         }
         String encoded = backend.backend() == Backend.JACKSON2
@@ -113,33 +100,6 @@ final class WriteEmitter {
             out.endBlock();
             out.line("return result;");
             out.endBlock();
-        }
-    }
-
-    /** Quoted JSON literals are initialized once; native Raw methods only copy bytes/chars. */
-    private void emitFastjson2EnumFields(JavaWriter out) {
-        for (Map.Entry<String, String> entry : enumFields.entrySet()) {
-            String type = entry.getKey();
-            String field = entry.getValue();
-            for (boolean utf8 : new boolean[]{true, false}) {
-                String suffix = utf8 ? "Utf8" : "Utf16";
-                String elementType = utf8 ? "byte" : "char";
-                String method = field + suffix + "Init";
-                out.line("private static final " + elementType + "[][] " + field
-                        + suffix + " = " + method + "();");
-                out.beginBlock("private static " + elementType + "[][] " + method + "()");
-                out.line(type + "[] constants = " + type + ".values();");
-                out.line(elementType + "[][] result = new " + elementType
-                        + "[constants.length][];");
-                out.beginBlock("for (" + type + " constant : constants)");
-                out.line("String quoted = com.alibaba.fastjson2.JSON.toJSONString(constant.name());");
-                out.line("result[constant.ordinal()] = " + (utf8
-                        ? "quoted.getBytes(java.nio.charset.StandardCharsets.UTF_8);"
-                        : "quoted.toCharArray();"));
-                out.endBlock();
-                out.line("return result;");
-                out.endBlock();
-            }
         }
     }
 
@@ -165,20 +125,10 @@ final class WriteEmitter {
         return value.helperName() + "_name_" + index;
     }
 
-    void emitMethod(
-            JavaWriter out,
-            BindingCompiler.CompiledMethod compiled) {
-
+    void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
         BindingPlan plan = compiled.plan();
-
-        BindingSource.beginOverride(
-                out,
-                plan.method());
-
-        String source =
-                BindingSource.parameterName(
-                        plan,
-                        0);
+        BindingSource.beginOverride(out, plan.method());
+        String source = BindingSource.parameterName(plan, 0);
 
         // Only the streaming-only backends retain whole-root fallback rules.
         // JSON native backends compile structural nodes and fall back locally.
@@ -225,8 +175,7 @@ final class WriteEmitter {
             }
         }
 
-        NameAllocator names =
-                methodNames(plan);
+        NameAllocator names = methodNames(plan);
 
         if (backend.backend() == Backend.FASTJSON2) {
             String target = plan.writeOutput() == BindingPlan.WriteOutput.WRITER
@@ -239,56 +188,37 @@ final class WriteEmitter {
 
         switch (plan.writeOutput()) {
             case STRING:
-                emitStringMethod(
-                        out,
-                        compiled.value(),
-                        source,
-                        names);
+                emitStringMethod(out, compiled.value(), source, names);
                 break;
 
             case BYTES:
-                emitBytesMethod(
-                        out,
-                        compiled.value(),
-                        source,
-                        names);
+                emitBytesMethod(out, compiled.value(), source, names);
                 break;
 
             case WRITER:
             case OUTPUT_STREAM:
-                emitStreamMethod(
-                        out,
-                        compiled.value(),
-                        source,
-                        BindingSource.parameterName(
-                                plan,
-                                1),
-                        names);
+                emitStreamMethod(out, compiled.value(), source,
+                        BindingSource.parameterName(plan, 1), names);
                 break;
 
             default:
-                throw new AssertionError(
-                        plan.writeOutput());
+                throw new AssertionError(plan.writeOutput());
         }
 
         BindingSource.endOverride(out);
     }
 
-    private void emitStringMethod(
-            JavaWriter out, BindingValue value, String source, NameAllocator names) {
+    private void emitStringMethod(JavaWriter out, BindingValue value, String source,
+                                  NameAllocator names) {
         String output = names.newName("output");
         String generator = names.newName("generator");
 
         out.line("org.sjf4j.binding.PooledStringWriter " + output
                 + " = new org.sjf4j.binding.PooledStringWriter();");
         out.beginBlock("try");
-        out.line(backend.generatorType() + " " + generator
-                + " = this.binder.createGenerator(" + output + ");");
-        out.beginBlock("try");
+        out.beginBlock("try (" + backend.generatorType() + " " + generator
+                + " = this.binder.createGenerator(" + output + "))");
         emitWriteBody(out, value, source, generator, names);
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
         out.endBlock();
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -297,8 +227,8 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    private void emitBytesMethod(
-            JavaWriter out, BindingValue value, String source, NameAllocator names) {
+    private void emitBytesMethod(JavaWriter out, BindingValue value, String source,
+                                 NameAllocator names) {
         String output = names.newName("output");
         String generator = names.newName("generator");
 
@@ -312,13 +242,9 @@ final class WriteEmitter {
                 : "org.sjf4j.binding.PooledByteArrayOutputStream";
         out.line(sinkType + " " + output + " = new " + sinkType + "();");
         out.beginBlock("try");
-        out.line(backend.generatorType() + " " + generator
-                + " = this.binder.createGenerator(" + output + ");");
-        out.beginBlock("try");
+        out.beginBlock("try (" + backend.generatorType() + " " + generator
+                + " = this.binder.createGenerator(" + output + "))");
         emitWriteBody(out, value, source, generator, names);
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
         out.endBlock();
         if (chars) {
             out.line("return " + output
@@ -332,37 +258,18 @@ final class WriteEmitter {
         out.endBlock();
     }
 
-    private void emitStreamMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            String output,
-            NameAllocator names) {
+    private void emitStreamMethod(JavaWriter out, BindingValue value, String source,
+                                  String output, NameAllocator names) {
+        String generator = names.newName("generator");
 
-        String generator =
-                names.newName("generator");
-
-        out.line(
-                backend.generatorType() +
-                        " " + generator +
-                        " = this.binder.createGenerator(" +
-                        output + ");");
-
-        out.beginBlock("try");
+        out.beginBlock("try (" + backend.generatorType() + " " + generator
+                + " = this.binder.createGenerator(" + output + "))");
         emitWriteBody(out, value, source, generator, names);
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
         out.endBlock();
     }
 
-    private void emitWriteBody(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            String generator,
-            NameAllocator names) {
-
+    private void emitWriteBody(JavaWriter out, BindingValue value, String source,
+                               String generator, NameAllocator names) {
         out.line(generator + ".start();");
 
         if (isJackson()) {
@@ -517,34 +424,19 @@ final class WriteEmitter {
         return usesSharedStructure() || streaming.requiresWriteHelper(value);
     }
 
-    static String access(
-            PropertyAccess access,
-            String owner) {
-
+    static String access(PropertyAccess access, String owner) {
         if (access.isMethod()) {
-            return owner + '.' +
-                    access.memberName() +
-                    "()";
+            return owner + '.' + access.memberName() + "()";
         }
 
-        return owner + '.' +
-                access.memberName();
+        return owner + '.' + access.memberName();
     }
 
-    private NameAllocator methodNames(
-            BindingPlan plan) {
-
-        NameAllocator names =
-                new NameAllocator();
-
+    private NameAllocator methodNames(BindingPlan plan) {
+        NameAllocator names = new NameAllocator();
         for (javax.lang.model.element.VariableElement parameter :
-                plan.method()
-                        .declaration()
-                        .getParameters()) {
-
-            names.reserve(
-                    parameter.getSimpleName()
-                            .toString());
+                plan.method().declaration().getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
         }
 
         return names;

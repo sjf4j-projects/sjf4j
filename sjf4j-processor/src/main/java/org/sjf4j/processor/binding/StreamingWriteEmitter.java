@@ -41,8 +41,7 @@ final class StreamingWriteEmitter {
                 break;
             case JSON_OBJECT:
             case JSON_ARRAY:
-                out.line(STREAMING_IO + ".writeNode(generator, value, "
-                        + "this.context);");
+                out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
                 break;
             case LIST:
             case SET:
@@ -89,19 +88,12 @@ final class StreamingWriteEmitter {
         out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
     }
 
-
-    private void emitPojo(
-            JavaWriter out,
-            BindingValue value) {
-
+    private void emitPojo(JavaWriter out, BindingValue value) {
         emitNullReturn(out);
         out.line("generator.writeObjectStart();");
 
         int index = 0;
-
-        for (BindingProperty property :
-                value.properties()) {
-
+        for (BindingProperty property : value.properties()) {
             if (index > 0) {
                 out.line("generator.writeObjectSeparator();");
             }
@@ -113,89 +105,58 @@ final class StreamingWriteEmitter {
                     ");");
             index++;
 
-            writeValue(
-                    out,
-                    property.value(),
-                    "generator",
+            writeValue(out, property.value(), "generator",
                     WriteEmitter.propertyExpression(property, "value"));
         }
 
         if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
             out.line("int count = " + index + ";");
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
-                    + "value.dynamicProperties().entrySet())");
+                    + "value.dynamicMembers().entrySet())");
             out.line("generator.writeName(entry.getKey(), count++ > 0);");
-            out.line(STREAMING_IO + ".writeNode(generator, entry.getValue(), "
-                    + "this.context);");
+            out.line(STREAMING_IO + ".writeNode(generator, entry.getValue(), this.context);");
             out.endBlock();
         }
 
         out.line("generator.writeObjectEnd();");
     }
 
-    private void emitCollection(
-            JavaWriter out,
-            BindingValue value) {
-
+    private void emitCollection(JavaWriter out, BindingValue value) {
         emitNullReturn(out);
         out.line("generator.writeArrayStart();");
         out.line("int count = 0;");
-
-        out.beginBlock(
-                "for (" +
-                        value.elementValue().type() +
-                        " element : value)");
+        out.beginBlock("for (" + value.elementValue().type() + " element : value)");
 
         out.beginBlock("if (count++ > 0)");
         out.line("generator.writeArraySeparator();");
         out.endBlock();
-
-        writeValue(
-                out,
-                value.elementValue(),
-                "generator",
-                "element");
+        writeValue(out, value.elementValue(), "generator", "element");
 
         out.endBlock();
         out.line("generator.writeArrayEnd();");
     }
 
-    private void emitMap(
-            JavaWriter out,
-            BindingValue value) {
-
+    private void emitMap(JavaWriter out, BindingValue value) {
         emitNullReturn(out);
         out.line("generator.writeObjectStart();");
         out.line("int count = 0;");
 
-        out.beginBlock(
-                "for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
+        out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
 
         out.beginBlock("if (count++ > 0)");
         out.line("generator.writeObjectSeparator();");
         out.endBlock();
 
-        out.line(
-                "generator.writeName((String) entry.getKey());");
+        out.line("generator.writeName((String) entry.getKey());");
 
-        writeValue(
-                out,
-                value.mapValue(),
-                "generator",
-                "(" +
-                        value.mapValue().type() +
-                        ") entry.getValue()");
+        writeValue(out, value.mapValue(), "generator",
+                "(" + value.mapValue().type() + ") entry.getValue()");
 
         out.endBlock();
         out.line("generator.writeObjectEnd();");
     }
 
-    void writeValue(
-            JavaWriter out,
-            BindingValue value,
-            String generator,
-            String expression) {
-
+    void writeValue(JavaWriter out, BindingValue value, String generator, String expression) {
         if (value.helperRequired()) {
             // Dynamic containers without adapted descendants have no generated
             // helper. A mixed compiled parent can still reach them.
@@ -214,107 +175,51 @@ final class StreamingWriteEmitter {
                 CodecWriteEmitter.emit(out, value, expression, generator, null, backend.backend());
                 return;
             case STRING:
-                out.line(
-                        generator +
-                                ".writeString(" +
-                                expression +
-                                ");");
+                out.line(generator + ".writeString(" + expression + ");");
                 return;
 
             case CHARACTER:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Char");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Char");
                 return;
 
             case BOOLEAN:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Boolean");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Boolean");
                 return;
 
             case BYTE:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Byte");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Byte");
                 return;
 
             case SHORT:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Short");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Short");
                 return;
 
             case INT:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Int");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Int");
                 return;
 
             case LONG:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Long");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Long");
                 return;
 
             case FLOAT:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Float");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Float");
                 return;
 
             case DOUBLE:
-                emitPrimitiveOrBoxed(
-                        out,
-                        value,
-                        generator,
-                        expression,
-                        "Double");
+                emitPrimitiveOrBoxed(out, value, generator, expression, "Double");
                 return;
 
             case NUMBER:
-                out.line(
-                        generator +
-                                ".writeNumber(" +
-                                expression +
-                                ");");
+                out.line(generator + ".writeNumber(" + expression + ");");
                 return;
 
             case BIG_INTEGER:
-                out.line(
-                        generator +
-                                ".writeBigInteger(" +
-                                expression +
-                                ");");
+                out.line(generator + ".writeBigInteger(" + expression + ");");
                 return;
 
             case BIG_DECIMAL:
-                out.line(
-                        generator +
-                                ".writeBigDecimal(" +
-                                expression +
-                                ");");
+                out.line(generator + ".writeBigDecimal(" + expression + ");");
                 return;
 
             case ENUM:
@@ -330,35 +235,19 @@ final class StreamingWriteEmitter {
                 return;
 
             case RUNTIME:
-                out.line(
-                        STREAMING_IO +
-                                ".writeNode(" +
-                                generator + ", " +
-                                expression + ", " +
-                                "this.context);");
+                out.line(STREAMING_IO + ".writeNode(" + generator + ", "
+                        + expression + ", this.context);");
                 return;
 
             default:
-                throw new AssertionError(
-                        "Unsupported write kind " +
-                                value.kind());
+                throw new AssertionError("Unsupported write kind " + value.kind());
         }
     }
 
-    private void emitPrimitiveOrBoxed(
-            JavaWriter out,
-            BindingValue value,
-            String generator,
-            String expression,
-            String suffix) {
-
-        out.line(
-                generator +
-                        (value.primitive()
-                                ? ".write" + suffix + "Value("
-                                : ".write" + suffix + "(") +
-                        expression +
-                        ");");
+    private void emitPrimitiveOrBoxed(JavaWriter out, BindingValue value, String generator,
+                                      String expression, String suffix) {
+        out.line(generator + (value.primitive()
+                ? ".write" + suffix + "Value(" : ".write" + suffix + "(") + expression + ");");
     }
 
     private void emitNullReturn(JavaWriter out) {
@@ -368,7 +257,6 @@ final class StreamingWriteEmitter {
         out.endBlock();
     }
 
-
     /** JSON backends always compile structural helpers; streaming-only paths may fall back. */
     boolean requiresWriteHelper(BindingValue value) {
         return fullyConcreteGraph(value, new HashSet<BindingValue>())
@@ -376,8 +264,7 @@ final class StreamingWriteEmitter {
     }
 
     /** Streaming-only backends may need helpers for adapted descendants. */
-    private boolean containsAdaptedValue(BindingValue value,
-            Set<BindingValue> visited) {
+    private boolean containsAdaptedValue(BindingValue value, Set<BindingValue> visited) {
         if (!visited.add(value)) return false;
         switch (value.kind()) {
             case VALUE_CODEC:
@@ -401,8 +288,7 @@ final class StreamingWriteEmitter {
         }
     }
 
-    private boolean fullyConcreteGraph(BindingValue value,
-            Set<BindingValue> visited) {
+    private boolean fullyConcreteGraph(BindingValue value, Set<BindingValue> visited) {
         if (!visited.add(value)) return true;
         switch (value.kind()) {
             case RUNTIME:
@@ -427,6 +313,4 @@ final class StreamingWriteEmitter {
                 return true;
         }
     }
-
-
 }

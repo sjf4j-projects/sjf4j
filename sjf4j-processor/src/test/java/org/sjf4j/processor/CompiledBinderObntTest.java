@@ -76,10 +76,10 @@ class CompiledBinderObntTest {
                         .get(value)).size(), backend);
                 assertEquals(1, ((JsonObject) modelClass.getField("payload")
                         .get(value)).size(), backend);
-                assertTrue(jojo.dynamicProperties().containsKey("unknown"), backend);
-                assertTrue(jojo.dynamicProperties().containsKey("note"), backend);
-                assertFalse(jojo.dynamicProperties().containsKey("readOnly"), backend);
-                assertFalse(jojo.dynamicProperties().containsKey("oldName"), backend);
+                assertTrue(jojo.dynamicMembers().containsKey("unknown"), backend);
+                assertTrue(jojo.dynamicMembers().containsKey("note"), backend);
+                assertFalse(jojo.dynamicMembers().containsKey("readOnly"), backend);
+                assertFalse(jojo.dynamicMembers().containsKey("oldName"), backend);
 
                 String json = (String) impl.getMethod("write", modelClass).invoke(binder, value);
                 JsonNode tree =
@@ -96,7 +96,7 @@ class CompiledBinderObntTest {
                         .invoke(binder, "{\"name\":\"Ada\",\"unknown\":42}");
                 JsonObject closedJojo = (JsonObject) closed;
                 assertEquals("Ada", closedClass.getField("name").get(closed), backend);
-                assertTrue(closedJojo.dynamicProperties().isEmpty(), backend);
+                assertTrue(closedJojo.dynamicMembers().isEmpty(), backend);
                 closedJojo.put("unknown", 42);
                 String closedJson = (String) impl.getMethod("writeClosed", closedClass)
                         .invoke(binder, closed);
@@ -123,7 +123,7 @@ class CompiledBinderObntTest {
 
 
     @Test
-    void compiledJojoSnakeYamlPreservesDynamicEntries() throws Exception {
+    void compiledJojoSnakeYamlPreservesDynamicMembers() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Tree.java",
                 "package fixture;\n"
@@ -151,12 +151,12 @@ class CompiledBinderObntTest {
             Object tree = implementation.getMethod("read", String.class)
                     .invoke(binder, "name: Ada\nextra: { nested: [1, 2] }\n");
             assertEquals("Ada", treeType.getField("name").get(tree));
-            assertTrue(((JsonObject) tree).dynamicProperties().containsKey("extra"));
+            assertTrue(((JsonObject) tree).dynamicMembers().containsKey("extra"));
             String yaml = (String) implementation.getMethod("write", treeType)
                     .invoke(binder, tree);
             Object again = implementation.getMethod("read", String.class).invoke(binder, yaml);
             assertEquals("Ada", treeType.getField("name").get(again));
-            assertTrue(((JsonObject) again).dynamicProperties().containsKey("extra"));
+            assertTrue(((JsonObject) again).dynamicMembers().containsKey("extra"));
 
             org.sjf4j.JsonArray array = (JsonArray) implementation
                     .getMethod("readArray", String.class).invoke(binder, "[1, {x: 2}]");

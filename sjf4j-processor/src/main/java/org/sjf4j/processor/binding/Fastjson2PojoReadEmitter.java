@@ -187,8 +187,7 @@ final class Fastjson2PojoReadEmitter {
         return call.append(')').toString();
     }
 
-    private static void appendRawArg(
-            StringBuilder call, String literal, int offset, int bytes) {
+    private static void appendRawArg(StringBuilder call, String literal, int offset, int bytes) {
         if (call.charAt(call.length() - 1) != '(') {
             call.append(", ");
         }

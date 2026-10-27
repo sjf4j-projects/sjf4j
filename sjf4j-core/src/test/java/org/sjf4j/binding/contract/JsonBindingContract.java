@@ -37,7 +37,7 @@ public abstract class JsonBindingContract {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         {
@@ -56,7 +56,7 @@ public abstract class JsonBindingContract {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }

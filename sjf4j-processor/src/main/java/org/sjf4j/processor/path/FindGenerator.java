@@ -53,8 +53,7 @@ public final class FindGenerator {
             String expression,
             boolean allowFallback) {
 
-        List<? extends VariableElement> parameters =
-                method.getParameters();
+        List<? extends VariableElement> parameters = method.getParameters();
 
         if (parameters.isEmpty()) {
             error(
@@ -72,16 +71,13 @@ public final class FindGenerator {
             return;
         }
 
-        TypeMirror returnType =
-                method.getReturnType();
+        TypeMirror returnType = method.getReturnType();
 
         /*
          * Find is intentionally defined as List<T>, rather than arbitrary
          * List implementations. Generated methods internally use ArrayList.
          */
-        if (!types.isSameErasure(
-                returnType,
-                types.listType())) {
+        if (!types.isSameErasure(returnType, types.listType())) {
 
             error(
                     method,
@@ -94,9 +90,7 @@ public final class FindGenerator {
         JsonPath path;
 
         try {
-            path =
-                    JsonPath.parse(
-                            expression);
+            path = JsonPath.parse(expression);
         } catch (NodeException e) {
             error(
                     method,
@@ -106,15 +100,13 @@ public final class FindGenerator {
             return;
         }
 
-        PathSegment[] segments =
-                path.segments();
+        PathSegment[] segments = path.segments();
 
         boolean hasFilter = false;
         boolean hasDescendant = false;
 
         for (int i = 1; i < segments.length; i++) {
-            PathSegment segment =
-                    segments[i];
+            PathSegment segment = segments[i];
 
             if (segment instanceof PathSegment.Param) {
                 error(
@@ -159,9 +151,7 @@ public final class FindGenerator {
             return;
         }
 
-        TypeMirror elementType =
-                types.listWriteElementType(
-                        returnType);
+        TypeMirror elementType = types.listWriteElementType(returnType);
 
         if (elementType == null) {
             error(
@@ -172,8 +162,7 @@ public final class FindGenerator {
             return;
         }
 
-        VariableElement root =
-                parameters.get(0);
+        VariableElement root = parameters.get(0);
 
         if (!validateMapPathKeys(
                 method,
@@ -268,17 +257,11 @@ public final class FindGenerator {
         }
 
         generated.addMethod(out -> {
-            NameAllocator names =
-                    names(root);
-
-            String result =
-                    names.newName("result");
+            NameAllocator names = names(root);
+            String result = names.newName("result");
 
             out.line("@Override");
-            out.beginBlock(
-                    methodHeader(
-                            method,
-                            root));
+            out.beginBlock(methodHeader(method, root));
 
             if (!root.asType()
                     .getKind()
@@ -334,17 +317,14 @@ public final class FindGenerator {
             TypeMirror elementType,
             VariableElement root) {
 
-        PathSegment[] segments =
-                path.segments();
+        PathSegment[] segments = path.segments();
 
         boolean hasMulti = false;
 
-        TypeMirror current =
-                root.asType();
+        TypeMirror current = root.asType();
 
         for (int i = 1; i < segments.length; i++) {
-            PathSegment segment =
-                    segments[i];
+            PathSegment segment = segments[i];
 
             if (segment instanceof PathSegment.Wildcard ||
                     segment instanceof PathSegment.Slice) {
@@ -354,17 +334,13 @@ public final class FindGenerator {
                 if (segment instanceof PathSegment.Wildcard &&
                         isMap(current)) {
 
-                    current =
-                            types.mapReadValueType(
-                                    current);
+                    current = types.mapReadValueType(current);
                 } else {
                     if (!isSequence(current)) {
                         return false;
                     }
 
-                    current =
-                            sequenceElementType(
-                                    current);
+                    current = sequenceElementType(current);
                 }
 
                 if (current == null) {
@@ -378,14 +354,10 @@ public final class FindGenerator {
                 hasMulti = true;
 
                 if (isSequence(current)) {
-                    current =
-                            sequenceElementType(
-                                    current);
+                    current = sequenceElementType(current);
 
                 } else if (isMap(current)) {
-                    current =
-                            types.mapReadValueType(
-                                    current);
+                    current = types.mapReadValueType(current);
 
                 } else {
                     return false;
@@ -401,10 +373,7 @@ public final class FindGenerator {
             if (segment instanceof PathSegment.Name ||
                     segment instanceof PathSegment.Index) {
 
-                current =
-                        resolveDirectType(
-                                current,
-                                segment);
+                current = resolveDirectType(current, segment);
 
                 if (current == null) {
                     return false;
@@ -439,28 +408,15 @@ public final class FindGenerator {
             return false;
         }
 
-        String[] filterFields =
-                addFilterFields(
-                        generated,
-                        rawExpression,
-                        segments);
+        String[] filterFields = addFilterFields(generated, rawExpression, segments);
 
         generated.addMethod(out -> {
-            NameAllocator names =
-                    names(root);
-
-            String result =
-                    names.newName("result");
-
-            String rootName =
-                    root.getSimpleName()
-                            .toString();
+            NameAllocator names = names(root);
+            String result = names.newName("result");
+            String rootName = root.getSimpleName().toString();
 
             out.line("@Override");
-            out.beginBlock(
-                    methodHeader(
-                            method,
-                            root));
+            out.beginBlock(methodHeader(method, root));
 
             out.line(
                     "java.util.ArrayList<" +
@@ -516,12 +472,10 @@ public final class FindGenerator {
             PathSegment[] segments,
             int index) {
 
-        TypeMirror current =
-                start;
+        TypeMirror current = start;
 
         for (int i = index; i < segments.length; i++) {
-            PathSegment segment =
-                    segments[i];
+            PathSegment segment = segments[i];
 
             if (segment instanceof PathSegment.Wildcard ||
                     segment instanceof PathSegment.Slice) {
@@ -529,17 +483,13 @@ public final class FindGenerator {
                 if (segment instanceof PathSegment.Wildcard &&
                         isMap(current)) {
 
-                    current =
-                            types.mapReadValueType(
-                                    current);
+                    current = types.mapReadValueType(current);
                 } else {
                     if (!isSequence(current)) {
                         return false;
                     }
 
-                    current =
-                            sequenceElementType(
-                                    current);
+                    current = sequenceElementType(current);
                 }
 
                 continue;
@@ -547,14 +497,10 @@ public final class FindGenerator {
 
             if (segment instanceof PathSegment.Filter) {
                 if (isSequence(current)) {
-                    current =
-                            sequenceElementType(
-                                    current);
+                    current = sequenceElementType(current);
 
                 } else if (isMap(current)) {
-                    current =
-                            types.mapReadValueType(
-                                    current);
+                    current = types.mapReadValueType(current);
 
                 } else {
                     return false;
@@ -563,18 +509,13 @@ public final class FindGenerator {
                 continue;
             }
 
-            Access access =
-                    access(
-                            current,
-                            "value",
-                            segment);
+            Access access = access(current, "value", segment);
 
             if (access == null) {
                 return false;
             }
 
-            current =
-                    access.type;
+            current = access.type;
         }
 
         return true;
@@ -603,8 +544,7 @@ public final class FindGenerator {
             return;
         }
 
-        PathSegment segment =
-                segments[index];
+        PathSegment segment = segments[index];
 
         if (segment instanceof PathSegment.Wildcard ||
                 segment instanceof PathSegment.Slice ||
@@ -636,18 +576,13 @@ public final class FindGenerator {
                             : sequenceElementType(
                             expressionType);
 
-            String item =
-                    names.newName("item");
-
-            String itemTypeName =
-                    localType(itemType);
+            String item = names.newName("item");
+            String itemTypeName = localType(itemType);
 
             if (expressionType.getKind() ==
                     TypeKind.ARRAY) {
 
-                String size =
-                        expression +
-                                ".length";
+                String size = expression + ".length";
 
                 String loopIndex;
 
@@ -659,8 +594,7 @@ public final class FindGenerator {
                                     (PathSegment.Slice) segment,
                                     size);
                 } else {
-                    loopIndex =
-                            names.newName("i");
+                    loopIndex = names.newName("i");
 
                     out.line(
                             "for (int " +
@@ -699,8 +633,7 @@ public final class FindGenerator {
                 out.indent();
 
             } else if (isJsonArray(expressionType)) {
-                String size =
-                        names.newName("size");
+                String size = names.newName("size");
 
                 out.line(
                         "int " +
@@ -719,8 +652,7 @@ public final class FindGenerator {
                                     (PathSegment.Slice) segment,
                                     size);
                 } else {
-                    loopIndex =
-                            names.newName("i");
+                    loopIndex = names.newName("i");
 
                     out.line(
                             "for (int " +
@@ -752,52 +684,32 @@ public final class FindGenerator {
                 /*
                  * List
                  */
-                String size =
-                        names.newName("size");
-
-                out.line(
-                        "int " +
-                                size +
-                                " = " +
-                                expression +
-                                ".size();");
-
-                String loopIndex;
-
                 if (segment instanceof PathSegment.Slice) {
-                    loopIndex =
+                    String size = names.newName("size");
+                    String iterator = names.newName("iterator");
+                    boolean reverse = ((PathSegment.Slice) segment).step != null
+                            && ((PathSegment.Slice) segment).step < 0;
+                    out.line("int " + size + " = " + expression + ".size();");
+                    out.line("java.util.ListIterator<? extends " + itemTypeName + "> "
+                            + iterator + " = " + expression
+                            + ".listIterator(" + (reverse ? size : "0") + ");");
+                    String loopIndex =
                             emitSliceLoop(
                                     out,
                                     names,
                                     (PathSegment.Slice) segment,
                                     size);
+                    out.beginBlock("while (" + iterator + "."
+                            + (reverse ? "previousIndex() > " : "nextIndex() < ")
+                            + loopIndex + ")");
+                    out.line(iterator + "." + (reverse ? "previous()" : "next()") + ";");
+                    out.endBlock();
+                    out.line(itemTypeName + " " + item + " = " + iterator + "."
+                            + (reverse ? "previous()" : "next()") + ";");
                 } else {
-                    loopIndex =
-                            names.newName("i");
-
-                    out.line(
-                            "for (int " +
-                                    loopIndex +
-                                    " = 0; " +
-                                    loopIndex +
-                                    " < " +
-                                    size +
-                                    "; " +
-                                    loopIndex +
-                                    "++) {");
-
+                    out.line("for (" + itemTypeName + " " + item + " : " + expression + ") {");
                     out.indent();
                 }
-
-                out.line(
-                        itemTypeName +
-                                " " +
-                                item +
-                                " = " +
-                                expression +
-                                ".get(" +
-                                loopIndex +
-                                ");");
             }
 
             emitFilterCheck(
@@ -826,25 +738,16 @@ public final class FindGenerator {
             return;
         }
 
-        Access access =
-                access(
-                        expressionType,
-                        expression,
-                        segment);
+        Access access = access(expressionType, expression, segment);
 
         if (access == null) {
             throw new AssertionError(
                     "Unresolved find access at emit time");
         }
 
-        boolean last =
-                index ==
-                        segments.length - 1;
+        boolean last = index == segments.length - 1;
 
-        String miss =
-                topLevel
-                        ? "return " + result + ";"
-                        : "continue;";
+        String miss = topLevel ? "return " + result + ";" : "continue;";
 
         if (!expressionKnownNonNull &&
                 access.needsReceiverNonNull) {
@@ -872,8 +775,7 @@ public final class FindGenerator {
                             miss);
         }
 
-        String value =
-                names.newName("value");
+        String value = names.newName("value");
 
         out.line(
                 localType(access.type) +
@@ -923,9 +825,7 @@ public final class FindGenerator {
             TypeMirror elementType,
             VariableElement root) {
 
-        String field =
-                "_sjf4j_find_path_" +
-                        fallbackSeq++;
+        String field = "_sjf4j_find_path_" + fallbackSeq++;
 
         generated.addField(out ->
                 out.line(
@@ -937,25 +837,14 @@ public final class FindGenerator {
                                 ");"));
 
         generated.addMethod(out -> {
-            String rootName =
-                    root.getSimpleName()
-                            .toString();
-
-            NameAllocator names =
-                    names(root);
-
-            String result =
-                    names.newName("result");
-
-            String value =
-                    names.newName("value");
+            String rootName = root.getSimpleName().toString();
+            NameAllocator names = names(root);
+            String result = names.newName("result");
+            String value = names.newName("value");
 
             out.line("@Override");
 
-            out.beginBlock(
-                    methodHeader(
-                            method,
-                            root));
+            out.beginBlock(methodHeader(method, root));
 
             if (!root.asType()
                     .getKind()
@@ -1016,14 +905,12 @@ public final class FindGenerator {
             TypeMirror elementType,
             VariableElement root) {
 
-        PathSegment[] segments =
-                path.segments();
+        PathSegment[] segments = path.segments();
 
         int unionIndex = -1;
 
         for (int i = 1; i < segments.length; i++) {
-            PathSegment segment =
-                    segments[i];
+            PathSegment segment = segments[i];
 
             if (segment instanceof PathSegment.Union) {
                 if (unionIndex >= 0) {
@@ -1043,9 +930,7 @@ public final class FindGenerator {
             return false;
         }
 
-        PathSegment.Union union =
-                (PathSegment.Union)
-                        segments[unionIndex];
+        PathSegment.Union union = (PathSegment.Union) segments[unionIndex];
 
         if (union.union.length == 0) {
             return false;
@@ -1054,8 +939,7 @@ public final class FindGenerator {
         boolean indexUnion = true;
         boolean nameUnion = true;
 
-        for (PathSegment token :
-                union.union) {
+        for (PathSegment token : union.union) {
 
             if (!(token instanceof PathSegment.Index) &&
                     !(token instanceof PathSegment.Slice)) {
@@ -1074,14 +958,10 @@ public final class FindGenerator {
             return false;
         }
 
-        TypeMirror prefixType =
-                root.asType();
+        TypeMirror prefixType = root.asType();
 
         for (int i = 1; i < unionIndex; i++) {
-            prefixType =
-                    resolveDirectType(
-                            prefixType,
-                            segments[i]);
+            prefixType = resolveDirectType(prefixType, segments[i]);
 
             if (prefixType == null) {
                 return false;
@@ -1095,9 +975,7 @@ public final class FindGenerator {
                 return false;
             }
 
-            tokenValueType =
-                    sequenceElementType(
-                            prefixType);
+            tokenValueType = sequenceElementType(prefixType);
 
         } else {
             if (!isStringKeyMap(
@@ -1106,26 +984,17 @@ public final class FindGenerator {
                 return false;
             }
 
-            tokenValueType =
-                    types.mapReadValueType(
-                            prefixType);
+            tokenValueType = types.mapReadValueType(prefixType);
         }
 
         if (tokenValueType == null) {
             return false;
         }
 
-        TypeMirror finalType =
-                tokenValueType;
+        TypeMirror finalType = tokenValueType;
 
-        for (int i = unionIndex + 1;
-             i < segments.length;
-             i++) {
-
-            finalType =
-                    resolveDirectType(
-                            finalType,
-                            segments[i]);
+        for (int i = unionIndex + 1; i < segments.length; i++) {
+            finalType = resolveDirectType(finalType, segments[i]);
 
             if (finalType == null) {
                 return false;
@@ -1157,37 +1026,19 @@ public final class FindGenerator {
             return false;
         }
 
-        final int unionAt =
-                unionIndex;
-
-        final TypeMirror containerType =
-                prefixType;
-
-        final TypeMirror valueType =
-                tokenValueType;
-
-        final boolean byIndex =
-                indexUnion;
+        final int unionAt = unionIndex;
+        final TypeMirror containerType = prefixType;
+        final TypeMirror valueType = tokenValueType;
+        final boolean byIndex = indexUnion;
 
         generated.addMethod(out -> {
-            NameAllocator names =
-                    names(root);
-
-            String result =
-                    names.newName("result");
-
-            String item =
-                    names.newName("item");
-
-            String rootName =
-                    root.getSimpleName()
-                            .toString();
+            NameAllocator names = names(root);
+            String result = names.newName("result");
+            String item = names.newName("item");
+            String rootName = root.getSimpleName().toString();
 
             out.line("@Override");
-            out.beginBlock(
-                    methodHeader(
-                            method,
-                            root));
+            out.beginBlock(methodHeader(method, root));
 
             out.line(
                     "java.util.ArrayList<" +
@@ -1209,24 +1060,14 @@ public final class FindGenerator {
                                 ");");
             }
 
-            String expression =
-                    rootName;
-
-            TypeMirror expressionType =
-                    root.asType();
+            String expression = rootName;
+            TypeMirror expressionType = root.asType();
 
             /*
              * Static prefix before the union.
              */
-            for (int i = 1;
-                 i < unionAt;
-                 i++) {
-
-                Access access =
-                        access(
-                                expressionType,
-                                expression,
-                                segments[i]);
+            for (int i = 1; i < unionAt; i++) {
+                Access access = access(expressionType, expression, segments[i]);
 
                 if (access.boundsCheck != null) {
                     out.line(
@@ -1246,8 +1087,7 @@ public final class FindGenerator {
                                     ";");
                 }
 
-                String value =
-                        names.newName("value");
+                String value = names.newName("value");
 
                 out.line(
                         localType(access.type) +
@@ -1269,11 +1109,8 @@ public final class FindGenerator {
                                     ";");
                 }
 
-                expression =
-                        value;
-
-                expressionType =
-                        access.type;
+                expression = value;
+                expressionType = access.type;
             }
 
             if (byIndex) {
@@ -1326,22 +1163,17 @@ public final class FindGenerator {
             TypeMirror containerType,
             TypeMirror valueType) {
 
-        String itemType =
-                localType(
-                        valueType);
+        String itemType = localType(valueType);
 
         String size;
 
         if (containerType.getKind() ==
                 TypeKind.ARRAY) {
 
-            size =
-                    expression +
-                            ".length";
+            size = expression + ".length";
 
         } else {
-            size =
-                    names.newName("size");
+            size = names.newName("size");
 
             out.line(
                     "int " +
@@ -1351,16 +1183,11 @@ public final class FindGenerator {
                             ".size();");
         }
 
-        for (PathSegment token :
-                union.union) {
+        for (PathSegment token : union.union) {
 
             if (token instanceof PathSegment.Index) {
-                int rawIndex =
-                        ((PathSegment.Index) token)
-                                .index;
-
-                String index =
-                        names.newName("index");
+                int rawIndex = ((PathSegment.Index) token).index;
+                String index = names.newName("index");
 
                 out.line(
                         "int " +
@@ -1467,20 +1294,11 @@ public final class FindGenerator {
             String expression,
             TypeMirror valueType) {
 
-        String itemType =
-                localType(
-                        valueType);
+        String itemType = localType(valueType);
 
-        for (PathSegment token :
-                union.union) {
-
-            String key =
-                    ((PathSegment.Name) token)
-                            .name;
-
-            String keyLiteral =
-                    JavaWriter.stringLiteral(
-                            key);
+        for (PathSegment token : union.union) {
+            String key = ((PathSegment.Name) token).name;
+            String keyLiteral = JavaWriter.stringLiteral(key);
 
             out.line("{");
             out.indent();
@@ -1540,12 +1358,9 @@ public final class FindGenerator {
             String expression,
             PathSegment[] segments) {
 
-        String[] fields =
-                new String[segments.length];
+        String[] fields = new String[segments.length];
 
-        for (int i = 1;
-             i < segments.length;
-             i++) {
+        for (int i = 1; i < segments.length; i++) {
 
             if (!(segments[i] instanceof
                     PathSegment.Filter)) {
@@ -1553,15 +1368,9 @@ public final class FindGenerator {
                 continue;
             }
 
-            String field =
-                    "_sjf4j_find_filter_" +
-                            filterSeq++;
-
-            int filterIndex =
-                    i;
-
-            fields[i] =
-                    field;
+            String field = "_sjf4j_find_filter_" + filterSeq++;
+            int filterIndex = i;
+            fields[i] = field;
 
             generated.addField(out ->
                     out.line(
@@ -1587,8 +1396,7 @@ public final class FindGenerator {
             String root,
             String item) {
 
-        String field =
-                filterFields[index];
+        String field = filterFields[index];
 
         if (field != null) {
             out.line(
@@ -1618,26 +1426,11 @@ public final class FindGenerator {
             PathSegment.Slice slice,
             String sizeExpression) {
 
-        long step =
-                slice.step == null
-                        ? 1L
-                        : slice.step;
-
-        String start =
-                names.newName(
-                        "sliceStart");
-
-        String end =
-                names.newName(
-                        "sliceEnd");
-
-        String position =
-                names.newName(
-                        "slicePosition");
-
-        String index =
-                names.newName(
-                        "i");
+        long step = slice.step == null ? 1L : slice.step;
+        String start = names.newName("sliceStart");
+        String end = names.newName("sliceEnd");
+        String position = names.newName("slicePosition");
+        String index = names.newName("i");
 
         if (step < 0) {
             out.line(
@@ -1810,24 +1603,15 @@ public final class FindGenerator {
             String miss,
             boolean expressionKnownNonNull) {
 
-        for (int i = index;
-             i < segments.length;
-             i++) {
-
-            Access access =
-                    access(
-                            expressionType,
-                            expression,
-                            segments[i]);
+        for (int i = index; i < segments.length; i++) {
+            Access access = access(expressionType, expression, segments[i]);
 
             if (access == null) {
                 throw new AssertionError(
                         "Unresolved static find suffix");
             }
 
-            boolean last =
-                    i ==
-                            segments.length - 1;
+            boolean last = i == segments.length - 1;
 
             if (!expressionKnownNonNull &&
                     access.needsReceiverNonNull) {
@@ -1858,8 +1642,7 @@ public final class FindGenerator {
                                 ";");
             }
 
-            String value =
-                    names.newName("value");
+            String value = names.newName("value");
 
             out.line(
                     localType(access.type) +
@@ -1882,14 +1665,9 @@ public final class FindGenerator {
                                 ";");
             }
 
-            expression =
-                    value;
-
-            expressionType =
-                    access.type;
-
-            expressionKnownNonNull =
-                    !last;
+            expression = value;
+            expressionType = access.type;
+            expressionKnownNonNull = !last;
         }
 
         out.line(
@@ -1910,15 +1688,9 @@ public final class FindGenerator {
             TypeMirror owner,
             PathSegment segment) {
 
-        NodeAccess access =
-                resolveAccess(
-                        owner,
-                        segment);
+        NodeAccess access = resolveAccess(owner, segment);
 
-        return access == null ||
-                !access.readable()
-                ? null
-                : access.readType();
+        return access == null || !access.readable() ? null : access.readType();
     }
 
 
@@ -1927,44 +1699,25 @@ public final class FindGenerator {
             String receiver,
             PathSegment segment) {
 
-        NodeAccess resolved =
-                resolveAccess(
-                        owner,
-                        segment);
+        NodeAccess resolved = resolveAccess(owner, segment);
 
-        if (resolved == null ||
-                !resolved.readable()) {
-
+        if (resolved == null || !resolved.readable()) {
             return null;
         }
 
-        TypeMirror valueType =
-                resolved.readType();
+        TypeMirror valueType = resolved.readType();
 
         if (segment instanceof PathSegment.Name) {
-            String name =
-                    ((PathSegment.Name) segment)
-                            .name;
-
-            String key =
-                    JavaWriter.stringLiteral(
-                            name);
+            String name = ((PathSegment.Name) segment).name;
+            String key = JavaWriter.stringLiteral(name);
 
             switch (resolved.kind()) {
                 case PROPERTY: {
-                    PropertyAccess read =
-                            resolved.property()
-                                    .read();
+                    PropertyAccess read = resolved.property().read();
 
-                    String expression =
-                            read.isMethod()
-                                    ? receiver +
-                                    "." +
-                                    read.memberName() +
-                                    "()"
-                                    : receiver +
-                                    "." +
-                                    read.memberName();
+                    String expression = read.isMethod()
+                            ? receiver + "." + read.memberName() + "()"
+                            : receiver + "." + read.memberName();
 
                     return new Access(
                             valueType,
@@ -2015,20 +1768,12 @@ public final class FindGenerator {
         }
 
         if (segment instanceof PathSegment.Index) {
-            int index =
-                    ((PathSegment.Index) segment)
-                            .index;
+            int index = ((PathSegment.Index) segment).index;
 
             switch (resolved.kind()) {
                 case ARRAY: {
-                    String size =
-                            receiver +
-                                    ".length";
-
-                    String normalized =
-                            staticIndex(
-                                    index,
-                                    size);
+                    String size = receiver + ".length";
+                    String normalized = staticIndex(index, size);
 
                     return new Access(
                             valueType,
@@ -2046,14 +1791,8 @@ public final class FindGenerator {
                 }
 
                 case LIST: {
-                    String size =
-                            receiver +
-                                    ".size()";
-
-                    String normalized =
-                            staticIndex(
-                                    index,
-                                    size);
+                    String size = receiver + ".size()";
+                    String normalized = staticIndex(index, size);
 
                     return new Access(
                             valueType,
@@ -2071,14 +1810,8 @@ public final class FindGenerator {
                 }
 
                 case JSON_ARRAY: {
-                    String size =
-                            receiver +
-                                    ".size()";
-
-                    String normalized =
-                            staticIndex(
-                                    index,
-                                    size);
+                    String size = receiver + ".size()";
+                    String normalized = staticIndex(index, size);
 
                     return new Access(
                             valueType,
@@ -2111,15 +1844,11 @@ public final class FindGenerator {
             PathSegment segment) {
 
         if (segment instanceof PathSegment.Name) {
-            return context.access.resolveName(
-                    owner,
-                    ((PathSegment.Name) segment)
-                            .name);
+            return context.access.resolveName(owner, ((PathSegment.Name) segment).name);
         }
 
         if (segment instanceof PathSegment.Index) {
-            return context.access.resolveIndex(
-                    owner);
+            return context.access.resolveIndex(owner);
         }
 
         return null;
@@ -2132,25 +1861,16 @@ public final class FindGenerator {
             int from,
             int to) {
 
-        TypeMirror current =
-                start;
+        TypeMirror current = start;
 
-        for (int i = from;
-             i < to;
-             i++) {
-
-            Access access =
-                    access(
-                            current,
-                            "value",
-                            segments[i]);
+        for (int i = from; i < to; i++) {
+            Access access = access(current, "value", segments[i]);
 
             if (access == null) {
                 return false;
             }
 
-            current =
-                    access.type;
+            current = access.type;
         }
 
         return true;
@@ -2163,21 +1883,16 @@ public final class FindGenerator {
      * --------------------------------------------------------------
      */
 
-    private boolean isSequence(
-            TypeMirror type) {
-
+    private boolean isSequence(TypeMirror type) {
         if (type == null) {
             return false;
         }
 
-        if (type.getKind() ==
-                TypeKind.ARRAY) {
-
+        if (type.getKind() == TypeKind.ARRAY) {
             return true;
         }
 
-        NodeKind kind =
-                types.nodeKind(type);
+        NodeKind kind = types.nodeKind(type);
 
         return kind == NodeKind.ARRAY_LIST
                 || kind == NodeKind.ARRAY_JSON_ARRAY
@@ -2185,50 +1900,33 @@ public final class FindGenerator {
     }
 
 
-    private boolean isJsonArray(
-            TypeMirror type) {
-
-        NodeKind kind =
-                types.nodeKind(type);
+    private boolean isJsonArray(TypeMirror type) {
+        NodeKind kind = types.nodeKind(type);
 
         return kind == NodeKind.ARRAY_JSON_ARRAY
                 || kind == NodeKind.ARRAY_JAJO;
     }
 
 
-    private boolean isMap(
-            TypeMirror type) {
-
-        return types.nodeKind(type) ==
-                NodeKind.OBJECT_MAP;
+    private boolean isMap(TypeMirror type) {
+        return types.nodeKind(type) == NodeKind.OBJECT_MAP;
     }
 
 
-    private TypeMirror sequenceElementType(
-            TypeMirror type) {
+    private TypeMirror sequenceElementType(TypeMirror type) {
+        type = types.concrete(type);
 
-        type =
-                types.concrete(type);
-
-        if (type.getKind() ==
-                TypeKind.ARRAY) {
-
-            return types.concrete(
-                    ((ArrayType) type)
-                            .getComponentType());
+        if (type.getKind() == TypeKind.ARRAY) {
+            return types.concrete(((ArrayType) type).getComponentType());
         }
 
-        NodeKind kind =
-                types.nodeKind(type);
+        NodeKind kind = types.nodeKind(type);
 
         if (kind == NodeKind.ARRAY_LIST) {
-            return types.listReadElementType(
-                    type);
+            return types.listReadElementType(type);
         }
 
-        if (kind == NodeKind.ARRAY_JSON_ARRAY ||
-                kind == NodeKind.ARRAY_JAJO) {
-
+        if (kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO) {
             return types.objectType();
         }
 
@@ -2236,9 +1934,7 @@ public final class FindGenerator {
     }
 
 
-    private boolean isStringKeyMap(
-            TypeMirror type) {
-
+    private boolean isStringKeyMap(TypeMirror type) {
         if (!isMap(type)) {
             return false;
         }
@@ -2277,8 +1973,7 @@ public final class FindGenerator {
                         ? null
                         : access.readType();
             } else if (segment instanceof PathSegment.Union) {
-                PathSegment.Union union =
-                        (PathSegment.Union) segment;
+                PathSegment.Union union = (PathSegment.Union) segment;
 
                 if (isMap(current) &&
                         containsName(union) &&
@@ -2372,25 +2067,16 @@ public final class FindGenerator {
                             ")");
         }
 
-        return receiver +
-                ".get(" +
-                index +
-                ")";
+        return receiver + ".get(" + index + ")";
     }
 
 
-    private String objectExpression(
-            TypeMirror type,
-            String expression) {
-
+    private String objectExpression(TypeMirror type, String expression) {
         if (types.isObject(type)) {
             return expression;
         }
 
-        return "(" +
-                localType(type) +
-                ") " +
-                expression;
+        return "(" + localType(type) + ") " + expression;
     }
 
 
@@ -2399,19 +2085,14 @@ public final class FindGenerator {
             String sizeExpression) {
 
         if (index >= 0) {
-            return Integer.toString(
-                    index);
+            return Integer.toString(index);
         }
 
         if (index == Integer.MIN_VALUE) {
-            return sizeExpression +
-                    " + " +
-                    index;
+            return sizeExpression + " + " + index;
         }
 
-        return sizeExpression +
-                " - " +
-                (-index);
+        return sizeExpression + " - " + (-index);
     }
 
 
@@ -2419,38 +2100,23 @@ public final class FindGenerator {
             ExecutableElement method,
             VariableElement root) {
 
-        return "public " +
-                method.getReturnType() +
-                " " +
-                method.getSimpleName() +
-                "(" +
-                root.asType() +
-                " " +
-                root.getSimpleName() +
-                ")";
+        return "public " + method.getReturnType() + " " + method.getSimpleName()
+                + "(" + root.asType() + " " + root.getSimpleName() + ")";
     }
 
 
     private NameAllocator names(
             VariableElement root) {
 
-        NameAllocator names =
-                new NameAllocator();
-
-        names.reserve(
-                root.getSimpleName()
-                        .toString());
+        NameAllocator names = new NameAllocator();
+        names.reserve(root.getSimpleName().toString());
 
         return names;
     }
 
 
-    private String localType(
-            TypeMirror type) {
-
-        return types.boxed(
-                        types.concrete(type))
-                .toString();
+    private String localType(TypeMirror type) {
+        return types.boxed(types.concrete(type)).toString();
     }
 
 
@@ -2458,15 +2124,11 @@ public final class FindGenerator {
             TypeMirror valueType,
             TypeMirror elementType) {
 
-        if (types.isObject(
-                elementType)) {
-
+        if (types.isObject(elementType)) {
             return true;
         }
 
-        return types.isAssignableBoxedGeneric(
-                valueType,
-                elementType);
+        return types.isAssignableBoxedGeneric(valueType, elementType);
     }
 
 
@@ -2505,8 +2167,7 @@ public final class FindGenerator {
 
             this.type = type;
             this.expression = expression;
-            this.needsReceiverNonNull =
-                    needsReceiverNonNull;
+            this.needsReceiverNonNull = needsReceiverNonNull;
             this.boundsCheck = boundsCheck;
             this.presentCheck = presentCheck;
         }

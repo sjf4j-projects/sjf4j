@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.RandomAccess;
 import java.util.Set;
 
 
@@ -320,9 +321,9 @@ public final class NodeMapper {
 
     /**
      * Returns a {@link JsonObject} shallow representation of an object-shaped node.
-     * An existing JsonObject is reused, and a Map is wrapped as its backing map.
-     * POJO and external object entries are copied into a new outer container;
-     * nested entry values are not recursively mapped.
+     * An existing JsonObject is reused; a Map is copied into a new outer
+     * container. POJO and external object members are also copied into a new
+     * outer container; nested entry values are not recursively mapped.
      */
     @SuppressWarnings("unchecked")
     public static JsonObject toJsonObject(Object node, RuntimeContext context) {
@@ -424,9 +425,9 @@ public final class NodeMapper {
 
     /**
      * Returns a {@link JsonArray} shallow representation of an array-shaped node.
-     * Existing JsonArray instances are reused and Lists are wrapped directly.
-     * Other array representations produce a new outer container, without
-     * recursively mapping child elements.
+     * Existing JsonArray instances are reused; Lists are copied into a new
+     * outer container. Other array representations also produce a new outer
+     * container, without recursively mapping child elements.
      */
     @SuppressWarnings("unchecked")
     public static JsonArray toJsonArray(Object node, RuntimeContext context) {
@@ -1231,9 +1232,11 @@ public final class NodeMapper {
                 List<Object> target = TypeRegistry.newListContainer(nodeClazz, src.size(), false);
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
-                for (int i = 0; i < src.size(); i++) {
-                    PathSegment cps = new PathSegment.Index(ps, i);
-                    target.add(_deepCopy(src.get(i), elemType, elemBoxed, cps, context));
+
+                int i = 0;
+                for (Object value : src) {
+                    PathSegment cps = new PathSegment.Index(ps, i++);
+                    target.add(_deepCopy(value, elemType, elemBoxed, cps, context));
                 }
                 return target;
             }
@@ -1375,7 +1378,7 @@ public final class NodeMapper {
         }
 
         /*
-         * JOJO dynamic properties.
+         * JOJO dynamic members.
          *
          * JsonObject itself was handled before reaching this method, so a
          * JsonObject here necessarily represents a JOJO.
@@ -1653,6 +1656,11 @@ public final class NodeMapper {
                                                     boolean deepCopy,
                                                     PathSegment ps,
                                                     RuntimeContext context) {
+        // Snapshot only sequential Lists; indexed reads on them can be quadratic.
+        // Keep native external, JsonArray (getNode), array and RandomAccess reads unchanged.
+        if (source instanceof List && !(source instanceof RandomAccess)) {
+            source = ((List<?>) source).toArray();
+        }
         int size = _indexedSize(source, external);
         boolean externalSource = external != null;
         if (List.class.isAssignableFrom(toBoxed)) {
@@ -1891,9 +1899,10 @@ public final class NodeMapper {
                 List<Object> oldList = (List<Object>) node;
                 List<Object> newList = new ArrayList<>(oldList.size());
 
-                for (int i = 0, len = oldList.size(); i < len; i++) {
-                    PathSegment cps = new PathSegment.Index(ps, i);
-                    newList.add(_convertToRaw(oldList.get(i), cps, context));
+                int i = 0;
+                for (Object value : oldList) {
+                    PathSegment cps = new PathSegment.Index(ps, i++);
+                    newList.add(_convertToRaw(value, cps, context));
                 }
                 return newList;
             }
@@ -1914,7 +1923,7 @@ public final class NodeMapper {
                 }
 
                 PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(rawClazz);
-                Map<String, Object> dynamic = pi.writeDynamic ? InternalAccess.dynamicProperties(jo) : null;
+                Map<String, Object> dynamic = pi.writeDynamic ? InternalAccess.dynamicMembers(jo) : null;
 
                 int size = pi.gettableProperties.length + (dynamic == null ? 0 : dynamic.size());
 

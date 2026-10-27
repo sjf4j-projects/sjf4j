@@ -15,18 +15,10 @@ final class BindingSource {
     private BindingSource() {
     }
 
-    static void beginOverride(
-            JavaWriter out,
-            ResolvedMethod resolved) {
-
-        ExecutableElement method =
-                resolved.declaration();
-
-        ExecutableType type =
-                resolved.type();
-
-        StringBuilder source =
-                new StringBuilder();
+    static void beginOverride(JavaWriter out, ResolvedMethod resolved) {
+        ExecutableElement method = resolved.declaration();
+        ExecutableType type = resolved.type();
+        StringBuilder source = new StringBuilder();
 
         source.append("public ")
                 .append(type.getReturnType())
@@ -34,27 +26,20 @@ final class BindingSource {
                 .append(method.getSimpleName())
                 .append('(');
 
-        List<? extends VariableElement> declarations =
-                method.getParameters();
-
-        List<? extends TypeMirror> parameters =
-                type.getParameterTypes();
+        List<? extends VariableElement> declarations = method.getParameters();
+        List<? extends TypeMirror> parameters = type.getParameterTypes();
 
         for (int i = 0; i < parameters.size(); i++) {
             if (i > 0) {
                 source.append(", ");
             }
 
-            source.append(parameters.get(i))
-                    .append(' ')
-                    .append(declarations.get(i)
-                            .getSimpleName());
+            source.append(parameters.get(i)).append(' ').append(declarations.get(i).getSimpleName());
         }
 
         source.append(')');
 
-        List<? extends TypeMirror> thrown =
-                type.getThrownTypes();
+        List<? extends TypeMirror> thrown = type.getThrownTypes();
 
         if (!thrown.isEmpty()) {
             source.append(" throws ");
@@ -76,15 +61,7 @@ final class BindingSource {
         out.endBlock();
     }
 
-    static String parameterName(
-            BindingPlan plan,
-            int index) {
-
-        return plan.method()
-                .declaration()
-                .getParameters()
-                .get(index)
-                .getSimpleName()
-                .toString();
+    static String parameterName(BindingPlan plan, int index) {
+        return plan.method().declaration().getParameters().get(index).getSimpleName().toString();
     }
 }

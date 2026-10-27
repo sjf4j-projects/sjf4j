@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
  * </ul>
  *
  * <p>This is mainly useful when the Java member name should differ from the JSON
- * property name, or when older input names must remain readable.
+ * property name, or when older input names must remain gettable.
  */
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)

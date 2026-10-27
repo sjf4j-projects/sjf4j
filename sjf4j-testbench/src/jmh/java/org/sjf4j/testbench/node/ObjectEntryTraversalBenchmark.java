@@ -90,7 +90,7 @@ public class ObjectEntryTraversalBenchmark {
             last = entry.getKey();
             count++;
         }
-        if (count != FIELD_COUNT) throw new IllegalStateException("Expected 12 readable entries: " + count);
+        if (count != FIELD_COUNT) throw new IllegalStateException("Expected 12 gettable members: " + count);
 
         failFast = !"aggregate".equals(scenario);
         if ("firstFailure".equals(scenario) || "aggregate".equals(scenario)) {

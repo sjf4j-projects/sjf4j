@@ -16,19 +16,9 @@ public final class ResolvedMethod {
     private final ExecutableType type;
 
 
-    ResolvedMethod(
-            ExecutableElement declaration,
-            ExecutableType type) {
-
-        this.declaration =
-                Asserts.notNull(
-                        declaration,
-                        "declaration");
-
-        this.type =
-                Asserts.notNull(
-                        type,
-                        "type");
+    ResolvedMethod(ExecutableElement declaration, ExecutableType type) {
+        this.declaration = Asserts.notNull(declaration, "declaration");
+        this.type = Asserts.notNull(type, "type");
     }
 
 

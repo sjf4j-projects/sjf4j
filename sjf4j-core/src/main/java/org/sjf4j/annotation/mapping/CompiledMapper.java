@@ -63,11 +63,11 @@ import java.lang.annotation.Target;
  * <p>Object-like sources ({@code Map} and {@code JsonObject}) can bind to
  * declared POJO, record, or constructor targets using public target properties
  * and constructor parameters. Root {@code Map<String,V>} create targets also
-  * accept POJO/record gettable properties and {@code JsonObject}/JOJO entries,
+ * accept POJO/record gettable properties and {@code JsonObject}/JOJO members,
  * allocating a fresh target map and applying normal typed value conversion for
  * each first-level value. Plain {@code JsonObject} root create targets are
-  * shallow projections: POJO/record gettable property values, {@code Map<String, ?>}
- * entries, or {@code JsonObject}/JOJO entries are copied only at the first
+ * shallow projections: POJO/record gettable property values, {@code Map<String, ?>}
+ * entries, or {@code JsonObject}/JOJO members are copied only at the first
  * level, and child object/array/POJO values are shared as-is without deep
  * materialization or scalar conversion. When the declared root source type is
  * {@code Object}, projection to root {@code Map}, plain {@code JsonObject}, or

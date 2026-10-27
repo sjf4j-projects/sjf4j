@@ -61,8 +61,7 @@ public final class NavigatorMethodGenerator {
             return;
         }
 
-        Operation operation =
-                resolveOperation(method, generated);
+        Operation operation = resolveOperation(method, generated);
 
         if (operation == null) {
             return;
@@ -70,33 +69,22 @@ public final class NavigatorMethodGenerator {
 
         switch (operation.kind) {
             case GET:
-                generateGet(
-                        method,
-                        generated,
-                        operation);
+                generateGet(method, generated, operation);
                 return;
 
             case PUT:
             case PUT_IF_PARENT_PRESENT:
             case ENSURE_PUT:
             case ENSURE_PUT_IF_ABSENT:
-                generatePut(
-                        method,
-                        generated,
-                        operation);
+                generatePut(method, generated, operation);
                 return;
 
             case FIND:
-                findGenerator.generate(
-                        method,
-                        generated,
-                        operation.path,
-                        operation.allowFallback);
+                findGenerator.generate(method, generated, operation.path, operation.allowFallback);
                 return;
 
             default:
-                throw new AssertionError(
-                        operation.kind);
+                throw new AssertionError(operation.kind);
         }
     }
 
@@ -112,8 +100,7 @@ public final class NavigatorMethodGenerator {
             GeneratedClass generated,
             Operation operation) {
 
-        List<? extends VariableElement> parameters =
-                method.getParameters();
+        List<? extends VariableElement> parameters = method.getParameters();
 
         if (parameters.isEmpty()) {
             error(
@@ -131,12 +118,7 @@ public final class NavigatorMethodGenerator {
             return;
         }
 
-        JsonPath path =
-                parsePath(
-                        method,
-                        generated,
-                        operation.path,
-                        false);
+        JsonPath path = parsePath(method, generated, operation.path, false);
 
         if (path == null) {
             return;
@@ -163,14 +145,9 @@ public final class NavigatorMethodGenerator {
             return;
         }
 
-        GetPlan plan = new GetPlan(
-                method,
-                parameters.get(0),
-                path,
-                pathParameters);
+        GetPlan plan = new GetPlan(method, parameters.get(0), path, pathParameters);
 
-        GeneratedClass.Member member =
-                pathEmitter.compileGet(plan, generated);
+        GeneratedClass.Member member = pathEmitter.compileGet(plan, generated);
 
         if (member != null) {
             generated.addMethod(member);
@@ -189,8 +166,7 @@ public final class NavigatorMethodGenerator {
             GeneratedClass generated,
             Operation operation) {
 
-        List<? extends VariableElement> parameters =
-                method.getParameters();
+        List<? extends VariableElement> parameters = method.getParameters();
 
         if (parameters.size() < 2) {
             error(
@@ -201,12 +177,7 @@ public final class NavigatorMethodGenerator {
             return;
         }
 
-        JsonPath path =
-                parsePath(
-                        method,
-                        generated,
-                        operation.path,
-                        false);
+        JsonPath path = parsePath(method, generated, operation.path, false);
 
         if (path == null) {
             return;
@@ -240,12 +211,8 @@ public final class NavigatorMethodGenerator {
             return;
         }
 
-        VariableElement root =
-                parameters.get(0);
-
-        VariableElement value =
-                parameters.get(
-                        parameters.size() - 1);
+        VariableElement root = parameters.get(0);
+        VariableElement value = parameters.get(parameters.size() - 1);
 
         Map<String, VariableElement> pathParameters =
                 resolvePathParameters(
@@ -271,8 +238,7 @@ public final class NavigatorMethodGenerator {
                 operation.ifParentPresent,
                 operation.ifAbsent);
 
-        GeneratedClass.Member member =
-                pathEmitter.compilePut(plan, generated);
+        GeneratedClass.Member member = pathEmitter.compilePut(plan, generated);
 
         if (member != null) {
             generated.addMethod(member);
@@ -296,115 +262,52 @@ public final class NavigatorMethodGenerator {
 
         Operation operation = null;
 
-        GetByPath get =
-                method.getAnnotation(GetByPath.class);
+        GetByPath get = method.getAnnotation(GetByPath.class);
 
         if (get != null) {
-            operation = select(
-                    method,
-                    generated,
-                    operation,
-                    new Operation(
-                            Kind.GET,
-                            "@GetByPath",
-                            get.value(),
-                            false,
-                            false,
-                            false,
-                            false));
+            operation = select(method, generated, operation,
+                    new Operation(Kind.GET, "@GetByPath", get.value(), false, false, false, false));
         }
 
-        PutByPath put =
-                method.getAnnotation(PutByPath.class);
+        PutByPath put = method.getAnnotation(PutByPath.class);
 
         if (put != null) {
-            operation = select(
-                    method,
-                    generated,
-                    operation,
-                    new Operation(
-                            Kind.PUT,
-                            "@PutByPath",
-                            put.value(),
-                            false,
-                            false,
-                            false,
-                            false));
+            operation = select(method, generated, operation,
+                    new Operation(Kind.PUT, "@PutByPath", put.value(), false, false, false, false));
         }
 
         PutIfParentPresentByPath putIfParentPresent =
-                method.getAnnotation(
-                        PutIfParentPresentByPath.class);
+                method.getAnnotation(PutIfParentPresentByPath.class);
 
         if (putIfParentPresent != null) {
-            operation = select(
-                    method,
-                    generated,
-                    operation,
-                    new Operation(
-                            Kind.PUT_IF_PARENT_PRESENT,
-                            "@PutIfParentPresentByPath",
-                            putIfParentPresent.value(),
-                            false,
-                            false,
-                            true,
-                            false));
+            operation = select(method, generated, operation,
+                    new Operation(Kind.PUT_IF_PARENT_PRESENT, "@PutIfParentPresentByPath",
+                            putIfParentPresent.value(), false, false, true, false));
         }
 
-        EnsurePutByPath ensurePut =
-                method.getAnnotation(
-                        EnsurePutByPath.class);
+        EnsurePutByPath ensurePut = method.getAnnotation(EnsurePutByPath.class);
 
         if (ensurePut != null) {
-            operation = select(
-                    method,
-                    generated,
-                    operation,
-                    new Operation(
-                            Kind.ENSURE_PUT,
-                            "@EnsurePutByPath",
-                            ensurePut.value(),
-                            false,
-                            true,
-                            false,
-                            false));
+            operation = select(method, generated, operation,
+                    new Operation(Kind.ENSURE_PUT, "@EnsurePutByPath",
+                            ensurePut.value(), false, true, false, false));
         }
 
         EnsurePutIfAbsentByPath ensurePutIfAbsent =
-                method.getAnnotation(
-                        EnsurePutIfAbsentByPath.class);
+                method.getAnnotation(EnsurePutIfAbsentByPath.class);
 
         if (ensurePutIfAbsent != null) {
-            operation = select(
-                    method,
-                    generated,
-                    operation,
-                    new Operation(
-                            Kind.ENSURE_PUT_IF_ABSENT,
-                            "@EnsurePutIfAbsentByPath",
-                            ensurePutIfAbsent.value(),
-                            false,
-                            true,
-                            false,
-                            true));
+            operation = select(method, generated, operation,
+                    new Operation(Kind.ENSURE_PUT_IF_ABSENT, "@EnsurePutIfAbsentByPath",
+                            ensurePutIfAbsent.value(), false, true, false, true));
         }
 
-        FindByPath find =
-                method.getAnnotation(FindByPath.class);
+        FindByPath find = method.getAnnotation(FindByPath.class);
 
         if (find != null) {
-            operation = select(
-                    method,
-                    generated,
-                    operation,
-                    new Operation(
-                            Kind.FIND,
-                            "@FindByPath",
-                            find.value(),
-                            find.allowFallback(),
-                            false,
-                            false,
-                            false));
+            operation = select(method, generated, operation,
+                    new Operation(Kind.FIND, "@FindByPath", find.value(),
+                            find.allowFallback(), false, false, false));
         }
 
         if (operation == null) {
@@ -504,40 +407,26 @@ public final class NavigatorMethodGenerator {
             int to,
             String annotation) {
 
-        List<? extends VariableElement> parameters =
-                method.getParameters();
-
-        Map<String, VariableElement> available =
-                new LinkedHashMap<String, VariableElement>();
+        List<? extends VariableElement> parameters = method.getParameters();
+        Map<String, VariableElement> available = new LinkedHashMap<String, VariableElement>();
 
         for (int i = from; i < to; i++) {
-            VariableElement parameter =
-                    parameters.get(i);
-
-            available.put(
-                    parameter.getSimpleName().toString(),
-                    parameter);
+            VariableElement parameter = parameters.get(i);
+            available.put(parameter.getSimpleName().toString(), parameter);
         }
 
-        Map<String, VariableElement> used =
-                new LinkedHashMap<String, VariableElement>();
-
-        PathSegment[] segments =
-                path.segments();
+        Map<String, VariableElement> used = new LinkedHashMap<String, VariableElement>();
+        PathSegment[] segments = path.segments();
 
         for (int i = 1; i < segments.length; i++) {
-            PathSegment segment =
-                    segments[i];
+            PathSegment segment = segments[i];
 
             if (!(segment instanceof PathSegment.Param)) {
                 continue;
             }
 
-            String name =
-                    ((PathSegment.Param) segment).param;
-
-            VariableElement parameter =
-                    available.get(name);
+            String name = ((PathSegment.Param) segment).param;
+            VariableElement parameter = available.get(name);
 
             if (parameter == null) {
                 error(
@@ -561,9 +450,7 @@ public final class NavigatorMethodGenerator {
          *
          *     get(root, String name, int unused)
          */
-        for (Map.Entry<String, VariableElement> entry :
-                available.entrySet()) {
-
+        for (Map.Entry<String, VariableElement> entry : available.entrySet()) {
             if (!used.containsKey(entry.getKey())) {
                 error(
                         method,

@@ -94,29 +94,20 @@ public final class NodeAnnotations {
             return false;
         }
 
-        Element element =
-                ((DeclaredType) type)
-                        .asElement();
+        Element element = ((DeclaredType) type).asElement();
 
         if (!(element instanceof TypeElement)) {
             return false;
         }
 
-        for (AnnotationMirror annotation :
-                element.getAnnotationMirrors()) {
-
-            Element annotationType =
-                    annotation.getAnnotationType()
-                            .asElement();
+        for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
+            Element annotationType = annotation.getAnnotationType().asElement();
 
             if (!(annotationType instanceof TypeElement)) {
                 continue;
             }
 
-            String name =
-                    ((TypeElement) annotationType)
-                            .getQualifiedName()
-                            .toString();
+            String name = ((TypeElement) annotationType).getQualifiedName().toString();
 
             if (name.startsWith("org.sjf4j.annotation.") &&
                     name.endsWith(".OneOf")) {
@@ -170,13 +161,9 @@ public final class NodeAnnotations {
                 continue;
             }
 
-            for (Map.Entry<? extends ExecutableElement,
-                    ? extends AnnotationValue> entry
+            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
                     : mirror.getElementValues().entrySet()) {
-
-                if (!entry.getKey()
-                        .getSimpleName()
-                        .contentEquals(memberName)) {
+                if (!entry.getKey().getSimpleName().contentEquals(memberName)) {
                     continue;
                 }
 

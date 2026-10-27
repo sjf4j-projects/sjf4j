@@ -7,6 +7,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.node.NodeStream;
 
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -87,6 +88,16 @@ public class NodeStreamTest {
         assertEquals(Arrays.asList("x", "y", "y", "z"), NodeStream.of(sampleNodes()).findByPath("$.tags[*]", String.class).toList());
         assertEquals(Arrays.asList(2, 1), NodeStream.of(sampleNodes()).evalAsByPath("$.idText", Integer.class).toList());
         assertEquals(Arrays.asList("x", "y", "y", "z"), NodeStream.of(sampleNodes()).evalByPath("$.tags[*]", String.class).toList());
+    }
+
+    @Test
+    void evalFlattensLinkedListFromSinglePath() {
+        JsonObject strict = JsonObject.of("items", new LinkedList<>(Arrays.asList(1, null, 3)));
+        JsonObject lenient = JsonObject.of("items", new LinkedList<>(Arrays.asList("1", null, "3")));
+        assertEquals(Arrays.asList(1, null, 3),
+                NodeStream.of(strict).evalByPath("$.items", Integer.class).toList());
+        assertEquals(Arrays.asList(1, null, 3),
+                NodeStream.of(lenient).evalAsByPath("$.items", Integer.class).toList());
     }
 
     @Test

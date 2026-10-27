@@ -43,7 +43,7 @@ class SimpleJsonBinderTest {
                 assertInstanceOf(SimpleJsonParser.class, parser);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -54,7 +54,7 @@ class SimpleJsonBinderTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -63,7 +63,7 @@ class SimpleJsonBinderTest {
                 assertInstanceOf(SimpleJsonParser.class, parser);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -73,7 +73,7 @@ class SimpleJsonBinderTest {
                 assertInstanceOf(SimpleJsonParser.class, parser);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -83,7 +83,7 @@ class SimpleJsonBinderTest {
                 assertInstanceOf(SimpleJsonGenerator.class, generator);
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         {
@@ -92,7 +92,7 @@ class SimpleJsonBinderTest {
                 assertInstanceOf(SimpleJsonGenerator.class, generator);
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
     }

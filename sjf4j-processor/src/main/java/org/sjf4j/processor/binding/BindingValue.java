@@ -62,12 +62,7 @@ final class BindingValue {
     private boolean readDynamic;
     private boolean writeDynamic;
 
-    BindingValue(
-            BindingPlan.Direction direction,
-            TypeMirror type,
-            Kind kind,
-            boolean primitive) {
-
+    BindingValue(BindingPlan.Direction direction, TypeMirror type, Kind kind, boolean primitive) {
         this.direction = Asserts.notNull(direction, "direction");
         this.type = Asserts.notNull(type, "type");
         this.kind = Asserts.notNull(kind, "kind");

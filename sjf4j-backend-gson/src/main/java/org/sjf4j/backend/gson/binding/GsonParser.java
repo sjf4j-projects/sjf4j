@@ -204,7 +204,7 @@ public final class GsonParser extends StreamingParser {
     }
 
     @Override
-    public void release() {
+    public void close() {
         // Gson has no pooled parser resources; the caller owns the input.
     }
 

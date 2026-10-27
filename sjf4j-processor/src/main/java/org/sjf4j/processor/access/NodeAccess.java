@@ -42,16 +42,8 @@ public final class NodeAccess {
             TypeMirror writeType,
             Property property) {
 
-        this.kind =
-                Asserts.notNull(
-                        kind,
-                        "kind");
-
-        this.ownerType =
-                Asserts.notNull(
-                        ownerType,
-                        "ownerType");
-
+        this.kind = Asserts.notNull(kind, "kind");
+        this.ownerType = Asserts.notNull(ownerType, "ownerType");
         this.readType = readType;
         this.writeType = writeType;
         this.property = property;

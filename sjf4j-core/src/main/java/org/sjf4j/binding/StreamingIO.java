@@ -446,7 +446,7 @@ public final class StreamingIO {
         // Both POJO and JOJO use the same cached name matcher and property
         // readers. Only a JOJO with dynamic reads enabled needs unknown keys.
         boolean retainDynamic = pojoInfo.isJojo && pojoInfo.readDynamic;
-        Map<String, Object> dynamic = null;
+        LinkedHashMap<String, Object> dynamic = null;
 
         int expectedIndex = 0;
         int index;
@@ -456,18 +456,18 @@ public final class StreamingIO {
                 expectedIndex = index + 1;
             } else if (retainDynamic) {
                 String name = parser.currentName();
-                // Read-only declared members are not present in the writable
-                // matcher. They must not silently become dynamic properties.
+                // Read-only declared members are not present in the settable
+                // matcher. They must not silently become dynamic members.
                 if (pojoInfo.propertyLookup.containsKey(name)) {
                     parser.skipNode();
                     continue;
                 }
                 if (dynamic == null) {
                     JsonObject jojo = (JsonObject) pojo;
-                    dynamic = InternalAccess.dynamicProperties(jojo);
+                    dynamic = InternalAccess.dynamicMembers(jojo);
                     if (dynamic == null) {
                         dynamic = new LinkedHashMap<>();
-                        InternalAccess.dynamicProperties(jojo, dynamic);
+                        InternalAccess.dynamicMembers(jojo, dynamic);
                     }
                 }
                 dynamic.put(name, parser.readRaw());
@@ -1140,7 +1140,7 @@ public final class StreamingIO {
          * Exact JsonObject only.
          *
          * A JsonObject subclass is a JOJO and must go through PojoInfo so
-         * declared properties are written before dynamic properties.
+         * declared properties are written before dynamic members.
          */
         if (clazz == JsonObject.class) {
             writeJsonObject(generator, (JsonObject) node, context);
@@ -1208,7 +1208,7 @@ public final class StreamingIO {
 
     /**
      * Streams an external JSON tree without creating intermediate raw nodes.
-     * Object properties with JSON null are omitted when includeNulls is false;
+     * Object members with JSON null are omitted when includeNulls is false;
      * null array elements are preserved.
      */
     private static void _writeExternalNode(StreamingGenerator generator, Object node,
@@ -1446,10 +1446,10 @@ public final class StreamingIO {
         }
 
         /*
-         * JOJO dynamic properties come after declared properties.
+         * JOJO dynamic members come after declared properties.
          */
         if (pojoInfo.isJojo && pojoInfo.writeDynamic) {
-            Map<String, Object> dynamic = InternalAccess.dynamicProperties((JsonObject) node);
+            Map<String, Object> dynamic = InternalAccess.dynamicMembers((JsonObject) node);
             if (dynamic != null) {
                 for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
                     Object value = entry.getValue();

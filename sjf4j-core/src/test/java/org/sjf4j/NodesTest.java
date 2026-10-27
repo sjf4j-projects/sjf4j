@@ -42,6 +42,18 @@ import static org.junit.jupiter.api.Assertions.*;
 public class NodesTest {
 
     @Test
+    void inspectAndShapeLinkedListInOrder() {
+        List<Object> list = new LinkedList<Object>(Arrays.asList("a", null, Arrays.asList(1, 2))) {
+            @Override
+            public Object get(int index) {
+                throw new AssertionError("indexed read on sequential list");
+            }
+        };
+        assertEquals("[a, null, [1, 2]]", Nodes.inspect(list));
+        assertEquals("[String, null, [Integer, Integer]]", Nodes.shape(list));
+    }
+
+    @Test
     public void testToString() {
         assertEquals("test", Nodes.toString("test"));
         assertEquals("a", Nodes.toString('a'));
@@ -204,6 +216,46 @@ public class NodesTest {
     }
 
     @Test
+    void toJsonNodesCopyOuterCollectionsButShareChildren() {
+        JsonObject child = JsonObject.of("value", 1);
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("child", child);
+        List<Object> list = new ArrayList<>();
+        list.add(child);
+
+        JsonObject object = Nodes.toJsonObject(map);
+        JsonObject typedObject = Nodes.to(map, JsonObject.class);
+        JsonArray array = Nodes.toJsonArray(list);
+        JsonArray typedArray = Nodes.to(list, JsonArray.class);
+
+        map.put("later", 2);
+        list.add(2);
+        object.put("local", 3);
+        typedObject.put("typed", 4);
+        array.add(3);
+        typedArray.add(4);
+
+        assertFalse(object.containsKey("later"));
+        assertFalse(typedObject.containsKey("later"));
+        assertFalse(map.containsKey("local"));
+        assertFalse(map.containsKey("typed"));
+        assertEquals(2, array.size());
+        assertEquals(2, typedArray.size());
+        assertEquals(2, list.size());
+        assertEquals(2, list.get(1));
+        assertSame(child, object.getNode("child"));
+        assertSame(child, typedObject.getNode("child"));
+        assertSame(child, array.getNode(0));
+        assertSame(child, typedArray.getNode(0));
+        child.put("value", 5);
+        assertEquals(5, object.getJsonObject("child").getInt("value"));
+        assertSame(object, Nodes.toJsonObject(object));
+        assertSame(object, Nodes.to(object, JsonObject.class));
+        assertSame(array, Nodes.toJsonArray(array));
+        assertSame(array, Nodes.to(array, JsonArray.class));
+    }
+
+    @Test
     public void testTypeReferenceDeepCopyUsesStructuralConversion() {
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
@@ -213,7 +265,7 @@ public class NodesTest {
 
         assertEquals("value", byClass.getString("key"));
         assertEquals("value", byTypeReference.getString("key"));
-        assertEquals(2, byClass.getInt("later"));
+        assertNull(byClass.getNode("later"));
         assertNull(byTypeReference.getNode("later"));
 
         List<Object> list = new ArrayList<>();
@@ -222,9 +274,9 @@ public class NodesTest {
         JsonArray arrayByTypeReference = Sjf4j.global().deepNode(list, new TypeReference<JsonArray>() {});
         list.add(2);
 
-        assertEquals(2, arrayByClass.size());
+        assertEquals(1, arrayByClass.size());
         assertEquals(1, arrayByTypeReference.size());
-        assertEquals(2, arrayByClass.getInt(1));
+        assertEquals(1, arrayByClass.getInt(0));
         assertEquals(1, arrayByTypeReference.getInt(0));
 
         Map<String, Object> rawUser = new HashMap<>();
@@ -649,7 +701,7 @@ public class NodesTest {
     }
 
     @Test
-    public void testCopyJojoCopiesDeclaredAndDynamicProperties() {
+    public void testCopyJojoCopiesDeclaredPropertiesAndDynamicMembers() {
         Person original = new Person();
         original.setName("Ada");
         JsonObject address = JsonObject.of("city", "Beijing");

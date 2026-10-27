@@ -35,11 +35,8 @@ import java.util.Set;
  */
 public final class CreatorResolver {
 
-    private static final String MAPPING_CREATOR =
-            "org.sjf4j.annotation.mapping.MappingCreator";
-
-    private static final String MAPPING_CREATORS =
-            "org.sjf4j.annotation.mapping.MappingCreators";
+    private static final String MAPPING_CREATOR = "org.sjf4j.annotation.mapping.MappingCreator";
+    private static final String MAPPING_CREATORS = "org.sjf4j.annotation.mapping.MappingCreators";
 
 
     private final ProcessorContext context;
@@ -59,67 +56,34 @@ public final class CreatorResolver {
      *
      * @return creation model, or {@code null} after reporting a diagnostic
      */
-    public Creation resolve(
-            TypeElement mapper,
-            MappingPlan plan,
-            GeneratedClass generated) {
-
+    public Creation resolve(TypeElement mapper, MappingPlan plan, GeneratedClass generated) {
         if (!plan.create()) {
-            throw new IllegalArgumentException(
-                    "CreatorResolver supports create mappings only");
+            throw new IllegalArgumentException("CreatorResolver supports create mappings only");
         }
-
-        return resolve(
-                mapper,
-                plan.method(),
-                plan.targetType(),
-                generated);
+        return resolve(mapper, plan.method(), plan.targetType(), generated);
     }
 
 
     /**
      * Resolves target creation for a non-MappingPlan caller such as JDBC.
      */
-    public Creation resolve(
-            TypeElement mapper,
-            ExecutableElement method,
-            TypeMirror targetType,
-            GeneratedClass generated) {
-
-        TypeMirror declaredTarget =
-                types.concrete(
-                        targetType);
+    public Creation resolve(TypeElement mapper, ExecutableElement method, TypeMirror targetType,
+                            GeneratedClass generated) {
+        TypeMirror declaredTarget = types.concrete(targetType);
 
         /*
          * Method-local creator rules have explicit precedence.
          */
-        List<CreatorRule> methodRules =
-                creatorRules(
-                        method,
-                        mapper);
-
-        CreatorRule rule =
-                selectRule(
-                        declaredTarget,
-                        methodRules,
-                        method,
-                        generated);
+        List<CreatorRule> methodRules = creatorRules(method, mapper);
+        CreatorRule rule = selectRule(declaredTarget, methodRules, method, generated);
 
         if (rule == INVALID_RULE) {
             return null;
         }
 
         if (rule == null) {
-            List<CreatorRule> mapperRules =
-                    mapperCreatorRules(
-                            mapper);
-
-            rule =
-                    selectRule(
-                            declaredTarget,
-                            mapperRules,
-                            method,
-                            generated);
+            List<CreatorRule> mapperRules = mapperCreatorRules(mapper);
+            rule = selectRule(declaredTarget, mapperRules, method, generated);
 
             if (rule == INVALID_RULE) {
                 return null;
@@ -127,23 +91,11 @@ public final class CreatorResolver {
         }
 
         if (rule != null) {
-            return resolveExplicit(
-                    mapper,
-                    method,
-                    rule,
-                    declaredTarget,
-                    generated);
+            return resolveExplicit(mapper, method, rule, declaredTarget, generated);
         }
 
-        return resolveStandard(
-                declaredTarget,
-                declaredTarget,
-                method,
-                generated);
+        return resolveStandard(declaredTarget, declaredTarget, method, generated);
     }
-
-
-
 
     /*
      * --------------------------------------------------------------
@@ -151,64 +103,31 @@ public final class CreatorResolver {
      * --------------------------------------------------------------
      */
 
-    private Creation resolveExplicit(
-            TypeElement mapper,
-            ExecutableElement method,
-            CreatorRule rule,
-            TypeMirror declaredTarget,
-            GeneratedClass generated) {
+    private Creation resolveExplicit(TypeElement mapper, ExecutableElement method, CreatorRule rule,
+                                     TypeMirror declaredTarget, GeneratedClass generated) {
+        boolean hasImplementation = rule.implementation != null;
+        boolean hasCreator = rule.creator != null && !rule.creator.isEmpty();
 
-        boolean hasImplementation =
-                rule.implementation != null;
-
-        boolean hasCreator =
-                rule.creator != null &&
-                        !rule.creator.isEmpty();
-
-        if (hasImplementation ==
-                hasCreator) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator for " +
-                            rule.targetType +
-                            " must declare exactly one of implementation or creator");
+        if (hasImplementation == hasCreator) {
+            error(method, generated, "@MappingCreator for " + rule.targetType +
+                    " must declare exactly one of implementation or creator");
 
             return null;
         }
 
         if (hasImplementation) {
-            TypeMirror implementation =
-                    types.concrete(
-                            rule.implementation);
+            TypeMirror implementation = types.concrete(rule.implementation);
 
-            if (!types.isAssignableBoxedGeneric(
-                    implementation,
-                    rule.targetType)) {
-
-                error(
-                        method,
-                        generated,
-                        "@MappingCreator implementation " +
-                                implementation +
-                                " is not assignable to targetType " +
-                                rule.targetType);
+            if (!types.isAssignableBoxedGeneric(implementation, rule.targetType)) {
+                error(method, generated, "@MappingCreator implementation " + implementation +
+                        " is not assignable to targetType " + rule.targetType);
 
                 return null;
             }
 
-            if (!types.isAssignableBoxedGeneric(
-                    implementation,
-                    declaredTarget)) {
-
-                error(
-                        method,
-                        generated,
-                        "@MappingCreator implementation " +
-                                implementation +
-                                " is not assignable to mapper target " +
-                                declaredTarget);
+            if (!types.isAssignableBoxedGeneric(implementation, declaredTarget)) {
+                error(method, generated, "@MappingCreator implementation " + implementation +
+                        " is not assignable to mapper target " + declaredTarget);
 
                 return null;
             }
@@ -217,11 +136,7 @@ public final class CreatorResolver {
              * An implementation is only a type substitution. It must satisfy
              * normal target construction rules itself.
              */
-            return resolveStandard(
-                    declaredTarget,
-                    implementation,
-                    method,
-                    generated);
+            return resolveStandard(declaredTarget, implementation, method, generated);
         }
 
         return resolveFactory(
@@ -240,187 +155,90 @@ public final class CreatorResolver {
             TypeMirror declaredTarget,
             GeneratedClass generated) {
 
-        String creator =
-                rule.creator;
-
-        if (!creator.startsWith("this::") ||
-                creator.length() <= 6) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator creator must use the form this::method");
+        String creator = rule.creator;
+        if (!creator.startsWith("this::") || creator.length() <= 6) {
+            error(method, generated, "@MappingCreator creator must use the form this::method");
 
             return null;
         }
 
-        String methodName =
-                creator.substring(6);
-
-        ExecutableElement factory =
-                findFactoryMethod(
-                        mapper,
-                        rule.owner,
-                        methodName);
+        String methodName = creator.substring(6);
+        ExecutableElement factory = findFactoryMethod(mapper, rule.owner, methodName);
 
         if (factory == null) {
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' was not found");
+            error(method, generated, "@MappingCreator factory method '" + methodName + "' was not found");
 
             return null;
         }
 
-        if (!factory.getParameters()
-                .isEmpty()) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' must not declare parameters");
+        if (!factory.getParameters().isEmpty()) {
+            error(method, generated,
+                    "@MappingCreator factory method '" + methodName + "' must not declare parameters");
 
             return null;
         }
 
-        if (!factory.getTypeParameters()
-                .isEmpty()) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' cannot declare type parameters");
+        if (!factory.getTypeParameters().isEmpty()) {
+            error(method, generated,
+                    "@MappingCreator factory method '" + methodName + "' cannot declare type parameters");
 
             return null;
         }
 
-        Set<Modifier> modifiers =
-                factory.getModifiers();
-
-        if (!modifiers.contains(Modifier.DEFAULT) &&
-                !modifiers.contains(Modifier.STATIC)) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' must be default or static");
+        Set<Modifier> modifiers = factory.getModifiers();
+        if (!modifiers.contains(Modifier.DEFAULT) && !modifiers.contains(Modifier.STATIC)) {
+            error(method, generated, "@MappingCreator factory method '" + methodName + "' must be default or static");
 
             return null;
         }
 
         if (modifiers.contains(Modifier.PRIVATE)) {
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' is not accessible");
+            error(method, generated, "@MappingCreator factory method '" + methodName + "' is not accessible");
 
             return null;
         }
 
-        TypeMirror returnType =
-                factoryReturnType(
-                        mapper,
-                        factory);
-
-        if (returnType == null ||
-                returnType.getKind() ==
-                        TypeKind.VOID) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' must return a target value");
+        TypeMirror returnType = factoryReturnType(mapper, factory);
+        if (returnType == null || returnType.getKind() == TypeKind.VOID) {
+            error(method, generated,
+                    "@MappingCreator factory method '" + methodName + "' must return a target value");
 
             return null;
         }
 
-        if (!types.isAssignableBoxedGeneric(
-                returnType,
-                rule.targetType)) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' returns " +
-                            returnType +
-                            ", which is not assignable to targetType " +
-                            rule.targetType);
+        if (!types.isAssignableBoxedGeneric(returnType, rule.targetType)) {
+            error(method, generated, "@MappingCreator factory method '" + methodName + "' returns " +
+                    returnType + ", which is not assignable to targetType " + rule.targetType);
 
             return null;
         }
 
-        if (!types.isAssignableBoxedGeneric(
-                returnType,
-                declaredTarget)) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' returns " +
-                            returnType +
-                            ", which is not assignable to mapper target " +
-                            declaredTarget);
+        if (!types.isAssignableBoxedGeneric(returnType, declaredTarget)) {
+            error(method, generated, "@MappingCreator factory method '" + methodName + "' returns " +
+                    returnType + ", which is not assignable to mapper target " + declaredTarget);
 
             return null;
         }
 
-        TypeMirror workingType =
-                types.concrete(
-                        returnType);
-
-        TypeElement workingElement =
-                types.typeElement(
-                        workingType);
+        TypeMirror workingType = types.concrete(returnType);
+        TypeElement workingElement = types.typeElement(workingType);
 
         if (workingElement == null) {
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory method '" +
-                            methodName +
-                            "' must return a declared object type");
+            error(method, generated,
+                    "@MappingCreator factory method '" + methodName + "' must return a declared object type");
 
             return null;
         }
 
-        if (!standardCreators.isTypeAccessible(
-                workingElement,
-                generatedPackage(method))) {
-
-            error(
-                    method,
-                    generated,
-                    "@MappingCreator factory return type " +
-                            workingType +
-                            " is not accessible from generated code");
+        if (!standardCreators.isTypeAccessible(workingElement, generatedPackage(method))) {
+            error(method, generated,
+                    "@MappingCreator factory return type " + workingType + " is not accessible from generated code");
 
             return null;
         }
 
-        return Creation.factory(
-                declaredTarget,
-                workingType,
-                factory,
-                factory.getModifiers()
-                        .contains(Modifier.STATIC)
-                        ? rule.owner
-                        : null);
+        return Creation.factory(declaredTarget, workingType, factory,
+                factory.getModifiers().contains(Modifier.STATIC) ? rule.owner : null);
     }
 
 
@@ -428,47 +246,26 @@ public final class CreatorResolver {
      * Searches normal inherited members first. Static methods are not inherited,
      * so the rule-declaring interface is checked separately.
      */
-    private ExecutableElement findFactoryMethod(
-            TypeElement mapper,
-            TypeElement ruleOwner,
-            String name) {
-
-        for (Element member :
-                context.elements
-                        .getAllMembers(mapper)) {
-
-            if (member.getKind() !=
-                    ElementKind.METHOD) {
-
+    private ExecutableElement findFactoryMethod(TypeElement mapper, TypeElement ruleOwner, String name) {
+        for (Element member : context.elements.getAllMembers(mapper)) {
+            if (member.getKind() != ElementKind.METHOD) {
                 continue;
             }
 
-            if (!member.getSimpleName()
-                    .contentEquals(name)) {
-
+            if (!member.getSimpleName().contentEquals(name)) {
                 continue;
             }
 
-            ExecutableElement method =
-                    (ExecutableElement) member;
-
-            if (!method.getParameters()
-                    .isEmpty()) {
-
+            ExecutableElement method = (ExecutableElement) member;
+            if (!method.getParameters().isEmpty()) {
                 continue;
             }
 
-            if (method.getModifiers()
-                    .contains(Modifier.DEFAULT)) {
-
+            if (method.getModifiers().contains(Modifier.DEFAULT)) {
                 return method;
             }
 
-            if (method.getModifiers()
-                    .contains(Modifier.STATIC) &&
-                    method.getEnclosingElement()
-                            .equals(mapper)) {
-
+            if (method.getModifiers().contains(Modifier.STATIC) && method.getEnclosingElement().equals(mapper)) {
                 return method;
             }
         }
@@ -477,25 +274,13 @@ public final class CreatorResolver {
          * Static methods declared on a parent mapper are not inherited.
          */
         if (ruleOwner != null) {
-            for (Element member :
-                    ruleOwner.getEnclosedElements()) {
-
-                if (member.getKind() !=
-                        ElementKind.METHOD ||
-                        !member.getSimpleName()
-                                .contentEquals(name)) {
-
+            for (Element member : ruleOwner.getEnclosedElements()) {
+                if (member.getKind() != ElementKind.METHOD || !member.getSimpleName().contentEquals(name)) {
                     continue;
                 }
 
-                ExecutableElement method =
-                        (ExecutableElement) member;
-
-                if (method.getModifiers()
-                        .contains(Modifier.STATIC) &&
-                        method.getParameters()
-                                .isEmpty()) {
-
+                ExecutableElement method = (ExecutableElement) member;
+                if (method.getModifiers().contains(Modifier.STATIC) && method.getParameters().isEmpty()) {
                     return method;
                 }
             }
@@ -505,32 +290,18 @@ public final class CreatorResolver {
     }
 
 
-    private TypeMirror factoryReturnType(
-            TypeElement mapper,
-            ExecutableElement factory) {
-
-        if (factory.getModifiers()
-                .contains(Modifier.STATIC)) {
-
+    private TypeMirror factoryReturnType(TypeElement mapper, ExecutableElement factory) {
+        if (factory.getModifiers().contains(Modifier.STATIC)) {
             return factory.getReturnType();
         }
 
-        TypeMirror mapperType =
-                mapper.asType();
-
-        if (!(mapperType instanceof
-                DeclaredType)) {
-
+        TypeMirror mapperType = mapper.asType();
+        if (!(mapperType instanceof DeclaredType)) {
             return factory.getReturnType();
         }
 
         try {
-            ExecutableType resolved =
-                    (ExecutableType)
-                            context.typeUtils
-                                    .asMemberOf(
-                                            (DeclaredType) mapperType,
-                                            factory);
+            ExecutableType resolved = (ExecutableType) context.typeUtils.asMemberOf((DeclaredType) mapperType, factory);
 
             return resolved.getReturnType();
 
@@ -549,17 +320,9 @@ public final class CreatorResolver {
      * --------------------------------------------------------------
      */
 
-    private Creation resolveStandard(
-            TypeMirror declaredTarget,
-            TypeMirror workingType,
-            ExecutableElement method,
-            GeneratedClass generated) {
-
-        CreatorPlan plan = standardCreators.resolve(
-                declaredTarget,
-                workingType,
-                method,
-                "@MappingCreator",
+    private Creation resolveStandard(TypeMirror declaredTarget, TypeMirror workingType,
+                                     ExecutableElement method, GeneratedClass generated) {
+        CreatorPlan plan = standardCreators.resolve(declaredTarget, workingType, method, "@MappingCreator",
                 message -> error(method, generated, message));
 
         if (plan == null) return null;
@@ -581,37 +344,22 @@ public final class CreatorResolver {
      * --------------------------------------------------------------
      */
 
-    private static final CreatorRule INVALID_RULE =
-            new CreatorRule(
-                    null,
-                    null,
-                    null,
-                    null,
-                    null);
+    private static final CreatorRule INVALID_RULE = new CreatorRule(null, null, null, null, null);
 
 
-    private CreatorRule selectRule(
-            TypeMirror actualTarget,
-            List<CreatorRule> rules,
-            ExecutableElement method,
-            GeneratedClass generated) {
+    private CreatorRule selectRule(TypeMirror actualTarget, List<CreatorRule> rules,
+                                   ExecutableElement method, GeneratedClass generated) {
 
-        List<CreatorRule> matches =
-                new ArrayList<CreatorRule>();
+        List<CreatorRule> matches = new ArrayList<CreatorRule>();
 
-        for (CreatorRule rule :
-                rules) {
+        for (CreatorRule rule : rules) {
 
             /*
              * The actual mapper target must be assignable to the rule's
              * targetType. A rule for a supertype therefore applies to its
              * concrete subtypes.
              */
-            if (rule.targetType != null &&
-                    types.isAssignableErasure(
-                            actualTarget,
-                            rule.targetType)) {
-
+            if (rule.targetType != null && types.isAssignableErasure(actualTarget, rule.targetType)) {
                 matches.add(rule);
             }
         }
@@ -620,61 +368,35 @@ public final class CreatorResolver {
             return null;
         }
 
-        CreatorRule best =
-                null;
+        CreatorRule best = null;
 
-        for (CreatorRule candidate :
-                matches) {
+        for (CreatorRule candidate : matches) {
 
             if (best == null) {
                 best = candidate;
                 continue;
             }
 
-            boolean candidateMoreSpecific =
-                    types.isAssignableErasure(
-                            candidate.targetType,
-                            best.targetType);
+            boolean candidateMoreSpecific = types.isAssignableErasure(candidate.targetType, best.targetType);
+            boolean bestMoreSpecific = types.isAssignableErasure(best.targetType, candidate.targetType);
 
-            boolean bestMoreSpecific =
-                    types.isAssignableErasure(
-                            best.targetType,
-                            candidate.targetType);
-
-            if (candidateMoreSpecific &&
-                    !bestMoreSpecific) {
-
+            if (candidateMoreSpecific && !bestMoreSpecific) {
                 best = candidate;
                 continue;
             }
 
-            if (!candidateMoreSpecific &&
-                    !bestMoreSpecific) {
-
-                error(
-                        method,
-                        generated,
-                        "ambiguous @MappingCreator rules for target " +
-                                actualTarget +
-                                ": " +
-                                best.targetType +
-                                " and " +
-                                candidate.targetType);
+            if (!candidateMoreSpecific && !bestMoreSpecific) {
+                error(method, generated, "ambiguous @MappingCreator rules for target " + actualTarget +
+                        ": " + best.targetType + " and " + candidate.targetType);
 
                 return INVALID_RULE;
             }
 
-            if (candidateMoreSpecific &&
-                    bestMoreSpecific) {
-
+            if (candidateMoreSpecific && bestMoreSpecific) {
                 /*
                  * Same effective target type declared twice.
                  */
-                error(
-                        method,
-                        generated,
-                        "duplicate @MappingCreator rules for targetType " +
-                                candidate.targetType);
+                error(method, generated, "duplicate @MappingCreator rules for targetType " + candidate.targetType);
 
                 return INVALID_RULE;
             }
@@ -684,108 +406,57 @@ public final class CreatorResolver {
     }
 
 
-    private List<CreatorRule> creatorRules(
-            Element element,
-            TypeElement owner) {
-
-        List<CreatorRule> result =
-                new ArrayList<CreatorRule>();
-
-        readCreatorRules(
-                element,
-                owner,
-                result);
+    private List<CreatorRule> creatorRules(Element element, TypeElement owner) {
+        List<CreatorRule> result = new ArrayList<CreatorRule>();
+        readCreatorRules(element, owner, result);
 
         return result;
     }
 
 
-    private List<CreatorRule> mapperCreatorRules(
-            TypeElement mapper) {
-
-        List<CreatorRule> result =
-                new ArrayList<CreatorRule>();
-
-        Set<String> visited =
-                new LinkedHashSet<String>();
-
-        collectMapperCreatorRules(
-                mapper,
-                result,
-                visited);
+    private List<CreatorRule> mapperCreatorRules(TypeElement mapper) {
+        List<CreatorRule> result = new ArrayList<CreatorRule>();
+        Set<String> visited = new LinkedHashSet<String>();
+        collectMapperCreatorRules(mapper, result, visited);
 
         return result;
     }
 
 
-    private void collectMapperCreatorRules(
-            TypeElement mapper,
-            List<CreatorRule> result,
-            Set<String> visited) {
-
-        String name =
-                mapper.getQualifiedName()
-                        .toString();
+    private void collectMapperCreatorRules(TypeElement mapper, List<CreatorRule> result,
+                                           Set<String> visited) {
+        String name = mapper.getQualifiedName().toString();
 
         if (!visited.add(name)) {
             return;
         }
 
-        readCreatorRules(
-                mapper,
-                mapper,
-                result);
+        readCreatorRules(mapper, mapper, result);
 
-        for (TypeMirror superType :
-                mapper.getInterfaces()) {
-
-            TypeElement parent =
-                    types.typeElement(
-                            types.concrete(
-                                    superType));
+        for (TypeMirror superType : mapper.getInterfaces()) {
+            TypeElement parent = types.typeElement(types.concrete(superType));
 
             if (parent != null) {
-                collectMapperCreatorRules(
-                        parent,
-                        result,
-                        visited);
+                collectMapperCreatorRules(parent, result, visited);
             }
         }
     }
 
 
-    private void readCreatorRules(
-            Element element,
-            TypeElement owner,
-            List<CreatorRule> result) {
-
-        for (AnnotationMirror annotation :
-                element.getAnnotationMirrors()) {
-
-            String name =
-                    annotationName(
-                            annotation);
+    private void readCreatorRules(Element element, TypeElement owner, List<CreatorRule> result) {
+        for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
+            String name = annotationName(annotation);
 
             if (MAPPING_CREATOR.equals(name)) {
-                CreatorRule rule =
-                        creatorRule(
-                                annotation,
-                                owner);
+                CreatorRule rule = creatorRule(annotation, owner);
 
                 if (rule != null) {
                     result.add(rule);
                 }
 
             } else if (MAPPING_CREATORS.equals(name)) {
-                for (AnnotationMirror nested :
-                        annotationArray(
-                                annotation,
-                                "value")) {
-
-                    CreatorRule rule =
-                            creatorRule(
-                                    nested,
-                                    owner);
+                for (AnnotationMirror nested : annotationArray(annotation, "value")) {
+                    CreatorRule rule = creatorRule(nested, owner);
 
                     if (rule != null) {
                         result.add(rule);
@@ -796,52 +467,27 @@ public final class CreatorResolver {
     }
 
 
-    private CreatorRule creatorRule(
-            AnnotationMirror annotation,
-            TypeElement owner) {
-
-        TypeMirror targetType =
-                typeValue(
-                        annotation,
-                        "targetType");
+    private CreatorRule creatorRule(AnnotationMirror annotation, TypeElement owner) {
+        TypeMirror targetType = typeValue(annotation, "targetType");
 
         if (targetType == null) {
             return null;
         }
 
-        TypeMirror implementation =
-                hasExplicitValue(
-                        annotation,
-                        "implementation")
-                        ? typeValue(
-                        annotation,
-                        "implementation")
-                        : null;
-
-        String creator =
-                stringValue(
-                        annotation,
-                        "creator");
+        TypeMirror implementation = hasExplicitValue(annotation, "implementation")
+                ? typeValue(annotation, "implementation") : null;
+        String creator = stringValue(annotation, "creator");
 
         if (creator != null) {
-            creator =
-                    creator.trim();
+            creator = creator.trim();
 
             if (creator.isEmpty()) {
                 creator = null;
             }
         }
 
-        return new CreatorRule(
-                annotation,
-                owner,
-                types.concrete(
-                        targetType),
-                implementation == null
-                        ? null
-                        : types.concrete(
-                        implementation),
-                creator);
+        return new CreatorRule(annotation, owner, types.concrete(targetType),
+                implementation == null ? null : types.concrete(implementation), creator);
     }
 
 
@@ -851,139 +497,68 @@ public final class CreatorResolver {
      * --------------------------------------------------------------
      */
 
-    private String annotationName(
-            AnnotationMirror annotation) {
-
-        Element element =
-                annotation.getAnnotationType()
-                        .asElement();
-
-        return element instanceof TypeElement
-                ? ((TypeElement) element)
-                .getQualifiedName()
-                .toString()
-                : "";
+    private String annotationName(AnnotationMirror annotation) {
+        Element element = annotation.getAnnotationType().asElement();
+        return element instanceof TypeElement ? ((TypeElement) element).getQualifiedName().toString() : "";
     }
 
 
-    private AnnotationValue annotationValue(
-            AnnotationMirror annotation,
-            String name) {
+    private AnnotationValue annotationValue(AnnotationMirror annotation, String name) {
+        Map<? extends ExecutableElement, ? extends AnnotationValue> values =
+                context.elements.getElementValuesWithDefaults(annotation);
 
-        Map<? extends ExecutableElement,
-                ? extends AnnotationValue> values =
-                context.elements
-                        .getElementValuesWithDefaults(
-                                annotation);
-
-        for (Map.Entry<? extends ExecutableElement,
-                ? extends AnnotationValue> entry :
-                values.entrySet()) {
-
-            if (entry.getKey()
-                    .getSimpleName()
-                    .contentEquals(name)) {
-
-                return entry.getValue();
-            }
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry : values.entrySet()) {
+            if (entry.getKey().getSimpleName().contentEquals(name)) return entry.getValue();
         }
 
         return null;
     }
 
 
-    private boolean hasExplicitValue(
-            AnnotationMirror annotation,
-            String name) {
-
-        for (ExecutableElement member :
-                annotation.getElementValues()
-                        .keySet()) {
-
-            if (member.getSimpleName()
-                    .contentEquals(name)) {
-
-                return true;
-            }
+    private boolean hasExplicitValue(AnnotationMirror annotation, String name) {
+        for (ExecutableElement member : annotation.getElementValues().keySet()) {
+            if (member.getSimpleName().contentEquals(name)) return true;
         }
 
         return false;
     }
 
 
-    private String stringValue(
-            AnnotationMirror annotation,
-            String name) {
-
-        AnnotationValue value =
-                annotationValue(
-                        annotation,
-                        name);
+    private String stringValue(AnnotationMirror annotation, String name) {
+        AnnotationValue value = annotationValue(annotation, name);
 
         if (value == null) {
             return null;
         }
 
-        Object raw =
-                value.getValue();
-
-        return raw instanceof String
-                ? (String) raw
-                : null;
+        Object raw = value.getValue();
+        return raw instanceof String ? (String) raw : null;
     }
 
 
-    private TypeMirror typeValue(
-            AnnotationMirror annotation,
-            String name) {
-
-        AnnotationValue value =
-                annotationValue(
-                        annotation,
-                        name);
+    private TypeMirror typeValue(AnnotationMirror annotation, String name) {
+        AnnotationValue value = annotationValue(annotation, name);
 
         if (value == null) {
             return null;
         }
 
-        Object raw =
-                value.getValue();
-
-        return raw instanceof TypeMirror
-                ? (TypeMirror) raw
-                : null;
+        Object raw = value.getValue();
+        return raw instanceof TypeMirror ? (TypeMirror) raw : null;
     }
 
 
     @SuppressWarnings("unchecked")
-    private List<AnnotationMirror> annotationArray(
-            AnnotationMirror annotation,
-            String name) {
-
-        AnnotationValue value =
-                annotationValue(
-                        annotation,
-                        name);
-
-        if (value == null ||
-                !(value.getValue() instanceof List)) {
-
+    private List<AnnotationMirror> annotationArray(AnnotationMirror annotation, String name) {
+        AnnotationValue value = annotationValue(annotation, name);
+        if (value == null || !(value.getValue() instanceof List)) {
             return Collections.emptyList();
         }
 
-        List<AnnotationMirror> result =
-                new ArrayList<AnnotationMirror>();
-
-        for (AnnotationValue item :
-                (List<? extends AnnotationValue>)
-                        value.getValue()) {
-
-            if (item.getValue() instanceof
-                    AnnotationMirror) {
-
-                result.add(
-                        (AnnotationMirror)
-                                item.getValue());
+        List<AnnotationMirror> result = new ArrayList<AnnotationMirror>();
+        for (AnnotationValue item : (List<? extends AnnotationValue>) value.getValue()) {
+            if (item.getValue() instanceof AnnotationMirror) {
+                result.add((AnnotationMirror) item.getValue());
             }
         }
 
@@ -997,11 +572,8 @@ public final class CreatorResolver {
      * --------------------------------------------------------------
      */
 
-    private PackageElement generatedPackage(
-            Element method) {
-
-        return context.elements
-                .getPackageOf(method);
+    private PackageElement generatedPackage(Element method) {
+        return context.elements.getPackageOf(method);
     }
 
 
@@ -1011,18 +583,9 @@ public final class CreatorResolver {
      * --------------------------------------------------------------
      */
 
-    private void error(
-            Element element,
-            GeneratedClass generated,
-            String message) {
-
+    private void error(Element element, GeneratedClass generated, String message) {
         generated.invalidate();
-
-        context.error(
-                element,
-                generated.originName() +
-                        ": " +
-                        message);
+        context.error(element, generated.originName() + ": " + message);
     }
 
 
@@ -1068,76 +631,34 @@ public final class CreatorResolver {
         private final TypeElement factoryOwner;
 
 
-        private Creation(
-                Kind kind,
-                TypeMirror declaredType,
-                TypeMirror targetType,
-                ExecutableElement constructor,
-                List<? extends TypeMirror> parameterTypes,
-                ExecutableElement factory,
-                TypeElement factoryOwner) {
-
+        private Creation(Kind kind, TypeMirror declaredType, TypeMirror targetType,
+                         ExecutableElement constructor, List<? extends TypeMirror> parameterTypes,
+                         ExecutableElement factory, TypeElement factoryOwner) {
             this.kind = kind;
             this.declaredType = declaredType;
             this.targetType = targetType;
             this.constructor = constructor;
-            this.parameterTypes =
-                    parameterTypes == null
-                            ? Collections.emptyList()
-                            : Collections.unmodifiableList(
-                            new ArrayList<TypeMirror>(
-                                    parameterTypes));
+            this.parameterTypes = parameterTypes == null ? Collections.emptyList()
+                    : Collections.unmodifiableList(new ArrayList<TypeMirror>(parameterTypes));
             this.factory = factory;
             this.factoryOwner = factoryOwner;
         }
 
 
-        static Creation noArgs(
-                TypeMirror declaredType,
-                TypeMirror targetType) {
-
-            return new Creation(
-                    Kind.NO_ARGS,
-                    declaredType,
-                    targetType,
-                    null,
-                    null,
-                    null,
-                    null);
+        static Creation noArgs(TypeMirror declaredType, TypeMirror targetType) {
+            return new Creation(Kind.NO_ARGS, declaredType, targetType, null, null, null, null);
         }
 
 
-        static Creation constructor(
-                TypeMirror declaredType,
-                TypeMirror targetType,
-                ExecutableElement constructor,
-                List<? extends TypeMirror> parameterTypes) {
-
-            return new Creation(
-                    Kind.CONSTRUCTOR,
-                    declaredType,
-                    targetType,
-                    constructor,
-                    parameterTypes,
-                    null,
-                    null);
+        static Creation constructor(TypeMirror declaredType, TypeMirror targetType,
+                                    ExecutableElement constructor, List<? extends TypeMirror> parameterTypes) {
+            return new Creation(Kind.CONSTRUCTOR, declaredType, targetType, constructor, parameterTypes, null, null);
         }
 
 
-        static Creation factory(
-                TypeMirror declaredType,
-                TypeMirror targetType,
-                ExecutableElement factory,
-                TypeElement factoryOwner) {
-
-            return new Creation(
-                    Kind.FACTORY,
-                    declaredType,
-                    targetType,
-                    null,
-                    null,
-                    factory,
-                    factoryOwner);
+        static Creation factory(TypeMirror declaredType, TypeMirror targetType,
+                                ExecutableElement factory, TypeElement factoryOwner) {
+            return new Creation(Kind.FACTORY, declaredType, targetType, null, null, factory, factoryOwner);
         }
 
 
@@ -1170,8 +691,7 @@ public final class CreatorResolver {
         }
 
         public boolean mutable() {
-            return kind == Kind.NO_ARGS ||
-                    kind == Kind.FACTORY;
+            return kind == Kind.NO_ARGS || kind == Kind.FACTORY;
         }
     }
 
@@ -1187,13 +707,8 @@ public final class CreatorResolver {
         final String creator;
 
 
-        CreatorRule(
-                AnnotationMirror annotation,
-                TypeElement owner,
-                TypeMirror targetType,
-                TypeMirror implementation,
-                String creator) {
-
+        CreatorRule(AnnotationMirror annotation, TypeElement owner, TypeMirror targetType,
+                    TypeMirror implementation, String creator) {
             this.annotation = annotation;
             this.owner = owner;
             this.targetType = targetType;

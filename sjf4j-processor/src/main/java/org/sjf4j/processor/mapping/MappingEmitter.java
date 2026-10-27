@@ -37,10 +37,7 @@ public final class MappingEmitter {
     private final ConversionWriter conversions;
 
 
-    public MappingEmitter(
-            ProcessorContext context,
-            ConversionWriter conversions) {
-
+    public MappingEmitter(ProcessorContext context, ConversionWriter conversions) {
         this.context = context;
         this.types = context.types;
         this.conversions = conversions;
@@ -50,15 +47,8 @@ public final class MappingEmitter {
     /**
      * Adds one compiled mapper method to the generated class.
      */
-    public void emit(
-            MappingCompiler.CompiledMethod compiled,
-            GeneratedClass generated) {
-
-        generated.addMethod(out ->
-                emitMethod(
-                        out,
-                        compiled,
-                        generated));
+    public void emit(MappingCompiler.CompiledMethod compiled, GeneratedClass generated) {
+        generated.addMethod(out -> emitMethod(out, compiled, generated));
     }
 
 
@@ -68,120 +58,49 @@ public final class MappingEmitter {
      * --------------------------------------------------------------
      */
 
-    private void emitMethod(
-            JavaWriter out,
-            MappingCompiler.CompiledMethod compiled,
-            GeneratedClass generated) {
+    private void emitMethod(JavaWriter out, MappingCompiler.CompiledMethod compiled,
+                            GeneratedClass generated) {
+        MappingPlan plan = compiled.plan();
+        ExecutableElement method = plan.method();
+        NameAllocator names = names(method);
 
-        MappingPlan plan =
-                compiled.plan();
-
-        ExecutableElement method =
-                plan.method();
-
-        NameAllocator names =
-                names(method);
-
-        out.line(
-                "@SuppressWarnings({\"unchecked\", \"rawtypes\"})");
+        out.line("@SuppressWarnings({\"unchecked\", \"rawtypes\"})");
         out.line("@Override");
+        out.beginBlock(methodHeader(plan));
+        emitNullRootGuard(out, plan);
 
-        out.beginBlock(
-                methodHeader(plan));
-
-        emitNullRootGuard(
-                out,
-                plan);
-
-        if (compiled.kind() ==
-                MappingCompiler.CompiledMethod.Kind.ROOT) {
-
-            emitRoot(
-                    out,
-                    names,
-                    compiled,
-                    generated);
-
+        if (compiled.kind() == MappingCompiler.CompiledMethod.Kind.ROOT) {
+            emitRoot(out, names, compiled, generated);
             out.endBlock();
             return;
         }
 
-        emitObject(
-                out,
-                names,
-                compiled,
-                generated);
-
+        emitObject(out, names, compiled, generated);
         out.endBlock();
     }
 
 
-    private void emitRoot(
-            JavaWriter out,
-            NameAllocator names,
-            MappingCompiler.CompiledMethod compiled,
-            GeneratedClass generated) {
+    private void emitRoot(JavaWriter out, NameAllocator names, MappingCompiler.CompiledMethod compiled,
+                          GeneratedClass generated) {
+        MappingCompiler.Read source = compiled.rootSource();
+        String sourceValue = emitRead(out, names, source, rootKnownNonNull(compiled.plan()));
 
-        MappingCompiler.Read source =
-                compiled.rootSource();
+        if (compiled.plan().create()) {
 
-        String sourceValue =
-                emitRead(
-                        out,
-                        names,
-                        source,
-                        rootKnownNonNull(
-                                compiled.plan()));
-
-        if (compiled.plan()
-                .create()) {
-
-            String value =
-                    conversions.emit(
-                            out,
-                            names,
-                            compiled.plan(),
-                            compiled.rootConversion(),
-                            sourceValue,
-                            source.type(),
-                            compiled.plan()
-                                    .targetType(),
-                            generated);
-
-            out.line(
-                    "return " +
-                            value +
-                            ";");
+            String value = conversions.emit(out, names, compiled.plan(), compiled.rootConversion(),
+                    sourceValue, source.type(), compiled.plan().targetType(), generated);
+            out.line("return " + value + ";");
 
         } else {
-            String target =
-                    compiled.plan()
-                            .targetParameter()
-                            .getSimpleName()
-                            .toString();
+            String target = compiled.plan().targetParameter().getSimpleName().toString();
+            out.line("org.sjf4j.util.Asserts.notNull(" + target + ", " +
+                    JavaWriter.stringLiteral(target) + ");");
 
-            out.line(
-                    "org.sjf4j.util.Asserts.notNull(" +
-                            target +
-                            ", " +
-                            JavaWriter.stringLiteral(
-                                    target) +
-                            ");");
-
-            NodeKind targetKind =
-                    types.nodeKind(
-                            compiled.plan()
-                                    .targetType());
+            NodeKind targetKind = types.nodeKind(compiled.plan().targetType());
 
             if (types.isArrayNode(targetKind)) {
-                if (types.writeElementType(
-                        compiled.plan()
-                                .targetType()) == null) {
-
-                    error(
-                            compiled.plan()
-                                    .method(),
-                            generated,
+                if (types.writeElementType(compiled.plan().targetType()) == null) {
+                    error(compiled.plan().method(), generated,
                             "root array update target element type is not writable");
 
                     out.line("return;");
@@ -690,7 +609,7 @@ public final class MappingEmitter {
         if (dynamicOnly) {
             out.beginBlock(
                     "if (" +
-                            "org.sjf4j.InternalAccess.dynamicProperties(" +
+                            "org.sjf4j.InternalAccess.dynamicMembers(" +
                             source +
                             ") != null)");
         }
@@ -701,7 +620,7 @@ public final class MappingEmitter {
 
         String entries =
                 dynamicOnly
-                        ? "org.sjf4j.InternalAccess.dynamicProperties(" +
+                        ? "org.sjf4j.InternalAccess.dynamicMembers(" +
                         source +
                         ").entrySet()"
                         : source + ".entrySet()";
@@ -1659,12 +1578,9 @@ public final class MappingEmitter {
                 "IGNORE".equals(
                         nullPolicy);
 
-        NodeKind kind =
-                types.nodeKind(
-                        targetType);
+        NodeKind kind = types.nodeKind(targetType);
 
-        if (plan.update() &&
-                types.isArrayNode(kind)) {
+        if (plan.update() && types.isArrayNode(kind)) {
 
             String arrayPolicy =
                     rule != null &&
@@ -1675,22 +1591,13 @@ public final class MappingEmitter {
                              "arrays",
                             "SET");
 
-            emitArrayUpdate(
-                    out,
-                    names,
-                    destination,
-                    target,
-                    value,
-                    arrayPolicy,
-                    ignoreNull,
-                    generated,
-                    plan);
+            emitArrayUpdate(out, names, destination, target, value,
+                    arrayPolicy, ignoreNull, generated, plan);
 
             return;
         }
 
-        if (plan.update() &&
-                isMapLike(kind)) {
+        if (plan.update() && isMapLike(kind)) {
 
             String objectPolicy =
                     rule != null &&
@@ -1701,93 +1608,42 @@ public final class MappingEmitter {
                             "objects",
                             "PUT");
 
-            if (kind != NodeKind.OBJECT_MAP &&
-                    !"PUT".equals(objectPolicy)) {
-
-                error(
-                        plan.method(),
-                        generated,
-                        "ObjectPolicy." +
-                                objectPolicy +
-                                " requires a Map target");
+            if (kind != NodeKind.OBJECT_MAP && !"PUT".equals(objectPolicy)) {
+                error(plan.method(), generated, "ObjectPolicy." + objectPolicy + " requires a Map target");
 
                 return;
             }
 
-            emitObjectUpdate(
-                    out,
-                    names,
-                    destination,
-                    target,
-                    value,
-                    objectPolicy,
-                    ignoreNull,
-                    generated,
-                    plan);
+            emitObjectUpdate(out, names, destination, target, value,
+                    objectPolicy, ignoreNull, generated, plan);
 
             return;
         }
 
-        if (ignoreNull ||
-                targetType
-                        .getKind()
-                        .isPrimitive()) {
-
-            out.beginBlock(
-                    "if (" +
-                            value +
-                            " != null)");
-
-            emitNodeWrite(
-                    out,
-                    target,
-                    destination.name(),
-                    null,
-                    access,
-                    value);
+        if (ignoreNull || targetType.getKind().isPrimitive()) {
+            out.beginBlock("if (" + value + " != null)");
+            emitNodeWrite(out, target, destination.name(), null, access, value);
 
             out.endBlock();
 
         } else {
-            emitNodeWrite(
-                    out,
-                    target,
-                    destination.name(),
-                    null,
-                    access,
-                    value);
+            emitNodeWrite(out, target, destination.name(), null, access, value);
         }
     }
 
 
-    private void emitArrayUpdate(
-            JavaWriter out,
-            NameAllocator names,
-            MappingCompiler.Target destination,
-            String target,
-            String value,
-            String policy,
-            boolean ignoreNull,
-            GeneratedClass generated,
-            MappingPlan plan) {
-
-        NodeAccess access =
-                destination.access();
+    private void emitArrayUpdate(JavaWriter out, NameAllocator names, MappingCompiler.Target destination,
+                                 String target, String value, String policy, boolean ignoreNull,
+                                 GeneratedClass generated, MappingPlan plan) {
+        NodeAccess access = destination.access();
 
         if (!access.readable()) {
-            error(
-                    plan.method(),
-                    generated,
-                    "array update target '" +
-                            destination.name() +
-                            "' must be readable");
+            error(plan.method(), generated, "array update target '" + destination.name() + "' must be readable");
 
             return;
         }
 
-        NodeKind existingKind =
-                types.nodeKind(
-                        access.readType());
+        NodeKind existingKind = types.nodeKind(access.readType());
 
         if (existingKind ==
                 NodeKind.ARRAY_SET &&
@@ -3063,14 +2919,9 @@ public final class MappingEmitter {
     }
 
 
-    private String methodHeader(
-            MappingPlan plan) {
-
-        ExecutableElement method =
-                plan.method();
-
-        StringBuilder result =
-                new StringBuilder();
+    private String methodHeader(MappingPlan plan) {
+        ExecutableElement method = plan.method();
+        StringBuilder result = new StringBuilder();
 
         result.append("public ")
                 .append(plan.methodType().getReturnType())
@@ -3078,48 +2929,33 @@ public final class MappingEmitter {
                 .append(method.getSimpleName())
                 .append('(');
 
-        List<? extends VariableElement> parameters =
-                method.getParameters();
+        List<? extends VariableElement> parameters = method.getParameters();
+        List<? extends TypeMirror> parameterTypes = plan.methodType().getParameterTypes();
 
-        List<? extends TypeMirror> parameterTypes =
-                plan.methodType().getParameterTypes();
-
-        for (int i = 0;
-             i < parameters.size();
-             i++) {
-
+        for (int i = 0; i < parameters.size(); i++) {
             if (i != 0) {
                 result.append(", ");
             }
 
-            VariableElement parameter =
-                    parameters.get(i);
-
-            result.append(
-                            parameterTypes.get(i))
+            VariableElement parameter = parameters.get(i);
+            result.append(parameterTypes.get(i))
                     .append(' ')
-                    .append(
-                            parameter.getSimpleName());
+                    .append(parameter.getSimpleName());
         }
 
         result.append(')');
 
-        List<? extends TypeMirror> thrown =
-                plan.methodType().getThrownTypes();
+        List<? extends TypeMirror> thrown = plan.methodType().getThrownTypes();
 
         if (!thrown.isEmpty()) {
             result.append(" throws ");
 
-            for (int i = 0;
-                 i < thrown.size();
-                 i++) {
-
+            for (int i = 0; i < thrown.size(); i++) {
                 if (i != 0) {
                     result.append(", ");
                 }
 
-                result.append(
-                        thrown.get(i));
+                result.append(thrown.get(i));
             }
         }
 
@@ -3127,64 +2963,40 @@ public final class MappingEmitter {
     }
 
 
-    private NameAllocator names(
-            ExecutableElement method) {
-
-        NameAllocator names =
-                new NameAllocator();
-
-        for (VariableElement parameter :
-                method.getParameters()) {
-
-            names.reserve(
-                    parameter.getSimpleName()
-                            .toString());
+    private NameAllocator names(ExecutableElement method) {
+        NameAllocator names = new NameAllocator();
+        for (VariableElement parameter : method.getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
         }
 
         return names;
     }
 
 
-    private String localType(
-            TypeMirror type) {
-
-        return types.boxed(
-                        types.concrete(type))
-                .toString();
+    private String localType(TypeMirror type) {
+        return types.boxed(types.concrete(type)).toString();
     }
 
 
-    private String cast(
-            TypeMirror type,
-            String expression) {
-
-        TypeMirror concrete =
-                types.concrete(type);
+    private String cast(TypeMirror type, String expression) {
+        TypeMirror concrete = types.concrete(type);
 
         if (types.isObject(concrete)) {
             return expression;
         }
 
-        return "(" +
-                localType(concrete) +
-                ") " +
-                expression;
+        return "(" + localType(concrete) + ") " + expression;
     }
 
 
-    private String sizeExpression(
-            String owner,
-            NodeAccess.Kind kind) {
-
+    private String sizeExpression(String owner, NodeAccess.Kind kind) {
         switch (kind) {
             case ARRAY:
-                return owner +
-                        ".length";
+                return owner + ".length";
 
             case LIST:
             case JSON_ARRAY:
-                return owner +
-                        ".size()";
+                return owner + ".size()";
 
             default:
                 return null;
@@ -3192,9 +3004,7 @@ public final class MappingEmitter {
     }
 
 
-    private boolean isMapLike(
-            NodeKind kind) {
-
+    private boolean isMapLike(NodeKind kind) {
         switch (kind) {
             case OBJECT_MAP:
             case OBJECT_JSON_OBJECT:
@@ -3207,18 +3017,9 @@ public final class MappingEmitter {
     }
 
 
-    private void error(
-            ExecutableElement method,
-            GeneratedClass generated,
-            String message) {
-
+    private void error(ExecutableElement method, GeneratedClass generated, String message) {
         generated.invalidate();
-
-        context.error(
-                method,
-                generated.originName() +
-                        ": " +
-                        message);
+        context.error(method, generated.originName() + ": " + message);
     }
 
 
@@ -3231,26 +3032,12 @@ public final class MappingEmitter {
      */
     public interface ConversionWriter {
 
-        String emit(
-                JavaWriter out,
-                NameAllocator names,
-                MappingPlan plan,
-                ConverterResolver.Conversion conversion,
-                String source,
-                TypeMirror sourceType,
-                TypeMirror targetType,
-                GeneratedClass generated);
+        String emit(JavaWriter out, NameAllocator names, MappingPlan plan,
+                    ConverterResolver.Conversion conversion, String source,
+                    TypeMirror sourceType, TypeMirror targetType, GeneratedClass generated);
 
-        void emitMapUpdate(
-                JavaWriter out,
-                NameAllocator names,
-                MappingPlan plan,
-                ConverterResolver.Conversion conversion,
-                String source,
-                TypeMirror sourceType,
-                TypeMirror targetType,
-                String target,
-                String policy,
-                GeneratedClass generated);
+        void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
+                           ConverterResolver.Conversion conversion, String source, TypeMirror sourceType,
+                           TypeMirror targetType, String target, String policy, GeneratedClass generated);
     }
 }

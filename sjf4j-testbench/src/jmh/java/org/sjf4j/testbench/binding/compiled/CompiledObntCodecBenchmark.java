@@ -189,8 +189,8 @@ public class CompiledObntCodecBenchmark {
             throw new IllegalStateException(backend + ": incorrect compiled ValueCodec read");
         }
         if (jojoValue.id != 11 || !"open".equals(jojoValue.title)
-                || !jojoValue.dynamicProperties().containsKey("extra")
-                || !jojoValue.dynamicProperties().containsKey("optional")
+                || !jojoValue.dynamicMembers().containsKey("extra")
+                || !jojoValue.dynamicMembers().containsKey("optional")
                 || jojoValue.payload == null || jojoValue.items == null) {
             throw new IllegalStateException(backend + ": incorrect compiled JOJO read");
         }

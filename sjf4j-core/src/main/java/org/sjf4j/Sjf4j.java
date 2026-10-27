@@ -544,11 +544,11 @@ public final class Sjf4j {
         }
 
         /**
-         * Controls omission of null-valued object properties during serialization.
+         * Controls omission of null-valued object members during serialization.
          * <p>
-         * When {@code false}, Java {@code null} properties are omitted from Maps,
-         * JsonObjects, and POJOs. For external object trees that do not implement
-         * {@link java.util.Map}, native JSON null properties are also omitted.
+         * When {@code false}, Java {@code null} members in Maps and JsonObjects,
+         * and null-valued POJO properties, are omitted. For external object trees that do not implement
+         * {@link java.util.Map}, native JSON null members are also omitted.
          * External objects implementing Map (such as JSON-P objects) use the
          * ordinary Map rule: non-null native null sentinels are retained.
          * <p>

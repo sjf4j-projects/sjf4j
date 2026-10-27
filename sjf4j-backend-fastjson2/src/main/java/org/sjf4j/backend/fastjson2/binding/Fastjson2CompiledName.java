@@ -6,7 +6,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-/** Pre-escaped Fastjson2 object property name for its raw-name writer path. */
+/** Pre-escaped Fastjson2 object member name for its raw-name writer path. */
 public final class Fastjson2CompiledName extends CompiledName {
 
     /** Internal generated-code contract. Do not mutate these pre-escaped arrays. */
@@ -22,8 +22,8 @@ public final class Fastjson2CompiledName extends CompiledName {
     public final long rawName1;
 
     /**
-     * Prepares a property name for UTF-8 and UTF-16 raw-name writes.
-     * @param name the property name
+     * Prepares a member name for UTF-8 and UTF-16 raw-name writes.
+     * @param name the member name
      */
     public Fastjson2CompiledName(String name) {
         super(name);

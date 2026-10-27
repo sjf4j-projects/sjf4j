@@ -108,12 +108,12 @@ public final class GsonGenerator extends StreamingGenerator {
     }
 
     @Override
-    public void end() throws IOException {
+    public void flush() throws IOException {
         writer.flush();
     }
 
     @Override
-    public void release() {
-        // Gson does not own the caller's output.
+    public void close() throws IOException {
+        flush();
     }
 }

@@ -237,7 +237,7 @@ public class PathProcessorTest {
         assertTrue(messages.contains("has no matching method parameter"), messages);
         assertTrue(messages.contains("is not used by the path"), messages);
         assertTrue(messages.contains("must be String or int"), messages);
-        assertTrue(messages.contains("Cannot resolve readable dynamic property '{name}' on java.util.List<java.lang.String>"), messages);
+        assertTrue(messages.contains("Cannot resolve readable dynamic member '{name}' on java.util.List<java.lang.String>"), messages);
         assertTrue(messages.contains("Cannot resolve readable dynamic index '{idx}' on java.util.Map<java.lang.String,java.lang.String>"), messages);
     }
 
@@ -292,12 +292,12 @@ public class PathProcessorTest {
         assertTrue(messages.contains("@PutByPath path parameter '{idx}' has no matching method parameter"), messages);
         assertTrue(messages.contains("@PutByPath method parameter 'idx' is not used by the path"), messages);
         assertTrue(messages.contains("@PutByPath path parameter 'idx' must be String or int"), messages);
-        assertTrue(messages.contains("Cannot resolve writable dynamic property '{name}' on java.util.List<java.lang.String>"), messages);
+        assertTrue(messages.contains("Cannot resolve writable dynamic member '{name}' on java.util.List<java.lang.String>"), messages);
         assertTrue(messages.contains("Cannot resolve writable dynamic index '{idx}' on java.util.Map<java.lang.String,java.lang.String>"), messages);
         assertTrue(messages.contains("@PutByPath append segment must be the final path segment"), messages);
         assertTrue(messages.contains("Cannot append on java.lang.String[]"), messages);
         assertTrue(messages.contains("@PutByPath value type mismatch"), messages);
-        assertTrue(messages.contains("Cannot resolve writable dynamic property '{name}' on testcase.Bean"), messages);
+        assertTrue(messages.contains("Cannot resolve writable dynamic member '{name}' on testcase.Bean"), messages);
     }
 
     @Test

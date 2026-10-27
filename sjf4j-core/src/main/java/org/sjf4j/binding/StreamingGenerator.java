@@ -9,6 +9,8 @@ import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.FastUuid;
 
+import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -35,7 +37,7 @@ import java.time.ZonedDateTime;
  * Value-only methods for reference types expect non-null input; the nullable
  * {@code writeXxx} variants write JSON null for a null argument.
  */
-public abstract class StreamingGenerator {
+public abstract class StreamingGenerator implements Flushable, Closeable {
 
     protected final Backend backend;
 
@@ -81,7 +83,7 @@ public abstract class StreamingGenerator {
 
 
     /*
-     * Property name
+     * Member name
      */
 
     /** Writes an object member name before its value. */
@@ -113,7 +115,7 @@ public abstract class StreamingGenerator {
         return compiledNames;
     }
 
-    /** Prepares a property name, overridable by backends with native encodings. */
+    /** Prepares a member name, overridable by backends with native encodings. */
     public CompiledName createCompiledName(String name) {
         return new CompiledName(name);
     }
@@ -352,7 +354,13 @@ public abstract class StreamingGenerator {
     }
 
 
-    /** Releases backend resources without closing caller-owned output. */
-    public void release() throws IOException {
+    /** Flushes pending output without ending the document. */
+    @Override
+    public void flush() throws IOException {
+    }
+
+    /** Closes the backend generator without closing caller-owned output. */
+    @Override
+    public void close() throws IOException {
     }
 }

@@ -34,7 +34,7 @@ class SimpleJsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -51,7 +51,7 @@ class SimpleJsonParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -59,12 +59,12 @@ class SimpleJsonParserTest {
     @Test
     void closePreventsReadsFromStringAndReaderInputs() throws Exception {
         SimpleJsonParser stringReader = new SimpleJsonParser("null");
-        stringReader.release();
+        stringReader.close();
         assertThrows(IOException.class, stringReader::start);
         assertThrows(IOException.class, stringReader::peekToken);
 
         SimpleJsonParser readerInput = new SimpleJsonParser(new StringReader("null"));
-        readerInput.release();
+        readerInput.close();
         assertThrows(IOException.class, readerInput::peekToken);
     }
 
@@ -72,19 +72,19 @@ class SimpleJsonParserTest {
     void closeClearsBufferedInputAndEofState() throws Exception {
         SimpleJsonParser parser = new SimpleJsonParser("[1]");
         parser.readArrayStart();
-        parser.release();
+        parser.close();
         assertThrows(IOException.class, parser::readIntValue);
 
         SimpleJsonParser eofReader = new SimpleJsonParser("null");
         eofReader.nextIfNull();
         eofReader.end();
-        eofReader.release();
+        eofReader.close();
         assertThrows(IOException.class, eofReader::peekToken);
 
         SimpleJsonParser readerEof = new SimpleJsonParser(new StringReader("null"));
         readerEof.nextIfNull();
         readerEof.end();
-        readerEof.release();
+        readerEof.close();
         assertThrows(IOException.class, readerEof::peekToken);
     }
 
@@ -104,7 +104,7 @@ class SimpleJsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -126,7 +126,7 @@ class SimpleJsonParserTest {
                 assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -147,7 +147,7 @@ class SimpleJsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -173,7 +173,7 @@ class SimpleJsonParserTest {
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -182,7 +182,7 @@ class SimpleJsonParserTest {
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -191,7 +191,7 @@ class SimpleJsonParserTest {
                 assertEquals(StreamingParser.Token.UNKNOWN, parser.peekToken());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -218,7 +218,7 @@ class SimpleJsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -249,7 +249,7 @@ class SimpleJsonParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -277,7 +277,7 @@ class SimpleJsonParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -294,7 +294,7 @@ class SimpleJsonParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -304,7 +304,7 @@ class SimpleJsonParserTest {
                 assertThrows(BindingException.class, parser::readDoubleValue);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -319,7 +319,7 @@ class SimpleJsonParserTest {
                 assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -330,7 +330,7 @@ class SimpleJsonParserTest {
                 assertThrows(BindingException.class, parser::skipNode);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -364,7 +364,7 @@ try {
             BindingException error = assertThrows(BindingException.class, parser::skipNode, value);
             assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr(), value);
 
-} finally { parser.release(); }
+} finally { parser.close(); }
 } catch (IOException e) {
             throw new AssertionError(e);
         }
@@ -382,7 +382,7 @@ try {
                 assertEquals("$.a", error.getPathSegment().rootedPathExpr());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -396,7 +396,7 @@ try {
                     assertThrows(BindingException.class, parser::skipNode, json);
 
                 } finally {
-                    parser.release();
+                    parser.close();
                 }
             }
         }
@@ -410,7 +410,7 @@ try {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         assertThrows(BindingException.class,
@@ -429,7 +429,7 @@ try {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -468,7 +468,7 @@ try {
                 assertThrows(IOException.class, parser::peekToken);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }

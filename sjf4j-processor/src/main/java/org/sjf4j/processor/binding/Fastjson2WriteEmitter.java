@@ -5,6 +5,7 @@ import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 
 /** Fastjson2 compiled write generation using a shared streaming/native generator. */
@@ -26,6 +27,33 @@ final class Fastjson2WriteEmitter {
     Fastjson2WriteEmitter(WriteEmitter writes) {
         this.writes = writes;
     }
+
+    /** Backend-specific UTF-8/UTF-16 quoted JSON literals, initialized once per Enum. */
+    void emitEnumFields(JavaWriter out, Map<String, String> fields) {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            String type = entry.getKey();
+            String field = entry.getValue();
+            for (boolean utf8 : new boolean[]{true, false}) {
+                String suffix = utf8 ? "Utf8" : "Utf16";
+                String elementType = utf8 ? "byte" : "char";
+                String method = field + suffix + "Init";
+                out.line("private static final " + elementType + "[][] " + field + suffix
+                        + " = " + method + "();");
+                out.beginBlock("private static " + elementType + "[][] " + method + "()");
+                out.line(type + "[] constants = " + type + ".values();");
+                out.line(elementType + "[][] result = new " + elementType + "[constants.length][];");
+                out.beginBlock("for (" + type + " constant : constants)");
+                out.line("String quoted = com.alibaba.fastjson2.JSON.toJSONString(constant.name());");
+                out.line("result[constant.ordinal()] = " + (utf8
+                        ? "quoted.getBytes(java.nio.charset.StandardCharsets.UTF_8);"
+                        : "quoted.toCharArray();"));
+                out.endBlock();
+                out.line("return result;");
+                out.endBlock();
+            }
+        }
+    }
+
     void registerWriteOutput(BindingPlan.WriteOutput output) {
         switch (output) {
             case STRING:
@@ -41,7 +69,6 @@ final class Fastjson2WriteEmitter {
         }
     }
 
-
     private static boolean fixedRawName(String name) {
         int length = name.length();
         if (length < 2 || length > 16) return false;
@@ -52,16 +79,9 @@ final class Fastjson2WriteEmitter {
         return true;
     }
 
-
     /** Emits Fastjson2 code through one buffer shared by native and codec writes. */
-    void emitMethod(
-            JavaWriter out,
-            BindingValue value,
-            String source,
-            String target,
-            BindingPlan.WriteOutput output,
-            NameAllocator names) {
-
+    void emitMethod(JavaWriter out, BindingValue value, String source, String target,
+                    BindingPlan.WriteOutput output, NameAllocator names) {
         boolean utf8 = output == BindingPlan.WriteOutput.BYTES
                 || output == BindingPlan.WriteOutput.OUTPUT_STREAM;
         FastjsonMode mode = utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16;
@@ -71,9 +91,8 @@ final class Fastjson2WriteEmitter {
         // close() flushes attached writers even if a compiled helper throws.
         String create = utf8 ? "createGeneratorUtf8()" : "createGenerator()";
 
-        out.line("org.sjf4j.backend.fastjson2.binding.Fastjson2Generator "
-                + generator + " = this.binder." + create + ";");
-        out.beginBlock("try");
+        out.beginBlock("try (org.sjf4j.backend.fastjson2.binding.Fastjson2Generator "
+                + generator + " = this.binder." + create + ")");
         out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + generator + ".nativeWriter();");
 
         // Raw field-name optimizations require compatible Fastjson2 features.
@@ -123,11 +142,7 @@ final class Fastjson2WriteEmitter {
                 throw new AssertionError(output);
         }
         out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
-        out.endBlock();
     }
-
 
     private String fastjsonHelperName(BindingValue value, FastjsonMode mode) {
         return value.helperName() + mode.suffix;
@@ -229,8 +244,7 @@ final class Fastjson2WriteEmitter {
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
         } else {
-            StructuralWriteEmitter structure =
-                    new StructuralWriteEmitter(new ModeOperations(mode));
+            StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode));
             if (value.kind() != BindingValue.Kind.ONE_OF) {
                 out.beginBlock("if (value == null)");
                 out.line("w.writeNull();");
@@ -371,7 +385,6 @@ final class Fastjson2WriteEmitter {
             out.endBlock();
         }
     }
-
 
     void emitHelper(JavaWriter out, BindingValue value) {
         for (FastjsonMode mode : fastjsonModes) {

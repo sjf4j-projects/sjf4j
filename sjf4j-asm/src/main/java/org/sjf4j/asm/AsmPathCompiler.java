@@ -470,7 +470,7 @@ public class AsmPathCompiler implements PathCompiler {
                     mv.visitVarInsn(Opcodes.ASTORE, dstLocal);
                 } else {
                     throw new NodeException("property '" + name + "' on " +
-                            currentClazz.getName() + " is not readable through a public field or public getter" +
+                            currentClazz.getName() + " is not gettable through a public field or public getter" +
                             " at '" + expr + "'");
                 }
                 return vvt;
@@ -488,7 +488,7 @@ public class AsmPathCompiler implements PathCompiler {
                 throw new NodeException("cannot resolve property '" + name +
                         "' on " + currentClazz.getName() +
                         " at '" + expr +
-                        "': no readable property found and target is not a JOJO dynamic object");
+                         "': no gettable property found and target does not support JOJO dynamic members");
             }
         }
     }
@@ -798,10 +798,10 @@ public class AsmPathCompiler implements PathCompiler {
                     AsmUtil.emitCastOrBox(mv, vvc);
                 } else if (propInfo.publicSetter != null) {
                     throw new NodeException("property '" + name + "' on " + currentClazz.getName() +
-                            " is not readable through a public field or public getter at '" + expr + "'");
+                            " is not gettable through a public field or public getter at '" + expr + "'");
                 } else {
                     throw new NodeException("property '" + name + "' on " + currentClazz.getName() +
-                            " is not writable through a public field or public setter at '" + expr + "'");
+                            " is not settable through a public field or public setter at '" + expr + "'");
                 }
                 mv.visitVarInsn(Opcodes.ASTORE, childLocal);
                 childType = vvt;
@@ -815,7 +815,7 @@ public class AsmPathCompiler implements PathCompiler {
                 childType = Object.class;
             } else {
                 throw new NodeException("cannot resolve property '" + name + "' on " + currentClazz.getName() +
-                        " at '" + expr + "': no property found and target is not a JOJO dynamic object");
+                         " at '" + expr + "': no property found and target does not support JOJO dynamic members");
             }
         }
 
@@ -1163,7 +1163,7 @@ public class AsmPathCompiler implements PathCompiler {
                             "' on " + parentClazz.getName() + " at '" + expr + "'");
                 }
                 throw new NodeException("property '" + name + "' on " + parentClazz.getName() +
-                        " is not writable through a public field or public setter at '" + expr + "'");
+                        " is not settable through a public field or public setter at '" + expr + "'");
             }
             if (returnValue) {
                 // return null;

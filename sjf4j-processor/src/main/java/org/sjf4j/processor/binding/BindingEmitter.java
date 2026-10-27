@@ -13,26 +13,16 @@ final class BindingEmitter {
     private final boolean fastjson2;
     private boolean byteOrderFieldEmitted;
 
-    BindingEmitter(
-            ProcessorContext context,
-            BackendSpec backend) {
-
+    BindingEmitter(ProcessorContext context, BackendSpec backend) {
         this.fastjson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2;
-        this.reads =
-                new ReadEmitter(
-                        context,
-                        backend);
-
-        this.writes =
-                new WriteEmitter(
-                        backend);
+        this.reads = new ReadEmitter(context, backend);
+        this.writes = new WriteEmitter(backend);
         this.helpers = new BindingHelperEmitter(context, reads, writes);
     }
 
-    void emitMethod(
-            BindingCompiler.CompiledMethod method,
-            GeneratedClass generated) {
-        if (fastjson2 && !byteOrderFieldEmitted && method.plan().direction() == BindingPlan.Direction.READ_FROM) {
+    void emitMethod(BindingCompiler.CompiledMethod method, GeneratedClass generated) {
+        if (fastjson2 && !byteOrderFieldEmitted
+                && method.plan().direction() == BindingPlan.Direction.READ_FROM) {
             generated.addField(out -> out.line("private static final boolean FASTJSON2_LITTLE_ENDIAN = "
                     + "java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.LITTLE_ENDIAN;"));
             byteOrderFieldEmitted = true;
@@ -50,15 +40,13 @@ final class BindingEmitter {
             }
         }
 
-        generated.addMethod(
-                out -> {
-                    if (method.plan().direction() ==
-                            BindingPlan.Direction.READ_FROM) {
-                        reads.emitMethod(out, method);
-                    } else {
-                        writes.emitMethod(out, method);
-                    }
-                });
+        generated.addMethod(out -> {
+            if (method.plan().direction() == BindingPlan.Direction.READ_FROM) {
+                reads.emitMethod(out, method);
+            } else {
+                writes.emitMethod(out, method);
+            }
+        });
     }
 
     void emitHelper(BindingValue value, GeneratedClass generated) {
@@ -69,9 +57,7 @@ final class BindingEmitter {
 
     void emitEnumFields(GeneratedClass generated) {
         reads.emitEnumFields(generated);
-        if (writes.hasEnumFields()) {
-            generated.addField(out -> writes.emitEnumFields(out));
-        }
+        if (writes.hasEnumFields()) generated.addField(out -> writes.emitEnumFields(out));
     }
 
 }

@@ -14,11 +14,7 @@ public final class Property {
     private final PropertyAccess read;
     private final PropertyAccess write;
 
-    Property(
-            String name,
-            PropertyAccess read,
-            PropertyAccess write) {
-
+    Property(String name, PropertyAccess read, PropertyAccess write) {
         this.name = Asserts.notNull(name, "name");
         this.read = read;
         this.write = write;

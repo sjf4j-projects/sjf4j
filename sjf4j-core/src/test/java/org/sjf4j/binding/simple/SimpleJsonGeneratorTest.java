@@ -37,7 +37,7 @@ class SimpleJsonGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("[1,2,3,4,1.5,2.5,true,\"\\\"\\\\\\b\\f\\n\\r\\t\\u0001x\"]", output.toString());
@@ -58,7 +58,7 @@ class SimpleJsonGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("nullnullnullnullnullnullnullnullnullnullnull12345678901234567890421.2300", output.toString());
@@ -87,7 +87,7 @@ class SimpleJsonGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{\"a\\n\":1,\"foreign\":[\"x\",{\"ok\":false}]}", output.toString());
@@ -107,7 +107,7 @@ class SimpleJsonGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("\"buffered\"", output.toString());
@@ -127,7 +127,7 @@ class SimpleJsonGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("", output.toString());
@@ -149,7 +149,7 @@ class SimpleJsonGeneratorTest {
                     generator.end();
 
                 } finally {
-                    generator.release();
+                    generator.close();
                 }
             }
             assertEquals("\"valid\"", valueOutput.toString());
@@ -162,7 +162,7 @@ class SimpleJsonGeneratorTest {
                     generator.end();
 
                 } finally {
-                    generator.release();
+                    generator.close();
                 }
             }
             assertEquals("", nameOutput.toString());
@@ -179,7 +179,7 @@ class SimpleJsonGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("", output.toString());
@@ -195,7 +195,7 @@ class SimpleJsonGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("\"first\\nsecond\"", output.output.toString());
