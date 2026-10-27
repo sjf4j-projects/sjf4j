@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 /**
  * Analyzes one abstract method declared by an {@code @CompiledMapper}.
  *
@@ -38,14 +37,11 @@ public final class MapperMethodGenerator {
     private static final String MAPPING_IF_PARENT_PRESENT = "org.sjf4j.annotation.mapping.MappingIfParentPresent";
     private static final String ENSURE_MAPPING = "org.sjf4j.annotation.mapping.EnsureMapping";
 
-
     private final ProcessorContext context;
-
 
     public MapperMethodGenerator(ProcessorContext context) {
         this.context = context;
     }
-
 
     /**
      * Analyzes one mapper method.
@@ -72,8 +68,8 @@ public final class MapperMethodGenerator {
         MappingPlan.Kind kind;
         TypeMirror targetType;
         VariableElement targetParameter;
-        List<VariableElement> sources = new ArrayList<VariableElement>();
-        List<TypeMirror> sourceTypes = new ArrayList<TypeMirror>();
+        List<VariableElement> sources = new ArrayList<>();
+        List<TypeMirror> sourceTypes = new ArrayList<>();
 
         if (methodType.getReturnType().getKind() == TypeKind.VOID) {
             kind = MappingPlan.Kind.UPDATE;
@@ -107,15 +103,12 @@ public final class MapperMethodGenerator {
 
         List<MappingPlan.Rule> rules = resolveRules(method, kind, generated);
 
-        if (rules == null) {
-            return null;
-        }
+        if (rules == null) return null;
 
         AnnotationMirror options = findAnnotation(method, MAPPING_OPTIONS);
         return new MappingPlan(method, methodType, kind, targetType, targetParameter,
                 sources, sourceTypes, rules, options);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -125,7 +118,7 @@ public final class MapperMethodGenerator {
 
     private List<MappingPlan.Rule> resolveRules(ExecutableElement method, MappingPlan.Kind methodKind,
                                                 GeneratedClass generated) {
-        List<MappingPlan.Rule> rules = new ArrayList<MappingPlan.Rule>();
+        List<MappingPlan.Rule> rules = new ArrayList<>();
 
         for (AnnotationMirror mirror : method.getAnnotationMirrors()) {
             String name = annotationName(mirror);
@@ -169,7 +162,6 @@ public final class MapperMethodGenerator {
         return rules;
     }
 
-
     private MappingPlan.Rule rule(AnnotationMirror annotation, MappingPlan.WriteMode mode) {
         String target = stringValue(annotation, "target");
         String source = stringValue(annotation, "source");
@@ -185,7 +177,6 @@ public final class MapperMethodGenerator {
         return new MappingPlan.Rule(annotation, mode, target, source, sources, compute,
                 nestedMapper, ignore, arrayPolicy, objectPolicy, arrayExplicit, objectExplicit);
     }
-
 
     private boolean validateRule(ExecutableElement method, MappingPlan.Kind methodKind,
                                  MappingPlan.Rule rule, GeneratedClass generated) {
@@ -278,13 +269,10 @@ public final class MapperMethodGenerator {
             }
         }
 
-        if (targetPath && !validateTargetPath(method, rule, generated)) {
-            return false;
-        }
+        if (targetPath && !validateTargetPath(method, rule, generated)) return false;
 
         return true;
     }
-
 
     private boolean validateTargetPath(ExecutableElement method, MappingPlan.Rule rule,
                                        GeneratedClass generated) {
@@ -335,10 +323,9 @@ public final class MapperMethodGenerator {
         return true;
     }
 
-
     private boolean validateDuplicateTargets(ExecutableElement method, List<MappingPlan.Rule> rules,
                                              GeneratedClass generated) {
-        Set<String> targets = new HashSet<String>();
+        Set<String> targets = new HashSet<>();
         for (MappingPlan.Rule rule : rules) {
             if (!targets.add(rule.target())) {
                 error(method, generated, "duplicate mapping target '" + rule.target() + "'");
@@ -349,7 +336,6 @@ public final class MapperMethodGenerator {
 
         return true;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -365,23 +351,18 @@ public final class MapperMethodGenerator {
         return null;
     }
 
-
     private String annotationName(AnnotationMirror mirror) {
         Element element = mirror.getAnnotationType().asElement();
 
-        if (!(element instanceof TypeElement)) {
-            return "";
-        }
+        if (!(element instanceof TypeElement)) return "";
 
         return ((TypeElement) element).getQualifiedName().toString();
     }
-
 
     private String annotationSimpleName(AnnotationMirror mirror) {
         Element element = mirror.getAnnotationType().asElement();
         return element == null ? "@Mapping" : "@" + element.getSimpleName();
     }
-
 
     private AnnotationValue value(AnnotationMirror mirror, String name) {
         Map<? extends ExecutableElement, ? extends AnnotationValue> values =
@@ -394,7 +375,6 @@ public final class MapperMethodGenerator {
         return null;
     }
 
-
     private boolean hasExplicitValue(AnnotationMirror mirror, String name) {
         for (ExecutableElement member : mirror.getElementValues().keySet()) {
             if (member.getSimpleName().contentEquals(name)) return true;
@@ -403,46 +383,35 @@ public final class MapperMethodGenerator {
         return false;
     }
 
-
     private String stringValue(AnnotationMirror mirror, String name) {
         AnnotationValue value = value(mirror, name);
 
-        if (value == null) {
-            return "";
-        }
+        if (value == null) return "";
 
         Object raw = value.getValue();
         return raw instanceof String ? ((String) raw).trim() : "";
     }
 
-
     private boolean booleanValue(AnnotationMirror mirror, String name, boolean defaultValue) {
         AnnotationValue value = value(mirror, name);
 
-        if (value == null) {
-            return defaultValue;
-        }
+        if (value == null) return defaultValue;
 
         Object raw = value.getValue();
         return raw instanceof Boolean ? (Boolean) raw : defaultValue;
     }
 
-
     @SuppressWarnings("unchecked")
     private List<String> stringArrayValue(AnnotationMirror mirror, String name) {
         AnnotationValue value = value(mirror, name);
 
-        if (value == null) {
-            return new ArrayList<String>();
-        }
+        if (value == null) return new ArrayList<>();
 
         Object raw = value.getValue();
 
-        if (!(raw instanceof List)) {
-            return new ArrayList<String>();
-        }
+        if (!(raw instanceof List)) return new ArrayList<>();
 
-        List<String> result = new ArrayList<String>();
+        List<String> result = new ArrayList<>();
         for (AnnotationValue item : (List<? extends AnnotationValue>) raw) {
             Object itemValue = item.getValue();
 
@@ -454,22 +423,17 @@ public final class MapperMethodGenerator {
         return result;
     }
 
-
     @SuppressWarnings("unchecked")
     private List<AnnotationMirror> annotationArray(AnnotationMirror mirror, String name) {
         AnnotationValue value = value(mirror, name);
 
-        if (value == null) {
-            return new ArrayList<AnnotationMirror>();
-        }
+        if (value == null) return new ArrayList<>();
 
         Object raw = value.getValue();
 
-        if (!(raw instanceof List)) {
-            return new ArrayList<AnnotationMirror>();
-        }
+        if (!(raw instanceof List)) return new ArrayList<>();
 
-        List<AnnotationMirror> result = new ArrayList<AnnotationMirror>();
+        List<AnnotationMirror> result = new ArrayList<>();
         for (AnnotationValue item : (List<? extends AnnotationValue>) raw) {
             Object itemValue = item.getValue();
 
@@ -481,23 +445,17 @@ public final class MapperMethodGenerator {
         return result;
     }
 
-
     private String enumValue(AnnotationMirror mirror, String name) {
         AnnotationValue value = value(mirror, name);
 
-        if (value == null) {
-            return null;
-        }
+        if (value == null) return null;
 
         Object raw = value.getValue();
 
-        if (raw instanceof VariableElement) {
-            return ((VariableElement) raw).getSimpleName().toString();
-        }
+        if (raw instanceof VariableElement) return ((VariableElement) raw).getSimpleName().toString();
 
         return raw == null ? null : raw.toString();
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -508,7 +466,6 @@ public final class MapperMethodGenerator {
     private boolean isPath(String value) {
         return value != null && !value.isEmpty() && (value.charAt(0) == '$' || value.charAt(0) == '/');
     }
-
 
     /*
      * --------------------------------------------------------------
