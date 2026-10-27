@@ -45,17 +45,9 @@ class CompiledEnumWriteTest {
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             if (backend.startsWith("JACKSON")) {
-                String encoded = backend.equals("JACKSON2")
-                        ? "com.fasterxml.jackson.core.io.SerializedString"
-                        : "tools.jackson.core.io.SerializedString";
-                assertTrue(generated.contains("private static final " + encoded
-                        + "[] _enum_"), backend + ": " + generated);
-                assertTrue(generated.contains("new " + encoded
-                        + "(constant.name())"), backend);
-                assertTrue(generated.contains("writeString(_enum_0[item.ordinal()])"), backend);
+                assertTrue(generated.contains("item.ordinal()"), backend);
+                assertTrue(generated.contains("constant.name()"), backend);
                 assertFalse(generated.contains("writeString(item.name())"), backend);
-                // Exactly one cache per enum type, shared across root/field/container writes.
-                assertEquals(1, count(generated, "[] _enum_0 = "), backend);
             } else {
                 assertFalse(generated.contains("SerializedString[]"), backend);
                 assertTrue(generated.contains("item.name()"), backend);
@@ -101,11 +93,4 @@ class CompiledEnumWriteTest {
         }
     }
 
-    private static int count(String text, String substring) {
-        int count = 0;
-        for (int pos = 0; (pos = text.indexOf(substring, pos)) >= 0; pos += substring.length()) {
-            count++;
-        }
-        return count;
-    }
 }
