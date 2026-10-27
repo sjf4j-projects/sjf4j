@@ -42,6 +42,18 @@ import static org.junit.jupiter.api.Assertions.*;
 public class NodesTest {
 
     @Test
+    void inspectAndShapeLinkedListInOrder() {
+        List<Object> list = new LinkedList<Object>(Arrays.asList("a", null, Arrays.asList(1, 2))) {
+            @Override
+            public Object get(int index) {
+                throw new AssertionError("indexed read on sequential list");
+            }
+        };
+        assertEquals("[a, null, [1, 2]]", Nodes.inspect(list));
+        assertEquals("[String, null, [Integer, Integer]]", Nodes.shape(list));
+    }
+
+    @Test
     public void testToString() {
         assertEquals("test", Nodes.toString("test"));
         assertEquals("a", Nodes.toString('a'));

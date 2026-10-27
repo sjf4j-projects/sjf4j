@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.RandomAccess;
 import java.util.Set;
 
 
@@ -1231,9 +1232,11 @@ public final class NodeMapper {
                 List<Object> target = TypeRegistry.newListContainer(nodeClazz, src.size(), false);
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
-                for (int i = 0; i < src.size(); i++) {
-                    PathSegment cps = new PathSegment.Index(ps, i);
-                    target.add(_deepCopy(src.get(i), elemType, elemBoxed, cps, context));
+
+                int i = 0;
+                for (Object value : src) {
+                    PathSegment cps = new PathSegment.Index(ps, i++);
+                    target.add(_deepCopy(value, elemType, elemBoxed, cps, context));
                 }
                 return target;
             }
@@ -1653,6 +1656,11 @@ public final class NodeMapper {
                                                     boolean deepCopy,
                                                     PathSegment ps,
                                                     RuntimeContext context) {
+        // Snapshot only sequential Lists; indexed reads on them can be quadratic.
+        // Keep native external, JsonArray (getNode), array and RandomAccess reads unchanged.
+        if (source instanceof List && !(source instanceof RandomAccess)) {
+            source = ((List<?>) source).toArray();
+        }
         int size = _indexedSize(source, external);
         boolean externalSource = external != null;
         if (List.class.isAssignableFrom(toBoxed)) {
@@ -1891,9 +1899,10 @@ public final class NodeMapper {
                 List<Object> oldList = (List<Object>) node;
                 List<Object> newList = new ArrayList<>(oldList.size());
 
-                for (int i = 0, len = oldList.size(); i < len; i++) {
-                    PathSegment cps = new PathSegment.Index(ps, i);
-                    newList.add(_convertToRaw(oldList.get(i), cps, context));
+                int i = 0;
+                for (Object value : oldList) {
+                    PathSegment cps = new PathSegment.Index(ps, i++);
+                    newList.add(_convertToRaw(value, cps, context));
                 }
                 return newList;
             }

@@ -47,6 +47,28 @@ import static org.sjf4j.node.NodeMapperFixtures.*;
 class NodeMapperConversionTest {
 
     @Test
+    void toArrayUsesListSnapshotWithoutIndexedReads() {
+        List<Object> source = new LinkedList<Object>() {
+            {
+                add("a");
+                add(null);
+                add("c");
+            }
+
+            @Override
+            public Object get(int index) {
+                throw new AssertionError("toArray must not use indexed reads");
+            }
+        };
+
+        Object[] snapshot = NodeMapper.toArray(source, RuntimeContext.EMPTY);
+        assertArrayEquals(new Object[]{"a", null, "c"}, snapshot);
+        source.set(0, "changed");
+        assertEquals("a", snapshot[0]);
+        assertNotSame(source, snapshot);
+    }
+
+    @Test
     void convertClassHandlesNullScalarsAndEnums() {
         assertNull(NodeMapper.convert(null, String.class, false, RuntimeContext.EMPTY));
         assertEquals(Integer.valueOf(12), NodeMapper.convert(12L, Integer.class, false, RuntimeContext.EMPTY));

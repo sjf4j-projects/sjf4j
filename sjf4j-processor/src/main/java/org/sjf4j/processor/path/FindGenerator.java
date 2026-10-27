@@ -752,52 +752,32 @@ public final class FindGenerator {
                 /*
                  * List
                  */
-                String size =
-                        names.newName("size");
-
-                out.line(
-                        "int " +
-                                size +
-                                " = " +
-                                expression +
-                                ".size();");
-
-                String loopIndex;
-
                 if (segment instanceof PathSegment.Slice) {
-                    loopIndex =
+                    String size = names.newName("size");
+                    String iterator = names.newName("iterator");
+                    boolean reverse = ((PathSegment.Slice) segment).step != null
+                            && ((PathSegment.Slice) segment).step < 0;
+                    out.line("int " + size + " = " + expression + ".size();");
+                    out.line("java.util.ListIterator<? extends " + itemTypeName + "> "
+                            + iterator + " = " + expression
+                            + ".listIterator(" + (reverse ? size : "0") + ");");
+                    String loopIndex =
                             emitSliceLoop(
                                     out,
                                     names,
                                     (PathSegment.Slice) segment,
                                     size);
+                    out.beginBlock("while (" + iterator + "."
+                            + (reverse ? "previousIndex() > " : "nextIndex() < ")
+                            + loopIndex + ")");
+                    out.line(iterator + "." + (reverse ? "previous()" : "next()") + ";");
+                    out.endBlock();
+                    out.line(itemTypeName + " " + item + " = " + iterator + "."
+                            + (reverse ? "previous()" : "next()") + ";");
                 } else {
-                    loopIndex =
-                            names.newName("i");
-
-                    out.line(
-                            "for (int " +
-                                    loopIndex +
-                                    " = 0; " +
-                                    loopIndex +
-                                    " < " +
-                                    size +
-                                    "; " +
-                                    loopIndex +
-                                    "++) {");
-
+                    out.line("for (" + itemTypeName + " " + item + " : " + expression + ") {");
                     out.indent();
                 }
-
-                out.line(
-                        itemTypeName +
-                                " " +
-                                item +
-                                " = " +
-                                expression +
-                                ".get(" +
-                                loopIndex +
-                                ");");
             }
 
             emitFilterCheck(

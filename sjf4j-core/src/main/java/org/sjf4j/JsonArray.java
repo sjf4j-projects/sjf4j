@@ -18,6 +18,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.RandomAccess;
 import java.util.Set;
 
 /**
@@ -75,14 +76,14 @@ public class JsonArray extends JsonContainer {
             if (elemClazz == Object.class) {
                 dynamicElements = new ArrayList<>(list);
             } else {
-                int len = list.size();
-                dynamicElements = new ArrayList<>(len);
-                for (int i = 0; i < len; i++) {
-                    Object v = list.get(i);
+                dynamicElements = new ArrayList<>(list.size());
+                int i = 0;
+                for (Object v : list) {
                     if (v != null && !elemClazz.isInstance(v))
                         throw new NodeException("element type mismatch at [" + i + "]: expected " +
                                 elemClazz.getName() + ", but was " + v.getClass().getName());
                     dynamicElements.add(v);
+                    i++;
                 }
             }
         }
@@ -242,8 +243,8 @@ public class JsonArray extends JsonContainer {
      */
     public boolean containsValue(Object value) {
         if (dynamicElements == null) return false;
-        for (Object o : dynamicElements) {
-            if (Objects.equals(o, value)) {
+        for (int i = 0, len = dynamicElements.size(); i < len; i++) {
+            if (Objects.equals(dynamicElements.get(i), value)) {
                 return true;
             }
         }

@@ -5,6 +5,7 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeMapperFixtures.Box;
 import org.sjf4j.node.NodeMapperFixtures.GenericUser;
 import org.sjf4j.node.NodeMapperFixtures.Profile;
@@ -13,6 +14,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.sjf4j.node.NodeMapperFixtures.profile;
 
 @SuppressWarnings("unchecked")
@@ -150,5 +154,27 @@ class NodeMapperCopyTest {
         assertInstanceOf(Box.class, untyped);
         assertInstanceOf(List.class, ((Box<?>) untyped).value);
         assertNotSame(source.value.get(0), ((List<?>) ((Box<?>) untyped).value).get(0));
+    }
+
+    @Test
+    void sequentialListDeepCopyAndRawConversionKeepOrderAndPaths() {
+        JsonObject nested = JsonObject.of("value", 1);
+        LinkedList<Object> source = new LinkedList<>();
+        source.add(nested);
+        source.add('A');
+
+        List<Object> copied = (List<Object>) NodeMapper.convert(source, Object.class, true, RuntimeContext.EMPTY);
+        assertNotSame(source, copied);
+        assertNotSame(nested, copied.get(0));
+        assertEquals('A', copied.get(1));
+
+        List<Object> raw = (List<Object>) NodeMapper.convertToRaw(source, RuntimeContext.EMPTY);
+        assertEquals(Arrays.asList(Map.of("value", 1), "A"), raw);
+        assertNotSame(nested, raw.get(0));
+
+        source.add(new Object());
+        BindingException error = assertThrows(BindingException.class,
+                () -> NodeMapper.convertToRaw(source, RuntimeContext.EMPTY));
+        assertTrue(error.getMessage().contains("$[2]"));
     }
 }

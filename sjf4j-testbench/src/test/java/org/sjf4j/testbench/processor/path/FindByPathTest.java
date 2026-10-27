@@ -6,6 +6,7 @@ import org.sjf4j.annotation.path.FindByPath;
 import org.sjf4j.CompiledInstances;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +31,19 @@ public class FindByPathTest {
     record Container(List<Item> items, List<Family> families, Map<String, Object> metadata) {}
 
     record Registry(Map<String, Item> items) {}
+
+    record Concrete(LinkedList<Item> items) {}
+
+    record FinalConcrete(IteratorOnlyList<Item> items) {}
+
+    static final class IteratorOnlyList<E> extends LinkedList<E> {
+        IteratorOnlyList(List<E> values) { super(values); }
+
+        @Override
+        public E get(int index) {
+            throw new AssertionError("Sequential list must not use get(int)");
+        }
+    }
 
     // ---- Compiled interfaces -----------------------------------------------
 
@@ -88,6 +102,36 @@ public class FindByPathTest {
 
         @FindByPath(value = "$.families..name", allowFallback = true)
         List<String> familyDescendantNames(Container root);
+
+        @FindByPath("$.items[*].name")
+        List<String> concreteNames(Concrete root);
+
+        @FindByPath("$.items[1::2].name")
+        List<String> concreteStrideNames(Concrete root);
+
+        @FindByPath("$.items[::-2].name")
+        List<String> concreteReverseNames(Concrete root);
+
+        @FindByPath("$.items[3:0:-2].name")
+        List<String> reverseBoundedStrideNames(Concrete root);
+
+        @FindByPath("$.items[-1:-4:-2].name")
+        List<String> reverseNegativeBoundedStrideNames(Concrete root);
+
+        @FindByPath("$.items[0:0].name")
+        List<String> zeroWidthNames(Concrete root);
+
+        @FindByPath("$.items[1:2].name")
+        List<String> singleName(Concrete root);
+
+        @FindByPath(value = "$.items[?(@ == null)]", allowFallback = true)
+        List<Item> nullItems(Concrete root);
+
+        @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
+        List<String> concreteAdultNames(Concrete root);
+
+        @FindByPath("$.items[::-1].name")
+        List<String> finalConcreteReverseNames(FinalConcrete root);
     }
 
     // ---- Tests -------------------------------------------------------------
@@ -183,6 +227,42 @@ public class FindByPathTest {
         registryItems.put("b", root.items().get(1));
         registryItems.put("c", root.items().get(2));
         assertEquals(List.of("Bob", "Charlie"), nodes.adultRegistryNames(new Registry(registryItems)));
+    }
+
+    @Test
+    public void sequentialListsPreserveWildcardSliceFilterAndNestedOrder() {
+        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        Container random = container();
+        IteratorOnlyList<Item> items = new IteratorOnlyList<>(random.items());
+        Container sequential = new Container(items,
+                new IteratorOnlyList<>(List.of(
+                        new Family("one", new IteratorOnlyList<>(items.subList(0, 2))),
+                        new Family("two", new IteratorOnlyList<>(items.subList(2, 3))))),
+                random.metadata());
+
+        assertEquals(List.of("Alice", "Bob", "Charlie"), nodes.itemNames(sequential));
+        assertEquals(List.of("Alice", "Bob", "Charlie"), nodes.childNames(sequential));
+        assertEquals(List.of("Alice", "Charlie"), nodes.everyOtherItemName(sequential));
+        assertEquals(List.of("Bob", "Charlie"), nodes.lastTwoItemNames(sequential));
+        assertEquals(List.of("Charlie", "Bob", "Alice"), nodes.reverseItemNames(sequential));
+        assertEquals(List.of("Bob", "Charlie"), nodes.adultItemNames(sequential));
+
+        Concrete concrete = new Concrete(items);
+        assertEquals(List.of("Alice", "Bob", "Charlie"), nodes.concreteNames(concrete));
+        assertEquals(List.of("Bob"), nodes.concreteStrideNames(concrete));
+        assertEquals(List.of("Charlie", "Alice"), nodes.concreteReverseNames(concrete));
+        assertEquals(List.of("Charlie"), nodes.reverseBoundedStrideNames(concrete));
+        assertEquals(List.of("Charlie", "Alice"), nodes.reverseNegativeBoundedStrideNames(concrete));
+        assertTrue(nodes.zeroWidthNames(concrete).isEmpty());
+        assertEquals(List.of("Bob"), nodes.singleName(concrete));
+        assertEquals(List.of("Bob", "Charlie"), nodes.concreteAdultNames(concrete));
+        assertEquals(List.of("Charlie", "Bob", "Alice"),
+                nodes.finalConcreteReverseNames(new FinalConcrete(items)));
+
+        assertTrue(nodes.concreteReverseNames(new Concrete(new IteratorOnlyList<>(List.of())))
+                .isEmpty());
+        IteratorOnlyList<Item> withNull = new IteratorOnlyList<>(java.util.Arrays.asList(random.items().get(0), null, random.items().get(2)));
+        assertEquals(java.util.Collections.singletonList(null), nodes.nullItems(new Concrete(withNull)));
     }
 
     @Test

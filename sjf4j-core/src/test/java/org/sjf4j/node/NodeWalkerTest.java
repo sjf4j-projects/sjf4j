@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -134,6 +135,28 @@ class NodeWalkerTest {
         assertTrue(paths.contains("$[0]"));
         assertTrue(paths.contains("$[1]"));
         assertTrue(paths.contains("$[2][0]"));
+    }
+
+    @Test
+    void linkedListVisitsIndexesAndShortCircuits() {
+        List<Object> list = new LinkedList<Object>(Arrays.asList("first", null, "last")) {
+            @Override
+            public Object get(int index) {
+                throw new AssertionError("indexed read on sequential list");
+            }
+        };
+        List<String> entries = new ArrayList<>();
+        NodeWalker.forEachArray(list, (index, value) -> entries.add(index + ":" + value));
+        assertEquals(Arrays.asList("0:first", "1:null", "2:last"), entries);
+
+        entries.clear();
+        assertTrue(NodeWalker.anyMatchInArray(list, (index, value) -> {
+            entries.add(index + ":" + value);
+            return index == 1;
+        }));
+        assertEquals(Arrays.asList("0:first", "1:null"), entries);
+        assertEquals(Arrays.asList("$[0]", "$[1]", "$[2]"),
+                walkPaths(list, NodeWalker.WalkTarget.VALUE, -1));
     }
 
     @Test

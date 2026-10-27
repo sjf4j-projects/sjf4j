@@ -653,9 +653,9 @@ public final class Nodes {
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
             sb.append("[");
-            for (int i = 0, len = list.size(); i < len; i++) {
-                Object v = list.get(i);
-                if (i > 0) sb.append(", ");
+            int i = 0;
+            for (Object v : list) {
+                if (i++ > 0) sb.append(", ");
                 _inspect(v, sb, shapeOnly);
             }
             sb.append("]");
