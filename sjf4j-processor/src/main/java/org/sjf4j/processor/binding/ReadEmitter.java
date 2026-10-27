@@ -372,9 +372,7 @@ final class ReadEmitter {
                     }
                 }
                 if (!matches) continue;
-                if (property.value().kind() != BindingValue.Kind.STRING) {
-                    throw new AssertionError("Compiled discriminator creator argument must be String");
-                }
+                if (property.value().kind() != BindingValue.Kind.STRING) throw new AssertionError("Compiled discriminator creator argument must be String");
                 out.line("arg" + index + " = String.valueOf(discriminator);");
                 out.line(argCount <= 64 ? "seen |= (1L << " + index + ");"
                         : "seen[" + index + "] = true;");
@@ -683,9 +681,7 @@ final class ReadEmitter {
     }
 
     private String readExpression(BindingValue value, String parser) {
-        if (value.helperRequired()) {
-            return value.helperName() + "(" + parser + ")";
-        }
+        if (value.helperRequired()) return value.helperName() + "(" + parser + ")";
 
         switch (value.kind()) {
             case STRING:
@@ -776,16 +772,12 @@ final class ReadEmitter {
                         + value.type() + ".class, this.context)";
 
             case ONE_OF:
-                if (value.oneOfKey() != null) {
-                    return value.helperName() + "(" + parser + ")";
-                }
+                if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
                 return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
                         + ".readOneOf(" + parser + ", " + value.helperName() + "_info, this.context)";
 
             case RUNTIME:
-                if (context.types.isObject(value.type())) {
-                    return "(" + value.type() + ") " + parser + ".readRaw()";
-                }
+                if (context.types.isObject(value.type())) return "(" + value.type() + ") " + parser + ".readRaw()";
                 return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
                         + context.typeUtils.erasure(value.type()) + ".class, this.context)";
 
