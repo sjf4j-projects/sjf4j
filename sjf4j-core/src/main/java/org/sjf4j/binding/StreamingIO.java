@@ -980,11 +980,13 @@ public final class StreamingIO {
     public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
         Object raw = parser.readRaw();
         if (raw == null) return null;
-        Map<String, Object> members = castMap(raw);
-        if (members.getClass() != LinkedHashMap.class) return new JsonObject(members);
-        JsonObject result = new JsonObject();
-        InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) members);
-        return result;
+        if (raw.getClass() == LinkedHashMap.class) {
+            JsonObject result = new JsonObject();
+            InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
+            return result;
+        }
+        if (raw instanceof Map) return new JsonObject((Map<String, Object>) raw);
+        throw new BindingException("cannot read non-object value as JsonObject");
     }
 
     /**
@@ -996,11 +998,13 @@ public final class StreamingIO {
     public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
         Object raw = parser.readRaw();
         if (raw == null) return null;
-        List<Object> elements = castList(raw);
-        if (elements.getClass() != ArrayList.class) return new JsonArray(elements);
-        JsonArray result = new JsonArray();
-        InternalAccess.dynamicElements(result, (ArrayList<Object>) elements);
-        return result;
+        if (raw.getClass() == ArrayList.class) {
+            JsonArray result = new JsonArray();
+            InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
+            return result;
+        }
+        if (raw instanceof List) return new JsonArray((List<Object>) raw);
+        throw new BindingException("cannot read non-array value as JsonArray");
     }
 
     /**

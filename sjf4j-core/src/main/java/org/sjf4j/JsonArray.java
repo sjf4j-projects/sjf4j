@@ -77,7 +77,7 @@ public class JsonArray extends JsonContainer {
      */
     public JsonArray(List<?> list) {
         this();
-        Objects.requireNonNull(list, "list");
+        Asserts.notNull(list, "list");
         if (!list.isEmpty()) {
             Class<?> elemClazz = elementClass();
             if (elemClazz == Object.class) {
