@@ -19,7 +19,7 @@ final class ReadEmitter {
     private final Fastjson2ReadEmitter fastjson2;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend) {
-        this.context = context;
+        _FALLBACK_CONTEXT = context;
         this.backend = backend;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter() : null;
@@ -104,7 +104,7 @@ final class ReadEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private " + value.type() + " " + value.helperName()
+        out.beginBlock("private static " + value.type() + " " + value.helperName()
                 + "(" + backend.parserType() + " parser) throws java.io.IOException");
 
         switch (value.kind()) {
@@ -151,7 +151,7 @@ final class ReadEmitter {
     /** Compile CURRENT/key OneOf without depending on discriminator position. */
     void emitOneOfReadHelper(JavaWriter out, BindingValue value) {
         String info = value.helperName() + "_info";
-        out.beginBlock("private " + value.type() + " " + value.helperName()
+        out.beginBlock("private static " + value.type() + " " + value.helperName()
                 + "(" + backend.parserType() + " parser) throws java.io.IOException");
         out.beginBlock("if (!parser.nextIfObjectStart())");
         out.beginBlock("if (parser.nextIfNull())");
@@ -230,7 +230,7 @@ final class ReadEmitter {
     /** Continue parsing after the discriminator; replay only the raw prefix. */
     void emitOneOfSubtypeContent(JavaWriter out, BindingValue owner,
                                  BindingValue subtype, int index) {
-        out.beginBlock("private " + subtype.type() + " " + owner.helperName()
+        out.beginBlock("private static " + subtype.type() + " " + owner.helperName()
                 + "_subtype" + index + "_content(" + backend.parserType()
                 + " parser, String[] prefixNames, Object[] prefixValues, int prefixSize,"
                 + " Object discriminator) throws java.io.IOException");
@@ -279,8 +279,27 @@ final class ReadEmitter {
             case BIG_INTEGER: decoded = numeric + "toBigInteger((Number) " + raw + ")"; break;
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
-                // readRaw() may return Integer when the selected codec expects Long.
                 String codec = value.helperName();
+                if (value.staticCodec() != null || value.staticNodeValue()) {
+                    String targetRaw = value.codecRawType().toString();
+                    boolean numericRaw = targetRaw.equals("java.lang.Number")
+                            || targetRaw.equals("java.lang.Byte")
+                            || targetRaw.equals("java.lang.Short")
+                            || targetRaw.equals("java.lang.Integer")
+                            || targetRaw.equals("java.lang.Long")
+                            || targetRaw.equals("java.lang.Float")
+                            || targetRaw.equals("java.lang.Double")
+                            || targetRaw.equals("java.math.BigInteger")
+                            || targetRaw.equals("java.math.BigDecimal");
+                    String converted = numericRaw
+                            ? "(" + raw + " == null ? null : " + numeric
+                                    + "to((Number) " + raw + ", " + targetRaw + ".class))"
+                            : "(" + targetRaw + ") " + raw;
+                    return "(" + value.type() + ") " + (value.staticNodeValue()
+                            ? value.nodeValueDecode(converted)
+                            : codec + ".rawToValue(" + converted + ")");
+                }
+                // Dynamic ValueInfo codec selection retains the rawClazz check.
                 return "(" + value.type() + ") " + codec + ".rawToValue("
                         + raw + " instanceof Number && Number.class.isAssignableFrom(" + codec + ".rawClazz)"
                         + " ? " + numeric + "to((Number) " + raw + ", " + codec + ".rawClazz)"
@@ -737,9 +756,19 @@ final class ReadEmitter {
                 return parser + ".readBigDecimal()";
 
             case VALUE_CODEC:
+                if (value.staticCodec() != null || value.staticNodeValue()) {
+                    String fixedReader = codecRawReader(value);
+                    String rawExpression = fixedReader == null
+                            ? "(" + value.codecRawType() + ") " + parser + ".readRaw()"
+                            : parser + "." + fixedReader + "()";
+                    String fixedDecode = value.staticNodeValue()
+                            ? value.nodeValueDecode(rawExpression)
+                            : value.helperName() + ".rawToValue(" + rawExpression + ")";
+                    return "(" + value.type() + ") " + fixedDecode;
+                }
                 String rawReader = codecRawReader(value);
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + parser + ", "
-                        + value.helperName() + ", this.context)";
+                        + value.helperName() + ", _FALLBACK_CONTEXT)";
                 String scalarRead;
                 if (rawReader == null) {
                     scalarRead = runtimeRead;
@@ -760,7 +789,7 @@ final class ReadEmitter {
                     String set = value.helperName() + "Set";
                     String selected = STREAMING_IO + ".readValueSet(" + parser + ", "
                             + value.type() + ".class, " + value.type() + ".class, "
-                            + set + ", this.context)";
+                            + set + ", _FALLBACK_CONTEXT)";
                     return "(" + value.type() + ") (" + set + ".multiples ? "
                             + selected + " : " + scalarRead + ")";
                 }
@@ -769,17 +798,17 @@ final class ReadEmitter {
             case ENUM:
                 if (fastjson2 != null) return fastjson2.readExpression(value, parser);
                 return "(" + value.type() + ") " + STREAMING_IO + ".readEnum(" + parser + ", "
-                        + value.type() + ".class, this.context)";
+                        + value.type() + ".class, _FALLBACK_CONTEXT)";
 
             case ONE_OF:
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
                 return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
-                        + ".readOneOf(" + parser + ", " + value.helperName() + "_info, this.context)";
+                        + ".readOneOf(" + parser + ", " + value.helperName() + "_info, _FALLBACK_CONTEXT)";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) return "(" + value.type() + ") " + parser + ".readRaw()";
                 return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
-                        + context.typeUtils.erasure(value.type()) + ".class, this.context)";
+                        + context.typeUtils.erasure(value.type()) + ".class, _FALLBACK_CONTEXT)";
 
             default:
                 throw new AssertionError("Unsupported read kind " + value.kind());
