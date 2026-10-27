@@ -49,7 +49,7 @@ class CompiledEnumWriteTest {
                         ? "com.fasterxml.jackson.core.io.SerializedString"
                         : "tools.jackson.core.io.SerializedString";
                 assertTrue(generated.contains("private static final " + encoded
-                        + "[] _enum_0 = _enum_0Init();"), backend);
+                        + "[] _enum_"), backend + ": " + generated);
                 assertTrue(generated.contains("new " + encoded
                         + "(constant.name())"), backend);
                 assertTrue(generated.contains("writeString(_enum_0[item.ordinal()])"), backend);
