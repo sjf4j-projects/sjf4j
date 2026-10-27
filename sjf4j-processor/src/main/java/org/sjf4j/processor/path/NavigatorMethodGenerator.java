@@ -38,13 +38,11 @@ public final class NavigatorMethodGenerator {
     private final PathEmitter pathEmitter;
     private final FindGenerator findGenerator;
 
-
     public NavigatorMethodGenerator(ProcessorContext context) {
         this.context = context;
         this.pathEmitter = new PathEmitter(context);
         this.findGenerator = new FindGenerator(context);
     }
-
 
     /**
      * Generates one abstract navigator method.
@@ -63,9 +61,7 @@ public final class NavigatorMethodGenerator {
 
         Operation operation = resolveOperation(method, generated);
 
-        if (operation == null) {
-            return;
-        }
+        if (operation == null) return;
 
         switch (operation.kind) {
             case GET:
@@ -87,7 +83,6 @@ public final class NavigatorMethodGenerator {
                 throw new AssertionError(operation.kind);
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -120,9 +115,7 @@ public final class NavigatorMethodGenerator {
 
         JsonPath path = parsePath(method, generated, operation.path, false);
 
-        if (path == null) {
-            return;
-        }
+        if (path == null) return;
 
         if (!path.isSingleGet()) {
             error(
@@ -141,9 +134,7 @@ public final class NavigatorMethodGenerator {
                         parameters.size(),
                         operation.annotation);
 
-        if (pathParameters == null) {
-            return;
-        }
+        if (pathParameters == null) return;
 
         GetPlan plan = new GetPlan(method, parameters.get(0), path, pathParameters);
 
@@ -153,7 +144,6 @@ public final class NavigatorMethodGenerator {
             generated.addMethod(member);
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -179,9 +169,7 @@ public final class NavigatorMethodGenerator {
 
         JsonPath path = parsePath(method, generated, operation.path, false);
 
-        if (path == null) {
-            return;
-        }
+        if (path == null) return;
 
         if (!path.isSinglePut()) {
             error(
@@ -223,9 +211,7 @@ public final class NavigatorMethodGenerator {
                         parameters.size() - 1,
                         operation.annotation);
 
-        if (pathParameters == null) {
-            return;
-        }
+        if (pathParameters == null) return;
 
         PutPlan plan = new PutPlan(
                 method,
@@ -245,7 +231,6 @@ public final class NavigatorMethodGenerator {
         }
 
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -320,7 +305,6 @@ public final class NavigatorMethodGenerator {
         return operation;
     }
 
-
     /**
      * Adds one discovered operation and rejects annotation combinations.
      */
@@ -330,9 +314,7 @@ public final class NavigatorMethodGenerator {
             Operation previous,
             Operation next) {
 
-        if (previous == null) {
-            return next;
-        }
+        if (previous == null) return next;
 
         error(
                 method,
@@ -349,7 +331,6 @@ public final class NavigatorMethodGenerator {
          */
         return previous;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -392,7 +373,6 @@ public final class NavigatorMethodGenerator {
         return path;
     }
 
-
     /**
      * Binds path parameters such as {name} to method parameters.
      *
@@ -408,22 +388,20 @@ public final class NavigatorMethodGenerator {
             String annotation) {
 
         List<? extends VariableElement> parameters = method.getParameters();
-        Map<String, VariableElement> available = new LinkedHashMap<String, VariableElement>();
+        Map<String, VariableElement> available = new LinkedHashMap<>();
 
         for (int i = from; i < to; i++) {
             VariableElement parameter = parameters.get(i);
             available.put(parameter.getSimpleName().toString(), parameter);
         }
 
-        Map<String, VariableElement> used = new LinkedHashMap<String, VariableElement>();
+        Map<String, VariableElement> used = new LinkedHashMap<>();
         PathSegment[] segments = path.segments();
 
         for (int i = 1; i < segments.length; i++) {
             PathSegment segment = segments[i];
 
-            if (!(segment instanceof PathSegment.Param)) {
-                continue;
-            }
+            if (!(segment instanceof PathSegment.Param)) continue;
 
             String name = ((PathSegment.Param) segment).param;
             VariableElement parameter = available.get(name);
@@ -467,7 +445,6 @@ public final class NavigatorMethodGenerator {
         return Collections.unmodifiableMap(used);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Error
@@ -487,7 +464,6 @@ public final class NavigatorMethodGenerator {
                         ": " +
                         message);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -521,7 +497,6 @@ public final class NavigatorMethodGenerator {
         }
     }
 
-
     /**
      * Input to compiled put emission.
      */
@@ -540,7 +515,6 @@ public final class NavigatorMethodGenerator {
         final boolean ensure;
         final boolean ifParentPresent;
         final boolean ifAbsent;
-
 
         PutPlan(
                 ExecutableElement method,
@@ -565,7 +539,6 @@ public final class NavigatorMethodGenerator {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Operation Model
@@ -581,7 +554,6 @@ public final class NavigatorMethodGenerator {
         FIND
     }
 
-
     private static final class Operation {
 
         final Kind kind;
@@ -593,7 +565,6 @@ public final class NavigatorMethodGenerator {
         final boolean ensure;
         final boolean ifParentPresent;
         final boolean ifAbsent;
-
 
         Operation(
                 Kind kind,
