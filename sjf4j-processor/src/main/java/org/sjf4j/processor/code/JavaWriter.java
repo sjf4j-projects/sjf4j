@@ -35,23 +35,20 @@ public final class JavaWriter implements Closeable {
                     "[A-Z_$][A-Za-z0-9_$]*" +
                     "(?![A-Za-z0-9_$.])");
 
-
     private final Writer writer;
     private final String packageName;
     private final String simpleName;
 
-    private final List<String> lines = new ArrayList<String>();
+    private final List<String> lines = new ArrayList<>();
 
     private int indent;
     private boolean closed;
-
 
     public JavaWriter(Writer writer, String packageName, String simpleName) {
         this.writer = Asserts.notNull(writer, "writer");
         this.packageName = packageName == null ? "" : packageName;
         this.simpleName = Asserts.notNull(simpleName, "simpleName");
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -82,7 +79,6 @@ public final class JavaWriter implements Closeable {
         lines.add("");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Indentation
@@ -94,9 +90,7 @@ public final class JavaWriter implements Closeable {
     }
 
     public void dedent() {
-        if (indent == 0) {
-            throw new IllegalStateException("Cannot dedent below zero");
-        }
+        if (indent == 0) throw new IllegalStateException("Cannot dedent below zero");
 
         indent--;
     }
@@ -125,7 +119,6 @@ public final class JavaWriter implements Closeable {
         dedent();
         line("}" + suffix);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -192,7 +185,6 @@ public final class JavaWriter implements Closeable {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Imports
@@ -200,8 +192,8 @@ public final class JavaWriter implements Closeable {
      */
 
     private Map<String, String> resolveImports() {
-        Map<String, String> names = new HashMap<String, String>();
-        Map<String, Boolean> conflicts = new HashMap<String, Boolean>();
+        Map<String, String> names = new HashMap<>();
+        Map<String, Boolean> conflicts = new HashMap<>();
 
         /*
          * The generated class itself always owns its simple name.
@@ -236,9 +228,7 @@ public final class JavaWriter implements Closeable {
             while (matcher.find()) {
                 ShortType type = shortType(matcher.group());
 
-                if (type == null) {
-                    continue;
-                }
+                if (type == null) continue;
 
                 if (!names.containsKey(type.simpleName)) {
                     names.put(type.simpleName, type.importName);
@@ -273,36 +263,27 @@ public final class JavaWriter implements Closeable {
                     String av = a.getValue();
                     String bv = b.getValue();
 
-                    if (av == null) {
-                        return bv == null ? a.getKey().compareTo(b.getKey()) : -1;
-                    }
+                    if (av == null) return bv == null ? a.getKey().compareTo(b.getKey()) : -1;
 
-                    if (bv == null) {
-                        return 1;
-                    }
+                    if (bv == null) return 1;
 
                     int compare = av.compareTo(bv);
 
                     return compare != 0 ? compare : a.getKey().compareTo(b.getKey());
                 });
 
-        Map<String, String> result = new LinkedHashMap<String, String>();
+        Map<String, String> result = new LinkedHashMap<>();
 
         for (Map.Entry<String, String> entry : entries) {
-            if (entry.getValue() == null) {
-                continue;
-            }
+            if (entry.getValue() == null) continue;
 
-            if (conflicts.containsKey(entry.getKey())) {
-                continue;
-            }
+            if (conflicts.containsKey(entry.getKey())) continue;
 
             result.put(entry.getKey(), entry.getValue());
         }
 
         return result;
     }
-
 
     /**
      * Converts one fully qualified reference into its import and use form.
@@ -323,9 +304,7 @@ public final class JavaWriter implements Closeable {
         for (int i = 0; i < parts.length; i++) {
             String part = parts[i];
 
-            if (part.isEmpty()) {
-                return null;
-            }
+            if (part.isEmpty()) return null;
 
             char first = part.charAt(0);
 
@@ -337,9 +316,7 @@ public final class JavaWriter implements Closeable {
             }
         }
 
-        if (classIndex <= 0) {
-            return null;
-        }
+        if (classIndex <= 0) return null;
 
         StringBuilder packageBuilder = new StringBuilder();
 
@@ -373,7 +350,6 @@ public final class JavaWriter implements Closeable {
 
         return new ShortType(topLevelType, importName, useBuilder.toString());
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -426,9 +402,7 @@ public final class JavaWriter implements Closeable {
         while (matcher.find()) {
             ShortType type = shortType(matcher.group());
 
-            if (type == null) {
-                continue;
-            }
+            if (type == null) continue;
 
             String imported = imports.get(type.simpleName);
 
@@ -441,7 +415,6 @@ public final class JavaWriter implements Closeable {
 
         return out.toString();
     }
-
 
     /**
      * Returns code portions of the line for import discovery.
@@ -462,9 +435,7 @@ public final class JavaWriter implements Closeable {
                 continue;
             }
 
-            if (c == '/' && index + 1 < line.length() && line.charAt(index + 1) == '/') {
-                break;
-            }
+            if (c == '/' && index + 1 < line.length() && line.charAt(index + 1) == '/') break;
 
             if (c == '/' && index + 1 < line.length() && line.charAt(index + 1) == '*') {
                 int end = blockCommentEnd(line, index);
@@ -517,16 +488,12 @@ public final class JavaWriter implements Closeable {
         while (index < line.length()) {
             char c = line.charAt(index);
 
-            if (c == '"' || c == '\'') {
-                return index;
-            }
+            if (c == '"' || c == '\'') return index;
 
             if (c == '/' && index + 1 < line.length()) {
                 char next = line.charAt(index + 1);
 
-                if (next == '/' || next == '*') {
-                    return index;
-                }
+                if (next == '/' || next == '*') return index;
             }
 
             index++;
@@ -534,7 +501,6 @@ public final class JavaWriter implements Closeable {
 
         return index;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -544,9 +510,7 @@ public final class JavaWriter implements Closeable {
 
     @Override
     public void close() throws IOException {
-        if (closed) {
-            return;
-        }
+        if (closed) return;
 
         closed = true;
 
@@ -610,7 +574,6 @@ public final class JavaWriter implements Closeable {
 
         writer.write('\n');
     }
-
 
     private static final class ShortType {
 
