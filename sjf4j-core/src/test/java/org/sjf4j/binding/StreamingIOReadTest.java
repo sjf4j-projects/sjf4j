@@ -38,7 +38,7 @@ class StreamingIOReadTest {
 
     @Test
     void adoptsRawStorageForPlainJsonNodesAndPreservesNestedRawNodes() throws Exception {
-        try (SimpleJsonParser parser = new SimpleJsonParser("{\\"items\\":[1,{\\"ok\\":true}]}")) {
+        try (SimpleJsonParser parser = new SimpleJsonParser("{\"items\":[1,{\"ok\":true}]}")) {
             JsonObject object = (JsonObject) StreamingIO.readNode(parser, JsonObject.class, RuntimeContext.EMPTY);
             assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(object));
             assertInstanceOf(ArrayList.class, object.getNode("items"));
@@ -46,7 +46,7 @@ class StreamingIOReadTest {
             assertEquals(2, InternalAccess.dynamicMembers(object).get("added"));
         }
 
-        try (SimpleJsonParser parser = new SimpleJsonParser("[1,{\\"items\\":[2]}]")) {
+        try (SimpleJsonParser parser = new SimpleJsonParser("[1,{\"items\":[2]}]")) {
             JsonArray array = (JsonArray) StreamingIO.readNode(parser, JsonArray.class, RuntimeContext.EMPTY);
             assertInstanceOf(ArrayList.class, InternalAccess.dynamicElements(array));
             assertInstanceOf(LinkedHashMap.class, array.getNode(1));
@@ -57,7 +57,7 @@ class StreamingIOReadTest {
 
     @Test
     void readsJsonContainersInPojoPropertiesWithoutExtraWrapping() throws Exception {
-        try (SimpleJsonParser parser = new SimpleJsonParser("{\\"object\\":{\\"key\\":1},\\"array\\":[1,2]}")) {
+        try (SimpleJsonParser parser = new SimpleJsonParser("{\"object\":{\"key\":1},\"array\":[1,2]}")) {
             ContainerHolder holder = (ContainerHolder) StreamingIO.readNode(parser, ContainerHolder.class, RuntimeContext.EMPTY);
             assertEquals(1, holder.object.getInt("key"));
             assertEquals(2, holder.array.size());
