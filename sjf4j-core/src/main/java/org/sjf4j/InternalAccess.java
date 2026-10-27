@@ -3,6 +3,13 @@ package org.sjf4j;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
+/**
+ * Framework-only access to owned JsonObject/JsonArray storage.
+ * Setters transfer ownership of a freshly created, unshared container without
+ * copying or validation. Callers must never pass externally owned collections;
+ * doing so bypasses the defensive-copy and JAJO element validation contracts.
+ * This class is not intended for application-level mutation.
+ */
 public final class InternalAccess {
     private InternalAccess() {
     }

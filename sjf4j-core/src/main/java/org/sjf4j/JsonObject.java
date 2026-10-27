@@ -36,6 +36,12 @@ import java.util.function.Predicate;
  * representation category whose members combine declared properties and dynamic members
  * in one object node.
  *
+ * <p>The outer map passed to the constructor is copied. Dynamic members can
+ * also be modified through the live {@link #keySet()} and {@link #entrySet()}
+ * views; JOJO declared-property entries may be snapshots and are not removable.
+ * Nested values remain shared. These Map-like views intentionally expose
+ * mutations of the node's own storage.
+ *
  * <p>Dynamic members are stored in {@code dynamicMembers}; declared properties
  * are mapped via {@link PropertyInfo}. Accessors use {@link Nodes} strict and
  * lenient conversion semantics. A missing key and a key whose value is
@@ -77,7 +83,9 @@ public class JsonObject extends JsonContainer {
      * Creates an object node by copying the outer entries of {@code map} into
      * a new insertion-ordered map. Later changes to either outer container do
      * not affect the other; nested values retain their original references.
-     * A {@code null} map is not accepted.
+     * A {@code null} map is not accepted. Entries are copied without additional
+     * key validation for performance; callers must supply non-null String keys
+     * to maintain JSON object semantics.
      */
     public JsonObject(Map<String, Object> map) {
         this();
@@ -201,7 +209,10 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Returns a key view of gettable declared properties and dynamic members.
-     * Dynamic keys are backed by the underlying map; declared keys cannot be removed.
+     * When dynamic storage exists, its keys are backed by the underlying map,
+     * so removing them through the view also changes this object. Declared JOJO
+     * keys cannot be removed. An object without dynamic storage returns an
+     * empty or declared-only view.
      */
     public Set<String> keySet() {
         if (pi == null || pi.gettableProperties.length == 0) {
@@ -251,7 +262,10 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Returns an entry view of gettable declared properties and dynamic members.
-     * Declared-property entries are snapshots; dynamic members are backed by the map.
+     * Declared-property entries are snapshots; dynamic members are backed by the
+     * map. For dynamic entries, {@code setValue()} and iterator removal mutate
+     * this object. An object without dynamic storage returns an empty or
+     * declared-only view.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
         if (pi == null || pi.gettableProperties.length == 0) {
@@ -1123,7 +1137,7 @@ public class JsonObject extends JsonContainer {
      */
     public JsonObject copy() {
         if (getClass() == JsonObject.class) {
-            return dynamicMembers == null ? new JsonObject() : new JsonObject(new LinkedHashMap<>(dynamicMembers));
+            return dynamicMembers == null ? new JsonObject() : new JsonObject(dynamicMembers);
         }
         return Nodes.copy(this);
     }

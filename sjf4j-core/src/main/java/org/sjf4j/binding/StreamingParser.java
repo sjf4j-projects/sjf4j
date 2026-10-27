@@ -566,7 +566,9 @@ public abstract class StreamingParser implements Closeable {
      *
      * <p>This is primarily a dynamic fallback operation. Statically known
      * binding code should prefer the specialized typed methods whenever
-     * possible.</p>
+     * possible. Backend implementations must create independently owned
+     * mutable containers for raw object and array values; the binding layer
+     * may adopt those containers without copying.</p>
      */
     public abstract Object readRaw() throws IOException;
 

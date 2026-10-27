@@ -27,6 +27,10 @@ import java.util.Set;
  * <p>{@link JsonArray} can be subclassed to define a JAJO, a Java representation
  * category that participates as an array node.
  *
+ * <p>Its element storage is owned by this node. Constructors copy the outer
+ * collection, while {@link #iterator()} exposes a mutable backing iterator
+ * (including {@link Iterator#remove()}); nested values are still shared.
+ *
  * <p>Element access and conversion are delegated to {@link Nodes}. Negative
  * indexes count from the end ({@code -1} is the last element). Out-of-range
  * reads return {@code null}; indexed add and set operations reject invalid
@@ -64,14 +68,17 @@ public class JsonArray extends JsonContainer {
 
     /**
      * Creates an array node by copying the outer elements of {@code list}.
-     * A {@code null} or empty list creates an empty array. Later changes to
+     * An empty list creates an empty array; {@code null} is rejected. Later changes to
      * either outer container do not affect the other; nested values retain
      * their original references. JAJO subtypes validate non-null elements
      * against {@link #elementClass()} at construction time.
+     *
+     * @throws NullPointerException if {@code list} is null
      */
     public JsonArray(List<?> list) {
         this();
-        if (list != null && !list.isEmpty()) {
+        Objects.requireNonNull(list, "list");
+        if (!list.isEmpty()) {
             Class<?> elemClazz = elementClass();
             if (elemClazz == Object.class) {
                 dynamicElements = new ArrayList<>(list);
@@ -207,7 +214,8 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Returns an iterator over elements.
+     * Returns a mutable iterator backed by the internal array. Removing an
+     * element through the iterator also removes it from this JsonArray.
      */
     public Iterator<Object> iterator() {
         if (dynamicElements == null) return Collections.emptyIterator();
@@ -978,7 +986,7 @@ public class JsonArray extends JsonContainer {
      */
     public JsonArray copy() {
         if (getClass() == JsonArray.class) {
-            return dynamicElements == null ? new JsonArray() : new JsonArray(new ArrayList<>(dynamicElements));
+            return dynamicElements == null ? new JsonArray() : new JsonArray(dynamicElements);
         }
         return Nodes.copy(this);
     }
