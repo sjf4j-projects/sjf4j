@@ -14,10 +14,17 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final Boolean fixedIncludeNulls;
     private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
-    OtherNativeWriteEmitter(BackendSpec backend) {
+    OtherNativeWriteEmitter(BackendSpec backend, Boolean fixedIncludeNulls) {
         this.backend = backend;
+        this.fixedIncludeNulls = fixedIncludeNulls;
+    }
+
+    @Override
+    public String includeNullsExpression() {
+        return fixedIncludeNulls == null ? "_FALLBACK_CONTEXT.includeNulls" : fixedIncludeNulls.toString();
     }
 
     private boolean gson() {
@@ -52,7 +59,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     /** All structural helpers share the (generator, value) signature. */
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName() + "("
+        out.beginBlock("private static void " + value.helperName() + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
         out.line(generatorType() + " g = generator.nativeWriter();");
@@ -140,7 +147,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
-            out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", this.context);");
+        out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", _FALLBACK_CONTEXT);");
     }
 
     @Override
