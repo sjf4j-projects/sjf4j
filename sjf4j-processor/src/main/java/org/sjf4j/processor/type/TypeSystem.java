@@ -34,14 +34,10 @@ import java.util.Set;
  */
 public final class TypeSystem {
 
-    private static final String JACKSON2_NODE =
-            "com.fasterxml.jackson.databind.JsonNode";
-    private static final String JACKSON3_NODE =
-            "tools.jackson.databind.JsonNode";
-    private static final String GSON_NODE =
-            "com.google.gson.JsonElement";
-    private static final String JSONP_NODE =
-            "jakarta.json.JsonValue";
+    private static final String JACKSON2_NODE = "com.fasterxml.jackson.databind.JsonNode";
+    private static final String JACKSON3_NODE = "tools.jackson.databind.JsonNode";
+    private static final String GSON_NODE = "com.google.gson.JsonElement";
+    private static final String JSONP_NODE = "jakarta.json.JsonValue";
 
     private final Types typeUtils;
     private final Elements elements;
@@ -65,9 +61,7 @@ public final class TypeSystem {
     private final TypeMirror gsonNodeType;
     private final TypeMirror jsonpNodeType;
 
-    public TypeSystem(
-            Types typeUtils,
-            Elements elements) {
+    public TypeSystem(Types typeUtils, Elements elements) {
 
         this.typeUtils = Asserts.notNull(typeUtils, "typeUtils");
         this.elements = Asserts.notNull(elements, "elements");
