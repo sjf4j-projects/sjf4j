@@ -51,9 +51,7 @@ public final class ValueCodecResolver {
     public TypeMirror stableRawType(TypeMirror valueType, String format) {
         ensureScanned();
         Map<String, ValueCodecMetadata> codecs = registrations(valueType);
-        if (codecs == null) {
-            return null;
-        }
+        if (codecs == null) return null;
         if (format != null) {
             ValueCodecMetadata selected = codecs.get(format);
             return selected == null ? null : selected.rawType;
@@ -141,9 +139,7 @@ public final class ValueCodecResolver {
                     }
                 }
             }
-            if (found != null) {
-                return found;
-            }
+            if (found != null) return found;
         }
         return null;
     }
@@ -167,9 +163,7 @@ public final class ValueCodecResolver {
                     .thenComparing(field -> field.getSimpleName().toString()));
             for (VariableElement field : fields) {
                 ValueCodecMetadata metadata = parse(field);
-                if (metadata == null) {
-                    continue;
-                }
+                if (metadata == null) continue;
                 String typeName = context.typeUtils.erasure(metadata.valueType).toString();
                 Map<String, ValueCodecMetadata> formats =
                         byType.computeIfAbsent(typeName, k -> new LinkedHashMap<>());
