@@ -456,7 +456,7 @@ public final class StreamingIO {
                 expectedIndex = index + 1;
             } else if (retainDynamic) {
                 String name = parser.currentName();
-                // Read-only declared members are not present in the writable
+                // Read-only declared members are not present in the settable
                 // matcher. They must not silently become dynamic members.
                 if (pojoInfo.propertyLookup.containsKey(name)) {
                     parser.skipNode();

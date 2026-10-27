@@ -1063,7 +1063,7 @@ public final class JdbcEmitter {
                         "column");
 
         out.line(
-                "java.util.Map<String, Object> " +
+                "java.util.LinkedHashMap<String, Object> " +
                         dynamic +
                         " = " +
                         "org.sjf4j.InternalAccess.dynamicMembers(" +

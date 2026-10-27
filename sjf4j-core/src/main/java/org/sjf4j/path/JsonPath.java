@@ -50,7 +50,7 @@ import java.util.function.Function;
  * declared property. Array writes are limited by
  * the underlying representation: lists and {@link JsonArray} can append, Java
  * arrays cannot, and sets do not support indexed writes. Multi-match paths are
- * writable only by {@link #compute(Object, BiFunction)}.
+ * settable only by {@link #compute(Object, BiFunction)}.
  */
 public class JsonPath {
 

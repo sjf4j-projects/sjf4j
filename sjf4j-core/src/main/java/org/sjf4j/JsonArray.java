@@ -37,7 +37,7 @@ public class JsonArray extends JsonContainer {
     /**
      * Stores array node elements.
      */
-    protected transient List<Object> dynamicList;
+    protected transient ArrayList<Object> dynamicElements;
 
     /**
      * Creates an empty array node.
@@ -62,27 +62,30 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Creates an array node backed directly by {@code list}.
-     * <p>
-     * The provided list becomes this array's storage directly, so element reads
-     * and writes are shared with the same list instance. JAJO subtypes validate
-     * non-null elements against {@link #elementClass()} at construction time.
+     * Creates an array node by copying the outer elements of {@code list}.
+     * A {@code null} or empty list creates an empty array. Later changes to
+     * either outer container do not affect the other; nested values retain
+     * their original references. JAJO subtypes validate non-null elements
+     * against {@link #elementClass()} at construction time.
      */
-    @SuppressWarnings("unchecked")
     public JsonArray(List<?> list) {
         this();
-        if (list != null) {
+        if (list != null && !list.isEmpty()) {
             Class<?> elemClazz = elementClass();
-            if (elemClazz != Object.class) {
-                for (int i = 0, len = list.size(); i < len; i++) {
+            if (elemClazz == Object.class) {
+                dynamicElements = new ArrayList<>(list);
+            } else {
+                int len = list.size();
+                dynamicElements = new ArrayList<>(len);
+                for (int i = 0; i < len; i++) {
                     Object v = list.get(i);
                     if (v != null && !elemClazz.isInstance(v))
                         throw new NodeException("element type mismatch at [" + i + "]: expected " +
                                 elemClazz.getName() + ", but was " + v.getClass().getName());
+                    dynamicElements.add(v);
                 }
             }
         }
-        this.dynamicList = (List<Object>) list;
     }
 
 
@@ -105,7 +108,7 @@ public class JsonArray extends JsonContainer {
      */
     @Override
     public int hashCode() {
-        return dynamicList == null || dynamicList.isEmpty() ? 0 : dynamicList.hashCode();
+        return dynamicElements == null || dynamicElements.isEmpty() ? 0 : dynamicElements.hashCode();
     }
 
     /**
@@ -121,7 +124,7 @@ public class JsonArray extends JsonContainer {
         if (size == 0) {
             return true;
         } else {
-            return Objects.equals(this.dynamicList, targetJa.dynamicList);
+            return Objects.equals(this.dynamicElements, targetJa.dynamicElements);
         }
     }
 
@@ -129,21 +132,21 @@ public class JsonArray extends JsonContainer {
      * Returns the number of elements in this JsonArray.
      */
     public int size() {
-        return dynamicList == null ? 0 : dynamicList.size();
+        return dynamicElements == null ? 0 : dynamicElements.size();
     }
 
     /**
      * Returns true if this array has no elements.
      */
     public boolean isEmpty() {
-        return dynamicList == null || dynamicList.isEmpty();
+        return dynamicElements == null || dynamicElements.isEmpty();
     }
 
     /**
      * Returns a mutable shallow element snapshot; element references are preserved.
      */
     public List<Object> toList() {
-        return dynamicList == null ? new ArrayList<>() : new ArrayList<>(dynamicList);
+        return dynamicElements == null ? new ArrayList<>() : new ArrayList<>(dynamicElements);
     }
 
     /**
@@ -157,7 +160,7 @@ public class JsonArray extends JsonContainer {
      * Returns the elements as an Object array.
      */
     public Object[] toArray() {
-        return dynamicList == null ? new Object[0] : dynamicList.toArray();
+        return dynamicElements == null ? new Object[0] : dynamicElements.toArray();
     }
 
     /**
@@ -171,7 +174,7 @@ public class JsonArray extends JsonContainer {
      * Returns the elements as a Set.
      */
     public Set<Object> toSet() {
-        return dynamicList == null ? new LinkedHashSet<>() : new LinkedHashSet<>(dynamicList);
+        return dynamicElements == null ? new LinkedHashSet<>() : new LinkedHashSet<>(dynamicElements);
     }
 
     /**
@@ -185,9 +188,9 @@ public class JsonArray extends JsonContainer {
      * Performs the action for each index/value pair.
      */
     public void forEach(IdxConsumer<Object> action) {
-        if (dynamicList == null) return;
-        for (int i = 0; i < dynamicList.size(); i++) {
-            action.accept(i, dynamicList.get(i));
+        if (dynamicElements == null) return;
+        for (int i = 0; i < dynamicElements.size(); i++) {
+            action.accept(i, dynamicElements.get(i));
         }
     }
 
@@ -195,9 +198,9 @@ public class JsonArray extends JsonContainer {
      * Returns whether any index/value pair matches the predicate.
      */
     public boolean anyMatch(IdxPredicate<Object> predicate) {
-        if (dynamicList == null) return false;
-        for (int i = 0; i < dynamicList.size(); i++) {
-            if (predicate.test(i, dynamicList.get(i))) return true;
+        if (dynamicElements == null) return false;
+        for (int i = 0; i < dynamicElements.size(); i++) {
+            if (predicate.test(i, dynamicElements.get(i))) return true;
         }
         return false;
     }
@@ -206,8 +209,8 @@ public class JsonArray extends JsonContainer {
      * Returns an iterator over elements.
      */
     public Iterator<Object> iterator() {
-        if (dynamicList == null) return Collections.emptyIterator();
-        return dynamicList.iterator();
+        if (dynamicElements == null) return Collections.emptyIterator();
+        return dynamicElements.iterator();
     }
 
     /**
@@ -238,8 +241,8 @@ public class JsonArray extends JsonContainer {
      * Returns true if the array contains the given value.
      */
     public boolean containsValue(Object value) {
-        if (dynamicList == null) return false;
-        for (Object o : dynamicList) {
+        if (dynamicElements == null) return false;
+        for (Object o : dynamicElements) {
             if (Objects.equals(o, value)) {
                 return true;
             }
@@ -334,7 +337,7 @@ public class JsonArray extends JsonContainer {
     public Object getNode(int idx) {
         int pidx = _pos(idx);
         if (pidx >= 0 && pidx < size()) {
-            return dynamicList.get(pidx);
+            return dynamicElements.get(pidx);
         } else {
             return null;
         }
@@ -679,7 +682,8 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Returns a JsonObject value using strict conversion.
+     * Returns a JsonObject value using strict conversion. A Map value is
+     * copied at the outer level; an existing JsonObject is returned as-is.
      */
     public JsonObject getJsonObject(int idx) {
         try {
@@ -713,7 +717,8 @@ public class JsonArray extends JsonContainer {
     }
 
     /**
-     * Returns a JsonArray value using strict conversion.
+     * Returns a JsonArray value using strict conversion. A List value is
+     * copied at the outer level; an existing JsonArray is returned as-is.
      */
     public JsonArray getJsonArray(int idx) {
         try {
@@ -833,8 +838,8 @@ public class JsonArray extends JsonContainer {
             throw new NodeException("cannot add element of type '" + object.getClass().getName() +
                     "' to JsonArray with element type '" + elementClass().getName() + "'");
 
-        if (dynamicList == null) dynamicList = new ArrayList<>();
-        dynamicList.add(object);
+        if (dynamicElements == null) dynamicElements = new ArrayList<>();
+        dynamicElements.add(object);
     }
 
     /**
@@ -872,8 +877,8 @@ public class JsonArray extends JsonContainer {
             throw new NodeException("cannot add at index " + idx + " in JsonArray of size " + size());
         }
 
-        if (dynamicList == null) dynamicList = new ArrayList<>();
-        dynamicList.add(pidx, object);
+        if (dynamicElements == null) dynamicElements = new ArrayList<>();
+        dynamicElements.add(pidx, object);
     }
 
     /**
@@ -891,8 +896,8 @@ public class JsonArray extends JsonContainer {
         if (pidx < 0 || pidx >= size()) {
             throw new NodeException("cannot set at index " + idx + " in JsonArray of size " + size());
         }
-        if (dynamicList == null) dynamicList = new ArrayList<>();
-        return dynamicList.set(pidx, object);
+        if (dynamicElements == null) dynamicElements = new ArrayList<>();
+        return dynamicElements.set(pidx, object);
     }
 
     /**
@@ -928,20 +933,20 @@ public class JsonArray extends JsonContainer {
      * Supports negative indexes after normalization.
      */
     public Object remove(int idx) {
-        if (dynamicList == null) return null;
+        if (dynamicElements == null) return null;
         int pidx = _pos(idx);
         if (pidx < 0 || pidx >= size()) {
             throw new NodeException("cannot remove at index " + idx + " in JsonArray of size " + size());
         }
-        return dynamicList.remove(pidx);
+        return dynamicElements.remove(pidx);
     }
 
     /**
      * Removes all elements from the array.
      */
     public void clear() {
-        if (dynamicList == null) return;
-        dynamicList.clear();
+        if (dynamicElements == null) return;
+        dynamicElements.clear();
     }
 
     /*
@@ -972,7 +977,7 @@ public class JsonArray extends JsonContainer {
      */
     public JsonArray copy() {
         if (getClass() == JsonArray.class) {
-            return dynamicList == null ? new JsonArray() : new JsonArray(new ArrayList<>(dynamicList));
+            return dynamicElements == null ? new JsonArray() : new JsonArray(new ArrayList<>(dynamicElements));
         }
         return Nodes.copy(this);
     }

@@ -320,9 +320,9 @@ public final class NodeMapper {
 
     /**
      * Returns a {@link JsonObject} shallow representation of an object-shaped node.
-     * An existing JsonObject is reused, and a Map is wrapped as its backing map.
-     * POJO and external object members are copied into a new outer container;
-     * nested entry values are not recursively mapped.
+     * An existing JsonObject is reused; a Map is copied into a new outer
+     * container. POJO and external object members are also copied into a new
+     * outer container; nested entry values are not recursively mapped.
      */
     @SuppressWarnings("unchecked")
     public static JsonObject toJsonObject(Object node, RuntimeContext context) {
@@ -424,9 +424,9 @@ public final class NodeMapper {
 
     /**
      * Returns a {@link JsonArray} shallow representation of an array-shaped node.
-     * Existing JsonArray instances are reused and Lists are wrapped directly.
-     * Other array representations produce a new outer container, without
-     * recursively mapping child elements.
+     * Existing JsonArray instances are reused; Lists are copied into a new
+     * outer container. Other array representations also produce a new outer
+     * container, without recursively mapping child elements.
      */
     @SuppressWarnings("unchecked")
     public static JsonArray toJsonArray(Object node, RuntimeContext context) {

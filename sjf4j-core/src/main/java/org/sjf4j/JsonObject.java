@@ -74,11 +74,10 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Creates an object node backed directly by {@code map}.
-     * <p>
-     * The provided map becomes this object's dynamic storage directly; dynamic
-     * reads and writes are therefore shared with the same map instance. Declared
-     * JOJO properties, when present, still live on the object instance itself.
+     * Creates an object node by copying the outer entries of {@code map} into
+     * a new insertion-ordered map. Later changes to either outer container do
+     * not affect the other; nested values retain their original references.
+     * A {@code null} map is not accepted.
      */
     public JsonObject(Map<String, Object> map) {
         this();
@@ -142,7 +141,7 @@ public class JsonObject extends JsonContainer {
     /**
      * Compares JsonObject values within the same concrete runtime type.
      * <p>
-     * Equality uses the readable object view while preserving same-concrete-type
+     * Equality uses the gettable object view while preserving same-concrete-type
      * semantics.
      */
     @Override
@@ -294,7 +293,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Performs the given visitor for each readable entry.
+     * Performs the given visitor for each gettable member.
      */
     public void forEach(BiConsumer<String, Object> visitor) {
         Asserts.notNull(visitor, "visitor");
@@ -311,7 +310,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns true if any readable entry matches the predicate.
+     * Returns true if any gettable member matches the predicate.
      */
     public boolean anyMatch(BiPredicate<String, Object> predicate) {
         Asserts.notNull(predicate, "predicate");
@@ -368,8 +367,9 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a new map containing gettable declared properties and dynamic members.
-     * Dynamic members take precedence on duplicate keys; values are not copied.
+     * Returns a mutable shallow snapshot of gettable declared properties and
+     * dynamic members. Dynamic members take precedence on duplicate keys;
+     * nested values retain their original references.
      */
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
@@ -848,7 +848,8 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a JsonObject value using strict conversion.
+     * Returns a JsonObject value using strict conversion. A Map value is
+     * copied at the outer level; an existing JsonObject is returned as-is.
      */
     public JsonObject getJsonObject(String key) {
         try {
@@ -882,7 +883,8 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a JsonArray value using strict conversion.
+     * Returns a JsonArray value using strict conversion. A List value is
+     * copied at the outer level; an existing JsonArray is returned as-is.
      */
     public JsonArray getJsonArray(String key) {
         try {
@@ -1012,7 +1014,7 @@ public class JsonObject extends JsonContainer {
                     fi.invokeSetter(this, object);
                     return null;
                 }
-                throw new NodeException("property '" + key + "' is not writable");
+                throw new NodeException("property '" + key + "' is not settable");
             }
         }
         if (dynamicMembers == null) dynamicMembers = new LinkedHashMap<>();
@@ -1047,7 +1049,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Copies all readable entries from the given object node representation.
+     * Copies all gettable members from the given object node representation.
      * <p>
      * Supported inputs follow {@link Nodes#forEachObject(Object, BiConsumer)}:
      * {@link Map}, {@link JsonObject}, JOJO/POJO, and supported backend-native

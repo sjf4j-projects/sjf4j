@@ -173,22 +173,22 @@ public interface ExternalNode<N> {
         throw unsupported("getInArray");
     }
 
-    /** Fills {@code out} with readable object-child metadata. */
+    /** Fills {@code out} with gettable object-child metadata. */
     default void getAccessInObject(N node, String key, NodeWalker.Access out) {
         throw unsupported("getAccessInObject");
     }
 
-    /** Fills {@code out} with writable object-child metadata. */
+    /** Fills {@code out} with settable object-child metadata. */
     default void putAccessInObject(N node, String key, NodeWalker.Access out) {
         throw unsupported("putAccessInObject");
     }
 
-    /** Fills {@code out} with readable array-child metadata. */
+    /** Fills {@code out} with gettable array-child metadata. */
     default void getAccessInArray(N node, int idx, NodeWalker.Access out) {
         throw unsupported("getAccessInArray");
     }
 
-    /** Fills {@code out} with writable array-child metadata; null index means append. */
+    /** Fills {@code out} with settable array-child metadata; null index means append. */
     default void putAccessInArray(N node, Integer idx, NodeWalker.Access out) {
         throw unsupported("putAccessInArray");
     }

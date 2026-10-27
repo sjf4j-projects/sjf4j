@@ -381,7 +381,7 @@ class NodesStructuralOperationsTest {
     }
 
     @Test
-    void testPojoObjectViewsSeparateStructuralReadableAndWritableMembers() {
+    void testPojoObjectViewsSeparateStructuralReadableAndSettableMembers() {
         AccessModeBean bean = new AccessModeBean();
         bean.setReadWrite("rw");
         bean.setWriteOnly("secret-1");

@@ -562,7 +562,7 @@ public class AsmPathCompilerTest {
     public void testSetterOnlyMiddlePojoPropertyFailsAtCompileTime() {
         NodeException ex = assertThrows(NodeException.class,
                 () -> BytecodePath.compile("$.holder.leaf.score", SetterOnlyRoot.class, Integer.class));
-        assertTrue(ex.getMessage().contains("readable property"));
+        assertTrue(ex.getMessage().contains("gettable property"));
     }
 
     private static void assertAsmCompiled(BytecodePath<?, ?> path) {
