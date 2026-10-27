@@ -78,7 +78,7 @@ final class Fastjson2ReadEmitter {
     }
 
     void emitFallback(JavaWriter out, BindingValue value, ReadEmitter reads) {
-        out.beginBlock("private void " + fallbackMethod(value)
+        out.beginBlock("private static void " + fallbackMethod(value)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Parser parser, "
                 + value.type() + " value) throws java.io.IOException");
         out.line("int nameIndex = parser.nextNameMatch(" + reads.matcherFieldName(value) + ");");
