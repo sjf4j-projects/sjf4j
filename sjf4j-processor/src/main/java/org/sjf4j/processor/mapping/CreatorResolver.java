@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 /**
  * Resolves creation strategy for mapper create targets.
  *
@@ -38,11 +37,9 @@ public final class CreatorResolver {
     private static final String MAPPING_CREATOR = "org.sjf4j.annotation.mapping.MappingCreator";
     private static final String MAPPING_CREATORS = "org.sjf4j.annotation.mapping.MappingCreators";
 
-
     private final ProcessorContext context;
     private final TypeSystem types;
     private final StandardCreatorResolver standardCreators;
-
 
     public CreatorResolver(ProcessorContext context) {
         this.context = context;
@@ -50,19 +47,15 @@ public final class CreatorResolver {
         this.standardCreators = new StandardCreatorResolver(context);
     }
 
-
     /**
      * Resolves creation for one create mapping method.
      *
      * @return creation model, or {@code null} after reporting a diagnostic
      */
     public Creation resolve(TypeElement mapper, MappingPlan plan, GeneratedClass generated) {
-        if (!plan.create()) {
-            throw new IllegalArgumentException("CreatorResolver supports create mappings only");
-        }
+        if (!plan.create()) throw new IllegalArgumentException("CreatorResolver supports create mappings only");
         return resolve(mapper, plan.method(), plan.targetType(), generated);
     }
-
 
     /**
      * Resolves target creation for a non-MappingPlan caller such as JDBC.
@@ -77,22 +70,16 @@ public final class CreatorResolver {
         List<CreatorRule> methodRules = creatorRules(method, mapper);
         CreatorRule rule = selectRule(declaredTarget, methodRules, method, generated);
 
-        if (rule == INVALID_RULE) {
-            return null;
-        }
+        if (rule == INVALID_RULE) return null;
 
         if (rule == null) {
             List<CreatorRule> mapperRules = mapperCreatorRules(mapper);
             rule = selectRule(declaredTarget, mapperRules, method, generated);
 
-            if (rule == INVALID_RULE) {
-                return null;
-            }
+            if (rule == INVALID_RULE) return null;
         }
 
-        if (rule != null) {
-            return resolveExplicit(mapper, method, rule, declaredTarget, generated);
-        }
+        if (rule != null) return resolveExplicit(mapper, method, rule, declaredTarget, generated);
 
         return resolveStandard(declaredTarget, declaredTarget, method, generated);
     }
@@ -146,7 +133,6 @@ public final class CreatorResolver {
                 declaredTarget,
                 generated);
     }
-
 
     private Creation resolveFactory(
             TypeElement mapper,
@@ -241,33 +227,22 @@ public final class CreatorResolver {
                 factory.getModifiers().contains(Modifier.STATIC) ? rule.owner : null);
     }
 
-
     /**
      * Searches normal inherited members first. Static methods are not inherited,
      * so the rule-declaring interface is checked separately.
      */
     private ExecutableElement findFactoryMethod(TypeElement mapper, TypeElement ruleOwner, String name) {
         for (Element member : context.elements.getAllMembers(mapper)) {
-            if (member.getKind() != ElementKind.METHOD) {
-                continue;
-            }
+            if (member.getKind() != ElementKind.METHOD) continue;
 
-            if (!member.getSimpleName().contentEquals(name)) {
-                continue;
-            }
+            if (!member.getSimpleName().contentEquals(name)) continue;
 
             ExecutableElement method = (ExecutableElement) member;
-            if (!method.getParameters().isEmpty()) {
-                continue;
-            }
+            if (!method.getParameters().isEmpty()) continue;
 
-            if (method.getModifiers().contains(Modifier.DEFAULT)) {
-                return method;
-            }
+            if (method.getModifiers().contains(Modifier.DEFAULT)) return method;
 
-            if (method.getModifiers().contains(Modifier.STATIC) && method.getEnclosingElement().equals(mapper)) {
-                return method;
-            }
+            if (method.getModifiers().contains(Modifier.STATIC) && method.getEnclosingElement().equals(mapper)) return method;
         }
 
         /*
@@ -275,30 +250,21 @@ public final class CreatorResolver {
          */
         if (ruleOwner != null) {
             for (Element member : ruleOwner.getEnclosedElements()) {
-                if (member.getKind() != ElementKind.METHOD || !member.getSimpleName().contentEquals(name)) {
-                    continue;
-                }
+                if (member.getKind() != ElementKind.METHOD || !member.getSimpleName().contentEquals(name)) continue;
 
                 ExecutableElement method = (ExecutableElement) member;
-                if (method.getModifiers().contains(Modifier.STATIC) && method.getParameters().isEmpty()) {
-                    return method;
-                }
+                if (method.getModifiers().contains(Modifier.STATIC) && method.getParameters().isEmpty()) return method;
             }
         }
 
         return null;
     }
 
-
     private TypeMirror factoryReturnType(TypeElement mapper, ExecutableElement factory) {
-        if (factory.getModifiers().contains(Modifier.STATIC)) {
-            return factory.getReturnType();
-        }
+        if (factory.getModifiers().contains(Modifier.STATIC)) return factory.getReturnType();
 
         TypeMirror mapperType = mapper.asType();
-        if (!(mapperType instanceof DeclaredType)) {
-            return factory.getReturnType();
-        }
+        if (!(mapperType instanceof DeclaredType)) return factory.getReturnType();
 
         try {
             ExecutableType resolved = (ExecutableType) context.typeUtils.asMemberOf((DeclaredType) mapperType, factory);
@@ -312,7 +278,6 @@ public final class CreatorResolver {
             return factory.getReturnType();
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -337,7 +302,6 @@ public final class CreatorResolver {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Creator Rule Selection
@@ -346,11 +310,10 @@ public final class CreatorResolver {
 
     private static final CreatorRule INVALID_RULE = new CreatorRule(null, null, null, null, null);
 
-
     private CreatorRule selectRule(TypeMirror actualTarget, List<CreatorRule> rules,
                                    ExecutableElement method, GeneratedClass generated) {
 
-        List<CreatorRule> matches = new ArrayList<CreatorRule>();
+        List<CreatorRule> matches = new ArrayList<>();
 
         for (CreatorRule rule : rules) {
 
@@ -364,9 +327,7 @@ public final class CreatorResolver {
             }
         }
 
-        if (matches.isEmpty()) {
-            return null;
-        }
+        if (matches.isEmpty()) return null;
 
         CreatorRule best = null;
 
@@ -405,31 +366,26 @@ public final class CreatorResolver {
         return best;
     }
 
-
     private List<CreatorRule> creatorRules(Element element, TypeElement owner) {
-        List<CreatorRule> result = new ArrayList<CreatorRule>();
+        List<CreatorRule> result = new ArrayList<>();
         readCreatorRules(element, owner, result);
 
         return result;
     }
 
-
     private List<CreatorRule> mapperCreatorRules(TypeElement mapper) {
-        List<CreatorRule> result = new ArrayList<CreatorRule>();
-        Set<String> visited = new LinkedHashSet<String>();
+        List<CreatorRule> result = new ArrayList<>();
+        Set<String> visited = new LinkedHashSet<>();
         collectMapperCreatorRules(mapper, result, visited);
 
         return result;
     }
 
-
     private void collectMapperCreatorRules(TypeElement mapper, List<CreatorRule> result,
                                            Set<String> visited) {
         String name = mapper.getQualifiedName().toString();
 
-        if (!visited.add(name)) {
-            return;
-        }
+        if (!visited.add(name)) return;
 
         readCreatorRules(mapper, mapper, result);
 
@@ -441,7 +397,6 @@ public final class CreatorResolver {
             }
         }
     }
-
 
     private void readCreatorRules(Element element, TypeElement owner, List<CreatorRule> result) {
         for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
@@ -466,13 +421,10 @@ public final class CreatorResolver {
         }
     }
 
-
     private CreatorRule creatorRule(AnnotationMirror annotation, TypeElement owner) {
         TypeMirror targetType = typeValue(annotation, "targetType");
 
-        if (targetType == null) {
-            return null;
-        }
+        if (targetType == null) return null;
 
         TypeMirror implementation = hasExplicitValue(annotation, "implementation")
                 ? typeValue(annotation, "implementation") : null;
@@ -490,7 +442,6 @@ public final class CreatorResolver {
                 implementation == null ? null : types.concrete(implementation), creator);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Annotation Helpers
@@ -501,7 +452,6 @@ public final class CreatorResolver {
         Element element = annotation.getAnnotationType().asElement();
         return element instanceof TypeElement ? ((TypeElement) element).getQualifiedName().toString() : "";
     }
-
 
     private AnnotationValue annotationValue(AnnotationMirror annotation, String name) {
         Map<? extends ExecutableElement, ? extends AnnotationValue> values =
@@ -514,7 +464,6 @@ public final class CreatorResolver {
         return null;
     }
 
-
     private boolean hasExplicitValue(AnnotationMirror annotation, String name) {
         for (ExecutableElement member : annotation.getElementValues().keySet()) {
             if (member.getSimpleName().contentEquals(name)) return true;
@@ -523,39 +472,30 @@ public final class CreatorResolver {
         return false;
     }
 
-
     private String stringValue(AnnotationMirror annotation, String name) {
         AnnotationValue value = annotationValue(annotation, name);
 
-        if (value == null) {
-            return null;
-        }
+        if (value == null) return null;
 
         Object raw = value.getValue();
         return raw instanceof String ? (String) raw : null;
     }
 
-
     private TypeMirror typeValue(AnnotationMirror annotation, String name) {
         AnnotationValue value = annotationValue(annotation, name);
 
-        if (value == null) {
-            return null;
-        }
+        if (value == null) return null;
 
         Object raw = value.getValue();
         return raw instanceof TypeMirror ? (TypeMirror) raw : null;
     }
 
-
     @SuppressWarnings("unchecked")
     private List<AnnotationMirror> annotationArray(AnnotationMirror annotation, String name) {
         AnnotationValue value = annotationValue(annotation, name);
-        if (value == null || !(value.getValue() instanceof List)) {
-            return Collections.emptyList();
-        }
+        if (value == null || !(value.getValue() instanceof List)) return Collections.emptyList();
 
-        List<AnnotationMirror> result = new ArrayList<AnnotationMirror>();
+        List<AnnotationMirror> result = new ArrayList<>();
         for (AnnotationValue item : (List<? extends AnnotationValue>) value.getValue()) {
             if (item.getValue() instanceof AnnotationMirror) {
                 result.add((AnnotationMirror) item.getValue());
@@ -564,7 +504,6 @@ public final class CreatorResolver {
 
         return result;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -576,7 +515,6 @@ public final class CreatorResolver {
         return context.elements.getPackageOf(method);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Diagnostics
@@ -587,7 +525,6 @@ public final class CreatorResolver {
         generated.invalidate();
         context.error(element, generated.originName() + ": " + message);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -605,7 +542,6 @@ public final class CreatorResolver {
             CONSTRUCTOR,
             FACTORY
         }
-
 
         private final Kind kind;
 
@@ -630,7 +566,6 @@ public final class CreatorResolver {
          */
         private final TypeElement factoryOwner;
 
-
         private Creation(Kind kind, TypeMirror declaredType, TypeMirror targetType,
                          ExecutableElement constructor, List<? extends TypeMirror> parameterTypes,
                          ExecutableElement factory, TypeElement factoryOwner) {
@@ -644,23 +579,19 @@ public final class CreatorResolver {
             this.factoryOwner = factoryOwner;
         }
 
-
         static Creation noArgs(TypeMirror declaredType, TypeMirror targetType) {
             return new Creation(Kind.NO_ARGS, declaredType, targetType, null, null, null, null);
         }
-
 
         static Creation constructor(TypeMirror declaredType, TypeMirror targetType,
                                     ExecutableElement constructor, List<? extends TypeMirror> parameterTypes) {
             return new Creation(Kind.CONSTRUCTOR, declaredType, targetType, constructor, parameterTypes, null, null);
         }
 
-
         static Creation factory(TypeMirror declaredType, TypeMirror targetType,
                                 ExecutableElement factory, TypeElement factoryOwner) {
             return new Creation(Kind.FACTORY, declaredType, targetType, null, null, factory, factoryOwner);
         }
-
 
         public Kind kind() {
             return kind;
@@ -695,7 +626,6 @@ public final class CreatorResolver {
         }
     }
 
-
     private static final class CreatorRule {
 
         final AnnotationMirror annotation;
@@ -705,7 +635,6 @@ public final class CreatorResolver {
         final TypeMirror implementation;
 
         final String creator;
-
 
         CreatorRule(AnnotationMirror annotation, TypeElement owner, TypeMirror targetType,
                     TypeMirror implementation, String creator) {

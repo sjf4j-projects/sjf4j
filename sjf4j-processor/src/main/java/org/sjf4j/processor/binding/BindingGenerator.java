@@ -36,9 +36,7 @@ public final class BindingGenerator {
         GeneratedClass generated = GeneratedClass.forInterface(context, type);
         BackendSpec backend = backendResolver.resolve(type, generated);
 
-        if (backend == null || !generated.isValid()) {
-            return;
-        }
+        if (backend == null || !generated.isValid()) return;
 
         generated.enableRuntimeContext();
         generated.addField(out ->
@@ -59,9 +57,7 @@ public final class BindingGenerator {
             }
         }
 
-        if (!generated.isValid()) {
-            return;
-        }
+        if (!generated.isValid()) return;
 
         BindingCompiler compiler = new BindingCompiler(
                 context, names, context.metadata(type), backend.backend());
@@ -76,9 +72,7 @@ public final class BindingGenerator {
             }
         }
 
-        if (!generated.isValid()) {
-            return;
-        }
+        if (!generated.isValid()) return;
 
         BindingEmitter emitter = new BindingEmitter(context, backend);
 

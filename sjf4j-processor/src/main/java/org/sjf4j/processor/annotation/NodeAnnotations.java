@@ -33,24 +33,16 @@ public final class NodeAnnotations {
      */
     public String explicitPropertyName(Element element) {
         NodeProperty property = element.getAnnotation(NodeProperty.class);
-        if (property != null && !property.value().isEmpty()) {
-            return property.value();
-        }
+        if (property != null && !property.value().isEmpty()) return property.value();
 
         String name = stringValue(element, JACKSON3_PROPERTY, "value");
-        if (name != null && !name.isEmpty()) {
-            return name;
-        }
+        if (name != null && !name.isEmpty()) return name;
 
         name = stringValue(element, JACKSON2_PROPERTY, "value");
-        if (name != null && !name.isEmpty()) {
-            return name;
-        }
+        if (name != null && !name.isEmpty()) return name;
 
         name = stringValue(element, FASTJSON2_PROPERTY, "name");
-        if (name != null && !name.isEmpty()) {
-            return name;
-        }
+        if (name != null && !name.isEmpty()) return name;
 
         return null;
     }
@@ -62,7 +54,6 @@ public final class NodeAnnotations {
         String name = explicitPropertyName(element);
         return name == null ? fallback : name;
     }
-
 
     /** Jackson 2 and 3 share com.fasterxml.jackson.annotation; no Jackson dependency is needed here. */
     public boolean hasJacksonCreator(Element element) {
@@ -90,22 +81,16 @@ public final class NodeAnnotations {
      * simple name instead of importing one concrete annotation class.</p>
      */
     public boolean hasOneOf(TypeMirror type) {
-        if (!(type instanceof DeclaredType)) {
-            return false;
-        }
+        if (!(type instanceof DeclaredType)) return false;
 
         Element element = ((DeclaredType) type).asElement();
 
-        if (!(element instanceof TypeElement)) {
-            return false;
-        }
+        if (!(element instanceof TypeElement)) return false;
 
         for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
             Element annotationType = annotation.getAnnotationType().asElement();
 
-            if (!(annotationType instanceof TypeElement)) {
-                continue;
-            }
+            if (!(annotationType instanceof TypeElement)) continue;
 
             String name = ((TypeElement) annotationType).getQualifiedName().toString();
 
@@ -151,9 +136,7 @@ public final class NodeAnnotations {
         for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
             Element annotation = mirror.getAnnotationType().asElement();
 
-            if (!(annotation instanceof TypeElement)) {
-                continue;
-            }
+            if (!(annotation instanceof TypeElement)) continue;
 
             if (!((TypeElement) annotation)
                     .getQualifiedName()
@@ -163,9 +146,7 @@ public final class NodeAnnotations {
 
             for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
                     : mirror.getElementValues().entrySet()) {
-                if (!entry.getKey().getSimpleName().contentEquals(memberName)) {
-                    continue;
-                }
+                if (!entry.getKey().getSimpleName().contentEquals(memberName)) continue;
 
                 Object value = entry.getValue().getValue();
                 return value instanceof String

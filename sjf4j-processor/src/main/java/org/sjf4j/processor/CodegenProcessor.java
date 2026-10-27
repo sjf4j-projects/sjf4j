@@ -96,9 +96,7 @@ public final class CodegenProcessor extends AbstractProcessor {
         /*
          * The CompiledMapper pass reports the conflict once.
          */
-        if (type.getAnnotation(CompiledMapper.class) != null) {
-            return;
-        }
+        if (type.getAnnotation(CompiledMapper.class) != null) return;
 
         jdbcMapperGenerator.generate(type);
     }

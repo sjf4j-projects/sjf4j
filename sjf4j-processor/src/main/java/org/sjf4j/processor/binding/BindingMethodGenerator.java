@@ -129,73 +129,49 @@ final class BindingMethodGenerator {
     }
 
     private BindingPlan.ReadInput readInput(TypeMirror type) {
-        if (context.types.isSameErasure(type, stringType)) {
-            return BindingPlan.ReadInput.STRING;
-        }
+        if (context.types.isSameErasure(type, stringType)) return BindingPlan.ReadInput.STRING;
 
-        if (isByteArray(type)) {
-            return BindingPlan.ReadInput.BYTES;
-        }
+        if (isByteArray(type)) return BindingPlan.ReadInput.BYTES;
 
-        if (context.typeUtils.isAssignable(type, inputStreamType)) {
-            return BindingPlan.ReadInput.INPUT_STREAM;
-        }
+        if (context.typeUtils.isAssignable(type, inputStreamType)) return BindingPlan.ReadInput.INPUT_STREAM;
 
-        if (context.typeUtils.isAssignable(type, readerType)) {
-            return BindingPlan.ReadInput.READER;
-        }
+        if (context.typeUtils.isAssignable(type, readerType)) return BindingPlan.ReadInput.READER;
 
         return null;
     }
 
     private BindingPlan.WriteOutput returnOutput(TypeMirror type) {
-        if (context.types.isSameErasure(type, stringType)) {
-            return BindingPlan.WriteOutput.STRING;
-        }
+        if (context.types.isSameErasure(type, stringType)) return BindingPlan.WriteOutput.STRING;
 
-        if (isByteArray(type)) {
-            return BindingPlan.WriteOutput.BYTES;
-        }
+        if (isByteArray(type)) return BindingPlan.WriteOutput.BYTES;
 
         return null;
     }
 
     private BindingPlan.WriteOutput streamOutput(TypeMirror type) {
-        if (context.typeUtils.isAssignable(type, outputStreamType)) {
-            return BindingPlan.WriteOutput.OUTPUT_STREAM;
-        }
+        if (context.typeUtils.isAssignable(type, outputStreamType)) return BindingPlan.WriteOutput.OUTPUT_STREAM;
 
-        if (context.typeUtils.isAssignable(type, writerType)) {
-            return BindingPlan.WriteOutput.WRITER;
-        }
+        if (context.typeUtils.isAssignable(type, writerType)) return BindingPlan.WriteOutput.WRITER;
 
         return null;
     }
 
     private boolean isByteArray(TypeMirror type) {
-        if (type.getKind() != TypeKind.ARRAY) {
-            return false;
-        }
+        if (type.getKind() != TypeKind.ARRAY) return false;
 
         return ((ArrayType) type).getComponentType().getKind() == TypeKind.BYTE;
     }
 
     private boolean isResolvedSignature(ResolvedMethod method) {
         ExecutableType type = method.type();
-        if (!context.types.isFullyResolved(type.getReturnType())) {
-            return false;
-        }
+        if (!context.types.isFullyResolved(type.getReturnType())) return false;
 
         for (TypeMirror parameter : type.getParameterTypes()) {
-            if (!context.types.isFullyResolved(parameter)) {
-                return false;
-            }
+            if (!context.types.isFullyResolved(parameter)) return false;
         }
 
         for (TypeMirror thrown : type.getThrownTypes()) {
-            if (!context.types.isFullyResolved(thrown)) {
-                return false;
-            }
+            if (!context.types.isFullyResolved(thrown)) return false;
         }
 
         return true;
@@ -203,9 +179,7 @@ final class BindingMethodGenerator {
 
     private boolean declaresIOException(ExecutableType type) {
         for (TypeMirror thrown : type.getThrownTypes()) {
-            if (context.typeUtils.isAssignable(ioExceptionType, thrown)) {
-                return true;
-            }
+            if (context.typeUtils.isAssignable(ioExceptionType, thrown)) return true;
         }
 
         return false;

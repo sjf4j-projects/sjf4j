@@ -109,9 +109,7 @@ final class CodecWriteEmitter {
     private static String rawArgument(String raw, Backend backend, boolean nativeWriter) {
         String value = "((" + raw + ") rawValue)";
         if (raw.equals("java.lang.Byte") || raw.equals("java.lang.Short")) {
-            if (nativeWriter && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
-                return value + ".intValue()";
-            }
+            if (nativeWriter && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) return value + ".intValue()";
             return value + "." + (raw.equals("java.lang.Byte")
                     ? "byteValue()" : "shortValue()");
         }

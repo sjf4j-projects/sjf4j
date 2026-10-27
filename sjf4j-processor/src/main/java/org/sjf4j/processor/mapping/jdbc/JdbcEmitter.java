@@ -22,7 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-
 /**
  * Emits direct ResultSet mapping code from compiled JDBC mapping plans.
  *
@@ -34,12 +33,10 @@ public final class JdbcEmitter {
     private final ProcessorContext context;
     private final TypeSystem types;
 
-
     public JdbcEmitter(ProcessorContext context) {
         this.context = context;
         this.types = context.types;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -50,7 +47,6 @@ public final class JdbcEmitter {
     public void emit(JdbcCompiler.CompiledMethod method, GeneratedClass generated) {
         generated.addMethod(out -> emitMethod(out, method));
     }
-
 
     private void emitMethod(JavaWriter out, JdbcCompiler.CompiledMethod method) {
         JdbcPlan plan = method.plan();
@@ -239,7 +235,6 @@ public final class JdbcEmitter {
         out.line("}");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Method Shell
@@ -292,7 +287,6 @@ public final class JdbcEmitter {
 
         return out.toString();
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -362,7 +356,6 @@ public final class JdbcEmitter {
                         row +
                         ";");
     }
-
 
     private void emitList(
             JavaWriter out,
@@ -491,7 +484,6 @@ public final class JdbcEmitter {
                         ";");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Row
@@ -533,7 +525,6 @@ public final class JdbcEmitter {
                 labels,
                 consumed);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -617,7 +608,6 @@ public final class JdbcEmitter {
 
         return result;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -752,7 +742,6 @@ public final class JdbcEmitter {
         return target;
     }
 
-
     /*
      * --------------------------------------------------------------
      * PRESENT_ONLY
@@ -815,7 +804,6 @@ public final class JdbcEmitter {
         return columns;
     }
 
-
     private Map<String, String> emitColumnIndexes(
             JavaWriter out,
             NameAllocator names,
@@ -826,7 +814,7 @@ public final class JdbcEmitter {
             List<String> sourceColumns) {
 
         Map<String, String> result =
-                new LinkedHashMap<String, String>();
+                new LinkedHashMap<>();
 
         if (labels != null) {
             for (String source :
@@ -949,7 +937,6 @@ public final class JdbcEmitter {
         return result;
     }
 
-
     private String emitConsumedColumns(
             JavaWriter out,
             NameAllocator names,
@@ -986,7 +973,6 @@ public final class JdbcEmitter {
 
         return consumed;
     }
-
 
     private void emitDynamicColumns(
             JavaWriter out,
@@ -1075,7 +1061,6 @@ public final class JdbcEmitter {
         out.line("}");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Column Read
@@ -1085,9 +1070,7 @@ public final class JdbcEmitter {
     private String emitValue(JavaWriter out, NameAllocator names, String resultSet,
                              JdbcCompiler.Value value, Map<String, String> indexes) {
 
-        if (value.read() != null) {
-            return emitColumnRead(out, names, resultSet, value.read(), indexes);
-        }
+        if (value.read() != null) return emitColumnRead(out, names, resultSet, value.read(), indexes);
 
         JdbcCompiler.ComputedValue compute = value.compute();
         List<String> arguments = new ArrayList<String>(compute.reads().size());
@@ -1111,7 +1094,6 @@ public final class JdbcEmitter {
 
         return result;
     }
-
 
     private String presentColumns(String columns, JdbcCompiler.Value value, Map<String, String> indexes) {
         List<JdbcCompiler.ColumnRead> reads = value.read() != null
@@ -1331,7 +1313,6 @@ public final class JdbcEmitter {
         }
     }
 
-
     private String emitReferenceRead(
             JavaWriter out,
             NameAllocator names,
@@ -1357,7 +1338,6 @@ public final class JdbcEmitter {
 
         return value;
     }
-
 
     private String emitPrimitiveRead(
             JavaWriter out,
@@ -1424,7 +1404,6 @@ public final class JdbcEmitter {
 
         return value;
     }
-
 
     private String emitCharacterRead(
             JavaWriter out,
@@ -1515,7 +1494,6 @@ public final class JdbcEmitter {
         return value;
     }
 
-
     private void emitCharacterLengthCheck(
             JavaWriter out,
             String raw,
@@ -1539,7 +1517,6 @@ public final class JdbcEmitter {
         out.dedent();
         out.line("}");
     }
-
 
     private String emitEnumRead(
             JavaWriter out,
@@ -1578,7 +1555,6 @@ public final class JdbcEmitter {
         return value;
     }
 
-
     private String emitObjectRead(
             JavaWriter out,
             NameAllocator names,
@@ -1600,7 +1576,6 @@ public final class JdbcEmitter {
 
         return value;
     }
-
 
     private String emitTypedObjectRead(
             JavaWriter out,
@@ -1627,7 +1602,6 @@ public final class JdbcEmitter {
 
         return value;
     }
-
 
     private String emitNodeValueRead(
             JavaWriter out,
@@ -1666,7 +1640,6 @@ public final class JdbcEmitter {
 
         return value;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1740,7 +1713,6 @@ public final class JdbcEmitter {
                         steps.size() - 1),
                 value);
     }
-
 
     private String readExpression(
             String owner,
@@ -1817,7 +1789,6 @@ public final class JdbcEmitter {
                                 access.kind());
         }
     }
-
 
     private void writeValue(
             JavaWriter out,
@@ -1923,7 +1894,6 @@ public final class JdbcEmitter {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Creator
@@ -1932,13 +1902,10 @@ public final class JdbcEmitter {
 
     private String factoryExpression(CreatorResolver.Creation creation) {
         ExecutableElement factory = creation.factory();
-        if (creation.factoryOwner() == null || !factory.getModifiers().contains(Modifier.STATIC)) {
-            return "this." + factory.getSimpleName() + "()";
-        }
+        if (creation.factoryOwner() == null || !factory.getModifiers().contains(Modifier.STATIC)) return "this." + factory.getSimpleName() + "()";
 
         return creation.factoryOwner().getQualifiedName().toString() + "." + factory.getSimpleName() + "()";
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1951,38 +1918,27 @@ public final class JdbcEmitter {
         return context.typeUtils.erasure(boxed).toString() + ".class";
     }
 
-
     private String localType(TypeMirror type) {
         return types.boxed(type).toString();
     }
 
-
     private String cast(TypeMirror type, String expression) {
-        if (type == null || types.isObject(type)) {
-            return expression;
-        }
+        if (type == null || types.isObject(type)) return expression;
 
         return "(" + localType(type) + ") " + expression;
     }
 
-
     private String nameKey(PathSegment segment) {
-        if (!(segment instanceof PathSegment.Name)) {
-            throw new IllegalStateException("Expected name segment, got " + segment);
-        }
+        if (!(segment instanceof PathSegment.Name)) throw new IllegalStateException("Expected name segment, got " + segment);
 
         return stringLiteral(((PathSegment.Name) segment).name);
     }
 
-
     private int index(PathSegment segment) {
-        if (!(segment instanceof PathSegment.Index)) {
-            throw new IllegalStateException("Expected index segment, got " + segment);
-        }
+        if (!(segment instanceof PathSegment.Index)) throw new IllegalStateException("Expected index segment, got " + segment);
 
         return ((PathSegment.Index) segment).index;
     }
-
 
     private String join(List<String> values) {
         StringBuilder out = new StringBuilder();
@@ -1996,7 +1952,6 @@ public final class JdbcEmitter {
 
         return out.toString();
     }
-
 
     /**
      * JDK-8-compatible Java string literal escaping.

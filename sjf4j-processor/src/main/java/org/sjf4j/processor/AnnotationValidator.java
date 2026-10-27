@@ -72,9 +72,7 @@ final class AnnotationValidator {
 
         for (TypeElement annotation : annotations) {
             String annotationName = annotation.getQualifiedName().toString();
-            if (ROOT_ANNOTATIONS.contains(annotationName)) {
-                continue;
-            }
+            if (ROOT_ANNOTATIONS.contains(annotationName)) continue;
 
             for (Element element : roundEnv.getElementsAnnotatedWith(annotation)) {
                 validate(annotationName, annotation.getSimpleName().toString(), element);
@@ -221,13 +219,9 @@ final class AnnotationValidator {
     private void validateMappingOptions(Element element) {
         TypeElement owner = abstractMethodOwner(element, "MappingOptions");
 
-        if (owner == null) {
-            return;
-        }
+        if (owner == null) return;
 
-        if (owner.getAnnotation(CompiledMapper.class) != null) {
-            return;
-        }
+        if (owner.getAnnotation(CompiledMapper.class) != null) return;
 
         if (owner.getAnnotation(CompiledJdbcMapper.class) != null) {
 
@@ -249,9 +243,7 @@ final class AnnotationValidator {
     private void validateJdbcMappingOptions(Element element) {
         TypeElement owner = abstractMethodOwner(element, "JdbcMappingOptions");
 
-        if (owner == null) {
-            return;
-        }
+        if (owner == null) return;
 
         if (owner.getAnnotation(CompiledJdbcMapper.class) == null) {
 
@@ -367,7 +359,7 @@ final class AnnotationValidator {
 
     @SafeVarargs
     private static Set<String> names(Class<? extends Annotation>... annotations) {
-        Set<String> result = new LinkedHashSet<String>();
+        Set<String> result = new LinkedHashSet<>();
         for (Class<? extends Annotation> annotation : annotations) {
             result.add(annotation.getName());
         }
@@ -376,7 +368,7 @@ final class AnnotationValidator {
     }
 
     private static Set<String> supportedAnnotations() {
-        Set<String> result = new LinkedHashSet<String>();
+        Set<String> result = new LinkedHashSet<>();
 
         result.addAll(ROOT_ANNOTATIONS);
         result.addAll(PATH_METHOD_ANNOTATIONS);

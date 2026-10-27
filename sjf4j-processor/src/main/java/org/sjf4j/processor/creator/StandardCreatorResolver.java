@@ -79,14 +79,10 @@ public final class StandardCreatorResolver {
         List<ExecutableElement> publicConstructors = new ArrayList<>();
         for (ExecutableElement constructor : constructors) {
             if (!constructor.getModifiers().contains(Modifier.PUBLIC)) continue;
-            if (constructor.getParameters().isEmpty()) {
-                return CreatorPlan.noArgs(declaredTarget, workingType);
-            }
+            if (constructor.getParameters().isEmpty()) return CreatorPlan.noArgs(declaredTarget, workingType);
             publicConstructors.add(constructor);
         }
-        if (publicConstructors.size() == 1) {
-            return constructorPlan(declaredTarget, workingType, publicConstructors.get(0));
-        }
+        if (publicConstructors.size() == 1) return constructorPlan(declaredTarget, workingType, publicConstructors.get(0));
 
         error.accept("target type " + workingType +
                 (publicConstructors.isEmpty()
@@ -141,9 +137,7 @@ public final class StandardCreatorResolver {
             error.accept("Creator is not accessible from generated code: " + selected);
             return null;
         }
-        if (selected.getKind() == ElementKind.CONSTRUCTOR) {
-            return constructorPlan(target, target, selected);
-        }
+        if (selected.getKind() == ElementKind.CONSTRUCTOR) return constructorPlan(target, target, selected);
         if (!selected.getModifiers().contains(Modifier.STATIC)
                 || selected.getReturnType().getKind() == TypeKind.VOID
                 || !context.typeUtils.isAssignable(selected.getReturnType(), target)) {

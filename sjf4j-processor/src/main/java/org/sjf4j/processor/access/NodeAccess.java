@@ -6,7 +6,6 @@ import org.sjf4j.util.Asserts;
 import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
-
 /**
  * Describes one statically resolved node access.
  *
@@ -25,7 +24,6 @@ public final class NodeAccess {
         DYNAMIC
     }
 
-
     private final Kind kind;
     private final TypeMirror ownerType;
 
@@ -33,7 +31,6 @@ public final class NodeAccess {
     private final TypeMirror writeType;
 
     private final Property property;
-
 
     NodeAccess(
             Kind kind,
@@ -48,7 +45,6 @@ public final class NodeAccess {
         this.writeType = writeType;
         this.property = property;
     }
-
 
     public Kind kind() {
         return kind;

@@ -8,7 +8,6 @@ import javax.lang.model.element.TypeElement;
 import java.util.ArrayList;
 import java.util.List;
 
-
 /**
  * Generates implementations for {@code @CompiledJdbcMapper} interfaces.
  * Validates method plans and column mappings before emitting direct
@@ -19,12 +18,10 @@ public final class JdbcMapperGenerator {
     private final ProcessorContext context;
     private final JdbcMethodGenerator methods;
 
-
     public JdbcMapperGenerator(ProcessorContext context) {
         this.context = context;
         this.methods = new JdbcMethodGenerator(context);
     }
-
 
     /** Generates one JDBC mapper implementation. */
     public void generate(TypeElement mapper) {
@@ -49,9 +46,7 @@ public final class JdbcMapperGenerator {
             if (plan != null) plans.add(plan);
         }
 
-        if (!generated.isValid()) {
-            return;
-        }
+        if (!generated.isValid()) return;
 
         JdbcCompiler compiler = new JdbcCompiler(context, mapper);
         List<JdbcCompiler.CompiledMethod> compiled = new ArrayList<JdbcCompiler.CompiledMethod>(plans.size());
@@ -61,9 +56,7 @@ public final class JdbcMapperGenerator {
             if (method != null) compiled.add(method);
         }
 
-        if (!generated.isValid()) {
-            return;
-        }
+        if (!generated.isValid()) return;
 
         JdbcEmitter emitter = new JdbcEmitter(context);
 

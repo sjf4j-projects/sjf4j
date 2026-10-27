@@ -23,8 +23,8 @@ final class StreamingWriteEmitter {
     }
 
     boolean shouldFallbackRoot(BindingValue value) {
-        return !fullyConcreteGraph(value, new HashSet<BindingValue>())
-                && !containsAdaptedValue(value, new HashSet<BindingValue>());
+        return !fullyConcreteGraph(value, new HashSet<>())
+                && !containsAdaptedValue(value, new HashSet<>());
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
@@ -259,8 +259,8 @@ final class StreamingWriteEmitter {
 
     /** JSON backends always compile structural helpers; streaming-only paths may fall back. */
     boolean requiresWriteHelper(BindingValue value) {
-        return fullyConcreteGraph(value, new HashSet<BindingValue>())
-                || containsAdaptedValue(value, new HashSet<BindingValue>());
+        return fullyConcreteGraph(value, new HashSet<>())
+                || containsAdaptedValue(value, new HashSet<>());
     }
 
     /** Streaming-only backends may need helpers for adapted descendants. */

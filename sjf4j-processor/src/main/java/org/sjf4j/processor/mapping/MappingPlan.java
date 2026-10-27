@@ -51,9 +51,7 @@ final class MappingPlan {
         this.targetParameter = targetParameter;
         this.sources = Collections.unmodifiableList(new ArrayList<VariableElement>(sources));
         this.sourceTypes = Collections.unmodifiableList(new ArrayList<TypeMirror>(sourceTypes));
-        if (this.sources.size() != this.sourceTypes.size()) {
-            throw new IllegalArgumentException("sources and sourceTypes must have the same size");
-        }
+        if (this.sources.size() != this.sourceTypes.size()) throw new IllegalArgumentException("sources and sourceTypes must have the same size");
         this.rules = Collections.unmodifiableList(new ArrayList<Rule>(rules));
         this.options = options;
     }
@@ -96,9 +94,7 @@ final class MappingPlan {
 
     TypeMirror sourceType(VariableElement source) {
         for (int i = 0; i < sources.size(); i++) {
-            if (sources.get(i).equals(source)) {
-                return sourceTypes.get(i);
-            }
+            if (sources.get(i).equals(source)) return sourceTypes.get(i);
         }
         throw new IllegalArgumentException("unknown source parameter: " + source);
     }

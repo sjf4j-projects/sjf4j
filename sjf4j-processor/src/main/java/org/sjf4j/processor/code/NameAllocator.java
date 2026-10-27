@@ -13,7 +13,7 @@ import java.util.Set;
  */
 public final class NameAllocator {
 
-    private final Set<String> used = new HashSet<String>();
+    private final Set<String> used = new HashSet<>();
 
     /**
      * Reserves an existing Java identifier.
@@ -60,7 +60,6 @@ public final class NameAllocator {
         }
     }
 
-
     private boolean available(String name) {
         return !used.contains(name)
                 && !SourceVersion.isKeyword(name)
@@ -71,9 +70,7 @@ public final class NameAllocator {
      * Converts an arbitrary hint into a legal Java identifier.
      */
     private static String sanitize(String value) {
-        if (value == null || value.isEmpty()) {
-            return "value";
-        }
+        if (value == null || value.isEmpty()) return "value";
 
         StringBuilder out = new StringBuilder(value.length() + 1);
 
@@ -93,9 +90,7 @@ public final class NameAllocator {
             }
         }
 
-        if (out.length() == 0) {
-            return "value";
-        }
+        if (out.length() == 0) return "value";
 
         return out.toString();
     }

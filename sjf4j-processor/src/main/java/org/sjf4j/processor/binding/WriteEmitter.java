@@ -21,7 +21,7 @@ final class WriteEmitter {
     private final OtherNativeWriteEmitter other;
     private final StreamingWriteEmitter streaming;
 
-    private final Map<String, String> enumFields = new LinkedHashMap<String, String>();
+    private final Map<String, String> enumFields = new LinkedHashMap<>();
 
     WriteEmitter(BackendSpec backend) {
         this.backend = backend;
@@ -54,7 +54,7 @@ final class WriteEmitter {
     void registerEnums(BindingValue root) {
         if (jackson == null && fastjson2 == null) return;
         Set<BindingValue> seen = Collections.newSetFromMap(
-                new IdentityHashMap<BindingValue, Boolean>());
+                new IdentityHashMap<>());
         registerEnums(root, seen);
     }
 
@@ -302,7 +302,7 @@ final class WriteEmitter {
     boolean needsStringHelper(BindingValue value) {
         return usesSharedStructure()
                 && value.direction() == BindingPlan.Direction.WRITE_TO
-                && containsString(value, new HashSet<BindingValue>());
+                && containsString(value, new HashSet<>());
     }
 
     private boolean containsString(BindingValue value, Set<BindingValue> visited) {
@@ -410,9 +410,7 @@ final class WriteEmitter {
     }
 
     static String access(PropertyAccess access, String owner) {
-        if (access.isMethod()) {
-            return owner + '.' + access.memberName() + "()";
-        }
+        if (access.isMethod()) return owner + '.' + access.memberName() + "()";
 
         return owner + '.' + access.memberName();
     }

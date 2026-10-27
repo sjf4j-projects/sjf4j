@@ -36,9 +36,7 @@ final class BackendResolver {
 
         if (backend == Backend.AUTO) {
             for (BackendSpec candidate : group.backends()) {
-                if (usable(candidate)) {
-                    return candidate;
-                }
+                if (usable(candidate)) return candidate;
             }
 
             error(type, generated, "No usable " + format +
@@ -92,9 +90,7 @@ final class BackendResolver {
      * to complete adapter classes whose optional dependencies are absent.
      */
     private boolean usable(BackendSpec spec) {
-        if (!libraryVisible(spec) || !adapterVisible(spec)) {
-            return false;
-        }
+        if (!libraryVisible(spec) || !adapterVisible(spec)) return false;
 
         TypeElement binder = context.elements.getTypeElement(spec.binderType());
 
@@ -113,16 +109,12 @@ final class BackendResolver {
     }
 
     private boolean hasPublicNoArgsConstructor(TypeElement type) {
-        if (type == null) {
-            return false;
-        }
+        if (type == null) return false;
 
         boolean declared = false;
 
         for (Element element : type.getEnclosedElements()) {
-            if (element.getKind() != ElementKind.CONSTRUCTOR) {
-                continue;
-            }
+            if (element.getKind() != ElementKind.CONSTRUCTOR) continue;
 
             declared = true;
 

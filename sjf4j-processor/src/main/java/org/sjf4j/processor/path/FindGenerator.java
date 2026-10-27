@@ -20,7 +20,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
 
-
 /**
  * Generates implementations for {@code @FindByPath} methods.
  *
@@ -37,12 +36,10 @@ public final class FindGenerator {
     private int filterSeq;
     private int fallbackSeq;
 
-
     public FindGenerator(ProcessorContext context) {
         this.context = context;
         this.types = context.types;
     }
-
 
     /**
      * Validates and generates one @FindByPath method.
@@ -222,7 +219,6 @@ public final class FindGenerator {
                         "': only root, wildcard/slice/filter, or one name/index union with static name/index segments is supported");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Generate
@@ -237,9 +233,7 @@ public final class FindGenerator {
             TypeMirror elementType,
             VariableElement root) {
 
-        if (path.segments().length != 1) {
-            return false;
-        }
+        if (path.segments().length != 1) return false;
 
         if (!canAddToResult(
                 root.asType(),
@@ -301,7 +295,6 @@ public final class FindGenerator {
         return true;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Wildcard, Slice, and Filter
@@ -336,16 +329,12 @@ public final class FindGenerator {
 
                     current = types.mapReadValueType(current);
                 } else {
-                    if (!isSequence(current)) {
-                        return false;
-                    }
+                    if (!isSequence(current)) return false;
 
                     current = sequenceElementType(current);
                 }
 
-                if (current == null) {
-                    return false;
-                }
+                if (current == null) return false;
 
                 continue;
             }
@@ -363,9 +352,7 @@ public final class FindGenerator {
                     return false;
                 }
 
-                if (current == null) {
-                    return false;
-                }
+                if (current == null) return false;
 
                 continue;
             }
@@ -375,9 +362,7 @@ public final class FindGenerator {
 
                 current = resolveDirectType(current, segment);
 
-                if (current == null) {
-                    return false;
-                }
+                if (current == null) return false;
 
                 continue;
             }
@@ -385,9 +370,7 @@ public final class FindGenerator {
             return false;
         }
 
-        if (!hasMulti) {
-            return false;
-        }
+        if (!hasMulti) return false;
 
         if (!canAddToResult(
                 current,
@@ -462,7 +445,6 @@ public final class FindGenerator {
         return true;
     }
 
-
     /**
      * Verifies that all non-multi segments can be emitted with compile-time
      * access information.
@@ -485,9 +467,7 @@ public final class FindGenerator {
 
                     current = types.mapReadValueType(current);
                 } else {
-                    if (!isSequence(current)) {
-                        return false;
-                    }
+                    if (!isSequence(current)) return false;
 
                     current = sequenceElementType(current);
                 }
@@ -511,16 +491,13 @@ public final class FindGenerator {
 
             Access access = access(current, "value", segment);
 
-            if (access == null) {
-                return false;
-            }
+            if (access == null) return false;
 
             current = access.type;
         }
 
         return true;
     }
-
 
     private void emitWildcardSegments(
             JavaWriter out,
@@ -811,7 +788,6 @@ public final class FindGenerator {
                 !last);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Fallback
@@ -890,7 +866,6 @@ public final class FindGenerator {
         });
     }
 
-
     /*
      * --------------------------------------------------------------
      * Union
@@ -913,9 +888,7 @@ public final class FindGenerator {
             PathSegment segment = segments[i];
 
             if (segment instanceof PathSegment.Union) {
-                if (unionIndex >= 0) {
-                    return false;
-                }
+                if (unionIndex >= 0) return false;
 
                 unionIndex = i;
 
@@ -926,15 +899,11 @@ public final class FindGenerator {
             }
         }
 
-        if (unionIndex < 0) {
-            return false;
-        }
+        if (unionIndex < 0) return false;
 
         PathSegment.Union union = (PathSegment.Union) segments[unionIndex];
 
-        if (union.union.length == 0) {
-            return false;
-        }
+        if (union.union.length == 0) return false;
 
         boolean indexUnion = true;
         boolean nameUnion = true;
@@ -963,17 +932,13 @@ public final class FindGenerator {
         for (int i = 1; i < unionIndex; i++) {
             prefixType = resolveDirectType(prefixType, segments[i]);
 
-            if (prefixType == null) {
-                return false;
-            }
+            if (prefixType == null) return false;
         }
 
         TypeMirror tokenValueType;
 
         if (indexUnion) {
-            if (!isSequence(prefixType)) {
-                return false;
-            }
+            if (!isSequence(prefixType)) return false;
 
             tokenValueType = sequenceElementType(prefixType);
 
@@ -987,18 +952,14 @@ public final class FindGenerator {
             tokenValueType = types.mapReadValueType(prefixType);
         }
 
-        if (tokenValueType == null) {
-            return false;
-        }
+        if (tokenValueType == null) return false;
 
         TypeMirror finalType = tokenValueType;
 
         for (int i = unionIndex + 1; i < segments.length; i++) {
             finalType = resolveDirectType(finalType, segments[i]);
 
-            if (finalType == null) {
-                return false;
-            }
+            if (finalType == null) return false;
         }
 
         if (!canAddToResult(
@@ -1150,7 +1111,6 @@ public final class FindGenerator {
         return true;
     }
 
-
     private void emitIndexUnion(
             JavaWriter out,
             NameAllocator names,
@@ -1282,7 +1242,6 @@ public final class FindGenerator {
         }
     }
 
-
     private void emitNameUnion(
             JavaWriter out,
             NameAllocator names,
@@ -1346,7 +1305,6 @@ public final class FindGenerator {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Filter
@@ -1388,7 +1346,6 @@ public final class FindGenerator {
         return fields;
     }
 
-
     private void emitFilterCheck(
             JavaWriter out,
             String[] filterFields,
@@ -1409,7 +1366,6 @@ public final class FindGenerator {
                             ")) continue;");
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1585,7 +1541,6 @@ public final class FindGenerator {
         return index;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Static Suffix
@@ -1677,7 +1632,6 @@ public final class FindGenerator {
                         ");");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Resolve
@@ -1693,7 +1647,6 @@ public final class FindGenerator {
         return access == null || !access.readable() ? null : access.readType();
     }
 
-
     private Access access(
             TypeMirror owner,
             String receiver,
@@ -1701,9 +1654,7 @@ public final class FindGenerator {
 
         NodeAccess resolved = resolveAccess(owner, segment);
 
-        if (resolved == null || !resolved.readable()) {
-            return null;
-        }
+        if (resolved == null || !resolved.readable()) return null;
 
         TypeMirror valueType = resolved.readType();
 
@@ -1838,22 +1789,16 @@ public final class FindGenerator {
         return null;
     }
 
-
     private NodeAccess resolveAccess(
             TypeMirror owner,
             PathSegment segment) {
 
-        if (segment instanceof PathSegment.Name) {
-            return context.access.resolveName(owner, ((PathSegment.Name) segment).name);
-        }
+        if (segment instanceof PathSegment.Name) return context.access.resolveName(owner, ((PathSegment.Name) segment).name);
 
-        if (segment instanceof PathSegment.Index) {
-            return context.access.resolveIndex(owner);
-        }
+        if (segment instanceof PathSegment.Index) return context.access.resolveIndex(owner);
 
         return null;
     }
-
 
     private boolean canEmitAccesses(
             TypeMirror start,
@@ -1866,16 +1811,13 @@ public final class FindGenerator {
         for (int i = from; i < to; i++) {
             Access access = access(current, "value", segments[i]);
 
-            if (access == null) {
-                return false;
-            }
+            if (access == null) return false;
 
             current = access.type;
         }
 
         return true;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1884,13 +1826,9 @@ public final class FindGenerator {
      */
 
     private boolean isSequence(TypeMirror type) {
-        if (type == null) {
-            return false;
-        }
+        if (type == null) return false;
 
-        if (type.getKind() == TypeKind.ARRAY) {
-            return true;
-        }
+        if (type.getKind() == TypeKind.ARRAY) return true;
 
         NodeKind kind = types.nodeKind(type);
 
@@ -1899,7 +1837,6 @@ public final class FindGenerator {
                 || kind == NodeKind.ARRAY_JAJO;
     }
 
-
     private boolean isJsonArray(TypeMirror type) {
         NodeKind kind = types.nodeKind(type);
 
@@ -1907,41 +1844,29 @@ public final class FindGenerator {
                 || kind == NodeKind.ARRAY_JAJO;
     }
 
-
     private boolean isMap(TypeMirror type) {
         return types.nodeKind(type) == NodeKind.OBJECT_MAP;
     }
 
-
     private TypeMirror sequenceElementType(TypeMirror type) {
         type = types.concrete(type);
 
-        if (type.getKind() == TypeKind.ARRAY) {
-            return types.concrete(((ArrayType) type).getComponentType());
-        }
+        if (type.getKind() == TypeKind.ARRAY) return types.concrete(((ArrayType) type).getComponentType());
 
         NodeKind kind = types.nodeKind(type);
 
-        if (kind == NodeKind.ARRAY_LIST) {
-            return types.listReadElementType(type);
-        }
+        if (kind == NodeKind.ARRAY_LIST) return types.listReadElementType(type);
 
-        if (kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO) {
-            return types.objectType();
-        }
+        if (kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO) return types.objectType();
 
         return null;
     }
 
-
     private boolean isStringKeyMap(TypeMirror type) {
-        if (!isMap(type)) {
-            return false;
-        }
+        if (!isMap(type)) return false;
 
         return types.hasSafeStringPathKey(type);
     }
-
 
     private boolean validateMapPathKeys(
             ExecutableElement method,
@@ -2004,25 +1929,19 @@ public final class FindGenerator {
                 current = resolveDirectType(current, segment);
             }
 
-            if (current == null) {
-                return true;
-            }
+            if (current == null) return true;
         }
 
         return true;
     }
 
-
     private boolean containsName(PathSegment.Union union) {
         for (PathSegment segment : union.union) {
-            if (segment instanceof PathSegment.Name) {
-                return true;
-            }
+            if (segment instanceof PathSegment.Name) return true;
         }
 
         return false;
     }
-
 
     private boolean isIndexOrSliceUnion(PathSegment.Union union) {
         for (PathSegment segment : union.union) {
@@ -2035,7 +1954,6 @@ public final class FindGenerator {
 
         return true;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -2070,31 +1988,22 @@ public final class FindGenerator {
         return receiver + ".get(" + index + ")";
     }
 
-
     private String objectExpression(TypeMirror type, String expression) {
-        if (types.isObject(type)) {
-            return expression;
-        }
+        if (types.isObject(type)) return expression;
 
         return "(" + localType(type) + ") " + expression;
     }
-
 
     private static String staticIndex(
             int index,
             String sizeExpression) {
 
-        if (index >= 0) {
-            return Integer.toString(index);
-        }
+        if (index >= 0) return Integer.toString(index);
 
-        if (index == Integer.MIN_VALUE) {
-            return sizeExpression + " + " + index;
-        }
+        if (index == Integer.MIN_VALUE) return sizeExpression + " + " + index;
 
         return sizeExpression + " - " + (-index);
     }
-
 
     private String methodHeader(
             ExecutableElement method,
@@ -2103,7 +2012,6 @@ public final class FindGenerator {
         return "public " + method.getReturnType() + " " + method.getSimpleName()
                 + "(" + root.asType() + " " + root.getSimpleName() + ")";
     }
-
 
     private NameAllocator names(
             VariableElement root) {
@@ -2114,23 +2022,18 @@ public final class FindGenerator {
         return names;
     }
 
-
     private String localType(TypeMirror type) {
         return types.boxed(types.concrete(type)).toString();
     }
-
 
     private boolean canAddToResult(
             TypeMirror valueType,
             TypeMirror elementType) {
 
-        if (types.isObject(elementType)) {
-            return true;
-        }
+        if (types.isObject(elementType)) return true;
 
         return types.isAssignableBoxedGeneric(valueType, elementType);
     }
-
 
     private void error(
             Element element,
@@ -2146,7 +2049,6 @@ public final class FindGenerator {
                         message);
     }
 
-
     private static final class Access {
 
         final TypeMirror type;
@@ -2156,7 +2058,6 @@ public final class FindGenerator {
 
         final String boundsCheck;
         final String presentCheck;
-
 
         Access(
                 TypeMirror type,

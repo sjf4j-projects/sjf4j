@@ -23,7 +23,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-
 /**
  * Emits Java expressions and statements for fully compiled value conversions.
  *
@@ -49,7 +48,6 @@ public final class ConversionEmitter
         this.compiler = new ConversionCompiler(context, mapper, plans, metadata);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Prepare
@@ -71,9 +69,7 @@ public final class ConversionEmitter
     }
 
     private boolean prepare(MappingCompiler.CompiledMethod method, GeneratedClass generated) {
-        if (method.kind() == MappingCompiler.CompiledMethod.Kind.ROOT) {
-            return prepare(method.plan(), method.rootConversion(), generated);
-        }
+        if (method.kind() == MappingCompiler.CompiledMethod.Kind.ROOT) return prepare(method.plan(), method.rootConversion(), generated);
 
         for (MappingCompiler.ConstructorArgument argument : method.constructorArguments()) {
             if (!prepare(method.plan(), argument.value(), generated)) return false;
@@ -86,35 +82,26 @@ public final class ConversionEmitter
         return true;
     }
 
-
     private boolean prepare(MappingPlan plan, MappingCompiler.Value value, GeneratedClass generated) {
-        if (value.kind() != MappingCompiler.Value.Kind.READ) {
-            return true;
-        }
+        if (value.kind() != MappingCompiler.Value.Kind.READ) return true;
         return prepare(plan, value.conversion(), generated);
     }
 
-
     private boolean prepare(MappingPlan plan, ConverterResolver.Conversion conversion,
                             GeneratedClass generated) {
-        if (conversion == null) {
-            return false;
-        }
+        if (conversion == null) return false;
 
         if (compiled.containsKey(conversion)) return true;
 
         ConversionCompiler.CompiledConversion resolved = compiler.compile(plan, conversion, generated);
 
-        if (resolved == null) {
-            return false;
-        }
+        if (resolved == null) return false;
 
         compiled.put(conversion, resolved);
         inspect(resolved);
 
         return true;
     }
-
 
     private void inspect(ConversionCompiler.CompiledConversion conversion) {
         switch (conversion.kind()) {
@@ -174,12 +161,9 @@ public final class ConversionEmitter
         }
     }
 
-
     private void registerImportedMapper(TypeElement mapper) {
         String type = mapper.getQualifiedName().toString();
-        if (importedMapperFields.containsKey(type)) {
-            return;
-        }
+        if (importedMapperFields.containsKey(type)) return;
 
         String base = "_sjf4j_mapper_" + mapper.getSimpleName();
         String name = base;
@@ -191,7 +175,6 @@ public final class ConversionEmitter
 
         importedMapperFields.put(type, name);
     }
-
 
     private void registerFields(GeneratedClass generated) {
         for (Map.Entry<String, String> entry : importedMapperFields.entrySet()) {
@@ -205,7 +188,6 @@ public final class ConversionEmitter
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Emit
@@ -218,13 +200,10 @@ public final class ConversionEmitter
                        TypeMirror sourceType, TypeMirror targetType, GeneratedClass generated) {
         ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
 
-        if (resolved == null) {
-            throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
-        }
+        if (resolved == null) throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
 
         return emit(out, names, resolved, source);
     }
-
 
     @Override
     public void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
@@ -232,13 +211,9 @@ public final class ConversionEmitter
                               TypeMirror targetType, String target, String policy, GeneratedClass generated) {
         ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
 
-        if (resolved == null) {
-            throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
-        }
+        if (resolved == null) throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
 
-        if (resolved.kind() != ConversionCompiler.CompiledConversion.Kind.MAP) {
-            throw new IllegalArgumentException("root map update requires a map conversion");
-        }
+        if (resolved.kind() != ConversionCompiler.CompiledConversion.Kind.MAP) throw new IllegalArgumentException("root map update requires a map conversion");
 
         out.beginBlock("if (" + source + " != null)");
         String entry = names.newName("entry");
@@ -288,7 +263,6 @@ public final class ConversionEmitter
         out.endBlock();
     }
 
-
     /*
      * --------------------------------------------------------------
      * Dispatch
@@ -331,23 +305,17 @@ public final class ConversionEmitter
         }
     }
 
-
     private String emitMethod(ConversionCompiler.CompiledConversion conversion, String source) {
         ExecutableElement method = conversion.method();
-        if (conversion.mapperType() == null) {
-            return method.getSimpleName() + "(" + source + ")";
-        }
+        if (conversion.mapperType() == null) return method.getSimpleName() + "(" + source + ")";
 
         String type = conversion.mapperType().getQualifiedName().toString();
         String field = importedMapperFields.get(type);
 
-        if (field == null) {
-            throw new IllegalStateException("imported mapper was not prepared: " + type);
-        }
+        if (field == null) throw new IllegalStateException("imported mapper was not prepared: " + type);
 
         return field + "." + method.getSimpleName() + "(" + source + ")";
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -434,16 +402,13 @@ public final class ConversionEmitter
         /*
          * Boolean -> Boolean should normally have resolved as DIRECT.
          */
-        if ("java.lang.Boolean".equals(sourceName) && "java.lang.Boolean".equals(targetName)) {
-            return source;
-        }
+        if ("java.lang.Boolean".equals(sourceName) && "java.lang.Boolean".equals(targetName)) return source;
 
         /*
          * @NodeValue / registered scalar codecs.
          */
         return emitNodeMapperTo(out, names, conversion.targetType(), source, "converted");
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -486,7 +451,6 @@ public final class ConversionEmitter
         return result;
     }
 
-
     private void emitIndexedContainerLoop(JavaWriter out, NameAllocator names,
                                           ConversionCompiler.CompiledConversion conversion,
                                           String source, String result, NodeKind sourceKind,
@@ -508,7 +472,6 @@ public final class ConversionEmitter
         out.line("}");
     }
 
-
     private void emitSetLoop(JavaWriter out, NameAllocator names,
                              ConversionCompiler.CompiledConversion conversion, String source,
                              String result, NodeKind targetKind) {
@@ -528,7 +491,6 @@ public final class ConversionEmitter
         out.dedent();
         out.line("}");
     }
-
 
     private void emitContainerAdd(JavaWriter out, String result, NodeKind targetKind,
                                   String index, String value) {
@@ -550,7 +512,6 @@ public final class ConversionEmitter
                 throw new IllegalStateException("unsupported target container " + targetKind);
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -602,7 +563,6 @@ public final class ConversionEmitter
         return result;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Object Convert
@@ -613,17 +573,12 @@ public final class ConversionEmitter
                                   ConversionCompiler.CompiledConversion conversion, String source) {
         ConversionCompiler.DynamicObjectPlan dynamic = conversion.dynamicObject();
 
-        if (conversion.creation() != null) {
-            return emitTypedObject(out, names, conversion, source);
-        }
+        if (conversion.creation() != null) return emitTypedObject(out, names, conversion, source);
 
-        if (dynamic != null) {
-            return emitDynamicObject(out, names, conversion, dynamic, source);
-        }
+        if (dynamic != null) return emitDynamicObject(out, names, conversion, dynamic, source);
 
         throw new IllegalStateException("structural conversion has neither creator nor dynamic plan");
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -650,9 +605,7 @@ public final class ConversionEmitter
 
         CreatorResolver.Creation creation = conversion.creation();
 
-        if (creation == null) {
-            throw new IllegalStateException("typed structural conversion has no creator");
-        }
+        if (creation == null) throw new IllegalStateException("typed structural conversion has no creator");
 
         switch (creation.kind()) {
             case NO_ARGS:
@@ -690,7 +643,6 @@ public final class ConversionEmitter
         return result;
     }
 
-
     private void emitStructuralConstructor(JavaWriter out, NameAllocator names,
                                            ConversionCompiler.CompiledConversion conversion,
                                            String source, String result) {
@@ -718,7 +670,6 @@ public final class ConversionEmitter
 
         out.line(result + " = " + expression + ";");
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -750,7 +701,6 @@ public final class ConversionEmitter
         return result;
     }
 
-
     private void emitDynamicMembers(JavaWriter out, NameAllocator names,
                                     ConversionCompiler.DynamicObjectPlan dynamic, String source, String result) {
         switch (dynamic.kind()) {
@@ -770,7 +720,6 @@ public final class ConversionEmitter
                 throw new IllegalStateException("unsupported dynamic member plan " + dynamic.kind());
         }
     }
-
 
     private void emitDirectDynamicMembers(JavaWriter out, NameAllocator names,
                                           ConversionCompiler.DynamicObjectPlan dynamic,
@@ -796,7 +745,6 @@ public final class ConversionEmitter
         out.line("}");
     }
 
-
     private void emitJojoDynamicMembers(JavaWriter out, NameAllocator names,
                                         ConversionCompiler.DynamicObjectPlan dynamic,
                                         String source, String result) {
@@ -815,7 +763,6 @@ public final class ConversionEmitter
         out.endBlock();
     }
 
-
     private void emitRuntimeDynamicMembers(JavaWriter out, NameAllocator names,
                                            ConversionCompiler.DynamicObjectPlan dynamic,
                                            String source, String result) {
@@ -830,7 +777,6 @@ public final class ConversionEmitter
         out.dedent();
         out.line("}");
     }
-
 
     private void emitDynamicMember(JavaWriter out, NameAllocator names,
                                    ConversionCompiler.DynamicObjectPlan dynamic,
@@ -859,7 +805,6 @@ public final class ConversionEmitter
         out.line(result + ".put(" + key + ", " + value + ");");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Runtime Convert
@@ -876,7 +821,6 @@ public final class ConversionEmitter
         return result;
     }
 
-
     private String emitNodeMapperTo(JavaWriter out, NameAllocator names, TypeMirror targetType,
                                     String source, String hint) {
         String result = names.newName(hint);
@@ -887,14 +831,10 @@ public final class ConversionEmitter
         return result;
     }
 
-
     private String mapperToCast(TypeMirror targetType) {
-        if (!(targetType instanceof DeclaredType) || ((DeclaredType) targetType).getTypeArguments().isEmpty()) {
-            return "";
-        }
+        if (!(targetType instanceof DeclaredType) || ((DeclaredType) targetType).getTypeArguments().isEmpty()) return "";
         return "(" + localType(targetType) + ") ";
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -910,7 +850,6 @@ public final class ConversionEmitter
 
         return result;
     }
-
 
     private String accessReadExpression(String owner, String name, NodeAccess access) {
         String key = JavaWriter.stringLiteral(name);
@@ -936,7 +875,6 @@ public final class ConversionEmitter
                 throw new IllegalStateException("unsupported structural read: " + access.kind());
         }
     }
-
 
     private void emitAccessWrite(JavaWriter out, String owner, String name, NodeAccess access, String value) {
         String key = JavaWriter.stringLiteral(name);
@@ -969,7 +907,6 @@ public final class ConversionEmitter
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Container Expressions
@@ -997,7 +934,6 @@ public final class ConversionEmitter
         }
     }
 
-
     private String sizeExpression(String source, NodeKind kind) {
 
         switch (kind) {
@@ -1018,25 +954,18 @@ public final class ConversionEmitter
         }
     }
 
-
     private String newContainerExpression(TypeMirror type, NodeKind kind, String size) {
 
         switch (kind) {
             case ARRAY_LIST:
-                if (types.isSameErasure(type, types.listType())) {
-                    return "new java.util.ArrayList<>(" + size + ")";
-                }
+                if (types.isSameErasure(type, types.listType())) return "new java.util.ArrayList<>(" + size + ")";
 
-                if (isInterfaceOrAbstract(type)) {
-                    return "new java.util.ArrayList<>(" + size + ")";
-                }
+                if (isInterfaceOrAbstract(type)) return "new java.util.ArrayList<>(" + size + ")";
 
                 return "new " + type + "()";
 
             case ARRAY_SET:
-                if (isInterfaceOrAbstract(type)) {
-                    return "new java.util.LinkedHashSet<>(" + size + ")";
-                }
+                if (isInterfaceOrAbstract(type)) return "new java.util.LinkedHashSet<>(" + size + ")";
 
                 return "new " + type + "()";
 
@@ -1051,14 +980,10 @@ public final class ConversionEmitter
         }
     }
 
-
     private String newMapExpression(TypeMirror type) {
-        if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) {
-            return "new java.util.LinkedHashMap<>()";
-        }
+        if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) return "new java.util.LinkedHashMap<>()";
         return "new " + type + "()";
     }
-
 
     private String newObjectExpression(TypeMirror type) {
         NodeKind kind = types.nodeKind(type);
@@ -1075,50 +1000,39 @@ public final class ConversionEmitter
         }
     }
 
-
     private String factoryExpression(CreatorResolver.Creation creation) {
         ExecutableElement factory = creation.factory();
-        if (creation.factoryOwner() == null) {
-            return factory.getSimpleName() + "()";
-        }
+        if (creation.factoryOwner() == null) return factory.getSimpleName() + "()";
 
         return creation.factoryOwner().getQualifiedName() + "." + factory.getSimpleName() + "()";
     }
 
-
     private String localType(TypeMirror type) {
         return types.boxed(types.concrete(type)).toString();
     }
-
 
     private String classLiteral(TypeMirror type) {
         TypeMirror boxed = types.boxed(types.concrete(type));
         return context.typeUtils.erasure(boxed).toString() + ".class";
     }
 
-
     private String cast(TypeMirror type, String expression) {
         TypeMirror concrete = types.concrete(type);
 
-        if (types.isObject(concrete)) {
-            return expression;
-        }
+        if (types.isObject(concrete)) return expression;
 
         return "(" + localType(concrete) + ") " + expression;
     }
-
 
     private String rawName(TypeMirror type) {
         TypeMirror boxed = types.boxed(types.concrete(type));
         return context.typeUtils.erasure(boxed).toString();
     }
 
-
     private boolean isEnum(TypeMirror type) {
         TypeElement element = types.typeElement(types.concrete(type));
         return element != null && "ENUM".equals(element.getKind().name());
     }
-
 
     private boolean isNumber(String name) {
         return "java.lang.Byte".equals(name) ||
@@ -1131,7 +1045,6 @@ public final class ConversionEmitter
                 "java.math.BigDecimal".equals(name) ||
                 "java.lang.Number".equals(name);
     }
-
 
     private boolean isInterfaceOrAbstract(TypeMirror type) {
         TypeElement element = types.typeElement(types.concrete(type));

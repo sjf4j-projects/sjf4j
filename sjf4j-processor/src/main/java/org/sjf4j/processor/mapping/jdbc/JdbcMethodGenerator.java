@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-
 /**
  * Analyzes abstract methods declared by a compiled JDBC mapper.
  */
@@ -32,19 +31,15 @@ public final class JdbcMethodGenerator {
 
     private final TypeMirror resultSetType;
 
-
     public JdbcMethodGenerator(ProcessorContext context) {
         this.context = context;
         this.types = context.types;
 
         TypeElement resultSet = context.elements.getTypeElement(ResultSet.class.getName());
 
-        if (resultSet == null) {
-            throw new IllegalStateException("java.sql.ResultSet is not available");
-        }
+        if (resultSet == null) throw new IllegalStateException("java.sql.ResultSet is not available");
         this.resultSetType = resultSet.asType();
     }
-
 
     /**
      * Analyzes one effective abstract mapper method.
@@ -87,9 +82,7 @@ public final class JdbcMethodGenerator {
         List<? extends TypeMirror> parameterTypes = methodType.getParameterTypes();
         JdbcPlan.CursorMode cursorMode = resolveCursorMode(method, parameters, parameterTypes, generated);
 
-        if (cursorMode == null) {
-            return null;
-        }
+        if (cursorMode == null) return null;
 
         TypeMirror returnType = methodType.getReturnType();
         if (returnType.getKind() == TypeKind.VOID) {
@@ -100,9 +93,7 @@ public final class JdbcMethodGenerator {
         JdbcPlan.ResultKind resultKind = resolveResultKind(returnType);
         TypeMirror rowType = resolveRowType(method, returnType, resultKind, generated);
 
-        if (rowType == null) {
-            return null;
-        }
+        if (rowType == null) return null;
 
         if (cursorMode == JdbcPlan.CursorMode.CURRENT_ROW && resultKind == JdbcPlan.ResultKind.LIST) {
             error(method, generated, "Current-row JDBC mapper method cannot return List");
@@ -118,9 +109,7 @@ public final class JdbcMethodGenerator {
 
         List<JdbcPlan.Rule> rules = readRules(method, generated);
 
-        if (rules == null) {
-            return null;
-        }
+        if (rules == null) return null;
 
         VariableElement resultSetParameter = parameters.get(0);
         VariableElement rowNumberParameter = cursorMode == JdbcPlan.CursorMode.CURRENT_ROW
@@ -129,7 +118,6 @@ public final class JdbcMethodGenerator {
         return new JdbcPlan(method, methodType, cursorMode, resultKind, resultSetParameter,
                 rowNumberParameter, returnType, rowType, rules);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -152,7 +140,6 @@ public final class JdbcMethodGenerator {
         }
         return true;
     }
-
 
     private JdbcPlan.CursorMode resolveCursorMode(ExecutableElement method,
                                                   List<? extends VariableElement> parameters,
@@ -188,7 +175,6 @@ public final class JdbcMethodGenerator {
         return types.isSameErasure(type, resultSetType);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Result
@@ -202,18 +188,13 @@ public final class JdbcMethodGenerator {
          * ArrayList<T>, Collection<T>, Set<T>, etc. are not interpreted as
          * result containers here.
          */
-        if (types.isSameErasure(returnType, types.listType())) {
-            return JdbcPlan.ResultKind.LIST;
-        }
+        if (types.isSameErasure(returnType, types.listType())) return JdbcPlan.ResultKind.LIST;
         return JdbcPlan.ResultKind.SINGLE;
     }
 
-
     private TypeMirror resolveRowType(ExecutableElement method, TypeMirror returnType,
                                       JdbcPlan.ResultKind resultKind, GeneratedClass generated) {
-        if (resultKind == JdbcPlan.ResultKind.SINGLE) {
-            return returnType;
-        }
+        if (resultKind == JdbcPlan.ResultKind.SINGLE) return returnType;
 
         TypeMirror elementType = types.listWriteElementType(returnType);
 
@@ -228,7 +209,6 @@ public final class JdbcMethodGenerator {
         }
         return elementType;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -253,7 +233,6 @@ public final class JdbcMethodGenerator {
         return true;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Mapping Rules
@@ -263,7 +242,7 @@ public final class JdbcMethodGenerator {
     private List<JdbcPlan.Rule> readRules(ExecutableElement method, GeneratedClass generated) {
         Mapping[] mappings = method.getAnnotationsByType(Mapping.class);
         List<JdbcPlan.Rule> rules = new ArrayList<JdbcPlan.Rule>(mappings.length);
-        Set<String> targets = new HashSet<String>();
+        Set<String> targets = new HashSet<>();
 
         for (Mapping mapping : mappings) {
             String target = mapping.target();
@@ -298,7 +277,6 @@ public final class JdbcMethodGenerator {
 
         return rules;
     }
-
 
     /*
      * --------------------------------------------------------------

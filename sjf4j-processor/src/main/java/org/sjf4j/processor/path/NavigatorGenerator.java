@@ -20,12 +20,10 @@ public final class NavigatorGenerator {
     private final ProcessorContext context;
     private final NavigatorMethodGenerator methodGenerator;
 
-
     public NavigatorGenerator(ProcessorContext context) {
         this.context = context;
         this.methodGenerator = new NavigatorMethodGenerator(context);
     }
-
 
     /**
      * Generates one compiled navigator implementation.
@@ -40,9 +38,7 @@ public final class NavigatorGenerator {
 
         List<ResolvedMethod> methods = context.methods.abstractMethods(type);
 
-        if (hasGenericInheritedAbstractMethod(type, methods)) {
-            return;
-        }
+        if (hasGenericInheritedAbstractMethod(type, methods)) return;
 
         GeneratedClass generated = GeneratedClass.forInterface(context, type);
 
@@ -56,7 +52,6 @@ public final class NavigatorGenerator {
 
         generated.write();
     }
-
 
     private boolean hasGenericInheritedAbstractMethod(
             TypeElement type,
@@ -73,9 +68,7 @@ public final class NavigatorGenerator {
 
             TypeElement ownerType = (TypeElement) owner;
 
-            if (ownerType.getTypeParameters().isEmpty()) {
-                continue;
-            }
+            if (ownerType.getTypeParameters().isEmpty()) continue;
 
             context.error(
                     method,

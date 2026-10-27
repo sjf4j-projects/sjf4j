@@ -11,7 +11,6 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
-
 /**
  * Resolves compile-time structural access for OBNT node types.
  */
@@ -20,12 +19,10 @@ public final class NodeAccessResolver {
     private final TypeSystem types;
     private final PropertyResolver properties;
 
-
     public NodeAccessResolver(TypeSystem types, PropertyResolver properties) {
         this.types = Asserts.notNull(types, "types");
         this.properties = Asserts.notNull(properties, "properties");
     }
-
 
     /**
      * Resolves a statically known object member name.
@@ -36,9 +33,7 @@ public final class NodeAccessResolver {
      * dynamic key.</p>
      */
     public NodeAccess resolveName(TypeMirror owner, String name) {
-        if (owner == null || name == null) {
-            return null;
-        }
+        if (owner == null || name == null) return null;
 
         owner = types.concrete(owner);
         NodeKind kind = types.nodeKind(owner);
@@ -61,7 +56,6 @@ public final class NodeAccessResolver {
             case OBJECT_JSON_OBJECT:
                 return jsonObject(owner);
 
-
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
 
@@ -73,7 +67,6 @@ public final class NodeAccessResolver {
         }
     }
 
-
     /**
      * Resolves an object key whose value is known only at runtime.
      *
@@ -81,9 +74,7 @@ public final class NodeAccessResolver {
      * because its JsonObject namespace remains dynamic.</p>
      */
     public NodeAccess resolveDynamicName(TypeMirror owner) {
-        if (owner == null) {
-            return null;
-        }
+        if (owner == null) return null;
 
         owner = types.concrete(owner);
         NodeKind kind = types.nodeKind(owner);
@@ -96,7 +87,6 @@ public final class NodeAccessResolver {
             case OBJECT_MAP:
                 return map(owner);
 
-
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
 
@@ -108,16 +98,13 @@ public final class NodeAccessResolver {
         }
     }
 
-
     /**
      * Resolves indexed array access.
      *
      * <p>Set deliberately has no indexed access.</p>
      */
     public NodeAccess resolveIndex(TypeMirror owner) {
-        if (owner == null) {
-            return null;
-        }
+        if (owner == null) return null;
 
         owner = types.concrete(owner);
         NodeKind kind = types.nodeKind(owner);
@@ -133,7 +120,6 @@ public final class NodeAccessResolver {
             case ARRAY_JAJO:
                 return jsonArray(owner);
 
-
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
 
@@ -145,16 +131,13 @@ public final class NodeAccessResolver {
         }
     }
 
-
     /**
      * Resolves append access.
      *
      * <p>Java arrays and Set deliberately do not support append.</p>
      */
     public NodeAccess resolveAppend(TypeMirror owner) {
-        if (owner == null) {
-            return null;
-        }
+        if (owner == null) return null;
 
         owner = types.concrete(owner);
         NodeKind kind = types.nodeKind(owner);
@@ -167,7 +150,6 @@ public final class NodeAccessResolver {
             case ARRAY_JAJO:
                 return jsonArray(owner);
 
-
             case COMPILE_TIME_UNKNOWN:
                 return dynamic(owner);
 
@@ -178,7 +160,6 @@ public final class NodeAccessResolver {
                 return null;
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -194,7 +175,6 @@ public final class NodeAccessResolver {
                 : property(owner, property);
     }
 
-
     private NodeAccess property(TypeMirror owner, Property property) {
         PropertyAccess read = property.read();
         PropertyAccess write = property.write();
@@ -206,7 +186,6 @@ public final class NodeAccessResolver {
                 write == null ? null : write.type(),
                 property);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -222,7 +201,6 @@ public final class NodeAccessResolver {
                 types.mapWriteValueType(owner),
                 null);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -241,7 +219,6 @@ public final class NodeAccessResolver {
                 null);
     }
 
-
     /*
      * --------------------------------------------------------------
      * List
@@ -256,7 +233,6 @@ public final class NodeAccessResolver {
                 types.listWriteElementType(owner),
                 null);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -275,7 +251,6 @@ public final class NodeAccessResolver {
                 null);
     }
 
-
     /*
      * --------------------------------------------------------------
      * JsonArray / JAJO
@@ -293,7 +268,6 @@ public final class NodeAccessResolver {
                 null);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Dynamic Object
@@ -310,7 +284,6 @@ public final class NodeAccessResolver {
                 valueType,
                 null);
     }
-
 
     /*
      * --------------------------------------------------------------
