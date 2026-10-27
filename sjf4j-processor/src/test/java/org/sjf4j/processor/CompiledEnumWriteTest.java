@@ -57,7 +57,8 @@ class CompiledEnumWriteTest {
                 Class<?> modelType = loader.loadClass("fixture.Model");
                 Class enumType = loader.loadClass("fixture.State");
                 Class<?> binderType = loader.loadClass("fixture.Binder");
-                Object binder = binderType.getConstructor().newInstance();
+                Class<?> binderImpl = loader.loadClass("fixture.Binder_Impl");
+                Object binder = binderImpl.getConstructor().newInstance();
                 Object model = modelType.getConstructor().newInstance();
                 Object second = Enum.valueOf(enumType, "SECOND");
                 Object first = Enum.valueOf(enumType, "FIRST");
