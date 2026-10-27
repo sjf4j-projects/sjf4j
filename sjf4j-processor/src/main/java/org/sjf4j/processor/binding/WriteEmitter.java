@@ -16,6 +16,7 @@ import java.util.Set;
 final class WriteEmitter {
 
     private final BackendSpec backend;
+    private final Boolean fixedIncludeNulls;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
@@ -23,26 +24,27 @@ final class WriteEmitter {
 
     private final Map<String, String> enumFields = new LinkedHashMap<>();
 
-    WriteEmitter(BackendSpec backend) {
+    WriteEmitter(BackendSpec backend, Boolean fixedIncludeNulls) {
         this.backend = backend;
+        this.fixedIncludeNulls = fixedIncludeNulls;
         this.streaming = new StreamingWriteEmitter(backend);
         switch (backend.backend()) {
             case FASTJSON2:
-                fastjson2 = new Fastjson2WriteEmitter(this);
+                fastjson2 = new Fastjson2WriteEmitter(this, fixedIncludeNulls);
                 jackson = null;
                 other = null;
                 break;
             case JACKSON2:
             case JACKSON3:
                 fastjson2 = null;
-                jackson = new JacksonWriteEmitter(backend, this);
+                jackson = new JacksonWriteEmitter(backend, this, fixedIncludeNulls);
                 other = null;
                 break;
             case GSON:
             case JSONP:
                 fastjson2 = null;
                 jackson = null;
-                other = new OtherNativeWriteEmitter(backend);
+                other = new OtherNativeWriteEmitter(backend, fixedIncludeNulls);
                 break;
             default:
                 fastjson2 = null;
@@ -118,8 +120,11 @@ final class WriteEmitter {
         // Only the streaming-only backends retain whole-root fallback rules.
         // JSON native backends compile structural nodes and fall back locally.
         if (!usesSharedStructure()) {
-            // Preserve streaming-only null-policy and dynamic-root semantics.
-            out.beginBlock("if (!this.context.includeNulls)");
+            // Static includeNulls is resolved during compilation.
+            boolean dynamicNulls = fixedIncludeNulls == null;
+            boolean omitNulls = Boolean.FALSE.equals(fixedIncludeNulls);
+            if (dynamicNulls || omitNulls) {
+                if (dynamicNulls) out.beginBlock("if (!_FALLBACK_CONTEXT.includeNulls)");
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -136,7 +141,12 @@ final class WriteEmitter {
                 default:
                     throw new AssertionError(plan.writeOutput());
             }
-            out.endBlock();
+                if (dynamicNulls) out.endBlock();
+                if (omitNulls) {
+                    BindingSource.endOverride(out);
+                    return;
+                }
+            }
 
             if (streaming.shouldFallbackRoot(compiled.value())) {
                 switch (plan.writeOutput()) {
@@ -386,12 +396,18 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private void _writeStringMember(" + generator
+            out.beginBlock("private static void _writeStringMember(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
-            out.beginBlock("if (value == null && !this.context.includeNulls)");
-            out.line("return;");
-            out.endBlock();
+            if (fixedIncludeNulls == null) {
+                out.beginBlock("if (value == null && !_FALLBACK_CONTEXT.includeNulls)");
+            } else if (!fixedIncludeNulls) {
+                out.beginBlock("if (value == null)");
+            }
+            if (fixedIncludeNulls == null || !fixedIncludeNulls) {
+                out.line("return;");
+                out.endBlock();
+            }
             out.line("g." + nameMethod + "(name);");
             out.line("_writeString(g, value);");
             out.endBlock();
