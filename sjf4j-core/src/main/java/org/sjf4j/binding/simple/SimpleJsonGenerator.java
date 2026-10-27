@@ -147,7 +147,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Flushes writer output.
      */
     @Override
-    public void end() throws IOException {
+    public void flush() throws IOException {
         writer.flush();
     }
 
@@ -245,7 +245,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Closes underlying writer.
      */
     @Override
-    public void release() {
-        // The output writer belongs to the caller.
+    public void close() throws IOException {
+        flush();
     }
 }

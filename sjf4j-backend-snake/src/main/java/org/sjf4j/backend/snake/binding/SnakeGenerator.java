@@ -196,9 +196,15 @@ public final class SnakeGenerator extends StreamingGenerator {
      * The caller owns the output writer.
      */
     @Override
-    public void release() {
+    public void close() throws IOException {
+        flush();
     }
 
+
+    @Override
+    public void flush() throws IOException {
+        output.flush();
+    }
 
     private void writePlain(String value) throws IOException {
         emitter.emit(new ScalarEvent(null, null, PLAIN_IMPLICIT, value, null, null,
