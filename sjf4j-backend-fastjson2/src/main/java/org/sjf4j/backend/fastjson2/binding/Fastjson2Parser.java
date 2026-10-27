@@ -46,6 +46,8 @@ public final class Fastjson2Parser extends StreamingParser {
      * @return the underlying Fastjson2 reader
      */
     public JSONReader rawReader() {
+        // Generated native paths bypass wrapper reads, so invalidate a cached peek.
+        peeked = null;
         return reader;
     }
 
@@ -175,17 +177,6 @@ public final class Fastjson2Parser extends StreamingParser {
         return !fastMatcher.hashSafe() && index == Fastjson2NameMatcher.HASH_COLLISION
                 ? matcher.fallback(reader.getFieldName())
                 : index;
-    }
-
-    /** Fastjson2 native JSON string hash, avoiding an allocation on matched values. */
-    public long readValueHashCode() {
-        peeked = null;
-        return reader.readValueHashCode();
-    }
-
-    /** Decode only an unmatched, already-hashed string. */
-    public String getHashedString() {
-        return reader.getString();
     }
 
     @Override

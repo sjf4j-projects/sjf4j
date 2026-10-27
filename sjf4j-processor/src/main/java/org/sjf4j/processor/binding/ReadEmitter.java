@@ -16,26 +16,23 @@ final class ReadEmitter {
 
     private final ProcessorContext context;
     private final BackendSpec backend;
-    private final Fastjson2PojoReadEmitter fastjson2Pojo;
-    private final Fastjson2EnumReadEmitter fastjson2Enum;
+    private final Fastjson2ReadEmitter fastjson2;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend) {
         this.context = context;
         this.backend = backend;
-        this.fastjson2Pojo = backend.backend() == Backend.FASTJSON2
-                ? new Fastjson2PojoReadEmitter() : null;
-        this.fastjson2Enum = backend.backend() == Backend.FASTJSON2
-                ? new Fastjson2EnumReadEmitter() : null;
+        this.fastjson2 = backend.backend() == Backend.FASTJSON2
+                ? new Fastjson2ReadEmitter() : null;
     }
 
     void registerEnums(BindingValue value) {
-        if (fastjson2Enum != null) fastjson2Enum.register(value);
+        if (fastjson2 != null) fastjson2.register(value);
     }
 
     void emitEnumFields(org.sjf4j.processor.code.GeneratedClass generated) {
-        if (fastjson2Enum == null || !fastjson2Enum.hasEnums()) return;
-        generated.addField(out -> fastjson2Enum.emitFields(out));
-        generated.addHelper(out -> fastjson2Enum.emitHelpers(out));
+        if (fastjson2 == null || !fastjson2.hasEnums()) return;
+        generated.addField(out -> fastjson2.emitFields(out));
+        generated.addHelper(out -> fastjson2.emitHelpers(out));
     }
 
     boolean usesNameMatcher() {
@@ -147,11 +144,11 @@ final class ReadEmitter {
         }
 
         out.endBlock();
-        if (fastjson2Pojo != null && value.creator() == null
+        if (fastjson2 != null && value.creator() == null
                 && (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO)
                 && !value.properties().isEmpty()) {
             out.blank();
-            fastjson2Pojo.emitFallback(out, value, this);
+            fastjson2.emitFallback(out, value, this);
         }
     }
 
@@ -314,8 +311,8 @@ final class ReadEmitter {
         out.line(value.type() + " value = new " + value.type() + "();");
         if (consumedDiscriminator != null) emitOneOfPrefixReplay(out, value);
 
-        if (fastjson2Pojo != null && !value.properties().isEmpty()) {
-            fastjson2Pojo.emitProperties(out, value, this, false);
+        if (fastjson2 != null && !value.properties().isEmpty()) {
+            fastjson2.emitProperties(out, value, this, false);
         } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) {
@@ -334,7 +331,7 @@ final class ReadEmitter {
             emitStringPojoProperty(out, value, consumedDiscriminator);
         }
 
-        if (fastjson2Pojo == null || value.properties().isEmpty()) {
+        if (fastjson2 == null || value.properties().isEmpty()) {
             out.endBlock();
         }
         out.line("return value;");
@@ -390,8 +387,8 @@ final class ReadEmitter {
         }
 
         int size = value.properties().size();
-        if (fastjson2Pojo != null && size != 0) {
-            fastjson2Pojo.emitProperties(out, value, this, true);
+        if (fastjson2 != null && size != 0) {
+            fastjson2.emitProperties(out, value, this, true);
         } else if (backend.usesNameMatcher() && size != 0) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
@@ -404,7 +401,7 @@ final class ReadEmitter {
             out.beginBlock("while ((name = parser.nextName()) != null)");
             emitStringPojoProperty(out, value, consumedDiscriminator);
         }
-        if (fastjson2Pojo == null || size == 0) out.endBlock();
+        if (fastjson2 == null || size == 0) out.endBlock();
 
         StringBuilder creation;
         switch (value.creator().kind()) {
@@ -778,7 +775,7 @@ final class ReadEmitter {
                 return "(" + value.type() + ") " + scalarRead;
 
             case ENUM:
-                if (fastjson2Enum != null) return fastjson2Enum.readExpression(value, parser);
+                if (fastjson2 != null) return fastjson2.readExpression(value, parser);
                 return "(" + value.type() + ") " + STREAMING_IO + ".readEnum(" + parser + ", "
                         + value.type() + ".class, this.context)";
 
