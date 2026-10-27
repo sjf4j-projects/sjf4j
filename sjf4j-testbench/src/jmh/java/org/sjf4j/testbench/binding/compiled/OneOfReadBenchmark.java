@@ -164,7 +164,7 @@ public class OneOfReadBenchmark {
             Class<?> subtype = "dog".equals(kind) ? Dog.class : Cat.class;
             return (Pet) NodeMapper.convert(raw, subtype, false, RuntimeContext.EMPTY);
         } finally {
-            parser.release();
+            parser.close();
         }
     }
 

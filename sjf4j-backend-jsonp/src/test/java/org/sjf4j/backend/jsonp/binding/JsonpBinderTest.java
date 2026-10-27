@@ -150,7 +150,7 @@ class JsonpBinderTest {
                 assertTrue(parser.nextIfNull());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -161,7 +161,7 @@ class JsonpBinderTest {
                 assertTrue(parser.nextIfNull());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -173,7 +173,7 @@ class JsonpBinderTest {
                 generator.writeStringValue("héllo");
                 generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("\"héllo\"", new String(output.toByteArray(), StandardCharsets.UTF_8));
@@ -187,7 +187,7 @@ class JsonpBinderTest {
                 generator.writeNull();
                 generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("null", nativeOutput.toString());

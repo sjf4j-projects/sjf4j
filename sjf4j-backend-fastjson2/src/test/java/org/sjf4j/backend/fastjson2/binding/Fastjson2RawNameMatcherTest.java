@@ -61,7 +61,7 @@ class Fastjson2RawNameMatcherTest {
                 assertEquals(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 9, 10, 11), values);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
