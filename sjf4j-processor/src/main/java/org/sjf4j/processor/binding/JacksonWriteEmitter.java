@@ -18,11 +18,18 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     private final BackendSpec backend;
     private final WriteEmitter writes;
+    private final Boolean fixedIncludeNulls;
     private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
-    JacksonWriteEmitter(BackendSpec backend, WriteEmitter writes) {
+    JacksonWriteEmitter(BackendSpec backend, WriteEmitter writes, Boolean fixedIncludeNulls) {
         this.backend = backend;
         this.writes = writes;
+        this.fixedIncludeNulls = fixedIncludeNulls;
+    }
+
+    @Override
+    public String includeNullsExpression() {
+        return fixedIncludeNulls == null ? "_FALLBACK_CONTEXT.includeNulls" : fixedIncludeNulls.toString();
     }
 
     /** Cache enum values in the native Jackson serialized-string format. */
@@ -73,7 +80,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      * Instance helpers are needed by codec metadata and local runtime fallbacks.
      */
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName() + "("
+        out.beginBlock("private static void " + value.helperName() + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
         out.line(generatorType() + " g = generator.nativeWriter();");
@@ -82,7 +89,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             structures.emitOneOf(out, value);
         } else if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
+            out.line(STREAMING_IO + ".writeNode(generator, value, _FALLBACK_CONTEXT);");
         } else {
             out.beginBlock("if (value == null)");
             out.line("g.writeNull();");
@@ -172,7 +179,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
         out.line(STREAMING_IO + ".writeNode(generator, " + expression
-                + ", this.context);");
+                + ", _FALLBACK_CONTEXT);");
     }
 
     /**
@@ -192,7 +199,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 return;
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
-                        + expression + ", this.context);");
+                        + expression + ", _FALLBACK_CONTEXT);");
                 return;
             case STRING:
                 out.line("_writeString(" + nativeGenerator + ", " + expression + ");");
