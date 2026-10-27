@@ -79,7 +79,7 @@ class GsonBinderTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
 
@@ -140,7 +140,7 @@ class GsonBinderTest {
                 assertEquals("héllo", parser.readString());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -149,7 +149,7 @@ class GsonBinderTest {
                 assertEquals("héllo", parser.readString());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -158,7 +158,7 @@ class GsonBinderTest {
                 assertEquals("héllo", parser.readString());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -167,7 +167,7 @@ class GsonBinderTest {
                 assertEquals("héllo", parser.readString());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -175,7 +175,7 @@ class GsonBinderTest {
             try {
                 assertEquals("héllo", parser.readString());
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -187,7 +187,7 @@ class GsonBinderTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("\"héllo\"", text.toString());
@@ -200,7 +200,7 @@ class GsonBinderTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
@@ -212,7 +212,7 @@ class GsonBinderTest {
                 generator.writeStringValue("héllo");
                 generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("\"héllo\"", nativeOutput.toString());

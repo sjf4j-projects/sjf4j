@@ -34,7 +34,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{\"items\":[1,2],\"node\":{\"values\":[\"a\",\"b\"]}}", output.toString());
@@ -55,7 +55,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("\"UTF-8\"", output.toString());
@@ -83,7 +83,7 @@ class StreamingIOWriteTest {
                     generator.end();
 
                 } finally {
-                    generator.release();
+                    generator.close();
                 }
             }
             assertEquals(json[i], output.toString());
@@ -108,7 +108,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{\"students\":[{\"subject\":\"mathematics\",\"name\":\"Ada\"},"
@@ -131,7 +131,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("[\"a\",2]", randomAccessOutput.toString());
@@ -144,7 +144,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("[\"a\",2]", linkedOutput.toString());
@@ -157,7 +157,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("[\"a\",2]", setOutput.toString());
@@ -173,7 +173,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{\"included\":1}", mapOutput.toString());
@@ -186,7 +186,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{\"included\":1,\"omitted\":null}", includeNullsOutput.toString());
@@ -206,7 +206,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{\"name\":\"Ada\",\"nested\":[3,true,{\"value\":2.5}]}",
@@ -223,7 +223,7 @@ class StreamingIOWriteTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{\"value\":null,\"list\":[null,1]}", outputWithNull.toString());
@@ -236,7 +236,7 @@ class StreamingIOWriteTest {
                         () -> generator.writeRaw(new UnsupportedNode(), RuntimeContext.EMPTY));
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
     }
@@ -252,7 +252,7 @@ class StreamingIOWriteTest {
     //                    () -> StreamingIO.writeNode(generator, new UnsupportedNode(), RuntimeContext.EMPTY));
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals("{}", sw.toString());
@@ -341,6 +341,6 @@ class StreamingIOWriteTest {
         @Override
         public void end() {}
         @Override
-        public void release() {}
+        public void close() {}
     }
 }

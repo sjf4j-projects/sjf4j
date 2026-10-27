@@ -44,7 +44,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -68,7 +68,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -95,7 +95,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -116,7 +116,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -137,7 +137,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -160,7 +160,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -180,7 +180,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -201,7 +201,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -215,7 +215,7 @@ class SnakeParserTest {
                 assertThrows(IOException.class, parser::peekToken);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -225,7 +225,7 @@ class SnakeParserTest {
                 assertThrows(IOException.class, parser::nextName);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -234,7 +234,7 @@ class SnakeParserTest {
                 assertThrows(IOException.class, parser::peekToken);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -244,7 +244,7 @@ class SnakeParserTest {
                 assertThrows(IOException.class, parser::end);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         {
@@ -255,7 +255,7 @@ class SnakeParserTest {
                 assertThrows(IOException.class, parser::peekToken);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -296,7 +296,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -326,7 +326,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -341,7 +341,7 @@ class SnakeParserTest {
                 assertThrows(IOException.class, parser::skipNode);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -365,7 +365,7 @@ class SnakeParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         for (String yaml : new String[]{"010", "0_10", "!!int 010"}) {
@@ -375,7 +375,7 @@ class SnakeParserTest {
                     assertThrows(IOException.class, parser::readNumber);
 
                 } finally {
-                    parser.release();
+                    parser.close();
                 }
             }
         }
@@ -388,7 +388,7 @@ class SnakeParserTest {
                 assertThrows(IOException.class, parser::peekToken);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }

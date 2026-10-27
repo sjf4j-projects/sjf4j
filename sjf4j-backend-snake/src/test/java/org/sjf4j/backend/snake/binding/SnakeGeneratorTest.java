@@ -47,7 +47,7 @@ class SnakeGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
 
@@ -94,7 +94,7 @@ class SnakeGeneratorTest {
                 generator.end();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
 
@@ -123,7 +123,7 @@ class SnakeGeneratorTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -141,7 +141,7 @@ class SnakeGeneratorTest {
                 assertThrows(java.io.IOException.class, () -> generator.writeNumberValue(Float.POSITIVE_INFINITY));
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
     }
@@ -186,7 +186,7 @@ class SnakeGeneratorTest {
                 assertTrue(flushesAfterDocument > 0);
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
 

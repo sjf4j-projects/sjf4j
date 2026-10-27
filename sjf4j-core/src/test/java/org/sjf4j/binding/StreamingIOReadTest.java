@@ -32,7 +32,7 @@ class StreamingIOReadTest {
                 Map<?, ?> value = (Map<?, ?>) StreamingIO.readNode(parser, Object.class, RuntimeContext.EMPTY);
                 assertEquals(List.of(1, true), value.get("items"));
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -49,7 +49,7 @@ class StreamingIOReadTest {
                 assertEquals(List.of(1, 2), assertInstanceOf(List.class, value.get("first")));
                 assertEquals(List.of(), assertInstanceOf(List.class, value.get("second")));
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -63,7 +63,7 @@ class StreamingIOReadTest {
                 assertEquals(2, value.length);
                 assertEquals(4, value[1]);
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -77,8 +77,8 @@ class StreamingIOReadTest {
                 assertEquals(SampleEnum.SECOND, StreamingIO.readNode(number, SampleEnum.class, RuntimeContext.EMPTY));
                 assertEquals(Charset.forName("UTF-8"), StreamingIO.readNode(charset, Charset.class, RuntimeContext.EMPTY));
             } finally {
-                charset.release();
-                number.release();
+                charset.close();
+                number.close();
             }
         }
     }
@@ -92,8 +92,8 @@ class StreamingIOReadTest {
                 StreamingIO.writeNode(generator, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
                 assertEquals(StandardCharsets.UTF_8, StreamingIO.readNode(parser, Charset.class, RuntimeContext.EMPTY));
             } finally {
-                parser.release();
-                generator.release();
+                parser.close();
+                generator.close();
             }
         }
     }
@@ -113,11 +113,11 @@ class StreamingIOReadTest {
                 assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractRoot, AbstractValue.class, RuntimeContext.EMPTY));
                 assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractField, AbstractHolder.class, RuntimeContext.EMPTY));
             } finally {
-                abstractField.release();
-                abstractRoot.release();
-                quoted.release();
-                outOfRange.release();
-                negative.release();
+                abstractField.close();
+                abstractRoot.close();
+                quoted.close();
+                outOfRange.close();
+                negative.close();
             }
         }
     }
@@ -133,7 +133,7 @@ class StreamingIOReadTest {
             try {
                 assertThrows(BindingException.class, () -> StreamingIO.readNode(parser, CodecChild.class, RuntimeContext.EMPTY));
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -148,7 +148,7 @@ class StreamingIOReadTest {
                         parser, NameHolder.class, NameHolder.class, null, RuntimeContext.EMPTY);
                 assertEquals("Ada", value.name);
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -160,7 +160,7 @@ class StreamingIOReadTest {
                         parser, Map.class, Map.class, TypeInfo.NONE, RuntimeContext.EMPTY);
                 assertEquals(1, result.get("a"));
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -173,7 +173,7 @@ class StreamingIOReadTest {
                         parser, NameHolder.class, NameHolder.class, info, RuntimeContext.EMPTY);
                 assertEquals("Bob", value.name);
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -184,7 +184,7 @@ class StreamingIOReadTest {
                 assertThrows(BindingException.class, () -> StreamingIO.readNode(
                         parser, NameHolder.class, NameHolder.class, TypeInfo.NONE, RuntimeContext.EMPTY));
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
