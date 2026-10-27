@@ -252,6 +252,16 @@ graph BT
 - An **array node** has ordered elements, such as `List`, `JsonArray`, or a Java array.
 - A **value node** is a non-container value, such as a string, number, boolean, or `null`.
 
+`JsonObject(Map)` and `JsonArray(List)` make **shallow copies** of the outer container,
+so later structural mutations do not affect the source (or vice versa); nested values
+remain shared. Both constructors reject `null`. Map keys are not revalidated during
+copying for performance, so callers must provide non-null String keys.
+
+These nodes remain mutable and Map/List-like: `JsonObject.keySet()` and
+`entrySet()` expose backed views of dynamic members, while `JsonArray.iterator()`
+allows element removal. By contrast, `toMap()` and `toList()` return independent
+shallow snapshots.
+
 ---
 
 A regular POJO provides a typed, closed object model,
