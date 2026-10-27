@@ -57,8 +57,8 @@ final class BindingCompiler {
     private final TypeMirror linkedHashSetType;
     private final TypeMirror linkedHashMapType;
 
-    private final Map<String, BindingValue> cache = new LinkedHashMap<String, BindingValue>();
-    private final List<BindingValue> helpers = new ArrayList<BindingValue>();
+    private final Map<String, BindingValue> cache = new LinkedHashMap<>();
+    private final List<BindingValue> helpers = new ArrayList<>();
 
     BindingCompiler(ProcessorContext context, NameAllocator names,
                     CompiledMetadata metadata, Backend backend) {
@@ -106,9 +106,7 @@ final class BindingCompiler {
                 + ':' + codecName + ':' + codecPattern;
         BindingValue existing = cache.get(key);
 
-        if (existing != null) {
-            return existing;
-        }
+        if (existing != null) return existing;
 
         boolean explicitCodec = codecName != null || codecPattern != null;
         if (explicitCodec && !context.types.isNodeValue(type)
@@ -122,9 +120,7 @@ final class BindingCompiler {
                 ? BindingValue.Kind.VALUE_CODEC
                 : resolveKind(direction, type, method, generated);
 
-        if (kind == null) {
-            return null;
-        }
+        if (kind == null) return null;
 
         // A discovered codec declaration makes named formats statically
         // checkable. Runtime-only registrations remain dynamically resolved.
@@ -172,9 +168,7 @@ final class BindingCompiler {
                         options == null || options.writeDynamic());
                 // JOJO declared members use the existing POJO property compiler.
             case POJO:
-                if (!compilePojo(value, method, generated)) {
-                    return null;
-                }
+                if (!compilePojo(value, method, generated)) return null;
                 break;
 
             case ONE_OF:
@@ -196,15 +190,11 @@ final class BindingCompiler {
 
             case LIST:
             case SET:
-                if (!compileElement(value, method, generated)) {
-                    return null;
-                }
+                if (!compileElement(value, method, generated)) return null;
                 break;
 
             case MAP:
-                if (!compileMap(value, method, generated)) {
-                    return null;
-                }
+                if (!compileMap(value, method, generated)) return null;
                 break;
 
             default:
@@ -254,42 +244,18 @@ final class BindingCompiler {
 
         String erased = context.typeUtils.erasure(type).toString();
 
-        if ("java.lang.String".equals(erased)) {
-            return BindingValue.Kind.STRING;
-        }
-        if ("java.lang.Character".equals(erased)) {
-            return BindingValue.Kind.CHARACTER;
-        }
-        if ("java.lang.Boolean".equals(erased)) {
-            return BindingValue.Kind.BOOLEAN;
-        }
-        if ("java.lang.Byte".equals(erased)) {
-            return BindingValue.Kind.BYTE;
-        }
-        if ("java.lang.Short".equals(erased)) {
-            return BindingValue.Kind.SHORT;
-        }
-        if ("java.lang.Integer".equals(erased)) {
-            return BindingValue.Kind.INT;
-        }
-        if ("java.lang.Long".equals(erased)) {
-            return BindingValue.Kind.LONG;
-        }
-        if ("java.lang.Float".equals(erased)) {
-            return BindingValue.Kind.FLOAT;
-        }
-        if ("java.lang.Double".equals(erased)) {
-            return BindingValue.Kind.DOUBLE;
-        }
-        if ("java.lang.Number".equals(erased)) {
-            return BindingValue.Kind.NUMBER;
-        }
-        if ("java.math.BigInteger".equals(erased)) {
-            return BindingValue.Kind.BIG_INTEGER;
-        }
-        if ("java.math.BigDecimal".equals(erased)) {
-            return BindingValue.Kind.BIG_DECIMAL;
-        }
+        if ("java.lang.String".equals(erased)) return BindingValue.Kind.STRING;
+        if ("java.lang.Character".equals(erased)) return BindingValue.Kind.CHARACTER;
+        if ("java.lang.Boolean".equals(erased)) return BindingValue.Kind.BOOLEAN;
+        if ("java.lang.Byte".equals(erased)) return BindingValue.Kind.BYTE;
+        if ("java.lang.Short".equals(erased)) return BindingValue.Kind.SHORT;
+        if ("java.lang.Integer".equals(erased)) return BindingValue.Kind.INT;
+        if ("java.lang.Long".equals(erased)) return BindingValue.Kind.LONG;
+        if ("java.lang.Float".equals(erased)) return BindingValue.Kind.FLOAT;
+        if ("java.lang.Double".equals(erased)) return BindingValue.Kind.DOUBLE;
+        if ("java.lang.Number".equals(erased)) return BindingValue.Kind.NUMBER;
+        if ("java.math.BigInteger".equals(erased)) return BindingValue.Kind.BIG_INTEGER;
+        if ("java.math.BigDecimal".equals(erased)) return BindingValue.Kind.BIG_DECIMAL;
 
         TypeElement element = context.types.typeElement(type);
 
@@ -307,9 +273,7 @@ final class BindingCompiler {
             return BindingValue.Kind.VALUE_CODEC;
         }
 
-        if (context.annotations.hasOneOf(type)) {
-            return BindingValue.Kind.ONE_OF;
-        }
+        if (context.annotations.hasOneOf(type)) return BindingValue.Kind.ONE_OF;
 
         // PARENT discriminators require the containing POJO's field order and
         // deferred state. Delegate only this POJO subtree, not its ancestors.
@@ -341,9 +305,7 @@ final class BindingCompiler {
                         ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
 
             case ARRAY_LIST:
-                if (directList(direction, type)) {
-                    return BindingValue.Kind.LIST;
-                }
+                if (directList(direction, type)) return BindingValue.Kind.LIST;
                 return unsupported(
                         method,
                         generated,
@@ -351,9 +313,7 @@ final class BindingCompiler {
                         "List type cannot be bound directly with the declared generic/write constraints");
 
             case ARRAY_SET:
-                if (directSet(direction, type)) {
-                    return BindingValue.Kind.SET;
-                }
+                if (directSet(direction, type)) return BindingValue.Kind.SET;
                 return unsupported(
                         method,
                         generated,
@@ -361,9 +321,7 @@ final class BindingCompiler {
                         "Set type cannot be bound directly with the declared generic/write constraints");
 
             case OBJECT_MAP:
-                if (directMap(direction, type)) {
-                    return BindingValue.Kind.MAP;
-                }
+                if (directMap(direction, type)) return BindingValue.Kind.MAP;
                 return unsupported(
                         method,
                         generated,
@@ -531,9 +489,7 @@ final class BindingCompiler {
     }
 
     private boolean simpleOneOfReadValue(TypeMirror type) {
-        if (type.getKind().isPrimitive()) {
-            return type.getKind() != TypeKind.CHAR;
-        }
+        if (type.getKind().isPrimitive()) return type.getKind() != TypeKind.CHAR;
         TypeElement element = context.types.typeElement(type);
         if (element != null && element.getKind() == ElementKind.ENUM) return false;
         String name = context.typeUtils.erasure(type).toString();
@@ -602,7 +558,7 @@ final class BindingCompiler {
      * it cannot safely be converted into an optional OneOf branch fallback.
      */
     private boolean canCompileOneOfSubtype(TypeMirror subtype) {
-        return canCompileOneOfWriteGraph(subtype, new HashSet<String>(), true);
+        return canCompileOneOfWriteGraph(subtype, new HashSet<>(), true);
     }
 
     private boolean canCompileOneOfWriteGraph(TypeMirror type, Set<String> visited,
@@ -684,13 +640,11 @@ final class BindingCompiler {
                 && (options.propertyStrategy() != PropertyStrategy.BEAN_FIELD
                 || options.naming() != NamingStrategy.IDENTITY)) return false;
 
-        Set<String> constantNames = new HashSet<String>();
+        Set<String> constantNames = new HashSet<>();
         Map<String, Property> publicProperties = context.properties.resolve(type.asType());
         for (TypeElement current = type; current != null; ) {
             for (Element member : current.getEnclosedElements()) {
-                if (member.getKind() != ElementKind.FIELD && member.getKind() != ElementKind.METHOD) {
-                    continue;
-                }
+                if (member.getKind() != ElementKind.FIELD && member.getKind() != ElementKind.METHOD) continue;
                 if (member.getModifiers().contains(Modifier.STATIC)) continue;
                 if (member.getAnnotation(NodeIgnore.class) != null) return false;
                 if (member.getKind() == ElementKind.FIELD
@@ -751,7 +705,7 @@ final class BindingCompiler {
         TypeElement type = context.types.typeElement(subtype);
         if (type == null) return;
 
-        List<BindingProperty> constants = new ArrayList<BindingProperty>();
+        List<BindingProperty> constants = new ArrayList<>();
         for (TypeElement current = type; current != null; ) {
             for (Element member : current.getEnclosedElements()) {
                 if (member.getKind() != ElementKind.FIELD
@@ -829,8 +783,8 @@ final class BindingCompiler {
         Map<String, Property> properties = context.properties.resolve(value.type());
         List<BindingProperty> compiled = new ArrayList<BindingProperty>(properties.size());
 
-        Map<String, String> claimedNames = new LinkedHashMap<String, String>();
-        List<String> ignored = new ArrayList<String>();
+        Map<String, String> claimedNames = new LinkedHashMap<>();
+        List<String> ignored = new ArrayList<>();
 
         for (Property property : properties.values()) {
             PropertyAccess access = value.direction() == BindingPlan.Direction.READ_FROM
@@ -898,9 +852,7 @@ final class BindingCompiler {
                             selectedCodecName(readAnnotation, writeAnnotation),
                             selectedCodecPattern(readAnnotation, writeAnnotation));
 
-            if (propertyValue == null) {
-                return false;
-            }
+            if (propertyValue == null) return false;
 
             compiled.add(new BindingProperty(property.name(), aliases, access, propertyValue));
         }
@@ -920,9 +872,7 @@ final class BindingCompiler {
         CreatorPlan creator = creators.resolveBinding(value.type(), method,
                 message -> error(method, generated, message));
         if (creator == null) return false;
-        if (creator.kind() == CreatorPlan.Kind.STATIC_FACTORY) {
-            return compileCreatorPojo(value, creator, method, generated);
-        }
+        if (creator.kind() == CreatorPlan.Kind.STATIC_FACTORY) return compileCreatorPojo(value, creator, method, generated);
         if (creator.kind() != CreatorPlan.Kind.CONSTRUCTOR) {
             error(method, generated, "Record requires a constructor or @NodeCreator factory: " + value.type());
             return false;
@@ -1173,9 +1123,7 @@ final class BindingCompiler {
 
         BindingValue elementValue = compileValue(value.direction(), elementType, method, generated);
 
-        if (elementValue == null) {
-            return false;
-        }
+        if (elementValue == null) return false;
 
         value.elementValue(elementValue);
         return true;
@@ -1188,9 +1136,7 @@ final class BindingCompiler {
                 : context.types.mapReadValueType(value.type());
         BindingValue mapValue = compileValue(value.direction(), mapValueType, method, generated);
 
-        if (mapValue == null) {
-            return false;
-        }
+        if (mapValue == null) return false;
 
         value.mapValue(mapValue);
         return true;
@@ -1256,9 +1202,7 @@ final class BindingCompiler {
     private TypeMirror requiredType(String name) {
         TypeElement element = context.elements.getTypeElement(name);
 
-        if (element == null) {
-            throw new IllegalStateException("Required type is not available: " + name);
-        }
+        if (element == null) throw new IllegalStateException("Required type is not available: " + name);
 
         return element.asType();
     }
