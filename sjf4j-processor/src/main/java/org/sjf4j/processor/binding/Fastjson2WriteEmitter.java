@@ -21,6 +21,11 @@ final class Fastjson2WriteEmitter {
     }
 
     private final Set<FastjsonMode> fastjsonModes = EnumSet.noneOf(FastjsonMode.class);
+    private final WriteEmitter writes;
+
+    Fastjson2WriteEmitter(WriteEmitter writes) {
+        this.writes = writes;
+    }
     void registerWriteOutput(BindingPlan.WriteOutput output) {
         switch (output) {
             case STRING:
@@ -336,7 +341,13 @@ final class Fastjson2WriteEmitter {
                 out.line(raw + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line(raw + ".writeString(" + item + ".name());");
+                String field = writes.enumField(value) + mode.suffix;
+                if (mode == FastjsonMode.UTF8) {
+                    out.line(raw + ".writeRaw(" + field + "[" + item + ".ordinal()]);");
+                } else {
+                    out.line("char[] encoded = " + field + "[" + item + ".ordinal()];");
+                    out.line(raw + ".writeRaw(encoded, 0, encoded.length);");
+                }
                 out.endBlock();
                 out.endBlock();
                 return;

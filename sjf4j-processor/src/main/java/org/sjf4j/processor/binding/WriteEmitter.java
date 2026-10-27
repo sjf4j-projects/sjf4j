@@ -22,7 +22,7 @@ final class WriteEmitter {
     private final OtherNativeWriteEmitter other;
     private final StreamingWriteEmitter streaming;
 
-    /** One ordinal-indexed, pre-serialized table per Enum type in a generated Jackson binder. */
+    /** One ordinal-indexed, pre-serialized table per Enum type in a native generated binder. */
     private final Map<String, String> enumFields = new LinkedHashMap<String, String>();
 
     WriteEmitter(BackendSpec backend) {
@@ -30,7 +30,7 @@ final class WriteEmitter {
         this.streaming = new StreamingWriteEmitter(backend);
         switch (backend.backend()) {
             case FASTJSON2:
-                fastjson2 = new Fastjson2WriteEmitter();
+                fastjson2 = new Fastjson2WriteEmitter(this);
                 jackson = null;
                 other = null;
                 break;
@@ -55,7 +55,7 @@ final class WriteEmitter {
 
     /** Register all statically typed Enum leaves before the generated class is written. */
     void registerEnums(BindingValue value) {
-        if (jackson == null) return;
+        if (jackson == null && fastjson2 == null) return;
         Set<BindingValue> seen = Collections.newSetFromMap(
                 new IdentityHashMap<BindingValue, Boolean>());
         registerEnums(value, seen);
@@ -93,6 +93,10 @@ final class WriteEmitter {
     }
 
     void emitEnumFields(JavaWriter out) {
+        if (fastjson2 != null) {
+            emitFastjson2EnumFields(out);
+            return;
+        }
         String encoded = backend.backend() == Backend.JACKSON2
                 ? "com.fasterxml.jackson.core.io.SerializedString"
                 : "tools.jackson.core.io.SerializedString";
@@ -109,6 +113,33 @@ final class WriteEmitter {
             out.endBlock();
             out.line("return result;");
             out.endBlock();
+        }
+    }
+
+    /** Quoted JSON literals are initialized once; native Raw methods only copy bytes/chars. */
+    private void emitFastjson2EnumFields(JavaWriter out) {
+        for (Map.Entry<String, String> entry : enumFields.entrySet()) {
+            String type = entry.getKey();
+            String field = entry.getValue();
+            for (boolean utf8 : new boolean[]{true, false}) {
+                String suffix = utf8 ? "Utf8" : "Utf16";
+                String elementType = utf8 ? "byte" : "char";
+                String method = field + suffix + "Init";
+                out.line("private static final " + elementType + "[][] " + field
+                        + suffix + " = " + method + "();");
+                out.beginBlock("private static " + elementType + "[][] " + method + "()");
+                out.line(type + "[] constants = " + type + ".values();");
+                out.line(elementType + "[][] result = new " + elementType
+                        + "[constants.length][];");
+                out.beginBlock("for (" + type + " constant : constants)");
+                out.line("String quoted = com.alibaba.fastjson2.JSON.toJSONString(constant.name());");
+                out.line("result[constant.ordinal()] = " + (utf8
+                        ? "quoted.getBytes(java.nio.charset.StandardCharsets.UTF_8);"
+                        : "quoted.toCharArray();"));
+                out.endBlock();
+                out.line("return result;");
+                out.endBlock();
+            }
         }
     }
 
