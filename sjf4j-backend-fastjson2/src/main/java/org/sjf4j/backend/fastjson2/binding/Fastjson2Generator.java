@@ -294,7 +294,7 @@ public final class Fastjson2Generator extends StreamingGenerator {
     }
 
     @Override
-    public void end() throws IOException {
+    public void flush() throws IOException {
         if (charOutput != null) {
             writer.flushTo(charOutput);
         } else if (byteOutput != null) {
@@ -319,7 +319,11 @@ public final class Fastjson2Generator extends StreamingGenerator {
     }
 
     @Override
-    public void release() throws IOException {
-        writer.close();
+    public void close() throws IOException {
+        try {
+            flush();
+        } finally {
+            writer.close();
+        }
     }
 }

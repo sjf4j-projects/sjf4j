@@ -260,7 +260,7 @@ public final class JsonpParser extends StreamingParser {
     }
 
     @Override
-    public void release() {
+    public void close() {
         parser.close();
     }
 

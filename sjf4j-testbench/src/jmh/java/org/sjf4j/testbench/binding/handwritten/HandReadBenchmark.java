@@ -158,7 +158,7 @@ public class HandReadBenchmark {
 try {
             return Jackson2HandPojoReaderV1.readUser(parser);
         
-} finally { parser.release(); }
+} finally { parser.close(); }
 }
     }
 
@@ -172,7 +172,7 @@ try {
             parser.end();
             return result;
         
-} finally { parser.release(); }
+} finally { parser.close(); }
 }
     }
 

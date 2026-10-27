@@ -5,6 +5,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.FastUuid;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -52,7 +53,7 @@ import java.time.ZonedDateTime;
  * remains pending until consumed by a {@code readXxx()} method,
  * {@link #skipNode()}, or another value-consuming operation.</p>
  */
-public abstract class StreamingParser {
+public abstract class StreamingParser implements Closeable {
 
     final Backend backend;
 
@@ -569,7 +570,8 @@ public abstract class StreamingParser {
      */
     public abstract Object readRaw() throws IOException;
 
-    /** Releases backend resources without closing caller-owned input. */
-    public void release() throws IOException {
+    /** Closes the backend parser without closing caller-owned input. */
+    @Override
+    public void close() throws IOException {
     }
 }

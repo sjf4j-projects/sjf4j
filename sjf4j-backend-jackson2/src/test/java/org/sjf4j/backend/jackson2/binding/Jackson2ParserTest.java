@@ -54,7 +54,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -78,7 +78,7 @@ class Jackson2ParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -100,7 +100,7 @@ class Jackson2ParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -129,7 +129,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -147,7 +147,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -173,7 +173,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -199,7 +199,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -223,7 +223,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -251,7 +251,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -264,7 +264,7 @@ class Jackson2ParserTest {
                 assertThrows(IOException.class, parser::readRaw);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -286,7 +286,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -300,7 +300,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
 
@@ -313,7 +313,7 @@ class Jackson2ParserTest {
                 parser.readArrayEnd();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -329,7 +329,7 @@ class Jackson2ParserTest {
                 parser.end();
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }

@@ -36,9 +36,10 @@ class Jackson3GeneratorTest {
         generator.writeBigDecimal(null);
         generator.writeArrayEnd();
         generator.end();
+        generator.flush();
 
         assertEquals("[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null,null,null]", output.toString());
-        generator.release();
+        generator.close();
     }
 
     @Test
@@ -60,7 +61,7 @@ class Jackson3GeneratorTest {
         generator.writeName(new Jackson3CompiledName("nullValue"));
         generator.writeNull();
         generator.writeObjectEnd();
-        generator.release();
+        generator.close();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42,\"decimal\":1.20,\"nullable\":null,\"nullValue\":null}", output.toString());
     }

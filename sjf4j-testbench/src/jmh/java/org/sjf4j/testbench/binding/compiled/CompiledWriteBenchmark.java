@@ -486,7 +486,7 @@ public class CompiledWriteBenchmark {
             }
             return output.toByteArray();
         } finally {
-            output.release();
+            output.close();
             recycler.releaseToPool();
         }
     }
@@ -503,7 +503,7 @@ public class CompiledWriteBenchmark {
             Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
             return output.toString();
@@ -522,7 +522,7 @@ public class CompiledWriteBenchmark {
             Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
             return output.toByteArray();
@@ -643,7 +643,7 @@ public class CompiledWriteBenchmark {
             }
             return output.toByteArray();
         } finally {
-            output.release();
+            output.close();
             recycler.releaseToPool();
         }
     }
@@ -658,7 +658,7 @@ public class CompiledWriteBenchmark {
             Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
             return output.toString();
@@ -677,7 +677,7 @@ public class CompiledWriteBenchmark {
             Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
-                generator.release();
+                generator.close();
             }
         }
             return output.toByteArray();

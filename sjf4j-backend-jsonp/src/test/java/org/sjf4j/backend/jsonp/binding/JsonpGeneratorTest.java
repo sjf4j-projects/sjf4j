@@ -37,10 +37,11 @@ class JsonpGeneratorTest {
         generator.writeArrayEnd();
         generator.writeObjectEnd();
         generator.end();
+        generator.flush();
 
         assertEquals("{\"values\":[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null]}",
                 output.toString());
-        generator.release();
+        generator.close();
     }
 
     @Test
@@ -54,7 +55,7 @@ class JsonpGeneratorTest {
         generator.writeName(new CompiledName("number"));
         generator.writeIntValue(42);
         generator.writeObjectEnd();
-        generator.release();
+        generator.close();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42}", output.toString());
     }

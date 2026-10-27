@@ -341,7 +341,7 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     @Override
-    public void release() {
+    public void close() {
         reader.close();
     }
 

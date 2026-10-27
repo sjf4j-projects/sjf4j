@@ -56,7 +56,7 @@ class Jackson2BinderTest {
                     generator.end();
 
                 } finally {
-                    generator.release();
+                    generator.close();
                 }
             }
             detached = chars.getAndRecycle();
@@ -75,7 +75,7 @@ class Jackson2BinderTest {
                     generator.end();
 
                 } finally {
-                    generator.release();
+                    generator.close();
                 }
             }
             detachedUtf8 = bytes.getAndRecycle();
@@ -207,13 +207,13 @@ class Jackson2BinderTest {
                 assertInstanceOf(Jackson2Parser.class, parser);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         Jackson2Generator generator = binder.createGenerator(output);
         assertInstanceOf(Jackson2Generator.class, generator);
         generator.writeNull();
-        generator.release();
+        generator.close();
         assertEquals("null", output.toString());
     }
 
@@ -247,7 +247,7 @@ class Jackson2BinderTest {
                 assertTrue(parser.nextIfNull());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         assertEquals("string", factory.parserSource);
@@ -259,7 +259,7 @@ class Jackson2BinderTest {
                 generator.writeStringValue("héllo");
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertEquals(JsonEncoding.UTF8, factory.generatorEncoding);
@@ -282,7 +282,7 @@ class Jackson2BinderTest {
                 assertThrows(Exception.class, parser::nextIfNull);
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
     }
@@ -296,7 +296,7 @@ class Jackson2BinderTest {
                 assertTrue(parser.nextIfNull());
 
             } finally {
-                parser.release();
+                parser.close();
             }
         }
         assertTrue(nativeParser.isClosed());
@@ -309,7 +309,7 @@ class Jackson2BinderTest {
                 generator.writeNull();
 
             } finally {
-                generator.release();
+                generator.close();
             }
         }
         assertTrue(nativeGenerator.isClosed());

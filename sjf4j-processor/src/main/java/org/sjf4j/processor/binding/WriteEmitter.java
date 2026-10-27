@@ -185,13 +185,9 @@ final class WriteEmitter {
         out.line("org.sjf4j.binding.PooledStringWriter " + output
                 + " = new org.sjf4j.binding.PooledStringWriter();");
         out.beginBlock("try");
-        out.line(backend.generatorType() + " " + generator
-                + " = this.binder.createGenerator(" + output + ");");
-        out.beginBlock("try");
+        out.beginBlock("try (" + backend.generatorType() + " " + generator
+                + " = this.binder.createGenerator(" + output + "))");
         emitWriteBody(out, value, source, generator, names);
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
         out.endBlock();
         out.line("return " + output + ".toString();");
         out.endBlock();
@@ -215,13 +211,9 @@ final class WriteEmitter {
                 : "org.sjf4j.binding.PooledByteArrayOutputStream";
         out.line(sinkType + " " + output + " = new " + sinkType + "();");
         out.beginBlock("try");
-        out.line(backend.generatorType() + " " + generator
-                + " = this.binder.createGenerator(" + output + ");");
-        out.beginBlock("try");
+        out.beginBlock("try (" + backend.generatorType() + " " + generator
+                + " = this.binder.createGenerator(" + output + "))");
         emitWriteBody(out, value, source, generator, names);
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
         out.endBlock();
         if (chars) {
             out.line("return " + output
@@ -245,17 +237,9 @@ final class WriteEmitter {
         String generator =
                 names.newName("generator");
 
-        out.line(
-                backend.generatorType() +
-                        " " + generator +
-                        " = this.binder.createGenerator(" +
-                        output + ");");
-
-        out.beginBlock("try");
+        out.beginBlock("try (" + backend.generatorType() + " " + generator
+                + " = this.binder.createGenerator(" + output + "))");
         emitWriteBody(out, value, source, generator, names);
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
         out.endBlock();
     }
 
