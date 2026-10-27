@@ -84,23 +84,8 @@ final class WriteEmitter {
             fastjson2.emitEnumFields(out, enumFields);
             return;
         }
-        String encoded = backend.backend() == Backend.JACKSON2
-                ? "com.fasterxml.jackson.core.io.SerializedString"
-                : "tools.jackson.core.io.SerializedString";
-        for (Map.Entry<String, String> entry : enumFields.entrySet()) {
-            String type = entry.getKey();
-            String field = entry.getValue();
-            out.line("private static final " + encoded + "[] " + field
-                    + " = " + field + "Init();");
-            out.beginBlock("private static " + encoded + "[] " + field + "Init()");
-            out.line(type + "[] constants = " + type + ".values();");
-            out.line(encoded + "[] result = new " + encoded + "[constants.length];");
-            out.beginBlock("for (" + type + " constant : constants)");
-            out.line("result[constant.ordinal()] = new " + encoded + "(constant.name());");
-            out.endBlock();
-            out.line("return result;");
-            out.endBlock();
-        }
+        if (fastjson2 != null) fastjson2.emitEnumFields(out, enumFields);
+        else if (jackson != null) jackson.emitEnumFields(out, enumFields);
     }
 
     void registerWriteOutput(BindingPlan.WriteOutput output) {
