@@ -409,10 +409,10 @@ public final class SimpleJsonParser extends StreamingParser {
     }
 
     /**
-     * Closes underlying reader.
+     * Clears parser state without closing the caller-owned reader.
      */
     @Override
-    public void release() throws IOException {
+    public void close() throws IOException {
         inputClosed = true;
         inputPos = 0;
         inputLimit = 0;

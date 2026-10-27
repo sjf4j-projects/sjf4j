@@ -498,7 +498,7 @@ public final class SnakeParser extends StreamingParser {
     }
 
     @Override
-    public void release() {
+    public void close() {
         // The caller owns the Reader supplied to SnakeYAML.
     }
 

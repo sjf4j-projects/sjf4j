@@ -541,7 +541,7 @@ public final class Jackson3Parser extends StreamingParser {
      * -------------------------------------------------------------- */
 
     @Override
-    public void release() throws IOException {
+    public void close() throws IOException {
         parser.close();
     }
 

@@ -73,14 +73,11 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            StreamingParser parser = createParser(input);
-            try {
+            try (StreamingParser parser = createParser(input);) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
                 parser.end();
                 return node;
-            } finally {
-                parser.release();
             }
         } catch (BindingException e) {
             throw e;
@@ -96,14 +93,11 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            StreamingParser parser = createParser(input);
-            try {
+            try (StreamingParser parser = createParser(input);) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
                 parser.end();
                 return node;
-            } finally {
-                parser.release();
             }
         } catch (BindingException e) {
             throw e;
@@ -119,14 +113,11 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            StreamingParser parser = createParser(input);
-            try {
+            try (StreamingParser parser = createParser(input);) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
                 parser.end();
                 return node;
-            } finally {
-                parser.release();
             }
         } catch (BindingException e) {
             throw e;
@@ -142,14 +133,11 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         Asserts.notNull(type, "type");
         Asserts.notNull(input, "input");
         try {
-            StreamingParser parser = createParser(input);
-            try {
+            try (StreamingParser parser = createParser(input);) {
                 parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
                 parser.end();
                 return node;
-            } finally {
-                parser.release();
             }
         } catch (BindingException e) {
             throw e;
@@ -182,13 +170,10 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
     public void writeNode(Writer output, Object node) {
         Asserts.notNull(output, "output");
         try {
-            StreamingGenerator generator = createGenerator(output);
-            try {
+            try (StreamingGenerator generator = createGenerator(output);) {
                 generator.start();
                 StreamingIO.writeNode(generator, node, context);
                 generator.end();
-            } finally {
-                generator.release();
             }
         } catch (BindingException e) {
             throw e;
@@ -203,13 +188,10 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
     public void writeNode(OutputStream output, Object node) {
         Asserts.notNull(output, "output");
         try {
-            StreamingGenerator generator = createGenerator(output);
-            try {
+            try (StreamingGenerator generator = createGenerator(output);) {
                 generator.start();
                 StreamingIO.writeNode(generator, node, context);
                 generator.end();
-            } finally {
-                generator.release();
             }
         } catch (BindingException e) {
             throw e;
@@ -224,13 +206,10 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
     public String writeNodeAsString(Object node) {
         PooledStringWriter output = new PooledStringWriter();
         try {
-            W generator = createGenerator(output);
-            try {
+            try (W generator = createGenerator(output);) {
                 generator.start();
                 StreamingIO.writeNode(generator, node, context);
                 generator.end();
-            } finally {
-                generator.release();
             }
             return output.toString();
         } catch (BindingException e) {
@@ -248,13 +227,10 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
     public byte[] writeNodeAsBytes(Object node) {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
         try {
-            W generator = createGenerator(output);
-            try {
+            try (W generator = createGenerator(output);) {
                 generator.start();
                 StreamingIO.writeNode(generator, node, context);
                 generator.end();
-            } finally {
-                generator.release();
             }
             return output.toByteArray();
         } catch (BindingException e) {
