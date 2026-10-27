@@ -36,6 +36,9 @@ public final class GeneratedClass {
     private final List<Member> contextInitializers = new ArrayList<>();
 
     private boolean runtimeContextConstructor;
+    private boolean staticBinderClass;
+    private Boolean staticBinderIncludeNulls;
+    private String backendBinderType;
 
     private boolean valid = true;
 
@@ -148,6 +151,25 @@ public final class GeneratedClass {
         runtimeContextConstructor = true;
     }
 
+    /**
+     * A CompiledBinder has a single instance dependency: its concrete Backend Binder.
+     * Compiled helpers and fallback settings are static; the legacy RuntimeContext
+     * constructor is kept only as a migration bridge without mutable context state.
+     */
+    public void enableStaticBinder() {
+        staticBinderClass = true;
+    }
+
+    /** Fixes the default null policy for a statically configured CompiledBinder. */
+    public void setStaticBinderIncludeNulls(boolean includeNulls) {
+        this.staticBinderIncludeNulls = includeNulls;
+    }
+
+    /** Enables direct injection of an already configured backend binder. */
+    public void enableBinderConstructor(String binderType) {
+        this.backendBinderType = binderType;
+    }
+
     /** Adds an assignment after the generated constructor's context field is set. */
     public void addContextInitializer(Member member) {
         contextInitializers.add(Asserts.notNull(member, "member"));
@@ -224,17 +246,50 @@ public final class GeneratedClass {
     private void writeMembers(JavaWriter out) {
         boolean written = false;
 
+        if (staticBinderClass) {
+            // This fallback is never consulted for statically compiled POJO/Codec
+            // members. Dynamic nodes still require an explicitly named Runtime
+            // bridge until their structural compilation is fully supported.
+            out.line("private static final org.sjf4j.RuntimeContext _FALLBACK_CONTEXT = "
+                    + (Boolean.FALSE.equals(staticBinderIncludeNulls)
+                    ? "new org.sjf4j.RuntimeContext(false);"
+                    : "org.sjf4j.RuntimeContext.EMPTY;"));
+            written = true;
+            if (!fields.isEmpty()) {
+                out.blank();
+                writeGroup(out, fields);
+            }
+            if (backendBinderType == null) {
+                throw new IllegalStateException("Static CompiledBinder needs a concrete backend Binder");
+            }
+            if (!contextInitializers.isEmpty()) {
+                throw new IllegalStateException("Static CompiledBinder cannot initialize runtime Codec fields");
+            }
+            out.blank();
+            out.beginBlock("public " + simpleName + "()");
+            out.line("this(new " + backendBinderType + "(_FALLBACK_CONTEXT));");
+            out.endBlock();
+            out.blank();
+            out.beginBlock("@Deprecated public " + simpleName
+                    + "(org.sjf4j.RuntimeContext ignored)");
+            out.line("this();");
+            out.line("java.util.Objects.requireNonNull(ignored, \"ignored\");");
+            out.endBlock();
+            out.blank();
+            out.beginBlock("public " + simpleName + "(" + backendBinderType
+                    + " backendBinder)");
+            out.line("this.binder = java.util.Objects.requireNonNull(backendBinder, \"backendBinder\");");
+            out.endBlock();
+        } else {
         if (runtimeContextConstructor) {
             out.line("private final org.sjf4j.RuntimeContext context;");
             written = true;
         }
-
         if (!fields.isEmpty()) {
             if (written) out.blank();
             writeGroup(out, fields);
             written = true;
         }
-
         if (runtimeContextConstructor) {
             if (written) out.blank();
             out.beginBlock("public " + simpleName + "()");
@@ -248,6 +303,7 @@ public final class GeneratedClass {
             }
             out.endBlock();
             written = true;
+        }
         }
 
         if (!methods.isEmpty()) {
