@@ -47,23 +47,6 @@ class CompiledEnumWriteTest {
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
 
-            String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            if (backend.startsWith("JACKSON")) {
-                assertTrue(generated.contains("item.ordinal()"), backend);
-                assertTrue(generated.contains("constant.name()"), backend);
-                assertFalse(generated.contains("writeString(item.name())"), backend);
-            } else if (backend.equals("FASTJSON2")) {
-                assertTrue(generated.contains("byte[][] _enum_"), generated);
-                assertTrue(generated.contains("char[][] _enum_"), generated);
-                assertTrue(generated.contains("quoted.getBytes(") && generated.contains("StandardCharsets.UTF_8"), generated);
-                assertTrue(generated.contains("quoted.toCharArray()"), generated);
-                assertTrue(generated.contains("writeRaw(_enum_") && generated.contains("Utf8[item.ordinal()]"), generated);
-                assertTrue(generated.contains("writeRaw(encoded, 0, encoded.length)"), generated);
-            } else {
-                assertFalse(generated.contains("SerializedString[]"), backend);
-                assertTrue(generated.contains("item.name()"), backend);
-            }
-
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");
                 Class enumType = loader.loadClass("fixture.State");

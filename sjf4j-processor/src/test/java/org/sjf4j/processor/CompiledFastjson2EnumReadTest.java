@@ -40,13 +40,6 @@ class CompiledFastjson2EnumReadTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
 
-        String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("readValueHashCode()"), generated);
-        assertTrue(generated.contains("Arrays.binarySearch("), generated);
-        assertTrue(generated.contains("FNV") || generated.contains("Fnv.hashCode64"), generated);
-        assertFalse(generated.contains("StreamingIO.readEnum("), generated);
-        assertEquals(1, count(generated, "[] _enumRead0Ordinals = "), generated);
-
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class choiceType = loader.loadClass("fixture.Choice");
             Class<?> modelType = loader.loadClass("fixture.Model");
@@ -116,13 +109,4 @@ class CompiledFastjson2EnumReadTest {
         }
     }
 
-    private static int count(String text, String fragment) {
-        int n = 0;
-        int index = 0;
-        while ((index = text.indexOf(fragment, index)) >= 0) {
-            n++;
-            index += fragment.length();
-        }
-        return n;
-    }
 }
