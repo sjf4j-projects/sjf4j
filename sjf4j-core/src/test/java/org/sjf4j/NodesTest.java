@@ -568,6 +568,25 @@ public class NodesTest {
     }
 
     @Test
+    void copyOfPlainJsonNodesSeparatesOuterStorageAndSharesNestedValues() {
+        Map<String, Object> child = new LinkedHashMap<>();
+        child.put("a", 1);
+        JsonObject object = JsonObject.of("child", child);
+        JsonObject copiedObject = Nodes.copy(object);
+        assertNotSame(object, copiedObject);
+        assertSame(child, copiedObject.getNode("child"));
+        object.put("new", 2);
+        assertFalse(copiedObject.containsKey("new"));
+
+        JsonArray array = JsonArray.of(child);
+        JsonArray copiedArray = Nodes.copy(array);
+        assertNotSame(array, copiedArray);
+        assertSame(child, copiedArray.getNode(0));
+        array.add(3);
+        assertEquals(1, copiedArray.size());
+    }
+
+    @Test
     public void testCopy1() {
         JsonObject jo1 = JsonObject.fromJson("{\"num\":\"6\",\"duck\":[\"haha\",\"haha\"],\"attr\":{\"aa\":88,\"cc\":\"dd\",\"ee\":{\"ff\":\"uu\"},\"kk\":[1,2]},\"yo\":77}");
         JsonObject jo2 = Nodes.copy(jo1);

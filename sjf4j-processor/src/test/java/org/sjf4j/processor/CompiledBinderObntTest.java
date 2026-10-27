@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.InternalAccess;
+import java.util.ArrayList;
 
 import java.net.URLClassLoader;
 import java.util.LinkedHashMap;
@@ -74,8 +76,12 @@ class CompiledBinderObntTest {
                 assertEquals("Ada", modelClass.getField("name").get(value), backend);
                 assertEquals(2, ((JsonArray) modelClass.getField("flags")
                         .get(value)).size(), backend);
+                assertInstanceOf(ArrayList.class, InternalAccess.dynamicElements(
+                        (JsonArray) modelClass.getField("flags").get(value)), backend);
                 assertEquals(1, ((JsonObject) modelClass.getField("payload")
                         .get(value)).size(), backend);
+                assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(
+                        (JsonObject) modelClass.getField("payload").get(value)), backend);
                 assertTrue(jojo.dynamicMembers().containsKey("unknown"), backend);
                 assertTrue(jojo.dynamicMembers().containsKey("note"), backend);
                 assertFalse(jojo.dynamicMembers().containsKey("readOnly"), backend);
@@ -106,6 +112,7 @@ class CompiledBinderObntTest {
 
                 org.sjf4j.JsonObject object = (JsonObject) impl
                         .getMethod("readObject", String.class).invoke(binder, "{\"x\":[1,2]}");
+                assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(object), backend);
                 String objectJson = (String) impl.getMethod("writeObject",
                         JsonObject.class).invoke(binder, object);
                 assertEquals(2, new ObjectMapper()
@@ -113,6 +120,7 @@ class CompiledBinderObntTest {
 
                 org.sjf4j.JsonArray array = (JsonArray) impl
                         .getMethod("readArray", String.class).invoke(binder, "[1,{\"x\":2}]");
+                assertInstanceOf(ArrayList.class, InternalAccess.dynamicElements(array), backend);
                 String arrayJson = (String) impl.getMethod("writeArray",
                         JsonArray.class).invoke(binder, array);
                 assertEquals(2, new ObjectMapper()

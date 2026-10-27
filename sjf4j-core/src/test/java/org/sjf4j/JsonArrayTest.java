@@ -50,8 +50,19 @@ class JsonArrayTest {
         assertSame(child, snapshot.get(0));
         child.put("value", 8);
         assertEquals(8, ((JsonObject) snapshot.get(0)).getInt("value"));
-        assertTrue(new JsonArray(null).isEmpty());
+        assertThrows(NullPointerException.class, () -> new JsonArray((List<?>) null));
         assertTrue(new JsonArray(new ArrayList<>()).isEmpty());
+    }
+
+    @Test
+    void iteratorMutatesArrayButToListRemainsASnapshot() {
+        JsonArray array = JsonArray.of("first", "second", "third");
+        List<Object> snapshot = array.toList();
+        java.util.Iterator<Object> it = array.iterator();
+        assertEquals("first", it.next());
+        it.remove();
+        assertEquals(List.of("second", "third"), array.toList());
+        assertEquals(List.of("first", "second", "third"), snapshot);
     }
 
     @Test
