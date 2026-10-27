@@ -242,7 +242,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
 
 
     /**
-     * Closes underlying writer.
+     * Flushes pending JSON output without closing the caller-owned writer.
      */
     @Override
     public void close() throws IOException {

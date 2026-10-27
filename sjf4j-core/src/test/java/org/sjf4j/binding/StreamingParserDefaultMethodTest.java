@@ -94,6 +94,6 @@ class StreamingParserDefaultMethodTest {
 
         @Override
         public Object readRaw() throws IOException { return null; }
-        public void release() {}
+        public void close() {}
     }
 }

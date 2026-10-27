@@ -80,6 +80,6 @@ class StreamingGeneratorDefaultMethodTest {
         public void writeBooleanValue(boolean value) { events.add("boolean:" + value); }
         public void writeCharValue(char value) {}
         public void writeNumberValue(Number value) { events.add("number:" + value); }
-        public void release() {}
+        public void close() {}
     }
 }
