@@ -5,7 +5,11 @@ import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 /** Emits direct concrete-generator binding code. */
@@ -17,6 +21,9 @@ final class WriteEmitter {
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
     private final StreamingWriteEmitter streaming;
+
+    /** One ordinal-indexed, pre-serialized table per Enum type in a generated Jackson binder. */
+    private final Map<String, String> enumFields = new LinkedHashMap<String, String>();
 
     WriteEmitter(BackendSpec backend) {
         this.backend = backend;
@@ -30,7 +37,7 @@ final class WriteEmitter {
             case JACKSON2:
             case JACKSON3:
                 fastjson2 = null;
-                jackson = new JacksonWriteEmitter(backend);
+                jackson = new JacksonWriteEmitter(backend, this);
                 other = null;
                 break;
             case GSON:
@@ -43,6 +50,65 @@ final class WriteEmitter {
                 fastjson2 = null;
                 jackson = null;
                 other = null;
+        }
+    }
+
+    /** Register all statically typed Enum leaves before the generated class is written. */
+    void registerEnums(BindingValue value) {
+        if (jackson == null) return;
+        Set<BindingValue> seen = Collections.newSetFromMap(
+                new IdentityHashMap<BindingValue, Boolean>());
+        registerEnums(value, seen);
+    }
+
+    private void registerEnums(BindingValue value, Set<BindingValue> seen) {
+        if (value == null || !seen.add(value)
+                || value.direction() != BindingPlan.Direction.WRITE_TO) return;
+        if (value.kind() == BindingValue.Kind.ENUM) {
+            String name = value.type().toString();
+            if (!enumFields.containsKey(name)) {
+                enumFields.put(name, "_enum_" + enumFields.size());
+            }
+        }
+        for (BindingProperty property : value.properties()) {
+            registerEnums(property.value(), seen);
+        }
+        registerEnums(value.elementValue(), seen);
+        registerEnums(value.mapValue(), seen);
+        for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
+            registerEnums(subtype.compiled, seen);
+        }
+    }
+
+    String enumField(BindingValue value) {
+        String field = enumFields.get(value.type().toString());
+        if (field == null) {
+            throw new IllegalStateException("Missing compiled Enum field for " + value.type());
+        }
+        return field;
+    }
+
+    boolean hasEnumFields() {
+        return !enumFields.isEmpty();
+    }
+
+    void emitEnumFields(JavaWriter out) {
+        String encoded = backend.backend() == Backend.JACKSON2
+                ? "com.fasterxml.jackson.core.io.SerializedString"
+                : "tools.jackson.core.io.SerializedString";
+        for (Map.Entry<String, String> entry : enumFields.entrySet()) {
+            String type = entry.getKey();
+            String field = entry.getValue();
+            out.line("private static final " + encoded + "[] " + field
+                    + " = " + field + "Init();");
+            out.beginBlock("private static " + encoded + "[] " + field + "Init()");
+            out.line(type + "[] constants = " + type + ".values();");
+            out.line(encoded + "[] result = new " + encoded + "[constants.length];");
+            out.beginBlock("for (" + type + " constant : constants)");
+            out.line("result[constant.ordinal()] = new " + encoded + "(constant.name());");
+            out.endBlock();
+            out.line("return result;");
+            out.endBlock();
         }
     }
 

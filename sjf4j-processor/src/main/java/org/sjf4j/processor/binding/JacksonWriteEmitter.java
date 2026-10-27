@@ -17,10 +17,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final WriteEmitter writes;
     private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
-    JacksonWriteEmitter(BackendSpec backend) {
+    JacksonWriteEmitter(BackendSpec backend, WriteEmitter writes) {
         this.backend = backend;
+        this.writes = writes;
     }
 
     private boolean jackson2() {
@@ -180,7 +182,13 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             case ENUM:
                 out.beginBlock("");
                 out.line(child.type() + " " + item + " = " + expression + ";");
-                out.line(nativeGenerator + ".writeString(" + item + " == null ? null : " + item + ".name());");
+                out.beginBlock("if (" + item + " == null)");
+                out.line(nativeGenerator + ".writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line(nativeGenerator + ".writeString("
+                        + writes.enumField(child) + "[" + item + ".ordinal()]);");
+                out.endBlock();
                 out.endBlock();
                 return;
             case CHARACTER:

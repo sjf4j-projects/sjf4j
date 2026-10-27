@@ -139,6 +139,7 @@ public final class BindingGenerator {
                     generated);
         }
 
+        emitter.emitEnumFields(generated);
         generated.write();
     }
 }
