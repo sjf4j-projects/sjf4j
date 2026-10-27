@@ -253,6 +253,7 @@ class Fastjson2BinderTest {
         Fastjson2Generator generator = binder.createGenerator(text);
         generator.writeStringValue("héllo");
         generator.end();
+        assertEquals("", text.toString());
         generator.close();
         assertEquals("\"héllo\"", text.toString());
 

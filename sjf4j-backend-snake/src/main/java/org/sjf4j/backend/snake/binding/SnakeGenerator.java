@@ -187,19 +187,10 @@ public final class SnakeGenerator extends StreamingGenerator {
         writePlain("null");
     }
 
-    /**
-     * Flushes the caller-owned output without closing it.
-     */
-
-    /**
-     * Emitter flushes the output on DocumentEndEvent and StreamEndEvent.
-     * The caller owns the output writer.
-     */
+    /** SnakeYAML has no native close operation; the caller owns the output. */
     @Override
-    public void close() throws IOException {
-        flush();
+    public void close() {
     }
-
 
     @Override
     public void flush() throws IOException {

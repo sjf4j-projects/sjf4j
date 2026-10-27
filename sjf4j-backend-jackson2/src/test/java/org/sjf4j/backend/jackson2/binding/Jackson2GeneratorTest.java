@@ -36,6 +36,7 @@ class Jackson2GeneratorTest {
         generator.writeBigDecimal(null);
         generator.writeArrayEnd();
         generator.end();
+        generator.flush();
 
         assertEquals("[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null,null,null]", output.toString());
         generator.close();
