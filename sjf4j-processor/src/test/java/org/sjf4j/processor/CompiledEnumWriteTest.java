@@ -22,16 +22,18 @@ class CompiledEnumWriteTest {
                 "GSON", "JSONP", "SIMPLE", "SNAKE"}) {
             Map<String, String> sources = new LinkedHashMap<>();
             sources.put("fixture/State.java", "package fixture; public enum State { "
-                    + "FIRST, SECOND { @Override public String toString() { return \"override\"; } } }");
+                    + "FIRST, SECOND { @Override public String toString() { return \"override\"; } }, 中文 }");
             sources.put("fixture/Model.java", "package fixture; import java.util.*; "
                     + "public class Model { "
                     + "public State one = State.FIRST; "
                     + "public State two = State.SECOND; "
+                    + "public State unicode = State.中文; "
                     + "public State empty = null; "
-                    + "public List<State> list = Arrays.asList(State.SECOND, null, State.FIRST); "
+                    + "public List<State> list = Arrays.asList(State.SECOND, null, State.FIRST, State.中文); "
                     + "public Map<String, State> map = new LinkedHashMap<>(); "
                     + "public Model() { map.put(\"first\", State.FIRST); "
-                    + "map.put(\"empty\", null); map.put(\"second\", State.SECOND); } }");
+                    + "map.put(\"empty\", null); map.put(\"second\", State.SECOND); "
+                    + "map.put(\"unicode\", State.中文); } }");
             sources.put("fixture/Binder.java", "package fixture; "
                     + "import org.sjf4j.annotation.binding.*; "
                     + "@CompiledBinder(backend=Backend." + backend
@@ -79,6 +81,7 @@ class CompiledEnumWriteTest {
                 assertTrue(serialized.contains("FIRST"), backend + ": " + serialized);
                 assertTrue(serialized.contains("SECOND"), backend + ": " + serialized);
                 assertFalse(serialized.contains("override"), backend + ": " + serialized);
+                assertTrue(serialized.contains("中文"), backend + ": " + serialized);
 
                 String root = (String) binderType.getMethod("writeEnum", enumType)
                         .invoke(binder, second);
@@ -90,13 +93,16 @@ class CompiledEnumWriteTest {
                     JsonNode tree = json.readTree(serialized);
                     assertEquals("FIRST", tree.path("one").asText(), backend);
                     assertEquals("SECOND", tree.path("two").asText(), backend);
+                    assertEquals("中文", tree.path("unicode").asText(), backend);
                     assertTrue(tree.path("empty").isNull(), backend);
                     assertEquals("SECOND", tree.path("list").get(0).asText(), backend);
                     assertTrue(tree.path("list").get(1).isNull(), backend);
                     assertEquals("FIRST", tree.path("list").get(2).asText(), backend);
+                    assertEquals("中文", tree.path("list").get(3).asText(), backend);
                     assertEquals("FIRST", tree.path("map").path("first").asText(), backend);
                     assertTrue(tree.path("map").path("empty").isNull(), backend);
                     assertEquals("SECOND", tree.path("map").path("second").asText(), backend);
+                    assertEquals("中文", tree.path("map").path("unicode").asText(), backend);
                     assertEquals("SECOND", json.readTree(root).asText(), backend);
                 }
             }
