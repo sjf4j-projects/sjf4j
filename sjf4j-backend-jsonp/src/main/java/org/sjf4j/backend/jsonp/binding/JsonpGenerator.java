@@ -133,6 +133,10 @@ public final class JsonpGenerator extends StreamingGenerator {
 
     @Override
     public void close() throws IOException {
-        generator.close();
+        try {
+            flush();
+        } finally {
+            generator.close();
+        }
     }
 }
