@@ -177,6 +177,21 @@ public final class Fastjson2Parser extends StreamingParser {
                 : index;
     }
 
+    /**
+     * Computes the Fastjson2 native hash directly from an incoming JSON string.
+     * Primarily for compiled scalar matching: does not create a String on success.
+     * Call only when the next token is STRING.
+     */
+    public long readValueHashCode() {
+        peeked = null;
+        return reader.readValueHashCode();
+    }
+
+    /** Decodes the last hashed JSON string, only needed on an unmatched value. */
+    public String getHashedString() {
+        return reader.getString();
+    }
+
     @Override
     public String readString() {
         peeked = null;

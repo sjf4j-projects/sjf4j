@@ -20,6 +20,7 @@ final class ReadEmitter {
     private final ProcessorContext context;
     private final BackendSpec backend;
     private final Fastjson2PojoReadEmitter fastjson2Pojo;
+    private final Fastjson2EnumReadEmitter fastjson2Enum;
 
     ReadEmitter(
             ProcessorContext context,
@@ -30,6 +31,19 @@ final class ReadEmitter {
         this.fastjson2Pojo = backend.backend()
                 == Backend.FASTJSON2
                 ? new Fastjson2PojoReadEmitter() : null;
+        this.fastjson2Enum = backend.backend() == Backend.FASTJSON2
+                ? new Fastjson2EnumReadEmitter() : null;
+    }
+
+    /** Collect statically typed Fastjson2 enums before source emission. */
+    void registerEnums(BindingValue value) {
+        if (fastjson2Enum != null) fastjson2Enum.register(value);
+    }
+
+    void emitEnumFields(org.sjf4j.processor.code.GeneratedClass generated) {
+        if (fastjson2Enum == null || !fastjson2Enum.hasEnums()) return;
+        generated.addField(out -> fastjson2Enum.emitFields(out));
+        generated.addHelper(out -> fastjson2Enum.emitHelpers(out));
     }
 
     boolean usesNameMatcher() {
@@ -877,7 +891,10 @@ final class ReadEmitter {
                 return "(" + value.type() + ") " + scalarRead;
 
             case ENUM:
-                // Keep string, ordinal and null semantics aligned with StreamingIO.
+                if (fastjson2Enum != null) {
+                    return fastjson2Enum.readExpression(value, parser);
+                }
+                // Keep Jackson and streaming backends aligned with StreamingIO.
                 return "(" + value.type() + ") " +
                         STREAMING_IO +
                         ".readEnum(" + parser + ", " +
