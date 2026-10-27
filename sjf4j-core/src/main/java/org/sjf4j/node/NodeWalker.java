@@ -32,7 +32,7 @@ import java.util.function.Function;
 
 /**
  * Structural access and traversal over native and supported external OBNT
- * representations. Readable properties participate in object views; indexed
+  * representations. Gettable POJO properties participate in object views; indexed
  * mutations depend on whether an array representation supports them.
  */
 public class NodeWalker {
@@ -335,7 +335,7 @@ public class NodeWalker {
      * Returns the readable key set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return their live key views. POJO inputs
-     * return the structural readable-property key view; callers must treat it as
+      * return the structural gettable-property key view; callers must treat it as
      * read-only metadata.
      */
     @SuppressWarnings("unchecked")
@@ -399,7 +399,7 @@ public class NodeWalker {
      * Returns the readable entry set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return live entry views. POJO inputs
-     * return a read-only projection of readable properties; modifying returned
+      * return a read-only projection of gettable properties; modifying returned
      * entries does not write back to the POJO.
      */
     @SuppressWarnings("unchecked")
@@ -651,7 +651,7 @@ public class NodeWalker {
      * Resolves readable object-child access and fills {@link Access}.
      * <p>
      * The output distinguishes present-null from missing values under read
-     * semantics. Write-only POJO properties are not readable and therefore are
+      * semantics. Settable-only POJO properties are not gettable and therefore are
      * reported as absent.
      */
     @SuppressWarnings("unchecked")
@@ -948,7 +948,7 @@ public class NodeWalker {
      * Puts a value into an object node and returns the previous value when
      * the target shape exposes one.
      * <p>
-     * For POJO representations, only discovered properties are writable; unknown keys fail.
+     * For POJO representations, only settable declared properties can be written; unknown keys fail.
      * POJO property writes do not read back the old value and therefore return
      * {@code null}.
      */

@@ -111,8 +111,8 @@ public abstract class StreamingParser {
         }
     }
 
-    protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
-        return new NameMatcher(writableProperties);
+    protected NameMatcher createNameMatcher(PropertyInfo[] settableProperties) {
+        return new NameMatcher(settableProperties);
     }
 
     /** Prepares a matcher for creator parameters and declared properties. */

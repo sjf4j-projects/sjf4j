@@ -125,7 +125,7 @@ public class JsonObject extends JsonContainer {
      */
 
     /**
-     * Computes hash code from readable declared properties and dynamic entries.
+     * Computes hash code from gettable declared properties and dynamic entries.
      */
     @Override
     public int hashCode() {
@@ -166,7 +166,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the number of readable declared properties and dynamic entries.
+     * Returns the number of gettable declared properties and dynamic entries.
      */
     public int size() {
         return (pi == null ? 0 : pi.gettableProperties.length) +
@@ -181,7 +181,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns true if the key exists in readable declared properties or dynamic entries.
+     * Returns true if the key exists in gettable declared properties or dynamic entries.
      */
     public boolean containsKey(String key) {
         if (key == null) return false;
@@ -201,7 +201,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a key view of readable declared properties and dynamic entries.
+     * Returns a key view of gettable declared properties and dynamic entries.
      * Dynamic keys are backed by the underlying map; declared keys cannot be removed.
      */
     public Set<String> keySet() {
@@ -251,7 +251,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns an entry view of readable declared properties and dynamic entries.
+     * Returns an entry view of gettable declared properties and dynamic entries.
      * Declared-property entries are snapshots; dynamic entries are backed by the map.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
@@ -333,7 +333,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Replaces values for readable-and-writable declared properties and dynamic
+     * Replaces values for gettable-and-settable declared properties and dynamic
      * entries in place. Only a change of value reference counts as a replacement.
      *
      * @return whether at least one value reference changed
@@ -368,7 +368,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a new map containing readable declared properties and dynamic entries.
+     * Returns a new map containing gettable declared properties and dynamic entries.
      * Dynamic entries take precedence on duplicate keys; values are not copied.
      */
     public Map<String, Object> toMap() {
@@ -490,8 +490,8 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns the OBNT value for the given key or {@code null}.
      * <p>
-     * Only readable declared properties participate in this value view. When a
-     * declared property is not readable, lookup falls through to dynamic entries
+     * Only gettable declared properties participate in this value view. When a
+     * declared property is not gettable, lookup falls through to dynamic entries
      * with the same key.
      */
     public Object getNode(String key) {

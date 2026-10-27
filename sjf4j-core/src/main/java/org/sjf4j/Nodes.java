@@ -900,7 +900,7 @@ public final class Nodes {
      * Returns the readable key set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return their live key views. POJO inputs
-     * return the structural readable-property key view; callers must treat it as
+     * return the structural gettable-property key view; callers must treat it as
      * read-only metadata.
      */
     public static Set<String> keySetInObject(Object node) {
@@ -911,7 +911,7 @@ public final class Nodes {
      * Returns the readable entry set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return live entry views. POJO inputs
-     * return a read-only projection of readable properties; modifying returned
+     * return a read-only projection of gettable properties; modifying returned
      * entries does not write back to the POJO.
      */
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
@@ -998,7 +998,7 @@ public final class Nodes {
      * Puts a value into an object node and returns the previous value when
      * the target shape exposes one.
      * <p>
-     * For POJO representations, only discovered properties are writable; unknown keys fail.
+     * For POJO representations, only settable declared properties can be written; unknown keys fail.
      * POJO property writes do not read back the old value and therefore return
      * {@code null}.
      */

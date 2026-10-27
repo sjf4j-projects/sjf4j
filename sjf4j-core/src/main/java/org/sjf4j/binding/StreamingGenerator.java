@@ -96,7 +96,7 @@ public abstract class StreamingGenerator {
     }
 
     /**
-     * Returns prepared names for readable POJO properties in metadata order.
+     * Returns prepared names for gettable POJO properties in metadata order.
      * The array is cached per POJO metadata and backend; callers must not modify it.
      */
     public final CompiledName[] compiledNames(PojoInfo pojoInfo) {

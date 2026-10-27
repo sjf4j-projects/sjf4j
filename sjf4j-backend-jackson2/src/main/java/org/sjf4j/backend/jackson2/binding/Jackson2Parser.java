@@ -79,8 +79,8 @@ public final class Jackson2Parser extends StreamingParser {
     }
 
     @Override
-    protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
-        return new Jackson2NameMatcher(writableProperties);
+    protected NameMatcher createNameMatcher(PropertyInfo[] settableProperties) {
+        return new Jackson2NameMatcher(settableProperties);
     }
 
     @Override

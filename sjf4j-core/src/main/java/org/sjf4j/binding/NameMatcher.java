@@ -55,7 +55,7 @@ public class NameMatcher {
                           String[][] compiledAliases) {
         if ((settableProperties == null) == (compiledNames == null)) {
             throw new IllegalArgumentException(
-                    "Exactly one of writableProperties or compiledNames must be provided");
+                    "Exactly one of settableProperties or compiledNames must be provided");
         }
         if (compiledAliases != null &&
                 (compiledNames == null || compiledAliases.length != compiledNames.length)) {

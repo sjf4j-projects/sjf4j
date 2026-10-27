@@ -992,7 +992,7 @@ final class BindingCompiler {
 
     /**
      * Record parameters are read directly into typed locals. They are not
-     * writable properties, so PropertyResolver's setter-based path cannot
+     * settable properties, so PropertyResolver's setter/field path cannot
      * describe them.
      */
     private boolean compileRecord(BindingValue value, ExecutableElement method,
@@ -1100,7 +1100,7 @@ final class BindingCompiler {
         return result;
     }
 
-    /** Constructor parameters first, then writable properties buffered until creation. */
+    /** Constructor parameters first, then settable properties buffered until creation. */
     private boolean compileCreatorPojo(BindingValue value, CreatorPlan creator,
                                        ExecutableElement method, GeneratedClass generated) {
         List<? extends VariableElement> args = creator.executable().getParameters();

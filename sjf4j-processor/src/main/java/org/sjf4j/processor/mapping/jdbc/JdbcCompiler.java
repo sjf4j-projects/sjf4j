@@ -429,7 +429,7 @@ public final class JdbcCompiler {
         }
 
         /*
-         * Automatic and explicitly renamed top-level writable properties.
+         * Automatic and explicitly renamed top-level settable properties.
          */
         for (Map.Entry<String, Property> entry :
                 properties.entrySet()) {
@@ -440,7 +440,7 @@ public final class JdbcCompiler {
             Property property =
                     entry.getValue();
 
-            if (!property.writable()) {
+            if (!property.settable()) {
                 continue;
             }
 

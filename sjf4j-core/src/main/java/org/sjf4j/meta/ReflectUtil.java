@@ -286,21 +286,21 @@ public final class ReflectUtil {
 
         } //for
 
-        List<PropertyInfo> writableProperties = new ArrayList<>(properties.size());
+        List<PropertyInfo> settableProperties = new ArrayList<>(properties.size());
         List<PropertyParser> propertyParsers = new ArrayList<>(properties.size());
-        List<PropertyInfo> readableProperties = new ArrayList<>(properties.size());
+        List<PropertyInfo> gettableProperties = new ArrayList<>(properties.size());
         List<PropertyGenerator> propertyGenerators = new ArrayList<>(properties.size());
         for (PropertyInfo property : properties.values()) {
             // TODO: configuration order
             if (property.parser != null) {
-                writableProperties.add(property);
+                settableProperties.add(property);
                 propertyParsers.add(property.parser);
             }
 
             PropertyGenerator propertyWriter = PropertyGenerator.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.valueInfo, lookup);
             if (propertyWriter != null) {
-                readableProperties.add(property);
+                gettableProperties.add(property);
                 propertyGenerators.add(propertyWriter);
             }
         }
@@ -318,8 +318,8 @@ public final class ReflectUtil {
         }
 
         return new PojoInfo(clazz, creatorInfo, readDynamic, writeDynamic, propertyLookup,
-                writableProperties.toArray(new PropertyInfo[0]), propertyParsers.toArray(new PropertyParser[0]),
-                readableProperties.toArray(new PropertyInfo[0]), propertyGenerators.toArray(new PropertyGenerator[0]));
+                settableProperties.toArray(new PropertyInfo[0]), propertyParsers.toArray(new PropertyParser[0]),
+                gettableProperties.toArray(new PropertyInfo[0]), propertyGenerators.toArray(new PropertyGenerator[0]));
     }
 
     private static void _reserveFieldFamilies(Field[] fields, Map<String, PropertyFamily> families) {

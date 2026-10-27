@@ -5,7 +5,8 @@ import org.sjf4j.util.Asserts;
 import java.util.Objects;
 
 /**
- * A resolved node-facing property of a Java object type.
+ * A resolved node-facing property of a Java object type. Gettable and settable
+ * indicate available getter/field and setter/field access, respectively.
  */
 public final class Property {
 
@@ -35,11 +36,11 @@ public final class Property {
         return write;
     }
 
-    public boolean readable() {
+    public boolean gettable() {
         return read != null;
     }
 
-    public boolean writable() {
+    public boolean settable() {
         return write != null;
     }
 }

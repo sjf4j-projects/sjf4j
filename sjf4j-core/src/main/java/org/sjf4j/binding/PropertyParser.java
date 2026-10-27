@@ -27,7 +27,7 @@ import java.util.function.ObjIntConsumer;
 import java.util.function.ObjLongConsumer;
 
 /**
- * Precomputed parser for a writable POJO property. The incoming member name
+ * Precomputed parser for a settable POJO property. The incoming member name
  * has already been consumed; {@code parse()} consumes its value and assigns it
  * to the owning instance.
  */

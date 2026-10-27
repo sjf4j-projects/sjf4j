@@ -50,8 +50,8 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     @Override
-    protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
-        return new Fastjson2NameMatcher(writableProperties);
+    protected NameMatcher createNameMatcher(PropertyInfo[] settableProperties) {
+        return new Fastjson2NameMatcher(settableProperties);
     }
 
     @Override

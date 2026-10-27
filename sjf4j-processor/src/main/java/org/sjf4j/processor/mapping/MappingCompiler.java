@@ -95,7 +95,7 @@ public final class MappingCompiler {
 
         /*
          * Root container / map / JsonObject / OneOf mapping has no finite set
-         * of writable Java properties. Treat it as one root conversion.
+         * of settable Java properties. Treat it as one root conversion.
          */
         if (isRootProjection(plan)) {
             return compileRoot(
@@ -146,7 +146,7 @@ public final class MappingCompiler {
 
         /*
          * Constructor/record parameters must be resolved before ordinary
-         * writable properties because they are required for object creation.
+         * settable properties because they are required for object creation.
          */
         if (creation != null &&
                 creation.kind() ==
@@ -255,7 +255,7 @@ public final class MappingCompiler {
         }
 
         /*
-         * Same-name automatic mapping for remaining writable target
+         * Same-name automatic mapping for remaining settable target
          * properties.
          */
         Map<String, Property> properties =
@@ -265,7 +265,7 @@ public final class MappingCompiler {
         for (Property property :
                 properties.values()) {
 
-            if (!property.writable()) {
+            if (!property.settable()) {
                 continue;
             }
 
@@ -753,7 +753,7 @@ public final class MappingCompiler {
             return false;
         }
 
-        // Root logical values do not have ordinary writable POJO members.
+        // Root logical values do not have ordinary settable POJO members.
         if (plan.sources().size() == 1 && converters.isCodecConversion(
                 plan.primarySourceType(), plan.targetType())) {
             return true;

@@ -590,7 +590,7 @@ public final class ConversionCompiler {
         for (Property property :
                 targetProperties.values()) {
 
-            if (!property.writable()) {
+            if (!property.settable()) {
                 continue;
             }
 
@@ -708,7 +708,7 @@ public final class ConversionCompiler {
         for (Property property :
                 sourceProperties.values()) {
 
-            if (!property.readable()) {
+            if (!property.gettable()) {
                 continue;
             }
 

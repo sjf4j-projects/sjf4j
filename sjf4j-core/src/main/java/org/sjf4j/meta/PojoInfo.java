@@ -111,7 +111,7 @@ public class PojoInfo {
 
 
     /**
-     * Returns a read-only key view of declared readable property names.
+     * Returns a read-only key view of declared gettable property names.
      * Alias names are excluded.
      */
     public Set<String> gettablePropertyNameSet() {

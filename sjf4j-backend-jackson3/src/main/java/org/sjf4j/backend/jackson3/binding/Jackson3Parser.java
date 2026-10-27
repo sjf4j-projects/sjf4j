@@ -80,8 +80,8 @@ public final class Jackson3Parser extends StreamingParser {
     }
 
     @Override
-    protected NameMatcher createNameMatcher(PropertyInfo[] writableProperties) {
-        return new Jackson3NameMatcher(writableProperties);
+    protected NameMatcher createNameMatcher(PropertyInfo[] settableProperties) {
+        return new Jackson3NameMatcher(settableProperties);
     }
 
     @Override
