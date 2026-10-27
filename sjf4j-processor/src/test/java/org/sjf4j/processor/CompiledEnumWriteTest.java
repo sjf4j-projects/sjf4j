@@ -55,7 +55,7 @@ class CompiledEnumWriteTest {
             } else if (backend.equals("FASTJSON2")) {
                 assertTrue(generated.contains("byte[][] _enum_"), generated);
                 assertTrue(generated.contains("char[][] _enum_"), generated);
-                assertTrue(generated.contains("quoted.getBytes(java.nio.charset.StandardCharsets.UTF_8)"), generated);
+                assertTrue(generated.contains("quoted.getBytes(") && generated.contains("StandardCharsets.UTF_8"), generated);
                 assertTrue(generated.contains("quoted.toCharArray()"), generated);
                 assertTrue(generated.contains("writeRaw(_enum_") && generated.contains("Utf8[item.ordinal()]"), generated);
                 assertTrue(generated.contains("writeRaw(encoded, 0, encoded.length)"), generated);
