@@ -35,9 +35,7 @@ final class BackendGroup {
 
     BackendSpec find(Backend backend) {
         for (BackendSpec spec : backends) {
-            if (spec.backend() == backend) {
-                return spec;
-            }
+            if (spec.backend() == backend) return spec;
         }
         return null;
     }
