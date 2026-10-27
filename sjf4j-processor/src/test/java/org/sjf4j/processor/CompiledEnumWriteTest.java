@@ -34,7 +34,9 @@ class CompiledEnumWriteTest {
                     + "map.put(\"empty\", null); map.put(\"second\", State.SECOND); } }");
             sources.put("fixture/Binder.java", "package fixture; "
                     + "import org.sjf4j.annotation.binding.*; "
-                    + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
+                    + "@CompiledBinder(backend=Backend." + backend
+                    + (backend.equals("SNAKE") ? ", format=BindingFormat.YAML" : "")
+                    + ") public interface Binder { "
                     + "@WriteTo String write(Model value) throws java.io.IOException; "
                     + "@WriteTo String writeEnum(State value) throws java.io.IOException; "
                     + "@WriteTo byte[] writeBytes(Model value) throws java.io.IOException; "
