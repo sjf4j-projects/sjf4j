@@ -51,7 +51,7 @@ public final class SimpleJsonParser extends StreamingParser {
     }
 
     @Override
-    public void startRead() throws IOException {
+    public void start() throws IOException {
         if (inputClosed) throw new IOException("Stream closed");
     }
 
@@ -85,7 +85,7 @@ public final class SimpleJsonParser extends StreamingParser {
     }
 
     @Override
-    public void endRead() throws IOException {
+    public void end() throws IOException {
         bufferedToken = null;
         _skipWhitespace();
         int c = _peek();
@@ -96,7 +96,7 @@ public final class SimpleJsonParser extends StreamingParser {
      * Consumes and enters object scope.
      */
     @Override
-    public void startObject() throws IOException {
+    public void readObjectStart() throws IOException {
         bufferedToken = null;
         _prepareToken();
         _prepareValuePathUnchecked();
@@ -113,7 +113,7 @@ public final class SimpleJsonParser extends StreamingParser {
      * Consumes and exits object scope.
      */
     @Override
-    public void endObject() throws IOException {
+    public void readObjectEnd() throws IOException {
         bufferedToken = null;
         _prepareToken();
         _activateContainerPath();
@@ -130,7 +130,7 @@ public final class SimpleJsonParser extends StreamingParser {
      * Consumes and enters array scope.
      */
     @Override
-    public void startArray() throws IOException {
+    public void readArrayStart() throws IOException {
         bufferedToken = null;
         _prepareToken();
         _prepareValuePathUnchecked();
@@ -146,7 +146,7 @@ public final class SimpleJsonParser extends StreamingParser {
      * Consumes and exits array scope.
      */
     @Override
-    public void endArray() throws IOException {
+    public void readArrayEnd() throws IOException {
         bufferedToken = null;
         _prepareToken();
         _activateContainerPath();
@@ -382,7 +382,7 @@ public final class SimpleJsonParser extends StreamingParser {
         switch (peekToken()) {
             case OBJECT_START: {
                 Map<String, Object> value = new LinkedHashMap<>();
-                startObject();
+                readObjectStart();
                 String name;
                 while ((name = nextName()) != null) {
                     value.put(name, readRaw());
@@ -391,7 +391,7 @@ public final class SimpleJsonParser extends StreamingParser {
             }
             case ARRAY_START: {
                 List<Object> value = new ArrayList<>();
-                startArray();
+                readArrayStart();
                 while (!nextIfArrayEnd()) {
                     value.add(readRaw());
                 }

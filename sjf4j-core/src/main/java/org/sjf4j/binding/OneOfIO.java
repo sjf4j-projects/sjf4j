@@ -96,7 +96,7 @@ public final class OneOfIO {
         int pendingSize = 0;
 
         NameMatcher matcher = _cacheDiscriminatorMatcher(parser, oneOfInfo);
-        parser.startObject();
+        parser.readObjectStart();
         int index;
         while ((index = parser.nextNameMatch(matcher, 0)) != NameMatcher.OBJECT_END) {
             if (index == 0) {

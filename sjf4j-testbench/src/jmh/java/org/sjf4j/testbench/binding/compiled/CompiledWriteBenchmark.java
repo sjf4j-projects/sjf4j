@@ -117,7 +117,7 @@ public class CompiledWriteBenchmark {
             MAP = JACKSON2_NATIVE.readValue(json,
                     new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
             EXPECTED_TREE = JACKSON2_NATIVE.readTree(json);
-            try (jakarta.json.JsonReader reader = Json.createParser(new StringReader(json))) {
+            try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(json))) {
                 JSONP_TREE = reader.readObject();
             }
         } catch (Exception e) {
@@ -501,7 +501,7 @@ public class CompiledWriteBenchmark {
             Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
             try {
             Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
-            generator.endWrite();
+            generator.end();
             } finally {
                 generator.release();
             }
@@ -520,7 +520,7 @@ public class CompiledWriteBenchmark {
             Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
             try {
             Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
-            generator.endWrite();
+            generator.end();
             } finally {
                 generator.release();
             }
@@ -656,7 +656,7 @@ public class CompiledWriteBenchmark {
             Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
             try {
             Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
-            generator.endWrite();
+            generator.end();
             } finally {
                 generator.release();
             }
@@ -675,7 +675,7 @@ public class CompiledWriteBenchmark {
             Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
             try {
             Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
-            generator.endWrite();
+            generator.end();
             } finally {
                 generator.release();
             }
@@ -868,7 +868,7 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_jsonp_tree_string_native() {
         java.io.StringWriter output = new java.io.StringWriter();
-        try (jakarta.json.JsonWriter writer = Json.createGenerator(output)) {
+        try (jakarta.json.JsonWriter writer = Json.createWriter(output)) {
             writer.write(JSONP_TREE);
         }
         return output.toString();
@@ -877,7 +877,7 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_jsonp_tree_utf8_native() {
         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
-        try (jakarta.json.JsonWriter writer = Json.createGenerator(output)) {
+        try (jakarta.json.JsonWriter writer = Json.createWriter(output)) {
             writer.write(JSONP_TREE);
         }
         return output.toByteArray();

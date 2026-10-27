@@ -34,14 +34,14 @@ class SnakeParserTest {
             try {
                 assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
                 assertFalse(parser.nextIfArrayStart());
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(StreamingParser.Token.NAME, parser.peekToken());
                 assertEquals("id", parser.nextName());
                 assertEquals(StreamingParser.Token.NULL, parser.peekToken());
                 assertTrue(parser.nextIfNull());
                 assertTrue(parser.nextIfObjectEnd());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -57,7 +57,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("unknown: [1, {nested: true}]\nlegacyName: Ada\nid: 7\n");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
                 parser.skipNode();
                 assertEquals(matcher.fallback("name"), parser.nextNameMatch(matcher));
@@ -65,7 +65,7 @@ class SnakeParserTest {
                 assertEquals(matcher.fallback("id"), parser.nextNameMatch(matcher));
                 assertEquals(7, parser.readIntValue());
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -80,7 +80,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser(yaml);
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(1, parser.readIntValue());
                 assertEquals(1000.5d, parser.readDoubleValue());
                 assertThrows(ArithmeticException.class, parser::readByteValue);
@@ -91,8 +91,8 @@ class SnakeParserTest {
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -105,15 +105,15 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("[null, 1, null, true, null, x]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertNull(parser.readInt());
                 assertEquals(1L, parser.readLong());
                 assertNull(parser.readBoolean());
                 assertEquals(true, parser.readBoolean());
                 assertNull(parser.readChar());
                 assertEquals(Character.valueOf('x'), parser.readChar());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -126,15 +126,15 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("[\"null\", 'true', \"123\", !!str null, !!int \"12\", !!float \"1.5\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals("null", parser.readString());
                 assertEquals("true", parser.readString());
                 assertEquals("123", parser.readString());
                 assertEquals("null", parser.readString());
                 assertEquals(12, parser.readIntValue());
                 assertEquals(1.5d, parser.readDoubleValue());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -157,7 +157,7 @@ class SnakeParserTest {
                 assertNull(value.get("empty"));
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -171,13 +171,13 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("unknown: " + nested + "\nid: 7\n");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals("unknown", parser.nextName());
                 parser.skipNode();
                 assertEquals("id", parser.nextName());
                 assertEquals(7, parser.readIntValue());
-                parser.endObject();
-                parser.endRead();
+                parser.readObjectEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -198,7 +198,7 @@ class SnakeParserTest {
                     }
                 }
                 assertEquals(0, value);
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -211,7 +211,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("1: value\n");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertThrows(IOException.class, parser::peekToken);
 
             } finally {
@@ -221,7 +221,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("? [complex]\n: value\n");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertThrows(IOException.class, parser::nextName);
 
             } finally {
@@ -241,7 +241,7 @@ class SnakeParserTest {
             SnakeParser parser = parser("--- 1\n--- 2\n");
             try {
                 parser.skipNode();
-                assertThrows(IOException.class, parser::endRead);
+                assertThrows(IOException.class, parser::end);
 
             } finally {
                 parser.release();
@@ -250,7 +250,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("value: 2024-01-01\n");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 parser.nextName();
                 assertThrows(IOException.class, parser::peekToken);
 
@@ -281,19 +281,19 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("{outer: [{inner: 1}, 2], next: ok}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals("outer", parser.nextName());
-                parser.startArray();
-                parser.startObject();
+                parser.readArrayStart();
+                parser.readObjectStart();
                 assertEquals("inner", parser.nextName());
                 assertEquals(1, parser.readIntValue());
                 assertTrue(parser.nextIfObjectEnd());
                 assertEquals(2, parser.readIntValue());
-                parser.endArray();
+                parser.readArrayEnd();
                 assertEquals("next", parser.nextName());
                 assertEquals("ok", parser.readString());
-                parser.endObject();
-                parser.endRead();
+                parser.readObjectEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -311,7 +311,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser(yaml);
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals("first", parser.nextName());
                 parser.skipNode();
                 assertEquals("keep", parser.nextName());
@@ -322,8 +322,8 @@ class SnakeParserTest {
                 parser.skipNode();
                 assertEquals("tail", parser.nextName());
                 assertEquals("done", parser.readString());
-                parser.endObject();
-                parser.endRead();
+                parser.readObjectEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -336,7 +336,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("skip: {1: value}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals("skip", parser.nextName());
                 assertThrows(IOException.class, parser::skipNode);
 
@@ -358,11 +358,11 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("[0.12345678901234567890123456789, 1e-10000]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(new BigDecimal("0.12345678901234567890123456789"), parser.readBigDecimal());
                 assertEquals(new BigDecimal("1e-10000"), parser.readBigDecimal());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -415,7 +415,7 @@ class SnakeParserTest {
 
     private static SnakeParser parser(SnakeBinder binder, String yaml) throws IOException {
         SnakeParser parser = binder.createParser(yaml);
-        parser.startRead();
+        parser.start();
         return parser;
     }
 

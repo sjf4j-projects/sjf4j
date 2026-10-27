@@ -47,7 +47,7 @@ public final class JsonpParser extends StreamingParser {
     }
 
     @Override
-    public void endRead() throws IOException {
+    public void end() throws IOException {
         if (current != null) {
             throw new IOException("expected end of document");
         }
@@ -83,25 +83,25 @@ public final class JsonpParser extends StreamingParser {
     }
 
     @Override
-    public void startObject() throws IOException {
+    public void readObjectStart() throws IOException {
         require(JsonParser.Event.START_OBJECT, "object start");
         advance();
     }
 
     @Override
-    public void endObject() throws IOException {
+    public void readObjectEnd() throws IOException {
         require(JsonParser.Event.END_OBJECT, "object end");
         advance();
     }
 
     @Override
-    public void startArray() throws IOException {
+    public void readArrayStart() throws IOException {
         require(JsonParser.Event.START_ARRAY, "array start");
         advance();
     }
 
     @Override
-    public void endArray() throws IOException {
+    public void readArrayEnd() throws IOException {
         require(JsonParser.Event.END_ARRAY, "array end");
         advance();
     }
@@ -266,7 +266,7 @@ public final class JsonpParser extends StreamingParser {
 
     private Map<String, Object> readRawObject() throws IOException {
         Map<String, Object> value = new LinkedHashMap<>();
-        startObject();
+        readObjectStart();
         String name;
         while ((name = nextName()) != null) {
             value.put(name, readRaw());
@@ -276,7 +276,7 @@ public final class JsonpParser extends StreamingParser {
 
     private List<Object> readRawArray() throws IOException {
         List<Object> value = new ArrayList<>();
-        startArray();
+        readArrayStart();
         while (!nextIfArrayEnd()) {
             value.add(readRaw());
         }

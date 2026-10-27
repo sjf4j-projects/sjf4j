@@ -61,7 +61,7 @@ class JsonpBinderTest {
         String json = "{\"items\":[{\"name\":\"Ada\",\"active\":true},null,3],\"empty\":{}}";
 
         JsonObject object;
-        try (jakarta.json.JsonReader nativeReader = Json.createParser(new StringReader(json))) {
+        try (jakarta.json.JsonReader nativeReader = Json.createReader(new StringReader(json))) {
             object = nativeReader.readObject();
         }
         Object first = Nodes.getInArray(Nodes.getInObject(object, "items"), 0);
@@ -94,7 +94,7 @@ class JsonpBinderTest {
         assertEquals("true", binder.writeNodeAsString(JsonValue.TRUE));
         assertEquals("null", binder.writeNodeAsString(JsonValue.NULL));
         String precise = "{\"decimal\":0.123456789012345678901234567890}";
-        try (jakarta.json.JsonReader nativeReader = Json.createParser(new StringReader(precise))) {
+        try (jakarta.json.JsonReader nativeReader = Json.createReader(new StringReader(precise))) {
             assertEquals(precise, binder.writeNodeAsString(nativeReader.readObject()));
         }
 
@@ -169,8 +169,9 @@ class JsonpBinderTest {
         {
             JsonpGenerator generator = binder.createGenerator(output);
             try {
+                generator.start();
                 generator.writeStringValue("héllo");
-
+                generator.end();
             } finally {
                 generator.release();
             }
@@ -182,8 +183,9 @@ class JsonpBinderTest {
         {
             JsonpGenerator generator = binder.createGenerator(nativeGenerator);
             try {
+                generator.start();
                 generator.writeNull();
-
+                generator.end();
             } finally {
                 generator.release();
             }

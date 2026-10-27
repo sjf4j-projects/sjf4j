@@ -76,29 +76,29 @@ public final class Fastjson2Generator extends StreamingGenerator {
     }
 
     @Override
-    public void startObject() {
+    public void writeObjectStart() {
         writer.startObject();
     }
 
     @Override
-    public void endObject() {
+    public void writeObjectEnd() {
         writer.endObject();
     }
 
     @Override
-    public void startArray() {
+    public void writeArrayStart() {
         writer.startArray();
     }
 
     @Override
-    public void endArray() {
+    public void writeArrayEnd() {
         writer.endArray();
     }
 
     // JSONWriter.writeName inserts the object-property separator itself.
 
     @Override
-    public void separateElement() {
+    public void writeArraySeparator() {
         writer.writeComma();
     }
 
@@ -294,7 +294,7 @@ public final class Fastjson2Generator extends StreamingGenerator {
     }
 
     @Override
-    public void endWrite() throws IOException {
+    public void end() throws IOException {
         if (charOutput != null) {
             writer.flushTo(charOutput);
         } else if (byteOutput != null) {

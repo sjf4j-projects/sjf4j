@@ -17,9 +17,9 @@ class JsonpGeneratorTest {
         StringWriter output = new StringWriter();
         JsonpGenerator generator = new JsonpBinder().createGenerator(output);
 
-        generator.startObject();
+        generator.writeObjectStart();
         generator.writeName("values");
-        generator.startArray();
+        generator.writeArrayStart();
         generator.writeStringValue("text");
         generator.writeCharValue('x');
         generator.writeLongValue(1L);
@@ -34,9 +34,9 @@ class JsonpGeneratorTest {
         generator.writeNumberValue(new AtomicInteger(8));
         generator.writeString(null);
         generator.writeNumber(null);
-        generator.endArray();
-        generator.endObject();
-        generator.endWrite();
+        generator.writeArrayEnd();
+        generator.writeObjectEnd();
+        generator.end();
 
         assertEquals("{\"values\":[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null]}",
                 output.toString());
@@ -48,12 +48,12 @@ class JsonpGeneratorTest {
         StringWriter output = new StringWriter();
         JsonpGenerator generator = new JsonpBinder().createGenerator(output);
 
-        generator.startObject();
+        generator.writeObjectStart();
         generator.writeName(new CompiledName("te\"xt"));
         generator.writeString("value");
         generator.writeName(new CompiledName("number"));
         generator.writeIntValue(42);
-        generator.endObject();
+        generator.writeObjectEnd();
         generator.release();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42}", output.toString());

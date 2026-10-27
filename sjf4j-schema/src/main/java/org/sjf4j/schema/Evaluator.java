@@ -18,10 +18,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.BitSet;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -561,9 +559,9 @@ public interface Evaluator {
                                 .decode(ByteBuffer.wrap(decoded)).toString();
                     }
                     SimpleJsonParser parser = new SimpleJsonParser(new FastStringReader(content));
-                    parser.startRead();
+                    parser.start();
                     parser.skipNode();
-                    parser.endRead();
+                    parser.end();
                 } catch (Exception e) {
                     ctx.addError(instance, ps, contentMediaTypeKeywordPs, schemaUri, "contentMediaType",
                             "expected valid JSON content");

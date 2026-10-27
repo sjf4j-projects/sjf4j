@@ -657,14 +657,14 @@ public class CompiledReadBenchmark {
     // A separate JSON-P tree reference only; NOT the same return type as Map.
     @Benchmark
     public Object jsonp_tree_string_native() {
-        try (jakarta.json.JsonReader reader = Json.createParser(new StringReader(JSON_DATA))) {
+        try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(JSON_DATA))) {
             return reader.read();
         }
     }
 
     @Benchmark
     public Object jsonp_tree_utf8_native() {
-        try (jakarta.json.JsonReader reader = Json.createParser(new ByteArrayInputStream(JSON_UTF8))) {
+        try (jakarta.json.JsonReader reader = Json.createReader(new ByteArrayInputStream(JSON_UTF8))) {
             return reader.read();
         }
     }

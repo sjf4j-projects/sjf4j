@@ -36,22 +36,22 @@ public final class Jackson3Generator extends StreamingGenerator {
      */
 
     @Override
-    public void startObject() throws IOException {
+    public void writeObjectStart() throws IOException {
         generator.writeStartObject();
     }
 
     @Override
-    public void endObject() throws IOException {
+    public void writeObjectEnd() throws IOException {
         generator.writeEndObject();
     }
 
     @Override
-    public void startArray() throws IOException {
+    public void writeArrayStart() throws IOException {
         generator.writeStartArray();
     }
 
     @Override
-    public void endArray() throws IOException {
+    public void writeArrayEnd() throws IOException {
         generator.writeEndArray();
     }
 
@@ -190,7 +190,7 @@ public final class Jackson3Generator extends StreamingGenerator {
      */
 
     @Override
-    public void endWrite() throws IOException {
+    public void end() throws IOException {
         generator.flush();
     }
 

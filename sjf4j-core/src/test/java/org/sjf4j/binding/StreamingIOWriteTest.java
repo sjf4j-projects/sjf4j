@@ -31,7 +31,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
                 StreamingIO.writeNode(generator, map, RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -52,7 +52,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
                 StreamingIO.writeNode(generator, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -80,7 +80,7 @@ class StreamingIOWriteTest {
                 SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
                 try {
                     StreamingIO.writeNode(generator, arrays[i], RuntimeContext.EMPTY);
-                    generator.endWrite();
+                    generator.end();
 
                 } finally {
                     generator.release();
@@ -105,7 +105,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
                 StreamingIO.writeNode(generator, holder, RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -128,7 +128,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, randomAccessOutput);
             try {
                 StreamingIO.writeNode(generator, List.of("a", 2), RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -141,7 +141,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, linkedOutput);
             try {
                 StreamingIO.writeNode(generator, new LinkedList<>(List.of("a", 2)), RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -154,7 +154,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, setOutput);
             try {
                 StreamingIO.writeNode(generator, new LinkedHashSet<>(List.of("a", 2)), RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -170,7 +170,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, mapOutput);
             try {
                 StreamingIO.writeNode(generator, map, new RuntimeContext(false));
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -183,7 +183,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, includeNullsOutput);
             try {
                 StreamingIO.writeNode(generator, map, RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -203,7 +203,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
                 generator.writeRaw(raw, new RuntimeContext(false));
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -220,7 +220,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, outputWithNull);
             try {
                 generator.writeRaw(withNull, RuntimeContext.EMPTY);
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -299,13 +299,13 @@ class StreamingIOWriteTest {
         }
 
         @Override
-        public void startObject() {}
+        public void writeObjectStart() {}
         @Override
-        public void endObject() {}
+        public void writeObjectEnd() {}
         @Override
-        public void startArray() {}
+        public void writeArrayStart() {}
         @Override
-        public void endArray() {}
+        public void writeArrayEnd() {}
         @Override
         public void writeName(String name) {}
         @Override
@@ -331,15 +331,15 @@ class StreamingIOWriteTest {
         @Override
         public void writeNumberValue(Number value) {}
         @Override
-        public void separateProperty() {
+        public void writeObjectSeparator() {
                 properties++;
             }
         @Override
-        public void separateElement() {
+        public void writeArraySeparator() {
                 elements++;
             }
         @Override
-        public void endWrite() {}
+        public void end() {}
         @Override
         public void release() {}
     }

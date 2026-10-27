@@ -36,14 +36,14 @@ class JsonpParserTest {
             try {
                 assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
                 assertFalse(parser.nextIfArrayStart());
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(StreamingParser.Token.NAME, parser.peekToken());
                 assertEquals("id", parser.nextName());
                 assertEquals(StreamingParser.Token.NULL, parser.peekToken());
                 assertTrue(parser.nextIfNull());
                 assertTrue(parser.nextIfObjectEnd());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -61,7 +61,7 @@ class JsonpParserTest {
         {
             JsonpParser parser = parser("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
                 parser.skipNode();
                 assertEquals(name, parser.nextNameMatch(matcher));
@@ -69,7 +69,7 @@ class JsonpParserTest {
                 assertEquals(id, parser.nextNameMatch(matcher));
                 assertEquals(7, parser.readIntValue());
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -82,7 +82,7 @@ class JsonpParserTest {
         {
             JsonpParser parser = parser("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(1, parser.readIntValue());
                 assertThrows(ArithmeticException.class, parser::readByteValue);
                 assertEquals(125d, parser.readDoubleValue());
@@ -92,7 +92,7 @@ class JsonpParserTest {
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -105,7 +105,7 @@ class JsonpParserTest {
         {
             JsonpParser parser = parser("[2147483647,-2147483648,32767,-32768,127,-128,1.9]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(Integer.MAX_VALUE, parser.readIntValue());
                 assertEquals(Integer.MIN_VALUE, parser.readIntValue());
                 assertEquals(Short.MAX_VALUE, parser.readShortValue());
@@ -113,8 +113,8 @@ class JsonpParserTest {
                 assertEquals(Byte.MAX_VALUE, parser.readByteValue());
                 assertEquals(Byte.MIN_VALUE, parser.readByteValue());
                 assertEquals(1, parser.readIntValue());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -127,13 +127,13 @@ class JsonpParserTest {
         {
             JsonpParser parser = parser("[32768,-32769,128,-129,7]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertThrows(ArithmeticException.class, parser::readShortValue);
                 assertThrows(ArithmeticException.class, parser::readShortValue);
                 assertThrows(ArithmeticException.class, parser::readByteValue);
                 assertThrows(ArithmeticException.class, parser::readByteValue);
                 assertEquals(7, parser.readIntValue());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -162,7 +162,7 @@ class JsonpParserTest {
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(ArrayList.class, value.get("items").getClass());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -175,10 +175,10 @@ class JsonpParserTest {
         {
             JsonpParser parser = parser("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 parser.skipNode();
                 assertEquals("kept", parser.readString());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -208,8 +208,8 @@ class JsonpParserTest {
             try {
                 assertEquals(1, parser.readIntValue());
                 assertEquals(2, parser.readIntValue());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -275,10 +275,10 @@ class JsonpParserTest {
         {
             JsonpParser parser = new JsonpParser(legacy);
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(7, parser.readIntValue());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -291,11 +291,11 @@ class JsonpParserTest {
         {
             JsonpParser parser = parser("[9223372036854775807,-9223372036854775808,9223372036854775808]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(Long.MAX_VALUE, parser.readLongValue());
                 assertEquals(Long.MIN_VALUE, parser.readLongValue());
                 assertThrows(ArithmeticException.class, parser::readLongValue);
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();

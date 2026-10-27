@@ -105,7 +105,7 @@ public class RuntimeWriteBenchmark {
             USER_JOJO = Sjf4j.global().fromJson(JSON_DATA2, UserJojo.class);
             MAP_NODE = Sjf4j.global().fromJson(JSON_DATA2, new TypeReference<>() {});
             USER_EXTRA = JACKSON2.readValue(JSON_DATA2, UserExtra.class);
-            JSONP_TREE_NODE = Json.createParser(new StringReader(JSON_DATA2)).readObject();
+            JSONP_TREE_NODE = Json.createReader(new StringReader(JSON_DATA2)).readObject();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

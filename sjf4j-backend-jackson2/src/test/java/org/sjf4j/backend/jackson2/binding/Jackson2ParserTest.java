@@ -34,7 +34,7 @@ class Jackson2ParserTest {
             Jackson2Parser parser =
                      parser("{\"id\":7,\"unknown\":true,\"name\":\"Ada\"}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
 
                 // A failed conditional probe physically advances onto FIELD_NAME.
                 assertFalse(parser.nextIfObjectEnd());
@@ -51,7 +51,7 @@ class Jackson2ParserTest {
                 assertEquals("Ada", parser.readString());
 
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -64,7 +64,7 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("[\"x\",null,\"\",\"xy\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals('x', parser.readCharValue());
 
                 BindingException nullError = assertThrows(BindingException.class, parser::readCharValue);
@@ -75,7 +75,7 @@ class Jackson2ParserTest {
                 BindingException multipleError = assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals("cannot read char: expected single-character string, but length was 2",
                         multipleError.getMessage());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -88,7 +88,7 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("[\"x\",null,\"\",\"xy\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(Character.valueOf('x'), parser.readChar());
                 assertNull(parser.readChar());
                 BindingException emptyError = assertThrows(BindingException.class, parser::readChar);
@@ -97,7 +97,7 @@ class Jackson2ParserTest {
                 BindingException multipleError = assertThrows(BindingException.class, parser::readChar);
                 assertEquals("cannot read char: expected single-character string, but length was 2",
                         multipleError.getMessage());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -126,7 +126,7 @@ class Jackson2ParserTest {
                 assertEquals("name", parser.nextName());
                 assertEquals("Ada", parser.readString());
                 assertTrue(parser.nextIfObjectEnd());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -144,7 +144,7 @@ class Jackson2ParserTest {
                 assertEquals(StreamingParser.Token.NULL, parser.peekToken());
                 assertTrue(parser.nextIfNull());
                 assertTrue(parser.nextIfArrayEnd());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -164,13 +164,13 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = new Jackson2Parser(nativeParser);
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(id, parser.nextNameMatch(matcher, id));
                 assertEquals(7, parser.readIntValue());
                 assertEquals(name, parser.nextNameMatch(matcher, name));
                 assertEquals("Ada", parser.readString());
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -190,13 +190,13 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("{\"unknown\":[1,{\"nested\":true}],\"id\":7}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
                 parser.skipNode();
                 assertEquals(matcher.fallback("id"), parser.nextNameMatch(matcher));
                 assertEquals(7, parser.readIntValue());
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -214,13 +214,13 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("{\"name\":\"Ada\",\"id\":7}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(name, parser.nextNameMatch(matcher, id));
                 assertEquals("Ada", parser.readString());
                 assertEquals(id, parser.nextNameMatch(matcher, id));
                 assertEquals(7, parser.readIntValue());
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -248,7 +248,7 @@ class Jackson2ParserTest {
                 assertEquals(ArrayList.class, value.get("items").getClass());
                 assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -276,14 +276,14 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("[\"" + text + "\",null,\"" + text + "\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(StreamingParser.Token.STRING, parser.peekToken());
                 assertEquals(uuid, parser.readUuid());
                 assertNull(parser.readUuid());
                 assertFalse(parser.nextIfNull());
                 assertEquals(uuid, parser.readUuid());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -293,11 +293,11 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("{\"id\":\"" + text + "\"}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals("id", parser.nextName());
                 assertEquals(uuid, parser.readUuid());
-                parser.endObject();
-                parser.endRead();
+                parser.readObjectEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -307,10 +307,10 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("[\"invalid\",42]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertThrows(IllegalArgumentException.class, parser::readUuid);
                 assertThrows(IOException.class, parser::readUuid);
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -326,7 +326,7 @@ class Jackson2ParserTest {
                 new JsonFactory().createParser(("\"" + text + "\"").getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             try {
                 assertEquals(java.util.UUID.fromString(text), parser.readUuid());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();

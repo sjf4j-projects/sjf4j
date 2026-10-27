@@ -30,7 +30,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Starts object scope.
      */
     @Override
-    public void startObject() throws IOException {
+    public void writeObjectStart() throws IOException {
         writer.write('{');
     }
 
@@ -38,7 +38,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Ends object scope.
      */
     @Override
-    public void endObject() throws IOException {
+    public void writeObjectEnd() throws IOException {
         writer.write('}');
     }
 
@@ -46,7 +46,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Starts array scope.
      */
     @Override
-    public void startArray() throws IOException {
+    public void writeArrayStart() throws IOException {
         writer.write('[');
     }
 
@@ -54,7 +54,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Ends array scope.
      */
     @Override
-    public void endArray() throws IOException {
+    public void writeArrayEnd() throws IOException {
         writer.write(']');
     }
 
@@ -134,12 +134,12 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
     }
 
     @Override
-    public void separateProperty() throws IOException {
+    public void writeObjectSeparator() throws IOException {
         writer.write(',');
     }
 
     @Override
-    public void separateElement() throws IOException {
+    public void writeArraySeparator() throws IOException {
         writer.write(',');
     }
 
@@ -147,7 +147,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
      * Flushes writer output.
      */
     @Override
-    public void endWrite() throws IOException {
+    public void end() throws IOException {
         writer.flush();
     }
 

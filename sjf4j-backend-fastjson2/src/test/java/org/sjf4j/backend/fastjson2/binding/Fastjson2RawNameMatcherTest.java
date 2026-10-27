@@ -40,8 +40,8 @@ class Fastjson2RawNameMatcherTest {
                 ? binder.createParser(DOCUMENT.getBytes(StandardCharsets.UTF_8))
                 : binder.createParser(DOCUMENT);
             try {
-                parser.startRead();
-                parser.startObject();
+                parser.start();
+                parser.readObjectStart();
                 List<Integer> indexes = new ArrayList<>();
                 List<Integer> values = new ArrayList<>();
                 int expected = 0;
@@ -55,7 +55,7 @@ class Fastjson2RawNameMatcherTest {
                         expected = index + 1;
                     }
                 }
-                parser.endRead();
+                parser.end();
                 assertEquals(Arrays.asList(1, 2, 0, 3, 4, 0, 0,
                         NameMatcher.UNKNOWN, 5, 6, 1), indexes);
                 assertEquals(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 9, 10, 11), values);

@@ -75,9 +75,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             StreamingParser parser = createParser(input);
             try {
-                parser.startRead();
+                parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
-                parser.endRead();
+                parser.end();
                 return node;
             } finally {
                 parser.release();
@@ -98,9 +98,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             StreamingParser parser = createParser(input);
             try {
-                parser.startRead();
+                parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
-                parser.endRead();
+                parser.end();
                 return node;
             } finally {
                 parser.release();
@@ -121,9 +121,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             StreamingParser parser = createParser(input);
             try {
-                parser.startRead();
+                parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
-                parser.endRead();
+                parser.end();
                 return node;
             } finally {
                 parser.release();
@@ -144,9 +144,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             StreamingParser parser = createParser(input);
             try {
-                parser.startRead();
+                parser.start();
                 Object node = StreamingIO.readNode(parser, type, context);
-                parser.endRead();
+                parser.end();
                 return node;
             } finally {
                 parser.release();
@@ -184,9 +184,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             StreamingGenerator generator = createGenerator(output);
             try {
-                generator.startWrite();
+                generator.start();
                 StreamingIO.writeNode(generator, node, context);
-                generator.endWrite();
+                generator.end();
             } finally {
                 generator.release();
             }
@@ -205,9 +205,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             StreamingGenerator generator = createGenerator(output);
             try {
-                generator.startWrite();
+                generator.start();
                 StreamingIO.writeNode(generator, node, context);
-                generator.endWrite();
+                generator.end();
             } finally {
                 generator.release();
             }
@@ -226,9 +226,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             W generator = createGenerator(output);
             try {
-                generator.startWrite();
+                generator.start();
                 StreamingIO.writeNode(generator, node, context);
-                generator.endWrite();
+                generator.end();
             } finally {
                 generator.release();
             }
@@ -250,9 +250,9 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             W generator = createGenerator(output);
             try {
-                generator.startWrite();
+                generator.start();
                 StreamingIO.writeNode(generator, node, context);
-                generator.endWrite();
+                generator.end();
             } finally {
                 generator.release();
             }

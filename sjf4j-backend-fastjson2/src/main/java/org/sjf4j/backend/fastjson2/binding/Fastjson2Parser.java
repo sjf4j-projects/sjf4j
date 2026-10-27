@@ -83,14 +83,14 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     @Override
-    public void endRead() throws IOException {
+    public void end() throws IOException {
         if (!reader.isEnd()) {
             throw new IOException("expected end of document");
         }
     }
 
     @Override
-    public void startObject() {
+    public void readObjectStart() {
         peeked = null;
         if (!reader.nextIfObjectStart()) {
             throw _expected("OBJECT_START");
@@ -98,7 +98,7 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     @Override
-    public void endObject() {
+    public void readObjectEnd() {
         peeked = null;
         if (!reader.nextIfObjectEnd()) {
             throw _expected("OBJECT_END");
@@ -106,7 +106,7 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     @Override
-    public void startArray() {
+    public void readArrayStart() {
         peeked = null;
         if (!reader.nextIfArrayStart()) {
             throw _expected("ARRAY_START");
@@ -114,7 +114,7 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     @Override
-    public void endArray() {
+    public void readArrayEnd() {
         peeked = null;
         if (!reader.nextIfArrayEnd()) {
             throw _expected("ARRAY_END");

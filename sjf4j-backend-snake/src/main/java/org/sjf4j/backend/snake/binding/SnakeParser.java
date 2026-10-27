@@ -64,13 +64,13 @@ public final class SnakeParser extends StreamingParser {
     }
 
     @Override
-    public void startRead() throws IOException {
+    public void start() throws IOException {
         require(StreamStartEvent.class);
         require(DocumentStartEvent.class);
     }
 
     @Override
-    public void endRead() throws IOException {
+    public void end() throws IOException {
         if (depth != 0) {
             throw new IOException("expected end of document, but a structure is still open");
         }
@@ -131,7 +131,7 @@ public final class SnakeParser extends StreamingParser {
         if (peekToken() != Token.OBJECT_START) {
             return false;
         }
-        startObject();
+        readObjectStart();
         return true;
     }
 
@@ -149,7 +149,7 @@ public final class SnakeParser extends StreamingParser {
         if (peekToken() != Token.ARRAY_START) {
             return false;
         }
-        startArray();
+        readArrayStart();
         return true;
     }
 
@@ -163,7 +163,7 @@ public final class SnakeParser extends StreamingParser {
     }
 
     @Override
-    public void startObject() throws IOException {
+    public void readObjectStart() throws IOException {
         if (peekToken() != Token.OBJECT_START) {
             throw expected("object start");
         }
@@ -173,14 +173,14 @@ public final class SnakeParser extends StreamingParser {
     }
 
     @Override
-    public void endObject() throws IOException {
+    public void readObjectEnd() throws IOException {
         if (!nextIfObjectEnd()) {
             throw expected("object end");
         }
     }
 
     @Override
-    public void startArray() throws IOException {
+    public void readArrayStart() throws IOException {
         if (peekToken() != Token.ARRAY_START) {
             throw expected("array start");
         }
@@ -190,7 +190,7 @@ public final class SnakeParser extends StreamingParser {
     }
 
     @Override
-    public void endArray() throws IOException {
+    public void readArrayEnd() throws IOException {
         if (!nextIfArrayEnd()) {
             throw expected("array end");
         }
@@ -652,11 +652,11 @@ public final class SnakeParser extends StreamingParser {
 
     private RawFrame startRawContainer(Token token) throws IOException {
         if (token == Token.OBJECT_START) {
-            startObject();
+            readObjectStart();
             return new RawFrame(new LinkedHashMap<String, Object>());
         }
         if (token == Token.ARRAY_START) {
-            startArray();
+            readArrayStart();
             return new RawFrame(new ArrayList<Object>());
         }
         throw expected("container", token);

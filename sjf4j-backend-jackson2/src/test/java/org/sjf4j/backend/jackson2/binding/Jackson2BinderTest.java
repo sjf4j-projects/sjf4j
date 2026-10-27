@@ -53,7 +53,7 @@ class Jackson2BinderTest {
                 Jackson2Generator generator = binder.createGenerator(chars);
                 try {
                     generator.writeStringValue(value);
-                    generator.endWrite();
+                    generator.end();
 
                 } finally {
                     generator.release();
@@ -72,7 +72,7 @@ class Jackson2BinderTest {
                 Jackson2Generator generator = binder.createGenerator(bytes);
                 try {
                     generator.writeStringValue(value);
-                    generator.endWrite();
+                    generator.end();
 
                 } finally {
                     generator.release();

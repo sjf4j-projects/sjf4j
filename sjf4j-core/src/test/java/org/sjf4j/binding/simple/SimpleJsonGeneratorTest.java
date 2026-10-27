@@ -24,17 +24,17 @@ class SimpleJsonGeneratorTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
-                generator.startArray();
-                generator.writeLongValue(1L); generator.separateElement();
-                generator.writeIntValue(2); generator.separateElement();
-                generator.writeShortValue((short) 3); generator.separateElement();
-                generator.writeByteValue((byte) 4); generator.separateElement();
-                generator.writeDoubleValue(1.5); generator.separateElement();
-                generator.writeFloatValue(2.5f); generator.separateElement();
-                generator.writeBooleanValue(true); generator.separateElement();
+                generator.writeArrayStart();
+                generator.writeLongValue(1L); generator.writeArraySeparator();
+                generator.writeIntValue(2); generator.writeArraySeparator();
+                generator.writeShortValue((short) 3); generator.writeArraySeparator();
+                generator.writeByteValue((byte) 4); generator.writeArraySeparator();
+                generator.writeDoubleValue(1.5); generator.writeArraySeparator();
+                generator.writeFloatValue(2.5f); generator.writeArraySeparator();
+                generator.writeBooleanValue(true); generator.writeArraySeparator();
                 generator.writeStringValue("\"\\\b\f\n\r\t\u0001x");
-                generator.endArray();
-                generator.endWrite();
+                generator.writeArrayEnd();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -55,7 +55,7 @@ class SimpleJsonGeneratorTest {
                 generator.writeNumberValue(new BigInteger("12345678901234567890"));
                 generator.writeBigIntegerValue(new BigInteger("42"));
                 generator.writeBigDecimalValue(new BigDecimal("1.2300"));
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -70,21 +70,21 @@ class SimpleJsonGeneratorTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
-                generator.startObject();
+                generator.writeObjectStart();
                 generator.writeName("a\n");
                 generator.writeInt(1);
-                generator.separateProperty();
+                generator.writeObjectSeparator();
                 generator.writeName(new CompiledName("foreign"));
-                generator.startArray();
+                generator.writeArrayStart();
                 generator.writeStringValue("x");
-                generator.separateElement();
-                generator.startObject();
+                generator.writeArraySeparator();
+                generator.writeObjectStart();
                 generator.writeName("ok");
                 generator.writeBoolean(false);
-                generator.endObject();
-                generator.endArray();
-                generator.endObject();
-                generator.endWrite();
+                generator.writeObjectEnd();
+                generator.writeArrayEnd();
+                generator.writeObjectEnd();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -104,7 +104,7 @@ class SimpleJsonGeneratorTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, new BufferedWriter(output));
             try {
                 generator.writeStringValue("buffered");
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -124,7 +124,7 @@ class SimpleJsonGeneratorTest {
                 assertThrows(BindingException.class, () -> generator.writeFloatValue(Float.NEGATIVE_INFINITY));
                 assertThrows(BindingException.class, () -> generator.writeNumberValue(Double.NaN));
                 assertThrows(BindingException.class, () -> generator.writeNumberValue(Float.POSITIVE_INFINITY));
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -146,7 +146,7 @@ class SimpleJsonGeneratorTest {
                 try {
                     generator.writeStringValue("valid");
                     assertThrows(BindingException.class, () -> generator.writeStringValue(value));
-                    generator.endWrite();
+                    generator.end();
 
                 } finally {
                     generator.release();
@@ -159,7 +159,7 @@ class SimpleJsonGeneratorTest {
                 SimpleJsonGenerator generator = new SimpleJsonGenerator(null, nameOutput);
                 try {
                     assertThrows(BindingException.class, () -> generator.writeName(value));
-                    generator.endWrite();
+                    generator.end();
 
                 } finally {
                     generator.release();
@@ -176,7 +176,7 @@ class SimpleJsonGeneratorTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
                 assertThrows(BindingException.class, () -> generator.writeStringValue(null));
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -192,7 +192,7 @@ class SimpleJsonGeneratorTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
                 generator.writeStringValue("first\nsecond");
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();

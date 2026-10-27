@@ -53,7 +53,7 @@ public final class Jackson2Parser extends StreamingParser {
      * -------------------------------------------------------------- */
 
     @Override
-    public void endRead() throws IOException {
+    public void end() throws IOException {
         if (prefetched) {
             prefetched = false;
             JsonToken current = parser.currentToken();
@@ -122,28 +122,28 @@ public final class Jackson2Parser extends StreamingParser {
      * -------------------------------------------------------------- */
 
     @Override
-    public void startObject() throws IOException {
+    public void readObjectStart() throws IOException {
         if (!nextIfObjectStart()) {
             throw expected(JsonToken.START_OBJECT.name(), parser.currentToken());
         }
     }
 
     @Override
-    public void endObject() throws IOException {
+    public void readObjectEnd() throws IOException {
         if (!nextIfObjectEnd()) {
             throw expected(JsonToken.END_OBJECT.name(), parser.currentToken());
         }
     }
 
     @Override
-    public void startArray() throws IOException {
+    public void readArrayStart() throws IOException {
         if (!nextIfArrayStart()) {
             throw expected(JsonToken.START_ARRAY.name(), parser.currentToken());
         }
     }
 
     @Override
-    public void endArray() throws IOException {
+    public void readArrayEnd() throws IOException {
         if (!nextIfArrayEnd()) {
             throw expected(JsonToken.END_ARRAY.name(), parser.currentToken());
         }

@@ -12,7 +12,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -29,11 +28,11 @@ class GsonParserTest {
         {
             GsonParser parser = parser("[{\"discard\":[1,{\"nested\":true},null]},\"kept\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 parser.skipNode();
                 assertEquals("kept", parser.readString());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -46,13 +45,13 @@ class GsonParserTest {
         {
             GsonParser parser = parser("[1,2147483648,123456789012345678901234567890,1.25,1e10000]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertInstanceOf(Integer.class, parser.readNumber());
                 assertInstanceOf(Long.class, parser.readNumber());
                 assertEquals(new BigInteger("123456789012345678901234567890"), parser.readNumber());
                 assertEquals(1.25d, parser.readNumber());
                 assertEquals(new BigDecimal("1e10000"), parser.readNumber());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -65,13 +64,13 @@ class GsonParserTest {
         {
             GsonParser parser = parser("[128,-129,32768,-32769,1e50]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertThrows(Exception.class, parser::readByteValue);
                 assertThrows(Exception.class, parser::readByteValue);
                 assertThrows(Exception.class, parser::readShortValue);
                 assertThrows(Exception.class, parser::readShortValue);
                 assertThrows(Exception.class, parser::readFloatValue);
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -84,10 +83,10 @@ class GsonParserTest {
         {
             GsonParser parser = parser("[32767,1.25]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(Short.MAX_VALUE, parser.readShortValue());
                 assertEquals(1.25f, parser.readFloatValue());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -116,14 +115,14 @@ class GsonParserTest {
             try {
                 assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
                 assertFalse(parser.nextIfArrayStart());
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(StreamingParser.Token.NAME, parser.peekToken());
                 assertEquals("id", parser.nextName());
                 assertEquals(StreamingParser.Token.NULL, parser.peekToken());
                 assertTrue(parser.nextIfNull());
                 assertTrue(parser.nextIfObjectEnd());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -167,7 +166,7 @@ class GsonParserTest {
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(ArrayList.class, value.get("items").getClass());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -193,11 +192,11 @@ class GsonParserTest {
         {
             GsonParser parser = parser("[{\"id\":7},\"next\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(7, ((Map<?, ?>) parser.readRaw()).get("id"));
                 assertEquals(StreamingParser.Token.STRING, parser.peekToken());
                 assertEquals("next", parser.readString());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -213,7 +212,7 @@ class GsonParserTest {
                 "[123,\"456\",\"789\",\"1.25\",\"12.5\"]");
             try {
 
-                parser.startArray();
+                parser.readArrayStart();
 
                 // NUMBER -> String
                 assertEquals("123", parser.readString());
@@ -227,8 +226,8 @@ class GsonParserTest {
                 assertEquals(12.5d,
                         parser.readNumber().doubleValue());
 
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();

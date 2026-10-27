@@ -1,7 +1,5 @@
 package org.sjf4j.testbench.binding.compiled;
 
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
@@ -13,7 +11,6 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.testbench.model.oneof.Cat;
 import org.sjf4j.testbench.model.oneof.Dog;
@@ -22,7 +19,6 @@ import org.sjf4j.testbench.model.oneof.Pet;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -161,9 +157,9 @@ public class OneOfReadBenchmark {
     // tree, resolve CURRENT key, then convert the selected subtype.
     private Pet rawBaseline(Jackson2Parser parser) throws IOException {
         try {
-            parser.startRead();
+            parser.start();
             Object raw = parser.readRaw();
-            parser.endRead();
+            parser.end();
             Object kind = ((Map<?, ?>) raw).get("kind");
             Class<?> subtype = "dog".equals(kind) ? Dog.class : Cat.class;
             return (Pet) NodeMapper.convert(raw, subtype, false, RuntimeContext.EMPTY);

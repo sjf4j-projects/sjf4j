@@ -210,9 +210,9 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     public String writeNodeAsString(Object node) {
         try (JSONWriter output = JSONWriter.of(writerContext)) {
             Fastjson2Generator generator = new Fastjson2Generator(output);
-            generator.startWrite();
+            generator.start();
             StreamingIO.writeNode(generator, node, context);
-            generator.endWrite();
+            generator.end();
             return output.toString();
         } catch (BindingException e) {
             throw e;
@@ -227,9 +227,9 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     public byte[] writeNodeAsBytes(Object node) {
         try (JSONWriter output = JSONWriter.ofUTF8(writerContext)) {
             Fastjson2Generator generator = new Fastjson2Generator(output);
-            generator.startWrite();
+            generator.start();
             StreamingIO.writeNode(generator, node, context);
-            generator.endWrite();
+            generator.end();
             return output.getBytes();
         } catch (BindingException e) {
             throw e;

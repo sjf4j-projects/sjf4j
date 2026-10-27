@@ -1228,7 +1228,7 @@ public final class StreamingIO {
                 generator.writeBooleanValue(external.toBoolean(node));
                 return;
             case OBJECT:
-                generator.startObject();
+                generator.writeObjectStart();
                 int count = 0;
                 for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
                     Object value = entry.getValue();
@@ -1239,18 +1239,18 @@ public final class StreamingIO {
                     count++;
                     _writeNode(generator, value, TypeInfo.NONE, context);
                 }
-                generator.endObject();
+                generator.writeObjectEnd();
                 return;
             case ARRAY:
-                generator.startArray();
+                generator.writeArrayStart();
                 int size = external.sizeInArray(node);
                 for (int i = 0; i < size; i++) {
                     if (i > 0) {
-                        generator.separateElement();
+                        generator.writeArraySeparator();
                     }
                     _writeNode(generator, external.getInArray(node, i), TypeInfo.NONE, context);
                 }
-                generator.endArray();
+                generator.writeArrayEnd();
                 return;
             default:
                 throw new BindingException("unsupported external node type '" + Types.name(node) + "'");
@@ -1266,7 +1266,7 @@ public final class StreamingIO {
 
     public static void writeMap(StreamingGenerator generator, Map<?, ?> map, TypeInfo valueTi,
                                 RuntimeContext context) throws IOException {
-        generator.startObject();
+        generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object value = entry.getValue();
@@ -1277,13 +1277,13 @@ public final class StreamingIO {
             count++;
             _writeNode(generator, value, valueTi, context);
         }
-        generator.endObject();
+        generator.writeObjectEnd();
     }
 
 
     public static void writeJsonObject(StreamingGenerator generator, JsonObject object,
                                        RuntimeContext context) throws IOException {
-        generator.startObject();
+        generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<String, Object> entry : object.entrySet()) {
             Object value = entry.getValue();
@@ -1294,7 +1294,7 @@ public final class StreamingIO {
             count++;
             _writeNode(generator, value, TypeInfo.NONE, context);
         }
-        generator.endObject();
+        generator.writeObjectEnd();
     }
 
 
@@ -1306,11 +1306,11 @@ public final class StreamingIO {
 
     public static void writeList(StreamingGenerator generator, List<?> list, TypeInfo elementTi,
                                  RuntimeContext context) throws IOException {
-        generator.startArray();
+        generator.writeArrayStart();
         if (list instanceof RandomAccess) {
             for (int i = 0, size = list.size(); i < size; i++) {
                 if (i > 0) {
-                    generator.separateElement();
+                    generator.writeArraySeparator();
                 }
                 _writeNode(generator, list.get(i), elementTi, context);
             }
@@ -1318,43 +1318,43 @@ public final class StreamingIO {
             boolean separated = false;
             for (Object value : list) {
                 if (separated) {
-                    generator.separateElement();
+                    generator.writeArraySeparator();
                 } else {
                     separated = true;
                 }
                 _writeNode(generator, value, elementTi, context);
             }
         }
-        generator.endArray();
+        generator.writeArrayEnd();
     }
 
 
     public static void writeJsonArray(StreamingGenerator generator, JsonArray array,
                                       RuntimeContext context) throws IOException {
-        generator.startArray();
+        generator.writeArrayStart();
         for (int i = 0, size = array.size(); i < size; i++) {
             if (i > 0) {
-                generator.separateElement();
+                generator.writeArraySeparator();
             }
             _writeNode(generator, array.getNode(i), TypeInfo.NONE, context);
         }
-        generator.endArray();
+        generator.writeArrayEnd();
     }
 
 
     public static void writeSet(StreamingGenerator generator, Set<?> set, TypeInfo elementTi,
                                 RuntimeContext context) throws IOException {
-        generator.startArray();
+        generator.writeArrayStart();
         boolean separated = false;
         for (Object value : set) {
             if (separated) {
-                generator.separateElement();
+                generator.writeArraySeparator();
             } else {
                 separated = true;
             }
             _writeNode(generator, value, elementTi, context);
         }
-        generator.endArray();
+        generator.writeArrayEnd();
     }
 
 
@@ -1366,53 +1366,53 @@ public final class StreamingIO {
 
     public static void writeArray(StreamingGenerator generator, Object node, Class<?> clazz, TypeInfo compTi,
                                   RuntimeContext context) throws IOException {
-        generator.startArray();
+        generator.writeArrayStart();
         if (clazz == boolean[].class) {
             boolean[] array = (boolean[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeBooleanValue(array[i]);
             }
         } else if (clazz == byte[].class) {
             byte[] array = (byte[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeByteValue(array[i]);
             }
         } else if (clazz == short[].class) {
             short[] array = (short[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeShortValue(array[i]);
             }
         } else if (clazz == int[].class) {
             int[] array = (int[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeIntValue(array[i]);
             }
         } else if (clazz == long[].class) {
             long[] array = (long[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeLongValue(array[i]);
             }
         } else if (clazz == float[].class) {
             float[] array = (float[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeFloatValue(array[i]);
             }
         } else if (clazz == double[].class) {
             double[] array = (double[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeDoubleValue(array[i]);
             }
         } else if (clazz == char[].class) {
             char[] array = (char[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 generator.writeCharValue(array[i]);
             }
         } else {
@@ -1421,11 +1421,11 @@ public final class StreamingIO {
             }
             Object[] array = (Object[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) generator.separateElement();
+                if (i > 0) generator.writeArraySeparator();
                 _writeNode(generator, array[i], compTi, context);
             }
         }
-        generator.endArray();
+        generator.writeArrayEnd();
     }
 
 
@@ -1437,7 +1437,7 @@ public final class StreamingIO {
 
     public static void writePojo(StreamingGenerator generator, Object node, PojoInfo pojoInfo,
                                  RuntimeContext context) throws IOException {
-        generator.startObject();
+        generator.writeObjectStart();
         PropertyGenerator[] propertyGenerators = pojoInfo.propertyGenerators;
         CompiledName[] compiledNames = generator.compiledNames(pojoInfo);
         int count = 0;
@@ -1463,7 +1463,7 @@ public final class StreamingIO {
                 }
             }
         }
-        generator.endObject();
+        generator.writeObjectEnd();
     }
 
 

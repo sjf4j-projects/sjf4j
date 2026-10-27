@@ -49,11 +49,11 @@ public abstract class StreamingGenerator {
      */
 
     /** Begins one document before writing its root value. */
-    public void startWrite() throws IOException {
+    public void start() throws IOException {
     }
 
     /** Completes the document after writing its root value. */
-    public void endWrite() throws IOException {
+    public void end() throws IOException {
     }
 
 
@@ -62,21 +62,21 @@ public abstract class StreamingGenerator {
      */
 
     /** Begins an object value. */
-    public abstract void startObject() throws IOException;
+    public abstract void writeObjectStart() throws IOException;
 
     /** Ends the current object. */
-    public abstract void endObject() throws IOException;
+    public abstract void writeObjectEnd() throws IOException;
 
     /** Begins an array value. */
-    public abstract void startArray() throws IOException;
+    public abstract void writeArrayStart() throws IOException;
 
     /** Ends the current array. */
-    public abstract void endArray() throws IOException;
+    public abstract void writeArrayEnd() throws IOException;
 
-    public void separateProperty() throws IOException {
+    public void writeObjectSeparator() throws IOException {
     }
 
-    public void separateElement() throws IOException {
+    public void writeArraySeparator() throws IOException {
     }
 
 
@@ -90,7 +90,7 @@ public abstract class StreamingGenerator {
     /** Writes a member name, separating it from a preceding member when needed. */
     public void writeName(String name, boolean separated) throws IOException {
         if (separated) {
-            separateProperty();
+            writeObjectSeparator();
         }
         writeName(name);
     }
@@ -124,7 +124,7 @@ public abstract class StreamingGenerator {
 
     public void writeName(CompiledName name, boolean separated) throws IOException {
         if (separated) {
-            separateProperty();
+            writeObjectSeparator();
         }
         writeName(name);
     }
@@ -321,7 +321,7 @@ public abstract class StreamingGenerator {
         } else if (raw instanceof Number) {
             writeNumberValue((Number) raw);
         } else if (raw instanceof Map) {
-            startObject();
+            writeObjectStart();
             int count = 0;
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) raw).entrySet()) {
                 Object child = entry.getValue();
@@ -329,23 +329,23 @@ public abstract class StreamingGenerator {
                 writeName((String) entry.getKey(), count++ > 0);
                 writeRaw(child, context);
             }
-            endObject();
+            writeObjectEnd();
         } else if (raw instanceof List) {
             List<?> list = (List<?>) raw;
-            startArray();
+            writeArrayStart();
             if (list instanceof RandomAccess) {
                 for (int i = 0, size = list.size(); i < size; i++) {
-                    if (i > 0) separateElement();
+                    if (i > 0) writeArraySeparator();
                     writeRaw(list.get(i), context);
                 }
             } else {
                 int count = 0;
                 for (Object child : list) {
-                    if (count++ > 0) separateElement();
+                    if (count++ > 0) writeArraySeparator();
                     writeRaw(child, context);
                 }
             }
-            endArray();
+            writeArrayEnd();
         } else {
             throw new BindingException("unsupported raw JSON node type '" + Types.name(raw) + "'");
         }

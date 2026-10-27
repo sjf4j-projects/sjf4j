@@ -72,11 +72,11 @@ class GsonBinderTest {
             try {
                 assertTrue(nativeWriter.getSerializeNulls());
 
-                generator.startObject();
+                generator.writeObjectStart();
                 generator.writeName("value");
                 generator.writeNull();
-                generator.endObject();
-                generator.endWrite();
+                generator.writeObjectEnd();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -184,7 +184,7 @@ class GsonBinderTest {
             GsonGenerator generator = binder.createGenerator(text);
             try {
                 generator.writeStringValue("héllo");
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -197,7 +197,7 @@ class GsonBinderTest {
             GsonGenerator generator = binder.createGenerator(bytes);
             try {
                 generator.writeStringValue("héllo");
-                generator.endWrite();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -210,7 +210,7 @@ class GsonBinderTest {
             GsonGenerator generator = binder.createGenerator(new JsonWriter(nativeOutput));
             try {
                 generator.writeStringValue("héllo");
-                generator.endWrite();
+                generator.end();
             } finally {
                 generator.release();
             }

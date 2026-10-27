@@ -17,7 +17,7 @@ class Jackson2GeneratorTest {
         StringWriter output = new StringWriter();
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
         Jackson2Generator generator = binder.createGenerator(output);
-        generator.startArray();
+        generator.writeArrayStart();
         generator.writeString("text");
         generator.writeCharValue('x');
         generator.writeLongValue(1L);
@@ -34,8 +34,8 @@ class Jackson2GeneratorTest {
         generator.writeNumber(null);
         generator.writeBigInteger(null);
         generator.writeBigDecimal(null);
-        generator.endArray();
-        generator.endWrite();
+        generator.writeArrayEnd();
+        generator.end();
 
         assertEquals("[\"text\",\"x\",1,2,3,4,5.5,6.5,true,12345678901234567890,7.25,8,null,null,null,null]", output.toString());
         generator.release();
@@ -48,7 +48,7 @@ class Jackson2GeneratorTest {
         Jackson2Generator generator = binder.createGenerator(output);
         Jackson2CompiledName text = new Jackson2CompiledName("te\"xt");
         Jackson2CompiledName number = new Jackson2CompiledName("number");
-        generator.startObject();
+        generator.writeObjectStart();
         generator.writeName(text);
         generator.writeString("value");
         generator.writeName(number);
@@ -59,7 +59,7 @@ class Jackson2GeneratorTest {
         generator.writeString(null);
         generator.writeName(new Jackson2CompiledName("nullValue"));
         generator.writeNull();
-        generator.endObject();
+        generator.writeObjectEnd();
         generator.release();
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42,\"decimal\":1.20,\"nullable\":null,\"nullValue\":null}", output.toString());

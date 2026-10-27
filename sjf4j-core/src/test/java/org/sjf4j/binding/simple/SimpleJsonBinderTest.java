@@ -51,7 +51,7 @@ class SimpleJsonBinderTest {
             try {
                 assertInstanceOf(SimpleJsonParser.class, parser);
                 parser.nextIfNull();
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();

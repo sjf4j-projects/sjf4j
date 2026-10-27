@@ -23,18 +23,18 @@ public abstract class JsonBindingContract {
         {
             StreamingGenerator generator = binding.createGenerator(output);
             try {
-                generator.startWrite();
-                generator.startObject();
+                generator.start();
+                generator.writeObjectStart();
                 generator.writeName("items");
-                generator.startArray();
+                generator.writeArrayStart();
                 generator.writeIntValue(1);
-                generator.separateElement();
+                generator.writeArraySeparator();
                 generator.writeStringValue("x");
-                generator.endArray();
+                generator.writeArrayEnd();
                 generator.writeName("ok", true);
                 generator.writeBoolean(true);
-                generator.endObject();
-                generator.endWrite();
+                generator.writeObjectEnd();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -43,17 +43,17 @@ public abstract class JsonBindingContract {
         {
             StreamingParser parser = binding.createParser(new StringReader(output.toString()));
             try {
-                parser.startRead();
-                parser.startObject();
+                parser.start();
+                parser.readObjectStart();
                 assertEquals("items", parser.nextName());
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(1, parser.readIntValue());
                 assertEquals("x", parser.readString());
-                parser.endArray();
+                parser.readArrayEnd();
                 assertEquals("ok", parser.nextName());
                 assertTrue(parser.readBooleanValue());
-                parser.endObject();
-                parser.endRead();
+                parser.readObjectEnd();
+                parser.end();
 
             } finally {
                 parser.release();

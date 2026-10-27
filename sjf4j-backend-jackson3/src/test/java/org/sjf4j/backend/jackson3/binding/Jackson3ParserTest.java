@@ -35,7 +35,7 @@ class Jackson3ParserTest {
             Jackson3Parser parser =
                      parser("{\"id\":7,\"unknown\":true,\"name\":\"Ada\"}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
 
                 // A failed conditional probe physically advances onto FIELD_NAME.
                 assertFalse(parser.nextIfObjectEnd());
@@ -52,7 +52,7 @@ class Jackson3ParserTest {
                 assertEquals("Ada", parser.readString());
 
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -78,7 +78,7 @@ class Jackson3ParserTest {
                 assertEquals("name", parser.nextName());
                 assertEquals("Ada", parser.readString());
                 assertTrue(parser.nextIfObjectEnd());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -93,7 +93,7 @@ class Jackson3ParserTest {
                 assertEquals(StreamingParser.Token.NULL, parser.peekToken());
                 assertTrue(parser.nextIfNull());
                 assertTrue(parser.nextIfArrayEnd());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -110,11 +110,11 @@ class Jackson3ParserTest {
         {
             Jackson3Parser parser = new Jackson3Binder(new JsonFactory()).createParser(nativeParser);
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals("id", parser.nextName());
                 assertEquals(7, parser.readIntValue());
-                parser.endObject();
-                parser.endRead();
+                parser.readObjectEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -132,7 +132,7 @@ class Jackson3ParserTest {
         {
             Jackson3Parser parser = parser("{\"unknown\":[1,{\"nested\":true}],\"legacyName\":\"Ada\",\"id\":7}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher));
                 parser.skipNode();
                 assertEquals(name, parser.nextNameMatch(matcher));
@@ -140,7 +140,7 @@ class Jackson3ParserTest {
                 assertEquals(id, parser.nextNameMatch(matcher));
                 assertEquals(7, parser.readIntValue());
                 assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher));
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -153,7 +153,7 @@ class Jackson3ParserTest {
         {
             Jackson3Parser parser = parser("[1.9,128,1.25e2,123456789012345678901234567890,1.20e-3,\"x\",null,\"\",\"xy\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(1, parser.readIntValue());
                 assertThrows(ArithmeticException.class, parser::readByteValue);
                 assertEquals(125d, parser.readDoubleValue());
@@ -163,7 +163,7 @@ class Jackson3ParserTest {
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -176,14 +176,14 @@ class Jackson3ParserTest {
         {
             Jackson3Parser parser = parser("[0,-1,1.9,2147483647,-2147483648,9223372036854775807]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(0, parser.readIntValue());
                 assertEquals(-1L, parser.readLongValue());
                 assertEquals(1, parser.readIntValue());
                 assertEquals(Integer.MAX_VALUE, parser.readIntValue());
                 assertEquals(Integer.MIN_VALUE, parser.readIntValue());
                 assertEquals(Long.MAX_VALUE, parser.readLongValue());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -210,7 +210,7 @@ class Jackson3ParserTest {
                 assertEquals(LinkedHashMap.class, value.get("nested").getClass());
                 assertEquals(ArrayList.class, value.get("items").getClass());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -221,7 +221,7 @@ class Jackson3ParserTest {
             Jackson3Parser parser = parser("null null");
             try {
                 assertTrue(parser.nextIfNull());
-                assertThrows(IOException.class, parser::endRead);
+                assertThrows(IOException.class, parser::end);
 
             } finally {
                 parser.release();
@@ -236,14 +236,14 @@ class Jackson3ParserTest {
         {
             Jackson3Parser parser = parser("[\"" + text + "\",null,\"" + text + "\"]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(StreamingParser.Token.STRING, parser.peekToken());
                 assertEquals(uuid, parser.readUuid());
                 assertNull(parser.readUuid());
                 assertFalse(parser.nextIfNull());
                 assertEquals(uuid, parser.readUuid());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -253,11 +253,11 @@ class Jackson3ParserTest {
         {
             Jackson3Parser parser = parser("{\"id\":\"" + text + "\"}");
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals("id", parser.nextName());
                 assertEquals(uuid, parser.readUuid());
-                parser.endObject();
-                parser.endRead();
+                parser.readObjectEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -267,10 +267,10 @@ class Jackson3ParserTest {
         {
             Jackson3Parser parser = parser("[\"invalid\",42]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertThrows(IllegalArgumentException.class, parser::readUuid);
                 assertThrows(IOException.class, parser::readUuid);
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -287,7 +287,7 @@ class Jackson3ParserTest {
                         ("\"" + text + "\"").getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             try {
                 assertEquals(java.util.UUID.fromString(text), parser.readUuid());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();

@@ -167,9 +167,9 @@ try {
         try (JsonParser nativeParser = JACKSON2.getFactory().createParser(JSON_DATA2)) {
              Jackson2Parser parser = new Jackson2Parser(nativeParser);
 try {
-            parser.startRead();
+            parser.start();
             Object result = StreamingIO.readNode(parser, User.class, RuntimeContext.EMPTY);
-            parser.endRead();
+            parser.end();
             return result;
         
 } finally { parser.release(); }
@@ -301,7 +301,7 @@ try {
     // ----- JSON-P baselines -----
     @Benchmark
     public Object json_jsonp_map_native() {
-        return Json.createParser(new StringReader(JSON_DATA2)).read();
+        return Json.createReader(new StringReader(JSON_DATA2)).read();
     }
 
     static class UserHasAny {

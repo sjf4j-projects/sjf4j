@@ -61,7 +61,7 @@ class StreamingGeneratorDefaultMethodTest {
             super(Backend.AUTO);
         }
 
-        public void startObject() {} public void endObject() {} public void startArray() {} public void endArray() {}
+        public void writeObjectStart() {} public void writeObjectEnd() {} public void writeArrayStart() {} public void writeArrayEnd() {}
         public void writeName(String name) {
             events.add("name:" + name);
         }

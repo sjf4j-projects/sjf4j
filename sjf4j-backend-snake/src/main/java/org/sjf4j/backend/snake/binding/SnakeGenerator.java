@@ -55,7 +55,7 @@ public final class SnakeGenerator extends StreamingGenerator {
      * Starts YAML stream and document.
      */
     @Override
-    public void startWrite() throws IOException {
+    public void start() throws IOException {
         emitter.emit(new StreamStartEvent(null, null));
         emitter.emit(new DocumentStartEvent(null, null, options.isExplicitStart(), null, null));
     }
@@ -64,7 +64,7 @@ public final class SnakeGenerator extends StreamingGenerator {
      * Ends YAML document and stream.
      */
     @Override
-    public void endWrite() throws IOException {
+    public void end() throws IOException {
         emitter.emit(new DocumentEndEvent(null, null, options.isExplicitEnd()));
         emitter.emit(new StreamEndEvent(null, null));
     }
@@ -73,7 +73,7 @@ public final class SnakeGenerator extends StreamingGenerator {
      * Starts object scope as mapping event.
      */
     @Override
-    public void startObject() throws IOException {
+    public void writeObjectStart() throws IOException {
         emitter.emit(new MappingStartEvent(null, null, true, null, null,
                 options.getDefaultFlowStyle()));
     }
@@ -82,7 +82,7 @@ public final class SnakeGenerator extends StreamingGenerator {
      * Ends object scope.
      */
     @Override
-    public void endObject() throws IOException {
+    public void writeObjectEnd() throws IOException {
         emitter.emit(new MappingEndEvent(null, null));
     }
 
@@ -90,7 +90,7 @@ public final class SnakeGenerator extends StreamingGenerator {
      * Starts array scope as sequence event.
      */
     @Override
-    public void startArray() throws IOException {
+    public void writeArrayStart() throws IOException {
         emitter.emit(new SequenceStartEvent(null, null, true, null, null,
                 options.getDefaultFlowStyle()));
     }
@@ -99,7 +99,7 @@ public final class SnakeGenerator extends StreamingGenerator {
      * Ends array scope.
      */
     @Override
-    public void endArray() throws IOException {
+    public void writeArrayEnd() throws IOException {
         emitter.emit(new SequenceEndEvent(null, null));
     }
 

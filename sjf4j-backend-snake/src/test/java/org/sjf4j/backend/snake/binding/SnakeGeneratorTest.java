@@ -28,23 +28,23 @@ class SnakeGeneratorTest {
         {
             SnakeGenerator generator = binder.createGenerator(output);
             try {
-                generator.startWrite();
-                generator.startObject();
+                generator.start();
+                generator.writeObjectStart();
                 generator.writeName(new CompiledName("nullLike"));
                 generator.writeStringValue("null");
                 generator.writeName("nested");
-                generator.startObject();
+                generator.writeObjectStart();
                 generator.writeName("booleanLike");
                 generator.writeStringValue("true");
                 generator.writeName("values");
-                generator.startArray();
+                generator.writeArrayStart();
                 generator.writeStringValue("123");
                 generator.writeStringValue("~");
                 generator.writeStringValue("hello: world");
-                generator.endArray();
-                generator.endObject();
-                generator.endObject();
-                generator.endWrite();
+                generator.writeArrayEnd();
+                generator.writeObjectEnd();
+                generator.writeObjectEnd();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -71,8 +71,8 @@ class SnakeGeneratorTest {
         {
             SnakeGenerator generator = binder.createGenerator(output);
             try {
-                generator.startWrite();
-                generator.startArray();
+                generator.start();
+                generator.writeArrayStart();
                 generator.writeStringValue("");
                 generator.writeStringValue("null");
                 generator.writeStringValue("~");
@@ -90,8 +90,8 @@ class SnakeGeneratorTest {
                 generator.writeNumberValue(new BigInteger("12345678901234567890"));
                 generator.writeNumberValue(new BigDecimal("7.25"));
                 generator.writeNull();
-                generator.endArray();
-                generator.endWrite();
+                generator.writeArrayEnd();
+                generator.end();
 
             } finally {
                 generator.release();
@@ -101,7 +101,7 @@ class SnakeGeneratorTest {
         {
             SnakeParser parser = parser(binder, output.toString());
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals("", parser.readString());
                 assertEquals("null", parser.readString());
                 assertEquals("~", parser.readString());
@@ -119,8 +119,8 @@ class SnakeGeneratorTest {
                 assertEquals(new BigInteger("12345678901234567890"), parser.readBigInteger());
                 assertEquals(new BigDecimal("7.25"), parser.readBigDecimal());
                 assertTrue(parser.nextIfNull());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -179,9 +179,9 @@ class SnakeGeneratorTest {
         {
             SnakeGenerator generator = new SnakeBinder().createGenerator(output);
             try {
-                generator.startWrite();
+                generator.start();
                 generator.writeStringValue("value");
-                generator.endWrite();
+                generator.end();
                 flushesAfterDocument = flushes[0];
                 assertTrue(flushesAfterDocument > 0);
 
@@ -196,7 +196,7 @@ class SnakeGeneratorTest {
 
     private static SnakeParser parser(SnakeBinder binder, String yaml) throws Exception {
         SnakeParser parser = binder.createParser(yaml);
-        parser.startRead();
+        parser.start();
         return parser;
     }
 }

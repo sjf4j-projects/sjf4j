@@ -28,22 +28,22 @@ public final class GsonGenerator extends StreamingGenerator {
     public JsonWriter nativeWriter() { return writer; }
 
     @Override
-    public void startObject() throws IOException {
+    public void writeObjectStart() throws IOException {
         writer.beginObject();
     }
 
     @Override
-    public void endObject() throws IOException {
+    public void writeObjectEnd() throws IOException {
         writer.endObject();
     }
 
     @Override
-    public void startArray() throws IOException {
+    public void writeArrayStart() throws IOException {
         writer.beginArray();
     }
 
     @Override
-    public void endArray() throws IOException {
+    public void writeArrayEnd() throws IOException {
         writer.endArray();
     }
 
@@ -108,7 +108,7 @@ public final class GsonGenerator extends StreamingGenerator {
     }
 
     @Override
-    public void endWrite() throws IOException {
+    public void end() throws IOException {
         writer.flush();
     }
 

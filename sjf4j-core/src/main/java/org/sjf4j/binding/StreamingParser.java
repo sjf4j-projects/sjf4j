@@ -55,7 +55,6 @@ import java.time.ZonedDateTime;
 public abstract class StreamingParser {
 
     final Backend backend;
-    private String currentName;
 
     public StreamingParser(Backend backend) {
         this.backend = backend;
@@ -124,7 +123,7 @@ public abstract class StreamingParser {
      *
      * <p>The root value is not consumed.</p>
      */
-    public void startRead() throws IOException {
+    public void start() throws IOException {
     }
 
     /**
@@ -133,7 +132,7 @@ public abstract class StreamingParser {
      * <p>The default implementation verifies that the logical input has
      * reached the end of the document.</p>
      */
-    public abstract void endRead() throws IOException;
+    public abstract void end() throws IOException;
 
 
     /**
@@ -207,28 +206,28 @@ public abstract class StreamingParser {
      *
      * @throws IOException if the next logical token is not an object start
      */
-    public abstract void startObject() throws IOException;
+    public abstract void readObjectStart() throws IOException;
 
     /**
      * Consumes the end of the current object.
      *
      * @throws IOException if the next logical token is not an object end
      */
-    public abstract void endObject() throws IOException;
+    public abstract void readObjectEnd() throws IOException;
 
     /**
      * Consumes the start of an array.
      *
      * @throws IOException if the next logical token is not an array start
      */
-    public abstract void startArray() throws IOException;
+    public abstract void readArrayStart() throws IOException;
 
     /**
      * Consumes the end of the current array.
      *
      * @throws IOException if the next logical token is not an array end
      */
-    public abstract void endArray() throws IOException;
+    public abstract void readArrayEnd() throws IOException;
 
 
     /**
@@ -268,18 +267,7 @@ public abstract class StreamingParser {
      */
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         String name = nextName();
-        currentName = name;
         return name == null ? NameMatcher.OBJECT_END : matcher.fallback(name);
-    }
-
-    /**
-     * Returns the current member name while its value is pending.
-     *
-     * <p>Native matchers may retrieve the name directly from their parser,
-     * avoiding String materialization for matched properties.</p>
-     */
-    public String currentName() throws IOException {
-        return currentName;
     }
 
     /**

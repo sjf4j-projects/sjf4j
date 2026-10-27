@@ -1,7 +1,6 @@
 package org.sjf4j.binding.simple;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 
@@ -24,7 +23,7 @@ class SimpleJsonParserTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[1,2,3,4,5.5,6.5,true]"));
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(1L, parser.readLongValue());
                 assertEquals(2, parser.readIntValue());
                 assertEquals((short) 3, parser.readShortValue());
@@ -32,7 +31,7 @@ class SimpleJsonParserTest {
                 assertEquals(5.5d, parser.readDoubleValue());
                 assertEquals(6.5f, parser.readFloatValue());
                 assertEquals(true, parser.readBooleanValue());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -45,11 +44,11 @@ class SimpleJsonParserTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser("[1,true]");
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(1, parser.readIntValue());
                 assertTrue(parser.readBooleanValue());
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -61,7 +60,7 @@ class SimpleJsonParserTest {
     void closePreventsReadsFromStringAndReaderInputs() throws Exception {
         SimpleJsonParser stringReader = new SimpleJsonParser("null");
         stringReader.release();
-        assertThrows(IOException.class, stringReader::startRead);
+        assertThrows(IOException.class, stringReader::start);
         assertThrows(IOException.class, stringReader::peekToken);
 
         SimpleJsonParser readerInput = new SimpleJsonParser(new StringReader("null"));
@@ -72,19 +71,19 @@ class SimpleJsonParserTest {
     @Test
     void closeClearsBufferedInputAndEofState() throws Exception {
         SimpleJsonParser parser = new SimpleJsonParser("[1]");
-        parser.startArray();
+        parser.readArrayStart();
         parser.release();
         assertThrows(IOException.class, parser::readIntValue);
 
         SimpleJsonParser eofReader = new SimpleJsonParser("null");
         eofReader.nextIfNull();
-        eofReader.endRead();
+        eofReader.end();
         eofReader.release();
         assertThrows(IOException.class, eofReader::peekToken);
 
         SimpleJsonParser readerEof = new SimpleJsonParser(new StringReader("null"));
         readerEof.nextIfNull();
-        readerEof.endRead();
+        readerEof.end();
         readerEof.release();
         assertThrows(IOException.class, readerEof::peekToken);
     }
@@ -95,14 +94,14 @@ class SimpleJsonParserTest {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader(
                 "[\"x\",\"\\\\\",\"\\u0041\",\"\\uD83D\\uDE00\",\"multiple\",2]"));
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals('x', parser.readCharValue());
                 assertEquals('\\', parser.readCharValue());
                 assertEquals('A', parser.readCharValue());
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals(2, parser.readIntValue());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -118,10 +117,10 @@ class SimpleJsonParserTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":\"x\\uD83D\"}]}"));
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 parser.nextName();
-                parser.startArray();
-                parser.startObject();
+                parser.readArrayStart();
+                parser.readObjectStart();
                 parser.nextName();
                 BindingException error = assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
@@ -137,7 +136,7 @@ class SimpleJsonParserTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[null,null,null,null,null,null,null]"));
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertNull(parser.readLong());
                 assertNull(parser.readInt());
                 assertNull(parser.readShort());
@@ -145,7 +144,7 @@ class SimpleJsonParserTest {
                 assertNull(parser.readDouble());
                 assertNull(parser.readFloat());
                 assertNull(parser.readBoolean());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -160,7 +159,7 @@ class SimpleJsonParserTest {
                 " { \"name\":\"\\\"\\\\\\/\\b\\f\\n\\r\\t\\u0041\\uD83D\\uDE00\", \"n\":123, \"b\": true, \"nil\": null } "));
             try {
                 assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
-                parser.startObject();
+                parser.readObjectStart();
                 assertEquals(StreamingParser.Token.NAME, parser.peekToken());
                 assertEquals("name", parser.nextName());
                 assertEquals("\"\\/\b\f\n\r\tA😀", parser.readString());
@@ -170,7 +169,7 @@ class SimpleJsonParserTest {
                 assertTrue(parser.readBooleanValue());
                 assertEquals("nil", parser.nextName());
                 parser.nextIfNull();
-                parser.endObject();
+                parser.readObjectEnd();
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
 
             } finally {
@@ -204,7 +203,7 @@ class SimpleJsonParserTest {
                 "[-9223372036854775808,9223372036854775807,-2147483648,2147483647," +
                         "-32768,32767,-128,127,1.25e2,123456789012345678901234567890,1.20e-3]"));
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals(Long.MIN_VALUE, parser.readLongValue());
                 assertEquals(Long.MAX_VALUE, parser.readLongValue());
                 assertEquals(Integer.MIN_VALUE, parser.readIntValue());
@@ -216,7 +215,7 @@ class SimpleJsonParserTest {
                 assertEquals(125d, parser.readDoubleValue());
                 assertEquals(new BigInteger("123456789012345678901234567890"), parser.readBigInteger());
                 assertEquals(new BigDecimal("1.20e-3"), parser.readBigDecimal());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -245,9 +244,9 @@ class SimpleJsonParserTest {
                 assertEquals(42, parser.readIntValue());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
                 assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -275,7 +274,7 @@ class SimpleJsonParserTest {
             SimpleJsonParser parser = new SimpleJsonParser(zeroThenData);
             try {
                 assertEquals(1, parser.readIntValue());
-                parser.endRead();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -289,10 +288,10 @@ class SimpleJsonParserTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[" + hugeExponent + ",2]"));
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertThrows(BindingException.class, parser::readDoubleValue);
                 assertEquals(2, parser.readIntValue());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -315,7 +314,7 @@ class SimpleJsonParserTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"a\":[{\"b\":1e}]}"));
             try {
-                parser.startObject(); parser.nextName(); parser.startArray(); parser.startObject(); parser.nextName();
+                parser.readObjectStart(); parser.nextName(); parser.readArrayStart(); parser.readObjectStart(); parser.nextName();
                 BindingException error = assertThrows(BindingException.class, parser::readDoubleValue);
                 assertEquals("$.a[0].b", error.getPathSegment().rootedPathExpr());
 
@@ -376,9 +375,9 @@ try {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"a\":{x}}"));
             try {
-                parser.startObject();
+                parser.readObjectStart();
                 parser.nextName();
-                parser.startObject();
+                parser.readObjectStart();
                 BindingException error = assertThrows(BindingException.class, parser::peekToken);
                 assertEquals("$.a", error.getPathSegment().rootedPathExpr());
 
@@ -404,11 +403,11 @@ try {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[\"\\uD83D\\uDE00\",null]"));
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertEquals("😀", parser.readString());
                 assertTrue(parser.nextIfNull());
                 assertFalse(parser.nextIfNull());
-                parser.endArray();
+                parser.readArrayEnd();
 
             } finally {
                 parser.release();
@@ -424,10 +423,10 @@ try {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader(
                 "[\"x\",123,true,false,null,{\"a\":[1]},[2,3]]"));
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 for (int i = 0; i < 7; i++) parser.skipNode();
-                parser.endArray();
-                parser.endRead();
+                parser.readArrayEnd();
+                parser.end();
 
             } finally {
                 parser.release();
@@ -465,7 +464,7 @@ try {
         {
             SimpleJsonParser parser = new SimpleJsonParser(failing);
             try {
-                parser.startArray();
+                parser.readArrayStart();
                 assertThrows(IOException.class, parser::peekToken);
 
             } finally {

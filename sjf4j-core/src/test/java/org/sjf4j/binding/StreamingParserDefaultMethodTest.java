@@ -48,8 +48,8 @@ class StreamingParserDefaultMethodTest {
         assertEquals(JsonType.UNKNOWN, StreamingParser.Token.UNKNOWN.jsonType());
 
         RecordingReader eof = new RecordingReader(false, StreamingParser.Token.EOF);
-        eof.startRead();
-        eof.endRead();
+        eof.start();
+        eof.end();
     }
 
     private static final class RecordingReader extends StreamingParser {
@@ -63,17 +63,17 @@ class StreamingParserDefaultMethodTest {
         }
 
         @Override
-        public void endRead() throws IOException {}
+        public void end() throws IOException {}
         public Token peekToken() { return token; }
         public boolean nextIfNull() { return nullValue; }
         public boolean nextIfObjectStart() { return false; }
         public boolean nextIfObjectEnd() { return false; }
         public boolean nextIfArrayStart() { return false; }
         public boolean nextIfArrayEnd() { return false; }
-        public void startObject() {}
-        public void endObject() {}
-        public void startArray() {}
-        public void endArray() {}
+        public void readObjectStart() {}
+        public void readObjectEnd() {}
+        public void readArrayStart() {}
+        public void readArrayEnd() {}
         public String nextName() { return "name"; }
         @Override
         public String readString() { return nullValue ? null : "text"; }

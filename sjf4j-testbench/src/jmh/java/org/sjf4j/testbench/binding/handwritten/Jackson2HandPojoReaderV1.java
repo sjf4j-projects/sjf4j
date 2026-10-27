@@ -29,14 +29,14 @@ public final class Jackson2HandPojoReaderV1 {
     private Jackson2HandPojoReaderV1() {}
 
     public static User readUser(Jackson2Parser parser) throws IOException {
-        parser.startRead();
+        parser.start();
         if (parser.nextIfNull()) {
-            parser.endRead();
+            parser.end();
             return null;
         }
 
         User user = new User();
-        parser.startObject();
+        parser.readObjectStart();
         int expected = 0;
         while (!parser.nextIfObjectEnd()) {
             int field = parser.nextNameMatch(USER_FIELDS, expected);
@@ -117,7 +117,7 @@ public final class Jackson2HandPojoReaderV1 {
             expected = field == expected && expected + 1 < 23
                     ? expected + 1 : NameMatcher.UNKNOWN;
         }
-        parser.endRead();
+        parser.end();
         return user;
     }
 
@@ -127,7 +127,7 @@ public final class Jackson2HandPojoReaderV1 {
         }
 
         Address address = new Address();
-        parser.startObject();
+        parser.readObjectStart();
         int expected = 0;
         while (!parser.nextIfObjectEnd()) {
             int field = parser.nextNameMatch(ADDRESS_FIELDS, expected);
@@ -163,7 +163,7 @@ public final class Jackson2HandPojoReaderV1 {
         }
 
         List<String> strings = new ArrayList<>();
-        parser.startArray();
+        parser.readArrayStart();
         while (!parser.nextIfArrayEnd()) {
             strings.add(readString(parser));
         }
@@ -176,7 +176,7 @@ public final class Jackson2HandPojoReaderV1 {
         }
 
         List<Friend> friends = new ArrayList<>();
-        parser.startArray();
+        parser.readArrayStart();
         while (!parser.nextIfArrayEnd()) {
             friends.add(readFriend(parser));
         }
@@ -189,7 +189,7 @@ public final class Jackson2HandPojoReaderV1 {
         }
 
         Friend friend = new Friend();
-        parser.startObject();
+        parser.readObjectStart();
         int expected = 0;
         while (!parser.nextIfObjectEnd()) {
             int field = parser.nextNameMatch(FRIEND_FIELDS, expected);

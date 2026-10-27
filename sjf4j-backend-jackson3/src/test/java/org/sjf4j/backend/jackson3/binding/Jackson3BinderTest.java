@@ -49,7 +49,7 @@ class Jackson3BinderTest {
                 Jackson3Generator generator = binder.createGenerator(chars);
                 try {
                     generator.writeStringValue(value);
-                    generator.endWrite();
+                    generator.end();
 
                 } finally {
                     generator.release();
@@ -68,7 +68,7 @@ class Jackson3BinderTest {
                 Jackson3Generator generator = binder.createGenerator(bytes);
                 try {
                     generator.writeStringValue(value);
-                    generator.endWrite();
+                    generator.end();
 
                 } finally {
                     generator.release();

@@ -51,7 +51,7 @@ class Fastjson2BinderTest {
             assertEquals(ArrayList.class, value.get("items").getClass());
             assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
             assertEquals(StreamingParser.Token.EOF, parser.peekToken());
-            parser.endRead();
+            parser.end();
         } finally {
             parser.release();
         }
@@ -72,12 +72,12 @@ class Fastjson2BinderTest {
     void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of("[{\"id\":7},\"next\"]"));
         try {
-            parser.startArray();
+            parser.readArrayStart();
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
             assertEquals(7, ((Map<?, ?>) parser.readRaw()).get("id"));
             assertEquals(StreamingParser.Token.STRING, parser.peekToken());
             assertEquals("next", parser.readString());
-            parser.endArray();
+            parser.readArrayEnd();
         } finally {
             parser.release();
         }
@@ -178,7 +178,7 @@ class Fastjson2BinderTest {
         {
             Fastjson2Generator generator = utf8 ? binder.createGeneratorUtf8() : binder.createGenerator();
             try {
-                generator.startObject();
+                generator.writeObjectStart();
                 if (prepared) generator.writeName(generator.createCompiledName(name));
                 else generator.writeName(name);
                 generator.writeString("héllo");
@@ -186,7 +186,7 @@ class Fastjson2BinderTest {
                 if (prepared) generator.writeName(generator.createCompiledName("tail"));
                 else generator.writeName("tail");
                 generator.writeNull();
-                generator.endObject();
+                generator.writeObjectEnd();
                 return utf8 ? new String(generator.toBytes(), StandardCharsets.UTF_8) : generator.toString();
 
             } finally {
@@ -252,7 +252,7 @@ class Fastjson2BinderTest {
         }
         Fastjson2Generator generator = binder.createGenerator(text);
         generator.writeStringValue("héllo");
-        generator.endWrite();
+        generator.end();
         generator.release();
         assertEquals("\"héllo\"", text.toString());
 
@@ -261,7 +261,7 @@ class Fastjson2BinderTest {
             Fastjson2Generator byteWriter = binder.createGenerator(bytes);
             try {
                 byteWriter.writeStringValue("héllo");
-                byteWriter.endWrite();
+                byteWriter.end();
 
             } finally {
                 byteWriter.release();
@@ -296,8 +296,9 @@ class Fastjson2BinderTest {
         {
             Fastjson2Generator generator = binder.createGenerator(text);
             try {
+                generator.start();
                 generator.writeNull();
-
+                generator.end();
             } finally {
                 generator.release();
             }
@@ -305,8 +306,9 @@ class Fastjson2BinderTest {
         {
             Fastjson2Generator generator = binder.createGenerator(bytes);
             try {
+                generator.start();
                 generator.writeNull();
-
+                generator.end();
             } finally {
                 generator.release();
             }

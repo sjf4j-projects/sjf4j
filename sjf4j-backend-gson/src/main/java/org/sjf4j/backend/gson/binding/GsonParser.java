@@ -32,7 +32,7 @@ public final class GsonParser extends StreamingParser {
     }
 
     @Override
-    public void endRead() throws IOException {
+    public void end() throws IOException {
         if (reader.peek() != JsonToken.END_DOCUMENT) {
             throw new IOException("expected end of document");
         }
@@ -93,22 +93,22 @@ public final class GsonParser extends StreamingParser {
     }
 
     @Override
-    public void startObject() throws IOException {
+    public void readObjectStart() throws IOException {
         reader.beginObject();
     }
 
     @Override
-    public void endObject() throws IOException {
+    public void readObjectEnd() throws IOException {
         reader.endObject();
     }
 
     @Override
-    public void startArray() throws IOException {
+    public void readArrayStart() throws IOException {
         reader.beginArray();
     }
 
     @Override
-    public void endArray() throws IOException {
+    public void readArrayEnd() throws IOException {
         reader.endArray();
     }
 

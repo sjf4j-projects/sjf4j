@@ -275,7 +275,7 @@ public class RuntimeReadBenchmark {
     // Binder conversion to JSON-P native targets is unsupported; measure native parsing directly.
     @Benchmark
     public Object jsonp_tree_native() {
-        return Json.createParser(new StringReader(JSON_DATA2)).read();
+        return Json.createReader(new StringReader(JSON_DATA2)).read();
     }
 
     @Benchmark
