@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 /**
  * Compiles a {@link MappingPlan} into a fully resolved mapping model.
  *
@@ -45,7 +44,6 @@ public final class MappingCompiler {
     private final CreatorResolver creators;
     private final ConverterResolver converters;
 
-
     public MappingCompiler(ProcessorContext context, TypeElement mapper,
                            List<MappingPlan> plans, CompiledMetadata metadata) {
         this.context = context;
@@ -61,7 +59,6 @@ public final class MappingCompiler {
     public boolean validate(GeneratedClass generated) {
         return converters.validate(generated);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -79,9 +76,7 @@ public final class MappingCompiler {
          * Root container / map / JsonObject / OneOf mapping has no finite set
          * of settable Java properties. Treat it as one root conversion.
          */
-        if (isRootProjection(plan)) {
-            return compileRoot(plan, generated);
-        }
+        if (isRootProjection(plan)) return compileRoot(plan, generated);
 
         CreatorResolver.Creation creation = null;
         TypeMirror targetType = plan.targetType();
@@ -89,19 +84,17 @@ public final class MappingCompiler {
         if (plan.create()) {
             creation = creators.resolve(mapper, plan, generated);
 
-            if (creation == null) {
-                return null;
-            }
+            if (creation == null) return null;
 
             targetType = creation.targetType();
         }
 
         Map<String, MappingPlan.Rule> explicit = explicitRules(plan.rules());
         Set<String> ignored = ignoredTargets(plan.rules());
-        List<ConstructorArgument> constructorArguments = new ArrayList<ConstructorArgument>();
-        List<Assignment> assignments = new ArrayList<Assignment>();
-        Set<String> consumed = new LinkedHashSet<String>();
-        Set<String> pathParents = new LinkedHashSet<String>();
+        List<ConstructorArgument> constructorArguments = new ArrayList<>();
+        List<Assignment> assignments = new ArrayList<>();
+        Set<String> consumed = new LinkedHashSet<>();
+        Set<String> pathParents = new LinkedHashSet<>();
 
         /*
          * Constructor/record parameters must be resolved before ordinary
@@ -134,21 +127,15 @@ public final class MappingCompiler {
                 continue;
             }
 
-            if (consumed.contains(rule.target())) {
-                continue;
-            }
+            if (consumed.contains(rule.target())) continue;
 
             Target target = resolveTarget(targetType, rule, generated, plan.method());
 
-            if (target == null) {
-                return null;
-            }
+            if (target == null) return null;
 
             Value value = resolveValue(plan, rule, defaultSourceName(rule), target.type(), true, generated);
 
-            if (value == null) {
-                return null;
-            }
+            if (value == null) return null;
 
             assignments.add(new Assignment(target, value, rule));
 
@@ -168,9 +155,7 @@ public final class MappingCompiler {
 
         for (Property property : properties.values()) {
 
-            if (!property.settable()) {
-                continue;
-            }
+            if (!property.settable()) continue;
 
             String name = property.name();
 
@@ -181,9 +166,7 @@ public final class MappingCompiler {
 
             NodeAccess targetAccess = context.access.resolveName(targetType, name);
 
-            if (targetAccess == null || !targetAccess.writable()) {
-                continue;
-            }
+            if (targetAccess == null || !targetAccess.writable()) continue;
 
             Value value = resolveValue(plan, null, name, targetAccess.writeType(), false, generated);
 
@@ -191,9 +174,7 @@ public final class MappingCompiler {
              * Auto mapping silently skips a property when the primary source
              * does not expose the same name through OBNT.
              */
-            if (value == null) {
-                continue;
-            }
+            if (value == null) continue;
 
             assignments.add(new Assignment(Target.property(name, targetAccess), value, null));
         }
@@ -204,7 +185,6 @@ public final class MappingCompiler {
         return CompiledMethod.object(plan, targetType, creation, constructorArguments, assignments, dynamicSources);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Dynamic Sources
@@ -214,15 +194,13 @@ public final class MappingCompiler {
     private List<DynamicSource> compileDynamicSources(MappingPlan plan, TypeMirror targetType,
                                                       List<ConstructorArgument> constructorArguments,
                                                       List<Assignment> assignments) {
-        if (types.nodeKind(targetType) != NodeKind.OBJECT_JOJO) {
-            return Collections.emptyList();
-        }
+        if (types.nodeKind(targetType) != NodeKind.OBJECT_JOJO) return Collections.emptyList();
 
-        Map<VariableElement, Set<String>> excluded = new LinkedHashMap<VariableElement, Set<String>>();
+        Map<VariableElement, Set<String>> excluded = new LinkedHashMap<>();
         Set<String> declaredTargets = context.properties.resolve(targetType).keySet();
 
         for (VariableElement source : plan.sources()) {
-            LinkedHashSet<String> names = new LinkedHashSet<String>();
+            LinkedHashSet<String> names = new LinkedHashSet<>();
             names.addAll(declaredTargets);
             excluded.put(source, names);
         }
@@ -241,15 +219,13 @@ public final class MappingCompiler {
          * JOJO dynamic namespace.
          */
         for (MappingPlan.Rule rule : plan.rules()) {
-            if (!rule.ignore()) {
-                continue;
-            }
+            if (!rule.ignore()) continue;
 
             String selector = rule.explicitSource() ? rule.source() : defaultSourceName(rule);
             consumeSelector(plan, excluded, selector);
         }
 
-        List<DynamicSource> result = new ArrayList<DynamicSource>();
+        List<DynamicSource> result = new ArrayList<>();
 
         for (VariableElement source : plan.sources()) {
             NodeKind kind = types.nodeKind(plan.sourceType(source));
@@ -275,12 +251,9 @@ public final class MappingCompiler {
         return result;
     }
 
-
     private void consumeValue(Map<VariableElement, Set<String>> excluded, Value value) {
 
-        if (value == null) {
-            return;
-        }
+        if (value == null) return;
 
         if (value.kind() == Value.Kind.READ) {
             consumeRead(excluded, value.read());
@@ -293,16 +266,11 @@ public final class MappingCompiler {
         }
     }
 
-
     private void consumeRead(Map<VariableElement, Set<String>> excluded, Read read) {
-        if (read == null || read.steps().isEmpty()) {
-            return;
-        }
+        if (read == null || read.steps().isEmpty()) return;
 
         PathSegment segment = read.steps().get(0).segment();
-        if (!(segment instanceof PathSegment.Name)) {
-            return;
-        }
+        if (!(segment instanceof PathSegment.Name)) return;
 
         Set<String> names = excluded.get(read.root());
 
@@ -311,21 +279,16 @@ public final class MappingCompiler {
         }
     }
 
-
     private void consumeSelector(MappingPlan plan, Map<VariableElement, Set<String>> excluded,
                                  String selector) {
-        if (selector == null || selector.isEmpty()) {
-            return;
-        }
+        if (selector == null || selector.isEmpty()) return;
 
         SourceSelector selected = sourceSelector(plan, selector);
         String expression = selected.expression;
 
         String name = null;
 
-        if (expression.isEmpty() || "$".equals(expression)) {
-            return;
-        }
+        if (expression.isEmpty() || "$".equals(expression)) return;
 
         if (!isPath(expression)) {
             name = expression;
@@ -343,9 +306,7 @@ public final class MappingCompiler {
             }
         }
 
-        if (name == null || name.isEmpty()) {
-            return;
-        }
+        if (name == null || name.isEmpty()) return;
 
         Set<String> names = excluded.get(selected.root);
 
@@ -353,7 +314,6 @@ public final class MappingCompiler {
             names.add(name);
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -399,9 +359,7 @@ public final class MappingCompiler {
             conversion = converters.resolveRoot(plan, sourceType, plan.targetType(), generated);
         }
 
-        if (conversion == null) {
-            return null;
-        }
+        if (conversion == null) return null;
 
         /*
          * The current mapper method itself is naturally a compatible local
@@ -424,13 +382,10 @@ public final class MappingCompiler {
                 new Read(source, sourceType, Collections.<ReadStep>emptyList(), sourceType), conversion);
     }
 
-
     private ConverterResolver.Conversion rootFallbackConversion(MappingPlan plan, TypeMirror source,
                                                                  TypeMirror target, GeneratedClass generated) {
 
-        if (converters.isCodecConversion(source, target)) {
-            return converters.resolveCodecConversion(plan, source, target, generated);
-        }
+        if (converters.isCodecConversion(source, target)) return converters.resolveCodecConversion(plan, source, target, generated);
 
         NodeKind sourceKind = types.nodeKind(source);
         NodeKind targetKind = types.nodeKind(target);
@@ -458,12 +413,9 @@ public final class MappingCompiler {
         return null;
     }
 
-
     private boolean isRootProjection(MappingPlan plan) {
 
-        if (!plan.rules().isEmpty()) {
-            return false;
-        }
+        if (!plan.rules().isEmpty()) return false;
 
         // Root logical values do not have ordinary settable POJO members.
         if (plan.sources().size() == 1 && converters.isCodecConversion(
@@ -488,7 +440,6 @@ public final class MappingCompiler {
                 return context.annotations.hasOneOf(types.concrete(plan.targetType()));
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -542,7 +493,6 @@ public final class MappingCompiler {
         return true;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Resolve Value
@@ -551,30 +501,23 @@ public final class MappingCompiler {
 
     private Value resolveValue(MappingPlan plan, MappingPlan.Rule rule, String fallbackSource,
                                TypeMirror targetType, boolean required, GeneratedClass generated) {
-        if (rule != null && rule.computed()) {
-            return resolveCompute(plan, rule, fallbackSource, targetType, generated);
-        }
+        if (rule != null && rule.computed()) return resolveCompute(plan, rule, fallbackSource, targetType, generated);
 
         String selector = rule != null && !rule.source().isEmpty() ? rule.source() : fallbackSource;
         Read read = resolveRead(plan, selector, required, generated);
 
-        if (read == null) {
-            return null;
-        }
+        if (read == null) return null;
 
         ConverterResolver.Conversion conversion = converters.resolve(plan, rule, read.type(), targetType, generated);
 
-        if (conversion == null) {
-            return null;
-        }
+        if (conversion == null) return null;
 
         return Value.read(targetType, read, conversion);
     }
 
-
     private Value resolveCompute(MappingPlan plan, MappingPlan.Rule rule, String fallbackSource,
                                  TypeMirror targetType, GeneratedClass generated) {
-        List<String> selectors = new ArrayList<String>();
+        List<String> selectors = new ArrayList<>();
         String compute = rule.compute().trim();
 
         if (compute.contains("::") && !compute.startsWith("this::")) {
@@ -586,9 +529,7 @@ public final class MappingCompiler {
         if (compute.startsWith("this::")) {
             ExecutableElement helper = resolveComputeHelper(plan, compute.substring(6).trim(), generated);
 
-            if (helper == null) {
-                return null;
-            }
+            if (helper == null) return null;
 
             if (rule.sources().isEmpty() && rule.source().isEmpty()) {
                 for (VariableElement parameter : helper.getParameters()) {
@@ -614,20 +555,17 @@ public final class MappingCompiler {
             return null;
         }
 
-        List<Read> reads = new ArrayList<Read>();
+        List<Read> reads = new ArrayList<>();
         for (String selector : selectors) {
             Read read = resolveRead(plan, selector, true, generated);
 
-            if (read == null) {
-                return null;
-            }
+            if (read == null) return null;
 
             reads.add(read);
         }
 
         return Value.compute(targetType, reads, rule.compute());
     }
-
 
     private ExecutableElement resolveComputeHelper(MappingPlan plan, String name, GeneratedClass generated) {
 
@@ -640,9 +578,7 @@ public final class MappingCompiler {
         ExecutableElement result = null;
 
         for (Element member : mapper.getEnclosedElements()) {
-            if (member.getKind() != ElementKind.METHOD || !member.getSimpleName().contentEquals(name)) {
-                continue;
-            }
+            if (member.getKind() != ElementKind.METHOD || !member.getSimpleName().contentEquals(name)) continue;
 
             ExecutableElement method = (ExecutableElement) member;
 
@@ -673,7 +609,6 @@ public final class MappingCompiler {
 
         return result;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -710,9 +645,7 @@ public final class MappingCompiler {
             return new Read(root, rootType, Collections.<ReadStep>emptyList(), rootType);
         }
 
-        if (isPath(expression)) {
-            return resolvePathRead(plan, root, expression, required, generated);
-        }
+        if (isPath(expression)) return resolvePathRead(plan, root, expression, required, generated);
 
         TypeMirror rootType = plan.sourceType(root);
         NodeAccess access = context.access.resolveName(rootType, expression);
@@ -730,7 +663,6 @@ public final class MappingCompiler {
         steps.add(new ReadStep(new PathSegment.Name(PathSegment.Root.INSTANCE, expression), access));
         return new Read(root, rootType, steps, access.readType());
     }
-
 
     private Read resolvePathRead(MappingPlan plan, VariableElement root, String expression,
                                  boolean required, GeneratedClass generated) {
@@ -752,7 +684,7 @@ public final class MappingCompiler {
         PathSegment[] segments = path.segments();
         TypeMirror rootType = plan.sourceType(root);
         TypeMirror current = rootType;
-        List<ReadStep> steps = new ArrayList<ReadStep>();
+        List<ReadStep> steps = new ArrayList<>();
 
         for (int i = 1; i < segments.length; i++) {
             PathSegment segment = segments[i];
@@ -790,7 +722,6 @@ public final class MappingCompiler {
         return new Read(root, rootType, steps, current);
     }
 
-
     /**
      * Supports:
      *
@@ -812,15 +743,12 @@ public final class MappingCompiler {
             String prefix = selector.substring(0, colon);
 
             for (VariableElement source : plan.sources()) {
-                if (source.getSimpleName().contentEquals(prefix)) {
-                    return new SourceSelector(source, selector.substring(colon + 1));
-                }
+                if (source.getSimpleName().contentEquals(prefix)) return new SourceSelector(source, selector.substring(colon + 1));
             }
         }
 
         return new SourceSelector(plan.primarySource(), selector);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -868,7 +796,7 @@ public final class MappingCompiler {
             return null;
         }
 
-        List<TargetStep> steps = new ArrayList<TargetStep>();
+        List<TargetStep> steps = new ArrayList<>();
         TypeMirror current = rootType;
 
         for (int i = 1; i < segments.length; i++) {
@@ -944,7 +872,6 @@ public final class MappingCompiler {
         return Target.path(rule.target(), rule.mode(), steps, tail.access.writeType());
     }
 
-
     /*
      * --------------------------------------------------------------
      * Rule Helpers
@@ -952,7 +879,7 @@ public final class MappingCompiler {
      */
 
     private Map<String, MappingPlan.Rule> explicitRules(List<MappingPlan.Rule> rules) {
-        Map<String, MappingPlan.Rule> result = new LinkedHashMap<String, MappingPlan.Rule>();
+        Map<String, MappingPlan.Rule> result = new LinkedHashMap<>();
 
         for (MappingPlan.Rule rule : rules) {
             result.put(rule.target(), rule);
@@ -961,9 +888,8 @@ public final class MappingCompiler {
         return result;
     }
 
-
     private Set<String> ignoredTargets(List<MappingPlan.Rule> rules) {
-        Set<String> result = new LinkedHashSet<String>();
+        Set<String> result = new LinkedHashSet<>();
 
         for (MappingPlan.Rule rule : rules) {
             if (rule.ignore()) {
@@ -974,7 +900,6 @@ public final class MappingCompiler {
         return result;
     }
 
-
     /**
      * When source is omitted, use the target property name.
      *
@@ -983,9 +908,7 @@ public final class MappingCompiler {
      */
     private String defaultSourceName(MappingPlan.Rule rule) {
 
-        if (!rule.targetPath()) {
-            return rule.target();
-        }
+        if (!rule.targetPath()) return rule.target();
 
         try {
             PathSegment[] segments = JsonPath.parse(rule.target()).segments();
@@ -993,9 +916,7 @@ public final class MappingCompiler {
             if (segments.length > 1) {
                 PathSegment tail = segments[segments.length - 1];
 
-                if (tail instanceof PathSegment.Name) {
-                    return ((PathSegment.Name) tail).name;
-                }
+                if (tail instanceof PathSegment.Name) return ((PathSegment.Name) tail).name;
             }
         } catch (NodeException ignored) {
             /*
@@ -1006,7 +927,6 @@ public final class MappingCompiler {
         return "";
     }
 
-
     private boolean isPath(String value) {
         return value != null && !value.isEmpty() && (value.charAt(0) == '$' || value.charAt(0) == '/');
     }
@@ -1015,7 +935,6 @@ public final class MappingCompiler {
         generated.invalidate();
         context.error(element, generated.originName() + ": " + message);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1032,7 +951,6 @@ public final class MappingCompiler {
             OBJECT,
             ROOT
         }
-
 
         private final Kind kind;
 
@@ -1051,7 +969,6 @@ public final class MappingCompiler {
         private final Read rootSource;
 
         private final ConverterResolver.Conversion rootConversion;
-
 
         private CompiledMethod(Kind kind, MappingPlan plan, TypeMirror targetType,
                                CreatorResolver.Creation creation,
@@ -1077,7 +994,6 @@ public final class MappingCompiler {
             this.rootConversion = rootConversion;
         }
 
-
         static CompiledMethod object(MappingPlan plan, TypeMirror targetType,
                                      CreatorResolver.Creation creation,
                                      List<ConstructorArgument> constructorArguments, List<Assignment> assignments,
@@ -1086,12 +1002,10 @@ public final class MappingCompiler {
                     constructorArguments, assignments, dynamicSources, null, null);
         }
 
-
         static CompiledMethod root(MappingPlan plan, Read source, ConverterResolver.Conversion conversion) {
             return new CompiledMethod(Kind.ROOT, plan, plan.targetType(), null,
                     null, null, null, source, conversion);
         }
-
 
         Kind kind() {
             return kind;
@@ -1130,20 +1044,17 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class ConstructorArgument {
 
         private final String name;
         private final TypeMirror type;
         private final Value value;
 
-
         ConstructorArgument(String name, TypeMirror type, Value value) {
             this.name = name;
             this.type = type;
             this.value = value;
         }
-
 
         String name() {
             return name;
@@ -1158,7 +1069,6 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class Assignment {
 
         private final Target target;
@@ -1166,13 +1076,11 @@ public final class MappingCompiler {
 
         private final MappingPlan.Rule rule;
 
-
         Assignment(Target target, Value value, MappingPlan.Rule rule) {
             this.target = target;
             this.value = value;
             this.rule = rule;
         }
-
 
         Target target() {
             return target;
@@ -1187,13 +1095,11 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class DynamicSource {
 
         private final VariableElement source;
         private final NodeKind kind;
         private final Set<String> excludedNames;
-
 
         DynamicSource(VariableElement source, NodeKind kind, Set<String> excludedNames) {
             this.source = source;
@@ -1201,7 +1107,6 @@ public final class MappingCompiler {
             this.excludedNames = excludedNames == null ? Collections.<String>emptySet()
                     : Collections.unmodifiableSet(new LinkedHashSet<String>(excludedNames));
         }
-
 
         VariableElement source() {
             return source;
@@ -1216,14 +1121,12 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class Target {
 
         enum Kind {
             PROPERTY,
             PATH
         }
-
 
         private final Kind kind;
         private final String name;
@@ -1235,7 +1138,6 @@ public final class MappingCompiler {
         private final MappingPlan.WriteMode mode;
 
         private final List<TargetStep> steps;
-
 
         private Target(Kind kind, String name, TypeMirror type, NodeAccess access,
                        MappingPlan.WriteMode mode, List<TargetStep> steps) {
@@ -1249,18 +1151,15 @@ public final class MappingCompiler {
                     : Collections.unmodifiableList(new ArrayList<TargetStep>(steps));
         }
 
-
         static Target property(String name, NodeAccess access) {
             return new Target(Kind.PROPERTY, name, access.writeType(), access,
                     MappingPlan.WriteMode.STRICT, null);
         }
 
-
         static Target path(String expression, MappingPlan.WriteMode mode,
                            List<TargetStep> steps, TypeMirror type) {
             return new Target(Kind.PATH, expression, type, null, mode, steps);
         }
-
 
         Kind kind() {
             return kind;
@@ -1287,18 +1186,15 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class TargetStep {
 
         private final PathSegment segment;
         private final NodeAccess access;
 
-
         TargetStep(PathSegment segment, NodeAccess access) {
             this.segment = segment;
             this.access = access;
         }
-
 
         PathSegment segment() {
             return segment;
@@ -1309,14 +1205,12 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class Value {
 
         enum Kind {
             READ,
             COMPUTE
         }
-
 
         private final Kind kind;
         private final TypeMirror type;
@@ -1328,7 +1222,6 @@ public final class MappingCompiler {
         private final List<Read> inputs;
 
         private final String compute;
-
 
         private Value(Kind kind, TypeMirror type, Read read, ConverterResolver.Conversion conversion,
                       List<Read> inputs, String compute) {
@@ -1343,16 +1236,13 @@ public final class MappingCompiler {
             this.compute = compute;
         }
 
-
         static Value read(TypeMirror targetType, Read read, ConverterResolver.Conversion conversion) {
             return new Value(Kind.READ, targetType, read, conversion, null, null);
         }
 
-
         static Value compute(TypeMirror targetType, List<Read> inputs, String compute) {
             return new Value(Kind.COMPUTE, targetType, null, null, inputs, compute);
         }
-
 
         Kind kind() {
             return kind;
@@ -1379,7 +1269,6 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class Read {
 
         private final VariableElement root;
@@ -1387,7 +1276,6 @@ public final class MappingCompiler {
         private final List<ReadStep> steps;
 
         private final TypeMirror type;
-
 
         Read(VariableElement root, TypeMirror rootType, List<ReadStep> steps, TypeMirror type) {
             this.root = root;
@@ -1397,7 +1285,6 @@ public final class MappingCompiler {
 
             this.type = type;
         }
-
 
         VariableElement root() {
             return root;
@@ -1420,18 +1307,15 @@ public final class MappingCompiler {
         }
     }
 
-
     static final class ReadStep {
 
         private final PathSegment segment;
         private final NodeAccess access;
 
-
         ReadStep(PathSegment segment, NodeAccess access) {
             this.segment = segment;
             this.access = access;
         }
-
 
         PathSegment segment() {
             return segment;
@@ -1442,12 +1326,10 @@ public final class MappingCompiler {
         }
     }
 
-
     private static final class SourceSelector {
 
         final VariableElement root;
         final String expression;
-
 
         SourceSelector(VariableElement root, String expression) {
             this.root = root;
