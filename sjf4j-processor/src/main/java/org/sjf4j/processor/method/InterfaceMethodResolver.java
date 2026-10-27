@@ -34,7 +34,6 @@ public final class InterfaceMethodResolver {
     private final Elements elements;
     private final TypeSystem types;
 
-
     public InterfaceMethodResolver(
             Types typeUtils,
             Elements elements,
@@ -45,23 +44,18 @@ public final class InterfaceMethodResolver {
         this.types = Asserts.notNull(types, "types");
     }
 
-
     /**
      * Returns effective abstract instance methods specialized through owner.
      */
     public List<ResolvedMethod> abstractMethods(TypeElement owner) {
-        Map<String, ResolvedMethod> methods = new LinkedHashMap<String, ResolvedMethod>();
+        Map<String, ResolvedMethod> methods = new LinkedHashMap<>();
 
         for (Element member : elements.getAllMembers(owner)) {
-            if (member.getKind() != ElementKind.METHOD) {
-                continue;
-            }
+            if (member.getKind() != ElementKind.METHOD) continue;
 
             ExecutableElement method = (ExecutableElement) member;
 
-            if (!method.getModifiers().contains(Modifier.ABSTRACT)) {
-                continue;
-            }
+            if (!method.getModifiers().contains(Modifier.ABSTRACT)) continue;
 
             if (method.getModifiers().contains(Modifier.STATIC) ||
                     method.getModifiers().contains(Modifier.PRIVATE)) {
@@ -99,9 +93,7 @@ public final class InterfaceMethodResolver {
                     public int compare(ResolvedMethod first, ResolvedMethod second) {
                         int compared = signatureKey(first).compareTo(signatureKey(second));
 
-                        if (compared != 0) {
-                            return compared;
-                        }
+                        if (compared != 0) return compared;
 
                         return declarationKey(first).compareTo(declarationKey(second));
                     }
@@ -109,7 +101,6 @@ public final class InterfaceMethodResolver {
 
         return result;
     }
-
 
     private ResolvedMethod moreSpecific(
             TypeElement owner,
@@ -120,13 +111,9 @@ public final class InterfaceMethodResolver {
         ExecutableElement secondMethod = second.declaration();
 
         try {
-            if (elements.overrides(secondMethod, firstMethod, owner)) {
-                return second;
-            }
+            if (elements.overrides(secondMethod, firstMethod, owner)) return second;
 
-            if (elements.overrides(firstMethod, secondMethod, owner)) {
-                return first;
-            }
+            if (elements.overrides(firstMethod, secondMethod, owner)) return first;
         } catch (IllegalArgumentException ignored) {
             /*
              * Some compiler implementations are conservative for equivalent
@@ -149,13 +136,9 @@ public final class InterfaceMethodResolver {
         boolean secondToFirst = typeUtils.isAssignable(secondReturn, firstReturn);
         boolean firstToSecond = typeUtils.isAssignable(firstReturn, secondReturn);
 
-        if (secondToFirst && !firstToSecond) {
-            return second;
-        }
+        if (secondToFirst && !firstToSecond) return second;
 
-        if (firstToSecond && !secondToFirst) {
-            return first;
-        }
+        if (firstToSecond && !secondToFirst) return first;
 
         /*
          * Equivalent inherited declarations. The Java compiler reports any
@@ -164,7 +147,6 @@ public final class InterfaceMethodResolver {
          */
         return declarationKey(second).compareTo(declarationKey(first)) < 0 ? second : first;
     }
-
 
     private String signatureKey(ResolvedMethod method) {
         StringBuilder key = new StringBuilder();
@@ -186,7 +168,6 @@ public final class InterfaceMethodResolver {
 
         return key.toString();
     }
-
 
     private String declarationKey(ResolvedMethod method) {
         ExecutableElement declaration = method.declaration();
