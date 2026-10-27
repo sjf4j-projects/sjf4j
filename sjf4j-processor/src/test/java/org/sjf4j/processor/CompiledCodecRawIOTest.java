@@ -37,7 +37,8 @@ class CompiledCodecRawIOTest {
                     + "}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
-                    + "@CompiledBinder(backend=Backend." + backend + ")"
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")}) "
+                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + "public interface Binder {"
                     + " @WriteTo String write(Bean bean) throws java.io.IOException;"
                     + " @ReadFrom Bean read(String json) throws java.io.IOException;"
@@ -47,18 +48,10 @@ class CompiledCodecRawIOTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("rawClazz == String.class")
-                            || generated.contains("rawClazz == java.lang.String.class"),
-                    backend + ": UUID raw string optimization missing");
-            assertTrue(generated.contains("rawClazz == Long.class")
-                            || generated.contains("rawClazz == java.lang.Long.class"),
-                    backend + ": explicit Instant Long optimization missing");
-            assertTrue(generated.contains(".writeRaw(rawValue, this.context)"),
-                    backend + ": runtime raw-type fallback missing");
-            assertTrue(generated.contains(".streamParser.read("),
-                    backend + ": compiled streaming codec read path missing");
-            assertTrue(generated.contains(".streamGenerator.write("),
-                    backend + ": compiled streaming codec write path missing");
+            assertFalse(generated.contains(".rawClazz"), backend);
+            assertFalse(generated.contains(".streamGenerator.write("), backend);
+            assertFalse(generated.contains(".streamParser.read("), backend);
+            assertFalse(generated.contains("requireRegisteredValueInfo"), backend);
             if (backend.equals("FASTJSON2")) {
                 assertTrue(generated.contains("w.writeName"),
                         backend + ": native POJO writer was lost");
@@ -66,7 +59,7 @@ class CompiledCodecRawIOTest {
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
                 assertTrue(generated.contains(" g = generator.nativeWriter();"),
                         backend + ": mixed native POJO path missing");
-                assertTrue(generated.contains("_writeString(g, (String) rawValue);"),
+                assertTrue(generated.contains("_writeString(g, rawValue);"),
                         backend + ": shared Jackson codec string helper missing");
             }
 
@@ -92,12 +85,11 @@ class CompiledCodecRawIOTest {
                 assertEquals(instant.toEpochMilli(), normalJson.path("epoch").asLong(), backend);
                 JsonNode configuredJson = mapper.readTree(differentFormat);
                 assertEquals(uuid.toString(), configuredJson.path("id").asText(), backend);
-                assertEquals(instant.toEpochMilli(), configuredJson.path("when").asLong(), backend);
+                assertEquals(instant.toString(), configuredJson.path("when").asText(), backend);
                 assertEquals(instant.toEpochMilli(), configuredJson.path("epoch").asLong(), backend);
                 assertEquals("tail", configuredJson.path("suffix").asText(), backend);
 
-                assertTrue(generated.contains(".multiples"),
-                        backend + ": generated multi-shape read dispatch missing");
+                assertFalse(generated.contains(".multiples"), backend);
                 // Input shape wins; the configured format only selects within
                 // the matching shape, never forces a different raw type.
                 Object defaultReadsEpoch = binderType.getMethod("read", String.class)
@@ -138,7 +130,7 @@ class CompiledCodecRawIOTest {
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("private static void _writeString("), backend);
-            assertTrue(generated.contains("_writeString(g, (String) rawValue);"), backend);
+            assertTrue(generated.contains("_writeString(g, rawValue);"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
