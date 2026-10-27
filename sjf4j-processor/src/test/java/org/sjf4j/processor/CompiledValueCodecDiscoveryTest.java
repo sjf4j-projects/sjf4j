@@ -40,6 +40,7 @@ class CompiledValueCodecDiscoveryTest {
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                     + "import java.io.IOException; "
+                    + "@BindingOptions(valueCodecs={@CodecMapping(type=java.time.Instant.class,format=\"iso\")}) "
                     + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
                     + " @ReadFrom Bean read(String json) throws IOException; "
                     + " @WriteTo String write(Bean value) throws IOException; "
@@ -49,12 +50,9 @@ class CompiledValueCodecDiscoveryTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("requireRegisteredValueInfo"), backend + ": " + generated);
-            assertTrue(generated.contains("selectForRead("),
-                    backend + ": automatic read Codec registration missing");
-            assertTrue(generated.contains("context.valueFormat("),
-                    backend + ": Context-dependent Codec initialization missing");
-            assertTrue(generated.contains("epochMillis"), backend + ": " + generated);
+            assertFalse(generated.contains("requireRegisteredValueInfo"), backend);
+            assertFalse(generated.contains("context.valueFormat("), backend);
+            assertTrue(generated.contains("INSTANT_EPOCH_MILLIS"), backend + ": " + generated);
             assertTrue(generated.contains("yyyy/MM/dd"), backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -91,6 +89,7 @@ class CompiledValueCodecDiscoveryTest {
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
+                + "@BindingOptions(registries={AppCodecs.class}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
                 + " @ReadFrom Money read(String json) throws IOException; "
                 + " @WriteTo String write(Money value) throws IOException; }");
@@ -99,11 +98,10 @@ class CompiledValueCodecDiscoveryTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("readValueCodec"), generated);
-        assertTrue(generated.contains("requireRegisteredValueInfo"), generated);
+        assertTrue(generated.contains("AppCodecs.MONEY"), generated);
+        assertFalse(generated.contains("requireRegisteredValueInfo"), generated);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
-            ValueRegistry.registerAnnotated(loader.loadClass("fixture.AppCodecs"));
             Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
             Class<?> moneyType = loader.loadClass("fixture.Money");
             Object binder = binderType.getConstructor().newInstance();
@@ -134,9 +132,9 @@ class CompiledValueCodecDiscoveryTest {
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
-                        .contains("readValueCodec"), compiled.generatedSource("fixture/Binder_Impl.java"));
+                         .contains("Third.MONEY"), compiled.generatedSource("fixture/Binder_Impl.java"));
 
-        ValueRegistry.registerAnnotated(ClasspathRegistries.Third.class);
+        // Configured binders directly reference the declared codec: no global registration.
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
             Object binder = binderType.getConstructor().newInstance();
@@ -167,7 +165,7 @@ class CompiledValueCodecDiscoveryTest {
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("alpha"), generated);
-        assertTrue(generated.contains("readValueCodec"), generated);
+        assertTrue(generated.contains("First.ALPHA"), generated);
+        assertFalse(generated.contains("requireRegisteredValueInfo"), generated);
     }
 }
