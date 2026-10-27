@@ -46,7 +46,7 @@ public final class PropertyResolver {
     private final NodeAnnotations annotations;
 
     private final Map<String, Map<String, Property>> cache =
-            new HashMap<String, Map<String, Property>>();
+            new HashMap<>();
 
     public PropertyResolver(
             Types typeUtils,
@@ -68,9 +68,7 @@ public final class PropertyResolver {
     public Map<String, Property> resolve(TypeMirror owner) {
         owner = types.concrete(owner);
 
-        if (!(owner instanceof DeclaredType)) {
-            return Collections.emptyMap();
-        }
+        if (!(owner instanceof DeclaredType)) return Collections.emptyMap();
 
         NodeKind kind = types.nodeKind(owner);
 
@@ -81,27 +79,21 @@ public final class PropertyResolver {
 
         TypeElement type = types.typeElement(owner);
 
-        if (type == null) {
-            return Collections.emptyMap();
-        }
+        if (type == null) return Collections.emptyMap();
 
         String cacheKey = owner.toString();
 
         Map<String, Property> cached = cache.get(cacheKey);
 
-        if (cached != null) {
-            return cached;
-        }
+        if (cached != null) return cached;
 
         DeclaredType declaredOwner = (DeclaredType) owner;
         boolean jojo = kind == NodeKind.OBJECT_JOJO;
 
-        Map<String, Builder> builders = new LinkedHashMap<String, Builder>();
+        Map<String, Builder> builders = new LinkedHashMap<>();
 
         for (Element member : elements.getAllMembers(type)) {
-            if (jojo && isJsonBaseMember(member)) {
-                continue;
-            }
+            if (jojo && isJsonBaseMember(member)) continue;
 
             Set<Modifier> modifiers = member.getModifiers();
 
@@ -146,9 +138,7 @@ public final class PropertyResolver {
      * Resolves one node-facing property.
      */
     public Property resolve(TypeMirror owner, String name) {
-        if (name == null || name.isEmpty()) {
-            return null;
-        }
+        if (name == null || name.isEmpty()) return null;
 
         return resolve(owner).get(name);
     }
@@ -239,13 +229,9 @@ public final class PropertyResolver {
 
         String name = method.getSimpleName().toString();
 
-        if (name.equals("getClass")) {
-            return null;
-        }
+        if (name.equals("getClass")) return null;
 
-        if (isRecordAccessor(type, name)) {
-            return name;
-        }
+        if (isRecordAccessor(type, name)) return name;
 
         if (name.startsWith("get")
                 && name.length() > 3) {
@@ -279,9 +265,7 @@ public final class PropertyResolver {
             TypeElement type,
             String methodName) {
 
-        if (!"RECORD".equals(type.getKind().name())) {
-            return false;
-        }
+        if (!"RECORD".equals(type.getKind().name())) return false;
 
         for (Element element : type.getEnclosedElements()) {
             if ("RECORD_COMPONENT".equals(element.getKind().name())
@@ -296,9 +280,7 @@ public final class PropertyResolver {
     private boolean isJsonBaseMember(Element member) {
         Element owner = member.getEnclosingElement();
 
-        if (!(owner instanceof TypeElement)) {
-            return false;
-        }
+        if (!(owner instanceof TypeElement)) return false;
 
         String name = ((TypeElement) owner).getQualifiedName().toString();
 
@@ -356,7 +338,6 @@ public final class PropertyResolver {
         }
     }
 
-
     private final class Builder {
 
         private final TypeElement owner;
@@ -365,22 +346,18 @@ public final class PropertyResolver {
         Candidate read;
         Candidate write;
 
-
         Builder(TypeElement owner, String name) {
             this.owner = owner;
             this.name = name;
         }
 
-
         void offerRead(PropertyAccess access, int priority) {
             read = offer(read, access, priority, true);
         }
 
-
         void offerWrite(PropertyAccess access, int priority) {
             write = offer(write, access, priority, false);
         }
-
 
         private Candidate offer(
                 Candidate current,
@@ -388,23 +365,15 @@ public final class PropertyResolver {
                 int priority,
                 boolean readable) {
 
-            if (current == null || priority > current.priority) {
-                return new Candidate(candidate, priority);
-            }
+            if (current == null || priority > current.priority) return new Candidate(candidate, priority);
 
-            if (priority < current.priority) {
-                return current;
-            }
+            if (priority < current.priority) return current;
 
             int specificity = compareSpecificity(owner, current.access, candidate, readable);
 
-            if (specificity < 0) {
-                return current;
-            }
+            if (specificity < 0) return current;
 
-            if (specificity > 0) {
-                return new Candidate(candidate, priority);
-            }
+            if (specificity > 0) return new Candidate(candidate, priority);
 
             reportAmbiguous(name, readable, current.access, candidate);
 
@@ -412,7 +381,6 @@ public final class PropertyResolver {
                     ? new Candidate(candidate, priority) : current;
         }
     }
-
 
     /**
      * Returns -1 for current, +1 for candidate and 0 for a real ambiguity.
@@ -423,9 +391,7 @@ public final class PropertyResolver {
             PropertyAccess candidate,
             boolean readable) {
 
-        if (current.member().equals(candidate.member())) {
-            return -1;
-        }
+        if (current.member().equals(candidate.member())) return -1;
 
         if (current.isMethod() &&
                 candidate.isMethod()) {
@@ -434,13 +400,9 @@ public final class PropertyResolver {
             ExecutableElement candidateMethod = (ExecutableElement) candidate.member();
 
             try {
-                if (elements.overrides(candidateMethod, currentMethod, owner)) {
-                    return 1;
-                }
+                if (elements.overrides(candidateMethod, currentMethod, owner)) return 1;
 
-                if (elements.overrides(currentMethod, candidateMethod, owner)) {
-                    return -1;
-                }
+                if (elements.overrides(currentMethod, candidateMethod, owner)) return -1;
             } catch (IllegalArgumentException ignored) {
                 // Fall through to signature/type comparison.
             }
@@ -448,9 +410,7 @@ public final class PropertyResolver {
             if (readable) {
                 int booleanGetter = compareBooleanGetter(currentMethod, candidateMethod);
 
-                if (booleanGetter != 0) {
-                    return booleanGetter;
-                }
+                if (booleanGetter != 0) return booleanGetter;
             }
 
             if (sameMethodSignature(current, candidate)) {
@@ -508,7 +468,6 @@ public final class PropertyResolver {
         return 0;
     }
 
-
     private int compareBooleanGetter(
             ExecutableElement current,
             ExecutableElement candidate) {
@@ -518,9 +477,7 @@ public final class PropertyResolver {
         boolean currentIs = isBooleanGetterName(currentName);
         boolean candidateIs = isBooleanGetterName(candidateName);
 
-        if (currentIs == candidateIs) {
-            return 0;
-        }
+        if (currentIs == candidateIs) return 0;
 
         String isName = currentIs ? currentName : candidateName;
         String otherName = currentIs ? candidateName : currentName;
@@ -535,11 +492,9 @@ public final class PropertyResolver {
         return candidateIs ? 1 : -1;
     }
 
-
     private boolean isBooleanGetterName(String name) {
         return name.startsWith("is") && name.length() > 2;
     }
-
 
     private boolean sameMethodSignature(
             PropertyAccess first,
@@ -548,19 +503,13 @@ public final class PropertyResolver {
         ExecutableElement firstMethod = (ExecutableElement) first.member();
         ExecutableElement secondMethod = (ExecutableElement) second.member();
 
-        if (!firstMethod.getSimpleName().contentEquals(secondMethod.getSimpleName())) {
-            return false;
-        }
+        if (!firstMethod.getSimpleName().contentEquals(secondMethod.getSimpleName())) return false;
 
         int parameters = firstMethod.getParameters().size();
 
-        if (parameters != secondMethod.getParameters().size()) {
-            return false;
-        }
+        if (parameters != secondMethod.getParameters().size()) return false;
 
-        if (parameters == 0) {
-            return true;
-        }
+        if (parameters == 0) return true;
 
         if (parameters == 1) {
             return typeUtils.isSameType(
@@ -571,7 +520,6 @@ public final class PropertyResolver {
         return false;
     }
 
-
     private TypeElement memberOwner(
             Element member) {
 
@@ -581,7 +529,6 @@ public final class PropertyResolver {
                 ? (TypeElement) owner
                 : null;
     }
-
 
     private void reportAmbiguous(
             String name,
@@ -602,7 +549,6 @@ public final class PropertyResolver {
                 second.member());
     }
 
-
     private String memberDescription(
             PropertyAccess access) {
 
@@ -613,7 +559,6 @@ public final class PropertyResolver {
                 : owner.getQualifiedName() + "#") +
                 access.member().toString();
     }
-
 
     private String candidateKey(
             PropertyAccess access) {
