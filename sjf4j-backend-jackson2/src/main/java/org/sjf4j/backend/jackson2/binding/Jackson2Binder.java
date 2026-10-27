@@ -19,7 +19,7 @@ import java.io.Writer;
  * The constructor disables charset detection and automatic source closing on
  * the supplied factory; writers do not close caller-supplied output targets.
  */
-public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer> {
+public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generator> {
 
     private final JsonFactory factory;
 
@@ -56,6 +56,7 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
         this.factory = factory;
         this.factory.disable(JsonFactory.Feature.CHARSET_DETECTION);
         this.factory.disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
+        this.factory.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
     }
 
     /**
@@ -63,30 +64,30 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
      * @param parser the Jackson 2 parser
      * @return a SJF4J streaming reader
      */
-    public Jackson2Reader createReader(JsonParser parser) {
-        return new Jackson2Reader(Asserts.notNull(parser, "parser"));
+    public Jackson2Parser createParser(JsonParser parser) {
+        return new Jackson2Parser(Asserts.notNull(parser, "parser"));
     }
 
     @Override
-    public Jackson2Reader createReader(Reader input) throws IOException {
-        return new Jackson2Reader(factory.createParser(Asserts.notNull(input, "input")));
+    public Jackson2Parser createParser(Reader input) throws IOException {
+        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")));
     }
 
     @Override
-    public Jackson2Reader createReader(InputStream input) throws IOException {
-        return new Jackson2Reader(factory.createParser(Asserts.notNull(input, "input")));
+    public Jackson2Parser createParser(InputStream input) throws IOException {
+        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")));
     }
 
     @Override
-    public Jackson2Reader createReader(String input) throws IOException {
+    public Jackson2Parser createParser(String input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Jackson2Reader(factory.createParser(input));
+        return new Jackson2Parser(factory.createParser(input));
     }
 
     @Override
-    public Jackson2Reader createReader(byte[] input) throws IOException {
+    public Jackson2Parser createParser(byte[] input) throws IOException {
         Asserts.notNull(input, "input");
-        return new Jackson2Reader(factory.createParser(input));
+        return new Jackson2Parser(factory.createParser(input));
     }
 
 
@@ -96,20 +97,20 @@ public final class Jackson2Binder extends Binder<Jackson2Reader, Jackson2Writer>
      * @param generator the Jackson 2 generator
      * @return a SJF4J streaming writer
      */
-    public Jackson2Writer createWriter(JsonGenerator generator) {
-        return new Jackson2Writer(Asserts.notNull(generator, "generator"));
+    public Jackson2Generator createGenerator(JsonGenerator generator) {
+        return new Jackson2Generator(Asserts.notNull(generator, "generator"));
     }
 
     @Override
-    public Jackson2Writer createWriter(Writer output) throws IOException {
+    public Jackson2Generator createGenerator(Writer output) throws IOException {
         JsonGenerator generator = factory.createGenerator(Asserts.notNull(output, "output"));
-        return new Jackson2Writer(generator);
+        return new Jackson2Generator(generator);
     }
 
     @Override
-    public Jackson2Writer createWriter(OutputStream output) throws IOException {
+    public Jackson2Generator createGenerator(OutputStream output) throws IOException {
         JsonGenerator generator = factory.createGenerator(Asserts.notNull(output, "output"), JsonEncoding.UTF8);
-        return new Jackson2Writer(generator);
+        return new Jackson2Generator(generator);
     }
 
 }

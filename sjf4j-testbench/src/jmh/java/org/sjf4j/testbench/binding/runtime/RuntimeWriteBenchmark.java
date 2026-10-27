@@ -262,7 +262,7 @@ public class RuntimeWriteBenchmark {
     @Benchmark
     public Object jsonp_tree_native() {
         StringWriter sw = new StringWriter();
-        Json.createWriter(sw).write(JSONP_TREE_NODE);
+        Json.createGenerator(sw).write(JSONP_TREE_NODE);
         return sw.toString();
     }
 

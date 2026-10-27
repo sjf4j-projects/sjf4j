@@ -8,8 +8,8 @@ import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.binding.PropertyReader;
-import org.sjf4j.binding.PropertyWriter;
+import org.sjf4j.binding.PropertyParser;
+import org.sjf4j.binding.PropertyGenerator;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -269,7 +269,7 @@ public final class ReflectUtil {
                     Invokers.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
             ValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
 
-            PropertyReader propertyReader = PropertyReader.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
+            PropertyParser propertyReader = PropertyParser.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
                     setterHandle, setterLambda, resolvedCodec, lookup);
             PropertyInfo pi = new PropertyInfo(finalName, family.aliases.toArray(new String[0]), publicField,
                     type, genericDependent, boxed,
@@ -286,22 +286,22 @@ public final class ReflectUtil {
 
         } //for
 
-        List<PropertyInfo> writableProperties = new ArrayList<>(properties.size());
-        List<PropertyReader> propertyReaders = new ArrayList<>(properties.size());
-        List<PropertyInfo> readableProperties = new ArrayList<>(properties.size());
-        List<PropertyWriter> propertyWriters = new ArrayList<>(properties.size());
+        List<PropertyInfo> settableProperties = new ArrayList<>(properties.size());
+        List<PropertyParser> propertyParsers = new ArrayList<>(properties.size());
+        List<PropertyInfo> gettableProperties = new ArrayList<>(properties.size());
+        List<PropertyGenerator> propertyGenerators = new ArrayList<>(properties.size());
         for (PropertyInfo property : properties.values()) {
             // TODO: configuration order
-            if (property.reader != null) {
-                writableProperties.add(property);
-                propertyReaders.add(property.reader);
+            if (property.parser != null) {
+                settableProperties.add(property);
+                propertyParsers.add(property.parser);
             }
 
-            PropertyWriter propertyWriter = PropertyWriter.create(property.name, property.type, property.boxed,
+            PropertyGenerator propertyWriter = PropertyGenerator.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.valueInfo, lookup);
             if (propertyWriter != null) {
-                readableProperties.add(property);
-                propertyWriters.add(propertyWriter);
+                gettableProperties.add(property);
+                propertyGenerators.add(propertyWriter);
             }
         }
 
@@ -318,8 +318,8 @@ public final class ReflectUtil {
         }
 
         return new PojoInfo(clazz, creatorInfo, readDynamic, writeDynamic, propertyLookup,
-                writableProperties.toArray(new PropertyInfo[0]), propertyReaders.toArray(new PropertyReader[0]),
-                readableProperties.toArray(new PropertyInfo[0]), propertyWriters.toArray(new PropertyWriter[0]));
+                settableProperties.toArray(new PropertyInfo[0]), propertyParsers.toArray(new PropertyParser[0]),
+                gettableProperties.toArray(new PropertyInfo[0]), propertyGenerators.toArray(new PropertyGenerator[0]));
     }
 
     private static void _reserveFieldFamilies(Field[] fields, Map<String, PropertyFamily> families) {

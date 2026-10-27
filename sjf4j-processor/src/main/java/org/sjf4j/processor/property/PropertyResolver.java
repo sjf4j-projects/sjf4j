@@ -27,7 +27,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Resolves the node-facing readable and writable properties of Java object types.
+ * Resolves node-facing Java object properties with getter/field and
+ * setter/field access.
  */
 public final class PropertyResolver {
 
@@ -217,7 +218,7 @@ public final class PropertyResolver {
                 annotations.explicitPropertyName(method);
 
         /*
-         * Read:
+         * Getter:
          *
          *   getX()
          *   isX()
@@ -229,7 +230,7 @@ public final class PropertyResolver {
                 != TypeKind.VOID) {
 
             String baseName =
-                    readablePropertyName(
+                    getterPropertyName(
                             type,
                             method,
                             resolved.getReturnType());
@@ -255,7 +256,7 @@ public final class PropertyResolver {
         }
 
         /*
-         * Write:
+         * Setter:
          *
          *   setX(value)
          *
@@ -267,7 +268,7 @@ public final class PropertyResolver {
                 == TypeKind.VOID) {
 
             String baseName =
-                    writablePropertyName(method);
+                    setterPropertyName(method);
 
             if (baseName != null) {
                 String propertyName =
@@ -292,7 +293,7 @@ public final class PropertyResolver {
         }
     }
 
-    private String readablePropertyName(
+    private String getterPropertyName(
             TypeElement type,
             ExecutableElement method,
             TypeMirror returnType) {
@@ -323,7 +324,7 @@ public final class PropertyResolver {
         return null;
     }
 
-    private String writablePropertyName(
+    private String setterPropertyName(
             ExecutableElement method) {
 
         String name =

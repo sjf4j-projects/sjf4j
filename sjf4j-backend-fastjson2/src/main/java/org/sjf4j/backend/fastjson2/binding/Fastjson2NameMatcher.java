@@ -27,8 +27,8 @@ public final class Fastjson2NameMatcher extends NameMatcher {
     private final int mask;
     private final boolean hashSafe;
 
-    Fastjson2NameMatcher(PropertyInfo[] writableProperties) {
-        this(writableProperties, null, null);
+    Fastjson2NameMatcher(PropertyInfo[] settableProperties) {
+        this(settableProperties, null, null);
     }
 
     /**
@@ -48,17 +48,17 @@ public final class Fastjson2NameMatcher extends NameMatcher {
         this(null, names, aliases);
     }
 
-    private Fastjson2NameMatcher(PropertyInfo[] writableProperties, String[] names, String[][] aliases) {
-        super(writableProperties, names, aliases);
+    private Fastjson2NameMatcher(PropertyInfo[] settableProperties, String[] names, String[][] aliases) {
+        super(settableProperties, names, aliases);
 
         int nameCount = size();
-        if (writableProperties != null) {
-            for (PropertyInfo property : writableProperties) {
+        if (settableProperties != null) {
+            for (PropertyInfo property : settableProperties) {
                 nameCount += property.alias.length;
             }
         }
 
-        if (writableProperties == null && aliases != null) {
+        if (settableProperties == null && aliases != null) {
             for (String[] propertyAliases : aliases) {
                 if (propertyAliases != null) nameCount += propertyAliases.length;
             }
@@ -83,8 +83,8 @@ public final class Fastjson2NameMatcher extends NameMatcher {
         for (int i = 0; i < size(); i++) {
             prepareRawName(name(i), i);
             safe &= add(name(i), i);
-            String[] propertyAliases = writableProperties != null
-                    ? writableProperties[i].alias
+            String[] propertyAliases = settableProperties != null
+                    ? settableProperties[i].alias
                     : aliases == null ? null : aliases[i];
             if (propertyAliases != null) {
                 for (String alias : propertyAliases) {

@@ -46,7 +46,7 @@ import java.util.function.Function;
  *
  * <p>Writes mutate only addressed containers in the supplied graph; they do not
  * replace a root reference. Object writes upsert {@link Map}/{@link JsonObject}
- * members, including dynamic JOJO members; ordinary POJO writes require a writable
+  * members, including dynamic JOJO members; ordinary POJO writes require a settable
  * declared property. Array writes are limited by
  * the underlying representation: lists and {@link JsonArray} can append, Java
  * arrays cannot, and sets do not support indexed writes. Multi-match paths are
@@ -1108,7 +1108,7 @@ public class JsonPath {
      * The parent container of the final segment must already exist; this method
      * mutates that parent and never replaces the root reference. Object-name
      * targets upsert {@link Map}/{@link JsonObject} members, including dynamic
-     * JOJO members. Ordinary POJO targets require a writable declared property.
+      * JOJO members. Ordinary POJO targets require a settable declared property.
      * Array index targets write through
      * {@link Nodes#putInArray(Object, int, Object)}, which replaces existing
      * elements and appends when {@code idx == size}. Append targets write
@@ -1317,7 +1317,7 @@ public class JsonPath {
      * <p>
      * This mutates the addressed parent; it cannot replace a root reference.
      * Name targets upsert {@link Map}/{@link JsonObject} members, including
-     * dynamic JOJO members; ordinary POJOs require a writable declared property.
+      * dynamic JOJO members; ordinary POJOs require a settable declared property.
      * Index targets insert into lists and
      * {@link JsonArray}; append targets ({@code -}) append to appendable arrays.
      * Java arrays and sets reject indexed insertion.
@@ -1351,7 +1351,7 @@ public class JsonPath {
      * Applies JSON Patch {@code replace} semantics (target must already exist).
      * <p>
      * This mutates the addressed parent. POJO replacement requires an existing
-     * writable declared property; Java arrays allow only in-range replacement.
+      * settable declared property; Java arrays allow only in-range replacement.
      *
      * @return previous value at the replaced location
      */

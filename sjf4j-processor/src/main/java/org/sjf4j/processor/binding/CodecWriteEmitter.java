@@ -9,28 +9,28 @@ final class CodecWriteEmitter {
     private CodecWriteEmitter() {}
 
     static void emit(JavaWriter out, BindingValue value, String expression,
-                     String writer, String nativeWriter, Backend backend) {
+                     String generator, String nativeWriter, Backend backend) {
         if (value.staticCodec() != null || value.staticNodeValue()) {
-            emitStatic(out, value, expression, writer, nativeWriter, backend);
+            emitStatic(out, value, expression, generator, nativeWriter, backend);
             return;
         }
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
         out.beginBlock("if (codecValue == null)");
-        out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+        out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
         out.endBlock(" else {");
         out.indent();
 
         String info = value.helperName();
 
-        out.beginBlock("if (" + info + ".streamWriter != null)");
-        out.line(info + ".streamWriter.write(" + writer + ", codecValue);");
+        out.beginBlock("if (" + info + ".streamGenerator != null)");
+        out.line(info + ".streamGenerator.write(" + generator + ", codecValue);");
         out.endBlock(" else {");
         out.indent();
         String method = value.codecRawType() == null ? null
                 : nativeWrite(value.codecRawType().toString(), backend, nativeWriter != null);
         if (method == null) {
-            out.line(writer + ".writeRaw(" + info
+            out.line(generator + ".writeRaw(" + info
                     + ".valueToRaw(codecValue), _FALLBACK_CONTEXT);");
         } else {
             out.line("Object rawValue = " + info + ".valueToRaw(codecValue);");
@@ -42,10 +42,10 @@ final class CodecWriteEmitter {
                 out.line("_writeString(" + nativeWriter + ", (String) rawValue);");
             } else {
                 out.beginBlock("if (rawValue == null)");
-                out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+                out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                out.line((nativeWriter == null ? writer : nativeWriter) + "." + method
+                out.line((nativeWriter == null ? generator : nativeWriter) + "." + method
                         + "(" + rawArgument(value.codecRawType().toString(), backend,
                                 nativeWriter != null) + ");");
                 out.endBlock();
@@ -54,7 +54,7 @@ final class CodecWriteEmitter {
             out.indent();
             // A different RuntimeContext format or later registration may use
             // a different raw type. Do not force the compiler's selected shape.
-            out.line(writer + ".writeRaw(rawValue, _FALLBACK_CONTEXT);");
+            out.line(generator + ".writeRaw(rawValue, _FALLBACK_CONTEXT);");
             out.endBlock();
         }
         out.endBlock();
@@ -64,13 +64,13 @@ final class CodecWriteEmitter {
 
     /** Emit fixed typed raw values directly. No codec/streamer selection at write time. */
     private static void emitStatic(JavaWriter out, BindingValue value, String expression,
-                                   String writer, String nativeWriter, Backend backend) {
+                                   String generator, String nativeWriter, Backend backend) {
         String rawType = value.codecRawType().toString();
         String method = nativeWrite(rawType, backend, nativeWriter != null);
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
         out.beginBlock("if (codecValue == null)");
-        out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+        out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
         out.endBlock(" else {");
         out.indent();
         out.line(rawType + " rawValue = " + (value.staticNodeValue()
@@ -78,16 +78,16 @@ final class CodecWriteEmitter {
                 : value.helperName() + ".valueToRaw(codecValue)") + ";");
         if (method == null) {
             // Compound raw structures still use generic JSON node handling.
-            out.line(writer + ".writeRaw(rawValue, org.sjf4j.RuntimeContext.EMPTY);");
+            out.line(generator + ".writeRaw(rawValue, org.sjf4j.RuntimeContext.EMPTY);");
         } else if (nativeWriter != null && "writeString".equals(method)
                 && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
             out.line("_writeString(" + nativeWriter + ", rawValue);");
         } else {
             out.beginBlock("if (rawValue == null)");
-            out.line((nativeWriter == null ? writer : nativeWriter) + ".writeNull();");
+            out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line((nativeWriter == null ? writer : nativeWriter) + "." + method
+            out.line((nativeWriter == null ? generator : nativeWriter) + "." + method
                     + "(" + rawArgument(rawType, backend, nativeWriter != null) + ");");
             out.endBlock();
         }

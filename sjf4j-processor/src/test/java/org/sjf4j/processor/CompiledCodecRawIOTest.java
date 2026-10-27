@@ -49,15 +49,15 @@ class CompiledCodecRawIOTest {
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains(".rawClazz"), backend);
-            assertFalse(generated.contains(".streamWriter.write("), backend);
-            assertFalse(generated.contains(".streamReader.read("), backend);
+            assertFalse(generated.contains(".streamGenerator.write("), backend);
+            assertFalse(generated.contains(".streamParser.read("), backend);
             assertFalse(generated.contains("requireRegisteredValueInfo"), backend);
             if (backend.equals("FASTJSON2")) {
                 assertTrue(generated.contains("w.writeName"),
                         backend + ": native POJO writer was lost");
             }
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
-                assertTrue(generated.contains(" g = writer.nativeWriter();"),
+                assertTrue(generated.contains(" g = generator.nativeWriter();"),
                         backend + ": mixed native POJO path missing");
                 assertTrue(generated.contains("_writeString(g, rawValue);"),
                         backend + ": shared Jackson codec string helper missing");

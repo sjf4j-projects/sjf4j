@@ -54,21 +54,21 @@ public final class StreamingIO {
 
     /**
      * Reads one pending value into the requested class or generic type.
-     * The caller owns document start/end and reader lifecycle.
+     * The caller owns document start/end and parser lifecycle.
      */
-    public static Object readNode(StreamingReader reader, Type type,
+    public static Object readNode(StreamingParser parser, Type type,
                                   RuntimeContext context) throws IOException {
-        Asserts.notNull(reader, "reader");
+        Asserts.notNull(parser, "parser");
         Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
 
         Class<?> boxed = Types.rawBox(type);
         // The common scalar and collection paths need no registered metadata.
-        return readNode(reader, type, boxed, null, context);
+        return readNode(parser, type, boxed, null, context);
     }
 
 
-    static Object readNode(StreamingReader reader, Type type, Class<?> boxed, TypeInfo typeInfo,
+    static Object readNode(StreamingParser parser, Type type, Class<?> boxed, TypeInfo typeInfo,
                            RuntimeContext context) throws IOException {
         try {
             /*
@@ -83,11 +83,11 @@ public final class StreamingIO {
              */
 
             if (typeInfo != null && typeInfo != TypeInfo.NONE) {
-                return _readRegistered(reader, type, boxed, typeInfo, context);
+                return _readRegistered(parser, type, boxed, typeInfo, context);
             }
 
             if (boxed == Object.class) {
-                return reader.readRaw();
+                return parser.readRaw();
             }
 
             /*
@@ -98,55 +98,55 @@ public final class StreamingIO {
              */
 
             if (boxed == String.class) {
-                return reader.readString();
+                return parser.readString();
             }
 
             if (boxed == Character.class) {
-                return reader.readChar();
+                return parser.readChar();
             }
 
             if (boxed == Boolean.class) {
-                return reader.readBoolean();
+                return parser.readBoolean();
             }
 
             if (boxed == Integer.class) {
-                return reader.readInt();
+                return parser.readInt();
             }
 
             if (boxed == Long.class) {
-                return reader.readLong();
+                return parser.readLong();
             }
 
             if (boxed == Short.class) {
-                return reader.readShort();
+                return parser.readShort();
             }
 
             if (boxed == Byte.class) {
-                return reader.readByte();
+                return parser.readByte();
             }
 
             if (boxed == Float.class) {
-                return reader.readFloat();
+                return parser.readFloat();
             }
 
             if (boxed == Double.class) {
-                return reader.readDouble();
+                return parser.readDouble();
             }
 
             if (boxed == Number.class) {
-                return reader.readNumber();
+                return parser.readNumber();
             }
 
             if (boxed == BigInteger.class) {
-                return reader.readBigInteger();
+                return parser.readBigInteger();
             }
 
             if (boxed == BigDecimal.class) {
-                return reader.readBigDecimal();
+                return parser.readBigDecimal();
             }
 
             if (boxed.isEnum()) {
-                return readEnum(reader, boxed, context);
+                return readEnum(parser, boxed, context);
             }
 
             /*
@@ -154,11 +154,11 @@ public final class StreamingIO {
              */
 
             if (Map.class.isAssignableFrom(boxed)) {
-                return readMap(reader, type, boxed, null, null, null, context);
+                return readMap(parser, type, boxed, null, null, null, context);
             }
 
             if (boxed == JsonObject.class) {
-                Object raw = reader.readRaw();
+                Object raw = parser.readRaw();
                 if (raw == null) return null;
                 return new JsonObject(castMap(raw));
             }
@@ -168,21 +168,21 @@ public final class StreamingIO {
              */
 
             if (List.class.isAssignableFrom(boxed)) {
-                return readList(reader, type, boxed, null, null, null, context);
+                return readList(parser, type, boxed, null, null, null, context);
             }
 
             if (boxed == JsonArray.class) {
-                Object raw = reader.readRaw();
+                Object raw = parser.readRaw();
                 if (raw == null) return null;
                 return new JsonArray(castList(raw));
             }
 
             if (Set.class.isAssignableFrom(boxed)) {
-                return readSet(reader, type, boxed, null, null, null, context);
+                return readSet(parser, type, boxed, null, null, null, context);
             }
 
             if (boxed.isArray()) {
-                return readArray(reader, type, boxed, null, null, null, context);
+                return readArray(parser, type, boxed, null, null, null, context);
             }
 
             // A null TypeInfo means metadata has not been resolved. NONE
@@ -190,7 +190,7 @@ public final class StreamingIO {
             if (typeInfo == null) {
                 TypeInfo resolved = TypeRegistry.registerTypeInfo(boxed);
                 if (resolved != TypeInfo.NONE) {
-                    return _readRegistered(reader, type, boxed, resolved, context);
+                    return _readRegistered(parser, type, boxed, resolved, context);
                 }
             }
 
@@ -198,7 +198,7 @@ public final class StreamingIO {
              * Preserve null semantics even for otherwise unsupported
              * reference targets.
              */
-            if (reader.nextIfNull()) {
+            if (parser.nextIfNull()) {
                 return null;
             }
 
@@ -219,25 +219,25 @@ public final class StreamingIO {
      * Direct path for already-resolved types. A known TypeInfo bypasses all
      * scalar/container checks in readNode; container metadata is handled here.
      */
-    private static Object _readRegistered(StreamingReader reader, Type type,
+    private static Object _readRegistered(StreamingParser parser, Type type,
                                               Class<?> boxed, TypeInfo ti,
                                               RuntimeContext context) throws IOException {
         if (ti.oneOfInfo != null) {
-            return OneOfIO.readOneOf(reader, ti.oneOfInfo, context);
+            return OneOfIO.readOneOf(parser, ti.oneOfInfo, context);
         }
         if (ti.valueSet != null) {
-            return readValueSet(reader, type, boxed, ti.valueSet, context);
+            return readValueSet(parser, type, boxed, ti.valueSet, context);
         }
         if (ti.containerInfo != null) {
             // Streaming binding only constructs Java containers that can be
             // populated with put/add. Native builder construction is mapping-only.
             switch (ti.containerInfo.kind) {
                 case OBJECT_MAP:
-                    return readMap(reader, type, boxed, null, null, null, context);
+                    return readMap(parser, type, boxed, null, null, null, context);
                 case ARRAY_LIST:
-                    return readList(reader, type, boxed, null, null, null, context);
+                    return readList(parser, type, boxed, null, null, null, context);
                 case ARRAY_SET:
-                    return readSet(reader, type, boxed, null, null, null, context);
+                    return readSet(parser, type, boxed, null, null, null, context);
                 default:
                     throw new BindingException("unsupported container type '" + boxed.getName() + "'");
             }
@@ -246,17 +246,17 @@ public final class StreamingIO {
             // ExternalNode.convert may use a builder and requires a materialized
             // source. Binding must not silently fall back to Raw + Mapping.
             // JSON null still maps to Java null for reference targets.
-            if (reader.nextIfNull()) return null;
+            if (parser.nextIfNull()) return null;
             throw new BindingException("streaming binding does not support external target type '" +
                     boxed.getName() + "'");
         }
         if (ti.pojoInfo != null) {
             if (ti.pojoInfo.isJajo) {
-                return readJsonArray(reader, type, boxed, ti, context);
+                return readJsonArray(parser, type, boxed, ti, context);
             }
-            return readPojo(reader, type, boxed, ti.pojoInfo, context);
+            return readPojo(parser, type, boxed, ti.pojoInfo, context);
         }
-        if (reader.nextIfNull()) {
+        if (parser.nextIfNull()) {
             return null;
         }
         throw new BindingException("cannot read value into type '" + boxed.getName() + "'");
@@ -270,21 +270,21 @@ public final class StreamingIO {
      */
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Object readEnum(StreamingReader reader, Class<?> enumType,
+    public static Object readEnum(StreamingParser parser, Class<?> enumType,
                                   RuntimeContext context) throws IOException {
 
-        StreamingReader.Token token = reader.peekToken();
-        if (token == StreamingReader.Token.NULL) {
-            reader.nextIfNull();
+        StreamingParser.Token token = parser.peekToken();
+        if (token == StreamingParser.Token.NULL) {
+            parser.nextIfNull();
             return null;
         }
 
-        if (token == StreamingReader.Token.STRING) {
-            return Enum.valueOf((Class<? extends Enum>) enumType, reader.readString());
+        if (token == StreamingParser.Token.STRING) {
+            return Enum.valueOf((Class<? extends Enum>) enumType, parser.readString());
         }
 
-        if (token == StreamingReader.Token.NUMBER) {
-            int ordinal = reader.readIntValue();
+        if (token == StreamingParser.Token.NUMBER) {
+            int ordinal = parser.readIntValue();
             Enum[] values = ((Class<? extends Enum>) enumType).getEnumConstants();
             if (ordinal >= 0 && ordinal < values.length) {
                 return values[ordinal];
@@ -305,27 +305,27 @@ public final class StreamingIO {
     /**
      * Selects by input JSON shape, with the configured output format serving as
      * an input preference within that shape. Single-shape types avoid peeking,
-     * preserving each backend's fused scalar reader.
+     * preserving each backend's fused scalar parser.
      */
-    public static Object readValueSet(StreamingReader reader, Type type, Class<?> boxed, ValueSet valueSet,
+    public static Object readValueSet(StreamingParser parser, Type type, Class<?> boxed, ValueSet valueSet,
                                       RuntimeContext context) throws IOException {
         String preferredFormat = context.valueFormat(boxed);
         org.sjf4j.JsonType jsonType = valueSet.multiples
-                ? reader.peekToken().jsonType()
+                ? parser.peekToken().jsonType()
                 : valueSet.defaultInfo.rawJsonType;
         ValueInfo codec = valueSet.selectForRead(jsonType, preferredFormat);
-        return readValueCodec(reader, codec, context);
+        return readValueCodec(parser, codec, context);
     }
 
-    public static Object readValueCodec(StreamingReader reader, ValueInfo valueInfo,
+    public static Object readValueCodec(StreamingParser parser, ValueInfo valueInfo,
                                         RuntimeContext context) throws IOException {
-        if (valueInfo.streamReader != null) {
+        if (valueInfo.streamParser != null) {
             if (valueInfo.runtimeClazz != null && valueInfo.runtimeClazz != valueInfo.valueClazz) {
                 throw new BindingException("cannot decode value type '" + valueInfo.valueClazz.getName()
                         + "' as runtime subtype '" + valueInfo.runtimeClazz.getName() + "'");
             }
             try {
-                return valueInfo.streamReader.read(reader);
+                return valueInfo.streamParser.read(parser);
             } catch (BindingException | IOException e) {
                 throw e;
             } catch (Exception e) {
@@ -343,51 +343,51 @@ public final class StreamingIO {
          */
 
         if (raw == String.class) {
-            return valueInfo.rawToValue(reader.readString());
+            return valueInfo.rawToValue(parser.readString());
         }
 
         if (raw == Boolean.class) {
-            return valueInfo.rawToValue(reader.readBoolean());
+            return valueInfo.rawToValue(parser.readBoolean());
         }
 
         if (raw == Integer.class) {
-            return valueInfo.rawToValue(reader.readInt());
+            return valueInfo.rawToValue(parser.readInt());
         }
 
         if (raw == Long.class) {
-            return valueInfo.rawToValue(reader.readLong());
+            return valueInfo.rawToValue(parser.readLong());
         }
 
         if (raw == Double.class) {
-            return valueInfo.rawToValue(reader.readDouble());
+            return valueInfo.rawToValue(parser.readDouble());
         }
 
         if (raw == Float.class) {
-            return valueInfo.rawToValue(reader.readFloat());
+            return valueInfo.rawToValue(parser.readFloat());
         }
 
         if (raw == Short.class) {
-            return valueInfo.rawToValue(reader.readShort());
+            return valueInfo.rawToValue(parser.readShort());
         }
 
         if (raw == Byte.class) {
-            return valueInfo.rawToValue(reader.readByte());
+            return valueInfo.rawToValue(parser.readByte());
         }
 
         if (raw == BigInteger.class) {
-            return valueInfo.rawToValue(reader.readBigInteger());
+            return valueInfo.rawToValue(parser.readBigInteger());
         }
 
         if (raw == BigDecimal.class) {
-            return valueInfo.rawToValue(reader.readBigDecimal());
+            return valueInfo.rawToValue(parser.readBigDecimal());
         }
 
         if (raw == Number.class) {
-            return valueInfo.rawToValue(reader.readNumber());
+            return valueInfo.rawToValue(parser.readNumber());
         }
 
         if (raw == Map.class) {
-            Object value = reader.readRaw();
+            Object value = parser.readRaw();
             if (value == null) {
                 return valueInfo.rawToValue(null);
             }
@@ -395,7 +395,7 @@ public final class StreamingIO {
         }
 
         if (raw == List.class) {
-            Object value = reader.readRaw();
+            Object value = parser.readRaw();
             if (value == null) {
                 return valueInfo.rawToValue(null);
             }
@@ -411,37 +411,37 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Object readPojo(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+    public static Object readPojo(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                    RuntimeContext context) throws IOException {
         /*
          * Creator/parent-discriminator POJOs need streaming access to the
          * object members, so consume START_OBJECT here.
          */
         if (pojoInfo.hasParentScopeOneOf || !pojoInfo.creatorInfo.hasNoArgsCreator()) {
-            if (!reader.nextIfObjectStart()) {
-                if (reader.nextIfNull()) {
+            if (!parser.nextIfObjectStart()) {
+                if (parser.nextIfNull()) {
                     return null;
                 }
-                throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
+                throw new BindingException("cannot read token '" + parser.peekToken() + "' as object type '" +
                         type.getTypeName() + "'");
             }
-            return readPojoWithCreator(reader, type, boxed, pojoInfo, context);
+            return readPojoWithCreator(parser, type, boxed, pojoInfo, context);
         }
 
         /*
          * Fast non-null path.
          */
-        if (!reader.nextIfObjectStart()) {
-            if (reader.nextIfNull()) {
+        if (!parser.nextIfObjectStart()) {
+            if (parser.nextIfNull()) {
                 return null;
             }
-            throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
+            throw new BindingException("cannot read token '" + parser.peekToken() + "' as object type '" +
                     type.getTypeName() + "'");
         }
 
         Object pojo = pojoInfo.creatorInfo.newPojoNoArgs();
-        PropertyReader[] propertyReaders = pojoInfo.propertyReaders;
-        NameMatcher matcher = cacheNameMatcher(reader, pojoInfo);
+        PropertyParser[] propertyParsers = pojoInfo.propertyParsers;
+        NameMatcher matcher = cacheNameMatcher(parser, pojoInfo);
 
         // Both POJO and JOJO use the same cached name matcher and property
         // readers. Only a JOJO with dynamic reads enabled needs unknown keys.
@@ -450,16 +450,16 @@ public final class StreamingIO {
 
         int expectedIndex = 0;
         int index;
-        while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
+        while ((index = parser.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
             if (index >= 0) {
-                propertyReaders[index].read(reader, pojo, type, boxed, context);
+                propertyParsers[index].parse(parser, pojo, type, boxed, context);
                 expectedIndex = index + 1;
             } else if (retainDynamic) {
-                String name = reader.currentName();
+                String name = parser.currentName();
                 // Read-only declared members are not present in the writable
                 // matcher. They must not silently become dynamic properties.
                 if (pojoInfo.propertyLookup.containsKey(name)) {
-                    reader.skipNode();
+                    parser.skipNode();
                     continue;
                 }
                 if (dynamic == null) {
@@ -470,9 +470,9 @@ public final class StreamingIO {
                         InternalAccess.dynamicProperties(jojo, dynamic);
                     }
                 }
-                dynamic.put(name, reader.readRaw());
+                dynamic.put(name, parser.readRaw());
             } else {
-                reader.skipNode();
+                parser.skipNode();
             }
         }
 
@@ -484,7 +484,7 @@ public final class StreamingIO {
      * Reads a POJO with creator arguments or deferred parent-scope resolution.
      * The object start has already been consumed.
      */
-    public static Object readPojoWithCreator(StreamingReader reader, Type type, Class<?> boxed, PojoInfo pojoInfo,
+    public static Object readPojoWithCreator(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                              RuntimeContext context) throws IOException {
 
         CreatorInfo creator = pojoInfo.creatorInfo;
@@ -498,20 +498,20 @@ public final class StreamingIO {
         // The creator matcher covers constructor names, aliases, and all
         // declared properties, including read-only ones. Match before asking
         // the backend to materialize any field name.
-        NameMatcher matcher = cacheCreatorNameMatcher(reader, pojoInfo);
+        NameMatcher matcher = cacheCreatorNameMatcher(parser, pojoInfo);
         int expectedIndex = 0;
         int index;
-        while ((index = reader.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
+        while ((index = parser.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
             if (index == NameMatcher.UNKNOWN) {
                 if (pojoInfo.isJojo && pojoInfo.readDynamic) {
-                    String name = reader.currentName();
-                    Object value = reader.readRaw();
+                    String name = parser.currentName();
+                    Object value = parser.readRaw();
                     state.acceptDynamic(name, value);
                     if (parentKey != null && parentKey.equals(name)) {
                         parentValue = value;
                     }
                 } else {
-                    reader.skipNode();
+                    parser.skipNode();
                 }
                 continue;
             }
@@ -526,19 +526,19 @@ public final class StreamingIO {
             if (argIndex >= 0) {
                 Object value;
                 if (creator.argOneOfInfos[argIndex] != null) {
-                    value = OneOfIO.readOneOf(reader, creator.argOneOfInfos[argIndex], context);
+                    value = OneOfIO.readOneOf(parser, creator.argOneOfInfos[argIndex], context);
                 } else if (creator.argValueCodecs[argIndex] != null) {
-                    value = readValueCodec(reader, creator.argValueCodecs[argIndex], context);
+                    value = readValueCodec(parser, creator.argValueCodecs[argIndex], context);
                 } else {
                     LazyTypeInfo lazy = creator.argTypeInfos[argIndex];
                     if (lazy != null) {
-                        value = readNode(reader, lazy.clazz, Types.box(lazy.clazz), lazy.get(), context);
+                        value = readNode(parser, lazy.clazz, Types.box(lazy.clazz), lazy.get(), context);
                     } else {
                         Type argType = creator.argGenericDependent[argIndex]
                                 ? Types.resolveMemberType(type, boxed, creator.argTypes[argIndex])
                                 : creator.argTypes[argIndex];
                         Class<?> argBoxed = Types.rawBox(argType);
-                        value = readNode(reader, argType, argBoxed, null, context);
+                        value = readNode(parser, argType, argBoxed, null, context);
                     }
                 }
                 state.acceptCtorArg(argIndex, value);
@@ -550,7 +550,7 @@ public final class StreamingIO {
 
             PropertyInfo property = pojoInfo.creatorMatchProperties[index];
             if (property == null) {
-                reader.skipNode();
+                parser.skipNode();
                 continue;
             }
 
@@ -571,7 +571,7 @@ public final class StreamingIO {
 
                 LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(parentValue == UNSET ? null : parentValue);
                 if (target != null) {
-                    Object value = readNode(reader, target.clazz, target.clazz, target.get(), context);
+                    Object value = readNode(parser, target.clazz, target.clazz, target.get(), context);
                     if (state.isCreated()) {
                         property.invokeSetterIfPresent(state.pojo(), value);
                     } else {
@@ -579,7 +579,7 @@ public final class StreamingIO {
                     }
                 } else if (deferred == null) {
                     deferred = property;
-                    deferredRaw = reader.readRaw();
+                    deferredRaw = parser.readRaw();
                 } else {
                     throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
                 }
@@ -591,7 +591,7 @@ public final class StreamingIO {
              * no setter, because its value may still select a deferred OneOf.
              */
             if (parentKey != null && parentKey.equals(name)) {
-                Object value = readProperty(reader, property, type, boxed, context);
+                Object value = readProperty(parser, property, type, boxed, context);
                 parentValue = value;
 
                 if (state.isCreated()) {
@@ -605,15 +605,15 @@ public final class StreamingIO {
             /*
              * Ordinary property.
              */
-            if (!property.writable) {
-                reader.skipNode();
+            if (!property.settable) {
+                parser.skipNode();
                 continue;
             }
 
-            if (state.isCreated() && property.reader != null) {
-                property.reader.read(reader, state.pojo(), type, boxed, context);
+            if (state.isCreated() && property.parser != null) {
+                property.parser.parse(parser, state.pojo(), type, boxed, context);
             } else {
-                Object value = readProperty(reader, property, type, boxed, context);
+                Object value = readProperty(parser, property, type, boxed, context);
                 if (state.isCreated()) {
                     property.invokeSetter(state.pojo(), value);
                 } else {
@@ -636,7 +636,7 @@ public final class StreamingIO {
         if (parentValue == UNSET) {
             PropertyInfo parentProperty = pojoInfo.propertyLookup.get(parentKey);
 
-            if (parentProperty != null && parentProperty.readable) {
+            if (parentProperty != null && parentProperty.gettable) {
                 parentValue = parentProperty.invokeGetter(pojo);
             } else if (pojoInfo.isJojo) {
                 parentValue = ((JsonObject) pojo).getNode(parentKey);
@@ -664,7 +664,7 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Object readProperty(StreamingReader reader, PropertyInfo property, Type ownerType, Class<?> ownerBoxed,
+    public static Object readProperty(StreamingParser parser, PropertyInfo property, Type ownerType, Class<?> ownerBoxed,
                                       RuntimeContext context) throws IOException {
         Type type = property.genericDependent
                 ? Types.resolveMemberType(ownerType, ownerBoxed, property.type)
@@ -675,14 +675,14 @@ public final class StreamingIO {
                 : property.boxed;
 
         if (property.oneOfInfo != null) {
-            return OneOfIO.readOneOf(reader, property.oneOfInfo, context);
+            return OneOfIO.readOneOf(parser, property.oneOfInfo, context);
         }
 
         if (property.valueInfo != null) {
-            return readValueCodec(reader, property.valueInfo, context);
+            return readValueCodec(parser, property.valueInfo, context);
         }
 
-        return readNode(reader, type, boxed, null, context);
+        return readNode(parser, type, boxed, null, context);
     }
 
 
@@ -691,14 +691,14 @@ public final class StreamingIO {
      * Map
      * --------------------------------------------------------------
      */
-    public static Map<String, Object> readMap(StreamingReader reader, Type type, Class<?> boxed,
+    public static Map<String, Object> readMap(StreamingParser parser, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
                                               RuntimeContext context) throws IOException {
-        if (!reader.nextIfObjectStart()) {
-            if (reader.nextIfNull()) {
+        if (!parser.nextIfObjectStart()) {
+            if (parser.nextIfNull()) {
                 return null;
             }
-            throw new BindingException("cannot read token '" + reader.peekToken() + "' as object type '" +
+            throw new BindingException("cannot read token '" + parser.peekToken() + "' as object type '" +
                     type.getTypeName() + "'");
         }
 
@@ -712,8 +712,8 @@ public final class StreamingIO {
                 ? new LinkedHashMap<>()
                 : TypeRegistry.newMapContainer(boxed, 0, false);
         String name;
-        while ((name = reader.nextName()) != null) {
-            map.put(name, readNode(reader, valueType, valueBoxed, valueTi, context));
+        while ((name = parser.nextName()) != null) {
+            map.put(name, readNode(parser, valueType, valueBoxed, valueTi, context));
         }
         return map;
     }
@@ -725,14 +725,14 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static List<Object> readList(StreamingReader reader, Type type, Class<?> boxed,
+    public static List<Object> readList(StreamingParser parser, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                         RuntimeContext context) throws IOException {
-        if (!reader.nextIfArrayStart()) {
-            if (reader.nextIfNull()) {
+        if (!parser.nextIfArrayStart()) {
+            if (parser.nextIfNull()) {
                 return null;
             }
-            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+            throw new BindingException("cannot read token '" + parser.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
 
@@ -745,8 +745,8 @@ public final class StreamingIO {
         List<Object> list = boxed == List.class || boxed == ArrayList.class
                 ? new ArrayList<>()
                 : TypeRegistry.newListContainer(boxed, 0, false);
-        while (!reader.nextIfArrayEnd()) {
-            list.add(readNode(reader, elementType, elementBoxed, elementTi, context));
+        while (!parser.nextIfArrayEnd()) {
+            list.add(readNode(parser, elementType, elementBoxed, elementTi, context));
         }
         return list;
     }
@@ -757,14 +757,14 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Set<Object> readSet(StreamingReader reader, Type type, Class<?> boxed,
+    public static Set<Object> readSet(StreamingParser parser, Type type, Class<?> boxed,
                                       Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                       RuntimeContext context) throws IOException {
-        if (!reader.nextIfArrayStart()) {
-            if (reader.nextIfNull()) {
+        if (!parser.nextIfArrayStart()) {
+            if (parser.nextIfNull()) {
                 return null;
             }
-            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+            throw new BindingException("cannot read token '" + parser.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
 
@@ -777,8 +777,8 @@ public final class StreamingIO {
         Set<Object> set = boxed == Set.class || boxed == LinkedHashSet.class
                 ? new LinkedHashSet<>()
                 : TypeRegistry.newSetContainer(boxed, 0, false);
-        while (!reader.nextIfArrayEnd()) {
-            Object value = readNode(reader, elementType, elementBoxed, elementTi, context);
+        while (!parser.nextIfArrayEnd()) {
+            Object value = readNode(parser, elementType, elementBoxed, elementTi, context);
             set.add(value);
         }
         return set;
@@ -790,14 +790,14 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static Object readArray(StreamingReader reader, Type type, Class<?> boxed,
+    public static Object readArray(StreamingParser parser, Type type, Class<?> boxed,
                                       Class<?> componentClazz, Class<?> componentBoxed, TypeInfo componentTi,
                                       RuntimeContext context) throws IOException {
-        if (!reader.nextIfArrayStart()) {
-            if (reader.nextIfNull()) {
+        if (!parser.nextIfArrayStart()) {
+            if (parser.nextIfNull()) {
                 return null;
             }
-            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+            throw new BindingException("cannot read token '" + parser.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
 
@@ -808,26 +808,26 @@ public final class StreamingIO {
         }
 
         if (componentClazz == int.class) {
-            return _readIntArray(reader);
+            return _readIntArray(parser);
         } else if (componentClazz == long.class) {
-            return _readLongArray(reader);
+            return _readLongArray(parser);
         } else if (componentClazz == double.class) {
-            return _readDoubleArray(reader);
+            return _readDoubleArray(parser);
         } else if (componentClazz == float.class) {
-            return _readFloatArray(reader);
+            return _readFloatArray(parser);
         } else if (componentClazz == boolean.class) {
-            return _readBooleanArray(reader);
+            return _readBooleanArray(parser);
         } else if (componentClazz == short.class) {
-            return _readShortArray(reader);
+            return _readShortArray(parser);
         } else if (componentClazz == byte.class) {
-            return _readByteArray(reader);
+            return _readByteArray(parser);
         } else if (componentClazz == char.class) {
-            return _readCharArray(reader);
+            return _readCharArray(parser);
         }
 
         Object arr = null;
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (arr == null) {
                 arr = Array.newInstance(componentClazz, 8);
             } else if (size == Array.getLength(arr)) {
@@ -836,7 +836,7 @@ public final class StreamingIO {
                 arr = expanded;
             }
 
-            Object value = readNode(reader, componentClazz, componentBoxed, componentTi, context);
+            Object value = readNode(parser, componentClazz, componentBoxed, componentTi, context);
             Array.set(arr, size++, value);
         }
 
@@ -853,98 +853,98 @@ public final class StreamingIO {
         return exact;
     }
 
-    private static boolean[] _readBooleanArray(StreamingReader reader) throws IOException {
+    private static boolean[] _readBooleanArray(StreamingParser parser) throws IOException {
         boolean[] array = new boolean[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readBooleanValue();
+            array[size++] = parser.readBooleanValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static int[] _readIntArray(StreamingReader reader) throws IOException {
+    private static int[] _readIntArray(StreamingParser parser) throws IOException {
         int[] array = new int[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readIntValue();
+            array[size++] = parser.readIntValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static long[] _readLongArray(StreamingReader reader) throws IOException {
+    private static long[] _readLongArray(StreamingParser parser) throws IOException {
         long[] array = new long[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readLongValue();
+            array[size++] = parser.readLongValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static double[] _readDoubleArray(StreamingReader reader) throws IOException {
+    private static double[] _readDoubleArray(StreamingParser parser) throws IOException {
         double[] array = new double[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readDoubleValue();
+            array[size++] = parser.readDoubleValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static float[] _readFloatArray(StreamingReader reader) throws IOException {
+    private static float[] _readFloatArray(StreamingParser parser) throws IOException {
         float[] array = new float[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readFloatValue();
+            array[size++] = parser.readFloatValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static short[] _readShortArray(StreamingReader reader) throws IOException {
+    private static short[] _readShortArray(StreamingParser parser) throws IOException {
         short[] array = new short[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readShortValue();
+            array[size++] = parser.readShortValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static byte[] _readByteArray(StreamingReader reader) throws IOException {
+    private static byte[] _readByteArray(StreamingParser parser) throws IOException {
         byte[] array = new byte[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readByteValue();
+            array[size++] = parser.readByteValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
 
-    private static char[] _readCharArray(StreamingReader reader) throws IOException {
+    private static char[] _readCharArray(StreamingParser parser) throws IOException {
         char[] array = new char[8];
         int size = 0;
-        while (!reader.nextIfArrayEnd()) {
+        while (!parser.nextIfArrayEnd()) {
             if (size == array.length) {
                 array = Arrays.copyOf(array, size << 1);
             }
-            array[size++] = reader.readCharValue();
+            array[size++] = parser.readCharValue();
         }
         return size == array.length ? array : Arrays.copyOf(array, size);
     }
@@ -955,20 +955,20 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static JsonArray readJsonArray(StreamingReader reader, Type type, Class<?> boxed, TypeInfo ti,
+    public static JsonArray readJsonArray(StreamingParser parser, Type type, Class<?> boxed, TypeInfo ti,
                                           RuntimeContext context) throws IOException {
-        if (!reader.nextIfArrayStart()) {
-            if (reader.nextIfNull()) {
+        if (!parser.nextIfArrayStart()) {
+            if (parser.nextIfNull()) {
                 return null;
             }
-            throw new BindingException("cannot read token '" + reader.peekToken() + "' as array type '" +
+            throw new BindingException("cannot read token '" + parser.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
         JsonArray array = (JsonArray) ti.pojoInfo.creatorInfo.forceNewPojo();
         Class<?> element = array.elementClass();
         TypeInfo elementInfo = TypeRegistry.registerTypeInfo(element);
-        while (!reader.nextIfArrayEnd()) {
-            Object value = readNode(reader, element, element, elementInfo, context);
+        while (!parser.nextIfArrayEnd()) {
+            Object value = readNode(parser, element, element, elementInfo, context);
             array.add(value);
         }
         return array;
@@ -997,21 +997,21 @@ public final class StreamingIO {
         throw new BindingException("cannot read non-array value as JsonArray");
     }
 
-    public static NameMatcher cacheNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
-        BackendCache cache = pojoInfo.backendCache(reader.backend);
+    public static NameMatcher cacheNameMatcher(StreamingParser parser, PojoInfo pojoInfo) {
+        BackendCache cache = pojoInfo.backendCache(parser.backend);
         NameMatcher matcher = cache.nameMatcher;
         if (matcher == null) {
-            matcher = reader.createNameMatcher(pojoInfo.writableProperties);
+            matcher = parser.createNameMatcher(pojoInfo.settableProperties);
             cache.nameMatcher = matcher;
         }
         return matcher;
     }
 
-    static NameMatcher cacheCreatorNameMatcher(StreamingReader reader, PojoInfo pojoInfo) {
-        BackendCache cache = pojoInfo.backendCache(reader.backend);
+    static NameMatcher cacheCreatorNameMatcher(StreamingParser parser, PojoInfo pojoInfo) {
+        BackendCache cache = pojoInfo.backendCache(parser.backend);
         NameMatcher matcher = cache.creatorNameMatcher;
         if (matcher == null) {
-            matcher = reader.createNameMatcher(pojoInfo.creatorMatchNames);
+            matcher = parser.createNameMatcher(pojoInfo.creatorMatchNames);
             cache.creatorNameMatcher = matcher;
         }
         return matcher;
@@ -1021,16 +1021,16 @@ public final class StreamingIO {
     /* Write */
 
     /**
-     * Writes one node value to a streaming writer. The caller controls the
-     * document boundaries, flushing, and writer lifecycle.
+     * Writes one node value to a streaming generator. The caller controls the
+     * document boundaries, flushing, and generator lifecycle.
      */
-    public static void writeNode(StreamingWriter writer, Object node,
+    public static void writeNode(StreamingGenerator generator, Object node,
                                  RuntimeContext context) throws IOException {
-        Asserts.notNull(writer, "writer");
+        Asserts.notNull(generator, "generator");
         Asserts.notNull(context, "context");
 
         try {
-            _writeNode(writer, node, TypeInfo.NONE, context);
+            _writeNode(generator, node, TypeInfo.NONE, context);
         } catch (BindingException | IOException e) {
             throw e;
         } catch (Throwable e) {
@@ -1039,83 +1039,83 @@ public final class StreamingIO {
     }
 
 
-    private static void _writeNode(StreamingWriter writer, Object node, TypeInfo typeInfo,
+    private static void _writeNode(StreamingGenerator generator, Object node, TypeInfo typeInfo,
                                    RuntimeContext context) throws IOException {
         if (node == null) {
-            writer.writeNull();
+            generator.writeNull();
             return;
         }
 
         Class<?> clazz = node.getClass();
         if (typeInfo.clazz == clazz) {
             if (typeInfo.pojoInfo != null && !typeInfo.pojoInfo.isJajo) {
-                writePojo(writer, node, typeInfo.pojoInfo, context);
+                writePojo(generator, node, typeInfo.pojoInfo, context);
                 return;
             }
 
             if (typeInfo.valueSet != null) {
                 ValueInfo vi = typeInfo.requireValueInfo(context.valueFormat(clazz));
-                if (vi.streamWriter != null) {
-                    vi.streamWriter.write(writer, node);
+                if (vi.streamGenerator != null) {
+                    vi.streamGenerator.write(generator, node);
                 } else {
-                    _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+                    _writeNode(generator, vi.valueToRaw(node), TypeInfo.NONE, context);
                 }
                 return;
             }
         }
 
         if (clazz == String.class) {
-            writer.writeStringValue((String) node);
+            generator.writeStringValue((String) node);
             return;
         }
         if (clazz == Boolean.class) {
-            writer.writeBooleanValue((Boolean) node);
+            generator.writeBooleanValue((Boolean) node);
             return;
         }
         if (clazz == Integer.class) {
-            writer.writeIntValue((Integer) node);
+            generator.writeIntValue((Integer) node);
             return;
         }
         if (clazz == Long.class) {
-            writer.writeLongValue((Long) node);
+            generator.writeLongValue((Long) node);
             return;
         }
         if (clazz == Double.class) {
-            writer.writeDoubleValue((Double) node);
+            generator.writeDoubleValue((Double) node);
             return;
         }
         if (clazz == Float.class) {
-            writer.writeFloatValue((Float) node);
+            generator.writeFloatValue((Float) node);
             return;
         }
         if (clazz == Short.class) {
-            writer.writeShortValue((Short) node);
+            generator.writeShortValue((Short) node);
             return;
         }
         if (clazz == Byte.class) {
-            writer.writeByteValue((Byte) node);
+            generator.writeByteValue((Byte) node);
             return;
         }
         if (clazz == BigInteger.class) {
-            writer.writeBigIntegerValue((BigInteger) node);
+            generator.writeBigIntegerValue((BigInteger) node);
             return;
         }
         if (clazz == BigDecimal.class) {
-            writer.writeBigDecimalValue((BigDecimal) node);
+            generator.writeBigDecimalValue((BigDecimal) node);
             return;
         }
         if (node instanceof Number) {
-            writer.writeNumberValue((Number) node);
+            generator.writeNumberValue((Number) node);
             return;
         }
 
         if (clazz == Character.class) {
-            writer.writeCharValue((Character) node);
+            generator.writeCharValue((Character) node);
             return;
         }
 
         if (node instanceof Enum) {
-            writer.writeStringValue(((Enum<?>) node).name());
+            generator.writeStringValue(((Enum<?>) node).name());
             return;
         }
 
@@ -1127,12 +1127,12 @@ public final class StreamingIO {
          */
 
         if (node instanceof Map) {
-            writeMap(writer, (Map<?, ?>) node, TypeInfo.NONE, context);
+            writeMap(generator, (Map<?, ?>) node, TypeInfo.NONE, context);
             return;
         }
 
         if (node instanceof List) {
-            writeList(writer, (List<?>) node, TypeInfo.NONE, context);
+            writeList(generator, (List<?>) node, TypeInfo.NONE, context);
             return;
         }
 
@@ -1143,22 +1143,22 @@ public final class StreamingIO {
          * declared properties are written before dynamic properties.
          */
         if (clazz == JsonObject.class) {
-            writeJsonObject(writer, (JsonObject) node, context);
+            writeJsonObject(generator, (JsonObject) node, context);
             return;
         }
 
         if (node instanceof JsonArray) {
-            writeJsonArray(writer, (JsonArray) node, context);
+            writeJsonArray(generator, (JsonArray) node, context);
             return;
         }
 
         if (node instanceof Set) {
-            writeSet(writer, (Set<?>) node, TypeInfo.NONE, context);
+            writeSet(generator, (Set<?>) node, TypeInfo.NONE, context);
             return;
         }
 
         if (clazz.isArray()) {
-            writeArray(writer, node, clazz, TypeInfo.NONE, context);
+            writeArray(generator, node, clazz, TypeInfo.NONE, context);
             return;
         }
 
@@ -1177,10 +1177,10 @@ public final class StreamingIO {
          */
         if (ti.valueSet != null) {
             ValueInfo vi = ti.requireValueInfo(context.valueFormat(clazz));
-            if (vi.streamWriter != null) {
-                vi.streamWriter.write(writer, node);
+            if (vi.streamGenerator != null) {
+                vi.streamGenerator.write(generator, node);
             } else {
-                _writeNode(writer, vi.valueToRaw(node), TypeInfo.NONE, context);
+                _writeNode(generator, vi.valueToRaw(node), TypeInfo.NONE, context);
             }
             return;
         }
@@ -1190,7 +1190,7 @@ public final class StreamingIO {
          * External object members apply the backend's JSON null semantics.
          */
         if (ti.externalNode != null) {
-            _writeExternalNode(writer, node, ti.externalNode, context);
+            _writeExternalNode(generator, node, ti.externalNode, context);
             return;
         }
 
@@ -1198,7 +1198,7 @@ public final class StreamingIO {
          * POJO / JOJO.
          */
         if (ti.pojoInfo != null && !ti.pojoInfo.isJajo) {
-            writePojo(writer, node, ti.pojoInfo, context);
+            writePojo(generator, node, ti.pojoInfo, context);
             return;
         }
 
@@ -1211,46 +1211,46 @@ public final class StreamingIO {
      * Object properties with JSON null are omitted when includeNulls is false;
      * null array elements are preserved.
      */
-    private static void _writeExternalNode(StreamingWriter writer, Object node,
+    private static void _writeExternalNode(StreamingGenerator generator, Object node,
                                            ExternalNode<Object> external,
                                            RuntimeContext context) throws IOException {
         switch (external.jsonType(node)) {
             case NULL:
-                writer.writeNull();
+                generator.writeNull();
                 return;
             case STRING:
-                writer.writeStringValue(external.toString(node));
+                generator.writeStringValue(external.toString(node));
                 return;
             case NUMBER:
-                writer.writeNumberValue(external.toNumber(node));
+                generator.writeNumberValue(external.toNumber(node));
                 return;
             case BOOLEAN:
-                writer.writeBooleanValue(external.toBoolean(node));
+                generator.writeBooleanValue(external.toBoolean(node));
                 return;
             case OBJECT:
-                writer.startObject();
+                generator.writeObjectStart();
                 int count = 0;
                 for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
                     Object value = entry.getValue();
                     if (!context.includeNulls && (value == null || external.jsonType(value) == JsonType.NULL)) {
                         continue;
                     }
-                    writer.writeName(entry.getKey(), count > 0);
+                    generator.writeName(entry.getKey(), count > 0);
                     count++;
-                    _writeNode(writer, value, TypeInfo.NONE, context);
+                    _writeNode(generator, value, TypeInfo.NONE, context);
                 }
-                writer.endObject();
+                generator.writeObjectEnd();
                 return;
             case ARRAY:
-                writer.startArray();
+                generator.writeArrayStart();
                 int size = external.sizeInArray(node);
                 for (int i = 0; i < size; i++) {
                     if (i > 0) {
-                        writer.separateElement();
+                        generator.writeArraySeparator();
                     }
-                    _writeNode(writer, external.getInArray(node, i), TypeInfo.NONE, context);
+                    _writeNode(generator, external.getInArray(node, i), TypeInfo.NONE, context);
                 }
-                writer.endArray();
+                generator.writeArrayEnd();
                 return;
             default:
                 throw new BindingException("unsupported external node type '" + Types.name(node) + "'");
@@ -1264,37 +1264,37 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeMap(StreamingWriter writer, Map<?, ?> map, TypeInfo valueTi,
+    public static void writeMap(StreamingGenerator generator, Map<?, ?> map, TypeInfo valueTi,
                                 RuntimeContext context) throws IOException {
-        writer.startObject();
+        generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object value = entry.getValue();
             if (value == null && !context.includeNulls) {
                 continue;
             }
-            writer.writeName(entry.getKey().toString(), count > 0);
+            generator.writeName(entry.getKey().toString(), count > 0);
             count++;
-            _writeNode(writer, value, valueTi, context);
+            _writeNode(generator, value, valueTi, context);
         }
-        writer.endObject();
+        generator.writeObjectEnd();
     }
 
 
-    public static void writeJsonObject(StreamingWriter writer, JsonObject object,
+    public static void writeJsonObject(StreamingGenerator generator, JsonObject object,
                                        RuntimeContext context) throws IOException {
-        writer.startObject();
+        generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<String, Object> entry : object.entrySet()) {
             Object value = entry.getValue();
             if (value == null && !context.includeNulls) {
                 continue;
             }
-            writer.writeName(entry.getKey(), count > 0);
+            generator.writeName(entry.getKey(), count > 0);
             count++;
-            _writeNode(writer, value, TypeInfo.NONE, context);
+            _writeNode(generator, value, TypeInfo.NONE, context);
         }
-        writer.endObject();
+        generator.writeObjectEnd();
     }
 
 
@@ -1304,57 +1304,57 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeList(StreamingWriter writer, List<?> list, TypeInfo elementTi,
+    public static void writeList(StreamingGenerator generator, List<?> list, TypeInfo elementTi,
                                  RuntimeContext context) throws IOException {
-        writer.startArray();
+        generator.writeArrayStart();
         if (list instanceof RandomAccess) {
             for (int i = 0, size = list.size(); i < size; i++) {
                 if (i > 0) {
-                    writer.separateElement();
+                    generator.writeArraySeparator();
                 }
-                _writeNode(writer, list.get(i), elementTi, context);
+                _writeNode(generator, list.get(i), elementTi, context);
             }
         } else {
             boolean separated = false;
             for (Object value : list) {
                 if (separated) {
-                    writer.separateElement();
+                    generator.writeArraySeparator();
                 } else {
                     separated = true;
                 }
-                _writeNode(writer, value, elementTi, context);
+                _writeNode(generator, value, elementTi, context);
             }
         }
-        writer.endArray();
+        generator.writeArrayEnd();
     }
 
 
-    public static void writeJsonArray(StreamingWriter writer, JsonArray array,
+    public static void writeJsonArray(StreamingGenerator generator, JsonArray array,
                                       RuntimeContext context) throws IOException {
-        writer.startArray();
+        generator.writeArrayStart();
         for (int i = 0, size = array.size(); i < size; i++) {
             if (i > 0) {
-                writer.separateElement();
+                generator.writeArraySeparator();
             }
-            _writeNode(writer, array.getNode(i), TypeInfo.NONE, context);
+            _writeNode(generator, array.getNode(i), TypeInfo.NONE, context);
         }
-        writer.endArray();
+        generator.writeArrayEnd();
     }
 
 
-    public static void writeSet(StreamingWriter writer, Set<?> set, TypeInfo elementTi,
+    public static void writeSet(StreamingGenerator generator, Set<?> set, TypeInfo elementTi,
                                 RuntimeContext context) throws IOException {
-        writer.startArray();
+        generator.writeArrayStart();
         boolean separated = false;
         for (Object value : set) {
             if (separated) {
-                writer.separateElement();
+                generator.writeArraySeparator();
             } else {
                 separated = true;
             }
-            _writeNode(writer, value, elementTi, context);
+            _writeNode(generator, value, elementTi, context);
         }
-        writer.endArray();
+        generator.writeArrayEnd();
     }
 
 
@@ -1364,56 +1364,56 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writeArray(StreamingWriter writer, Object node, Class<?> clazz, TypeInfo compTi,
+    public static void writeArray(StreamingGenerator generator, Object node, Class<?> clazz, TypeInfo compTi,
                                   RuntimeContext context) throws IOException {
-        writer.startArray();
+        generator.writeArrayStart();
         if (clazz == boolean[].class) {
             boolean[] array = (boolean[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeBooleanValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeBooleanValue(array[i]);
             }
         } else if (clazz == byte[].class) {
             byte[] array = (byte[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeByteValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeByteValue(array[i]);
             }
         } else if (clazz == short[].class) {
             short[] array = (short[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeShortValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeShortValue(array[i]);
             }
         } else if (clazz == int[].class) {
             int[] array = (int[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeIntValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeIntValue(array[i]);
             }
         } else if (clazz == long[].class) {
             long[] array = (long[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeLongValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeLongValue(array[i]);
             }
         } else if (clazz == float[].class) {
             float[] array = (float[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeFloatValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeFloatValue(array[i]);
             }
         } else if (clazz == double[].class) {
             double[] array = (double[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeDoubleValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeDoubleValue(array[i]);
             }
         } else if (clazz == char[].class) {
             char[] array = (char[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                writer.writeCharValue(array[i]);
+                if (i > 0) generator.writeArraySeparator();
+                generator.writeCharValue(array[i]);
             }
         } else {
             if (compTi.isNone()) {
@@ -1421,11 +1421,11 @@ public final class StreamingIO {
             }
             Object[] array = (Object[]) node;
             for (int i = 0; i < array.length; i++) {
-                if (i > 0) writer.separateElement();
-                _writeNode(writer, array[i], compTi, context);
+                if (i > 0) generator.writeArraySeparator();
+                _writeNode(generator, array[i], compTi, context);
             }
         }
-        writer.endArray();
+        generator.writeArrayEnd();
     }
 
 
@@ -1435,14 +1435,14 @@ public final class StreamingIO {
      * --------------------------------------------------------------
      */
 
-    public static void writePojo(StreamingWriter writer, Object node, PojoInfo pojoInfo,
+    public static void writePojo(StreamingGenerator generator, Object node, PojoInfo pojoInfo,
                                  RuntimeContext context) throws IOException {
-        writer.startObject();
-        PropertyWriter[] propertyWriters = pojoInfo.propertyWriters;
-        CompiledName[] compiledNames = writer.compiledNames(pojoInfo);
+        generator.writeObjectStart();
+        PropertyGenerator[] propertyGenerators = pojoInfo.propertyGenerators;
+        CompiledName[] compiledNames = generator.compiledNames(pojoInfo);
         int count = 0;
-        for (int i = 0, len = propertyWriters.length; i < len; i++) {
-            count = propertyWriters[i].write(writer, compiledNames[i], node, context, count);
+        for (int i = 0, len = propertyGenerators.length; i < len; i++) {
+            count = propertyGenerators[i].generate(generator, compiledNames[i], node, context, count);
         }
 
         /*
@@ -1457,13 +1457,13 @@ public final class StreamingIO {
                         continue;
                     }
 
-                    writer.writeName(entry.getKey(), count > 0);
+                    generator.writeName(entry.getKey(), count > 0);
                     count++;
-                    _writeNode(writer, value, TypeInfo.NONE, context);
+                    _writeNode(generator, value, TypeInfo.NONE, context);
                 }
             }
         }
-        writer.endObject();
+        generator.writeObjectEnd();
     }
 
 

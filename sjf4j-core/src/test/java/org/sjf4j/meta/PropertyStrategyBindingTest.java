@@ -7,8 +7,6 @@ import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.annotation.node.PropertyStrategy;
-import org.sjf4j.meta.PojoInfo;
-import org.sjf4j.meta.TypeRegistry;
 
 import java.util.Arrays;
 
@@ -140,7 +138,7 @@ class PropertyStrategyBindingTest {
     void fieldOnlyIncludesPrivateFieldAndIgnoresGetter() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(FieldOnlyPojo.class);
         assertNotNull(pi.propertyLookup.get("name"));
-        assertNotEquals(0, pi.readableProperties.length);
+        assertNotEquals(0, pi.gettableProperties.length);
     }
 
     @Test
@@ -155,7 +153,7 @@ class PropertyStrategyBindingTest {
         assertEquals("han", pojo.peek());
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(SetterOnlyPojo.class);
         assertTrue(pi.propertyLookup.containsKey("name"));
-        assertFalse(Arrays.stream(pi.readableProperties).anyMatch(property -> "name".equals(property.name)));
+        assertFalse(Arrays.stream(pi.gettableProperties).anyMatch(property -> "name".equals(property.name)));
         assertEquals("{}", Sjf4j.global().toJsonString(pojo));
     }
 
@@ -163,8 +161,8 @@ class PropertyStrategyBindingTest {
     void fieldBeanIncludesPrivateFieldFamilies() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(FieldBeanPojo.class);
         assertTrue(pi.propertyLookup.containsKey("name"));
-        assertTrue(pi.propertyLookup.get("name").readable);
-        assertTrue(pi.propertyLookup.get("name").writable);
+        assertTrue(pi.propertyLookup.get("name").gettable);
+        assertTrue(pi.propertyLookup.get("name").settable);
     }
 
     @Test
@@ -196,7 +194,7 @@ class PropertyStrategyBindingTest {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(IgnorePojo.class);
         assertFalse(pi.propertyLookup.containsKey("ignoredField"));
         assertTrue(pi.propertyLookup.containsKey("name"));
-        assertFalse(pi.propertyLookup.get("name").readable);
-        assertTrue(pi.propertyLookup.get("name").writable);
+        assertFalse(pi.propertyLookup.get("name").gettable);
+        assertTrue(pi.propertyLookup.get("name").settable);
     }
 }

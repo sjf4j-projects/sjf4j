@@ -2,7 +2,7 @@
  * Streaming format binding APIs.
  *
  * <p>{@link Binder} owns the format-specific reader and writer lifecycle,
- * while {@link StreamingReader} and {@link StreamingWriter} expose streaming
+ * while {@link StreamingParser} and {@link StreamingGenerator} expose streaming
  * tokens and output operations. {@link StreamingIO} contains the shared OBNT
  * and POJO binding logic used by streaming format implementations.
  * {@link PropertiesBinder} provides separate binding for flat Java properties.</p>

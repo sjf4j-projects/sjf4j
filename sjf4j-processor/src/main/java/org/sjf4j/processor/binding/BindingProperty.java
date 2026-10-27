@@ -46,7 +46,7 @@ final class BindingProperty {
         this.pendingIndex = -1;
     }
 
-    /** A writable property that must wait until the creator returns. */
+    /** A settable property that must wait until the creator returns. */
     BindingProperty(String name, String[] aliases, PropertyAccess access,
                     BindingValue value, int pendingIndex) {
         this.name = Asserts.notNull(name, "name");

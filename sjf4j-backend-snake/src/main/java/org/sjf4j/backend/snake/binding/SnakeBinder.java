@@ -17,7 +17,7 @@ import java.io.Writer;
  * interpreted as a JSON-semantic object graph: aliases, anchors, and
  * non-JSON-compatible tags are rejected by the reader.
  */
-public final class SnakeBinder extends Binder<SnakeReader, SnakeWriter> {
+public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
     private final LoaderOptions loaderOptions;
     private final DumperOptions dumperOptions;
 
@@ -48,15 +48,15 @@ public final class SnakeBinder extends Binder<SnakeReader, SnakeWriter> {
     }
 
     @Override
-    public SnakeReader createReader(Reader input) throws IOException {
+    public SnakeParser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new SnakeReader(new ParserImpl(new StreamReader(input), loaderOptions));
+        return new SnakeParser(new ParserImpl(new StreamReader(input), loaderOptions));
     }
 
     @Override
-    public SnakeWriter createWriter(Writer output) throws IOException {
+    public SnakeGenerator createGenerator(Writer output) throws IOException {
         Asserts.notNull(output, "output");
-        return new SnakeWriter(output, dumperOptions);
+        return new SnakeGenerator(output, dumperOptions);
     }
 
 }

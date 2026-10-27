@@ -18,7 +18,7 @@ import java.util.Map;
 final class Fastjson2PojoReadEmitter {
 
     void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads, boolean creator) {
-        out.line("com.alibaba.fastjson2.JSONReader raw = reader.rawReader();");
+        out.line("com.alibaba.fastjson2.JSONReader raw = parser.rawReader();");
         out.beginBlock("while (!raw.nextIfObjectEnd())");
 
         Map<Integer, List<BindingProperty>> rawNames =
@@ -49,7 +49,7 @@ final class Fastjson2PojoReadEmitter {
                     if (nativeRead != null) {
                         reads.emitPropertyReadExpression(out, property, "value", nativeRead);
                     } else {
-                        reads.emitPropertyRead(out, property, "value", "reader");
+                        reads.emitPropertyRead(out, property, "value", "parser");
                     }
                     out.line("continue;");
                     out.endBlock();
@@ -66,31 +66,31 @@ final class Fastjson2PojoReadEmitter {
         }
 
         if (creator) {
-            out.line("int nameIndex = reader.nextNameMatch(" + reads.matcherFieldName(value) + ");");
+            out.line("int nameIndex = parser.nextNameMatch(" + reads.matcherFieldName(value) + ");");
             reads.emitMatchedPojoProperty(out, value, false);
         } else {
-            out.line(fallbackMethod(value) + "(reader, value);");
+            out.line(fallbackMethod(value) + "(parser, value);");
         }
         out.endBlock();
     }
 
     void emitFallback(JavaWriter out, BindingValue value, ReadEmitter reads) {
         out.beginBlock("private static void " + fallbackMethod(value)
-                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Reader reader, "
+                + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Parser parser, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("int nameIndex = reader.nextNameMatch(" + reads.matcherFieldName(value) + ");");
+        out.line("int nameIndex = parser.nextNameMatch(" + reads.matcherFieldName(value) + ");");
         out.beginBlock("switch (nameIndex)");
         int i = 0;
         for (BindingProperty property : value.properties()) {
             out.line("case " + i++ + ":");
             out.indent();
-            reads.emitPropertyRead(out, property, "value", "reader");
+            reads.emitPropertyRead(out, property, "value", "parser");
             out.line("break;");
             out.dedent();
         }
         out.line("default:");
         out.indent();
-        reads.emitUnknownObjectProperty(out, value, "reader.currentName()");
+        reads.emitUnknownObjectProperty(out, value, "parser.currentName()");
         out.line("break;");
         out.dedent();
         out.endBlock();
@@ -99,7 +99,7 @@ final class Fastjson2PojoReadEmitter {
 
     /**
      * Experimental native scalar path. Keep nullable wrappers, enums, custom
-     * conversions, containers and fallback on the existing StreamingReader
+     * conversions, containers and fallback on the existing StreamingParser
      * contract. Raw name matching in the enclosing loop guarantees a pending
      * value; the wrapper peek cache is already clear at this point.
      */

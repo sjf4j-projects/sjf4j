@@ -185,7 +185,7 @@ class CompiledStaticBindingOptionsTest {
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
         assertTrue(source.contains("URI_CODEC"), source);
-        assertFalse(source.contains(".streamWriter"), source);
+        assertFalse(source.contains(".streamGenerator"), source);
         assertFalse(source.contains(".rawClazz"), source);
         assertFalse(source.contains("requireRegisteredValueInfo"), source);
         assertFalse(source.contains("this.context.includeNulls"), source);

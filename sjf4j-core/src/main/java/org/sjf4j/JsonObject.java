@@ -125,13 +125,13 @@ public class JsonObject extends JsonContainer {
      */
 
     /**
-     * Computes hash code from readable declared properties and dynamic entries.
+     * Computes hash code from gettable declared properties and dynamic entries.
      */
     @Override
     public int hashCode() {
         int hash = dynamicProperties == null ? 0 : dynamicProperties.hashCode();
         if (pi != null) {
-            for (PropertyInfo propertyInfo : pi.readableProperties){
+            for (PropertyInfo propertyInfo : pi.gettableProperties){
                 hash += Objects.hashCode(propertyInfo.name) ^
                         Objects.hashCode(propertyInfo.invokeGetter(this));
             }
@@ -166,10 +166,10 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the number of readable declared properties and dynamic entries.
+     * Returns the number of gettable declared properties and dynamic entries.
      */
     public int size() {
-        return (pi == null ? 0 : pi.readableProperties.length) +
+        return (pi == null ? 0 : pi.gettableProperties.length) +
                 (dynamicProperties == null ? 0 : dynamicProperties.size());
     }
 
@@ -181,13 +181,13 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns true if the key exists in readable declared properties or dynamic entries.
+     * Returns true if the key exists in gettable declared properties or dynamic entries.
      */
     public boolean containsKey(String key) {
         if (key == null) return false;
         if (pi != null) {
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
-            if (propertyInfo != null && propertyInfo.readable) return true;
+            if (propertyInfo != null && propertyInfo.gettable) return true;
         }
         return dynamicProperties != null && dynamicProperties.containsKey(key);
     }
@@ -201,16 +201,16 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a key view of readable declared properties and dynamic entries.
+     * Returns a key view of gettable declared properties and dynamic entries.
      * Dynamic keys are backed by the underlying map; declared keys cannot be removed.
      */
     public Set<String> keySet() {
-        if (pi == null || pi.readableProperties.length == 0) {
+        if (pi == null || pi.gettableProperties.length == 0) {
             return dynamicProperties == null ? Collections.emptySet() : dynamicProperties.keySet();
         }
 
         if (dynamicProperties == null) {
-            return pi.readablePropertyNameSet();
+            return pi.gettablePropertyNameSet();
         }
 
         return new AbstractSet<String>() {
@@ -225,13 +225,13 @@ public class JsonObject extends JsonContainer {
 
                     @Override
                     public boolean hasNext() {
-                        return propertyIndex < pi.readableProperties.length || dynamicIterator.hasNext();
+                        return propertyIndex < pi.gettableProperties.length || dynamicIterator.hasNext();
                     }
 
                     @Override
                     public String next() {
-                        if (propertyIndex < pi.readableProperties.length) {
-                            return pi.readableProperties[propertyIndex++].name;
+                        if (propertyIndex < pi.gettableProperties.length) {
+                            return pi.gettableProperties[propertyIndex++].name;
                         }
                         return dynamicIterator.next();
                     }
@@ -240,7 +240,7 @@ public class JsonObject extends JsonContainer {
 
             @Override
             public int size() {
-                return pi.readableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
+                return pi.gettableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
             }
 
             @Override
@@ -251,11 +251,11 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns an entry view of readable declared properties and dynamic entries.
+     * Returns an entry view of gettable declared properties and dynamic entries.
      * Declared-property entries are snapshots; dynamic entries are backed by the map.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
-        if (pi == null || pi.readableProperties.length == 0) {
+        if (pi == null || pi.gettableProperties.length == 0) {
             return dynamicProperties == null ? Collections.emptySet() : dynamicProperties.entrySet();
         }
 
@@ -271,13 +271,13 @@ public class JsonObject extends JsonContainer {
 
                     @Override
                     public boolean hasNext() {
-                        return propertyIndex < pi.readableProperties.length || dynamicIterator.hasNext();
+                        return propertyIndex < pi.gettableProperties.length || dynamicIterator.hasNext();
                     }
 
                     @Override
                     public Map.Entry<String, Object> next() {
-                        if (propertyIndex < pi.readableProperties.length) {
-                            PropertyInfo property = pi.readableProperties[propertyIndex++];
+                        if (propertyIndex < pi.gettableProperties.length) {
+                            PropertyInfo property = pi.gettableProperties[propertyIndex++];
                             return new AbstractMap.SimpleImmutableEntry<>(property.name,
                                     property.invokeGetter(JsonObject.this));
                         }
@@ -288,7 +288,7 @@ public class JsonObject extends JsonContainer {
 
             @Override
             public int size() {
-                return pi.readableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
+                return pi.gettableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
             }
         };
     }
@@ -299,7 +299,7 @@ public class JsonObject extends JsonContainer {
     public void forEach(BiConsumer<String, Object> visitor) {
         Asserts.notNull(visitor, "visitor");
         if (pi != null) {
-            for (PropertyInfo propertyInfo : pi.readableProperties){
+            for (PropertyInfo propertyInfo : pi.gettableProperties){
                 visitor.accept(propertyInfo.name, propertyInfo.invokeGetter(this));
             }
         }
@@ -316,7 +316,7 @@ public class JsonObject extends JsonContainer {
     public boolean anyMatch(BiPredicate<String, Object> predicate) {
         Asserts.notNull(predicate, "predicate");
         if (pi != null) {
-            for (PropertyInfo propertyInfo : pi.readableProperties){
+            for (PropertyInfo propertyInfo : pi.gettableProperties){
                 if (predicate.test(propertyInfo.name, propertyInfo.invokeGetter(this))) {
                     return true;
                 }
@@ -333,7 +333,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Replaces values for readable-and-writable declared properties and dynamic
+     * Replaces values for gettable-and-settable declared properties and dynamic
      * entries in place. Only a change of value reference counts as a replacement.
      *
      * @return whether at least one value reference changed
@@ -342,8 +342,8 @@ public class JsonObject extends JsonContainer {
         Asserts.notNull(mapper, "mapper");
         boolean changed = false;
         if (pi != null) {
-            for (PropertyInfo propertyInfo : pi.readableProperties){
-                if (!propertyInfo.writable) {
+            for (PropertyInfo propertyInfo : pi.gettableProperties){
+                if (!propertyInfo.settable) {
                     continue;
                 }
                 Object oldValue = propertyInfo.invokeGetter(this);
@@ -368,13 +368,13 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a new map containing readable declared properties and dynamic entries.
+     * Returns a new map containing gettable declared properties and dynamic entries.
      * Dynamic entries take precedence on duplicate keys; values are not copied.
      */
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
         if (pi != null) {
-            for (PropertyInfo propertyInfo : pi.readableProperties){
+            for (PropertyInfo propertyInfo : pi.gettableProperties){
                 merged.put(propertyInfo.name, propertyInfo.invokeGetter(this));
             }
         }
@@ -490,15 +490,15 @@ public class JsonObject extends JsonContainer {
     /**
      * Returns the OBNT value for the given key or {@code null}.
      * <p>
-     * Only readable declared properties participate in this value view. When a
-     * declared property is not readable, lookup falls through to dynamic entries
+     * Only gettable declared properties participate in this value view. When a
+     * declared property is not gettable, lookup falls through to dynamic entries
      * with the same key.
      */
     public Object getNode(String key) {
         if (key == null) return null;
         if (pi != null) {
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
-            if (propertyInfo != null && propertyInfo.readable) {
+            if (propertyInfo != null && propertyInfo.gettable) {
                 return propertyInfo.invokeGetter(this);
             }
         }
@@ -1008,7 +1008,7 @@ public class JsonObject extends JsonContainer {
         if (pi != null) {
             PropertyInfo fi = pi.getPropertyNoAlias(key);
             if (fi != null) {
-                if (fi.writable) {
+                if (fi.settable) {
                     fi.invokeSetter(this, object);
                     return null;
                 }
@@ -1029,7 +1029,7 @@ public class JsonObject extends JsonContainer {
 
         if (pi != null) {
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
-            if (propertyInfo != null && propertyInfo.readable) {
+            if (propertyInfo != null && propertyInfo.gettable) {
                 T old = (T) propertyInfo.invokeGetter(this);
                 if (old != null) {
                     return old;

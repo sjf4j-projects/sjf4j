@@ -345,7 +345,7 @@ public final class NodeMapper {
         }
         if (ti.pojoInfo != null) {
             JsonObject jo = new JsonObject();
-            for (PropertyInfo property : ti.pojoInfo.readableProperties) {
+            for (PropertyInfo property : ti.pojoInfo.gettableProperties) {
                 jo.put(property.name, property.invokeGetter(node));
             }
             return jo;
@@ -384,7 +384,7 @@ public final class NodeMapper {
         }
         if (ti.pojoInfo != null) {
             Map<String, Object> map = new LinkedHashMap<>();
-            for (PropertyInfo property : ti.pojoInfo.readableProperties) {
+            for (PropertyInfo property : ti.pojoInfo.gettableProperties) {
                 map.put(property.name, property.invokeGetter(node));
             }
             return map;
@@ -1335,7 +1335,7 @@ public final class NodeMapper {
     private static Object _deepCopyPojo(Object source, Type type, Class<?> boxed, PojoInfo pojoInfo, PathSegment ps,
                                         RuntimeContext context) {
         CreatorInfo ci = pojoInfo.creatorInfo;
-        int expected = pojoInfo.readableProperties.length;
+        int expected = pojoInfo.gettableProperties.length;
         if (source instanceof JsonObject) {
             expected += ((JsonObject) source).size();
         }
@@ -1344,7 +1344,7 @@ public final class NodeMapper {
         /*
          * Static POJO properties.
          */
-        for (PropertyInfo property : pojoInfo.readableProperties) {
+        for (PropertyInfo property : pojoInfo.gettableProperties) {
             String name = property.name;
             Object value = property.invokeGetter(source);
             PathSegment cps = new PathSegment.Name(ps, name);
@@ -1360,7 +1360,7 @@ public final class NodeMapper {
                 continue;
             }
 
-            if (!property.writable) {
+            if (!property.settable) {
                 continue;
             }
 
@@ -1482,7 +1482,7 @@ public final class NodeMapper {
 
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
             if (propertyInfo != null) {
-                if (propertyInfo.writable) {
+                if (propertyInfo.settable) {
                     _acceptPojoProperty(direct, state, propertyInfo, rawValue, type, toBoxed,
                             deepCopy, new PathSegment.Name(ps, key), context, externalSource);
                 }
@@ -1764,12 +1764,12 @@ public final class NodeMapper {
                                            RuntimeContext context) {
         if (Map.class.isAssignableFrom(toBoxed)) {
             Map<String, Object> map = TypeRegistry.newMapContainer(
-                    toBoxed, sourceInfo.readableProperties.length, false);
+                    toBoxed, sourceInfo.gettableProperties.length, false);
 
             Type valueType = Types.resolveTypeArgument(type, Map.class, 1);
             Class<?> valueRaw = Types.rawBox(valueType);
             TypeInfo valueTi = TypeRegistry.registerTypeInfo(valueRaw);
-            for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
+            for (PropertyInfo propertyInfo : sourceInfo.gettableProperties) {
                 Object value = propertyInfo.invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
                 map.put(propertyInfo.name,
@@ -1780,7 +1780,7 @@ public final class NodeMapper {
 
         if (toBoxed == JsonObject.class) {
             JsonObject jo = new JsonObject();
-            for (PropertyInfo propertyInfo : sourceInfo.readableProperties) {
+            for (PropertyInfo propertyInfo : sourceInfo.gettableProperties) {
                 Object value = propertyInfo.invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
                 jo.put(propertyInfo.name,
@@ -1810,11 +1810,11 @@ public final class NodeMapper {
         CreatorState state = direct == null ? new CreatorState(ci) : null;
         boolean includeDynamic = targetInfo.isJojo && targetInfo.readDynamic;
 
-        for (PropertyInfo sourceProperty : sourceInfo.readableProperties) {
+        for (PropertyInfo sourceProperty : sourceInfo.gettableProperties) {
             String name = sourceProperty.name;
             int argIdx = ci.getArgIndexOrAlias(name);
             PropertyInfo targetProperty = argIdx < 0 ? targetInfo.getPropertyNoAlias(name) : null;
-            if (argIdx < 0 && !(targetProperty != null ? targetProperty.writable : includeDynamic)) continue;
+            if (argIdx < 0 && !(targetProperty != null ? targetProperty.settable : includeDynamic)) continue;
 
             Object rawValue = sourceProperty.invokeGetter(source);
             PathSegment cps = new PathSegment.Name(ps, name);
@@ -1916,11 +1916,11 @@ public final class NodeMapper {
                 PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(rawClazz);
                 Map<String, Object> dynamic = pi.writeDynamic ? InternalAccess.dynamicProperties(jo) : null;
 
-                int size = pi.readableProperties.length + (dynamic == null ? 0 : dynamic.size());
+                int size = pi.gettableProperties.length + (dynamic == null ? 0 : dynamic.size());
 
                 Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class, size, false);
 
-                for (PropertyInfo propertyInfo : pi.readableProperties) {
+                for (PropertyInfo propertyInfo : pi.gettableProperties) {
                     Object value = propertyInfo.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
 
@@ -2025,9 +2025,9 @@ public final class NodeMapper {
             PojoInfo pi = ti.pojoInfo;
             if (pi != null) {
                 Map<String, Object> newMap = TypeRegistry.newMapContainer(LinkedHashMap.class,
-                        pi.readableProperties.length, false);
+                        pi.gettableProperties.length, false);
 
-                for (PropertyInfo propertyInfo : pi.readableProperties) {
+                for (PropertyInfo propertyInfo : pi.gettableProperties) {
                     Object value = propertyInfo.invokeGetter(node);
                     PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
 

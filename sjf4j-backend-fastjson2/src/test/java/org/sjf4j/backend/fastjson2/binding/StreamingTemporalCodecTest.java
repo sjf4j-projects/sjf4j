@@ -39,17 +39,17 @@ class StreamingTemporalCodecTest {
         assertEquals(date, TypeRegistry.requireRegisteredValueInfo(LocalDate.class, null));
         assertEquals(time, TypeRegistry.requireRegisteredValueInfo(LocalTime.class, null));
         assertEquals(dateTime, TypeRegistry.requireRegisteredValueInfo(LocalDateTime.class, null));
-        assertNotNull(date.streamReader);
-        assertNotNull(date.streamWriter);
-        assertNotNull(time.streamReader);
-        assertNotNull(time.streamWriter);
-        assertNotNull(dateTime.streamReader);
-        assertNotNull(dateTime.streamWriter); // Backend chooses ISO fallback, not the native space format.
+        assertNotNull(date.streamParser);
+        assertNotNull(date.streamGenerator);
+        assertNotNull(time.streamParser);
+        assertNotNull(time.streamGenerator);
+        assertNotNull(dateTime.streamParser);
+        assertNotNull(dateTime.streamGenerator); // Backend chooses ISO fallback, not the native space format.
 
         ValueInfo custom = TypeRegistry.requireRegisteredValueInfo(
                 LocalDateTime.class, null, "yyyy/MM/dd HH:mm:ss");
-        assertNull(custom.streamReader);
-        assertNull(custom.streamWriter);
+        assertNull(custom.streamParser);
+        assertNull(custom.streamGenerator);
         assertEquals("2026/10/21 12:30:01",
                 custom.valueToRaw(LocalDateTime.of(2026, 10, 21, 12, 30, 1)));
     }

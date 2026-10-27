@@ -48,7 +48,7 @@ class BinderExceptionPropagationTest {
 
     private interface ThrowingOperation { void run(); }
 
-    private static final class FailingBinder extends Binder<StreamingReader, StreamingWriter> {
+    private static final class FailingBinder extends Binder<StreamingParser, StreamingGenerator> {
         private final RuntimeException failure;
 
         private FailingBinder(RuntimeException failure) {
@@ -57,9 +57,9 @@ class BinderExceptionPropagationTest {
         }
 
         @Override
-        public StreamingReader createReader(Reader input) { throw failure; }
+        public StreamingParser createParser(Reader input) { throw failure; }
 
         @Override
-        public StreamingWriter createWriter(Writer output) { throw failure; }
+        public StreamingGenerator createGenerator(Writer output) { throw failure; }
     }
 }

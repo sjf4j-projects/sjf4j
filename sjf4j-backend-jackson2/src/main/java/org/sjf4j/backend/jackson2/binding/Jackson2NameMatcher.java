@@ -11,8 +11,8 @@ public final class Jackson2NameMatcher extends NameMatcher {
 
     final SerializableString[] serializedNames;
 
-    Jackson2NameMatcher(PropertyInfo[] writableProperties) {
-        this(writableProperties, null, null);
+    Jackson2NameMatcher(PropertyInfo[] settableProperties) {
+        this(settableProperties, null, null);
     }
 
     /**
@@ -32,8 +32,8 @@ public final class Jackson2NameMatcher extends NameMatcher {
         this(null, names, aliases);
     }
 
-    private Jackson2NameMatcher(PropertyInfo[] writableProperties, String[] names, String[][] aliases) {
-        super(writableProperties, names, aliases);
+    private Jackson2NameMatcher(PropertyInfo[] settableProperties, String[] names, String[][] aliases) {
+        super(settableProperties, names, aliases);
         serializedNames = new SerializableString[size()];
         for (int i = 0; i < size(); i++) {
             serializedNames[i] = new SerializedString(name(i));

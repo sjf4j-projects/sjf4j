@@ -130,10 +130,10 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(compiled.success, compiled.diagnostics());
 
         String source = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("Fastjson2Writer writer,"), source);
+        assertTrue(source.contains("Fastjson2Generator generator,"), source);
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
-        assertTrue(source.contains("writer.nativeWriter()"), source);
+        assertTrue(source.contains("generator.nativeWriter()"), source);
         assertFalse(source.contains("requireRegisteredValueInfo"), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);

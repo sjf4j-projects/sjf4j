@@ -1,7 +1,5 @@
 package org.sjf4j;
 
-import org.sjf4j.annotation.node.NodeObject;
-import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.meta.ContainerInfo;
@@ -12,25 +10,15 @@ import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.TypeInfo;
-import org.sjf4j.util.Types;
-import org.sjf4j.path.PathSegment;
-import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.AbstractSet;
 import java.util.ArrayList;
-import java.util.AbstractMap;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -578,18 +566,18 @@ public final class Nodes {
             PojoInfo pi = ti.pojoInfo;
             Map<String, Object> dynamic = pi.isJojo
                     ? ((JsonObject) node).dynamicProperties : null;
-            int capacity = pi.readableProperties.length
+            int capacity = pi.gettableProperties.length
                     + (dynamic == null ? 0 : dynamic.size());
             TypeRegistry.PojoCreationSession session =
                     new TypeRegistry.PojoCreationSession(pi.creatorInfo, capacity);
 
             // POJO and JOJO share the same static-property/creator path.
-            for (PropertyInfo property : pi.readableProperties) {
+            for (PropertyInfo property : pi.gettableProperties) {
                 Object value = property.invokeGetter(node);
                 int argIdx = pi.creatorInfo.getArgIndexOrAlias(property.name);
                 if (argIdx >= 0) {
                     session.acceptCtorArg(argIdx, value);
-                } else if (property.writable) {
+                } else if (property.settable) {
                     session.acceptProperty(property, value);
                 }
             }
@@ -695,7 +683,7 @@ public final class Nodes {
                 if (idx[0]++ > 0) sb.append(", ");
                 if (pi != null) {
                     PropertyInfo propertyInfo = pi.getPropertyNoAlias(k);
-                    if (propertyInfo != null && propertyInfo.readable) {
+                    if (propertyInfo != null && propertyInfo.gettable) {
                         sb.append("*");
                     }
                 }
@@ -786,7 +774,7 @@ public final class Nodes {
             PojoInfo pi = ti.pojoInfo;
             sb.append("@").append(rawClazz.getSimpleName()).append("{");
             int idx = 0;
-            for (PropertyInfo propertyInfo : pi.readableProperties) {
+            for (PropertyInfo propertyInfo : pi.gettableProperties) {
                 if (idx++ > 0) sb.append(", ");
                 sb.append("*").append(propertyInfo.name).append("=");
                 Object v = propertyInfo.invokeGetter(node);
@@ -912,7 +900,7 @@ public final class Nodes {
      * Returns the readable key set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return their live key views. POJO inputs
-     * return the structural readable-property key view; callers must treat it as
+     * return the structural gettable-property key view; callers must treat it as
      * read-only metadata.
      */
     public static Set<String> keySetInObject(Object node) {
@@ -923,7 +911,7 @@ public final class Nodes {
      * Returns the readable entry set for an object node.
      * <p>
      * Map and {@link JsonObject} inputs return live entry views. POJO inputs
-     * return a read-only projection of readable properties; modifying returned
+     * return a read-only projection of gettable properties; modifying returned
      * entries does not write back to the POJO.
      */
     public static Set<Map.Entry<String, Object>> entrySetInObject(Object node) {
@@ -1010,7 +998,7 @@ public final class Nodes {
      * Puts a value into an object node and returns the previous value when
      * the target shape exposes one.
      * <p>
-     * For POJO representations, only discovered properties are writable; unknown keys fail.
+     * For POJO representations, only settable declared properties can be written; unknown keys fail.
      * POJO property writes do not read back the old value and therefore return
      * {@code null}.
      */

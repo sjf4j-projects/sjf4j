@@ -61,8 +61,8 @@ class JsonpBinderTest {
         String json = "{\"items\":[{\"name\":\"Ada\",\"active\":true},null,3],\"empty\":{}}";
 
         JsonObject object;
-        try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(json))) {
-            object = reader.readObject();
+        try (jakarta.json.JsonReader nativeReader = Json.createReader(new StringReader(json))) {
+            object = nativeReader.readObject();
         }
         Object first = Nodes.getInArray(Nodes.getInObject(object, "items"), 0);
         assertEquals("Ada", ((JsonString) Nodes.getInObject(first, "name")).getString());
@@ -94,8 +94,8 @@ class JsonpBinderTest {
         assertEquals("true", binder.writeNodeAsString(JsonValue.TRUE));
         assertEquals("null", binder.writeNodeAsString(JsonValue.NULL));
         String precise = "{\"decimal\":0.123456789012345678901234567890}";
-        try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(precise))) {
-            assertEquals(precise, binder.writeNodeAsString(reader.readObject()));
+        try (jakarta.json.JsonReader nativeReader = Json.createReader(new StringReader(precise))) {
+            assertEquals(precise, binder.writeNodeAsString(nativeReader.readObject()));
         }
 
         assertThrows(BindingException.class, () -> binder.readNode("{} []", Map.class));
@@ -143,26 +143,52 @@ class JsonpBinderTest {
         assertEquals("héllo", ((Document) binder.readNode(new ByteArrayInputStream(input), Document.class)).title);
         assertThrows(Exception.class, () -> binder.readNode(
                 "\uFEFFnull".getBytes(StandardCharsets.UTF_16LE), Object.class));
-        try (JsonpReader reader = binder.createReader(new StringReader("null"))) {
-            assertInstanceOf(JsonpReader.class, reader);
-            assertTrue(reader.nextIfNull());
+        {
+            JsonpParser parser = binder.createParser(new StringReader("null"));
+            try {
+                assertInstanceOf(JsonpParser.class, parser);
+                assertTrue(parser.nextIfNull());
+
+            } finally {
+                parser.release();
+            }
         }
 
-        JsonParser parser = Json.createParser(new StringReader("null"));
-        try (JsonpReader reader = binder.createReader(parser)) {
-            assertTrue(reader.nextIfNull());
+        JsonParser nativeParser = Json.createParser(new StringReader("null"));
+        {
+            JsonpParser parser = binder.createParser(nativeParser);
+            try {
+                assertTrue(parser.nextIfNull());
+
+            } finally {
+                parser.release();
+            }
         }
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try (JsonpWriter writer = binder.createWriter(output)) {
-            writer.writeStringValue("héllo");
+        {
+            JsonpGenerator generator = binder.createGenerator(output);
+            try {
+                generator.start();
+                generator.writeStringValue("héllo");
+                generator.end();
+            } finally {
+                generator.release();
+            }
         }
         assertEquals("\"héllo\"", new String(output.toByteArray(), StandardCharsets.UTF_8));
 
         StringWriter nativeOutput = new StringWriter();
-        JsonGenerator generator = Json.createGenerator(nativeOutput);
-        try (JsonpWriter writer = binder.createWriter(generator)) {
-            writer.writeNull();
+        JsonGenerator nativeGenerator = Json.createGenerator(nativeOutput);
+        {
+            JsonpGenerator generator = binder.createGenerator(nativeGenerator);
+            try {
+                generator.start();
+                generator.writeNull();
+                generator.end();
+            } finally {
+                generator.release();
+            }
         }
         assertEquals("null", nativeOutput.toString());
     }
@@ -203,10 +229,10 @@ class JsonpBinderTest {
         assertThrows(NullPointerException.class, () -> new JsonpBinder(JsonProvider.provider(), null));
 
         JsonpBinder binder = new JsonpBinder();
-        assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((String) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((byte[]) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((Reader) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((String) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((byte[]) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((Writer) null));
     }
 
     static class Document {

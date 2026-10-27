@@ -40,11 +40,11 @@ class CompiledWriteRoutingBoundaryTest {
                         backend + ": missing native String helper");
                 assertTrue(generated.contains(" g, String value)"),
                         backend + ": String helper must accept the native generator");
-                assertFalse(generated.contains("_writeString(writer,"),
+                assertFalse(generated.contains("_writeString(generator,"),
                         backend + ": helper must not reacquire the generator");
             }
             // JsonObject and JsonArray are still dynamic: do not compile their contents.
-            assertTrue(generated.contains("StreamingIO.writeNode(writer, value, _FALLBACK_CONTEXT)"),
+            assertTrue(generated.contains("StreamingIO.writeNode(generator, value, _FALLBACK_CONTEXT)"),
                     backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {

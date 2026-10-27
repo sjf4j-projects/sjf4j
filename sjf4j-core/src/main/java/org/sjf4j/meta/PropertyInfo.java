@@ -1,6 +1,6 @@
 package org.sjf4j.meta;
 
-import org.sjf4j.binding.PropertyReader;
+import org.sjf4j.binding.PropertyParser;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Invokers;
 import org.sjf4j.util.Types;
@@ -46,10 +46,10 @@ public class PropertyInfo {
     public final String valueFormat;
     public final ValueInfo valueInfo;
 
-    public final boolean readable;
-    public final boolean writable;
+    public final boolean gettable;
+    public final boolean settable;
 
-    public final PropertyReader reader;
+    public final PropertyParser parser;
 
     /**
      * Creates property binding metadata and resolves its container element type.
@@ -57,7 +57,7 @@ public class PropertyInfo {
     public PropertyInfo(String name, String[] alias, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                         Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                         Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo, PropertyReader reader) {
+                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo, PropertyParser parser) {
         this.name = name;
         this.alias = alias;
         this.publicField = publicField;
@@ -96,10 +96,10 @@ public class PropertyInfo {
         this.oneOfInfo = oneOfInfo;
         this.valueFormat = valueFormat;
         this.valueInfo = valueInfo;
-        this.readable = getterHandle != null || getterLambda != null;
-        this.writable = setterHandle != null || setterLambda != null;
+        this.gettable = getterHandle != null || getterLambda != null;
+        this.settable = setterHandle != null || setterLambda != null;
 
-        this.reader = reader;
+        this.parser = parser;
     }
 
 

@@ -70,7 +70,7 @@ class RecordPropertySerializationTest {
     void onlyRecordComponentsAreImplicitlySerialized() throws IOException {
         PlainRecord value = new PlainRecord(839201L, 34, "alice.builder", true);
         PojoInfo info = TypeRegistry.requireRegisteredPojoInfo(PlainRecord.class);
-        Set<String> names = Arrays.stream(info.readableProperties)
+        Set<String> names = Arrays.stream(info.gettableProperties)
                 .map(p -> p.name).collect(Collectors.toSet());
         assertEquals(new HashSet<>(Arrays.asList("id", "age", "username", "active")), names);
 

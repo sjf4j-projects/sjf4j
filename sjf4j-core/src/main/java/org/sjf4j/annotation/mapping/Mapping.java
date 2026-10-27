@@ -10,14 +10,14 @@ import java.lang.annotation.Target;
  * Customizes one target property or target path in a {@link CompiledMapper} method.
  *
  * <p>Without this annotation, mapper methods use same-name auto mapping for
- * writable target properties and constructor/record parameters. Add one or more
+  * settable target properties and constructor/record parameters. Add one or more
  * {@code @Mapping} annotations to override that default for selected targets.</p>
  *
  * <p>Supported forms:</p>
  * <ul>
  *     <li>{@code @Mapping(target = "to", source = "from")} maps a differently
  *     named source property.</li>
- *     <li>{@code @Mapping(target = "to", ignore = true)} skips a writable target
+  *     <li>{@code @Mapping(target = "to", ignore = true)} skips a settable target
  *     property. Constructor and record targets cannot ignore required constructor
  *     arguments.</li>
  *     <li>{@code @Mapping(target = "to", sources = {...}, compute = "...")}

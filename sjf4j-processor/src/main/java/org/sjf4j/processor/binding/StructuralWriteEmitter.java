@@ -9,7 +9,7 @@ import org.sjf4j.processor.code.JavaWriter;
  * still call the selected backend's native API directly; there is no runtime
  * operation interface or extra virtual dispatch.
  *
- * The enclosing helper declares its writer and native generator. Backend
+ * The enclosing helper declares its generator and native generator. Backend
  * implementations own token operations, field names and separators.
  */
 final class StructuralWriteEmitter {
@@ -165,7 +165,7 @@ final class StructuralWriteEmitter {
             String type = subtype.type.toString();
             out.beginBlock("if (actualClass == " + type + ".class)");
             if (subtype.cachedPojo) {
-                out.line("org.sjf4j.binding.StreamingIO.writePojo(writer, value, "
+                out.line("org.sjf4j.binding.StreamingIO.writePojo(generator, value, "
                         + metadata + ", _FALLBACK_CONTEXT);");
             } else {
                 ops.writeValue(out, subtype.compiled, "(" + type + ") value");

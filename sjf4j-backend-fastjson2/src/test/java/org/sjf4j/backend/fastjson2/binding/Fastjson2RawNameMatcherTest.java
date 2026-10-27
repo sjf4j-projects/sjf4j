@@ -35,28 +35,34 @@ class Fastjson2RawNameMatcherTest {
     private void readAndCheck(boolean utf8) throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder();
         Fastjson2NameMatcher matcher = new Fastjson2NameMatcher(NAMES, ALIASES);
-        try (Fastjson2Reader reader = utf8
-                ? binder.createReader(DOCUMENT.getBytes(StandardCharsets.UTF_8))
-                : binder.createReader(DOCUMENT)) {
-            reader.startDocument();
-            reader.startObject();
-            List<Integer> indexes = new ArrayList<>();
-            List<Integer> values = new ArrayList<>();
-            int expected = 0;
-            int index;
-            while ((index = reader.nextNameMatch(matcher, expected)) != NameMatcher.OBJECT_END) {
-                indexes.add(index);
-                if (index == NameMatcher.UNKNOWN) {
-                    reader.skipNode();
-                } else {
-                    values.add(reader.readIntValue());
-                    expected = index + 1;
+        {
+            Fastjson2Parser parser = utf8
+                ? binder.createParser(DOCUMENT.getBytes(StandardCharsets.UTF_8))
+                : binder.createParser(DOCUMENT);
+            try {
+                parser.start();
+                parser.readObjectStart();
+                List<Integer> indexes = new ArrayList<>();
+                List<Integer> values = new ArrayList<>();
+                int expected = 0;
+                int index;
+                while ((index = parser.nextNameMatch(matcher, expected)) != NameMatcher.OBJECT_END) {
+                    indexes.add(index);
+                    if (index == NameMatcher.UNKNOWN) {
+                        parser.skipNode();
+                    } else {
+                        values.add(parser.readIntValue());
+                        expected = index + 1;
+                    }
                 }
+                parser.end();
+                assertEquals(Arrays.asList(1, 2, 0, 3, 4, 0, 0,
+                        NameMatcher.UNKNOWN, 5, 6, 1), indexes);
+                assertEquals(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 9, 10, 11), values);
+
+            } finally {
+                parser.release();
             }
-            reader.endDocument();
-            assertEquals(Arrays.asList(1, 2, 0, 3, 4, 0, 0,
-                    NameMatcher.UNKNOWN, 5, 6, 1), indexes);
-            assertEquals(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 9, 10, 11), values);
         }
     }
 }

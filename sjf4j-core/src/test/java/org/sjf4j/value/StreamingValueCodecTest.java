@@ -35,8 +35,8 @@ class StreamingValueCodecTest {
 
         ValueInfo info = TypeRegistry.requireRegisteredValueInfo(Key.class, "stream");
         assertSame(codec, info.codec);
-        assertNotNull(info.streamReader);
-        assertNotNull(info.streamWriter);
+        assertNotNull(info.streamParser);
+        assertNotNull(info.streamGenerator);
         assertEquals("alpha", ((Key) info.rawToValue("alpha")).value);
         assertEquals("alpha", info.valueToRaw(new Key("alpha")));
 
@@ -60,8 +60,8 @@ class StreamingValueCodecTest {
                 null, null);
         ValueRegistry.registerByCodec(codec, "fallback", true);
         ValueInfo info = TypeRegistry.requireRegisteredValueInfo(Fallback.class, null);
-        assertNull(info.streamReader);
-        assertNull(info.streamWriter);
+        assertNull(info.streamParser);
+        assertNull(info.streamGenerator);
 
         SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
         assertEquals("beta", ((Fallback) binder.readNode("\"beta\"", Fallback.class)).value);

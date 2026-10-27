@@ -3,8 +3,8 @@ package org.sjf4j.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.TypeReference;
-import org.sjf4j.binding.simple.SimpleJsonReader;
-import org.sjf4j.binding.simple.SimpleJsonWriter;
+import org.sjf4j.binding.simple.SimpleJsonParser;
+import org.sjf4j.binding.simple.SimpleJsonGenerator;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueRegistry;
 import org.sjf4j.meta.TypeRegistry;
@@ -26,9 +26,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class StreamingIOReadTest {
     @Test
     void readsUntypedNestedObjectAndArray() throws Exception {
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"items\":[1,true]}"))) {
-            Map<?, ?> value = (Map<?, ?>) StreamingIO.readNode(reader, Object.class, RuntimeContext.EMPTY);
-            assertEquals(List.of(1, true), value.get("items"));
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"items\":[1,true]}"));
+            try {
+                Map<?, ?> value = (Map<?, ?>) StreamingIO.readNode(parser, Object.class, RuntimeContext.EMPTY);
+                assertEquals(List.of(1, true), value.get("items"));
+            } finally {
+                parser.release();
+            }
         }
     }
 
@@ -36,54 +41,84 @@ class StreamingIOReadTest {
     void readsNestedGenericMapAndListUsingInterfaceFastPaths() throws Exception {
         TypeReference<Map<String, List<Integer>>> target =
                 new TypeReference<Map<String, List<Integer>>>() {};
-        try (SimpleJsonReader reader = new SimpleJsonReader(
-                new StringReader("{\"first\":[1,2],\"second\":[]}"))) {
-            Map<?, ?> value = assertInstanceOf(Map.class,
-                    StreamingIO.readNode(reader, target.getType(), RuntimeContext.EMPTY));
-            assertEquals(List.of(1, 2), assertInstanceOf(List.class, value.get("first")));
-            assertEquals(List.of(), assertInstanceOf(List.class, value.get("second")));
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"first\":[1,2],\"second\":[]}"));
+            try {
+                Map<?, ?> value = assertInstanceOf(Map.class,
+                        StreamingIO.readNode(parser, target.getType(), RuntimeContext.EMPTY));
+                assertEquals(List.of(1, 2), assertInstanceOf(List.class, value.get("first")));
+                assertEquals(List.of(), assertInstanceOf(List.class, value.get("second")));
+            } finally {
+                parser.release();
+            }
         }
     }
 
     @Test
     void readsPrimitiveArrayIntoExactLength() throws Exception {
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("[3,4]"))) {
-            int[] value = (int[]) StreamingIO.readNode(reader, int[].class, RuntimeContext.EMPTY);
-            assertEquals(2, value.length);
-            assertEquals(4, value[1]);
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[3,4]"));
+            try {
+                int[] value = (int[]) StreamingIO.readNode(parser, int[].class, RuntimeContext.EMPTY);
+                assertEquals(2, value.length);
+                assertEquals(4, value[1]);
+            } finally {
+                parser.release();
+            }
         }
     }
 
     @Test
     void readsEnumOrdinalsAndCharset() throws Exception {
-        try (SimpleJsonReader number = new SimpleJsonReader(new StringReader("1"));
-             SimpleJsonReader charset = new SimpleJsonReader(new StringReader("\"UTF-8\""))) {
-            assertEquals(SampleEnum.SECOND, StreamingIO.readNode(number, SampleEnum.class, RuntimeContext.EMPTY));
-            assertEquals(Charset.forName("UTF-8"), StreamingIO.readNode(charset, Charset.class, RuntimeContext.EMPTY));
+        {
+            SimpleJsonParser number = new SimpleJsonParser(new StringReader("1"));
+            SimpleJsonParser charset = new SimpleJsonParser(new StringReader("\"UTF-8\""));
+            try {
+                assertEquals(SampleEnum.SECOND, StreamingIO.readNode(number, SampleEnum.class, RuntimeContext.EMPTY));
+                assertEquals(Charset.forName("UTF-8"), StreamingIO.readNode(charset, Charset.class, RuntimeContext.EMPTY));
+            } finally {
+                charset.release();
+                number.release();
+            }
         }
     }
 
     @Test
     void readsCharsetAfterWritingRuntimeCharsetSubtype() throws Exception {
-        try (SimpleJsonWriter writer = new SimpleJsonWriter(null, new StringWriter());
-             SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"UTF-8\""))) {
-            StreamingIO.writeNode(writer, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
-            assertEquals(StandardCharsets.UTF_8, StreamingIO.readNode(reader, Charset.class, RuntimeContext.EMPTY));
+        {
+            SimpleJsonGenerator generator = new SimpleJsonGenerator(null, new StringWriter());
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("\"UTF-8\""));
+            try {
+                StreamingIO.writeNode(generator, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
+                assertEquals(StandardCharsets.UTF_8, StreamingIO.readNode(parser, Charset.class, RuntimeContext.EMPTY));
+            } finally {
+                parser.release();
+                generator.release();
+            }
         }
     }
 
     @Test
     void rejectsInvalidEnumOrdinalsAndAbstractObjectTargets() throws Exception {
-        try (SimpleJsonReader negative = new SimpleJsonReader(new StringReader("-1"));
-             SimpleJsonReader outOfRange = new SimpleJsonReader(new StringReader("2"));
-             SimpleJsonReader quoted = new SimpleJsonReader(new StringReader("\"1\""));
-             SimpleJsonReader abstractRoot = new SimpleJsonReader(new StringReader("{}"));
-             SimpleJsonReader abstractField = new SimpleJsonReader(new StringReader("{\"value\":{}}"))) {
-            assertThrows(BindingException.class, () -> StreamingIO.readNode(negative, SampleEnum.class, RuntimeContext.EMPTY));
-            assertThrows(BindingException.class, () -> StreamingIO.readNode(outOfRange, SampleEnum.class, RuntimeContext.EMPTY));
-            assertThrows(BindingException.class, () -> StreamingIO.readNode(quoted, SampleEnum.class, RuntimeContext.EMPTY));
-            assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractRoot, AbstractValue.class, RuntimeContext.EMPTY));
-            assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractField, AbstractHolder.class, RuntimeContext.EMPTY));
+        {
+            SimpleJsonParser negative = new SimpleJsonParser(new StringReader("-1"));
+            SimpleJsonParser outOfRange = new SimpleJsonParser(new StringReader("2"));
+            SimpleJsonParser quoted = new SimpleJsonParser(new StringReader("\"1\""));
+            SimpleJsonParser abstractRoot = new SimpleJsonParser(new StringReader("{}"));
+            SimpleJsonParser abstractField = new SimpleJsonParser(new StringReader("{\"value\":{}}"));
+            try {
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(negative, SampleEnum.class, RuntimeContext.EMPTY));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(outOfRange, SampleEnum.class, RuntimeContext.EMPTY));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(quoted, SampleEnum.class, RuntimeContext.EMPTY));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractRoot, AbstractValue.class, RuntimeContext.EMPTY));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractField, AbstractHolder.class, RuntimeContext.EMPTY));
+            } finally {
+                abstractField.release();
+                abstractRoot.release();
+                quoted.release();
+                outOfRange.release();
+                negative.release();
+            }
         }
     }
 
@@ -93,39 +128,64 @@ class StreamingIOReadTest {
                 value -> value.value, CodecParent::new),  null, false);
         assertNotNull(TypeRegistry.registerTypeInfo(CodecChild.class).valueSet);
 
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("\"parent\""))) {
-            assertThrows(BindingException.class, () -> StreamingIO.readNode(reader, CodecChild.class, RuntimeContext.EMPTY));
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("\"parent\""));
+            try {
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(parser, CodecChild.class, RuntimeContext.EMPTY));
+            } finally {
+                parser.release();
+            }
         }
     }
 
     @Test
     void distinguishesUnresolvedAbsentAndResolvedReadMetadata() throws Exception {
         // null: unresolved, resolves the POJO only after the built-in paths.
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"name\":\"Ada\"}"))) {
-            NameHolder value = (NameHolder) StreamingIO.readNode(
-                    reader, NameHolder.class, NameHolder.class, null, RuntimeContext.EMPTY);
-            assertEquals("Ada", value.name);
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"name\":\"Ada\"}"));
+            try {
+                NameHolder value = (NameHolder) StreamingIO.readNode(
+                        parser, NameHolder.class, NameHolder.class, null, RuntimeContext.EMPTY);
+                assertEquals("Ada", value.name);
+            } finally {
+                parser.release();
+            }
         }
 
         // NONE: already resolved; standard Java types need no registry lookup.
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"a\":1}"))) {
-            Map<?, ?> result = (Map<?, ?>) StreamingIO.readNode(
-                    reader, Map.class, Map.class, TypeInfo.NONE, RuntimeContext.EMPTY);
-            assertEquals(1, result.get("a"));
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"a\":1}"));
+            try {
+                Map<?, ?> result = (Map<?, ?>) StreamingIO.readNode(
+                        parser, Map.class, Map.class, TypeInfo.NONE, RuntimeContext.EMPTY);
+                assertEquals(1, result.get("a"));
+            } finally {
+                parser.release();
+            }
         }
 
         // Concrete metadata: dispatches directly to POJO reading.
         TypeInfo info = TypeRegistry.registerTypeInfo(NameHolder.class);
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"name\":\"Bob\"}"))) {
-            NameHolder value = (NameHolder) StreamingIO.readNode(
-                    reader, NameHolder.class, NameHolder.class, info, RuntimeContext.EMPTY);
-            assertEquals("Bob", value.name);
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"name\":\"Bob\"}"));
+            try {
+                NameHolder value = (NameHolder) StreamingIO.readNode(
+                        parser, NameHolder.class, NameHolder.class, info, RuntimeContext.EMPTY);
+                assertEquals("Bob", value.name);
+            } finally {
+                parser.release();
+            }
         }
 
         // NONE for a non-standard type must not silently resolve metadata.
-        try (SimpleJsonReader reader = new SimpleJsonReader(new StringReader("{\"name\":\"Eve\"}"))) {
-            assertThrows(BindingException.class, () -> StreamingIO.readNode(
-                    reader, NameHolder.class, NameHolder.class, TypeInfo.NONE, RuntimeContext.EMPTY));
+        {
+            SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"name\":\"Eve\"}"));
+            try {
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(
+                        parser, NameHolder.class, NameHolder.class, TypeInfo.NONE, RuntimeContext.EMPTY));
+            } finally {
+                parser.release();
+            }
         }
     }
 

@@ -18,8 +18,8 @@ public class ValueInfo {
     public final Class<?> rawClazz;
     public final JsonType rawJsonType;
     public final ValueCodec<Object, Object> codec;
-    public final ValueCodec.StreamingValueCodec.Reader<Object> streamReader;
-    public final ValueCodec.StreamingValueCodec.Writer<Object> streamWriter;
+    public final ValueCodec.StreamingValueCodec.Parser<Object> streamParser;
+    public final ValueCodec.StreamingValueCodec.Generator<Object> streamGenerator;
     public final MethodHandle valueToRawHandle;
     public final MethodHandle rawToValueHandle;
     public final MethodHandle valueCopyHandle;
@@ -39,11 +39,11 @@ public class ValueInfo {
         if (codec instanceof ValueCodec.StreamingValueCodec) {
             ValueCodec.StreamingValueCodec<Object, Object> streaming =
                     (ValueCodec.StreamingValueCodec<Object, Object>) codec;
-            this.streamReader = streaming.streamReader();
-            this.streamWriter = streaming.streamWriter();
+            this.streamParser = streaming.streamParser();
+            this.streamGenerator = streaming.streamGenerator();
         } else {
-            this.streamReader = null;
-            this.streamWriter = null;
+            this.streamParser = null;
+            this.streamGenerator = null;
         }
         this.valueToRawHandle = valueToRawHandle;
         this.rawToValueHandle = rawToValueHandle;
@@ -60,8 +60,8 @@ public class ValueInfo {
         this.rawClazz = info.rawClazz;
         this.rawJsonType = info.rawJsonType;
         this.codec = info.codec;
-        this.streamReader = info.streamReader;
-        this.streamWriter = info.streamWriter;
+        this.streamParser = info.streamParser;
+        this.streamGenerator = info.streamGenerator;
         this.valueToRawHandle = info.valueToRawHandle;
         this.rawToValueHandle = info.rawToValueHandle;
         this.valueCopyHandle = info.valueCopyHandle;

@@ -6,10 +6,11 @@ import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.binding.StreamingReader;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -31,12 +32,13 @@ class Fastjson2BinderTest {
 
     @Test
     void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
-        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of(
+        Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
-                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"))) {
+                        + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"));
+        try {
 
-            assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
-            Map<?, ?> value = (Map<?, ?>) reader.readRaw();
+            assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+            Map<?, ?> value = (Map<?, ?>) parser.readRaw();
 
             assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -48,28 +50,36 @@ class Fastjson2BinderTest {
             assertEquals(LinkedHashMap.class, value.get("nested").getClass());
             assertEquals(ArrayList.class, value.get("items").getClass());
             assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
-            assertEquals(StreamingReader.Token.EOF, reader.peekToken());
-            reader.endDocument();
+            assertEquals(StreamingParser.Token.EOF, parser.peekToken());
+            parser.end();
+        } finally {
+            parser.release();
         }
     }
 
     @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() {
-        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of(""))) {
-            BindingException error = assertThrows(BindingException.class, reader::readRaw);
+        Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(""));
+        try {
+            BindingException error = assertThrows(BindingException.class, parser::readRaw);
             assertEquals("unexpected token 'EOF'", error.getMessage());
+        } finally {
+            parser.release();
         }
     }
 
     @Test
     void rawNodeConsumesOneValueAndRefreshesPeekState() throws Exception {
-        try (Fastjson2Reader reader = new Fastjson2Reader(JSONReader.of("[{\"id\":7},\"next\"]"))) {
-            reader.startArray();
-            assertEquals(StreamingReader.Token.OBJECT_START, reader.peekToken());
-            assertEquals(7, ((Map<?, ?>) reader.readRaw()).get("id"));
-            assertEquals(StreamingReader.Token.STRING, reader.peekToken());
-            assertEquals("next", reader.readString());
-            reader.endArray();
+        Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of("[{\"id\":7},\"next\"]"));
+        try {
+            parser.readArrayStart();
+            assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+            assertEquals(7, ((Map<?, ?>) parser.readRaw()).get("id"));
+            assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+            assertEquals("next", parser.readString());
+            parser.readArrayEnd();
+        } finally {
+            parser.release();
         }
     }
 
@@ -165,41 +175,47 @@ class Fastjson2BinderTest {
             JSONWriter.Feature... features) throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder(
                 JSONFactory.createReadContext(), JSONFactory.createWriteContext(features));
-        try (Fastjson2Writer writer = utf8 ? binder.createWriterUtf8() : binder.createWriter()) {
-            writer.startObject();
-            if (prepared) writer.writeName(writer.createCompiledName(name));
-            else writer.writeName(name);
-            writer.writeString("héllo");
-            // Also exercise the second-property separator after the cached name.
-            if (prepared) writer.writeName(writer.createCompiledName("tail"));
-            else writer.writeName("tail");
-            writer.writeNull();
-            writer.endObject();
-            return utf8 ? new String(writer.toBytes(), StandardCharsets.UTF_8) : writer.toString();
+        {
+            Fastjson2Generator generator = utf8 ? binder.createGeneratorUtf8() : binder.createGenerator();
+            try {
+                generator.writeObjectStart();
+                if (prepared) generator.writeName(generator.createCompiledName(name));
+                else generator.writeName(name);
+                generator.writeString("héllo");
+                // Also exercise the second-property separator after the cached name.
+                if (prepared) generator.writeName(generator.createCompiledName("tail"));
+                else generator.writeName("tail");
+                generator.writeNull();
+                generator.writeObjectEnd();
+                return utf8 ? new String(generator.toBytes(), StandardCharsets.UTF_8) : generator.toString();
+
+            } finally {
+                generator.release();
+            }
         }
     }
 
     @Test
     void nativeWritersShareRawNameFeatureContract() {
         Fastjson2Binder plain = new Fastjson2Binder();
-        try (JSONWriter writer = plain.createNativeWriter()) {
-            assertTrue(Fastjson2Binder.supportsRawUtf16Names(writer));
-            writer.startObject();
-            writer.writeName("text");
-            writer.writeColon();
-            writer.writeString("héllo");
-            writer.endObject();
-            assertEquals("{\"text\":\"héllo\"}", writer.toString());
+        try (JSONWriter generator = plain.createNativeWriter()) {
+            assertTrue(Fastjson2Binder.supportsRawUtf16Names(generator));
+            generator.startObject();
+            generator.writeName("text");
+            generator.writeColon();
+            generator.writeString("héllo");
+            generator.endObject();
+            assertEquals("{\"text\":\"héllo\"}", generator.toString());
         }
-        try (JSONWriter writer = plain.createNativeWriterUtf8()) {
-            assertTrue(Fastjson2Binder.supportsRawUtf8Names(writer));
-            writer.startObject();
-            writer.writeName("text");
-            writer.writeColon();
-            writer.writeString("héllo");
-            writer.endObject();
+        try (JSONWriter generator = plain.createNativeWriterUtf8()) {
+            assertTrue(Fastjson2Binder.supportsRawUtf8Names(generator));
+            generator.startObject();
+            generator.writeName("text");
+            generator.writeColon();
+            generator.writeString("héllo");
+            generator.endObject();
             assertEquals("{\"text\":\"héllo\"}",
-                    new String(writer.getBytes(), StandardCharsets.UTF_8));
+                    new String(generator.getBytes(), StandardCharsets.UTF_8));
         }
 
         for (JSONWriter.Feature feature : Arrays.asList(
@@ -210,11 +226,11 @@ class Fastjson2BinderTest {
             Fastjson2Binder configured = new Fastjson2Binder(
                     JSONFactory.createReadContext(),
                     JSONFactory.createWriteContext(feature));
-            try (JSONWriter writer = configured.createNativeWriter()) {
-                assertFalse(Fastjson2Binder.supportsRawUtf16Names(writer), feature.name());
+            try (JSONWriter generator = configured.createNativeWriter()) {
+                assertFalse(Fastjson2Binder.supportsRawUtf16Names(generator), feature.name());
             }
-            try (JSONWriter writer = configured.createNativeWriterUtf8()) {
-                assertFalse(Fastjson2Binder.supportsRawUtf8Names(writer), feature.name());
+            try (JSONWriter generator = configured.createNativeWriterUtf8()) {
+                assertFalse(Fastjson2Binder.supportsRawUtf8Names(generator), feature.name());
             }
         }
     }
@@ -224,19 +240,32 @@ class Fastjson2BinderTest {
         Fastjson2Binder binder = new Fastjson2Binder();
         StringWriter text = new StringWriter();
 
-        try (Fastjson2Reader reader = binder.createReader(new StringReader("null"))) {
-            assertInstanceOf(Fastjson2Reader.class, reader);
-            assertTrue(reader.nextIfNull());
+        {
+            Fastjson2Parser parser = binder.createParser(new StringReader("null"));
+            try {
+                assertInstanceOf(Fastjson2Parser.class, parser);
+                assertTrue(parser.nextIfNull());
+
+            } finally {
+                parser.release();
+            }
         }
-        Fastjson2Writer writer = binder.createWriter(text);
-        writer.writeStringValue("héllo");
-        writer.close();
+        Fastjson2Generator generator = binder.createGenerator(text);
+        generator.writeStringValue("héllo");
+        generator.end();
+        generator.release();
         assertEquals("\"héllo\"", text.toString());
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        try (Fastjson2Writer byteWriter = binder.createWriter(bytes)) {
-            byteWriter.writeStringValue("héllo");
-            byteWriter.flush();
+        {
+            Fastjson2Generator byteWriter = binder.createGenerator(bytes);
+            try {
+                byteWriter.writeStringValue("héllo");
+                byteWriter.end();
+
+            } finally {
+                byteWriter.release();
+            }
         }
         assertEquals("\"héllo\"", new String(bytes.toByteArray(), StandardCharsets.UTF_8));
     }
@@ -244,15 +273,18 @@ class Fastjson2BinderTest {
     @Test
     void wrapsSuppliedNativeStreamsAndRejectsNullDependencies() throws Exception {
         Fastjson2Binder binder = new Fastjson2Binder();
-        try (Fastjson2Reader reader = binder.createReader(JSONReader.of("null"))) {
-            assertTrue(reader.nextIfNull());
+        Fastjson2Parser parser = binder.createParser(JSONReader.of("null"));
+        try {
+            assertTrue(parser.nextIfNull());
+        } finally {
+            parser.release();
         }
         assertThrows(NullPointerException.class, () -> new Fastjson2Binder(null, JSONFactory.createWriteContext()));
         assertThrows(NullPointerException.class, () -> new Fastjson2Binder(JSONFactory.createReadContext(), null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((StringReader) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((StringWriter) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((JSONReader) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((JSONWriter) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((StringReader) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((StringWriter) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((JSONReader) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((JSONWriter) null));
     }
 
     @Test
@@ -261,11 +293,25 @@ class Fastjson2BinderTest {
         TrackingWriter text = new TrackingWriter();
         TrackingOutputStream bytes = new TrackingOutputStream();
 
-        try (Fastjson2Writer writer = binder.createWriter(text)) {
-            writer.writeNull();
+        {
+            Fastjson2Generator generator = binder.createGenerator(text);
+            try {
+                generator.start();
+                generator.writeNull();
+                generator.end();
+            } finally {
+                generator.release();
+            }
         }
-        try (Fastjson2Writer writer = binder.createWriter(bytes)) {
-            writer.writeNull();
+        {
+            Fastjson2Generator generator = binder.createGenerator(bytes);
+            try {
+                generator.start();
+                generator.writeNull();
+                generator.end();
+            } finally {
+                generator.release();
+            }
         }
 
         assertFalse(text.closed);
@@ -305,6 +351,34 @@ class Fastjson2BinderTest {
 
         @NodeProperty(value = "name", aliases = "legacy_name")
         public String name;
+    }
+
+
+    @Test
+    void parserReleasePreservesCallerOwnedReaderAndInputStream() {
+        Fastjson2Binder binder = new Fastjson2Binder();
+        boolean[] readerClosed = {false};
+        StringReader source = new StringReader("{\"id\":7}") {
+            @Override
+            public void close() {
+                readerClosed[0] = true;
+                super.close();
+            }
+        };
+        assertEquals(7, ((Map<?, ?>) binder.readNode(source, Map.class)).get("id"));
+        assertFalse(readerClosed[0]);
+
+        boolean[] streamClosed = {false};
+        ByteArrayInputStream stream = new ByteArrayInputStream(
+                "{\"id\":7}".getBytes(StandardCharsets.UTF_8)) {
+            @Override
+            public void close() throws IOException {
+                streamClosed[0] = true;
+                super.close();
+            }
+        };
+        assertEquals(7, ((Map<?, ?>) binder.readNode(stream, Map.class)).get("id"));
+        assertFalse(streamClosed[0]);
     }
 
     static class TrackingWriter extends StringWriter {
