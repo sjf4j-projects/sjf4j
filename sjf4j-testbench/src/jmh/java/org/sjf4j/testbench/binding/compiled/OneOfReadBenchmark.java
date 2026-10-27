@@ -9,7 +9,7 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.node.NodeMapper;
-import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
+import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
@@ -159,25 +159,27 @@ public class OneOfReadBenchmark {
 
     // Reproduces the removed StreamingIO implementation: read the full raw
     // tree, resolve CURRENT key, then convert the selected subtype.
-    private Pet rawBaseline(Jackson2Reader reader) throws IOException {
-        try (reader) {
-            reader.startDocument();
-            Object raw = reader.readRaw();
-            reader.endDocument();
+    private Pet rawBaseline(Jackson2Parser parser) throws IOException {
+        try {
+            parser.startRead();
+            Object raw = parser.readRaw();
+            parser.endRead();
             Object kind = ((Map<?, ?>) raw).get("kind");
             Class<?> subtype = "dog".equals(kind) ? Dog.class : Cat.class;
             return (Pet) NodeMapper.convert(raw, subtype, false, RuntimeContext.EMPTY);
+        } finally {
+            parser.release();
         }
     }
 
     @Benchmark
     public Pet root_string_raw_baseline() throws IOException {
-        return rawBaseline(SJF4J_RUNTIME.createReader(petJson));
+        return rawBaseline(SJF4J_RUNTIME.createParser(petJson));
     }
 
     @Benchmark
     public Pet root_utf8_raw_baseline() throws IOException {
-        return rawBaseline(SJF4J_RUNTIME.createReader(petUtf8));
+        return rawBaseline(SJF4J_RUNTIME.createParser(petUtf8));
     }
 
     @Benchmark

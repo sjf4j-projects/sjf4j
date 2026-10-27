@@ -31,31 +31,31 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     /** Handles Gson/JSON-P root scalars without the streaming-only emitter. */
     void emitRoot(JavaWriter out, BindingValue value, String expression,
-                  String writer, NameAllocator names) {
+                  String generator, NameAllocator names) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            out.line(value.helperName() + "(" + generator + ", " + expression + ");");
             return;
         }
 
-        String generator = names.newName("g");
+        String nativeGenerator = names.newName("g");
         switch (value.kind()) {
             case VALUE_CODEC:
             case NUMBER:
             case RUNTIME:
-                // These paths do not need a native generator local.
+                // These paths do not need a native nativeGenerator local.
                 break;
             default:
-                out.line(generatorType() + " " + generator + " = " + writer + ".nativeWriter();");
+                out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeWriter();");
         }
-        emitValue(out, value, expression, generator, names);
+        emitValue(out, value, expression, nativeGenerator, names);
     }
 
-    /** All structural helpers share the (writer, value) signature. */
+    /** All structural helpers share the (generator, value) signature. */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
-                + backend.writerType() + " writer, " + value.type()
+                + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = writer.nativeWriter();");
+        out.line(generatorType() + " g = generator.nativeWriter();");
 
         switch (value.kind()) {
             case JSON_OBJECT:
@@ -140,7 +140,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
-        out.line(STREAMING_IO + ".writeNode(writer, " + expression + ", this.context);");
+        out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", this.context);");
     }
 
     @Override
@@ -149,41 +149,41 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     }
 
     private void emitValue(JavaWriter out, BindingValue child, String expression,
-                           String generator, NameAllocator names) {
+                           String nativeGenerator, NameAllocator names) {
         // Method parameters are reserved for root values; helpers use their local scope.
         String item = names == null ? "item" : names.newName("item");
         if (child.helperRequired()) {
-            out.line(child.helperName() + "(writer, " + expression + ");");
+            out.line(child.helperName() + "(generator, " + expression + ");");
             return;
         }
 
         String method = gson() ? "value" : "write";
         if (child.kind() == BindingValue.Kind.STRING) {
-            out.line("_writeString(" + generator + ", " + expression + ");");
+            out.line("_writeString(" + nativeGenerator + ", " + expression + ");");
             return;
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, "writer", null, backend.backend());
+                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend());
                 return;
             case RUNTIME:
                 writeRuntimeValue(out, expression);
                 return;
             case NUMBER:
-                out.line("writer.writeNumber(" + expression + ");");
+                out.line("generator.writeNumber(" + expression + ");");
                 return;
             case ENUM:
             case CHARACTER:
                 if (child.primitive()) {
-                    out.line(generator + "." + method + "(Character.toString(" + expression + "));");
+                    out.line(nativeGenerator + "." + method + "(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
                     out.line(child.type() + " " + item + " = " + expression + ";");
                     out.beginBlock("if (" + item + " == null)");
-                    out.line(generator + "." + (gson() ? "nullValue" : "writeNull") + "();");
+                    out.line(nativeGenerator + "." + (gson() ? "nullValue" : "writeNull") + "();");
                     out.endBlock(" else {");
                     out.indent();
-                    out.line(generator + "." + method + "(" + item + "."
+                    out.line(nativeGenerator + "." + method + "(" + item + "."
                             + (child.kind() == BindingValue.Kind.ENUM ? "name()" : "toString()")
                             + ");");
                     out.endBlock();
@@ -202,12 +202,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             } else if (!gson() && child.kind() == BindingValue.Kind.FLOAT) {
                 arg = "(double) (" + expression + ")";
             }
-            out.line(generator + "." + method + "(" + arg + ");");
+            out.line(nativeGenerator + "." + method + "(" + arg + ");");
         } else {
             out.beginBlock("");
             out.line(child.type() + " " + item + " = " + expression + ";");
             out.beginBlock("if (" + item + " == null)");
-            out.line(generator + "." + (gson() ? "nullValue" : "writeNull") + "();");
+            out.line(nativeGenerator + "." + (gson() ? "nullValue" : "writeNull") + "();");
             out.endBlock(" else {");
             out.indent();
             String arg = item;
@@ -218,7 +218,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
                 // Preserve the previous widening semantics for boxed floats.
                 arg = item + ".doubleValue()";
             }
-            out.line(generator + "." + method + "(" + arg + ");");
+            out.line(nativeGenerator + "." + method + "(" + arg + ");");
             out.endBlock();
             out.endBlock();
         }

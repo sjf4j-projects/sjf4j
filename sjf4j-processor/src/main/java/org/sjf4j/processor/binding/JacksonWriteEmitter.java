@@ -7,8 +7,8 @@ import org.sjf4j.processor.code.NameAllocator;
 /**
  * Jackson 2/3 compiled write generation.
  *
- * Every structural helper accepts the Jackson StreamingWriter and its value.
- * Each helper obtains the native generator locally. A codec, OneOf or dynamic
+ * Every structural helper accepts the Jackson StreamingGenerator and its value.
+ * Each helper obtains the native nativeGenerator locally. A codec, OneOf or dynamic
  * child changes only that child's emission; it never changes the parent's
  * POJO/List/Set/Map implementation or the helper signature.
  */
@@ -35,31 +35,31 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     /** Writes a root scalar or delegates a root structural value. */
     void emitRoot(JavaWriter out, BindingValue value, String expression,
-                  String writer, NameAllocator names) {
+                  String generator, NameAllocator names) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(" + writer + ", " + expression + ");");
+            out.line(value.helperName() + "(" + generator + ", " + expression + ");");
             return;
         }
-        String generator = names.newName("g");
-        out.line(generatorType() + " " + generator + " = " + writer + ".nativeWriter();");
-        emitValue(out, value, expression, writer, generator, names.newName("item"));
+        String nativeGenerator = names.newName("g");
+        out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeWriter();");
+        emitValue(out, value, expression, generator, nativeGenerator, names.newName("item"));
     }
 
     /**
-     * Generates all structural nodes using the same writer/value convention.
+     * Generates all structural nodes using the same generator/value convention.
      * Instance helpers are needed by codec metadata and local runtime fallbacks.
      */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
-                + backend.writerType() + " writer, " + value.type()
+                + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = writer.nativeWriter();");
+        out.line(generatorType() + " g = generator.nativeWriter();");
 
         if (value.kind() == BindingValue.Kind.ONE_OF) {
             structures.emitOneOf(out, value);
         } else if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line(STREAMING_IO + ".writeNode(writer, value, this.context);");
+            out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
         } else {
             out.beginBlock("if (value == null)");
             out.line("g.writeNull();");
@@ -143,53 +143,53 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     @Override
     public void writeValue(JavaWriter out, BindingValue value, String expression) {
-        emitValue(out, value, expression, "writer", "g", "item");
+        emitValue(out, value, expression, "generator", "g", "item");
     }
 
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
-        out.line(STREAMING_IO + ".writeNode(writer, " + expression
+        out.line(STREAMING_IO + ".writeNode(generator, " + expression
                 + ", this.context);");
     }
 
     /**
-     * Emits a value into the current generator, delegating only the leaf that
+     * Emits a value into the current nativeGenerator, delegating only the leaf that
      * needs Codec/Runtime handling. Structural helpers always accept
-     * (writer, value), never a separately passed native generator.
+     * (generator, value), never a separately passed native nativeGenerator.
      */
     private void emitValue(JavaWriter out, BindingValue child,
-                           String expression, String writer, String generator, String item) {
+                           String expression, String generator, String nativeGenerator, String item) {
         if (child.helperRequired()) {
-            out.line(child.helperName() + "(" + writer + ", " + expression + ");");
+            out.line(child.helperName() + "(" + generator + ", " + expression + ");");
             return;
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, writer, generator, backend.backend());
+                CodecWriteEmitter.emit(out, child, expression, generator, nativeGenerator, backend.backend());
                 return;
             case RUNTIME:
-                out.line(STREAMING_IO + ".writeNode(" + writer + ", " + expression
+                out.line(STREAMING_IO + ".writeNode(" + generator + ", " + expression
                         + ", this.context);");
                 return;
             case STRING:
-                out.line("_writeString(" + generator + ", " + expression + ");");
+                out.line("_writeString(" + nativeGenerator + ", " + expression + ");");
                 return;
             case NUMBER:
-                out.line(writer + ".writeNumber(" + expression + ");");
+                out.line(generator + ".writeNumber(" + expression + ");");
                 return;
             case ENUM:
                 out.beginBlock("");
                 out.line(child.type() + " " + item + " = " + expression + ";");
-                out.line(generator + ".writeString(" + item + " == null ? null : " + item + ".name());");
+                out.line(nativeGenerator + ".writeString(" + item + " == null ? null : " + item + ".name());");
                 out.endBlock();
                 return;
             case CHARACTER:
                 if (child.primitive()) {
-                    out.line(generator + ".writeString(Character.toString(" + expression + "));");
+                    out.line(nativeGenerator + ".writeString(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
                     out.line(child.type() + " " + item + " = " + expression + ";");
-                    out.line(generator + ".writeString(" + item + " == null ? null : " + item + ".toString());");
+                    out.line(nativeGenerator + ".writeString(" + item + " == null ? null : " + item + ".toString());");
                     out.endBlock();
                 }
                 return;
@@ -216,15 +216,15 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 throw new AssertionError("Unsupported Jackson value " + child.kind());
         }
         if (child.primitive()) {
-            out.line(generator + "." + method + "(" + expression + ");");
+            out.line(nativeGenerator + "." + method + "(" + expression + ");");
         } else {
             out.beginBlock("");
             out.line(child.type() + " " + item + " = " + expression + ";");
             out.beginBlock("if (" + item + " == null)");
-            out.line(generator + ".writeNull();");
+            out.line(nativeGenerator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(generator + "." + method + "(" + item + ");");
+            out.line(nativeGenerator + "." + method + "(" + item + ");");
             out.endBlock();
             out.endBlock();
         }

@@ -61,20 +61,20 @@ class CompiledJacksonUnifiedWriteTest {
 
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("instanceof RandomAccess"), backend);
-            assertTrue(generated.contains("writer.nativeWriter()"), backend);
+            assertTrue(generated.contains("generator.nativeWriter()"), backend);
             assertTrue(generated.contains("private void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("private void _writeStringMember("), backend);
             assertTrue(generated.contains("if (value == null && !this.context.includeNulls)"), backend);
             assertTrue(generated.contains("_writeString(g, value);"), backend);
             assertTrue(generated.contains("_writeStringMember(g,"), backend);
-            assertTrue(generated.contains("_writeList(writer, property0);"), backend);
-            assertTrue(generated.contains("_writeMap(writer, property2);"), backend);
+            assertTrue(generated.contains("_writeList(generator, property0);"), backend);
+            assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertFalse(generated.contains("boolean includeNulls)"), backend);
             assertTrue(generated.contains("this.context.includeNulls"), backend);
-            assertTrue(generated.contains("StreamingIO.writeNode(writer,"), backend);
+            assertTrue(generated.contains("StreamingIO.writeNode(generator,"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");

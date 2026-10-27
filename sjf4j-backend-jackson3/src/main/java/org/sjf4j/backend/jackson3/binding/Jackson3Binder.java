@@ -23,7 +23,7 @@ import java.io.Writer;
  * is rebuilt with charset detection and automatic source closing disabled;
  * caller-supplied output targets are not closed by the binder.
  */
-public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer> {
+public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generator> {
 
     private static final ObjectReadContext READ_CONTEXT = ObjectReadContext.empty();
     private static final ObjectWriteContext WRITE_CONTEXT = ObjectWriteContext.empty();
@@ -67,15 +67,15 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
     }
 
     @Override
-    public Jackson3Reader createReader(Reader input) throws IOException {
-        return new Jackson3Reader(factory.createParser(
+    public Jackson3Parser createParser(Reader input) throws IOException {
+        return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
                 Asserts.notNull(input, "input")));
     }
 
     @Override
-    public Jackson3Reader createReader(InputStream input) throws IOException {
-        return new Jackson3Reader(factory.createParser(
+    public Jackson3Parser createParser(InputStream input) throws IOException {
+        return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
                 Asserts.notNull(input, "input")));
     }
@@ -85,28 +85,28 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
      * @param parser the Jackson 3 parser
      * @return a SJF4J streaming reader
      */
-    public Jackson3Reader createReader(JsonParser parser) {
-        return new Jackson3Reader(Asserts.notNull(parser, "parser"));
+    public Jackson3Parser createParser(JsonParser parser) {
+        return new Jackson3Parser(Asserts.notNull(parser, "parser"));
     }
 
     @Override
-    public Jackson3Reader createReader(String input) throws IOException {
-        return new Jackson3Reader(factory.createParser(
+    public Jackson3Parser createParser(String input) throws IOException {
+        return new Jackson3Parser(factory.createParser(
                 READ_CONTEXT,
                 Asserts.notNull(input, "input")));
     }
 
     @Override
-    public Jackson3Reader createReader(byte[] input) throws IOException {
-        return new Jackson3Reader(
+    public Jackson3Parser createParser(byte[] input) throws IOException {
+        return new Jackson3Parser(
                 factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input")));
     }
 
     @Override
-    public Jackson3Writer createWriter(Writer output) throws IOException {
+    public Jackson3Generator createGenerator(Writer output) throws IOException {
         JsonGenerator generator = factory.createGenerator(
                 WRITE_CONTEXT, Asserts.notNull(output, "output"));
-        return new Jackson3Writer(generator);
+        return new Jackson3Generator(generator);
     }
 
     /**
@@ -114,15 +114,15 @@ public final class Jackson3Binder extends Binder<Jackson3Reader, Jackson3Writer>
      * @param generator the Jackson 3 generator
      * @return a SJF4J streaming writer
      */
-    public Jackson3Writer createWriter(JsonGenerator generator) {
-        return new Jackson3Writer(Asserts.notNull(generator, "generator"));
+    public Jackson3Generator createGenerator(JsonGenerator generator) {
+        return new Jackson3Generator(Asserts.notNull(generator, "generator"));
     }
 
     @Override
-    public Jackson3Writer createWriter(OutputStream output) throws IOException {
+    public Jackson3Generator createGenerator(OutputStream output) throws IOException {
         JsonGenerator generator = factory.createGenerator(
                 WRITE_CONTEXT, Asserts.notNull(output, "output"));
-        return new Jackson3Writer(generator);
+        return new Jackson3Generator(generator);
     }
 
 }

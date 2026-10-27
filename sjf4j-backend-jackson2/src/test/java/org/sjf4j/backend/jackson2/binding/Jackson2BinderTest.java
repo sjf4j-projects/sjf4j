@@ -49,9 +49,15 @@ class Jackson2BinderTest {
         PooledStringWriter chars = new PooledStringWriter();
         String detached;
         try {
-            try (Jackson2Writer writer = binder.createWriter(chars)) {
-                writer.writeStringValue(value);
-                writer.flush();
+            {
+                Jackson2Generator generator = binder.createGenerator(chars);
+                try {
+                    generator.writeStringValue(value);
+                    generator.endWrite();
+
+                } finally {
+                    generator.release();
+                }
             }
             detached = chars.getAndRecycle();
         } finally {
@@ -62,9 +68,15 @@ class Jackson2BinderTest {
         PooledByteArrayOutputStream bytes = new PooledByteArrayOutputStream();
         byte[] detachedUtf8;
         try {
-            try (Jackson2Writer writer = binder.createWriter(bytes)) {
-                writer.writeStringValue(value);
-                writer.flush();
+            {
+                Jackson2Generator generator = binder.createGenerator(bytes);
+                try {
+                    generator.writeStringValue(value);
+                    generator.endWrite();
+
+                } finally {
+                    generator.release();
+                }
             }
             detachedUtf8 = bytes.getAndRecycle();
         } finally {
@@ -189,13 +201,19 @@ class Jackson2BinderTest {
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), context);
         StringWriter output = new StringWriter();
 
-        try (Jackson2Reader reader = binder.createReader(new StringReader("null"))) {
-            assertInstanceOf(Jackson2Reader.class, reader);
+        {
+            Jackson2Parser parser = binder.createParser(new StringReader("null"));
+            try {
+                assertInstanceOf(Jackson2Parser.class, parser);
+
+            } finally {
+                parser.release();
+            }
         }
-        Jackson2Writer writer = binder.createWriter(output);
-        assertInstanceOf(Jackson2Writer.class, writer);
-        writer.writeNull();
-        writer.close();
+        Jackson2Generator generator = binder.createGenerator(output);
+        assertInstanceOf(Jackson2Generator.class, generator);
+        generator.writeNull();
+        generator.release();
         assertEquals("null", output.toString());
     }
 
@@ -203,7 +221,7 @@ class Jackson2BinderTest {
     void usesSuppliedFactoryConfiguration() {
         JsonFactory factory = new JsonFactory().enable(JsonParser.Feature.ALLOW_COMMENTS);
         Document value = (Document) new Jackson2Binder(factory)
-                .readNode("/* configured parser */ {\"id\":7}", Document.class);
+                .readNode("/* configured nativeParser */ {\"id\":7}", Document.class);
 
         assertEquals(7, value.id);
     }
@@ -223,14 +241,26 @@ class Jackson2BinderTest {
         TrackingFactory factory = new TrackingFactory();
         Jackson2Binder binder = new Jackson2Binder(factory);
 
-        try (Jackson2Reader reader = binder.createReader("null")) {
-            assertTrue(reader.nextIfNull());
+        {
+            Jackson2Parser parser = binder.createParser("null");
+            try {
+                assertTrue(parser.nextIfNull());
+
+            } finally {
+                parser.release();
+            }
         }
         assertEquals("string", factory.parserSource);
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try (Jackson2Writer writer = binder.createWriter(output)) {
-            writer.writeStringValue("héllo");
+        {
+            Jackson2Generator generator = binder.createGenerator(output);
+            try {
+                generator.writeStringValue("héllo");
+
+            } finally {
+                generator.release();
+            }
         }
         assertEquals(JsonEncoding.UTF8, factory.generatorEncoding);
         assertEquals("\"héllo\"", new String(output.toByteArray(), StandardCharsets.UTF_8));
@@ -246,25 +276,43 @@ class Jackson2BinderTest {
 
         assertEquals("héllo", fromBytes.title);
         assertEquals("héllo", fromStream.title);
-        try (Jackson2Reader reader = binder.createReader("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE))) {
-            assertThrows(Exception.class, reader::nextIfNull);
+        {
+            Jackson2Parser parser = binder.createParser("\uFEFFnull".getBytes(StandardCharsets.UTF_16LE));
+            try {
+                assertThrows(Exception.class, parser::nextIfNull);
+
+            } finally {
+                parser.release();
+            }
         }
     }
 
     @Test
     void wrapsSuppliedJacksonStreamsAndClosesThemWithTheWrapper() throws Exception {
-        JsonParser parser = new JsonFactory().createParser("null");
-        try (Jackson2Reader reader = new Jackson2Binder(new JsonFactory()).createReader(parser)) {
-            assertTrue(reader.nextIfNull());
+        JsonParser nativeParser = new JsonFactory().createParser("null");
+        {
+            Jackson2Parser parser = new Jackson2Binder(new JsonFactory()).createParser(nativeParser);
+            try {
+                assertTrue(parser.nextIfNull());
+
+            } finally {
+                parser.release();
+            }
         }
-        assertTrue(parser.isClosed());
+        assertTrue(nativeParser.isClosed());
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        JsonGenerator generator = new JsonFactory().createGenerator(output);
-        try (Jackson2Writer writer = new Jackson2Binder(new JsonFactory()).createWriter(generator)) {
-            writer.writeNull();
+        JsonGenerator nativeGenerator = new JsonFactory().createGenerator(output);
+        {
+            Jackson2Generator generator = new Jackson2Binder(new JsonFactory()).createGenerator(nativeGenerator);
+            try {
+                generator.writeNull();
+
+            } finally {
+                generator.release();
+            }
         }
-        assertTrue(generator.isClosed());
+        assertTrue(nativeGenerator.isClosed());
         assertEquals("null", new String(output.toByteArray(), StandardCharsets.UTF_8));
     }
 
@@ -274,12 +322,12 @@ class Jackson2BinderTest {
         assertThrows(NullPointerException.class, () -> new Jackson2Binder(new JsonFactory(), null));
 
         Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
-        assertThrows(NullPointerException.class, () -> binder.createReader((Reader) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((JsonParser) null));
-        assertThrows(NullPointerException.class, () -> binder.createReader((String) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((Writer) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((JsonGenerator) null));
-        assertThrows(NullPointerException.class, () -> binder.createWriter((OutputStream) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((Reader) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((JsonParser) null));
+        assertThrows(NullPointerException.class, () -> binder.createParser((String) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((Writer) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((JsonGenerator) null));
+        assertThrows(NullPointerException.class, () -> binder.createGenerator((OutputStream) null));
     }
 
     @Test
@@ -300,7 +348,7 @@ class Jackson2BinderTest {
         assertNull(jojo.getNode("extraAfter"));
         assertEquals(2, jojo.dynamicProperties().size());
 
-        // A nested read must leave the parent's parser cursor on the next member.
+        // A nested read must leave the parent's nativeParser cursor on the next member.
         MixedJojo second = (MixedJojo) binder.readNode(
                 "{\"child\":{\"active\":false},\"id\":8,\"extra\":[1,2]}", MixedJojo.class);
         assertEquals(8, second.id);

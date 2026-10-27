@@ -19,34 +19,34 @@ class StreamingIOExceptionTest {
     @Test
     void readPropagatesIOException() throws IOException {
         IOException failure = new IOException("read failure");
-        StreamingReader reader = binder.createReader(failingReader(failure));
+        StreamingParser parser = binder.createParser(failingReader(failure));
         assertSame(failure, assertThrows(IOException.class,
-                () -> StreamingIO.readNode(reader, String.class, RuntimeContext.EMPTY)));
+                () -> StreamingIO.readNode(parser, String.class, RuntimeContext.EMPTY)));
     }
 
     @Test
     void writePropagatesIOException() throws IOException {
         IOException failure = new IOException("write failure");
-        StreamingWriter writer = binder.createWriter(failingWriter(failure));
+        StreamingGenerator generator = binder.createGenerator(failingWriter(failure));
         assertSame(failure, assertThrows(IOException.class,
-                () -> StreamingIO.writeNode(writer, "value", RuntimeContext.EMPTY)));
+                () -> StreamingIO.writeNode(generator, "value", RuntimeContext.EMPTY)));
     }
 
     @Test
     void readWrapsErrorAsBindingException() throws IOException {
         AssertionError failure = new AssertionError("read error");
-        StreamingReader reader = binder.createReader(failingReader(failure));
+        StreamingParser parser = binder.createParser(failingReader(failure));
         BindingException thrown = assertThrows(BindingException.class,
-                () -> StreamingIO.readNode(reader, String.class, RuntimeContext.EMPTY));
+                () -> StreamingIO.readNode(parser, String.class, RuntimeContext.EMPTY));
         assertSame(failure, thrown.getCause());
     }
 
     @Test
     void writeWrapsErrorAsBindingException() throws IOException {
         AssertionError failure = new AssertionError("write error");
-        StreamingWriter writer = binder.createWriter(failingWriter(failure));
+        StreamingGenerator generator = binder.createGenerator(failingWriter(failure));
         BindingException thrown = assertThrows(BindingException.class,
-                () -> StreamingIO.writeNode(writer, "value", RuntimeContext.EMPTY));
+                () -> StreamingIO.writeNode(generator, "value", RuntimeContext.EMPTY));
         assertSame(failure, thrown.getCause());
     }
 

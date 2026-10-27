@@ -28,9 +28,9 @@ class CodeGenerationIntegrationTest {
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
         assertTrue(source.contains(
-                "(Object) reader.readRaw()"), source);
+                "(Object) parser.readRaw()"), source);
         assertFalse(source.contains(
-                "StreamingIO.readNode(reader, Object.class"), source);
+                "StreamingIO.readNode(parser, Object.class"), source);
     }
 
     @Test
@@ -48,8 +48,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("(Object) reader.readRaw()"), source);
-        assertFalse(source.contains("StreamingIO.readRaw(reader)"), source);
+        assertTrue(source.contains("(Object) parser.readRaw()"), source);
+        assertFalse(source.contains("StreamingIO.readRaw(parser)"), source);
     }
 
     @Test
@@ -67,8 +67,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("(Object) reader.readRaw()"), source);
-        assertFalse(source.contains("StreamingIO.readRaw(reader)"), source);
+        assertTrue(source.contains("(Object) parser.readRaw()"), source);
+        assertFalse(source.contains("StreamingIO.readRaw(parser)"), source);
     }
 
     @Test
@@ -86,8 +86,8 @@ class CodeGenerationIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(source.contains("(Object) reader.readRaw()"), source);
-        assertFalse(source.contains("StreamingIO.readRaw(reader)"), source);
+        assertTrue(source.contains("(Object) parser.readRaw()"), source);
+        assertFalse(source.contains("StreamingIO.readRaw(parser)"), source);
     }
 
 

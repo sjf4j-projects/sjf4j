@@ -1,6 +1,6 @@
 package org.sjf4j.testbench.binding.handwritten;
 
-import org.sjf4j.backend.jackson2.binding.Jackson2Reader;
+import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.testbench.model.Address;
@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Jackson2Reader V1 baseline for the HandReadBenchmark User fixture. */
+/** Jackson2Parser V1 baseline for the HandReadBenchmark User fixture. */
 public final class Jackson2HandPojoReaderV1 {
 
     private static final NameMatcher USER_FIELDS =
@@ -28,127 +28,127 @@ public final class Jackson2HandPojoReaderV1 {
 
     private Jackson2HandPojoReaderV1() {}
 
-    public static User readUser(Jackson2Reader reader) throws IOException {
-        reader.startDocument();
-        if (reader.nextIfNull()) {
-            reader.endDocument();
+    public static User readUser(Jackson2Parser parser) throws IOException {
+        parser.startRead();
+        if (parser.nextIfNull()) {
+            parser.endRead();
             return null;
         }
 
         User user = new User();
-        reader.startObject();
+        parser.startObject();
         int expected = 0;
-        while (!reader.nextIfObjectEnd()) {
-            int field = reader.nextNameMatch(USER_FIELDS, expected);
+        while (!parser.nextIfObjectEnd()) {
+            int field = parser.nextNameMatch(USER_FIELDS, expected);
             switch (field) {
                 case 0:
-                    user.setId(reader.readLongValue());
+                    user.setId(parser.readLongValue());
                     break;
                 case 1:
-                    user.setCreatedAt(reader.readLongValue());
+                    user.setCreatedAt(parser.readLongValue());
                     break;
                 case 2:
-                    user.setUpdatedAt(reader.readLongValue());
+                    user.setUpdatedAt(parser.readLongValue());
                     break;
                 case 3:
-                    user.setReputation(reader.readLongValue());
+                    user.setReputation(parser.readLongValue());
                     break;
                 case 4:
-                    user.setLoginCount(reader.readIntValue());
+                    user.setLoginCount(parser.readIntValue());
                     break;
                 case 5:
-                    user.setAge(reader.readIntValue());
+                    user.setAge(parser.readIntValue());
                     break;
                 case 6:
-                    user.setActive(reader.readBooleanValue());
+                    user.setActive(parser.readBooleanValue());
                     break;
                 case 7:
-                    user.setVerified(reader.readBooleanValue());
+                    user.setVerified(parser.readBooleanValue());
                     break;
                 case 8:
-                    user.setAdmin(reader.readBooleanValue());
+                    user.setAdmin(parser.readBooleanValue());
                     break;
                 case 9:
-                    user.setSuspended(reader.readBooleanValue());
+                    user.setSuspended(parser.readBooleanValue());
                     break;
                 case 10:
-                    user.setScore(reader.readDoubleValue());
+                    user.setScore(parser.readDoubleValue());
                     break;
                 case 11:
-                    user.setLatitude(reader.readDoubleValue());
+                    user.setLatitude(parser.readDoubleValue());
                     break;
                 case 12:
-                    user.setLongitude(reader.readDoubleValue());
+                    user.setLongitude(parser.readDoubleValue());
                     break;
                 case 13:
-                    user.setUsername(readString(reader));
+                    user.setUsername(readString(parser));
                     break;
                 case 14:
-                    user.setEmail(readString(reader));
+                    user.setEmail(readString(parser));
                     break;
                 case 15:
-                    user.setDisplayName(readString(reader));
+                    user.setDisplayName(readString(parser));
                     break;
                 case 16:
-                    user.setPasswordHash(readString(reader));
+                    user.setPasswordHash(readString(parser));
                     break;
                 case 17:
-                    user.setBio(readString(reader));
+                    user.setBio(readString(parser));
                     break;
                 case 18:
-                    user.setWebsite(ValueCodec.URI_CODEC.rawToValue(readString(reader)));
+                    user.setWebsite(ValueCodec.URI_CODEC.rawToValue(readString(parser)));
                     break;
                 case 19:
-                    user.setDepartment(readString(reader));
+                    user.setDepartment(readString(parser));
                     break;
                 case 20:
-                    user.setAddress(readAddress(reader));
+                    user.setAddress(readAddress(parser));
                     break;
                 case 21:
-                    user.setTags(readStrings(reader));
+                    user.setTags(readStrings(parser));
                     break;
                 case 22:
-                    user.setFriends(readFriends(reader));
+                    user.setFriends(readFriends(parser));
                     break;
                 default:
-                    reader.skipNode();
+                    parser.skipNode();
                     break;
             }
             expected = field == expected && expected + 1 < 23
                     ? expected + 1 : NameMatcher.UNKNOWN;
         }
-        reader.endDocument();
+        parser.endRead();
         return user;
     }
 
-    private static Address readAddress(Jackson2Reader reader) throws IOException {
-        if (reader.nextIfNull()) {
+    private static Address readAddress(Jackson2Parser parser) throws IOException {
+        if (parser.nextIfNull()) {
             return null;
         }
 
         Address address = new Address();
-        reader.startObject();
+        parser.startObject();
         int expected = 0;
-        while (!reader.nextIfObjectEnd()) {
-            int field = reader.nextNameMatch(ADDRESS_FIELDS, expected);
+        while (!parser.nextIfObjectEnd()) {
+            int field = parser.nextNameMatch(ADDRESS_FIELDS, expected);
             switch (field) {
                 case 0:
-                    address.setStreet(readString(reader));
+                    address.setStreet(readString(parser));
                     break;
                 case 1:
-                    address.setCity(readString(reader));
+                    address.setCity(readString(parser));
                     break;
                 case 2:
-                    address.setState(readString(reader));
+                    address.setState(readString(parser));
                     break;
                 case 3:
-                    address.setZip(readString(reader));
+                    address.setZip(readString(parser));
                     break;
                 case 4:
-                    address.setCountry(readString(reader));
+                    address.setCountry(readString(parser));
                     break;
                 default:
-                    reader.skipNode();
+                    parser.skipNode();
                     break;
             }
             expected = field == expected && expected + 1 < 5
@@ -157,57 +157,57 @@ public final class Jackson2HandPojoReaderV1 {
         return address;
     }
 
-    private static List<String> readStrings(Jackson2Reader reader) throws IOException {
-        if (reader.nextIfNull()) {
+    private static List<String> readStrings(Jackson2Parser parser) throws IOException {
+        if (parser.nextIfNull()) {
             return null;
         }
 
         List<String> strings = new ArrayList<>();
-        reader.startArray();
-        while (!reader.nextIfArrayEnd()) {
-            strings.add(readString(reader));
+        parser.startArray();
+        while (!parser.nextIfArrayEnd()) {
+            strings.add(readString(parser));
         }
         return strings;
     }
 
-    private static List<Friend> readFriends(Jackson2Reader reader) throws IOException {
-        if (reader.nextIfNull()) {
+    private static List<Friend> readFriends(Jackson2Parser parser) throws IOException {
+        if (parser.nextIfNull()) {
             return null;
         }
 
         List<Friend> friends = new ArrayList<>();
-        reader.startArray();
-        while (!reader.nextIfArrayEnd()) {
-            friends.add(readFriend(reader));
+        parser.startArray();
+        while (!parser.nextIfArrayEnd()) {
+            friends.add(readFriend(parser));
         }
         return friends;
     }
 
-    private static Friend readFriend(Jackson2Reader reader) throws IOException {
-        if (reader.nextIfNull()) {
+    private static Friend readFriend(Jackson2Parser parser) throws IOException {
+        if (parser.nextIfNull()) {
             return null;
         }
 
         Friend friend = new Friend();
-        reader.startObject();
+        parser.startObject();
         int expected = 0;
-        while (!reader.nextIfObjectEnd()) {
-            int field = reader.nextNameMatch(FRIEND_FIELDS, expected);
+        while (!parser.nextIfObjectEnd()) {
+            int field = parser.nextNameMatch(FRIEND_FIELDS, expected);
             switch (field) {
                 case 0:
-                    friend.setId(reader.readLongValue());
+                    friend.setId(parser.readLongValue());
                     break;
                 case 1:
-                    friend.setName(readString(reader));
+                    friend.setName(readString(parser));
                     break;
                 case 2:
-                    friend.setSince(reader.readLongValue());
+                    friend.setSince(parser.readLongValue());
                     break;
                 case 3:
-                    friend.setClose(reader.readBooleanValue());
+                    friend.setClose(parser.readBooleanValue());
                     break;
                 default:
-                    reader.skipNode();
+                    parser.skipNode();
                     break;
             }
             expected = field == expected && expected + 1 < 4
@@ -216,7 +216,7 @@ public final class Jackson2HandPojoReaderV1 {
         return friend;
     }
 
-    private static String readString(Jackson2Reader reader) throws IOException {
-        return reader.readString();
+    private static String readString(Jackson2Parser parser) throws IOException {
+        return parser.readString();
     }
 }

@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
  * when creating readers and writers; writers enable null serialization so
  * SJF4J can apply its own {@code includeNulls} setting.
  */
-public final class GsonBinder extends Binder<GsonReader, GsonWriter> {
+public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
 
     private final Gson gson;
 
@@ -63,26 +63,26 @@ public final class GsonBinder extends Binder<GsonReader, GsonWriter> {
      * @param reader the Gson reader
      * @return a SJF4J streaming reader
      */
-    public GsonReader createReader(JsonReader reader) {
-        return new GsonReader(Asserts.notNull(reader, "reader"));
+    public GsonParser createParser(JsonReader reader) {
+        return new GsonParser(Asserts.notNull(reader, "reader"));
     }
 
     @Override
-    public GsonReader createReader(Reader input) throws IOException {
+    public GsonParser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new GsonReader(gson.newJsonReader(input));
+        return new GsonParser(gson.newJsonReader(input));
     }
 
     @Override
-    public GsonReader createReader(InputStream input) throws IOException {
+    public GsonParser createParser(InputStream input) throws IOException {
         Asserts.notNull(input, "input");
-        return createReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+        return createParser(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
     @Override
-    public GsonReader createReader(byte[] input) throws IOException {
+    public GsonParser createParser(byte[] input) throws IOException {
         Asserts.notNull(input, "input");
-        return createReader(new ByteArrayInputStream(input));
+        return createParser(new ByteArrayInputStream(input));
     }
 
     /**
@@ -90,22 +90,22 @@ public final class GsonBinder extends Binder<GsonReader, GsonWriter> {
      * @param writer the Gson writer
      * @return a SJF4J streaming writer
      */
-    public GsonWriter createWriter(JsonWriter writer) {
+    public GsonGenerator createGenerator(JsonWriter writer) {
         Asserts.notNull(writer, "writer");
         writer.setSerializeNulls(true);
-        return new GsonWriter(writer);
+        return new GsonGenerator(writer);
     }
 
     @Override
-    public GsonWriter createWriter(Writer output) throws IOException {
+    public GsonGenerator createGenerator(Writer output) throws IOException {
         Asserts.notNull(output, "output");
-        return createWriter(gson.newJsonWriter(output));
+        return createGenerator(gson.newJsonWriter(output));
     }
 
     @Override
-    public GsonWriter createWriter(OutputStream output) throws IOException {
+    public GsonGenerator createGenerator(OutputStream output) throws IOException {
         Asserts.notNull(output, "output");
-        return createWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8));
+        return createGenerator(new OutputStreamWriter(output, StandardCharsets.UTF_8));
     }
 
 

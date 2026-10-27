@@ -1,0 +1,325 @@
+package org.sjf4j.backend.fastjson2.binding;
+
+import com.alibaba.fastjson2.JSONWriter;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.binding.CompiledName;
+import org.sjf4j.binding.StreamingGenerator;
+import org.sjf4j.util.Asserts;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Writer;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.UUID;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
+
+/** StreamingGenerator backed directly by a Fastjson2 {@link JSONWriter}. */
+public final class Fastjson2Generator extends StreamingGenerator {
+
+    private final JSONWriter writer;
+    private final Writer charOutput;
+    private final OutputStream byteOutput;
+
+    private final boolean utf8;
+    private final boolean useRawName;
+
+    /**
+     * Creates a writer using a Fastjson2-owned output buffer.
+     * @param writer the Fastjson2 writer
+     */
+    public Fastjson2Generator(JSONWriter writer) {
+        this(writer, null, null);
+    }
+
+    /**
+     * Creates a writer that flushes its JSON output to a character stream.
+     * @param writer the Fastjson2 writer
+     * @param output the character stream
+     */
+    public Fastjson2Generator(JSONWriter writer, Writer output) {
+        this(writer, Asserts.notNull(output, "output"), null);
+    }
+
+    /**
+     * Creates a writer that flushes its JSON output to a byte stream.
+     * @param writer the Fastjson2 writer
+     * @param output the byte stream
+     */
+    public Fastjson2Generator(JSONWriter writer, OutputStream output) {
+        this(writer, null, Asserts.notNull(output, "output"));
+    }
+
+    private Fastjson2Generator(JSONWriter writer, Writer charOutput, OutputStream byteOutput) {
+        super(Backend.FASTJSON2);
+        this.writer = Asserts.notNull(writer, "writer");
+        this.charOutput = charOutput;
+        this.byteOutput = byteOutput;
+
+        this.utf8 = writer.isUTF8();
+        this.useRawName = (utf8 || writer.isUTF16()) && Fastjson2Binder.rawNamesCompatible(writer);
+    }
+
+    /**
+     * Exposes the native Fastjson2 writer for generated scalar and raw-name fast paths.
+     * @return the native writer
+     */
+    public JSONWriter nativeWriter() {
+        return writer;
+    }
+
+    @Override
+    public void startObject() {
+        writer.startObject();
+    }
+
+    @Override
+    public void endObject() {
+        writer.endObject();
+    }
+
+    @Override
+    public void startArray() {
+        writer.startArray();
+    }
+
+    @Override
+    public void endArray() {
+        writer.endArray();
+    }
+
+    // JSONWriter.writeName inserts the object-property separator itself.
+
+    @Override
+    public void separateElement() {
+        writer.writeComma();
+    }
+
+    @Override
+    public void writeName(String name) {
+        writer.writeName(name);
+        writer.writeColon();
+    }
+
+    @Override
+    public void writeName(CompiledName compiledName) {
+        if (!useRawName) {
+            writeName(compiledName.name());
+            return;
+        }
+
+        Fastjson2CompiledName name = (Fastjson2CompiledName) compiledName;
+        if (utf8) {
+            writer.writeNameRaw(name.rawNameUtf8);
+        } else {
+            writer.writeNameRaw(name.rawNameUtf16);
+        }
+    }
+
+    @Override
+    public CompiledName createCompiledName(String name) {
+        return new Fastjson2CompiledName(name);
+    }
+
+    @Override
+    public void writeNull() {
+        writer.writeNull();
+    }
+
+    @Override
+    public void writeString(String value) {
+        if (value == null) {
+            writer.writeNull();
+        } else {
+            writer.writeString(value);
+        }
+    }
+
+    @Override
+    public void writeStringValue(String value) {
+        writer.writeString(value);
+    }
+
+    @Override
+    public void writeUuid(UUID value) {
+        writer.writeUUID(value);
+    }
+
+    @Override
+    public void writeLocalDate(LocalDate value) {
+        writer.writeLocalDate(value);
+    }
+
+    @Override
+    public void writeLocalTime(LocalTime value) {
+        // LocalTime.toString() omits seconds for whole-minute times,
+        // whereas Fastjson2 always writes HH:mm:ss.
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getSecond() == 0 && value.getNano() == 0) {
+            writer.writeString(value.toString());
+        } else {
+            writer.writeLocalTime(value);
+        }
+    }
+
+    @Override
+    public void writeLocalDateTime(LocalDateTime value) {
+        // Native Fastjson2 uses a space instead of the ISO 'T' separator.
+        writer.writeString(value == null ? null : value.toString());
+    }
+
+    @Override
+    public void writeInstant(Instant value) {
+        // The native implementation uses DateTimeFormatter.ISO_INSTANT,
+        // the same textual representation as Instant.toString().
+        writer.writeInstant(value);
+    }
+
+    @Override
+    public void writeOffsetDateTime(OffsetDateTime value) {
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getSecond() == 0 && value.getNano() == 0) {
+            // The native writer always emits seconds; ISO toString() omits them here.
+            writer.writeString(value.toString());
+        } else {
+            writer.writeOffsetDateTime(value);
+        }
+    }
+
+    @Override
+    public void writeOffsetTime(OffsetTime value) {
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getSecond() == 0 && value.getNano() == 0) {
+            writer.writeString(value.toString());
+        } else {
+            writer.writeOffsetTime(value);
+        }
+    }
+
+    @Override
+    public void writeZonedDateTime(ZonedDateTime value) {
+        // Fastjson2's native writer omits the numeric offset of region zones
+        // (e.g. Europe/Paris); only fixed-offset zones can use it losslessly.
+        if (value == null) {
+            writer.writeNull();
+        } else if (value.getZone() instanceof ZoneOffset
+                && (value.getSecond() != 0 || value.getNano() != 0)) {
+            writer.writeZonedDateTime(value);
+        } else {
+            writer.writeString(value.toString());
+        }
+    }
+
+    @Override
+    public void writeLongValue(long value) {
+        writer.writeInt64(value);
+    }
+
+    @Override
+    public void writeIntValue(int value) {
+        writer.writeInt32(value);
+    }
+
+    @Override
+    public void writeShortValue(short value) {
+        writer.writeInt16(value);
+    }
+
+    @Override
+    public void writeByteValue(byte value) {
+        writer.writeInt8(value);
+    }
+
+    @Override
+    public void writeDoubleValue(double value) {
+        writer.writeDouble(value);
+    }
+
+    @Override
+    public void writeFloatValue(float value) {
+        writer.writeFloat(value);
+    }
+
+    @Override
+    public void writeBooleanValue(boolean value) {
+        writer.writeBool(value);
+    }
+
+    @Override
+    public void writeCharValue(char value) {
+        writer.writeString(Character.toString(value));
+    }
+
+    @Override
+    public void writeNumberValue(Number value) {
+        if (value instanceof Integer) {
+            writer.writeInt32(value.intValue());
+        } else if (value instanceof Long) {
+            writer.writeInt64(value.longValue());
+        } else if (value instanceof Double) {
+            writer.writeDouble(value.doubleValue());
+        } else if (value instanceof Float) {
+            writer.writeFloat(value.floatValue());
+        } else if (value instanceof Short) {
+            writer.writeInt16(value.shortValue());
+        } else if (value instanceof Byte) {
+            writer.writeInt8(value.byteValue());
+        } else if (value instanceof BigDecimal) {
+            writer.writeDecimal((BigDecimal) value);
+        } else if (value instanceof BigInteger) {
+            writer.writeBigInt((BigInteger) value);
+        } else {
+            writer.writeRaw(value.toString());
+        }
+    }
+
+    @Override
+    public void writeBigIntegerValue(BigInteger value) {
+        writer.writeBigInt(value);
+    }
+
+    @Override
+    public void writeBigDecimalValue(BigDecimal value) {
+        writer.writeDecimal(value);
+    }
+
+    @Override
+    public void endWrite() throws IOException {
+        if (charOutput != null) {
+            writer.flushTo(charOutput);
+        } else if (byteOutput != null) {
+            writer.flushTo(byteOutput);
+        }
+    }
+
+    /**
+     * Returns UTF-8 bytes from the native in-memory writer buffer.
+     * @return the buffered UTF-8 bytes
+     */
+    public byte[] toBytes() {
+        return writer.getBytes();
+    }
+
+    /**
+     * Returns the buffered JSON when this writer was created without an external output.
+     */
+    @Override
+    public String toString() {
+        return writer.toString();
+    }
+
+    @Override
+    public void release() throws IOException {
+        writer.close();
+    }
+}

@@ -5,8 +5,8 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.BackendCache;
-import org.sjf4j.binding.PropertyReader;
-import org.sjf4j.binding.PropertyWriter;
+import org.sjf4j.binding.PropertyParser;
+import org.sjf4j.binding.PropertyGenerator;
 
 import java.util.AbstractSet;
 import java.util.Collections;
@@ -35,10 +35,10 @@ public class PojoInfo {
     public final Map<String, PropertyInfo> propertyLookup;
 
     public final PropertyInfo[] writableProperties;
-    public final PropertyReader[] propertyReaders;
+    public final PropertyParser[] propertyParsers;
 
     public final PropertyInfo[] readableProperties;
-    public final PropertyWriter[] propertyWriters;
+    public final PropertyGenerator[] propertyGenerators;
 
     /** Name matching for argument-based creators and parent-scope OneOf. */
     public final String[] creatorMatchNames;
@@ -55,9 +55,9 @@ public class PojoInfo {
                     boolean writeDynamic,
                     Map<String, PropertyInfo> propertyLookup,
                     PropertyInfo[] writableProperties,
-                    PropertyReader[] propertyReaders,
+                    PropertyParser[] propertyParsers,
                     PropertyInfo[] readableProperties,
-                    PropertyWriter[] propertyWriters) {
+                    PropertyGenerator[] propertyGenerators) {
         this.clazz = clazz;
         this.creatorInfo = creatorInfo;
         this.readDynamic = readDynamic;
@@ -76,8 +76,8 @@ public class PojoInfo {
         this.propertyLookup = propertyLookup;
         this.readableProperties = readableProperties;
         this.writableProperties = writableProperties;
-        this.propertyReaders = propertyReaders;
-        this.propertyWriters = propertyWriters;
+        this.propertyParsers = propertyParsers;
+        this.propertyGenerators = propertyGenerators;
 
         if (hasParentScopeOneOf || !creatorInfo.hasNoArgsCreator()) {
             // Creator names and aliases take priority over declared properties.

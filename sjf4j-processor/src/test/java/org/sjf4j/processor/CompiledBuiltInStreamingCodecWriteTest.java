@@ -69,7 +69,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains("== ValueCodec."), backend);
             assertFalse(generated.contains("BuiltIn"), backend);
-            assertTrue(generated.contains(".streamWriter.write("), backend);
+            assertTrue(generated.contains(".streamGenerator.write("), backend);
             assertTrue(generated.contains(".valueToRaw(codecValue)"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {

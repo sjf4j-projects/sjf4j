@@ -22,9 +22,9 @@ import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
-import org.sjf4j.backend.jackson2.binding.Jackson2Writer;
+import org.sjf4j.backend.jackson2.binding.Jackson2Generator;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
-import org.sjf4j.backend.jackson3.binding.Jackson3Writer;
+import org.sjf4j.backend.jackson3.binding.Jackson3Generator;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.binding.PooledStringWriter;
@@ -117,7 +117,7 @@ public class CompiledWriteBenchmark {
             MAP = JACKSON2_NATIVE.readValue(json,
                     new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
             EXPECTED_TREE = JACKSON2_NATIVE.readTree(json);
-            try (jakarta.json.JsonReader reader = Json.createReader(new StringReader(json))) {
+            try (jakarta.json.JsonReader reader = Json.createParser(new StringReader(json))) {
                 JSONP_TREE = reader.readObject();
             }
         } catch (Exception e) {
@@ -492,13 +492,20 @@ public class CompiledWriteBenchmark {
     }
 
     // Diagnostic: identical handwritten field emission as Direct, but the
-    // same SJF4J Writer creation, flush and release lifecycle as Compiled.
+    // same SJF4J Writer creation, close and release lifecycle as Compiled.
     @Benchmark
     public String json_jackson2_pojo_string_direct_wrapped() throws IOException {
         PooledStringWriter output = new PooledStringWriter();
-        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
-            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            {
+            Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
+            try {
+            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toString();
         } finally {
             output.recycle();
@@ -508,9 +515,16 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_jackson2_pojo_utf8_direct_wrapped() throws IOException {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        try (Jackson2Writer writer = JACKSON2_RUNTIME.createWriter(output)) {
-            Jackson2HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            {
+            Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
+            try {
+            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toByteArray();
         } finally {
             output.recycle();
@@ -637,9 +651,16 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_jackson3_pojo_string_direct_wrapped() throws IOException {
         PooledStringWriter output = new PooledStringWriter();
-        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
-            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            {
+            Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
+            try {
+            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toString();
         } finally {
             output.recycle();
@@ -649,9 +670,16 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_jackson3_pojo_utf8_direct_wrapped() throws IOException {
         PooledByteArrayOutputStream output = new PooledByteArrayOutputStream();
-        try (Jackson3Writer writer = JACKSON3_RUNTIME.createWriter(output)) {
-            Jackson3HandPojoSerializedWriter.writeUser(writer.nativeWriter(), USER, DIRECT_CONTEXT);
-            writer.flush();
+        try {
+            {
+            Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
+            try {
+            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            generator.endWrite();
+            } finally {
+                generator.release();
+            }
+        }
             return output.toByteArray();
         } finally {
             output.recycle();
@@ -840,7 +868,7 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public String json_jsonp_tree_string_native() {
         java.io.StringWriter output = new java.io.StringWriter();
-        try (jakarta.json.JsonWriter writer = Json.createWriter(output)) {
+        try (jakarta.json.JsonWriter writer = Json.createGenerator(output)) {
             writer.write(JSONP_TREE);
         }
         return output.toString();
@@ -849,7 +877,7 @@ public class CompiledWriteBenchmark {
     @Benchmark
     public byte[] json_jsonp_tree_utf8_native() {
         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
-        try (jakarta.json.JsonWriter writer = Json.createWriter(output)) {
+        try (jakarta.json.JsonWriter writer = Json.createGenerator(output)) {
             writer.write(JSONP_TREE);
         }
         return output.toByteArray();

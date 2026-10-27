@@ -1,0 +1,119 @@
+package org.sjf4j.backend.gson.binding;
+
+import com.google.gson.stream.JsonWriter;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.binding.StreamingGenerator;
+import org.sjf4j.util.Asserts;
+
+import java.io.IOException;
+
+/** StreamingGenerator backed directly by a Gson {@link JsonWriter}. */
+public final class GsonGenerator extends StreamingGenerator {
+
+    private final JsonWriter writer;
+
+    /**
+     * Creates a writer around a Gson JSON output cursor.
+     * @param writer the Gson writer
+     */
+    public GsonGenerator(JsonWriter writer) {
+        super(Backend.GSON);
+        this.writer = Asserts.notNull(writer, "writer");
+    }
+
+    /**
+     * Native Gson writer for compiled binding hot paths.
+     * @return the native writer
+     */
+    public JsonWriter nativeWriter() { return writer; }
+
+    @Override
+    public void startObject() throws IOException {
+        writer.beginObject();
+    }
+
+    @Override
+    public void endObject() throws IOException {
+        writer.endObject();
+    }
+
+    @Override
+    public void startArray() throws IOException {
+        writer.beginArray();
+    }
+
+    @Override
+    public void endArray() throws IOException {
+        writer.endArray();
+    }
+
+    @Override
+    public void writeName(String name) throws IOException {
+        writer.name(name);
+    }
+
+    @Override
+    public void writeNull() throws IOException {
+        writer.nullValue();
+    }
+
+    @Override
+    public void writeStringValue(String value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeLongValue(long value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeIntValue(int value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeShortValue(short value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeByteValue(byte value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeDoubleValue(double value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeFloatValue(float value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeBooleanValue(boolean value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void writeCharValue(char value) throws IOException {
+        writer.value(Character.toString(value));
+    }
+
+    @Override
+    public void writeNumberValue(Number value) throws IOException {
+        writer.value(value);
+    }
+
+    @Override
+    public void endWrite() throws IOException {
+        writer.flush();
+    }
+
+    @Override
+    public void release() {
+        // Gson does not own the caller's output.
+    }
+}

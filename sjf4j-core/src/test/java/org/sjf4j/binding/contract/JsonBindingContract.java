@@ -3,8 +3,8 @@ package org.sjf4j.binding.contract;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.binding.StreamingReader;
-import org.sjf4j.binding.StreamingWriter;
+import org.sjf4j.binding.StreamingParser;
+import org.sjf4j.binding.StreamingGenerator;
 import java.io.StringReader;
 import java.io.StringWriter;
 
@@ -20,33 +20,44 @@ public abstract class JsonBindingContract {
     void readerAndWriterExposeStructuralJson() throws Exception {
         Binder<?, ?> binding = binding(RuntimeContext.EMPTY);
         StringWriter output = new StringWriter();
-        try (StreamingWriter writer = binding.createWriter(output)) {
-            writer.startDocument();
-            writer.startObject();
-            writer.writeName("items");
-            writer.startArray();
-            writer.writeIntValue(1);
-            writer.separateElement();
-            writer.writeStringValue("x");
-            writer.endArray();
-            writer.writeName("ok", true);
-            writer.writeBoolean(true);
-            writer.endObject();
-            writer.endDocument();
-            writer.flush();
+        {
+            StreamingGenerator generator = binding.createGenerator(output);
+            try {
+                generator.startWrite();
+                generator.startObject();
+                generator.writeName("items");
+                generator.startArray();
+                generator.writeIntValue(1);
+                generator.separateElement();
+                generator.writeStringValue("x");
+                generator.endArray();
+                generator.writeName("ok", true);
+                generator.writeBoolean(true);
+                generator.endObject();
+                generator.endWrite();
+
+            } finally {
+                generator.release();
+            }
         }
-        try (StreamingReader reader = binding.createReader(new StringReader(output.toString()))) {
-            reader.startDocument();
-            reader.startObject();
-            assertEquals("items", reader.nextName());
-            reader.startArray();
-            assertEquals(1, reader.readIntValue());
-            assertEquals("x", reader.readString());
-            reader.endArray();
-            assertEquals("ok", reader.nextName());
-            assertTrue(reader.readBooleanValue());
-            reader.endObject();
-            reader.endDocument();
+        {
+            StreamingParser parser = binding.createParser(new StringReader(output.toString()));
+            try {
+                parser.startRead();
+                parser.startObject();
+                assertEquals("items", parser.nextName());
+                parser.startArray();
+                assertEquals(1, parser.readIntValue());
+                assertEquals("x", parser.readString());
+                parser.endArray();
+                assertEquals("ok", parser.nextName());
+                assertTrue(parser.readBooleanValue());
+                parser.endObject();
+                parser.endRead();
+
+            } finally {
+                parser.release();
+            }
         }
     }
 

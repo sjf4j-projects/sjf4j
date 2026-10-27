@@ -49,7 +49,7 @@ class BuiltInValueCodecTest {
     @Test
     void uriBuiltInOffersStreamingOutputWithoutLosingRawConversion() {
         ValueInfo info = TypeRegistry.requireRegisteredValueInfo(URI.class, null);
-        assertNotNull(info.streamWriter);
+        assertNotNull(info.streamGenerator);
         URI uri = URI.create("https://example.com/stream?a=1");
         assertEquals(uri.toString(), info.valueToRaw(uri));
     }
