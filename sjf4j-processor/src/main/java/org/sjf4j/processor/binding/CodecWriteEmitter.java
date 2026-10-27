@@ -10,6 +10,10 @@ final class CodecWriteEmitter {
 
     static void emit(JavaWriter out, BindingValue value, String expression,
                      String generator, String nativeWriter, Backend backend) {
+        if (value.staticCodec() != null || value.staticNodeValue()) {
+            emitStatic(out, value, expression, generator, nativeWriter, backend);
+            return;
+        }
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
         out.beginBlock("if (codecValue == null)");
@@ -18,6 +22,7 @@ final class CodecWriteEmitter {
         out.indent();
 
         String info = value.helperName();
+
         out.beginBlock("if (" + info + ".streamGenerator != null)");
         out.line(info + ".streamGenerator.write(" + generator + ", codecValue);");
         out.endBlock(" else {");
@@ -25,7 +30,8 @@ final class CodecWriteEmitter {
         String method = value.codecRawType() == null ? null
                 : nativeWrite(value.codecRawType().toString(), backend, nativeWriter != null);
         if (method == null) {
-            out.line(generator + ".writeRaw(" + info + ".valueToRaw(codecValue), this.context);");
+            out.line(generator + ".writeRaw(" + info
+                    + ".valueToRaw(codecValue), _FALLBACK_CONTEXT);");
         } else {
             out.line("Object rawValue = " + info + ".valueToRaw(codecValue);");
             out.beginBlock("if (" + info + ".rawClazz == "
@@ -48,10 +54,43 @@ final class CodecWriteEmitter {
             out.indent();
             // A different RuntimeContext format or later registration may use
             // a different raw type. Do not force the compiler's selected shape.
-            out.line(generator + ".writeRaw(rawValue, this.context);");
+            out.line(generator + ".writeRaw(rawValue, _FALLBACK_CONTEXT);");
             out.endBlock();
         }
         out.endBlock();
+        out.endBlock();
+        out.endBlock();
+    }
+
+    /** Emit fixed typed raw values directly. No codec/streamer selection at write time. */
+    private static void emitStatic(JavaWriter out, BindingValue value, String expression,
+                                   String generator, String nativeWriter, Backend backend) {
+        String rawType = value.codecRawType().toString();
+        String method = nativeWrite(rawType, backend, nativeWriter != null);
+        out.beginBlock("");
+        out.line(value.type() + " codecValue = " + expression + ";");
+        out.beginBlock("if (codecValue == null)");
+        out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
+        out.endBlock(" else {");
+        out.indent();
+        out.line(rawType + " rawValue = " + (value.staticNodeValue()
+                ? value.nodeValueEncode("codecValue")
+                : value.helperName() + ".valueToRaw(codecValue)") + ";");
+        if (method == null) {
+            // Compound raw structures still use generic JSON node handling.
+            out.line(generator + ".writeRaw(rawValue, org.sjf4j.RuntimeContext.EMPTY);");
+        } else if (nativeWriter != null && "writeString".equals(method)
+                && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
+            out.line("_writeString(" + nativeWriter + ", rawValue);");
+        } else {
+            out.beginBlock("if (rawValue == null)");
+            out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
+            out.line((nativeWriter == null ? generator : nativeWriter) + "." + method
+                    + "(" + rawArgument(rawType, backend, nativeWriter != null) + ");");
+            out.endBlock();
+        }
         out.endBlock();
         out.endBlock();
     }
@@ -109,7 +148,9 @@ final class CodecWriteEmitter {
     private static String rawArgument(String raw, Backend backend, boolean nativeWriter) {
         String value = "((" + raw + ") rawValue)";
         if (raw.equals("java.lang.Byte") || raw.equals("java.lang.Short")) {
-            if (nativeWriter && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) return value + ".intValue()";
+            if (nativeWriter && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
+                return value + ".intValue()";
+            }
             return value + "." + (raw.equals("java.lang.Byte")
                     ? "byteValue()" : "shortValue()");
         }
