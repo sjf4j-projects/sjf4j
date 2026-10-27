@@ -89,6 +89,7 @@ public class JsonObject extends JsonContainer {
      */
     public JsonObject(Map<String, Object> map) {
         this();
+        Asserts.notNull(map, "map");
         this.dynamicMembers = new LinkedHashMap<>(map);
     }
 
