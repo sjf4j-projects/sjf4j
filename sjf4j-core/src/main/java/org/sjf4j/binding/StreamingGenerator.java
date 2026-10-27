@@ -83,7 +83,7 @@ public abstract class StreamingGenerator implements Flushable, Closeable {
 
 
     /*
-     * Property name
+     * Member name
      */
 
     /** Writes an object member name before its value. */
@@ -115,7 +115,7 @@ public abstract class StreamingGenerator implements Flushable, Closeable {
         return compiledNames;
     }
 
-    /** Prepares a property name, overridable by backends with native encodings. */
+    /** Prepares a member name, overridable by backends with native encodings. */
     public CompiledName createCompiledName(String name) {
         return new CompiledName(name);
     }

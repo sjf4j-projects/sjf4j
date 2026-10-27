@@ -1414,7 +1414,7 @@ public final class ConversionEmitter
         }
 
         if (conversion.dynamicObject() != null) {
-            emitDynamicEntries(
+            emitDynamicMembers(
                     out,
                     names,
                     conversion.dynamicObject(),
@@ -1564,7 +1564,7 @@ public final class ConversionEmitter
             }
 
         } else {
-            emitDynamicEntries(
+            emitDynamicMembers(
                     out,
                     names,
                     dynamic,
@@ -1578,7 +1578,7 @@ public final class ConversionEmitter
     }
 
 
-    private void emitDynamicEntries(
+    private void emitDynamicMembers(
             JavaWriter out,
             NameAllocator names,
             ConversionCompiler.DynamicObjectPlan dynamic,
@@ -1587,7 +1587,7 @@ public final class ConversionEmitter
 
         switch (dynamic.kind()) {
             case ENTRIES:
-                emitDirectDynamicEntries(
+                emitDirectDynamicMembers(
                         out,
                         names,
                         dynamic,
@@ -1595,8 +1595,8 @@ public final class ConversionEmitter
                         result);
                 return;
 
-            case DYNAMIC_ENTRIES:
-                emitJojoDynamicEntries(
+            case DYNAMIC_MEMBERS:
+                emitJojoDynamicMembers(
                         out,
                         names,
                         dynamic,
@@ -1605,7 +1605,7 @@ public final class ConversionEmitter
                 return;
 
             case RUNTIME_ENTRIES:
-                emitRuntimeDynamicEntries(
+                emitRuntimeDynamicMembers(
                         out,
                         names,
                         dynamic,
@@ -1615,13 +1615,13 @@ public final class ConversionEmitter
 
             default:
                 throw new IllegalStateException(
-                        "unsupported dynamic entry plan " +
+                        "unsupported dynamic member plan " +
                                 dynamic.kind());
         }
     }
 
 
-    private void emitDirectDynamicEntries(
+    private void emitDirectDynamicMembers(
             JavaWriter out,
             NameAllocator names,
             ConversionCompiler.DynamicObjectPlan dynamic,
@@ -1653,7 +1653,7 @@ public final class ConversionEmitter
 
         out.indent();
 
-        emitDynamicEntry(
+        emitDynamicMember(
                 out,
                 names,
                 dynamic,
@@ -1675,7 +1675,7 @@ public final class ConversionEmitter
     }
 
 
-    private void emitJojoDynamicEntries(
+    private void emitJojoDynamicMembers(
             JavaWriter out,
             NameAllocator names,
             ConversionCompiler.DynamicObjectPlan dynamic,
@@ -1684,7 +1684,7 @@ public final class ConversionEmitter
 
         out.beginBlock(
                 "if (" +
-                        "org.sjf4j.InternalAccess.dynamicProperties(" +
+                        "org.sjf4j.InternalAccess.dynamicMembers(" +
                         source +
                         ") != null)");
 
@@ -1696,13 +1696,13 @@ public final class ConversionEmitter
                 "for (java.util.Map.Entry<String, Object> " +
                         entry +
                         " : " +
-                        "org.sjf4j.InternalAccess.dynamicProperties(" +
+                        "org.sjf4j.InternalAccess.dynamicMembers(" +
                         source +
                         ").entrySet()) {");
 
         out.indent();
 
-        emitDynamicEntry(
+        emitDynamicMember(
                 out,
                 names,
                 dynamic,
@@ -1717,7 +1717,7 @@ public final class ConversionEmitter
     }
 
 
-    private void emitRuntimeDynamicEntries(
+    private void emitRuntimeDynamicMembers(
             JavaWriter out,
             NameAllocator names,
             ConversionCompiler.DynamicObjectPlan dynamic,
@@ -1737,7 +1737,7 @@ public final class ConversionEmitter
 
         out.indent();
 
-        emitDynamicEntry(
+        emitDynamicMember(
                 out,
                 names,
                 dynamic,
@@ -1750,7 +1750,7 @@ public final class ConversionEmitter
     }
 
 
-    private void emitDynamicEntry(
+    private void emitDynamicMember(
             JavaWriter out,
             NameAllocator names,
             ConversionCompiler.DynamicObjectPlan dynamic,

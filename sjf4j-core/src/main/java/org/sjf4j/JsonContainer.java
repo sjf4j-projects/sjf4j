@@ -122,7 +122,7 @@ public abstract class JsonContainer {
     }
 
     /**
-     * Removes null-valued object entries recursively.
+     * Removes null-valued object members recursively.
      */
     public void deepPruneNulls() {
         NodeWalker.walk(this, NodeWalker.WalkTarget.CONTAINER, NodeWalker.WalkOrder.BOTTOM_UP, -1,

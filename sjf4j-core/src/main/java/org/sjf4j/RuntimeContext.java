@@ -19,14 +19,14 @@ public final class RuntimeContext {
     private static final Class<?>[] EMPTY_VALUE_TYPES = new Class<?>[0];
     private static final String[] EMPTY_VALUE_FORMATS = new String[0];
 
-    /** Settings with no default value formats and null-valued properties included. */
+    /** Settings with no default value formats and null-valued members included. */
     public static final RuntimeContext EMPTY = new RuntimeContext(true);
 
 
     /**
      * Creates settings without default value formats.
      *
-     * @param includeNulls whether serialization includes null-valued object properties
+     * @param includeNulls whether serialization includes null-valued object members
      */
     public RuntimeContext(boolean includeNulls) {
         this.valueFormatTypes = EMPTY_VALUE_TYPES;
@@ -35,7 +35,7 @@ public final class RuntimeContext {
     }
 
     /**
-     * Creates settings with default formats and null-valued properties included.
+     * Creates settings with default formats and null-valued members included.
      * The supplied map is copied, not retained.
      */
     public RuntimeContext(Map<Class<?>, String> valueFormats) {

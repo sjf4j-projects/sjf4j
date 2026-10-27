@@ -649,7 +649,7 @@ public class NodesTest {
     }
 
     @Test
-    public void testCopyJojoCopiesDeclaredAndDynamicProperties() {
+    public void testCopyJojoCopiesDeclaredPropertiesAndDynamicMembers() {
         Person original = new Person();
         original.setName("Ada");
         JsonObject address = JsonObject.of("city", "Beijing");

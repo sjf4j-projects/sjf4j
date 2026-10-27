@@ -165,7 +165,7 @@ class NodeMapperConversionTest {
             assertEquals("Ada", open.name);
             assertEquals(32, open.getNode("age"));
             assertEquals("extra", open.getNode("unused"));
-            assertTrue(!open.dynamicProperties().containsKey("name"));
+            assertTrue(!open.dynamicMembers().containsKey("name"));
         }
     }
 
@@ -192,7 +192,7 @@ class NodeMapperConversionTest {
             assertEquals("Ada", open.name);
             assertEquals(32, open.getNode("age"));
             assertEquals("extra", open.getNode("unused"));
-            assertTrue(!open.dynamicProperties().containsKey("name"));
+            assertTrue(!open.dynamicMembers().containsKey("name"));
         }
     }
 

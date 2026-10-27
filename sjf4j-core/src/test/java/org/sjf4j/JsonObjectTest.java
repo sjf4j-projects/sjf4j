@@ -811,13 +811,13 @@ class JsonObjectTest {
         JsonObject jo1 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo1={}", jo1);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo1.toJson());
-        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicProperties(jo1));
+        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(jo1));
         assertInstanceOf(LinkedHashMap.class, jo1.toMap());
 
         JsonObject jo2 = JsonObject.of("c", "cc", "b", "bb", "a", "aa");
         log.info("jo2={}", jo2);
         assertEquals("{\"c\":\"cc\",\"b\":\"bb\",\"a\":\"aa\"}", jo2.toJson());
-        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicProperties(jo2));
+        assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(jo2));
         assertInstanceOf(LinkedHashMap.class, jo2.toMap());
         assertEquals(jo1, jo2);
     }

@@ -162,10 +162,10 @@ public class NodeWalker {
     }
 
     /**
-     * Removes object properties that match the predicate.
+     * Removes object members that match the predicate.
      * <p>
-     * This operation applies to removable object properties only. Declared POJO
-     * properties are not considered removable properties and therefore are left
+     * This operation applies to removable object members only. Declared POJO
+     * properties are not considered removable members and therefore are left
      * unchanged. For supported backend-native object tree representations,
      * matching keys are collected first and removed afterward so live key views
      * remain safe to traverse.

@@ -677,7 +677,7 @@ public final class SimpleJsonParser extends StreamingParser {
     /**
      * Validates and normalizes the current container position before token classification.
      *
-     * @return whether the current position accepts an object field name
+     * @return whether the current position accepts an object member name
      */
     private boolean _prepareToken() throws IOException {
         _skipWhitespace();
@@ -1139,4 +1139,3 @@ public final class SimpleJsonParser extends StreamingParser {
         }
     }
 }
-

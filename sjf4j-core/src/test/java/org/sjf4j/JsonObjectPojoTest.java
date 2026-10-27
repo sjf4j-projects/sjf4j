@@ -161,7 +161,7 @@ public class JsonObjectPojoTest {
     }
 
     @Test
-    public void keepsNullMembersAndDynamicPropertiesDistinct() {
+    public void keepsNullMembersAndDynamicMembersDistinct() {
         Person p = new Person();
         p.setName(null);
         p.setInfo(null);
@@ -174,6 +174,9 @@ public class JsonObjectPojoTest {
         assertNull(p.get("unknown"));
         p.put("extra", "value");
         assertEquals("value", p.getString("extra"));
+        assertEquals(Collections.singletonMap("extra", "value"), p.dynamicMembers());
+        assertTrue(!p.dynamicMembers().containsKey("name"));
+        assertThrows(UnsupportedOperationException.class, () -> p.dynamicMembers().put("other", 1));
     }
 
     @Test
@@ -220,7 +223,7 @@ public class JsonObjectPojoTest {
     }
 
     @Test
-    public void supportsManyDynamicProperties() {
+    public void supportsManyDynamicMembers() {
         Person p = new Person();
         for (int i = 0; i < 1000; i++) {
             p.put("key" + i, i);

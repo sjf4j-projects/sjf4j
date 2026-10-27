@@ -346,7 +346,7 @@ class Jackson2BinderTest {
         assertEquals(true, ((List<?>) nested.get("nested")).get(1));
         assertTrue(jojo.containsKey("extraAfter"));
         assertNull(jojo.getNode("extraAfter"));
-        assertEquals(2, jojo.dynamicProperties().size());
+        assertEquals(2, jojo.dynamicMembers().size());
 
         // A nested read must leave the parent's nativeParser cursor on the next member.
         MixedJojo second = (MixedJojo) binder.readNode(
@@ -363,7 +363,7 @@ class Jackson2BinderTest {
                 "{\"unknown\":{\"nested\":[1,2]},\"id\":42}", StaticOnlyJojo.class);
 
         assertEquals(42, result.id);
-        assertTrue(result.dynamicProperties().isEmpty());
+        assertTrue(result.dynamicMembers().isEmpty());
         assertNull(binder.readNode("null", MixedJojo.class));
     }
 
@@ -377,7 +377,7 @@ class Jackson2BinderTest {
         assertEquals("Alias", jojo.name);
         assertEquals(7, ((Number) jojo.getNode("unknown")).intValue());
         assertEquals(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"), jojo.uuid);
-        assertFalse(jojo.dynamicProperties().containsKey("legacy_name"));
+        assertFalse(jojo.dynamicMembers().containsKey("legacy_name"));
     }
 
     @Test
@@ -387,7 +387,7 @@ class Jackson2BinderTest {
                 "{\"fixed\":\"attempted\",\"extra\":123}", ReadOnlyJojo.class);
 
         assertEquals("preset", jojo.getNode("fixed"));
-        assertFalse(jojo.dynamicProperties().containsKey("fixed"));
+        assertFalse(jojo.dynamicMembers().containsKey("fixed"));
         assertEquals(123, ((Number) jojo.getNode("extra")).intValue());
     }
 

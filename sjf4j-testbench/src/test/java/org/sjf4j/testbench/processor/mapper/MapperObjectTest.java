@@ -373,7 +373,7 @@ public class MapperObjectTest {
         assertEquals("ensure", target.child.getNode("ensured"));
         assertEquals("compute", target.child.getNode("computed"));
         assertEquals("yes", target.getNode("extra"));
-        assertEquals(false, InternalAccess.dynamicProperties(target).containsKey("name"));
+        assertEquals(false, InternalAccess.dynamicMembers(target).containsKey("name"));
         assertEquals(null, target.getNode("full_name"));
         assertEquals(null, target.getNode("ignored"));
         assertEquals(null, target.getNode("dynamic"));

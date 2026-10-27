@@ -123,9 +123,9 @@ public class JojoWriteBenchmark {
         }
 
         Map<String, Object> extras = nativeExtras(nativeExtra);
-        if (jojo.dynamicProperties().size() != dynamicCount
+        if (jojo.dynamicMembers().size() != dynamicCount
                 || extras.size() != dynamicCount
-                || !jojo.dynamicProperties().keySet().equals(extras.keySet())) {
+                || !jojo.dynamicMembers().keySet().equals(extras.keySet())) {
             throw new IllegalStateException("unexpected dynamic key set for " + workload);
         }
 
@@ -234,7 +234,7 @@ public class JojoWriteBenchmark {
     }
 
     // Separate declared shapes ensure the output actually has the intended
-    // ratio of statically declared and dynamically stored properties.
+    // ratio of typed properties and dynamic members.
     public static class MixedPojo {
         public long id;
         public long createdAt;

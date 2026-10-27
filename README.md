@@ -255,7 +255,7 @@ graph BT
 ---
 
 A regular POJO provides a typed, closed object model,
-while a **JOJO (JSON-Object Java Object)** extends it with dynamic properties:
+while a **JOJO (JSON-Object Java Object)** combines typed properties with dynamic members:
 ```java
 public class StudentJojo extends JsonObject { 
     private String name; 
@@ -265,7 +265,7 @@ public class StudentJojo extends JsonObject {
     // getters and setters 
 }
 ```
-> Use JOJO when typed fields need to coexist with undeclared properties,
+> Use JOJO when typed fields need to coexist with undeclared members,
 > such as API payloads, configuration objects, or SQL result bindings.
 
 OBNT can also be extended beyond regular POJOs and collections:

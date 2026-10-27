@@ -894,7 +894,7 @@ public final class ConversionCompiler {
         if (remainder &&
                 kind == NodeKind.OBJECT_JOJO) {
 
-            return DynamicObjectPlan.Kind.DYNAMIC_ENTRIES;
+            return DynamicObjectPlan.Kind.DYNAMIC_MEMBERS;
         }
 
         switch (kind) {
@@ -1621,7 +1621,7 @@ public final class ConversionCompiler {
         enum Kind {
             STATIC_PROPERTIES,
             ENTRIES,
-            DYNAMIC_ENTRIES,
+            DYNAMIC_MEMBERS,
             RUNTIME_ENTRIES
         }
 

@@ -55,7 +55,7 @@ public abstract class AccessDeserializationContract {
         assertEquals("last", bean.name);
     }
 
-    /** Structural source: ReadOnlyListDeserTest#testAccessReadOnly2118; readDynamic is the public SJF4J dynamic-property policy. */
+    /** Structural source: ReadOnlyListDeserTest#testAccessReadOnly2118; readDynamic is the public SJF4J dynamic-member policy. */
     @Test void testReadDynamicRetainsOnlyTheRealDynamicEquivalent() {
         DynamicBean bean = (DynamicBean) binding(RuntimeContext.EMPTY).readNode("{\"id\":1,\"extra\":2}", DynamicBean.class);
         assertEquals(1, bean.id); assertNull(bean.getNode("extra"));

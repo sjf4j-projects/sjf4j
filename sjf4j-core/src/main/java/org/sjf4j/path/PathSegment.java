@@ -95,13 +95,13 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents a named property token in a JSON path expression.
+     * Represents a named object member token in a JSON path expression.
      */
     public static final class Name extends PathSegment {
         public final String name;
 
         /**
-         * Creates a property-name segment.
+         * Creates a member-name segment.
          */
         public Name(PathSegment parent, String name) {
             super(parent);

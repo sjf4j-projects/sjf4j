@@ -488,7 +488,7 @@ public class AsmPathCompiler implements PathCompiler {
                 throw new NodeException("cannot resolve property '" + name +
                         "' on " + currentClazz.getName() +
                         " at '" + expr +
-                        "': no readable property found and target is not a JOJO dynamic object");
+                         "': no readable property found and target does not support JOJO dynamic members");
             }
         }
     }
@@ -815,7 +815,7 @@ public class AsmPathCompiler implements PathCompiler {
                 childType = Object.class;
             } else {
                 throw new NodeException("cannot resolve property '" + name + "' on " + currentClazz.getName() +
-                        " at '" + expr + "': no property found and target is not a JOJO dynamic object");
+                         " at '" + expr + "': no property found and target does not support JOJO dynamic members");
             }
         }
 

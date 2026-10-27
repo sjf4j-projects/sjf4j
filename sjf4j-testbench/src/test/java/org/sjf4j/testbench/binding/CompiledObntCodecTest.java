@@ -135,10 +135,10 @@ class CompiledObntCodecTest {
         assertEquals("Alice", jojo.name, name);
         assertEquals(1, jojo.payload.size(), name);
         assertEquals(2, jojo.items.size(), name);
-        assertTrue(jojo.dynamicProperties().containsKey("unknown"), name);
-        assertTrue(jojo.dynamicProperties().containsKey("note"), name);
-        assertFalse(jojo.dynamicProperties().containsKey("oldName"), name);
-        assertFalse(jojo.dynamicProperties().containsKey("readOnly"), name);
+        assertTrue(jojo.dynamicMembers().containsKey("unknown"), name);
+        assertTrue(jojo.dynamicMembers().containsKey("note"), name);
+        assertFalse(jojo.dynamicMembers().containsKey("oldName"), name);
+        assertFalse(jojo.dynamicMembers().containsKey("readOnly"), name);
         String jojoOutput = writeJojo.write(jojo);
         JsonNode jojoTree = JSON.readTree(jojoOutput);
         assertEquals("computed", jojoTree.path("readOnly").asText(), name);

@@ -4,7 +4,7 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * Immutable counterpart to the full-size User benchmark fixture. JSON field
+ * Immutable counterpart to the full-size User benchmark fixture. JSON member
  * names and value types match User so CreatorReadBenchmark can reuse the
  * existing CompiledReadBenchmark payload unchanged.
  *

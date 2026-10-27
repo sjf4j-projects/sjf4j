@@ -123,7 +123,7 @@ final class StreamingWriteEmitter {
         if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
             out.line("int count = " + index + ";");
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
-                    + "value.dynamicProperties().entrySet())");
+                    + "value.dynamicMembers().entrySet())");
             out.line("generator.writeName(entry.getKey(), count++ > 0);");
             out.line(STREAMING_IO + ".writeNode(generator, entry.getValue(), "
                     + "this.context);");

@@ -21,7 +21,7 @@
  *     <li>POJO: a regular Java object bound through discovered properties,
  *     getters/setters, or creators</li>
  *     <li>JOJO: a {@link JsonObject} subtype with discovered Java properties and
- *     dynamic properties</li>
+ *     dynamic members; together they form its object members</li>
  *     <li>JAJO: a {@link JsonArray} subtype with typed Java properties and array
  *     behavior</li>
  * </ul>

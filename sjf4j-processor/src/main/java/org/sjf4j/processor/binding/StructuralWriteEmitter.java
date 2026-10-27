@@ -78,7 +78,7 @@ final class StructuralWriteEmitter {
 
         if (value.kind() == BindingValue.Kind.JOJO && value.writeDynamic()) {
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
-                    + "value.dynamicProperties().entrySet())");
+                    + "value.dynamicMembers().entrySet())");
             out.line("Object dynamicValue = entry.getValue();");
             out.beginBlock("if (this.context.includeNulls || dynamicValue != null)");
             if (ops.explicitObjectSeparators()) {

@@ -9,7 +9,7 @@ import java.util.Properties;
  *
  * <p>{@link Properties} does not preserve key order.
  * Scalar leaves are written with {@link String#valueOf(Object)} and read as
- * strings. Null object properties and empty containers have no properties and
+ * strings. Null object members and empty containers have no properties and
  * are therefore omitted. Each top-level property in a write replaces its prior
  * flattened properties, while unrelated top-level properties remain. Null and
  * empty array elements are rejected because they cannot be represented without

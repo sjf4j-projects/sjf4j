@@ -332,7 +332,7 @@ class Fastjson2BinderTest {
         assertEquals("Ada", result.name);
         assertEquals(true, ((Map<?, ?>) result.getNode("unknown_before")).get("flag"));
         assertEquals(2, ((List<?>) result.getNode("unknown_after")).size());
-        assertFalse(result.dynamicProperties().containsKey("legacy_name"));
+        assertFalse(result.dynamicMembers().containsKey("legacy_name"));
     }
 
     @Test

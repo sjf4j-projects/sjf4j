@@ -38,7 +38,7 @@ public final class NodeAccessResolver {
 
 
     /**
-     * Resolves a statically known object property name.
+     * Resolves a statically known object member name.
      *
      * <p>For JOJO types, declared Java properties take precedence over the
      * dynamic JsonObject namespace. A declared read-only or write-only property

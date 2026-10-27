@@ -1066,7 +1066,7 @@ public final class JdbcEmitter {
                 "java.util.Map<String, Object> " +
                         dynamic +
                         " = " +
-                        "org.sjf4j.InternalAccess.dynamicProperties(" +
+                        "org.sjf4j.InternalAccess.dynamicMembers(" +
                         target +
                         ");");
 
@@ -1104,7 +1104,7 @@ public final class JdbcEmitter {
                         " = new java.util.LinkedHashMap<String, Object>();");
 
         out.line(
-                "org.sjf4j.InternalAccess.dynamicProperties(" +
+                "org.sjf4j.InternalAccess.dynamicMembers(" +
                         target +
                         ", " +
                         dynamic +

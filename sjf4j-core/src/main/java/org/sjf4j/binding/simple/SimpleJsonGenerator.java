@@ -59,7 +59,7 @@ public final class SimpleJsonGenerator extends StreamingGenerator {
     }
 
     /**
-     * Writes object field name.
+     * Writes object member name.
      */
     @Override
     public void writeName(String name) throws IOException {

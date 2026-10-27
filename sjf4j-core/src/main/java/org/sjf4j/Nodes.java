@@ -292,7 +292,7 @@ public final class Nodes {
     }
 
     /**
-     * Converts object entries to the requested value type. Unlike
+     * Converts object members to the requested value type. Unlike
      * {@link #toMap(Object)}, this may convert entry values.
      */
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
@@ -565,7 +565,7 @@ public final class Nodes {
         if (ti.pojoInfo != null) {
             PojoInfo pi = ti.pojoInfo;
             Map<String, Object> dynamic = pi.isJojo
-                    ? ((JsonObject) node).dynamicProperties : null;
+                    ? ((JsonObject) node).dynamicMembers : null;
             int capacity = pi.gettableProperties.length
                     + (dynamic == null ? 0 : dynamic.size());
             TypeRegistry.PojoCreationSession session =
@@ -582,7 +582,7 @@ public final class Nodes {
                 }
             }
 
-            // JOJO adds dynamic entries without iterating over static properties
+            // JOJO adds dynamic members without iterating over static properties
             // a second time or treating them as dynamic keys.
             if (dynamic != null) {
                 for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
@@ -855,10 +855,10 @@ public final class Nodes {
     }
 
     /**
-     * Removes object properties that match the predicate.
+     * Removes object members that match the predicate.
      * <p>
-     * This operation applies to removable object properties only. Declared POJO
-     * properties are not considered removable properties and therefore are left
+     * This operation applies to removable object members only. Declared POJO
+     * properties are not considered removable members and therefore are left
      * unchanged. For supported backend-native object tree representations,
      * matching keys are collected first and removed afterward so live key views
      * remain safe to traverse.

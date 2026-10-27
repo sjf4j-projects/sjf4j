@@ -2523,7 +2523,7 @@ final class PathEmitter {
                         generated,
                         "Cannot resolve " +
                                 mode +
-                                " dynamic property '{" +
+                                " dynamic member '{" +
                                 name +
                                 "}' on " +
                                 ownerType);

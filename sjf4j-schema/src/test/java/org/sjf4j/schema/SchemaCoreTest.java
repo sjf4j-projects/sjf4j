@@ -81,8 +81,8 @@ public class SchemaCoreTest {
         assertDoesNotThrow(() -> schema.remove("type"));
         assertDoesNotThrow(schema::clear);
         assertDoesNotThrow(schema::prune);
-        assertDoesNotThrow(() -> InternalAccess.dynamicProperties(schema, new LinkedHashMap<>()));
-        assertDoesNotThrow(() -> InternalAccess.dynamicProperties(schema).put("x", 1));
+        assertDoesNotThrow(() -> InternalAccess.dynamicMembers(schema, new LinkedHashMap<>()));
+        assertDoesNotThrow(() -> InternalAccess.dynamicMembers(schema).put("x", 1));
     }
 
     @Test

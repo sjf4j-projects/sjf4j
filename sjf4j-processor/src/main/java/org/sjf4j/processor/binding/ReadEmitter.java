@@ -591,10 +591,10 @@ final class ReadEmitter {
             out.endBlock(" else {");
             out.indent();
         }
-        out.line("java.util.Map<String, Object> dynamic = org.sjf4j.InternalAccess.dynamicProperties(value);");
+        out.line("java.util.Map<String, Object> dynamic = org.sjf4j.InternalAccess.dynamicMembers(value);");
         out.beginBlock("if (dynamic == null)");
         out.line("dynamic = new java.util.LinkedHashMap<>();");
-        out.line("org.sjf4j.InternalAccess.dynamicProperties(value, dynamic);");
+        out.line("org.sjf4j.InternalAccess.dynamicMembers(value, dynamic);");
         out.endBlock();
         out.line("dynamic.put(unknownName, parser.readRaw());");
         if (!value.ignoredNames().isEmpty()) out.endBlock();

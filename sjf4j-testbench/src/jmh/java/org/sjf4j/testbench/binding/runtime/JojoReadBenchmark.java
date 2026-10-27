@@ -33,16 +33,16 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Measures the cost of JOJO's static-property fast path and its dynamic-property fallback.
+ * Measures the cost of JOJO's static-property fast path and its dynamic-member fallback.
  *
  * <p>Each workload uses the same JSON text for all implementations. POJO, JOJO,
  * and native-extra models declare the same 16 typed properties. The plain POJO
- * intentionally skips unknown properties, so it is a dispatch/skip baseline,
+ * intentionally skips unknown members, so it is a dispatch/skip baseline,
  * not a semantically equivalent alternative for dynamic-heavy input.</p>
  *
  * <p>The native-extra model eagerly allocates an extra map, matching the
  * existing {@link RuntimeReadBenchmark} baseline. In contrast, JOJO allocates
- * its dynamic map only if unknown properties occur.</p>
+ * its dynamic map only if unknown members occur.</p>
  *
  * <p>Build with {@code ./gradlew :sjf4j-testbench:jmhJar}, then use
  * the resulting {@code *-jmh.jar} to run {@code JojoReadBenchmark},
@@ -133,7 +133,7 @@ public class JojoReadBenchmark {
                 throw new IllegalArgumentException("unsupported JOJO workload: " + workload);
         }
 
-        // Interleave declared/unknown properties to exercise matcher re-entry.
+        // Interleave declared properties and unknown members to exercise matcher re-entry.
         json = buildJson(staticCount, dynamicCount);
 
         // Verify that native-extra and JOJO really retain the same dynamic keys.
@@ -187,11 +187,11 @@ public class JojoReadBenchmark {
                 || extra.createdAt != pojo.createdAt) {
             throw new IllegalStateException(backend + ": static property binding mismatch");
         }
-        Map<String, Object> jojoDynamic = jojo.dynamicProperties();
+        Map<String, Object> jojoDynamic = jojo.dynamicMembers();
         if (extra.extra == null || jojoDynamic.size() != dynamicCount
                 || extra.extra.size() != dynamicCount
                 || !jojoDynamic.keySet().equals(extra.extra.keySet())) {
-            throw new IllegalStateException(backend + ": dynamic fields were not retained equivalently"
+            throw new IllegalStateException(backend + ": dynamic members were not retained equivalently"
                     + " (expected " + dynamicCount + ", jojo=" + jojoDynamic.keySet()
                     + ", native=" + (extra.extra == null ? null : extra.extra.keySet()) + ")");
         }

@@ -35,12 +35,12 @@ public @interface NodeObject {
     PropertyStrategy propertyStrategy() default PropertyStrategy.BEAN_FIELD;
 
     /**
-     * Whether JOJO reads retain unknown JSON object members as dynamic properties.
+     * Whether JOJO reads retain unknown JSON object members as dynamic members.
      */
     boolean readDynamic() default true;
 
     /**
-     * Whether JOJO writes emit dynamic properties in addition to declared properties.
+     * Whether JOJO writes emit dynamic members in addition to declared properties.
      */
     boolean writeDynamic() default true;
 }

@@ -321,7 +321,7 @@ public final class NodeMapper {
     /**
      * Returns a {@link JsonObject} shallow representation of an object-shaped node.
      * An existing JsonObject is reused, and a Map is wrapped as its backing map.
-     * POJO and external object entries are copied into a new outer container;
+     * POJO and external object members are copied into a new outer container;
      * nested entry values are not recursively mapped.
      */
     @SuppressWarnings("unchecked")
@@ -1375,7 +1375,7 @@ public final class NodeMapper {
         }
 
         /*
-         * JOJO dynamic properties.
+         * JOJO dynamic members.
          *
          * JsonObject itself was handled before reaching this method, so a
          * JsonObject here necessarily represents a JOJO.
@@ -1914,7 +1914,7 @@ public final class NodeMapper {
                 }
 
                 PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(rawClazz);
-                Map<String, Object> dynamic = pi.writeDynamic ? InternalAccess.dynamicProperties(jo) : null;
+                Map<String, Object> dynamic = pi.writeDynamic ? InternalAccess.dynamicMembers(jo) : null;
 
                 int size = pi.gettableProperties.length + (dynamic == null ? 0 : dynamic.size());
 

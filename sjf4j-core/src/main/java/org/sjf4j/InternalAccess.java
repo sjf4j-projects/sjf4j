@@ -1,17 +1,17 @@
 package org.sjf4j;
 
-import java.util.Map;
+import java.util.LinkedHashMap;
 
 public final class InternalAccess {
     private InternalAccess() {
     }
 
-    public static Map<String, Object> dynamicProperties(JsonObject jo) {
-        return jo.dynamicProperties;
+    public static LinkedHashMap<String, Object> dynamicMembers(JsonObject jo) {
+        return jo.dynamicMembers;
     }
 
-    public static void dynamicProperties(JsonObject jo, Map<String, Object> properties) {
-        jo.dynamicProperties = properties;
+    public static void dynamicMembers(JsonObject jo, LinkedHashMap<String, Object> members) {
+        jo.dynamicMembers = members;
     }
 
 }

@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * JSON binder backed directly by Fastjson2's streaming reader and writer.
  * The supplied contexts are configured in place to use doubles for decimal
- * reads and to write nulls; SJF4J controls omission of null object properties.
+ * reads and to write nulls; SJF4J controls omission of null object members.
  */
 public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Generator> {
 

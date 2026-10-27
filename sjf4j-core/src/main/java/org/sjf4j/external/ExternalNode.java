@@ -24,7 +24,7 @@ import java.util.function.BiPredicate;
  * <p>{@code N} is the root external type; every child and scalar value is
  * exposed unchanged as {@link Object}. Entry points expect a non-null Java
  * node. JSON null is instead a native node with {@link JsonType#NULL}: scalar
- * conversions return Java {@code null}, while object fields and array elements
+ * conversions return Java {@code null}, while object members and array elements
  * expose that native null node. Invalid shapes and external write values throw
  * {@link NodeException}.</p>
  *
@@ -103,12 +103,12 @@ public interface ExternalNode<N> {
         throw unsupported("toBoolean");
     }
 
-    /** Visits object entries. */
+    /** Visits object members. */
     default void forEachObject(N node, BiConsumer<String, Object> consumer) {
         throw unsupported("forEachObject");
     }
 
-    /** Returns whether an object entry matches. */
+    /** Returns whether an object member matches. */
     default boolean anyMatchObject(N node, BiPredicate<String, Object> predicate) {
         throw unsupported("anyMatchObject");
     }
@@ -118,7 +118,7 @@ public interface ExternalNode<N> {
         throw unsupported("replaceAllInObject");
     }
 
-    /** Removes matching object entries. */
+    /** Removes matching object members. */
     default boolean removeIfInObject(N node, BiPredicate<String, Object> predicate) {
         throw unsupported("removeIfInObject");
     }

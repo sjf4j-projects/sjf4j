@@ -33,10 +33,10 @@ import java.util.function.Predicate;
  * Mutable object node in SJF4J's OBNT model.
  *
  * <p>{@link JsonObject} can be subclassed to define a JOJO, a Java
- * representation category that combines declared properties and dynamic entries
+ * representation category whose members combine declared properties and dynamic members
  * in one object node.
  *
- * <p>Dynamic entries are stored in {@code dynamicProperties}; declared properties
+ * <p>Dynamic members are stored in {@code dynamicMembers}; declared properties
  * are mapped via {@link PropertyInfo}. Accessors use {@link Nodes} strict and
  * lenient conversion semantics. A missing key and a key whose value is
  * {@code null} both return {@code null} from value getters; overloads with a
@@ -46,9 +46,9 @@ import java.util.function.Predicate;
 public class JsonObject extends JsonContainer {
 
     /**
-     * Stores dynamic object node entries.
+     * Stores dynamic object node members.
      */
-    transient Map<String, Object> dynamicProperties;
+    transient LinkedHashMap<String, Object> dynamicMembers;
     
     /**
      * Stores object-binding metadata for declared JOJO properties.
@@ -82,7 +82,7 @@ public class JsonObject extends JsonContainer {
      */
     public JsonObject(Map<String, Object> map) {
         this();
-        this.dynamicProperties = map;
+        this.dynamicMembers = new LinkedHashMap<>(map);
     }
 
     /**
@@ -108,14 +108,14 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns an unmodifiable view of the dynamic entries, excluding declared
+     * Returns an unmodifiable view of the dynamic members, excluding declared
      * JOJO properties. The view reflects subsequent writes to the same backing map;
      * if no dynamic map exists yet, an empty map is returned.
      */
-    public Map<String, Object> dynamicProperties() {
-        return dynamicProperties == null
+    public Map<String, Object> dynamicMembers() {
+        return dynamicMembers == null
                 ? Collections.emptyMap()
-                : Collections.unmodifiableMap(dynamicProperties);
+                : Collections.unmodifiableMap(dynamicMembers);
     }
 
     /*
@@ -125,11 +125,11 @@ public class JsonObject extends JsonContainer {
      */
 
     /**
-     * Computes hash code from gettable declared properties and dynamic entries.
+     * Computes hash code from gettable declared properties and dynamic members.
      */
     @Override
     public int hashCode() {
-        int hash = dynamicProperties == null ? 0 : dynamicProperties.hashCode();
+        int hash = dynamicMembers == null ? 0 : dynamicMembers.hashCode();
         if (pi != null) {
             for (PropertyInfo propertyInfo : pi.gettableProperties){
                 hash += Objects.hashCode(propertyInfo.name) ^
@@ -166,11 +166,11 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns the number of gettable declared properties and dynamic entries.
+     * Returns the number of gettable declared properties and dynamic members.
      */
     public int size() {
         return (pi == null ? 0 : pi.gettableProperties.length) +
-                (dynamicProperties == null ? 0 : dynamicProperties.size());
+                (dynamicMembers == null ? 0 : dynamicMembers.size());
     }
 
     /**
@@ -181,7 +181,7 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns true if the key exists in gettable declared properties or dynamic entries.
+     * Returns true if the key exists in gettable declared properties or dynamic members.
      */
     public boolean containsKey(String key) {
         if (key == null) return false;
@@ -189,7 +189,7 @@ public class JsonObject extends JsonContainer {
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
             if (propertyInfo != null && propertyInfo.gettable) return true;
         }
-        return dynamicProperties != null && dynamicProperties.containsKey(key);
+        return dynamicMembers != null && dynamicMembers.containsKey(key);
     }
 
     /**
@@ -201,15 +201,15 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a key view of gettable declared properties and dynamic entries.
+     * Returns a key view of gettable declared properties and dynamic members.
      * Dynamic keys are backed by the underlying map; declared keys cannot be removed.
      */
     public Set<String> keySet() {
         if (pi == null || pi.gettableProperties.length == 0) {
-            return dynamicProperties == null ? Collections.emptySet() : dynamicProperties.keySet();
+            return dynamicMembers == null ? Collections.emptySet() : dynamicMembers.keySet();
         }
 
-        if (dynamicProperties == null) {
+        if (dynamicMembers == null) {
             return pi.gettablePropertyNameSet();
         }
 
@@ -219,9 +219,9 @@ public class JsonObject extends JsonContainer {
             public Iterator<String> iterator() {
                 return new Iterator<String>() {
                     private int propertyIndex;
-                    private final Iterator<String> dynamicIterator = dynamicProperties == null
+                    private final Iterator<String> dynamicIterator = dynamicMembers == null
                             ? Collections.<String>emptySet().iterator()
-                            : dynamicProperties.keySet().iterator();
+                            : dynamicMembers.keySet().iterator();
 
                     @Override
                     public boolean hasNext() {
@@ -240,7 +240,7 @@ public class JsonObject extends JsonContainer {
 
             @Override
             public int size() {
-                return pi.gettableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
+                return pi.gettableProperties.length + (dynamicMembers == null ? 0 : dynamicMembers.size());
             }
 
             @Override
@@ -251,12 +251,12 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns an entry view of gettable declared properties and dynamic entries.
-     * Declared-property entries are snapshots; dynamic entries are backed by the map.
+     * Returns an entry view of gettable declared properties and dynamic members.
+     * Declared-property entries are snapshots; dynamic members are backed by the map.
      */
     public Set<Map.Entry<String, Object>> entrySet() {
         if (pi == null || pi.gettableProperties.length == 0) {
-            return dynamicProperties == null ? Collections.emptySet() : dynamicProperties.entrySet();
+            return dynamicMembers == null ? Collections.emptySet() : dynamicMembers.entrySet();
         }
 
         return new AbstractSet<Map.Entry<String, Object>>() {
@@ -265,9 +265,9 @@ public class JsonObject extends JsonContainer {
             public Iterator<Map.Entry<String, Object>> iterator() {
                 return new Iterator<Map.Entry<String, Object>>() {
                     private int propertyIndex;
-                    private final Iterator<Map.Entry<String, Object>> dynamicIterator = dynamicProperties == null
+                    private final Iterator<Map.Entry<String, Object>> dynamicIterator = dynamicMembers == null
                             ? Collections.<Map.Entry<String, Object>>emptySet().iterator()
-                            : dynamicProperties.entrySet().iterator();
+                            : dynamicMembers.entrySet().iterator();
 
                     @Override
                     public boolean hasNext() {
@@ -288,7 +288,7 @@ public class JsonObject extends JsonContainer {
 
             @Override
             public int size() {
-                return pi.gettableProperties.length + (dynamicProperties == null ? 0 : dynamicProperties.size());
+                return pi.gettableProperties.length + (dynamicMembers == null ? 0 : dynamicMembers.size());
             }
         };
     }
@@ -303,8 +303,8 @@ public class JsonObject extends JsonContainer {
                 visitor.accept(propertyInfo.name, propertyInfo.invokeGetter(this));
             }
         }
-        if (dynamicProperties != null) {
-            for (Map.Entry<String, Object> entry : dynamicProperties.entrySet()){
+        if (dynamicMembers != null) {
+            for (Map.Entry<String, Object> entry : dynamicMembers.entrySet()){
                 visitor.accept(entry.getKey(), entry.getValue());
             }
         }
@@ -322,8 +322,8 @@ public class JsonObject extends JsonContainer {
                 }
             }
         }
-        if (dynamicProperties != null) {
-            for (Map.Entry<String, Object> entry : dynamicProperties.entrySet()){
+        if (dynamicMembers != null) {
+            for (Map.Entry<String, Object> entry : dynamicMembers.entrySet()){
                 if (predicate.test(entry.getKey(), entry.getValue())) {
                     return true;
                 }
@@ -334,7 +334,7 @@ public class JsonObject extends JsonContainer {
 
     /**
      * Replaces values for gettable-and-settable declared properties and dynamic
-     * entries in place. Only a change of value reference counts as a replacement.
+     * members in place. Only a change of value reference counts as a replacement.
      *
      * @return whether at least one value reference changed
      */
@@ -354,8 +354,8 @@ public class JsonObject extends JsonContainer {
                 }
             }
         }
-        if (dynamicProperties != null) {
-            for (Map.Entry<String, Object> entry : dynamicProperties.entrySet()){
+        if (dynamicMembers != null) {
+            for (Map.Entry<String, Object> entry : dynamicMembers.entrySet()){
                 Object oldValue = entry.getValue();
                 Object newValue = mapper.apply(entry.getKey(), oldValue);
                 if (newValue != oldValue) {
@@ -368,8 +368,8 @@ public class JsonObject extends JsonContainer {
     }
 
     /**
-     * Returns a new map containing gettable declared properties and dynamic entries.
-     * Dynamic entries take precedence on duplicate keys; values are not copied.
+     * Returns a new map containing gettable declared properties and dynamic members.
+     * Dynamic members take precedence on duplicate keys; values are not copied.
      */
     public Map<String, Object> toMap() {
         Map<String, Object> merged = new LinkedHashMap<>();
@@ -378,8 +378,8 @@ public class JsonObject extends JsonContainer {
                 merged.put(propertyInfo.name, propertyInfo.invokeGetter(this));
             }
         }
-        if (dynamicProperties != null) {
-            merged.putAll(dynamicProperties);
+        if (dynamicMembers != null) {
+            merged.putAll(dynamicMembers);
         }
         return merged;
     }
@@ -491,7 +491,7 @@ public class JsonObject extends JsonContainer {
      * Returns the OBNT value for the given key or {@code null}.
      * <p>
      * Only gettable declared properties participate in this value view. When a
-     * declared property is not gettable, lookup falls through to dynamic entries
+     * declared property is not gettable, lookup falls through to dynamic members
      * with the same key.
      */
     public Object getNode(String key) {
@@ -502,8 +502,8 @@ public class JsonObject extends JsonContainer {
                 return propertyInfo.invokeGetter(this);
             }
         }
-        if (dynamicProperties != null) {
-            return dynamicProperties.get(key);
+        if (dynamicMembers != null) {
+            return dynamicMembers.get(key);
         }
         return null;
     }
@@ -1015,8 +1015,8 @@ public class JsonObject extends JsonContainer {
                 throw new NodeException("property '" + key + "' is not writable");
             }
         }
-        if (dynamicProperties == null) dynamicProperties = new LinkedHashMap<>();
-        return dynamicProperties.put(key, object);
+        if (dynamicMembers == null) dynamicMembers = new LinkedHashMap<>();
+        return dynamicMembers.put(key, object);
     }
 
     /**
@@ -1042,8 +1042,8 @@ public class JsonObject extends JsonContainer {
             }
         }
 
-        if (dynamicProperties == null) dynamicProperties = new LinkedHashMap<>();
-        return (T) dynamicProperties.computeIfAbsent(key, computer);
+        if (dynamicMembers == null) dynamicMembers = new LinkedHashMap<>();
+        return (T) dynamicMembers.computeIfAbsent(key, computer);
     }
 
     /**
@@ -1069,31 +1069,31 @@ public class JsonObject extends JsonContainer {
         Asserts.notNull(key, "key");
         if (pi != null && pi.getPropertyNoAlias(key) != null) {
             throw new NodeException("cannot remove declared property '" + key + "' from JOJO '" +
-                    getClass().getName() + "'; only dynamic properties are removable");
+                    getClass().getName() + "'; only dynamic members are removable");
         }
-        if (dynamicProperties != null) {
-            return dynamicProperties.remove(key);
+        if (dynamicMembers != null) {
+            return dynamicMembers.remove(key);
         }
         return null;
     }
 
     /**
-     * Removes dynamic entries that match the predicate.
+     * Removes dynamic members that match the predicate.
      */
     public boolean removeIf(Predicate<Map.Entry<String, Object>> filter) {
         Asserts.notNull(filter, "filter");
-        if (dynamicProperties != null) {
-            return dynamicProperties.entrySet().removeIf(filter);
+        if (dynamicMembers != null) {
+            return dynamicMembers.entrySet().removeIf(filter);
         }
         return false;
     }
 
     /**
-     * Clears dynamic entries only, keeping declared property values intact.
+     * Clears dynamic members only, keeping declared property values intact.
      */
     public void clear() {
-        if (dynamicProperties != null) {
-            dynamicProperties.clear();
+        if (dynamicMembers != null) {
+            dynamicMembers.clear();
         }
     }
 
@@ -1101,7 +1101,7 @@ public class JsonObject extends JsonContainer {
      * Drops the dynamic map reference and keeps only declared property values.
      */
     public void prune() {
-        dynamicProperties = null;
+        dynamicMembers = null;
     }
 
 
@@ -1114,14 +1114,14 @@ public class JsonObject extends JsonContainer {
     /**
      * Creates a shallow copy of this JsonObject.
      * <p>
-     * Plain {@link JsonObject} instances copy their dynamic entries; nested values
+     * Plain {@link JsonObject} instances copy their dynamic members; nested values
      * are shared.
      * JOJO subtypes fall back to {@link Nodes#copy(Object)} so subtype properties
      * remain part of the copied object view.
      */
     public JsonObject copy() {
         if (getClass() == JsonObject.class) {
-            return dynamicProperties == null ? new JsonObject() : new JsonObject(new LinkedHashMap<>(dynamicProperties));
+            return dynamicMembers == null ? new JsonObject() : new JsonObject(new LinkedHashMap<>(dynamicMembers));
         }
         return Nodes.copy(this);
     }
@@ -1130,7 +1130,7 @@ public class JsonObject extends JsonContainer {
      * Creates a deep copy of this JsonObject.
      * <p>
      * Delegates to {@link Sjf4j#deepCopy(Object)} and {@link NodeMapper}.
-     * Declared and dynamic entries are copied structurally; unsupported nested
+     * Declared properties and dynamic members are copied structurally; unsupported nested
      * values can cause binding to fail rather than being copied.
      */
     public JsonObject deepCopy() {
