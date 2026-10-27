@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-
 /**
  * Shared compile-time Java type system for SJF4J processors.
  */
@@ -43,7 +42,6 @@ public final class TypeSystem {
             "com.google.gson.JsonElement";
     private static final String JSONP_NODE =
             "jakarta.json.JsonValue";
-
 
     private final Types typeUtils;
     private final Elements elements;
@@ -66,7 +64,6 @@ public final class TypeSystem {
     private final TypeMirror jackson3NodeType;
     private final TypeMirror gsonNodeType;
     private final TypeMirror jsonpNodeType;
-
 
     public TypeSystem(
             Types typeUtils,
@@ -92,7 +89,6 @@ public final class TypeSystem {
         this.jsonpNodeType = optionalType(JSONP_NODE);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Node Kind
@@ -109,91 +105,49 @@ public final class TypeSystem {
      * by the compile-time type system.</p>
      */
     public NodeKind nodeKind(TypeMirror type) {
-        if (type == null) {
-            return NodeKind.UNKNOWN;
-        }
+        if (type == null) return NodeKind.UNKNOWN;
 
         type = concrete(type);
         TypeKind kind = type.getKind();
 
-        if (kind == TypeKind.NULL) {
-            return NodeKind.VALUE_NULL;
-        }
+        if (kind == TypeKind.NULL) return NodeKind.VALUE_NULL;
 
-        if (kind == TypeKind.ARRAY) {
-            return NodeKind.ARRAY_ARRAY;
-        }
+        if (kind == TypeKind.ARRAY) return NodeKind.ARRAY_ARRAY;
 
         if (kind.isPrimitive()) {
-            if (kind == TypeKind.BOOLEAN) {
-                return NodeKind.VALUE_BOOLEAN;
-            }
-            if (kind == TypeKind.CHAR) {
-                return NodeKind.VALUE_STRING_CHARACTER;
-            }
-            if (kind == TypeKind.VOID) {
-                return NodeKind.UNKNOWN;
-            }
+            if (kind == TypeKind.BOOLEAN) return NodeKind.VALUE_BOOLEAN;
+            if (kind == TypeKind.CHAR) return NodeKind.VALUE_STRING_CHARACTER;
+            if (kind == TypeKind.VOID) return NodeKind.UNKNOWN;
             return NodeKind.VALUE_NUMBER;
         }
 
         TypeElement element = typeElement(type);
-        if (element == null) {
-            return NodeKind.UNKNOWN;
-        }
+        if (element == null) return NodeKind.UNKNOWN;
 
         // Java values
 
-        if (isSameErasure(type, stringType)) {
-            return NodeKind.VALUE_STRING;
-        }
-        if (isSameErasure(type, characterType)) {
-            return NodeKind.VALUE_STRING_CHARACTER;
-        }
-        if (element.getKind() == ElementKind.ENUM) {
-            return NodeKind.VALUE_STRING_ENUM;
-        }
-        if (isSameErasure(type, booleanType)) {
-            return NodeKind.VALUE_BOOLEAN;
-        }
-        if (isAssignableErasure(type, numberType)) {
-            return NodeKind.VALUE_NUMBER;
-        }
-        if (isSameErasure(type, voidType)) {
-            return NodeKind.VALUE_NULL;
-        }
+        if (isSameErasure(type, stringType)) return NodeKind.VALUE_STRING;
+        if (isSameErasure(type, characterType)) return NodeKind.VALUE_STRING_CHARACTER;
+        if (element.getKind() == ElementKind.ENUM) return NodeKind.VALUE_STRING_ENUM;
+        if (isSameErasure(type, booleanType)) return NodeKind.VALUE_BOOLEAN;
+        if (isAssignableErasure(type, numberType)) return NodeKind.VALUE_NUMBER;
+        if (isSameErasure(type, voidType)) return NodeKind.VALUE_NULL;
 
         // Match NodeKind.plainOf precedence for overlapping container types.
 
-        if (isAssignableErasure(type, mapType)) {
-            return NodeKind.OBJECT_MAP;
-        }
-        if (isSameErasure(type, jsonObjectType)) {
-            return NodeKind.OBJECT_JSON_OBJECT;
-        }
-        if (isAssignableErasure(type, jsonObjectType)) {
-            return NodeKind.OBJECT_JOJO;
-        }
+        if (isAssignableErasure(type, mapType)) return NodeKind.OBJECT_MAP;
+        if (isSameErasure(type, jsonObjectType)) return NodeKind.OBJECT_JSON_OBJECT;
+        if (isAssignableErasure(type, jsonObjectType)) return NodeKind.OBJECT_JOJO;
 
-        if (isAssignableErasure(type, listType)) {
-            return NodeKind.ARRAY_LIST;
-        }
-        if (isSameErasure(type, jsonArrayType)) {
-            return NodeKind.ARRAY_JSON_ARRAY;
-        }
-        if (isAssignableErasure(type, jsonArrayType)) {
-            return NodeKind.ARRAY_JAJO;
-        }
+        if (isAssignableErasure(type, listType)) return NodeKind.ARRAY_LIST;
+        if (isSameErasure(type, jsonArrayType)) return NodeKind.ARRAY_JSON_ARRAY;
+        if (isAssignableErasure(type, jsonArrayType)) return NodeKind.ARRAY_JAJO;
 
-        if (isAssignableErasure(type, setType)) {
-            return NodeKind.ARRAY_SET;
-        }
+        if (isAssignableErasure(type, setType)) return NodeKind.ARRAY_SET;
 
         // @NodeValue
 
-        if (isNodeValue(type)) {
-            return nodeValueKind(type);
-        }
+        if (isNodeValue(type)) return nodeValueKind(type);
 
         /*
          * Object and supported external JSON representations may contain any OBNT
@@ -201,18 +155,14 @@ public final class TypeSystem {
          * deliberately use Nodes for runtime dispatch when static shape is not
          * available.
          */
-        if (isCompileTimeUnknown(type)) {
-            return NodeKind.COMPILE_TIME_UNKNOWN;
-        }
+        if (isCompileTimeUnknown(type)) return NodeKind.COMPILE_TIME_UNKNOWN;
 
         return NodeKind.OBJECT_POJO;
     }
 
-
     public JsonType jsonType(TypeMirror type) {
         return JsonType.of(nodeKind(type));
     }
-
 
     /**
      * Returns whether kind is a statically known OBNT object shape.
@@ -229,7 +179,6 @@ public final class TypeSystem {
                 return false;
         }
     }
-
 
     /**
      * Returns whether kind is a statically known OBNT array shape.
@@ -248,7 +197,6 @@ public final class TypeSystem {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Assignability
@@ -259,29 +207,24 @@ public final class TypeSystem {
         return from != null && to != null && typeUtils.isAssignable(from, to);
     }
 
-
     public boolean isAssignableErasure(TypeMirror from, TypeMirror to) {
         return from != null && to != null && typeUtils.isAssignable(
                 typeUtils.erasure(from), typeUtils.erasure(to));
     }
-
 
     public boolean isSameErasure(TypeMirror first, TypeMirror second) {
         return first != null && second != null && typeUtils.isSameType(
                 typeUtils.erasure(first), typeUtils.erasure(second));
     }
 
-
     public boolean isAssignableBoxed(TypeMirror from, TypeMirror to) {
         return from != null && to != null && typeUtils.isAssignable(
                 typeUtils.erasure(boxed(from)), typeUtils.erasure(boxed(to)));
     }
 
-
     public boolean isAssignableBoxedGeneric(TypeMirror from, TypeMirror to) {
         return from != null && to != null && typeUtils.isAssignable(boxed(from), boxed(to));
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -293,13 +236,11 @@ public final class TypeSystem {
         return isSameErasure(type, objectType);
     }
 
-
     public boolean isBoolean(TypeMirror type) {
         type = concrete(type);
         return type != null &&
                 (type.getKind() == TypeKind.BOOLEAN || isSameErasure(type, booleanType));
     }
-
 
     public boolean isNodeValue(TypeMirror type) {
         TypeElement element = typeElement(type);
@@ -310,7 +251,6 @@ public final class TypeSystem {
     public boolean isCompileTimeUnknown(TypeMirror type) {
         return isObject(type) || isExternalNode(type);
     }
-
 
     /**
      * Returns whether the type belongs to a supported external JSON representation.
@@ -325,7 +265,6 @@ public final class TypeSystem {
                 || isAssignableErasure(type, jsonpNodeType);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Normalize
@@ -333,9 +272,7 @@ public final class TypeSystem {
      */
 
     public TypeElement typeElement(TypeMirror type) {
-        if (!(type instanceof DeclaredType)) {
-            return null;
-        }
+        if (!(type instanceof DeclaredType)) return null;
 
         Element element = ((DeclaredType) type).asElement();
 
@@ -344,14 +281,11 @@ public final class TypeSystem {
                 : null;
     }
 
-
     /**
      * Resolves a wildcard/type-variable to the safest readable concrete type.
      */
     public TypeMirror concrete(TypeMirror type) {
-        if (type == null) {
-            return null;
-        }
+        if (type == null) return null;
 
         if (type instanceof WildcardType) {
             TypeMirror bound = ((WildcardType) type).getExtendsBound();
@@ -361,9 +295,7 @@ public final class TypeSystem {
         if (type instanceof TypeVariable) {
             TypeMirror bound = ((TypeVariable) type).getUpperBound();
 
-            if (bound == null || bound.getKind() == TypeKind.NULL) {
-                return objectType;
-            }
+            if (bound == null || bound.getKind() == TypeKind.NULL) return objectType;
 
             return concrete(bound);
         }
@@ -371,17 +303,13 @@ public final class TypeSystem {
         return type;
     }
 
-
     public TypeMirror boxed(TypeMirror type) {
         type = concrete(type);
 
-        if (type != null && type.getKind().isPrimitive()) {
-            return typeUtils.boxedClass((PrimitiveType) type).asType();
-        }
+        if (type != null && type.getKind().isPrimitive()) return typeUtils.boxedClass((PrimitiveType) type).asType();
 
         return type;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -396,13 +324,10 @@ public final class TypeSystem {
      * Unbounded and lower-bounded wildcards resolve to Object.</p>
      */
     public TypeMirror mapReadKeyType(TypeMirror type) {
-        if (!isAssignableErasure(type, mapType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, mapType)) return null;
 
         return readableTypeArgument(typeArgument(type, mapType, 0));
     }
-
 
     /**
      * Returns the writable Map key type.
@@ -411,13 +336,10 @@ public final class TypeSystem {
      * Raw Map remains writable as Object.</p>
      */
     public TypeMirror mapWriteKeyType(TypeMirror type) {
-        if (!isAssignableErasure(type, mapType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, mapType)) return null;
 
         return writableTypeArgument(typeArgument(type, mapType, 0));
     }
-
 
     /**
      * Returns whether a String path key can be passed safely to this Map.
@@ -428,17 +350,12 @@ public final class TypeSystem {
     public boolean hasSafeStringPathKey(TypeMirror type) {
         TypeMirror key = typeArgument(type, mapType, 0);
 
-        if (key == null) {
-            return true;
-        }
+        if (key == null) return true;
 
-        if (key instanceof WildcardType || key instanceof TypeVariable) {
-            return false;
-        }
+        if (key instanceof WildcardType || key instanceof TypeVariable) return false;
 
         return isSameErasure(key, stringType);
     }
-
 
     /**
      * Returns the declared key argument for diagnostics, or {@code null} for
@@ -447,8 +364,6 @@ public final class TypeSystem {
     public TypeMirror mapDeclaredKeyType(TypeMirror type) {
         return typeArgument(type, mapType, 0);
     }
-
-
 
     /**
      * Returns the readable Map value type.
@@ -462,13 +377,10 @@ public final class TypeSystem {
      * </pre>
      */
     public TypeMirror mapReadValueType(TypeMirror type) {
-        if (!isAssignableErasure(type, mapType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, mapType)) return null;
 
         return readableTypeArgument(typeArgument(type, mapType, 1));
     }
-
 
     /**
      * Returns the writable Map value type.
@@ -477,13 +389,10 @@ public final class TypeSystem {
      * Raw Map remains writable as Object.</p>
      */
     public TypeMirror mapWriteValueType(TypeMirror type) {
-        if (!isAssignableErasure(type, mapType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, mapType)) return null;
 
         return writableTypeArgument(typeArgument(type, mapType, 1));
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -494,13 +403,10 @@ public final class TypeSystem {
      * Returns the readable List element type.
      */
     public TypeMirror listReadElementType(TypeMirror type) {
-        if (!isAssignableErasure(type, listType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, listType)) return null;
 
         return readableTypeArgument(typeArgument(type, listType, 0));
     }
-
 
     /**
      * Returns the writable List element type.
@@ -509,13 +415,10 @@ public final class TypeSystem {
      * Raw List remains writable as Object.</p>
      */
     public TypeMirror listWriteElementType(TypeMirror type) {
-        if (!isAssignableErasure(type, listType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, listType)) return null;
 
         return writableTypeArgument(typeArgument(type, listType, 0));
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -527,13 +430,10 @@ public final class TypeSystem {
      * Returns the readable Set element type.
      */
     public TypeMirror setReadElementType(TypeMirror type) {
-        if (!isAssignableErasure(type, setType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, setType)) return null;
 
         return readableTypeArgument(typeArgument(type, setType, 0));
     }
-
 
     /**
      * Returns the writable Set element type.
@@ -542,13 +442,10 @@ public final class TypeSystem {
      * Raw Set remains writable as Object.</p>
      */
     public TypeMirror setWriteElementType(TypeMirror type) {
-        if (!isAssignableErasure(type, setType)) {
-            return null;
-        }
+        if (!isAssignableErasure(type, setType)) return null;
 
         return writableTypeArgument(typeArgument(type, setType, 0));
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -563,21 +460,13 @@ public final class TypeSystem {
     public TypeMirror readElementType(TypeMirror type) {
         type = concrete(type);
 
-        if (type == null) {
-            return null;
-        }
+        if (type == null) return null;
 
-        if (type.getKind() == TypeKind.ARRAY) {
-            return concrete(((ArrayType) type).getComponentType());
-        }
+        if (type.getKind() == TypeKind.ARRAY) return concrete(((ArrayType) type).getComponentType());
 
-        if (isAssignableErasure(type, listType)) {
-            return listReadElementType(type);
-        }
+        if (isAssignableErasure(type, listType)) return listReadElementType(type);
 
-        if (isAssignableErasure(type, setType)) {
-            return setReadElementType(type);
-        }
+        if (isAssignableErasure(type, setType)) return setReadElementType(type);
 
         NodeKind kind = nodeKind(type);
 
@@ -590,7 +479,6 @@ public final class TypeSystem {
         return null;
     }
 
-
     /**
      * Resolves the writable element type of Java arrays, List, Set and dynamic
      * SJF4J arrays.
@@ -601,21 +489,13 @@ public final class TypeSystem {
     public TypeMirror writeElementType(TypeMirror type) {
         type = concrete(type);
 
-        if (type == null) {
-            return null;
-        }
+        if (type == null) return null;
 
-        if (type.getKind() == TypeKind.ARRAY) {
-            return ((ArrayType) type).getComponentType();
-        }
+        if (type.getKind() == TypeKind.ARRAY) return ((ArrayType) type).getComponentType();
 
-        if (isAssignableErasure(type, listType)) {
-            return listWriteElementType(type);
-        }
+        if (isAssignableErasure(type, listType)) return listWriteElementType(type);
 
-        if (isAssignableErasure(type, setType)) {
-            return setWriteElementType(type);
-        }
+        if (isAssignableErasure(type, setType)) return setWriteElementType(type);
 
         NodeKind kind = nodeKind(type);
 
@@ -629,9 +509,7 @@ public final class TypeSystem {
     }
 
     public boolean isFullyResolved(TypeMirror type) {
-        if (type == null) {
-            return false;
-        }
+        if (type == null) return false;
 
         switch (type.getKind()) {
             case TYPEVAR:
@@ -651,9 +529,7 @@ public final class TypeSystem {
                 }
 
                 for (TypeMirror arg : declared.getTypeArguments()) {
-                    if (!isFullyResolved(arg)) {
-                        return false;
-                    }
+                    if (!isFullyResolved(arg)) return false;
                 }
 
                 return true;
@@ -683,9 +559,7 @@ public final class TypeSystem {
     }
 
     public boolean isFullyConcrete(TypeMirror type) {
-        if (type == null) {
-            return false;
-        }
+        if (type == null) return false;
 
         switch (type.getKind()) {
             case TYPEVAR:
@@ -715,9 +589,7 @@ public final class TypeSystem {
                 }
 
                 for (TypeMirror arg : args) {
-                    if (!isFullyConcrete(arg)) {
-                        return false;
-                    }
+                    if (!isFullyConcrete(arg)) return false;
                 }
 
                 return true;
@@ -737,13 +609,10 @@ public final class TypeSystem {
 
         DeclaredType declaring = declaringType(owner, field);
 
-        if (declaring == null) {
-            return null;
-        }
+        if (declaring == null) return null;
 
         return typeUtils.asMemberOf(declaring, field);
     }
-
 
     public ExecutableType resolveMethodType(
             TypeMirror owner,
@@ -751,9 +620,7 @@ public final class TypeSystem {
 
         DeclaredType declaring = declaringType(owner, method);
 
-        if (declaring == null) {
-            return null;
-        }
+        if (declaring == null) return null;
 
         return (ExecutableType) typeUtils.asMemberOf(declaring, method);
     }
@@ -764,22 +631,16 @@ public final class TypeSystem {
 
         type = concrete(type);
 
-        if (!(type instanceof DeclaredType)) {
-            return null;
-        }
+        if (!(type instanceof DeclaredType)) return null;
 
         DeclaredType declared = (DeclaredType) type;
 
-        if (declared.asElement().equals(target)) {
-            return declared;
-        }
+        if (declared.asElement().equals(target)) return declared;
 
         for (TypeMirror superType : typeUtils.directSupertypes(type)) {
             DeclaredType result = asSuper(superType, target);
 
-            if (result != null) {
-                return result;
-            }
+            if (result != null) return result;
         }
 
         return null;
@@ -811,15 +672,12 @@ public final class TypeSystem {
 
         TypeMirror resolved = findSuperType(source, target);
 
-        if (!(resolved instanceof DeclaredType)) {
-            return null;
-        }
+        if (!(resolved instanceof DeclaredType)) return null;
 
         List<? extends TypeMirror> arguments = ((DeclaredType) resolved).getTypeArguments();
 
         return index < arguments.size() ? arguments.get(index) : null;
     }
-
 
     /**
      * Resolves the source as the requested generic supertype while preserving
@@ -831,29 +689,20 @@ public final class TypeSystem {
 
         source = concrete(source);
 
-        if (!(source instanceof DeclaredType)) {
-            return null;
-        }
+        if (!(source instanceof DeclaredType)) return null;
 
-        if (isSameErasure(source, target)) {
-            return source;
-        }
+        if (isSameErasure(source, target)) return source;
 
         for (TypeMirror superType : typeUtils.directSupertypes(source)) {
-            if (!isAssignableErasure(superType, target)) {
-                continue;
-            }
+            if (!isAssignableErasure(superType, target)) continue;
 
             TypeMirror resolved = findSuperType(superType, target);
 
-            if (resolved != null) {
-                return resolved;
-            }
+            if (resolved != null) return resolved;
         }
 
         return null;
     }
-
 
     /**
      * Resolves a generic argument for reading.
@@ -867,9 +716,7 @@ public final class TypeSystem {
         /*
          * Raw Map/List/Set.
          */
-        if (argument == null) {
-            return objectType;
-        }
+        if (argument == null) return objectType;
 
         if (argument instanceof WildcardType) {
             TypeMirror upper = ((WildcardType) argument).getExtendsBound();
@@ -878,7 +725,6 @@ public final class TypeSystem {
 
         return concrete(argument);
     }
-
 
     /**
      * Resolves a generic argument for writing.
@@ -893,24 +739,17 @@ public final class TypeSystem {
         /*
          * Raw Map/List.
          */
-        if (argument == null) {
-            return objectType;
-        }
+        if (argument == null) return objectType;
 
-        if (argument instanceof WildcardType) {
-            return null;
-        }
+        if (argument instanceof WildcardType) return null;
 
         /*
          * An unresolved type variable is not safe for generated writes.
          */
-        if (argument instanceof TypeVariable) {
-            return null;
-        }
+        if (argument instanceof TypeVariable) return null;
 
         return concrete(argument);
     }
-
 
     public TypeMirror objectType() {
         return objectType;
@@ -936,7 +775,6 @@ public final class TypeSystem {
         return jsonArrayType;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Value Nodes
@@ -950,9 +788,7 @@ public final class TypeSystem {
     private NodeKind nodeValueKind(TypeMirror type) {
         TypeMirror rawType = nodeValueRawType(type);
 
-        if (rawType == null || isSameErasure(rawType, type)) {
-            return NodeKind.UNKNOWN;
-        }
+        if (rawType == null || isSameErasure(rawType, type)) return NodeKind.UNKNOWN;
 
         NodeKind kind = nodeKind(rawType);
 
@@ -976,29 +812,20 @@ public final class TypeSystem {
         }
     }
 
-
     /** Declared raw type of an @NodeValue conversion, if statically available. */
     public TypeMirror nodeValueRawType(TypeMirror owner) {
         TypeElement element = typeElement(owner);
 
-        if (element == null) {
-            return null;
-        }
+        if (element == null) return null;
 
         for (Element member : elements.getAllMembers(element)) {
-            if (member.getKind() != ElementKind.METHOD) {
-                continue;
-            }
+            if (member.getKind() != ElementKind.METHOD) continue;
 
             ExecutableElement method = (ExecutableElement) member;
 
-            if (method.getAnnotation(ValueToRaw.class) == null) {
-                continue;
-            }
+            if (method.getAnnotation(ValueToRaw.class) == null) continue;
 
-            if (method.getModifiers().contains(Modifier.STATIC) || !method.getParameters().isEmpty()) {
-                continue;
-            }
+            if (method.getModifiers().contains(Modifier.STATIC) || !method.getParameters().isEmpty()) continue;
 
             /*
              * Resolve inherited generic return types through the actual owner.
@@ -1015,7 +842,6 @@ public final class TypeSystem {
 
         return null;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1035,7 +861,6 @@ public final class TypeSystem {
         return element.asType();
     }
 
-
     private TypeMirror optionalType(String name) {
         TypeElement element = elements.getTypeElement(name);
         return element == null ? null : element.asType();
@@ -1047,9 +872,7 @@ public final class TypeSystem {
 
         Element enclosing = member.getEnclosingElement();
 
-        if (!(enclosing instanceof TypeElement)) {
-            return null;
-        }
+        if (!(enclosing instanceof TypeElement)) return null;
 
         return asSuper(owner, (TypeElement) enclosing);
     }
