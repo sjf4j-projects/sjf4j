@@ -66,9 +66,8 @@ final class Fastjson2WriteEmitter {
         // close() flushes attached writers even if a compiled helper throws.
         String create = utf8 ? "createGeneratorUtf8()" : "createGenerator()";
 
-        out.line("org.sjf4j.backend.fastjson2.binding.Fastjson2Generator "
-                + generator + " = this.binder." + create + ";");
-        out.beginBlock("try");
+        out.beginBlock("try (org.sjf4j.backend.fastjson2.binding.Fastjson2Generator "
+                + generator + " = this.binder." + create + ")");
         out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + generator + ".nativeWriter();");
 
         // Raw field-name optimizations require compatible Fastjson2 features.
@@ -117,9 +116,6 @@ final class Fastjson2WriteEmitter {
             default:
                 throw new AssertionError(output);
         }
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(generator + ".release();");
         out.endBlock();
     }
 

@@ -58,13 +58,9 @@ final class ReadEmitter {
         String parser =
                 names.newName("parser");
 
-        out.line(backend.parserType() + " " + parser
-                + " = this.binder.createParser(" + input + ");");
-        out.beginBlock("try");
+        out.beginBlock("try (" + backend.parserType() + " " + parser
+                + " = this.binder.createParser(" + input + "))");
         emitReadBody(out, plan, value, parser, names);
-        out.endBlock();
-        out.beginBlock("finally");
-        out.line(parser + ".release();");
         out.endBlock();
 
         BindingSource.endOverride(out);
