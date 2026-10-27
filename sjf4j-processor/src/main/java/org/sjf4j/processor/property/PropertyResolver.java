@@ -32,12 +32,9 @@ import java.util.Set;
  */
 public final class PropertyResolver {
 
-    private static final String JSON_OBJECT =
-            "org.sjf4j.JsonObject";
-    private static final String JSON_CONTAINER =
-            "org.sjf4j.JsonContainer";
-    private static final String JAVA_OBJECT =
-            "java.lang.Object";
+    private static final String JSON_OBJECT = "org.sjf4j.JsonObject";
+    private static final String JSON_CONTAINER = "org.sjf4j.JsonContainer";
+    private static final String JAVA_OBJECT = "java.lang.Object";
 
     private final Types typeUtils;
     private final Elements elements;
@@ -45,15 +42,10 @@ public final class PropertyResolver {
     private final TypeSystem types;
     private final NodeAnnotations annotations;
 
-    private final Map<String, Map<String, Property>> cache =
-            new HashMap<>();
+    private final Map<String, Map<String, Property>> cache = new HashMap<>();
 
-    public PropertyResolver(
-            Types typeUtils,
-            Elements elements,
-            Messager messager,
-            TypeSystem types,
-            NodeAnnotations annotations) {
+    public PropertyResolver(Types typeUtils, Elements elements, Messager messager,
+                            TypeSystem types, NodeAnnotations annotations) {
 
         this.typeUtils = Asserts.notNull(typeUtils, "typeUtils");
         this.elements = Asserts.notNull(elements, "elements");
@@ -71,20 +63,13 @@ public final class PropertyResolver {
         if (!(owner instanceof DeclaredType)) return Collections.emptyMap();
 
         NodeKind kind = types.nodeKind(owner);
-
-        if (kind != NodeKind.OBJECT_POJO
-                && kind != NodeKind.OBJECT_JOJO) {
-            return Collections.emptyMap();
-        }
+        if (kind != NodeKind.OBJECT_POJO && kind != NodeKind.OBJECT_JOJO) return Collections.emptyMap();
 
         TypeElement type = types.typeElement(owner);
-
         if (type == null) return Collections.emptyMap();
 
         String cacheKey = owner.toString();
-
         Map<String, Property> cached = cache.get(cacheKey);
-
         if (cached != null) return cached;
 
         DeclaredType declaredOwner = (DeclaredType) owner;
@@ -103,22 +88,13 @@ public final class PropertyResolver {
             }
 
             if (member.getKind() == ElementKind.FIELD) {
-                addField(
-                        builders,
-                        type,
-                        declaredOwner,
-                        (VariableElement) member);
+                addField(builders, type, declaredOwner, (VariableElement) member);
             } else if (member.getKind() == ElementKind.METHOD) {
-                addMethod(
-                        builders,
-                        type,
-                        declaredOwner,
-                        (ExecutableElement) member);
+                addMethod(builders, type, declaredOwner, (ExecutableElement) member);
             }
         }
 
-        Map<String, Property> result =
-                new LinkedHashMap<String, Property>(builders.size());
+        Map<String, Property> result = new LinkedHashMap<>(builders.size());
 
         for (Map.Entry<String, Builder> entry : builders.entrySet()) {
             Builder builder = entry.getValue();
