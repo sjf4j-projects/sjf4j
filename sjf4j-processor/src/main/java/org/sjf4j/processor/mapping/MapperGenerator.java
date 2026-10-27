@@ -12,7 +12,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 
-
 /**
  * Generates implementations for {@code @CompiledMapper} interfaces.
  *
@@ -25,12 +24,10 @@ public final class MapperGenerator {
     private final ProcessorContext context;
     private final MapperMethodGenerator methodGenerator;
 
-
     public MapperGenerator(ProcessorContext context) {
         this.context = context;
         this.methodGenerator = new MapperMethodGenerator(context);
     }
-
 
     /**
      * Generates one compiled mapper implementation.
@@ -51,9 +48,7 @@ public final class MapperGenerator {
          */
         List<MappingPlan> plans = analyze(type, generated);
 
-        if (!generated.isValid()) {
-            return;
-        }
+        if (!generated.isValid()) return;
 
         CompiledMetadata metadata = context.metadata(type);
 
@@ -73,9 +68,7 @@ public final class MapperGenerator {
             if (method != null) methods.add(method);
         }
 
-        if (!generated.isValid()) {
-            return;
-        }
+        if (!generated.isValid()) return;
 
         /*
          * --------------------------------------------------------------
@@ -86,9 +79,7 @@ public final class MapperGenerator {
 
         if (!conversionEmitter.prepare(methods, generated)) return;
 
-        if (!generated.isValid()) {
-            return;
-        }
+        if (!generated.isValid()) return;
 
         /*
          * --------------------------------------------------------------
@@ -108,7 +99,6 @@ public final class MapperGenerator {
          */
         generated.write();
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -138,7 +128,6 @@ public final class MapperGenerator {
 
         return plans;
     }
-
 
     private boolean isResolvedSignature(ResolvedMethod method) {
         ExecutableType type = method.type();
