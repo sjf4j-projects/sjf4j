@@ -20,7 +20,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.List;
 import java.util.Map;
 
-
 /**
  * Emits Java source for compiled mapping methods.
  *
@@ -36,13 +35,11 @@ public final class MappingEmitter {
 
     private final ConversionWriter conversions;
 
-
     public MappingEmitter(ProcessorContext context, ConversionWriter conversions) {
         this.context = context;
         this.types = context.types;
         this.conversions = conversions;
     }
-
 
     /**
      * Adds one compiled mapper method to the generated class.
@@ -50,7 +47,6 @@ public final class MappingEmitter {
     public void emit(MappingCompiler.CompiledMethod compiled, GeneratedClass generated) {
         generated.addMethod(out -> emitMethod(out, compiled, generated));
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -78,7 +74,6 @@ public final class MappingEmitter {
         emitObject(out, names, compiled, generated);
         out.endBlock();
     }
-
 
     private void emitRoot(JavaWriter out, NameAllocator names, MappingCompiler.CompiledMethod compiled,
                           GeneratedClass generated) {
@@ -160,7 +155,6 @@ public final class MappingEmitter {
             out.line("return;");
         }
     }
-
 
     private void emitObject(
             JavaWriter out,
@@ -256,7 +250,6 @@ public final class MappingEmitter {
         }
     }
 
-
     private boolean emitAutomaticPresenceGuard(
             JavaWriter out,
             MappingPlan plan,
@@ -330,7 +323,6 @@ public final class MappingEmitter {
 
         return true;
     }
-
 
     private boolean emitDirectMapUpdate(
             JavaWriter out,
@@ -489,7 +481,6 @@ public final class MappingEmitter {
         return true;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Dynamic Sources
@@ -564,7 +555,6 @@ public final class MappingEmitter {
         }
     }
 
-
     private void emitMapDynamicSource(
             JavaWriter out,
             NameAllocator names,
@@ -596,7 +586,6 @@ public final class MappingEmitter {
         out.dedent();
         out.line("}");
     }
-
 
     private void emitJsonObjectDynamicSource(
             JavaWriter out,
@@ -650,7 +639,6 @@ public final class MappingEmitter {
         }
     }
 
-
     private void emitRuntimeDynamicSource(
             JavaWriter out,
             NameAllocator names,
@@ -682,7 +670,6 @@ public final class MappingEmitter {
         out.dedent();
         out.line("}");
     }
-
 
     private void emitDynamicPut(
             JavaWriter out,
@@ -739,7 +726,6 @@ public final class MappingEmitter {
                         ");");
     }
 
-
     /*
      * --------------------------------------------------------------
      * Source Guards
@@ -776,9 +762,7 @@ public final class MappingEmitter {
                     .append(" == null");
         }
 
-        if (condition.length() == 0) {
-            return;
-        }
+        if (condition.length() == 0) return;
 
         if (plan.create()) {
             out.line(
@@ -793,7 +777,6 @@ public final class MappingEmitter {
                             ") return;");
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -929,7 +912,6 @@ public final class MappingEmitter {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Convert
@@ -978,7 +960,6 @@ public final class MappingEmitter {
                         value.kind());
         }
     }
-
 
     private String emitCompute(
             JavaWriter out,
@@ -1140,7 +1121,6 @@ public final class MappingEmitter {
         return result;
     }
 
-
     private String[] emitComputeInputs(
             JavaWriter out,
             NameAllocator names,
@@ -1165,7 +1145,6 @@ public final class MappingEmitter {
         return expressions;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Source Read
@@ -1183,9 +1162,7 @@ public final class MappingEmitter {
                         .getSimpleName()
                         .toString();
 
-        if (read.rootValue()) {
-            return current;
-        }
+        if (read.rootValue()) return current;
 
         TypeMirror currentType =
                 read.rootType();
@@ -1296,14 +1273,12 @@ public final class MappingEmitter {
         return current;
     }
 
-
     private boolean rootKnownNonNull(
             MappingPlan plan) {
 
         return plan.sources()
                 .size() == 1;
     }
-
 
     private void emitIndexedRead(
             JavaWriter out,
@@ -1375,7 +1350,6 @@ public final class MappingEmitter {
 
         out.endBlock();
     }
-
 
     private String readExpression(
             String owner,
@@ -1457,7 +1431,6 @@ public final class MappingEmitter {
                         segment);
     }
 
-
     private String indexedReadExpression(
             String owner,
             String index,
@@ -1501,7 +1474,6 @@ public final class MappingEmitter {
         }
     }
 
-
     /*
      * --------------------------------------------------------------
      * Target Write
@@ -1542,7 +1514,6 @@ public final class MappingEmitter {
                 value,
                 generated);
     }
-
 
     private void emitPropertyAssignment(
             JavaWriter out,
@@ -1630,7 +1601,6 @@ public final class MappingEmitter {
             emitNodeWrite(out, target, destination.name(), null, access, value);
         }
     }
-
 
     private void emitArrayUpdate(JavaWriter out, NameAllocator names, MappingCompiler.Target destination,
                                  String target, String value, String policy, boolean ignoreNull,
@@ -1763,7 +1733,6 @@ public final class MappingEmitter {
         out.endBlock();
     }
 
-
     /*
      * --------------------------------------------------------------
      * Array Update Policy
@@ -1791,7 +1760,6 @@ public final class MappingEmitter {
 
         return;
     }
-
 
         if (targetKind ==
                 NodeKind.ARRAY_ARRAY &&
@@ -1931,7 +1899,6 @@ public final class MappingEmitter {
         out.line("}");
     }
 
-
     private String materialize(
             JavaWriter out,
             NameAllocator names,
@@ -1952,7 +1919,6 @@ public final class MappingEmitter {
 
         return result;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -2150,7 +2116,6 @@ public final class MappingEmitter {
         out.endBlock();
     }
 
-
     /*
      * --------------------------------------------------------------
      * Path Write
@@ -2211,9 +2176,7 @@ public final class MappingEmitter {
                                         .index,
                                 target.mode());
 
-                if (index == null) {
-                    return;
-                }
+                if (index == null) return;
             }
 
             out.line(
@@ -2327,7 +2290,6 @@ public final class MappingEmitter {
         }
     }
 
-
     private String emitIndex(
             JavaWriter out,
             NameAllocator names,
@@ -2405,7 +2367,6 @@ public final class MappingEmitter {
         return index;
     }
 
-
     private String emitFinalIndex(
             JavaWriter out,
             NameAllocator names,
@@ -2446,7 +2407,6 @@ public final class MappingEmitter {
         return index;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Write
@@ -2478,7 +2438,6 @@ public final class MappingEmitter {
         throw new IllegalArgumentException(
                 "name is required");
     }
-
 
     private void emitNodeWrite(
             JavaWriter out,
@@ -2685,7 +2644,6 @@ public final class MappingEmitter {
                         segment);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Target Read
@@ -2705,7 +2663,6 @@ public final class MappingEmitter {
                 null,
                 access);
     }
-
 
     private String readTargetExpression(
             String owner,
@@ -2792,7 +2749,6 @@ public final class MappingEmitter {
                         segment);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Ensure
@@ -2868,7 +2824,6 @@ public final class MappingEmitter {
         }
     }
 
-
     private String option(
             MappingPlan plan,
             String name,
@@ -2877,9 +2832,7 @@ public final class MappingEmitter {
         AnnotationMirror options =
                 plan.options();
 
-        if (options == null) {
-            return defaultValue;
-        }
+        if (options == null) return defaultValue;
 
         Map<? extends ExecutableElement,
                 ? extends AnnotationValue> values =
@@ -2917,7 +2870,6 @@ public final class MappingEmitter {
 
         return defaultValue;
     }
-
 
     private String methodHeader(MappingPlan plan) {
         ExecutableElement method = plan.method();
@@ -2962,7 +2914,6 @@ public final class MappingEmitter {
         return result.toString();
     }
 
-
     private NameAllocator names(ExecutableElement method) {
         NameAllocator names = new NameAllocator();
         for (VariableElement parameter : method.getParameters()) {
@@ -2972,22 +2923,17 @@ public final class MappingEmitter {
         return names;
     }
 
-
     private String localType(TypeMirror type) {
         return types.boxed(types.concrete(type)).toString();
     }
 
-
     private String cast(TypeMirror type, String expression) {
         TypeMirror concrete = types.concrete(type);
 
-        if (types.isObject(concrete)) {
-            return expression;
-        }
+        if (types.isObject(concrete)) return expression;
 
         return "(" + localType(concrete) + ") " + expression;
     }
-
 
     private String sizeExpression(String owner, NodeAccess.Kind kind) {
         switch (kind) {
@@ -3003,7 +2949,6 @@ public final class MappingEmitter {
         }
     }
 
-
     private boolean isMapLike(NodeKind kind) {
         switch (kind) {
             case OBJECT_MAP:
@@ -3016,12 +2961,10 @@ public final class MappingEmitter {
         }
     }
 
-
     private void error(ExecutableElement method, GeneratedClass generated, String message) {
         generated.invalidate();
         context.error(method, generated.originName() + ": " + message);
     }
-
 
     /**
      * Emits conversion of one already-read source value.
