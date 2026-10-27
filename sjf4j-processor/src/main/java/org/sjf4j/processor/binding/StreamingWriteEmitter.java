@@ -95,7 +95,7 @@ final class StreamingWriteEmitter {
             BindingValue value) {
 
         emitNullReturn(out);
-        out.line("generator.startObject();");
+        out.line("generator.writeObjectStart();");
 
         int index = 0;
 
@@ -103,7 +103,7 @@ final class StreamingWriteEmitter {
                 value.properties()) {
 
             if (index > 0) {
-                out.line("generator.separateProperty();");
+                out.line("generator.writeObjectSeparator();");
             }
 
             out.line("generator.writeName(" +
@@ -130,7 +130,7 @@ final class StreamingWriteEmitter {
             out.endBlock();
         }
 
-        out.line("generator.endObject();");
+        out.line("generator.writeObjectEnd();");
     }
 
     private void emitCollection(
@@ -138,7 +138,7 @@ final class StreamingWriteEmitter {
             BindingValue value) {
 
         emitNullReturn(out);
-        out.line("generator.startArray();");
+        out.line("generator.writeArrayStart();");
         out.line("int count = 0;");
 
         out.beginBlock(
@@ -147,7 +147,7 @@ final class StreamingWriteEmitter {
                         " element : value)");
 
         out.beginBlock("if (count++ > 0)");
-        out.line("generator.separateElement();");
+        out.line("generator.writeArraySeparator();");
         out.endBlock();
 
         writeValue(
@@ -157,7 +157,7 @@ final class StreamingWriteEmitter {
                 "element");
 
         out.endBlock();
-        out.line("generator.endArray();");
+        out.line("generator.writeArrayEnd();");
     }
 
     private void emitMap(
@@ -165,14 +165,14 @@ final class StreamingWriteEmitter {
             BindingValue value) {
 
         emitNullReturn(out);
-        out.line("generator.startObject();");
+        out.line("generator.writeObjectStart();");
         out.line("int count = 0;");
 
         out.beginBlock(
                 "for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
 
         out.beginBlock("if (count++ > 0)");
-        out.line("generator.separateProperty();");
+        out.line("generator.writeObjectSeparator();");
         out.endBlock();
 
         out.line(
@@ -187,7 +187,7 @@ final class StreamingWriteEmitter {
                         ") entry.getValue()");
 
         out.endBlock();
-        out.line("generator.endObject();");
+        out.line("generator.writeObjectEnd();");
     }
 
     void writeValue(

@@ -29,7 +29,7 @@ import java.time.ZonedDateTime;
  * separated. For example:</p>
  *
  * <pre>{@code
- * parser.startObject();
+ * parser.readObjectStart();
  *
  * int index;
  * while ((index = parser.nextNameMatch(matcher)) != NameMatcher.OBJECT_END) {
@@ -55,6 +55,8 @@ import java.time.ZonedDateTime;
 public abstract class StreamingParser {
 
     final Backend backend;
+
+    private String currentName;
 
     public StreamingParser(Backend backend) {
         this.backend = backend;
@@ -267,6 +269,7 @@ public abstract class StreamingParser {
      */
     public int nextNameMatch(NameMatcher matcher) throws IOException {
         String name = nextName();
+        currentName = name;
         return name == null ? NameMatcher.OBJECT_END : matcher.fallback(name);
     }
 
@@ -290,6 +293,15 @@ public abstract class StreamingParser {
         return nextNameMatch(matcher);
     }
 
+    /**
+     * Returns the current member name while its value is pending.
+     *
+     * <p>Native matchers may retrieve the name directly from their parser,
+     * avoiding String materialization for matched properties.</p>
+     */
+    public String currentName() throws IOException {
+        return currentName;
+    }
 
     /**
      * Reads and consumes the current logical value as a {@link String}.

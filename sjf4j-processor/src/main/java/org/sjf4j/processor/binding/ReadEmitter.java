@@ -80,7 +80,7 @@ final class ReadEmitter {
         String result =
                 names.newName("result");
 
-        out.line(parser + ".startRead();");
+        out.line(parser + ".start();");
 
         out.line(
                 plan.valueType() +
@@ -91,7 +91,7 @@ final class ReadEmitter {
                                 parser) +
                         ";");
 
-        out.line(parser + ".endRead();");
+        out.line(parser + ".end();");
         out.line("return " + result + ";");
     }
 
@@ -207,7 +207,7 @@ final class ReadEmitter {
         out.line("parser.skipNode();");
         out.line("return null;");
         out.endBlock();
-        out.line("parser.startObject();");
+        out.line("parser.readObjectStart();");
         out.endBlock();
 
         // The usual discriminator-first layout allocates nothing for buffering.
@@ -752,7 +752,7 @@ final class ReadEmitter {
         out.beginBlock("if (parser.nextIfNull())");
         out.line("return null;");
         out.endBlock();
-        out.line("parser.startObject();");
+        out.line("parser.readObjectStart();");
         out.endBlock();
     }
 
@@ -761,7 +761,7 @@ final class ReadEmitter {
         out.beginBlock("if (parser.nextIfNull())");
         out.line("return null;");
         out.endBlock();
-        out.line("parser.startArray();");
+        out.line("parser.readArrayStart();");
         out.endBlock();
     }
 

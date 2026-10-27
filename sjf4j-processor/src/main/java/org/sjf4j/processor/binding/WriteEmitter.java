@@ -266,7 +266,7 @@ final class WriteEmitter {
             String generator,
             NameAllocator names) {
 
-        out.line(generator + ".startWrite();");
+        out.line(generator + ".start();");
 
         if (isJackson()) {
             jackson.emitRoot(out, value, source, generator, names);
@@ -276,7 +276,7 @@ final class WriteEmitter {
             streaming.writeValue(out, value, generator, source);
         }
 
-        out.line(generator + ".endWrite();");
+        out.line(generator + ".end();");
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
