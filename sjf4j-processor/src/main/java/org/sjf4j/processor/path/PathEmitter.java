@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-
 /**
  * Compiles resolved navigator paths into direct Java source.
  *
@@ -43,7 +42,6 @@ final class PathEmitter {
     private final TypeMirror jsonObjectType;
     private final TypeMirror jsonArrayType;
 
-
     PathEmitter(ProcessorContext context) {
         this.context = context;
         this.types = context.types;
@@ -54,7 +52,6 @@ final class PathEmitter {
         this.jsonObjectType = type("org.sjf4j.JsonObject");
         this.jsonArrayType = type("org.sjf4j.JsonArray");
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -67,16 +64,14 @@ final class PathEmitter {
             GeneratedClass generated) {
 
         TypeMirror currentType = plan.root.asType();
-        List<Step> steps = new ArrayList<Step>();
+        List<Step> steps = new ArrayList<>();
         PathSegment[] segments = plan.path.segments();
 
         for (int i = 1; i < segments.length; i++) {
             Step step = resolveStep(currentType, segments[i], plan.pathParameters,
                     plan.method, generated, "@GetByPath");
 
-            if (step == null) {
-                return null;
-            }
+            if (step == null) return null;
 
             if (step.access == null ||
                     !step.access.readable()) {
@@ -117,7 +112,6 @@ final class PathEmitter {
         return out -> emitGet(out, resolved);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Compile Put
@@ -130,7 +124,7 @@ final class PathEmitter {
 
         TypeMirror currentType = plan.root.asType();
         PathSegment[] segments = plan.path.segments();
-        List<Step> steps = new ArrayList<Step>();
+        List<Step> steps = new ArrayList<>();
 
         /*
          * Phase 1:
@@ -141,9 +135,7 @@ final class PathEmitter {
             Step step = resolveStep(currentType, segment, plan.pathParameters,
                     plan.method, generated, plan.annotation);
 
-            if (step == null) {
-                return null;
-            }
+            if (step == null) return null;
 
             if (segment instanceof PathSegment.Append) {
                 if (!plan.ensure) {
@@ -213,9 +205,7 @@ final class PathEmitter {
         Step target = resolveStep(currentType, segments[segments.length - 1],
                 plan.pathParameters, plan.method, generated, plan.annotation);
 
-        if (target == null) {
-            return null;
-        }
+        if (target == null) return null;
 
         if (target.access == null ||
                 !target.access.writable()) {
@@ -312,7 +302,6 @@ final class PathEmitter {
         return out -> emitPut(out, resolved);
     }
 
-
     private boolean validatePutReturn(
             NavigatorMethodGenerator.PutPlan plan,
             Step target,
@@ -321,9 +310,7 @@ final class PathEmitter {
 
         TypeMirror returnType = plan.method.getReturnType();
 
-        if (returnType.getKind() == TypeKind.VOID) {
-            return true;
-        }
+        if (returnType.getKind() == TypeKind.VOID) return true;
 
         /*
          * Append has no old value.
@@ -381,7 +368,6 @@ final class PathEmitter {
         return true;
     }
 
-
     /*
      * --------------------------------------------------------------
      * Ensure
@@ -406,9 +392,7 @@ final class PathEmitter {
                 step.createExpression = resolveContainerCreation(step.resultType, next,
                         plan.pathParameters, plan.method, generated);
 
-                if (step.createExpression == null) {
-                    return false;
-                }
+                if (step.createExpression == null) return false;
 
                 continue;
             }
@@ -421,21 +405,16 @@ final class PathEmitter {
 
             TypeMirror createType = ensureCreationType(step, plan.method, generated);
 
-            if (createType == null) {
-                return false;
-            }
+            if (createType == null) return false;
 
             step.createExpression = resolveContainerCreation(createType, next,
                     plan.pathParameters, plan.method, generated);
 
-            if (step.createExpression == null) {
-                return false;
-            }
+            if (step.createExpression == null) return false;
         }
 
         return true;
     }
-
 
     /**
      * Selects a type that is both valid as the created runtime child and can be
@@ -475,7 +454,6 @@ final class PathEmitter {
 
         return null;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -569,7 +547,6 @@ final class PathEmitter {
         return new Step(ownerType, segment, parameter, access);
     }
 
-
     /*
      * --------------------------------------------------------------
      * Emit
@@ -617,7 +594,6 @@ final class PathEmitter {
         out.endBlock();
     }
 
-
     /*
      * --------------------------------------------------------------
      * Emit Put
@@ -638,7 +614,6 @@ final class PathEmitter {
                     resolved);
         }
     }
-
 
     private void emitPlainPut(
             JavaWriter out,
@@ -689,7 +664,6 @@ final class PathEmitter {
 
         out.endBlock();
     }
-
 
     private void emitEnsurePut(
             JavaWriter out,
@@ -782,7 +756,6 @@ final class PathEmitter {
 
         out.endBlock();
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -912,7 +885,6 @@ final class PathEmitter {
         }
     }
 
-
     private void emitPropertyRead(
             JavaWriter out,
             Property property,
@@ -937,7 +909,6 @@ final class PathEmitter {
                         expression +
                         ";");
     }
-
 
     private void emitIndexedRead(
             JavaWriter out,
@@ -1009,7 +980,6 @@ final class PathEmitter {
                         ";");
     }
 
-
     private void emitObjectResult(
             JavaWriter out,
             TypeMirror type,
@@ -1027,18 +997,14 @@ final class PathEmitter {
                         ";");
     }
 
-
     private String objectExpression(
             TypeMirror type,
             String expression) {
 
-        if (types.isObject(type)) {
-            return expression;
-        }
+        if (types.isObject(type)) return expression;
 
         return "(" + localType(type) + ") " + expression;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1138,7 +1104,6 @@ final class PathEmitter {
         }
     }
 
-
     private void emitPropertyOld(
             JavaWriter out,
             Step step,
@@ -1155,7 +1120,6 @@ final class PathEmitter {
 
         emitPropertyRead(out, step.access.property(), owner, old, step.access.readType());
     }
-
 
     private void emitPropertyWrite(
             JavaWriter out,
@@ -1184,7 +1148,6 @@ final class PathEmitter {
         }
     }
 
-
     private void emitOptionalOld(
             JavaWriter out,
             Step step,
@@ -1206,7 +1169,6 @@ final class PathEmitter {
                         expression +
                         ";");
     }
-
 
     private void emitOptionalObjectOld(
             JavaWriter out,
@@ -1233,7 +1195,6 @@ final class PathEmitter {
                                 expression) +
                         ";");
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1389,7 +1350,6 @@ final class PathEmitter {
         out.endBlock();
     }
 
-
     private void emitAppend(
             JavaWriter out,
             Step step,
@@ -1421,7 +1381,6 @@ final class PathEmitter {
                                 step.access.kind());
         }
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1470,7 +1429,6 @@ final class PathEmitter {
         emitWrite(out, target, owner, value, null, names);
         emitNullReturn(out, resolved.plan.method);
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1546,7 +1504,6 @@ final class PathEmitter {
 
         return null;
     }
-
 
     private String newDeclared(
             TypeMirror type,
@@ -1629,7 +1586,6 @@ final class PathEmitter {
         return "new " + erased + (element.getTypeParameters().isEmpty() ? "()" : "<>()");
     }
 
-
     private boolean isTypeAccessible(
             TypeElement type,
             PackageElement generatedPackage) {
@@ -1663,7 +1619,6 @@ final class PathEmitter {
         return true;
     }
 
-
     private boolean hasAccessibleNoArgConstructor(
             TypeElement type,
             PackageElement generatedPackage) {
@@ -1674,9 +1629,7 @@ final class PathEmitter {
         boolean samePackage = generatedPackage.equals(typePackage);
 
         for (Element member : type.getEnclosedElements()) {
-            if (member.getKind() != ElementKind.CONSTRUCTOR) {
-                continue;
-            }
+            if (member.getKind() != ElementKind.CONSTRUCTOR) continue;
 
             foundConstructor = true;
 
@@ -1708,7 +1661,6 @@ final class PathEmitter {
          */
         return !foundConstructor;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1756,19 +1708,13 @@ final class PathEmitter {
         return index;
     }
 
-
     private static String staticIndex(int index, String size) {
-        if (index >= 0) {
-            return Integer.toString(index);
-        }
+        if (index >= 0) return Integer.toString(index);
 
-        if (index == Integer.MIN_VALUE) {
-            return size + " + " + index;
-        }
+        if (index == Integer.MIN_VALUE) return size + " + " + index;
 
         return size + " - " + (-index);
     }
-
 
     private String nameExpression(
             Step step) {
@@ -1782,7 +1728,6 @@ final class PathEmitter {
         return step.parameter.getSimpleName().toString();
     }
 
-
     private String rawIndexExpression(
             Step step) {
 
@@ -1794,7 +1739,6 @@ final class PathEmitter {
 
         return step.parameter.getSimpleName().toString();
     }
-
 
     private boolean isIndexStep(
             Step step) {
@@ -1809,14 +1753,11 @@ final class PathEmitter {
                 && step.parameter.asType().getKind() == TypeKind.INT;
     }
 
-
     private boolean isObjectSegment(
             PathSegment segment,
             Map<String, VariableElement> parameters) {
 
-        if (segment instanceof PathSegment.Name) {
-            return true;
-        }
+        if (segment instanceof PathSegment.Name) return true;
 
         if (segment instanceof PathSegment.Param) {
             VariableElement parameter = parameters.get(((PathSegment.Param) segment).param);
@@ -1828,7 +1769,6 @@ final class PathEmitter {
 
         return false;
     }
-
 
     private String methodHeader(
             ExecutableElement method) {
@@ -1860,7 +1800,6 @@ final class PathEmitter {
         return out.toString();
     }
 
-
     private NameAllocator names(
             ExecutableElement method) {
 
@@ -1872,7 +1811,6 @@ final class PathEmitter {
 
         return names;
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1897,7 +1835,6 @@ final class PathEmitter {
                         " for path " + plan.path.toExpr()) + ");";
     }
 
-
     private String putMissingThrow(
             NavigatorMethodGenerator.PutPlan plan) {
 
@@ -1906,11 +1843,9 @@ final class PathEmitter {
                         plan.method.getSimpleName() + " for path " + plan.path.toExpr()) + ");";
     }
 
-
     private String nullReturn(ExecutableElement method) {
         return method.getReturnType().getKind() == TypeKind.VOID ? "return;" : "return null;";
     }
-
 
     private void emitOldReturn(
             JavaWriter out,
@@ -1940,7 +1875,6 @@ final class PathEmitter {
                         ";");
     }
 
-
     private void emitNullReturn(
             JavaWriter out,
             ExecutableElement method) {
@@ -1954,15 +1888,10 @@ final class PathEmitter {
         }
     }
 
-
     private TypeMirror oldType(Step step) {
-        if (step.segment instanceof PathSegment.Append) {
-            return null;
-        }
+        if (step.segment instanceof PathSegment.Append) return null;
 
-        if (step.access.readable()) {
-            return step.access.readType();
-        }
+        if (step.access.readable()) return step.access.readType();
 
         /*
          * Write-only property:
@@ -1970,7 +1899,6 @@ final class PathEmitter {
          */
         return types.objectType();
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -1982,28 +1910,19 @@ final class PathEmitter {
         return types.concrete(type).toString();
     }
 
-
     private boolean isString(TypeMirror type) {
         return types.isSameErasure(type, stringType);
     }
 
-
     private String stepHint(Step step) {
-        if (step.segment instanceof PathSegment.Name) {
-            return ((PathSegment.Name) step.segment).name;
-        }
+        if (step.segment instanceof PathSegment.Name) return ((PathSegment.Name) step.segment).name;
 
-        if (step.segment instanceof PathSegment.Param) {
-            return ((PathSegment.Param) step.segment).param;
-        }
+        if (step.segment instanceof PathSegment.Param) return ((PathSegment.Param) step.segment).param;
 
-        if (step.segment instanceof PathSegment.Append) {
-            return "value";
-        }
+        if (step.segment instanceof PathSegment.Append) return "value";
 
         return "item";
     }
-
 
     private void emitReadonlyEnsureFailure(
             JavaWriter out,
@@ -2019,7 +1938,6 @@ final class PathEmitter {
                                         ": access is read-only") +
                         ");");
     }
-
 
     private void accessError(
             ExecutableElement method,
@@ -2111,7 +2029,6 @@ final class PathEmitter {
                         ownerType);
     }
 
-
     private void error(
             Element element,
             GeneratedClass generated,
@@ -2126,11 +2043,9 @@ final class PathEmitter {
                         message);
     }
 
-
     private TypeMirror type(String qualifiedName) {
         return context.elements.getTypeElement(qualifiedName).asType();
     }
-
 
     /*
      * --------------------------------------------------------------
@@ -2143,7 +2058,6 @@ final class PathEmitter {
         ENSURE
     }
 
-
     private static final class Step {
 
         final TypeMirror ownerType;
@@ -2153,7 +2067,6 @@ final class PathEmitter {
 
         TypeMirror resultType;
         String createExpression;
-
 
         Step(
                 TypeMirror ownerType,
@@ -2168,13 +2081,11 @@ final class PathEmitter {
         }
     }
 
-
     private static final class ResolvedGet {
 
         final NavigatorMethodGenerator.GetPlan plan;
         final List<Step> steps;
         final TypeMirror resultType;
-
 
         ResolvedGet(
                 NavigatorMethodGenerator.GetPlan plan,
@@ -2187,7 +2098,6 @@ final class PathEmitter {
         }
     }
 
-
     private static final class ResolvedPut {
 
         final NavigatorMethodGenerator.PutPlan plan;
@@ -2199,7 +2109,6 @@ final class PathEmitter {
 
         final TypeMirror valueType;
         final TypeMirror oldType;
-
 
         ResolvedPut(
                 NavigatorMethodGenerator.PutPlan plan,
