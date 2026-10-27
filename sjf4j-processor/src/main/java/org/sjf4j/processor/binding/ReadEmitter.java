@@ -103,14 +103,10 @@ final class ReadEmitter {
                 emitPojo(out, value);
                 break;
             case JSON_OBJECT:
-                out.line("Object raw = parser.readRaw();");
-                out.line("return raw == null ? null : new org.sjf4j.JsonObject("
-                        + STREAMING_IO + ".castMap(raw));");
+                out.line("return " + STREAMING_IO + ".readJsonObject(parser);");
                 break;
             case JSON_ARRAY:
-                out.line("Object raw = parser.readRaw();");
-                out.line("return raw == null ? null : new org.sjf4j.JsonArray("
-                        + STREAMING_IO + ".castList(raw));");
+                out.line("return " + STREAMING_IO + ".readJsonArray(parser);");
                 break;
 
             case ARRAY:

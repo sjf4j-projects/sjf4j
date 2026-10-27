@@ -2,6 +2,9 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.InternalAccess;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.simple.SimpleJsonParser;
 import org.sjf4j.binding.simple.SimpleJsonGenerator;
@@ -15,6 +18,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,8 +27,61 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StreamingIOReadTest {
+    public static class ContainerHolder {
+        public JsonObject object;
+        public JsonArray array;
+    }
+
+    @Test
+    void adoptsRawStorageForPlainJsonNodesAndPreservesNestedRawNodes() throws Exception {
+        try (SimpleJsonParser parser = new SimpleJsonParser("{\"items\":[1,{\"ok\":true}]}")) {
+            JsonObject object = (JsonObject) StreamingIO.readNode(parser, JsonObject.class, RuntimeContext.EMPTY);
+            assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(object));
+            assertInstanceOf(ArrayList.class, object.getNode("items"));
+            object.put("added", 2);
+            assertEquals(2, InternalAccess.dynamicMembers(object).get("added"));
+        }
+
+        try (SimpleJsonParser parser = new SimpleJsonParser("[1,{\"items\":[2]}]")) {
+            JsonArray array = (JsonArray) StreamingIO.readNode(parser, JsonArray.class, RuntimeContext.EMPTY);
+            assertInstanceOf(ArrayList.class, InternalAccess.dynamicElements(array));
+            assertInstanceOf(LinkedHashMap.class, array.getNode(1));
+            array.add(3);
+            assertEquals(3, InternalAccess.dynamicElements(array).size());
+        }
+    }
+
+    @Test
+    void readsJsonContainersInPojoPropertiesWithoutExtraWrapping() throws Exception {
+        try (SimpleJsonParser parser = new SimpleJsonParser("{\"object\":{\"key\":1},\"array\":[1,2]}")) {
+            ContainerHolder holder = (ContainerHolder) StreamingIO.readNode(parser, ContainerHolder.class, RuntimeContext.EMPTY);
+            assertEquals(1, holder.object.getInt("key"));
+            assertEquals(2, holder.array.size());
+            assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(holder.object));
+            assertInstanceOf(ArrayList.class, InternalAccess.dynamicElements(holder.array));
+        }
+    }
+
+    @Test
+    void handlesNullAndWrongShapeForPlainJsonContainers() throws Exception {
+        try (SimpleJsonParser parser = new SimpleJsonParser("null")) {
+            assertNull(StreamingIO.readJsonObject(parser));
+        }
+        try (SimpleJsonParser parser = new SimpleJsonParser("null")) {
+            assertNull(StreamingIO.readJsonArray(parser));
+        }
+        try (SimpleJsonParser parser = new SimpleJsonParser("[]")) {
+            assertThrows(BindingException.class, () -> StreamingIO.readJsonObject(parser));
+        }
+        try (SimpleJsonParser parser = new SimpleJsonParser("{}")) {
+            assertThrows(BindingException.class, () -> StreamingIO.readJsonArray(parser));
+        }
+    }
+
     @Test
     void readsUntypedNestedObjectAndArray() throws Exception {
         {

@@ -533,10 +533,10 @@ public final class Nodes {
         }
 
         if (rawClazz == JsonObject.class) {
-            return (T) new JsonObject(((JsonObject) node).toMap());
+            return (T) ((JsonObject) node).copy();
         }
         if (rawClazz == JsonArray.class) {
-            return (T) new JsonArray(((JsonArray) node).toList());
+            return (T) ((JsonArray) node).copy();
         }
         if (node instanceof JsonArray) {
             PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;

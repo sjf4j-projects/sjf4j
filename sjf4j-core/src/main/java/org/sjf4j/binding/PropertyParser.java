@@ -159,9 +159,7 @@ public interface PropertyParser {
 
         if (fieldType == JsonObject.class) {
             return (parser, owner, ownerType, ownerBoxed, context) -> {
-                Object value = null;
-                Object raw = parser.readRaw();
-                if (raw != null) value = new JsonObject(StreamingIO.castMap(raw));
+                Object value = StreamingIO.readJsonObject(parser);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -179,9 +177,7 @@ public interface PropertyParser {
 
         if (fieldType == JsonArray.class) {
             return (parser, owner, ownerType, ownerBoxed, context) -> {
-                Object value = null;
-                Object raw = parser.readRaw();
-                if (raw != null) value = new JsonArray(StreamingIO.castList(raw));
+                Object value = StreamingIO.readJsonArray(parser);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }

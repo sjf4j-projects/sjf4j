@@ -158,9 +158,7 @@ public final class StreamingIO {
             }
 
             if (boxed == JsonObject.class) {
-                Object raw = parser.readRaw();
-                if (raw == null) return null;
-                return new JsonObject(castMap(raw));
+                return readJsonObject(parser);
             }
 
             /*
@@ -172,9 +170,7 @@ public final class StreamingIO {
             }
 
             if (boxed == JsonArray.class) {
-                Object raw = parser.readRaw();
-                if (raw == null) return null;
-                return new JsonArray(castList(raw));
+                return readJsonArray(parser);
             }
 
             if (Set.class.isAssignableFrom(boxed)) {
@@ -974,6 +970,42 @@ public final class StreamingIO {
         return array;
     }
 
+
+    /**
+     * Reads a plain JsonObject while adopting a newly parsed LinkedHashMap.
+     * Other Map implementations use the public defensive-copy constructor.
+     * Nested raw values retain their original representations.
+     */
+    @SuppressWarnings("unchecked")
+    public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
+        Object raw = parser.readRaw();
+        if (raw == null) return null;
+        if (raw.getClass() == LinkedHashMap.class) {
+            JsonObject result = new JsonObject();
+            InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
+            return result;
+        }
+        if (raw instanceof Map) return new JsonObject((Map<String, Object>) raw);
+        throw new BindingException("cannot read non-object value as JsonObject");
+    }
+
+    /**
+     * Reads a plain JsonArray while adopting a newly parsed ArrayList.
+     * Other List implementations use the public defensive-copy constructor.
+     * Nested raw values retain their original representations.
+     */
+    @SuppressWarnings("unchecked")
+    public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
+        Object raw = parser.readRaw();
+        if (raw == null) return null;
+        if (raw.getClass() == ArrayList.class) {
+            JsonArray result = new JsonArray();
+            InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
+            return result;
+        }
+        if (raw instanceof List) return new JsonArray((List<Object>) raw);
+        throw new BindingException("cannot read non-array value as JsonArray");
+    }
 
     /**
      * --------------------------------------------------------------

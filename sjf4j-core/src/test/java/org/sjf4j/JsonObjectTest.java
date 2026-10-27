@@ -65,6 +65,27 @@ class JsonObjectTest {
     }
 
     @Test
+    void mapLikeViewsModifyDynamicMembers() {
+        JsonObject object = JsonObject.of("keep", 1, "remove", 2);
+        object.entrySet().stream().filter(e -> e.getKey().equals("keep"))
+                .findFirst().orElseThrow().setValue(3);
+        assertEquals(3, object.getInt("keep"));
+        assertTrue(object.keySet().remove("remove"));
+        assertFalse(object.containsKey("remove"));
+        assertTrue(object.entrySet().remove(Map.entry("keep", 3)));
+        assertTrue(object.isEmpty());
+    }
+
+    @Test
+    void mapConstructorDoesNotValidateNullKeys() {
+        Map<String, Object> source = new LinkedHashMap<>();
+        source.put(null, "value");
+        JsonObject object = new JsonObject(source);
+        assertTrue(object.toMap().containsKey(null));
+        assertEquals("value", object.toMap().get(null));
+    }
+
+    @Test
     void nodeGettersCopyRawContainersButReuseExistingNodes() {
         Map<String, Object> rawObject = new LinkedHashMap<>();
         rawObject.put("value", 1);
