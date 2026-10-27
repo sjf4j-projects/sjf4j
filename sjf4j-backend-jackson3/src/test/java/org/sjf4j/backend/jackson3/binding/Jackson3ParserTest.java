@@ -125,7 +125,7 @@ class Jackson3ParserTest {
     @Test
     void matchesCanonicalNamesNativelyAndAliasesThroughFallback() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(User.class);
-        NameMatcher matcher = new Jackson3NameMatcher(pojoInfo.writableProperties);
+        NameMatcher matcher = new Jackson3NameMatcher(pojoInfo.settableProperties);
         int id = matcher.fallback("id");
         int name = matcher.fallback("name");
 

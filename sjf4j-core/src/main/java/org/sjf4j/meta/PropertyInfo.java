@@ -46,8 +46,8 @@ public class PropertyInfo {
     public final String valueFormat;
     public final ValueInfo valueInfo;
 
-    public final boolean readable;
-    public final boolean writable;
+    public final boolean gettable;
+    public final boolean settable;
 
     public final PropertyParser parser;
 
@@ -96,8 +96,8 @@ public class PropertyInfo {
         this.oneOfInfo = oneOfInfo;
         this.valueFormat = valueFormat;
         this.valueInfo = valueInfo;
-        this.readable = getterHandle != null || getterLambda != null;
-        this.writable = setterHandle != null || setterLambda != null;
+        this.gettable = getterHandle != null || getterLambda != null;
+        this.settable = setterHandle != null || setterLambda != null;
 
         this.parser = parser;
     }

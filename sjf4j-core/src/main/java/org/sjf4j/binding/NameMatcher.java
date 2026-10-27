@@ -20,7 +20,7 @@ public class NameMatcher {
     public static final int OBJECT_END = -2;
 
     // Null for compiled binding.
-    protected final PropertyInfo[] writableProperties;
+    protected final PropertyInfo[] settableProperties;
 
     private final String[] names;
     private final Map<String, Integer> fallback;
@@ -28,8 +28,8 @@ public class NameMatcher {
     /**
      * Runtime binding from property metadata.
      */
-    public NameMatcher(PropertyInfo[] writableProperties) {
-        this(writableProperties, null, null);
+    public NameMatcher(PropertyInfo[] settableProperties) {
+        this(settableProperties, null, null);
     }
 
     /**
@@ -47,13 +47,13 @@ public class NameMatcher {
         this(null, names, aliases);
     }
 
-    protected NameMatcher(PropertyInfo[] writableProperties, String[] compiledNames) {
-        this(writableProperties, compiledNames, null);
+    protected NameMatcher(PropertyInfo[] settableProperties, String[] compiledNames) {
+        this(settableProperties, compiledNames, null);
     }
 
-    protected NameMatcher(PropertyInfo[] writableProperties, String[] compiledNames,
+    protected NameMatcher(PropertyInfo[] settableProperties, String[] compiledNames,
                           String[][] compiledAliases) {
-        if ((writableProperties == null) == (compiledNames == null)) {
+        if ((settableProperties == null) == (compiledNames == null)) {
             throw new IllegalArgumentException(
                     "Exactly one of writableProperties or compiledNames must be provided");
         }
@@ -61,12 +61,12 @@ public class NameMatcher {
                 (compiledNames == null || compiledAliases.length != compiledNames.length)) {
             throw new IllegalArgumentException("Compiled aliases must align with names");
         }
-        this.writableProperties = writableProperties;
+        this.settableProperties = settableProperties;
 
-        if (writableProperties != null) {
-            names = new String[writableProperties.length];
+        if (settableProperties != null) {
+            names = new String[settableProperties.length];
             for (int i = 0; i < names.length; i++) {
-                names[i] = Objects.requireNonNull(writableProperties[i].name, "property name");
+                names[i] = Objects.requireNonNull(settableProperties[i].name, "property name");
             }
         } else {
             names = compiledNames.clone();
@@ -78,8 +78,8 @@ public class NameMatcher {
         Map<String, Integer> map = new HashMap<>();
         for (int i = 0; i < names.length; i++) {
             map.put(names[i], i);
-            String[] aliases = writableProperties != null
-                    ? writableProperties[i].alias
+            String[] aliases = settableProperties != null
+                    ? settableProperties[i].alias
                     : compiledAliases == null ? null : compiledAliases[i];
             if (aliases != null) {
                 for (String alias : aliases) {
@@ -104,10 +104,10 @@ public class NameMatcher {
      * Available only for runtime-created matchers.
      */
     public final PropertyInfo property(int index) {
-        if (writableProperties == null) {
+        if (settableProperties == null) {
             throw new IllegalStateException("Compiled NameMatcher has no PropertyInfo");
         }
-        return writableProperties[index];
+        return settableProperties[index];
     }
 
     /**

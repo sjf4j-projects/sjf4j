@@ -7,8 +7,6 @@ import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.meta.PojoInfo;
-import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.util.Types;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -209,8 +207,8 @@ class PropertyDiscoveryTest {
     void defaultIsBeanFieldAndFindsGetterSetter() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(DefaultBeanFieldPojo.class);
         assertNotNull(pi.propertyLookup.get("name"));
-        assertTrue(pi.propertyLookup.get("name").readable);
-        assertTrue(pi.propertyLookup.get("name").writable);
+        assertTrue(pi.propertyLookup.get("name").gettable);
+        assertTrue(pi.propertyLookup.get("name").settable);
     }
 
     @Test
@@ -238,13 +236,13 @@ class PropertyDiscoveryTest {
     void nodeIgnoreOnFieldAndMethodWorks() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(IgnorePojo.class);
         assertFalse(pi.propertyLookup.containsKey("ignoredField"));
-        assertFalse(pi.propertyLookup.get("name").readable);
+        assertFalse(pi.propertyLookup.get("name").gettable);
     }
 
     @Test
     void nodeIgnoreTypeOnFieldExcludesProperty() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(TypeIgnoreContainer.class);
-        assertEquals(1, pi.readableProperties.length);
+        assertEquals(1, pi.gettableProperties.length);
         assertTrue(pi.propertyLookup.containsKey("name"));
         assertNull(pi.propertyLookup.get("address"));
     }
@@ -280,8 +278,8 @@ class PropertyDiscoveryTest {
         assertTrue(beanField.propertyLookup.containsKey("publicField"));
 
         PojoInfo fieldBean = TypeRegistry.requireRegisteredPojoInfo(FieldBeanPojo.class);
-        assertTrue(fieldBean.propertyLookup.get("name").readable);
-        assertTrue(fieldBean.propertyLookup.get("name").writable);
+        assertTrue(fieldBean.propertyLookup.get("name").gettable);
+        assertTrue(fieldBean.propertyLookup.get("name").settable);
     }
 
     @Test

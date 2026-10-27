@@ -155,7 +155,7 @@ class Jackson2ParserTest {
     @Test
     void usesNativeExpectedNameAndValueMethods() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(User.class);
-        NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.writableProperties);
+        NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.settableProperties);
         int id = matcher.fallback("id");
         int name = matcher.fallback("name");
         CountingParser nativeParser = new CountingParser(
@@ -185,7 +185,7 @@ class Jackson2ParserTest {
     @Test
     void matchesUnknownNamesAndSkipsTheirPendingValues() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(User.class);
-        NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.writableProperties);
+        NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.settableProperties);
 
         {
             Jackson2Parser parser = parser("{\"unknown\":[1,{\"nested\":true}],\"id\":7}");
@@ -207,7 +207,7 @@ class Jackson2ParserTest {
     @Test
     void fallsBackAfterAnExpectedNameMismatchWithoutAdvancingTheValue() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(User.class);
-        NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.writableProperties);
+        NameMatcher matcher = new Jackson2NameMatcher(pojoInfo.settableProperties);
         int id = matcher.fallback("id");
         int name = matcher.fallback("name");
 

@@ -103,7 +103,7 @@ public abstract class StreamingGenerator {
         BackendCache cache = pojoInfo.backendCache(backend);
         CompiledName[] compiledNames = cache.compiledNames;
         if (compiledNames == null) {
-            PropertyInfo[] properties = pojoInfo.readableProperties;
+            PropertyInfo[] properties = pojoInfo.gettableProperties;
             compiledNames = new CompiledName[properties.length];
             for (int i = 0; i < properties.length; i++) {
                 compiledNames[i] = createCompiledName(properties[i].name);

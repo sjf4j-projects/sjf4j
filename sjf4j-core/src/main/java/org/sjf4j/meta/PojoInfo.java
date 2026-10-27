@@ -34,10 +34,10 @@ public class PojoInfo {
 
     public final Map<String, PropertyInfo> propertyLookup;
 
-    public final PropertyInfo[] writableProperties;
+    public final PropertyInfo[] settableProperties;
     public final PropertyParser[] propertyParsers;
 
-    public final PropertyInfo[] readableProperties;
+    public final PropertyInfo[] gettableProperties;
     public final PropertyGenerator[] propertyGenerators;
 
     /** Name matching for argument-based creators and parent-scope OneOf. */
@@ -54,9 +54,9 @@ public class PojoInfo {
                     boolean readDynamic,
                     boolean writeDynamic,
                     Map<String, PropertyInfo> propertyLookup,
-                    PropertyInfo[] writableProperties,
+                    PropertyInfo[] settableProperties,
                     PropertyParser[] propertyParsers,
-                    PropertyInfo[] readableProperties,
+                    PropertyInfo[] gettableProperties,
                     PropertyGenerator[] propertyGenerators) {
         this.clazz = clazz;
         this.creatorInfo = creatorInfo;
@@ -66,7 +66,7 @@ public class PojoInfo {
         this.isJajo = JsonArray.class.isAssignableFrom(clazz);
 
         boolean hasParentScopeOneOf = false;
-        for (PropertyInfo propertyInfo : readableProperties) {
+        for (PropertyInfo propertyInfo : gettableProperties) {
             if (propertyInfo.oneOfInfo != null && propertyInfo.oneOfInfo.scope == OneOf.Scope.PARENT) {
                 hasParentScopeOneOf = true;
                 break;
@@ -74,8 +74,8 @@ public class PojoInfo {
         }
         this.hasParentScopeOneOf = hasParentScopeOneOf;
         this.propertyLookup = propertyLookup;
-        this.readableProperties = readableProperties;
-        this.writableProperties = writableProperties;
+        this.gettableProperties = gettableProperties;
+        this.settableProperties = settableProperties;
         this.propertyParsers = propertyParsers;
         this.propertyGenerators = propertyGenerators;
 
@@ -114,8 +114,8 @@ public class PojoInfo {
      * Returns a read-only key view of declared readable property names.
      * Alias names are excluded.
      */
-    public Set<String> readablePropertyNameSet() {
-        if (readableProperties.length == 0) {
+    public Set<String> gettablePropertyNameSet() {
+        if (gettableProperties.length == 0) {
             return Collections.emptySet();
         }
 
@@ -127,7 +127,7 @@ public class PojoInfo {
 
                     @Override
                     public boolean hasNext() {
-                        return index < readableProperties.length;
+                        return index < gettableProperties.length;
                     }
 
                     @Override
@@ -135,14 +135,14 @@ public class PojoInfo {
                         if (!hasNext()) {
                             throw new NoSuchElementException();
                         }
-                        return readableProperties[index++].name;
+                        return gettableProperties[index++].name;
                     }
                 };
             }
 
             @Override
             public int size() {
-                return readableProperties.length;
+                return gettableProperties.length;
             }
 
             @Override
@@ -152,7 +152,7 @@ public class PojoInfo {
                 }
 
                 PropertyInfo property = getPropertyNoAlias((String) key);
-                return property != null && property.readable;
+                return property != null && property.gettable;
             }
         };
     }

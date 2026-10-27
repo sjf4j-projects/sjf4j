@@ -28,7 +28,6 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -65,7 +64,7 @@ public class NodeWalker {
             }
         }
         if (ti.pojoInfo != null) {
-            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
+            for (PropertyInfo propertyInfo : ti.pojoInfo.gettableProperties) {
                 Object value = propertyInfo.invokeGetter(node);
                 consumer.accept(propertyInfo.name, value);
             }
@@ -101,7 +100,7 @@ public class NodeWalker {
             }
         }
         if (ti.pojoInfo != null) {
-            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
+            for (PropertyInfo propertyInfo : ti.pojoInfo.gettableProperties) {
                 Object value = propertyInfo.invokeGetter(node);
                 if (predicate.test(propertyInfo.name, value)) {
                     return true;
@@ -148,8 +147,8 @@ public class NodeWalker {
         }
         if (ti.pojoInfo != null) {
             boolean changed = false;
-            for (PropertyInfo propertyInfo : ti.pojoInfo.readableProperties) {
-                if (!propertyInfo.writable) continue;
+            for (PropertyInfo propertyInfo : ti.pojoInfo.gettableProperties) {
+                if (!propertyInfo.settable) continue;
                 Object oldValue = propertyInfo.invokeGetter(node);
                 Object newValue = replacer.apply(propertyInfo.name, oldValue);
                 if (oldValue != newValue) {
@@ -300,7 +299,7 @@ public class NodeWalker {
             }
         }
         if (ti.pojoInfo != null) {
-            return ti.pojoInfo.readableProperties.length;
+            return ti.pojoInfo.gettableProperties.length;
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
     }
@@ -356,7 +355,7 @@ public class NodeWalker {
         }
         if (ti.pojoInfo != null) {
             PojoInfo pi = ti.pojoInfo;
-            if (pi.readableProperties.length == 0) return Collections.emptySet();
+            if (pi.gettableProperties.length == 0) return Collections.emptySet();
             return new AbstractSet<String>() {
                 @Override
                 public Iterator<String> iterator() {
@@ -365,20 +364,20 @@ public class NodeWalker {
 
                         @Override
                         public boolean hasNext() {
-                            return index < pi.readableProperties.length;
+                            return index < pi.gettableProperties.length;
                         }
 
                         @Override
                         public String next() {
                             if (!hasNext()) throw new NoSuchElementException();
-                            return pi.readableProperties[index++].name;
+                            return pi.gettableProperties[index++].name;
                         }
                     };
                 }
 
                 @Override
                 public int size() {
-                    return pi.readableProperties.length;
+                    return pi.gettableProperties.length;
                 }
 
                 @Override
@@ -388,7 +387,7 @@ public class NodeWalker {
                     }
 
                     PropertyInfo property = pi.getPropertyNoAlias((String) key);
-                    return property != null && property.readable;
+                    return property != null && property.gettable;
                 }
             };
 
@@ -421,7 +420,7 @@ public class NodeWalker {
         }
         if (ti.pojoInfo != null) {
             PojoInfo pi = ti.pojoInfo;
-            if (pi.readableProperties.length == 0) {
+            if (pi.gettableProperties.length == 0) {
                 return Collections.emptySet();
             }
             return new AbstractSet<Map.Entry<String, Object>>() {
@@ -431,14 +430,14 @@ public class NodeWalker {
                         private int index;
                         @Override
                         public boolean hasNext() {
-                            return index < pi.readableProperties.length;
+                            return index < pi.gettableProperties.length;
                         }
                         @Override
                         public Map.Entry<String, Object> next() {
                             if (!hasNext()) {
                                 throw new NoSuchElementException();
                             }
-                            PropertyInfo propertyInfo = pi.readableProperties[index++];
+                            PropertyInfo propertyInfo = pi.gettableProperties[index++];
                             return new AbstractMap.SimpleImmutableEntry<>(propertyInfo.name, propertyInfo.invokeGetter(node));
                         }
                     };
@@ -446,7 +445,7 @@ public class NodeWalker {
 
                 @Override
                 public int size() {
-                    return pi.readableProperties.length;
+                    return pi.gettableProperties.length;
                 }
             };
         }
@@ -513,7 +512,7 @@ public class NodeWalker {
         }
         if (ti.pojoInfo != null) {
             PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
-            return propertyInfo != null && propertyInfo.readable;
+            return propertyInfo != null && propertyInfo.gettable;
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
     }
@@ -553,7 +552,7 @@ public class NodeWalker {
         }
         if (ti.pojoInfo != null) {
             PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
-            return propertyInfo != null && propertyInfo.readable ? propertyInfo.invokeGetter(node) : null;
+            return propertyInfo != null && propertyInfo.gettable ? propertyInfo.invokeGetter(node) : null;
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
     }
@@ -686,7 +685,7 @@ public class NodeWalker {
         if (ti.pojoInfo != null) {
             PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
             if (propertyInfo != null) {
-                if (!propertyInfo.readable) return;
+                if (!propertyInfo.gettable) return;
                 out.node = propertyInfo.invokeGetter(node);
                 out.present = true;
                 return;
@@ -741,8 +740,8 @@ public class NodeWalker {
             PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
             if (propertyInfo != null) {
                 out.type = propertyInfo.type;
-                out.puttable = propertyInfo.writable;
-                if (propertyInfo.readable) {
+                out.puttable = propertyInfo.settable;
+                if (propertyInfo.gettable) {
                     out.node = propertyInfo.invokeGetter(node);
                 }
                 return;
@@ -973,7 +972,7 @@ public class NodeWalker {
         if (ti.pojoInfo != null) {
             PropertyInfo fi = ti.pojoInfo.getPropertyNoAlias(key);
             if (fi != null) {
-                if (fi.writable) {
+                if (fi.settable) {
                     fi.invokeSetter(node, value);
                     return null;
                 }
@@ -1048,7 +1047,7 @@ public class NodeWalker {
         if (ti.pojoInfo != null) {
             PropertyInfo propertyInfo = ti.pojoInfo.getPropertyNoAlias(key);
             if (propertyInfo != null) {
-                T old = propertyInfo.readable ? (T) propertyInfo.invokeGetter(node) : null;
+                T old = propertyInfo.gettable ? (T) propertyInfo.invokeGetter(node) : null;
                 if (old != null) {
                     return old;
                 }

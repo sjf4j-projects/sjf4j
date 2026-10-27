@@ -605,7 +605,7 @@ public final class StreamingIO {
             /*
              * Ordinary property.
              */
-            if (!property.writable) {
+            if (!property.settable) {
                 parser.skipNode();
                 continue;
             }
@@ -636,7 +636,7 @@ public final class StreamingIO {
         if (parentValue == UNSET) {
             PropertyInfo parentProperty = pojoInfo.propertyLookup.get(parentKey);
 
-            if (parentProperty != null && parentProperty.readable) {
+            if (parentProperty != null && parentProperty.gettable) {
                 parentValue = parentProperty.invokeGetter(pojo);
             } else if (pojoInfo.isJojo) {
                 parentValue = ((JsonObject) pojo).getNode(parentKey);
@@ -1001,7 +1001,7 @@ public final class StreamingIO {
         BackendCache cache = pojoInfo.backendCache(parser.backend);
         NameMatcher matcher = cache.nameMatcher;
         if (matcher == null) {
-            matcher = parser.createNameMatcher(pojoInfo.writableProperties);
+            matcher = parser.createNameMatcher(pojoInfo.settableProperties);
             cache.nameMatcher = matcher;
         }
         return matcher;

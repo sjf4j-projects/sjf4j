@@ -448,7 +448,7 @@ public class AsmPathCompiler implements PathCompiler {
             }
 
             PropertyInfo property = pi.getPropertyNoAlias(name);
-            if (property != null && property.readable) {
+            if (property != null && property.gettable) {
                 Type vvt = property.type;
                 Class<?> vvc = Types.rawClazz(vvt);
                 if (property.publicField != null) {

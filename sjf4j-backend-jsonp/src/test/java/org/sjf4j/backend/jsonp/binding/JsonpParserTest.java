@@ -54,7 +54,7 @@ class JsonpParserTest {
     @Test
     void matchesNamesAndAliasesUsingTheCoreFallback() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(User.class);
-        NameMatcher matcher = new NameMatcher(pojoInfo.writableProperties);
+        NameMatcher matcher = new NameMatcher(pojoInfo.settableProperties);
         int id = matcher.fallback("id");
         int name = matcher.fallback("name");
 

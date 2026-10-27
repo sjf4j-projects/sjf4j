@@ -52,7 +52,7 @@ class SnakeParserTest {
     @Test
     void matchesNamesThroughTheCoreFallbackAndSkipsStructures() throws Exception {
         PojoInfo pojoInfo = TypeRegistry.requireRegisteredPojoInfo(User.class);
-        NameMatcher matcher = new NameMatcher(pojoInfo.writableProperties);
+        NameMatcher matcher = new NameMatcher(pojoInfo.settableProperties);
 
         {
             SnakeParser parser = parser("unknown: [1, {nested: true}]\nlegacyName: Ada\nid: 7\n");

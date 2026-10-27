@@ -320,7 +320,7 @@ public final class OneOfIO {
         }
 
         PropertyInfo fi = pi.propertyLookup.get(key);
-        if (fi != null && fi.writable) {
+        if (fi != null && fi.settable) {
             Object value;
             if (fi.oneOfInfo != null) {
                 value = _convertRawOneOf(rawValue, fi.oneOfInfo, context);
