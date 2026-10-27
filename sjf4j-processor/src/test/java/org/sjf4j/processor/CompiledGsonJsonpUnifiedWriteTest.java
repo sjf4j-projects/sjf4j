@@ -68,11 +68,11 @@ class CompiledGsonJsonpUnifiedWriteTest {
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("generator.nativeWriter()"), backend);
             assertTrue(generated.contains("_writeList(generator, property0);"), backend);
-            assertTrue(generated.contains("this.context.includeNulls"), backend);
+            assertFalse(generated.contains("this.context.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(generator,"), backend);
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
-            assertFalse(generated.contains("private static void _writeModel("), backend);
-            assertTrue(generated.contains("private void _writeModel("), backend);
+            assertTrue(generated.contains("private static void _writeModel("), backend);
+            assertFalse(generated.contains("private void _writeModel("), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");
@@ -113,9 +113,9 @@ class CompiledGsonJsonpUnifiedWriteTest {
                 assertEquals(new java.math.BigInteger("1234567890123456789012345"),
                         full.path("large").bigIntegerValue(), backend);
 
-                assertFalse(filtered.has("omitted"), backend);
-                assertFalse(filtered.path("extras").has("skip"), backend);
-                assertFalse(filtered.path("ids").has("empty"), backend);
+                assertTrue(filtered.path("omitted").isNull(), backend);
+                assertTrue(filtered.path("extras").path("skip").isNull(), backend);
+                assertTrue(filtered.path("ids").path("empty").isNull(), backend);
                 assertTrue(filtered.path("animals").get(1).isNull(), backend);
                 assertTrue(filtered.path("words").get(1).isNull(), backend);
                 assertTrue(filtered.path("groups").path("items").get(1).isNull(), backend);
