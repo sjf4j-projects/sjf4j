@@ -65,6 +65,47 @@ public final class CompiledInstances {
         }
     }
 
+    /**
+     * Creates a CompiledBinder using an already configured concrete SJF4J Binder.
+     * Backend-specific parser and generator configuration belongs to this Binder;
+     * the generated class does not alter the caller's native configuration.
+     *
+     * <p>The generic argument B is inferred, while matching the compiled
+     * interface's exact backend is verified during instance creation.
+     */
+    public static <T, B> T create(Class<T> type, B backend) {
+        Asserts.notNull(type, "type");
+        Asserts.notNull(backend, "backend");
+        if (!(backend instanceof org.sjf4j.binding.Binder)) {
+            throw new IllegalArgumentException("CompiledBinder backend must be an SJF4J Binder: "
+                    + backend.getClass().getName());
+        }
+        Class<?> implClass = _implementationClass(type);
+        java.lang.reflect.Constructor<?> match = null;
+        for (java.lang.reflect.Constructor<?> constructor : implClass.getConstructors()) {
+            Class<?>[] parameters = constructor.getParameterTypes();
+            if (parameters.length != 1 || parameters[0] == RuntimeContext.class
+                    || !parameters[0].isInstance(backend)) continue;
+            if (match != null) {
+                throw new IllegalArgumentException("Ambiguous backend constructors for "
+                        + implClass.getName() + " accepting " + backend.getClass().getName());
+            }
+            match = constructor;
+        }
+        if (match == null) {
+            throw new IllegalArgumentException("No compatible backend constructor for "
+                    + implClass.getName() + " accepting " + backend.getClass().getName());
+        }
+        try {
+            return type.cast(match.newInstance(backend));
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new NodeException("Cannot instantiate " + implClass.getName(), e);
+        } catch (InvocationTargetException e) {
+            throw new NodeException("Generated binder constructor failed for "
+                    + implClass.getName(), e.getCause());
+        }
+    }
+
     /** Compatibility alias for {@link #global(Class)}. */
     @Deprecated
     public static <T> T of(Class<T> type) {
