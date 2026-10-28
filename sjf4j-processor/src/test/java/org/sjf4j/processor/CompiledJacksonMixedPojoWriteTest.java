@@ -55,9 +55,9 @@ class CompiledJacksonMixedPojoWriteTest {
                 // or its ordinary scalar fields through the writer facade.
                 assertTrue(generated.contains("g = generator.nativeWriter();"), backend);
                 assertTrue(generated.contains("g.writeStartObject();"), backend);
-                assertTrue(generated.contains("g.writeNumber(item);"), backend);
+                assertTrue(generated.contains("g.writeNumber(property"), backend);
                 assertTrue(generated.contains("g.writeString(_enum_")
-                        && generated.contains("[item.ordinal()]);"), backend);
+                        && generated.contains(".ordinal()]);"), backend);
                 assertTrue(generated.contains("_writeCat"), backend);
                 assertTrue(generated.contains(".serializedName);"), backend);
             }

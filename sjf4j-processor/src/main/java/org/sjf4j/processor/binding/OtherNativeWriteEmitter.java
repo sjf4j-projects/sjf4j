@@ -33,7 +33,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String generator, NameAllocator names) {
         if (value.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line(generator + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.endBlock();
             return;
         }
 
@@ -70,10 +75,6 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             case LIST:
             case SET:
             case MAP:
-                out.beginBlock("if (value == null)");
-                writeNull(out);
-                out.line("return;");
-                out.endBlock();
                 switch (value.kind()) {
                     case POJO:
                     case JOJO:
@@ -148,12 +149,57 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         emitValue(out, child, expression, "g", null);
     }
 
+    @Override
+    public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+        if (value.helperRequired()) {
+            out.line(value.helperName() + "(generator, " + expression + ");");
+            return;
+        }
+        String method = gson() ? "value" : "write";
+        switch (value.kind()) {
+            case ENUM:
+                out.line("g." + method + "(" + expression + ".name());");
+                return;
+            case STRING:
+                out.line("g." + method + "(" + expression + ");");
+                return;
+            case CHARACTER:
+                out.line("g." + method + "(" + expression + ".toString());");
+                return;
+            case BOOLEAN:
+            case BYTE:
+            case SHORT:
+            case INT:
+            case LONG:
+            case FLOAT:
+            case DOUBLE:
+            case BIG_INTEGER:
+            case BIG_DECIMAL:
+                String arg = expression;
+                if (!gson() && (value.kind() == BindingValue.Kind.BYTE
+                        || value.kind() == BindingValue.Kind.SHORT)) {
+                    arg += ".intValue()";
+                } else if (value.kind() == BindingValue.Kind.FLOAT) {
+                    arg += ".doubleValue()";
+                }
+                out.line("g." + method + "(" + arg + ");");
+                return;
+            default:
+                throw new AssertionError(value.kind());
+        }
+    }
+
     private void emitValue(JavaWriter out, BindingValue child, String expression,
                            String nativeGenerator, NameAllocator names) {
         // Method parameters are reserved for root values; helpers use their local scope.
         String item = names == null ? "item" : names.newName("item");
         if (child.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line("generator.writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(child.helperName() + "(generator, " + expression + ");");
+            out.endBlock();
             return;
         }
 
