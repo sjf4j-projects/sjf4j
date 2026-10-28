@@ -64,7 +64,8 @@ class CompiledValidatorFoundationTest {
          "properties":{"name":{"type":"string","minLength":2}}}
         """)
     public static class Person {
-        private final String name;
+        private String name;
+        public Person() {}
         public Person(String name) { this.name = name; }
         public String getName() { return name; }
     }
@@ -73,7 +74,8 @@ class CompiledValidatorFoundationTest {
         {"type":"object","properties":{"level":{"type":"integer","minimum":0}}}
         """)
     public static final class Employee extends Person {
-        private final int level;
+        private int level;
+        public Employee() {}
         public Employee(String name, int level) {
             super(name);
             this.level = level;
