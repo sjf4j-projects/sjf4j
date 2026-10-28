@@ -19,4 +19,4 @@ jobs:
       - name: Compile benchmark and annotation-processed binders
         run: ./gradlew :sjf4j-testbench:jmhJar
       - name: Validate Creek JMH trial
-        run: java -jar sjf4j-testbench/build/libs/*-jmh.jar 'CreekModelBenchmark.read_fastjson2_compiled' -wi 0 -i 1 -r 100ms -f 0 -t 1
+        run: java -jar sjf4j-testbench/build/libs/*-jmh.jar 'CreekModelBenchmark.read_fastjson2_compiled' -wi 0 -i 1 -r 100ms -f 0 -t 1 -foe true
