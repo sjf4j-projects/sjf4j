@@ -65,8 +65,8 @@ class Jackson3ParserTest {
         NameMatcher matcher = new Jackson3NameMatcher(
                 new String[]{"id", "name"},
                 new String[][]{{}, {"legacyName"}});
-        String json = "{\\"id\\":7,\\"unknown\\":{\\"nested\\":[1]},"
-                + "\\"legacyName\\":\\"Ada\\",\\"name\\":\\"Eve\\"}";
+        String json = "{\"id\":7,\"unknown\":{\"nested\":[1]},"
+                + "\"legacyName\":\"Ada\",\"name\":\"Eve\"}";
 
         for (boolean utf8 : new boolean[]{false, true}) {
             Jackson3Binder binder = new Jackson3Binder();
