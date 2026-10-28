@@ -26,6 +26,6 @@ import org.sjf4j.annotation.node.OneOfMapping;
         @OneOfMapping(type = PolyTypeA.class, when = "poly-a"),
         @OneOfMapping(type = PolyTypeB.class, when = "poly-b")
 })
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "@type")
 @JsonSubTypes({@JsonSubTypes.Type(PolyTypeA.class), @JsonSubTypes.Type(PolyTypeB.class)})
 public interface PolyBase {}
