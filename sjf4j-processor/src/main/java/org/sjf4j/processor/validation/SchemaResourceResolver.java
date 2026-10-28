@@ -2,6 +2,7 @@ package org.sjf4j.processor.validation;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
+import org.sjf4j.util.Strings;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.schema.CompiledSchemaSnapshot;
@@ -32,8 +33,10 @@ final class SchemaResourceResolver {
     static final class Snapshot {
         final String[] uris;
         final String[] documents;
+        final String selectedUri;
 
-        Snapshot(Map<URI, String> resources) {
+        Snapshot(Map<URI, String> resources, URI selectedUri) {
+            this.selectedUri = selectedUri.toString();
             uris = new String[resources.size()];
             documents = new String[resources.size()];
             int i = 0;
@@ -54,24 +57,30 @@ final class SchemaResourceResolver {
         String inline = annotation.value();
         String ref = annotation.ref().trim();
         URI rootUri;
+        URI selectedUri;
         String rootDocument;
 
         if (!inline.isEmpty()) {
             rootUri = URI.create("sjf4j:/" + originName + "/");
+            selectedUri = rootUri;
             rootDocument = inline;
         } else {
             URI baseDir = URI.create("classpath:/json-schemas/");
             if (!ref.isEmpty()) {
-                rootUri = baseDir.resolve(ref);
-                if (!rootUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
+                selectedUri = baseDir.resolve(ref);
+                if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
+                // Fragments select a schema within the resource; they are not
+                // part of the document retrieval URI.
+                rootUri = URI.create(selectedUri.toString().split("#", 2)[0]);
             } else {
                 String simple = ownerName.substring(ownerName.lastIndexOf('.') + 1);
                 rootUri = baseDir.resolve(simple + ".json");
                 rootDocument = read(rootUri);
                 if (rootDocument == null) {
-                    String snake = simple.replaceAll("([a-z0-9])([A-Z])", "$1_$2").toLowerCase(java.util.Locale.ROOT);
+                    String snake = Strings.toSnakeCase(simple);
                     rootUri = baseDir.resolve(snake + ".json");
                 }
+                selectedUri = rootUri;
             }
             rootDocument = read(rootUri);
             if (rootDocument == null) {
@@ -89,10 +98,10 @@ final class SchemaResourceResolver {
             scanRefs(schema, uri, resources, queue);
         }
 
-        Snapshot snapshot = new Snapshot(resources);
+        Snapshot snapshot = new Snapshot(resources, selectedUri);
         // Resolve the full graph now; unresolved refs and invalid keywords must
         // fail annotation processing instead of being deferred until execution.
-        CompiledSchemaSnapshot.create(snapshot.uris, snapshot.documents, 0);
+        CompiledSchemaSnapshot.create(snapshot.uris, snapshot.documents, 0, snapshot.selectedUri);
         return snapshot;
     }
 
