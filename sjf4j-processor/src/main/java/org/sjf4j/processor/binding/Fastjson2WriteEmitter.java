@@ -120,8 +120,13 @@ final class Fastjson2WriteEmitter {
         out.endBlock();
 
         if (value.helperRequired()) {
+            out.beginBlock("if (" + source + " == null)");
+            out.line(raw + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(fastjsonHelperName(value, mode) + "("
                     + generator + ", " + source + ");");
+            out.endBlock();
         } else {
             emitNativeValue(out, value, source, mode, raw, generator, names.newName("item"));
         }
@@ -217,6 +222,46 @@ final class Fastjson2WriteEmitter {
         }
 
         @Override
+        public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+            if (value.helperRequired()) {
+                out.line(fastjsonHelperName(value, mode) + "(generator, " + expression + ");");
+                return;
+            }
+            switch (value.kind()) {
+                case STRING:
+                    out.line("w.writeString(" + expression + ");");
+                    return;
+                case CHARACTER:
+                    out.line("w.writeString(" + expression + ".toString());");
+                    return;
+                case ENUM:
+                    String field = writes.enumField(value) + mode.suffix;
+                    if (mode == FastjsonMode.UTF8) {
+                        out.line("w.writeRaw(" + field + "[" + expression + ".ordinal()]);");
+                    } else {
+                        out.line("char[] encoded = " + field + "[" + expression + ".ordinal()];");
+                        out.line("w.writeRaw(encoded, 0, encoded.length);");
+                    }
+                    return;
+                case BOOLEAN:
+                case BYTE:
+                case SHORT:
+                case INT:
+                case LONG:
+                case FLOAT:
+                case DOUBLE:
+                case BIG_INTEGER:
+                case BIG_DECIMAL:
+                    String arg = fastjsonUnboxArgument(value.type().toString())
+                            .replace("value", expression);
+                    out.line("w." + fastjsonWriteMethod(value.kind()) + "(" + arg + ");");
+                    return;
+                default:
+                    throw new AssertionError(value.kind());
+            }
+        }
+
+        @Override
         public void writeRuntimeValue(JavaWriter out, String expression) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, "
                     + expression + ", this.context);");
@@ -245,14 +290,7 @@ final class Fastjson2WriteEmitter {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
         } else {
             StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode));
-            if (value.kind() != BindingValue.Kind.ONE_OF) {
-                out.beginBlock("if (value == null)");
-                out.line("w.writeNull();");
-                out.line("return;");
-                out.endBlock();
-            }
-
-            switch (value.kind()) {
+             switch (value.kind()) {
                 case POJO:
                 case JOJO:
                     structure.emitPojo(out, value);
@@ -313,7 +351,12 @@ final class Fastjson2WriteEmitter {
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode, String raw, String generator, String item) {
         if (value.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line(raw + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(fastjsonHelperName(value, mode) + "(" + generator + ", " + expression + ");");
+            out.endBlock();
             return;
         }
 

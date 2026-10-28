@@ -28,12 +28,12 @@ public class PathProcessorTest {
 
         IllegalArgumentException notInterface = assertThrows(IllegalArgumentException.class,
                 () -> CompiledInstances.create(NotInterface.class));
-        assertTrue(notInterface.getMessage().contains("requires an interface type"), notInterface.getMessage());
+        assertTrue(notInterface.getMessage().contains("expected interface type"), notInterface.getMessage());
         assertTrue(notInterface.getMessage().contains(NotInterface.class.getName()), notInterface.getMessage());
 
         NodeException notCompiled = assertThrows(NodeException.class, () -> CompiledInstances.create(NotCompiled.class));
-        assertTrue(notCompiled.getMessage().contains("Cannot find generated SJF4J implementation"), notCompiled.getMessage());
-        assertTrue(notCompiled.getMessage().contains("@CompiledXxx"), notCompiled.getMessage());
+        assertTrue(notCompiled.getMessage().contains("cannot find generated implementation"), notCompiled.getMessage());
+        assertTrue(notCompiled.getMessage().contains("annotation processing is enabled"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains(NotCompiled.class.getName() + "_Impl"), notCompiled.getMessage());
     }
 
