@@ -113,7 +113,9 @@ class CompiledValidatorFoundationTest {
             """)
         boolean text(String text);
 
-        @ValidJsonSchema("{\\"type\\":\\"integer\\",\\"minimum\\":1}")
+        @ValidJsonSchema("""
+            {"type":"integer","minimum":1}
+            """)
         boolean positive(int value);
 
         @ValidJsonSchema(ref = "compiled-validator-root.json")
