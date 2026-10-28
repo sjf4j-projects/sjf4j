@@ -42,8 +42,8 @@ public final class CompiledInstances {
     public static <T, B> T create(Class<T> type, B backendBinder) {
         Asserts.notNull(backendBinder, "backendBinder");
         if (!(backendBinder instanceof Binder)) {
-            throw new IllegalArgumentException("Backend must be an SJF4J Binder: "
-                    + backendBinder.getClass().getName());
+            throw new IllegalArgumentException("expected SJF4J Binder, but was '"
+                    + backendBinder.getClass().getName() + "'");
         }
         return _instantiate(type, backendBinder.getClass(), backendBinder);
     }
@@ -54,18 +54,17 @@ public final class CompiledInstances {
         try {
             return type.cast(implClass.getConstructor(parameterType).newInstance(argument));
         } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException("No constructor accepting " + parameterType.getName()
-                    + " in generated implementation " + implClass.getName(), e);
+            throw new IllegalArgumentException("no constructor accepting '" + parameterType.getName()
+                    + "' in generated implementation '" + implClass.getName() + "'", e);
         } catch (ReflectiveOperationException e) {
-            throw new NodeException("Cannot instantiate generated SJF4J implementation "
-                    + implClass.getName() + " for interface " + type.getName(), e);
+            throw new NodeException("failed to instantiate generated implementation '"
+                    + implClass.getName() + "' for interface '" + type.getName() + "'", e);
         }
     }
 
     private static Class<?> _implementationClass(Class<?> type) {
         if (!type.isInterface()) {
-            throw new IllegalArgumentException("CompiledInstances requires an interface type, but got " +
-                    type.getName());
+            throw new IllegalArgumentException("expected interface type, but was '" + type.getName() + "'");
         }
 
         String implName = type.getName() + IMPL_SUFFIX;
@@ -73,19 +72,17 @@ public final class CompiledInstances {
         try {
             implClass = Class.forName(implName, true, type.getClassLoader());
         } catch (ClassNotFoundException e) {
-            throw new NodeException("Cannot find generated SJF4J implementation " + implName
-                    + " for interface " + type.getName()
-                    + "; ensure the interface is annotated with @CompiledXxx"
-                    + " (@CompiledNavigator, @CompiledMapper, @CompiledJdbcMapper, or @CompiledBinder)"
-                    + ", annotation processing is enabled, and generated sources are compiled", e);
+            throw new NodeException("cannot find generated implementation '" + implName
+                    + "' for interface '" + type.getName()
+                    + "'; ensure a supported @Compiled annotation is present and annotation processing is enabled", e);
         } catch (LinkageError e) {
-            throw new NodeException("Generated SJF4J implementation " + implName
-                    + " for interface " + type.getName() + " failed to load", e);
+            throw new NodeException("failed to load generated implementation '" + implName
+                    + "' for interface '" + type.getName() + "'", e);
         }
 
         if (!type.isAssignableFrom(implClass)) {
-            throw new NodeException("Generated SJF4J implementation " + implName
-                    + " does not implement " + type.getName());
+            throw new NodeException("generated implementation '" + implName
+                    + "' does not implement '" + type.getName() + "'");
         }
 
         return implClass;
