@@ -389,11 +389,16 @@ final class WriteEmitter {
             out.beginBlock("private void _writeStringMember(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
-            out.beginBlock("if (value == null && !this.context.includeNulls)");
-            out.line("return;");
-            out.endBlock();
+            out.beginBlock("if (value == null)");
+            out.beginBlock("if (this.context.includeNulls)");
             out.line("g." + nameMethod + "(name);");
-            out.line("_writeString(g, value);");
+            out.line("g.writeNull();");
+            out.endBlock();
+            out.endBlock(" else {");
+            out.indent();
+            out.line("g." + nameMethod + "(name);");
+            out.line("g.writeString(value);");
+            out.endBlock();
             out.endBlock();
         }
     }
