@@ -5,7 +5,6 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.util.Asserts;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 /**
  * Factory for annotation-processor generated implementations of
@@ -33,15 +32,7 @@ public final class CompiledInstances {
 
     /** Creates an independent compiled implementation with the supplied settings. */
     public static <T> T create(Class<T> type, RuntimeContext context) {
-        Asserts.notNull(type, "type");
-        Asserts.notNull(context, "context");
-        Class<?> implClass = _implementationClass(type);
-        try {
-            return _instantiate(type, implClass.getConstructor(RuntimeContext.class), context);
-        } catch (NoSuchMethodException e) {
-            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
-                    + " must expose a public RuntimeContext constructor; recompile using the current processor", e);
-        }
+        return _instantiate(type, RuntimeContext.class, Asserts.notNull(context, "context"));
     }
 
     /**
@@ -49,42 +40,25 @@ public final class CompiledInstances {
      * The Binder type must match the interface's compile-time selected backend.
      */
     public static <T, B> T create(Class<T> type, B backendBinder) {
-        Asserts.notNull(type, "type");
         Asserts.notNull(backendBinder, "backendBinder");
         if (!(backendBinder instanceof Binder)) {
             throw new IllegalArgumentException("Backend must be an SJF4J Binder: "
                     + backendBinder.getClass().getName());
         }
-        Class<?> implClass = _implementationClass(type);
-        Constructor<?> match = null;
-        for (Constructor<?> constructor : implClass.getConstructors()) {
-            Class<?>[] parameters = constructor.getParameterTypes();
-            if (parameters.length != 1
-                    || !Binder.class.isAssignableFrom(parameters[0])
-                    || !parameters[0].isInstance(backendBinder)) continue;
-            if (match != null) {
-                throw new IllegalArgumentException("Ambiguous backend Binder constructors for "
-                        + implClass.getName());
-            }
-            match = constructor;
-        }
-        if (match == null) {
-            throw new IllegalArgumentException("No compatible backend Binder constructor for "
-                    + implClass.getName() + " accepting " + backendBinder.getClass().getName());
-        }
-        return _instantiate(type, match, backendBinder);
+        return _instantiate(type, backendBinder.getClass(), backendBinder);
     }
 
-    private static <T> T _instantiate(Class<T> type, Constructor<?> constructor, Object argument) {
+    private static <T> T _instantiate(Class<T> type, Class<?> parameterType, Object argument) {
+        Asserts.notNull(type, "type");
+        Class<?> implClass = _implementationClass(type);
         try {
-            return type.cast(constructor.newInstance(argument));
-        } catch (InstantiationException | IllegalAccessException e) {
+            return type.cast(implClass.getConstructor(parameterType).newInstance(argument));
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException("No constructor accepting " + parameterType.getName()
+                    + " in generated implementation " + implClass.getName(), e);
+        } catch (ReflectiveOperationException e) {
             throw new NodeException("Cannot instantiate generated SJF4J implementation "
-                    + constructor.getDeclaringClass().getName() + " for interface " + type.getName(), e);
-        } catch (InvocationTargetException e) {
-            throw new NodeException("Generated SJF4J implementation "
-                    + constructor.getDeclaringClass().getName() + " constructor failed for interface "
-                    + type.getName(), e.getCause());
+                    + implClass.getName() + " for interface " + type.getName(), e);
         }
     }
 
