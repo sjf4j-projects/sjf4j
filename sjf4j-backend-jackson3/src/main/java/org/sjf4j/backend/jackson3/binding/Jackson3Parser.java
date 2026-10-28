@@ -10,6 +10,7 @@ import org.sjf4j.util.Asserts;
 import org.sjf4j.util.FastUuid;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
+import tools.jackson.core.json.ReaderBasedJsonParser;
 import tools.jackson.core.sym.PropertyNameMatcher;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ import java.util.UUID;
 public final class Jackson3Parser extends StreamingParser {
 
     private final JsonParser parser;
+    private final boolean readerBased;
     private boolean prefetched;
 
     /**
@@ -45,6 +47,7 @@ public final class Jackson3Parser extends StreamingParser {
     public Jackson3Parser(JsonParser parser) {
         super(Backend.JACKSON3);
         this.parser = Asserts.notNull(parser, "parser");
+        this.readerBased = parser instanceof ReaderBasedJsonParser;
         // A caller may supply a parser already positioned on the first token.
         this.prefetched = parser.currentToken() != null;
     }
@@ -189,11 +192,16 @@ public final class Jackson3Parser extends StreamingParser {
 
     @Override
     public int nextNameMatch(NameMatcher matcher) throws IOException {
+        return nextNameMatch(matcher, -1);
+    }
+
+    @Override
+    public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
         Jackson3NameMatcher jacksonMatcher = (Jackson3NameMatcher) matcher;
         int match;
 
         if (prefetched) {
-            // A probe has already advanced to the name or object end.
+            // A probe already advanced to the name/end; do not advance twice.
             prefetched = false;
             JsonToken current = parser.currentToken();
             if (current == JsonToken.END_OBJECT) {
@@ -203,7 +211,17 @@ public final class Jackson3Parser extends StreamingParser {
                 throw expected(JsonToken.PROPERTY_NAME.name(), current);
             }
             match = parser.currentNameMatch(jacksonMatcher.matcher);
+        } else if (readerBased && expectedIndex >= 0
+                && expectedIndex < jacksonMatcher.serializedNames.length) {
+            // ReaderBasedJsonParser inherits a String-based nextNameMatch().
+            // A prepared expected name instead compares the input char buffer
+            // directly; on mismatch the parser is already at the actual name.
+            if (parser.nextName(jacksonMatcher.serializedNames[expectedIndex])) {
+                return expectedIndex;
+            }
+            match = parser.currentNameMatch(jacksonMatcher.matcher);
         } else {
+            // UTF8StreamJsonParser has its own byte-level matcher; keep it.
             match = parser.nextNameMatch(jacksonMatcher.matcher);
         }
 
@@ -219,12 +237,6 @@ public final class Jackson3Parser extends StreamingParser {
         }
         // MATCH_ODD_TOKEN, or any other invalid matcher result.
         throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
-    }
-
-    @Override
-    public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
-        // Jackson 3's native multi-name matcher does not require an index hint.
-        return nextNameMatch(matcher);
     }
 
     /* --------------------------------------------------------------
