@@ -1,8 +1,10 @@
 package org.sjf4j;
 
+import org.sjf4j.binding.Binder;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.util.Asserts;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 /**
@@ -26,46 +28,59 @@ public final class CompiledInstances {
      * The returned instance is not cached.
      */
     public static <T> T create(Class<T> type) {
-        Asserts.notNull(type, "type");
-        return _create(type);
+        return create(type, RuntimeContext.EMPTY);
     }
 
-    /**
-     * Creates an independent compiled implementation with the supplied runtime settings.
-     * Supported interfaces: CompiledNavigator, CompiledMapper, CompiledJdbcMapper,
-     * and CompiledBinder. Navigator currently does not use the supplied context.
-     */
+    /** Creates an independent compiled implementation with the supplied settings. */
     public static <T> T create(Class<T> type, RuntimeContext context) {
         Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
         Class<?> implClass = _implementationClass(type);
         try {
-            return type.cast(implClass.getConstructor(RuntimeContext.class).newInstance(context));
+            return _instantiate(type, implClass.getConstructor(RuntimeContext.class), context);
         } catch (NoSuchMethodException e) {
             throw new NodeException("Generated SJF4J implementation " + implClass.getName()
                     + " must expose a public RuntimeContext constructor; recompile using the current processor", e);
-        } catch (InstantiationException | IllegalAccessException e) {
-            throw new NodeException("Cannot instantiate generated SJF4J implementation " + implClass.getName()
-                    + " for interface " + type.getName(), e);
-        } catch (InvocationTargetException e) {
-            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
-                    + " constructor failed for interface " + type.getName(), e.getCause());
         }
     }
 
-    private static <T> T _create(Class<T> type) {
+    /**
+     * Creates a CompiledBinder with an already configured backend Binder.
+     * The Binder type must match the interface's compile-time selected backend.
+     */
+    public static <T> T create(Class<T> type, Binder<?, ?> backendBinder) {
+        Asserts.notNull(type, "type");
+        Asserts.notNull(backendBinder, "backendBinder");
         Class<?> implClass = _implementationClass(type);
+        Constructor<?> match = null;
+        for (Constructor<?> constructor : implClass.getConstructors()) {
+            Class<?>[] parameters = constructor.getParameterTypes();
+            if (parameters.length != 1
+                    || !Binder.class.isAssignableFrom(parameters[0])
+                    || !parameters[0].isInstance(backendBinder)) continue;
+            if (match != null) {
+                throw new IllegalArgumentException("Ambiguous backend Binder constructors for "
+                        + implClass.getName());
+            }
+            match = constructor;
+        }
+        if (match == null) {
+            throw new IllegalArgumentException("No compatible backend Binder constructor for "
+                    + implClass.getName() + " accepting " + backendBinder.getClass().getName());
+        }
+        return _instantiate(type, match, backendBinder);
+    }
+
+    private static <T> T _instantiate(Class<T> type, Constructor<?> constructor, Object argument) {
         try {
-            return type.cast(implClass.getConstructor().newInstance());
-        } catch (NoSuchMethodException e) {
-            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
-                    + " must expose a public no-arg constructor", e);
+            return type.cast(constructor.newInstance(argument));
         } catch (InstantiationException | IllegalAccessException e) {
-            throw new NodeException("Cannot instantiate generated SJF4J implementation " + implClass.getName()
-                    + " for interface " + type.getName(), e);
+            throw new NodeException("Cannot instantiate generated SJF4J implementation "
+                    + constructor.getDeclaringClass().getName() + " for interface " + type.getName(), e);
         } catch (InvocationTargetException e) {
-            throw new NodeException("Generated SJF4J implementation " + implClass.getName()
-                    + " constructor failed for interface " + type.getName(), e.getCause());
+            throw new NodeException("Generated SJF4J implementation "
+                    + constructor.getDeclaringClass().getName() + " constructor failed for interface "
+                    + type.getName(), e.getCause());
         }
     }
 

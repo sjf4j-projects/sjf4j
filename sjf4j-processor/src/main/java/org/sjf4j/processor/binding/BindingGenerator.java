@@ -39,10 +39,9 @@ public final class BindingGenerator {
         if (backend == null || !generated.isValid()) return;
 
         generated.enableRuntimeContext();
+        generated.enableBackendBinder(backend.binderType());
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
-        generated.addContextInitializer(out ->
-                out.line("this.binder = new " + backend.binderType() + "(context);"));
 
         List<ResolvedMethod> resolvedMethods = context.methods.abstractMethods(type);
         List<BindingPlan> plans = new ArrayList<BindingPlan>(resolvedMethods.size());

@@ -26,7 +26,9 @@ import java.lang.annotation.Target;
  * <p>Generated implementations have the {@code _Impl} suffix and can be
  * created through {@link org.sjf4j.CompiledInstances#create(Class)}
  * or created with custom settings using
- * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.RuntimeContext)}.</p>
+ * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.RuntimeContext)}.
+ * A preconfigured backend Binder can also be injected using
+ * {@code CompiledInstances.create(UserJson.class, jackson2Binder)}.</p>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
