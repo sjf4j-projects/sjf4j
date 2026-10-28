@@ -2,12 +2,10 @@ package org.sjf4j.path;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonType;
-import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
-import org.sjf4j.node.NodeMapper;
 import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
@@ -1541,9 +1539,11 @@ public class JsonPath {
                 }
             } else if (pt instanceof PathSegment.Wildcard) {
                 if (jt.isObject()) {
-                    NodeWalker.forEachObject(node, (k, v) -> _findAll(root, v, nextI, endExclusive, result, converter, acc));
+                    NodeWalker.forEachObject(node,
+                            (k, v) -> _findAll(root, v, nextI, endExclusive, result, converter, acc));
                 } else if (jt.isArray()) {
-                    NodeWalker.forEachArray(node, (j, v) -> _findAll(root, v, nextI, endExclusive, result, converter, acc));
+                    NodeWalker.forEachArray(node,
+                            (j, v) -> _findAll(root, v, nextI, endExclusive, result, converter, acc));
                 }
             } else if (pt instanceof PathSegment.Descendant) {
                 if (i + 1 >= segments.length) throw new NodeException("descendant '..' cannot appear at the end");
