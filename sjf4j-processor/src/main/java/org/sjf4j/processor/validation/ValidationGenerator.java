@@ -63,10 +63,11 @@ public final class ValidationGenerator {
                         + " = org.sjf4j.schema.CompiledSchemaSnapshot.create(");
                 out.indent();
                 out.line(stringArray(field.snapshot.uris) + ",");
-                out.line(stringArray(field.snapshot.documents) + ", 0);");
+                out.line(stringArray(field.snapshot.documents) + ", 0, "
+                        + javaLiteral(field.snapshot.selectedUri) + ");");
                 out.dedent();
                 out.line("static final org.sjf4j.schema.SchemaPlan " + field.name
-                        + " = " + snapshotName + ".root();");
+                        + " = " + snapshotName + ".selected();");
             }
             out.endBlock();
         });
@@ -203,6 +204,7 @@ public final class ValidationGenerator {
 
     private static String snapshotKey(SchemaResourceResolver.Snapshot snapshot) {
         StringBuilder key = new StringBuilder();
+        key.append(snapshot.selectedUri).append('\u0000');
         for (int i = 0; i < snapshot.uris.length; i++) {
             key.append(snapshot.uris[i]).append('\u0000')
                     .append(snapshot.documents[i]).append('\u0000');
