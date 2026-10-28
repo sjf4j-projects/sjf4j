@@ -4,6 +4,8 @@ import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.meta.PropertyInfo;
 
 import tools.jackson.core.sym.BinaryNameMatcher;
+import tools.jackson.core.SerializableString;
+import tools.jackson.core.io.SerializedString;
 import tools.jackson.core.sym.PropertyNameMatcher;
 
 import java.util.Arrays;
@@ -12,6 +14,7 @@ import java.util.Arrays;
 public final class Jackson3NameMatcher extends NameMatcher {
 
     final PropertyNameMatcher matcher;
+    final SerializableString[] serializedNames;
 
     Jackson3NameMatcher(PropertyInfo[] properties) {
         this(properties, null, null);
@@ -38,8 +41,11 @@ public final class Jackson3NameMatcher extends NameMatcher {
         super(properties, names, aliases);
 
         String[] propertyNames = new String[size()];
+        serializedNames = new SerializableString[size()];
         for (int i = 0; i < size(); i++) {
-            propertyNames[i] = name(i);
+            String name = name(i);
+            propertyNames[i] = name;
+            serializedNames[i] = new SerializedString(name);
         }
         matcher = BinaryNameMatcher.construct(Arrays.asList(propertyNames));
     }
