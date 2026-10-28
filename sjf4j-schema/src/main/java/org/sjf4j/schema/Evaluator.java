@@ -729,7 +729,7 @@ public interface Evaluator {
                 if (properties != null) {
                     SchemaPlan plan = properties.get(key);
                     if (plan != null) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, value, null);
+                        InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = plan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
@@ -744,7 +744,7 @@ public interface Evaluator {
                         if (patterns[i].matcher(key).find()) {
                             SchemaPlan plan = patternPlans[i];
                             if (plan != null) {
-                                InstancedNode subInstance = instance.inferSubByKey(key, value, null);
+                                InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
                                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                                 boolean subResult = plan.evaluate(subInstance, cps, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
@@ -757,7 +757,7 @@ public interface Evaluator {
                 }
 
                 if (additionalPropertiesPlan != null && !matched) {
-                    InstancedNode subInstance = instance.inferSubByKey(key, value, null);
+                    InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                     boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
@@ -1516,7 +1516,7 @@ public interface Evaluator {
                 for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
                     String key = entry.getKey();
                     if (!merged.get(propIdx)) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue(), null);
+                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
