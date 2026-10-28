@@ -140,9 +140,9 @@ public final class ValidationGenerator {
                     out.line(plan + ".requireValid(" + value + ", true);");
                 }
             } else {
+                out.line("org.sjf4j.schema.ValidationResult result;");
                 for (String plan : names) {
-                    out.line("org.sjf4j.schema.ValidationResult result = "
-                            + plan + ".validate(" + value + ", true, true);");
+                    out.line("result = " + plan + ".validate(" + value + ", true, true);");
                     out.line("if (!result.isValid()) return result;");
                 }
                 out.line("return org.sjf4j.schema.ValidationResult.SUCCESS;");
