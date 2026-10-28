@@ -66,6 +66,41 @@ class CompiledValidatorFoundationTest {
         assertFalse(validator.fromResource(new Payload(null)));
     }
 
+    @Test
+    void annotationRefSelectsExactSubschema() {
+        PersonValidator validator = CompiledInstances.create(PersonValidator.class);
+        assertFalse(validator.fromFragment("x"));
+        assertFalse(validator.fromFragment("abc"));
+        assertTrue(validator.fromFragment("abcd"));
+        assertTrue(validator.fromFragment(null)); // SchemaValidator null handling
+        assertTrue(validator.fromPayloadFragment(new Payload("valid")));
+        assertFalse(validator.fromPayloadFragment(new Payload("x")));
+    }
+
+    @Test
+    void supportsBooleanSchemaResourcesAndDirectBooleanSchema() {
+        PersonValidator validator = CompiledInstances.create(PersonValidator.class);
+        assertFalse(validator.fromBooleanRef("hello"));
+        assertFalse(validator.fromBooleanRef(new Payload("valid")));
+        assertFalse(validator.fromBooleanRoot("hello"));
+        assertTrue(validator.fromBooleanTrue("hello"));
+    }
+
+    @Test
+    void usesRuntimeAcronymSnakeCaseConvention() {
+        PersonValidator validator = CompiledInstances.create(PersonValidator.class);
+        assertTrue(validator.convention(new HTTPRequest("abcd")));
+        assertFalse(validator.convention(new HTTPRequest("x")));
+    }
+
+    @ValidJsonSchema
+    public static final class HTTPRequest {
+        private String url;
+        public HTTPRequest() {}
+        public HTTPRequest(String url) { this.url = url; }
+        public String getUrl() { return url; }
+    }
+
     @ValidJsonSchema("""
         {"type":"object","required":["name"],
          "properties":{"name":{"type":"string","minLength":2}}}
@@ -117,6 +152,23 @@ class CompiledValidatorFoundationTest {
             {"type":"integer","minimum":1}
             """)
         boolean positive(int value);
+
+        @ValidJsonSchema(ref = "compiled-validator-defs.json#/$defs/text")
+        boolean fromFragment(String text);
+
+        @ValidJsonSchema(ref = "compiled-validator-defs.json#/$defs/valid")
+        boolean fromPayloadFragment(Payload payload);
+
+        @ValidJsonSchema(ref = "compiled-validator-boolean-root.json")
+        boolean fromBooleanRef(Object value);
+
+        @ValidJsonSchema(ref = "compiled-validator-false.json")
+        boolean fromBooleanRoot(Object value);
+
+        @ValidJsonSchema(ref = "compiled-validator-true.json")
+        boolean fromBooleanTrue(Object value);
+
+        boolean convention(HTTPRequest request);
 
         @ValidJsonSchema(ref = "compiled-validator-root.json")
         boolean fromResource(Payload payload);
