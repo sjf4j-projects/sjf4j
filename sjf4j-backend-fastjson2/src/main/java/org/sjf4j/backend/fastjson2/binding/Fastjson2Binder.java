@@ -63,7 +63,6 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
         this.readerContext = Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
-        this.writerContext.config(JSONWriter.Feature.WriteNulls);
     }
 
 
