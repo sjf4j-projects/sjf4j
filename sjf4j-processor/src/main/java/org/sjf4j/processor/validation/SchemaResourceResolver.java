@@ -124,8 +124,24 @@ final class SchemaResourceResolver {
                 resources.put(document, contents);
                 queue.add(document);
             }
-            for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(node)) {
-                scanRefs(entry.getValue(), local, resources, queue);
+            // Descend only through schema-bearing keywords. Objects under
+            // const/enum/default/examples are instance data, not schemas.
+            for (String keyword : new String[]{
+                    "$defs", "definitions", "properties", "patternProperties",
+                    "dependentSchemas", "dependencies"}) {
+                Object mapping = Nodes.getInObject(node, keyword);
+                if (JsonType.of(mapping) != JsonType.OBJECT) continue;
+                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(mapping)) {
+                    scanRefs(entry.getValue(), local, resources, queue);
+                }
+            }
+            for (String keyword : new String[]{
+                    "items", "additionalItems", "additionalProperties",
+                    "contains", "propertyNames", "not", "if", "then", "else",
+                    "unevaluatedItems", "unevaluatedProperties", "contentSchema",
+                    "allOf", "anyOf", "oneOf", "prefixItems"}) {
+                Object subschema = Nodes.getInObject(node, keyword);
+                if (subschema != null) scanRefs(subschema, local, resources, queue);
             }
         } else if (type == JsonType.ARRAY) {
             Iterator<Object> iter = Nodes.iteratorInArray(node);
