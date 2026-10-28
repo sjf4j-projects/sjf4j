@@ -1,0 +1,112 @@
+name: CompiledWrite main vs PR107 JMH
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/compiled-write-main-vs-pr107-jmh.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 107
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+      - name: Checkout PR107
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/compiled-binder-static-helpers
+          path: candidate
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jars and identify commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          git -C baseline rev-parse HEAD | tee results/main-sha.txt
+          git -C candidate rev-parse HEAD | tee results/pr107-sha.txt
+          java -version 2>&1 | tee results/java-version.txt
+          (cd baseline && ./gradlew :sjf4j-testbench:jmhJar --no-daemon)
+          (cd candidate && ./gradlew :sjf4j-testbench:jmhJar --no-daemon)
+      - name: Run representative CompiledWriteBenchmark methods sequentially
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 26 methods: Jackson2/3 POJO+Map, Fastjson2 POJO+Map, Gson POJO,
+          # plus a handwritten wrapped-Jackson control.
+          pattern='.*CompiledWriteBenchmark\.json_(jackson[23]_pojo_(string|utf8)_(compiled|native|blackbird)|jackson[23]_pojo_string_direct_wrapped|jackson[23]_map_string_(compiled|native)|fastjson2_pojo_(string|utf8)_(compiled|native)|fastjson2_map_string_(compiled|native)|gson_pojo_string_(compiled|native))$'
+          for ref in baseline candidate; do
+            jar="$(find "$ref/sjf4j-testbench/build/libs" -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -n "$jar"
+            java -jar "$jar" "$pattern" -bm avgt -tu us -t 1 -f 3 \
+              -wi 15 -w 400ms -i 5 -r 400ms \
+              -rf json -rff "results/$ref.json" | tee "results/$ref.log"
+          done
+      - name: Summarize within-branch speed ratios
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md
+          import json
+          from pathlib import Path
+          p=Path("results")
+          data={}
+          for tag in ("baseline","candidate"):
+              file=p/(tag+".json")
+              if file.exists():
+                  records=json.loads(file.read_text())
+                  data[tag]={x["benchmark"].split(".")[-1].removeprefix("json_"):x["primaryMetric"] for x in records}
+          print("# CompiledWriteBenchmark: main vs PR107")
+          print("Temurin JDK25; 3 forks, 15 × 400ms warmups, 5 × 400ms measurements; µs/op lower is better.")
+          print("Each branch built and run separately on one runner; within-branch ratios are primary.")
+          print()
+          if len(data)!=2:
+              print("Missing data; check build/JMH logs.")
+          else:
+              a,b=data["baseline"],data["candidate"]
+              print(f"Methods: main {len(a)}, PR107 {len(b)}")
+              print()
+              print("| Operation | main compiled | main native | main advantage | PR107 compiled | PR107 native | PR107 advantage | Ratio change |")
+              print("|---|---:|---:|---:|---:|---:|---:|---:|")
+              families=["jackson2_pojo_string","jackson2_pojo_utf8","jackson3_pojo_string","jackson3_pojo_utf8","jackson2_map_string","jackson3_map_string","fastjson2_pojo_string","fastjson2_pojo_utf8","fastjson2_map_string","gson_pojo_string"]
+              for fam in families:
+                  c=fam+"_compiled";n=fam+"_native"
+                  if c not in a or c not in b or n not in a or n not in b:continue
+                  ac,an,bc,bn=[d[name]["score"] for d,name in ((a,c),(a,n),(b,c),(b,n))]
+                  ar,br=an/ac,bn/bc
+                  print(f"| {fam} | {ac:.3f} | {an:.3f} | {ar:.3f}× | {bc:.3f} | {bn:.3f} | {br:.3f}× | {(br/ar-1)*100:+.2f}% |")
+              print()
+              print("| Operation | main Blackbird | main compiled/Blackbird | PR107 Blackbird | PR107 compiled/Blackbird |")
+              print("|---|---:|---:|---:|---:|")
+              for fam in ["jackson2_pojo_string","jackson2_pojo_utf8","jackson3_pojo_string","jackson3_pojo_utf8"]:
+                  c=fam+"_compiled";n=fam+"_blackbird"
+                  if n not in a or n not in b:continue
+                  print(f'| {fam} | {a[n]["score"]:.3f} | {a[n]["score"]/a[c]["score"]:.3f}× | {b[n]["score"]:.3f} | {b[n]["score"]/b[c]["score"]:.3f}× |')
+              print()
+              print("## All measurements (including JMH score errors)")
+              print("| Method | main µs/op | PR107 µs/op | PR107/main |")
+              print("|---|---:|---:|---:|")
+              for name in sorted(set(a)&set(b)):
+                  am,bm=a[name],b[name]
+                  print(f'| {name} | {am["score"]:.3f} ± {am["scoreError"]:.3f} | {bm["score"]:.3f} ± {bm["scoreError"]:.3f} | {bm["score"]/am["score"]:.3f}× |')
+          PY
+          cat results/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload raw JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-write-main-vs-pr107-f3-wi15
+          path: results/
+          if-no-files-found: warn
