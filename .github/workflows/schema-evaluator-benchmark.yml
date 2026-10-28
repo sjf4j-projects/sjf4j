@@ -1,0 +1,103 @@
+name: Schema Evaluator JMH Comparison
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-schema/src/jmh/java/org/sjf4j/schema/EvaluatorTraversalBenchmark.java'
+      - '.github/workflows/schema-evaluator-benchmark.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout benchmark source
+        uses: actions/checkout@v4
+        with:
+          path: benchmark
+      - name: Checkout before evaluator refactor
+        uses: actions/checkout@v4
+        with:
+          ref: bb0895939cf8763dedd9e1fba4ad9b9314275468
+          path: before
+      - name: Checkout after evaluator refactor
+        uses: actions/checkout@v4
+        with:
+          ref: a40da3fa8ac9818328f5a56f42b37d805919950e
+          path: after
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Install the same benchmark source in both checkouts
+        run: |
+          set -euo pipefail
+          for rev in before after; do
+            cp benchmark/sjf4j-schema/src/jmh/java/org/sjf4j/schema/EvaluatorTraversalBenchmark.java \
+              "$rev/sjf4j-schema/src/jmh/java/org/sjf4j/schema/EvaluatorTraversalBenchmark.java"
+          done
+      - name: Build JMH jars
+        run: |
+          set -euo pipefail
+          (cd before && ./gradlew :sjf4j-schema:jmhJar --no-daemon)
+          (cd after && ./gradlew :sjf4j-schema:jmhJar --no-daemon)
+          mkdir -p results
+      - name: Run JMH before and after
+        shell: bash
+        run: |
+          set -euo pipefail
+          for rev in before after; do
+            jar=$(find "$rev/sjf4j-schema/build/libs" -maxdepth 1 -name '*-jmh.jar' | head -n 1)
+            test -n "$jar"
+            echo "=== $rev: $jar ==="
+            java -jar "$jar" '.*EvaluatorTraversalBenchmark.*' \
+              -wi 3 -i 5 -w 300ms -r 300ms -f 1 -t 1 \
+              -p scenario=none,last -p failFast=true,false \
+              -rf json -rff "results/$rev.json" -prof gc
+          done
+      - name: Print relative performance comparison
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          a, b = 'results/before.json', 'results/after.json'
+          if not os.path.isfile(a) or not os.path.isfile(b):
+              print('Missing JMH result JSON: no comparable performance results')
+              raise SystemExit(0)
+          def read(path):
+              with open(path, encoding='utf-8') as f:
+                  entries = json.load(f)
+              results = {}
+              for entry in entries:
+                  key = (entry['benchmark'].rsplit('.', 1)[-1], tuple(sorted(entry.get('params', {}).items())))
+                  results[key] = entry
+              return results
+          before, after = read(a), read(b)
+          print('=== JMH ns/op comparison; lower is better ===')
+          print(f"{'Benchmark / params':100} {'before':>12} {'after':>12} {'delta %':>10} {'B/op old':>12} {'B/op new':>12}")
+          for key in sorted(set(before) & set(after)):
+              x, y = before[key], after[key]
+              def allocation(entry):
+                  s = entry.get('secondaryMetrics', {}).get('gc.alloc.rate.norm', {})
+                  return s.get('score', float('nan'))
+              old = x['primaryMetric']['score']
+              new = y['primaryMetric']['score']
+              delta = (new / old - 1) * 100 if old else float('nan')
+              fmt = f"{key[0]} " + ','.join(f"{k}={v}" for k, v in key[1])
+              print(f"{fmt[:100]:100} {old:12.2f} {new:12.2f} {delta:+9.1f}% {allocation(x):12.1f} {allocation(y):12.1f}")
+          print(f'Compared {len(set(before) & set(after))} parameter combinations')
+          PY
+      - name: Upload raw JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-evaluator-jmh-compare
+          path: results/*.json
+          if-no-files-found: warn
