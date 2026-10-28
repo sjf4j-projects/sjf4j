@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.RandomAccess;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -205,8 +206,14 @@ public class NodeWalker {
         Asserts.notNull(consumer, "consumer");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            int i = 0;
-            for (Object value : list) consumer.accept(i++, value);
+            if (list instanceof RandomAccess) {
+                for (int i = 0, len = list.size(); i < len; i++) {
+                    consumer.accept(i, list.get(i));
+                }
+            } else {
+                int i = 0;
+                for (Object value : list) consumer.accept(i++, value);
+            }
             return;
         }
         if (node instanceof JsonArray) {
@@ -244,9 +251,15 @@ public class NodeWalker {
         Asserts.notNull(predicate, "predicate");
         if (node instanceof List) {
             List<Object> list = (List<Object>) node;
-            int i = 0;
-            for (Object value : list) {
-                if (predicate.test(i++, value)) return true;
+            if (list instanceof RandomAccess) {
+                for (int i = 0, len = list.size(); i < len; i++) {
+                    if (predicate.test(i, list.get(i))) return true;
+                }
+            } else {
+                int i = 0;
+                for (Object value : list) {
+                    if (predicate.test(i++, value)) return true;
+                }
             }
             return false;
         }

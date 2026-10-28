@@ -29,15 +29,15 @@ public final class OfficialTest {
         Path root = locateTestRoot(args.length == 0 ? null : args[0]);
 
 
-//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
-//        loadRemotes(registry, locatePath(root, "remotes"));
-//        runTestDir(registry, locatePath(root, "tests/draft2020-12"), false,true);
+        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
+        loadRemotes(registry, locatePath(root, "remotes"));
+        runTestDir(registry, locatePath(root, "tests/draft2020-12"), false,true);
 //        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional"), false, true);
 //        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional/format"), true, false);
 
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-        loadRemotes(registry, locatePath(root, "remotes"));
-        runTestDir(registry, locatePath(root,"tests/draft2019-09/optional/format"), true, false);
+//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
+//        loadRemotes(registry, locatePath(root, "remotes"));
+//        runTestDir(registry, locatePath(root,"tests/draft2019-09/optional/format"), true, false);
 
 //        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
 //        loadRemotes(registry, locatePath(root, "remotes"));

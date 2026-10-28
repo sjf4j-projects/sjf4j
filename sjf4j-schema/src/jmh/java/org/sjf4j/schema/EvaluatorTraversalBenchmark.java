@@ -1,5 +1,6 @@
 package org.sjf4j.schema;
 
+import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -14,6 +15,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Nodes;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -35,10 +37,14 @@ import java.util.concurrent.TimeUnit;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Warmup(iterations = 4, time = 300, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 5, time = 300, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 10, time = 400, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 3, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(1)
 public class EvaluatorTraversalBenchmark {
+
+    public static void main(String[] args) throws IOException {
+        Main.main(new String[] {EvaluatorTraversalBenchmark.class.getName()});
+    }
 
     private static final String NON_NEGATIVE = "{\"type\":\"integer\",\"minimum\":0}";
 
@@ -103,6 +109,7 @@ public class EvaluatorTraversalBenchmark {
         public int extra3 = 1;
     }
 
+    @SuppressWarnings("unchecked")
     @State(Scope.Thread)
     public static class ObjectState {
         @Param({"map", "pojo"})
@@ -178,7 +185,7 @@ public class EvaluatorTraversalBenchmark {
         @Param({"none", "first", "last"})
         public String scenario;
 
-        @Param({"true", "false"})
+        @Param({"true"})
         public boolean failFast;
 
         public SchemaPlan itemsPlan;
