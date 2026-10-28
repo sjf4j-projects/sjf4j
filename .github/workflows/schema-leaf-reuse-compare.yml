@@ -1,0 +1,97 @@
+name: Schema Leaf Reuse A/B JMH
+
+on:
+  push:
+    branches: [bench/schema-leaf-reuse-bykey-byindex]
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout experiment scripts
+        uses: actions/checkout@v4
+        with:
+          path: control
+
+      - name: Checkout pinned main baseline
+        uses: actions/checkout@v4
+        with:
+          ref: 030fe874827c31fe6b1707a39812f3b6db62f668
+          path: source
+
+      - name: Configure JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configure Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate four leaf-reuse variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in none key index both; do
+            cp -a source "$mode"
+            evaluator="$mode/sjf4j-schema/src/main/java/org/sjf4j/schema/Evaluator.java"
+            python3 control/.github/bench/schema_leaf_strategy.py "$evaluator" "$evaluator" --mode "$mode"
+          done
+
+      - name: Build four JMH jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in none index both key; do
+            echo "=== Compiling $mode ==="
+            (cd "$mode" && ./gradlew :sjf4j-schema:jmhJar --no-daemon --console=plain)
+          done
+
+      - name: Run schema correctness tests for key-reuse variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in key both; do
+            echo "=== Testing $mode ==="
+            (cd "$mode" && ./gradlew :sjf4j-schema:test --no-daemon --console=plain)
+          done
+
+      - name: Benchmark full SchemaPlan validation, with allocation profiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for mode in none index both key; do
+            jar=$(find "$mode/sjf4j-schema/build/libs" -maxdepth 1 -name '*-jmh.jar' -print -quit)
+            test -n "$jar"
+            echo "=== JMH object $mode ==="
+            java -jar "$jar" '.*EvaluatorTraversalBenchmark\.(properties|unevaluated_properties)$' \
+              -wi 4 -i 5 -w 250ms -r 300ms -f 2 -t 1 \
+              -p failFast=true -p scenario=none,first,last \
+              -prof gc -rf json -rff "results/$mode-object.json"
+            echo "=== JMH array $mode ==="
+            java -jar "$jar" '.*EvaluatorTraversalBenchmark\.(items|unevaluated_items|contains|contains_with_unevaluated_items)$' \
+              -wi 4 -i 5 -w 250ms -r 300ms -f 2 -t 1 \
+              -p failFast=true -p length=32 -p scenario=none,first,last \
+              -prof gc -rf json -rff "results/$mode-array.json"
+          done
+
+      - name: Summarize isolated byKey and byIndex effects
+        if: always()
+        shell: bash
+        run: |
+          python3 control/.github/bench/schema_leaf_report.py results
+
+      - name: Upload raw JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-leaf-reuse-four-modes
+          path: |
+            results/*.json
+            results/summary.md
+          if-no-files-found: warn
