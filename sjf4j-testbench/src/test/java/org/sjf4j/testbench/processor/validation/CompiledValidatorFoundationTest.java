@@ -51,6 +51,13 @@ class CompiledValidatorFoundationTest {
     }
 
     @Test
+    void primitiveParameterUsesRuntimeFallbackWithoutNullCheck() {
+        PersonValidator validator = CompiledInstances.create(PersonValidator.class);
+        assertTrue(validator.positive(3));
+        assertFalse(validator.positive(0));
+    }
+
+    @Test
     void referencedSchemaAndItsExternalRefsAreFrozenAtCompileTime() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
 
@@ -105,6 +112,9 @@ class CompiledValidatorFoundationTest {
             {"type":"string","minLength":4}
             """)
         boolean text(String text);
+
+        @ValidJsonSchema("{\\"type\\":\\"integer\\",\\"minimum\\":1}")
+        boolean positive(int value);
 
         @ValidJsonSchema(ref = "compiled-validator-root.json")
         boolean fromResource(Payload payload);
