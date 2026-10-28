@@ -1,0 +1,86 @@
+name: Schema Evaluator Factorial JMH
+
+on:
+  push:
+    branches: [bench/schema-evaluator-factors]
+
+permissions:
+  contents: read
+
+jobs:
+  factorial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout experiment scripts
+        uses: actions/checkout@v4
+        with:
+          path: control
+      - name: Checkout exact updated baseline
+        uses: actions/checkout@v4
+        with:
+          ref: fc7734219996ba0576cc4e5bbb4cd0e3b805a988
+          path: source
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate four independent Evaluator variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          for variant in walker-reuse walker-fresh loop-reuse loop-fresh; do
+            cp -a source "$variant"
+            traversal="${variant%%-*}"
+            leaf="${variant#*-}"
+            file="$variant/sjf4j-schema/src/main/java/org/sjf4j/schema/Evaluator.java"
+            python3 control/.github/bench/schema_evaluator_factors.py "$file" "$file" \
+              --traversal "$traversal" --leaf "$leaf"
+          done
+
+      - name: Compile all four JMH jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          for variant in walker-reuse walker-fresh loop-reuse loop-fresh; do
+            echo "=== Build $variant ==="
+            (cd "$variant" && ./gradlew :sjf4j-schema:jmhJar --no-daemon --console=plain)
+          done
+
+      - name: Run factorial JMH with GC allocation profiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          # Alternate traversal and leaf settings, to reduce monotone runner drift.
+          for variant in loop-fresh walker-reuse walker-fresh loop-reuse; do
+            jar=$(find "$variant/sjf4j-schema/build/libs" -maxdepth 1 -name '*-jmh.jar' -print -quit)
+            test -n "$jar"
+            echo "=== Benchmark $variant / objects ==="
+            java -jar "$jar" '.*EvaluatorTraversalBenchmark\.(properties|unevaluated_properties)$' \
+              -wi 4 -i 4 -w 250ms -r 300ms -f 1 -t 1 \
+              -p failFast=true -p scenario=none,first,last \
+              -prof gc -rf json -rff "results/$variant-object.json"
+            echo "=== Benchmark $variant / arrays ==="
+            java -jar "$jar" '.*EvaluatorTraversalBenchmark\.(items|unevaluated_items|contains|contains_with_unevaluated_items)$' \
+              -wi 4 -i 4 -w 250ms -r 300ms -f 1 -t 1 \
+              -p failFast=true -p length=32 -p scenario=none,first,last \
+              -prof gc -rf json -rff "results/$variant-array.json"
+          done
+
+      - name: Print isolated effect comparison
+        if: always()
+        shell: bash
+        run: python3 control/.github/bench/schema_evaluator_report.py results
+
+      - name: Upload JMH JSON output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-evaluator-factorial-jmh
+          path: results/*.json
+          if-no-files-found: warn
