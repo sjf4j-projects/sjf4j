@@ -1,5 +1,7 @@
 package org.sjf4j.testbench.binding.compiled;
 
+import com.alibaba.fastjson2.JSON;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
@@ -21,6 +23,7 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.testbench.model.creek.ModelState;
 import org.sjf4j.testbench.model.creek.PolyBase;
@@ -32,7 +35,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/** Same Creek POJO, String input/output, with parsing and serialization inside each operation. */
+/**
+ * Same Creek POJO and String input/output, with full parsing and serialization
+ * inside each timed operation. Compares Jackson2 and Fastjson2 native,
+ * SJF4J runtime and compiled paths; correctness is checked before measuring.
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
@@ -50,6 +57,9 @@ public class CreekModelBenchmark {
     private static final ObjectMapper JACKSON_NATIVE = new ObjectMapper();
     private static final ObjectMapper JACKSON_BLACKBIRD =
             new ObjectMapper().registerModule(new BlackbirdModule());
+    private static final Fastjson2Binder FASTJSON2_RUNTIME = new Fastjson2Binder();
+    private static final Fastjson2CreekCompiledBinder FASTJSON2_COMPILED =
+            CompiledInstances.global(Fastjson2CreekCompiledBinder.class);
     private static final Jackson2Binder SJF4J_RUNTIME = new Jackson2Binder();
     private static final CreekCompiledBinder SJF4J_COMPILED =
             CompiledInstances.global(CreekCompiledBinder.class);
@@ -87,6 +97,13 @@ public class CreekModelBenchmark {
         if (!compiledA || !compiledB) {
             throw new IllegalStateException("Creek mapped subtypes did not receive compiled writers");
         }
+
+        checkRead("fastjson2 native", expected, read_fastjson2_native());
+        checkRead("fastjson2 runtime", expected, read_fastjson2_runtime());
+        checkRead("fastjson2 compiled", expected, read_fastjson2_compiled());
+        checkWrite("fastjson2 native", expectedTree, write_fastjson2_native(state), expected);
+        checkWrite("fastjson2 runtime", expectedTree, write_fastjson2_runtime(state), expected);
+        checkWrite("fastjson2 compiled", expectedTree, write_fastjson2_compiled(state), expected);
 
         checkRead("native", expected, read_native());
         checkRead("blackbird", expected, read_blackbird());
@@ -135,6 +152,21 @@ public class CreekModelBenchmark {
     }
 
     @Benchmark
+    public TestModel read_fastjson2_native() {
+        return JSON.parseObject(json, TestModel.class);
+    }
+
+    @Benchmark
+    public TestModel read_fastjson2_runtime() {
+        return (TestModel) FASTJSON2_RUNTIME.readNode(json, TestModel.class);
+    }
+
+    @Benchmark
+    public TestModel read_fastjson2_compiled() throws IOException {
+        return FASTJSON2_COMPILED.read(json);
+    }
+
+    @Benchmark
     public String write_native(ModelState state) throws IOException {
         return JACKSON_NATIVE.writeValueAsString(state.model);
     }
@@ -152,6 +184,27 @@ public class CreekModelBenchmark {
     @Benchmark
     public String write_compiled(ModelState state) throws IOException {
         return SJF4J_COMPILED.write(state.model);
+    }
+
+    @Benchmark
+    public String write_fastjson2_native(ModelState state) {
+        return JSON.toJSONString(state.model);
+    }
+
+    @Benchmark
+    public String write_fastjson2_runtime(ModelState state) {
+        return FASTJSON2_RUNTIME.writeNodeAsString(state.model);
+    }
+
+    @Benchmark
+    public String write_fastjson2_compiled(ModelState state) throws IOException {
+        return FASTJSON2_COMPILED.write(state.model);
+    }
+
+    @CompiledBinder(backend = Backend.FASTJSON2)
+    public interface Fastjson2CreekCompiledBinder {
+        @ReadFrom TestModel read(String json) throws IOException;
+        @WriteTo String write(TestModel model) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
