@@ -17,6 +17,7 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
@@ -286,10 +287,11 @@ public class CompiledWriteBenchmark {
 
         for (boolean includeNulls : new boolean[]{true, false}) {
             RuntimeContext ctx = new RuntimeContext(includeNulls);
-            String j2 = CompiledInstances.create(Jackson2CompiledBinder.class, ctx)
-                    .writePojo(example);
-            String j3 = CompiledInstances.create(Jackson3CompiledBinder.class, ctx)
-                    .writePojo(example);
+            // Null inclusion is fixed by @BindingOptions in a CompiledBinder.
+            String j2 = includeNulls ? JACKSON2_COMPILED.writePojo(example)
+                    : CompiledInstances.global(Jackson2OmittingBinder.class).writePojo(example);
+            String j3 = includeNulls ? JACKSON3_COMPILED.writePojo(example)
+                    : CompiledInstances.global(Jackson3OmittingBinder.class).writePojo(example);
 
             java.io.StringWriter out2 = new java.io.StringWriter();
             try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(out2)) {
@@ -309,6 +311,10 @@ public class CompiledWriteBenchmark {
                     || !tree.path("friends").get(1).isNull()
                     || tree.path("address").path("city").asText().isEmpty()) {
                 throw new IllegalStateException("Array null elements or address lost");
+            }
+            if (includeNulls && (!tree.has("email") || !tree.path("address").has("street")
+                    || !tree.path("friends").get(0).has("name"))) {
+                throw new IllegalStateException("Null-valued properties must be included");
             }
             if (!includeNulls && (tree.has("email") || tree.path("address").has("street")
                     || tree.path("friends").get(0).has("name"))) {
@@ -532,12 +538,19 @@ public class CompiledWriteBenchmark {
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
+    @BindingOptions(includeNulls = true)
     public interface Jackson2CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
         @WriteTo byte[] writePojoUtf8(User value) throws IOException;
         @WriteTo String writeMap(Map<String, Object> value) throws IOException;
         @WriteTo String writeUri(URI value) throws IOException;
         @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON2)
+    @BindingOptions(includeNulls = false)
+    public interface Jackson2OmittingBinder {
+        @WriteTo String writePojo(User value) throws IOException;
     }
 
     // ----- JACKSON3 -----
@@ -687,12 +700,19 @@ public class CompiledWriteBenchmark {
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
+    @BindingOptions(includeNulls = true)
     public interface Jackson3CompiledBinder {
         @WriteTo String writePojo(User value) throws IOException;
         @WriteTo byte[] writePojoUtf8(User value) throws IOException;
         @WriteTo String writeMap(Map<String, Object> value) throws IOException;
         @WriteTo String writeUri(URI value) throws IOException;
         @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON3)
+    @BindingOptions(includeNulls = false)
+    public interface Jackson3OmittingBinder {
+        @WriteTo String writePojo(User value) throws IOException;
     }
 
     // ----- GSON -----
