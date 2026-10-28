@@ -207,7 +207,11 @@ final class StructuralWriteEmitter {
                 out.line("org.sjf4j.binding.StreamingIO.writePojo(generator, value, "
                         + metadata + ", this.context);");
             } else {
-                ops.writeNonNullValue(out, subtype.compiled, "(" + type + ") value");
+                if (subtype.compiled.helperRequired()) {
+                    ops.writeNonNullValue(out, subtype.compiled, "(" + type + ") value");
+                } else {
+                    ops.writeValue(out, subtype.compiled, "(" + type + ") value");
+                }
             }
             out.line("return;");
             out.endBlock();
