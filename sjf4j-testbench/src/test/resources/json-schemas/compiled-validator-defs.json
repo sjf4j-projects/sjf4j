@@ -2,10 +2,19 @@
   "$defs": {
     "valid": {
       "type": "object",
-      "required": ["value"],
+      "required": [
+        "value"
+      ],
       "properties": {
-        "value": { "type": "string", "minLength": 2 }
+        "value": {
+          "type": "string",
+          "minLength": 2
+        }
       }
+    },
+    "text": {
+      "type": "string",
+      "minLength": 4
     }
   }
 }
