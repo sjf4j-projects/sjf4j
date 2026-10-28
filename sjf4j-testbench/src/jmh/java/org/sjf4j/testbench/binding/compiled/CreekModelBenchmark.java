@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Measurement(iterations = 5, time = 400, timeUnit = TimeUnit.MILLISECONDS)
-@Fork(2)
+@Fork(1)
 @Threads(1)
 @State(Scope.Thread)
 public class CreekModelBenchmark {
