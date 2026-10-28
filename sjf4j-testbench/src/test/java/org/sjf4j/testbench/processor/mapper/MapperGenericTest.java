@@ -23,7 +23,7 @@ public class MapperGenericTest {
 
     @Test
     public void extendsWildcardsAreReadableSourcesForListSetAndMap() {
-        GenericMapper mapper = CompiledInstances.global(GenericMapper.class);
+        GenericMapper mapper = CompiledInstances.create(GenericMapper.class);
 
         List<User> users = Arrays.asList(new User("Ada"), null, new User("Grace"));
         assertEquals(
@@ -74,7 +74,7 @@ public class MapperGenericTest {
 
     @Test
     public void nestedExtendsWildcardsResolveRecursively() {
-        GenericMapper mapper = CompiledInstances.global(GenericMapper.class);
+        GenericMapper mapper = CompiledInstances.create(GenericMapper.class);
 
         List<User> first = Arrays.asList(new User("A"), null);
         List<User> second = List.of(new User("B"));
@@ -100,7 +100,7 @@ public class MapperGenericTest {
 
     @Test
     public void unboundedWildcardsReadAsObject() {
-        GenericMapper mapper = CompiledInstances.global(GenericMapper.class);
+        GenericMapper mapper = CompiledInstances.create(GenericMapper.class);
 
         List<?> list = Arrays.asList("text", 7, null);
         assertEquals(Arrays.asList("text", 7, null), mapper.objects(list));
@@ -126,7 +126,7 @@ public class MapperGenericTest {
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void rawContainersUseObjectAsReadableAndWritableFallback() {
-        RawMapper mapper = CompiledInstances.global(RawMapper.class);
+        RawMapper mapper = CompiledInstances.create(RawMapper.class);
 
         List rawList = new ArrayList();
         rawList.add("text");
@@ -155,7 +155,7 @@ public class MapperGenericTest {
 
     @Test
     public void inheritedContainerTypeArgumentsAreResolvedForReadAndWrite() {
-        GenericMapper mapper = CompiledInstances.global(GenericMapper.class);
+        GenericMapper mapper = CompiledInstances.create(GenericMapper.class);
 
         Users users = new Users();
         users.add(new User("Ada"));
@@ -174,7 +174,7 @@ public class MapperGenericTest {
 
     @Test
     public void inheritedGenericPojoPropertiesResolveBeforeNestedConversion() {
-        GenericMapper mapper = CompiledInstances.global(GenericMapper.class);
+        GenericMapper mapper = CompiledInstances.create(GenericMapper.class);
 
         UserValueBox source = new UserValueBox();
         source.setValue(new User("Ada"));
@@ -187,7 +187,7 @@ public class MapperGenericTest {
 
     @Test
     public void wildcardTypedPropertiesMapIntoConcreteWritableProperties() {
-        GenericMapper mapper = CompiledInstances.global(GenericMapper.class);
+        GenericMapper mapper = CompiledInstances.create(GenericMapper.class);
 
         List<User> users = Arrays.asList(new User("Ada"), null);
         Set<User> set = new LinkedHashSet<>();
@@ -208,7 +208,7 @@ public class MapperGenericTest {
 
     @Test
     public void assignableWildcardTargetsCanRemainDirectWithoutContainerWrites() {
-        GenericMapper mapper = CompiledInstances.global(GenericMapper.class);
+        GenericMapper mapper = CompiledInstances.create(GenericMapper.class);
 
         List<User> users = new ArrayList<>(List.of(new User("Ada")));
         Map<String, User> map = new LinkedHashMap<>();

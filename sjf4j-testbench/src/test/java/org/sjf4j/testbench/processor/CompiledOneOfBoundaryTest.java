@@ -176,7 +176,7 @@ public class CompiledOneOfBoundaryTest {
         ValueRegistry.registerAnnotated(CodecRegistry.class);
     }
 
-    private static final Reader BINDER = CompiledInstances.global(Reader.class);
+    private static final Reader BINDER = CompiledInstances.create(Reader.class);
 
     @Test
     void numericCodecsDecodeIdenticallyWithEarlyAndLateDiscriminators() throws Exception {

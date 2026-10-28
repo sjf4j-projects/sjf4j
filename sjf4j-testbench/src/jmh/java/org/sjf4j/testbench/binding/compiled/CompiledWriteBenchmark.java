@@ -126,17 +126,17 @@ public class CompiledWriteBenchmark {
     }
 
     private static final Jackson2CompiledBinder JACKSON2_COMPILED =
-            CompiledInstances.global(Jackson2CompiledBinder.class);
+            CompiledInstances.create(Jackson2CompiledBinder.class);
     private static final Jackson3CompiledBinder JACKSON3_COMPILED =
-            CompiledInstances.global(Jackson3CompiledBinder.class);
+            CompiledInstances.create(Jackson3CompiledBinder.class);
     private static final GsonCompiledBinder GSON_COMPILED =
-            CompiledInstances.global(GsonCompiledBinder.class);
+            CompiledInstances.create(GsonCompiledBinder.class);
     private static final Fastjson2CompiledBinder FASTJSON2_COMPILED =
-            CompiledInstances.global(Fastjson2CompiledBinder.class);
+            CompiledInstances.create(Fastjson2CompiledBinder.class);
     private static final JsonpCompiledBinder JSONP_COMPILED =
-            CompiledInstances.global(JsonpCompiledBinder.class);
+            CompiledInstances.create(JsonpCompiledBinder.class);
     private static final SimpleCompiledBinder SIMPLE_COMPILED =
-            CompiledInstances.global(SimpleCompiledBinder.class);
+            CompiledInstances.create(SimpleCompiledBinder.class);
 
     // Trial-only correctness verification, outside the timed path. Object
     // property order and insignificant JSON formatting may differ.

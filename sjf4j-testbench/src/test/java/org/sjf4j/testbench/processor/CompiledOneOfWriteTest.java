@@ -203,12 +203,12 @@ public class CompiledOneOfWriteTest {
 
     static Stream<Arguments> backends() {
         return Stream.of(
-                Arguments.of("simple", CompiledInstances.global(SimpleWriter.class), new SimpleJsonBinder()),
-                Arguments.of("gson", CompiledInstances.global(GsonWriter.class), new GsonBinder()),
-                Arguments.of("jackson2", CompiledInstances.global(Jackson2Writer.class), new Jackson2Binder()),
-                Arguments.of("jackson3", CompiledInstances.global(Jackson3Writer.class), new Jackson3Binder()),
-                Arguments.of("fastjson2", CompiledInstances.global(Fastjson2Writer.class), new Fastjson2Binder()),
-                Arguments.of("jsonp", CompiledInstances.global(JsonpWriter.class), new JsonpBinder()));
+                Arguments.of("simple", CompiledInstances.create(SimpleWriter.class), new SimpleJsonBinder()),
+                Arguments.of("gson", CompiledInstances.create(GsonWriter.class), new GsonBinder()),
+                Arguments.of("jackson2", CompiledInstances.create(Jackson2Writer.class), new Jackson2Binder()),
+                Arguments.of("jackson3", CompiledInstances.create(Jackson3Writer.class), new Jackson3Binder()),
+                Arguments.of("fastjson2", CompiledInstances.create(Fastjson2Writer.class), new Fastjson2Binder()),
+                Arguments.of("jsonp", CompiledInstances.create(JsonpWriter.class), new JsonpBinder()));
     }
 
     private static Envelope envelope() {

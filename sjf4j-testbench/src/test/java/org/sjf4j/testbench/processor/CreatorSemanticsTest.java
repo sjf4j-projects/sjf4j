@@ -57,12 +57,12 @@ public class CreatorSemanticsTest {
 
     static Stream<Arguments> backends() {
         return Stream.of(
-                Arguments.of("simple", CompiledInstances.global(SimpleCreatorBinder.class), new SimpleJsonBinder()),
-                Arguments.of("gson", CompiledInstances.global(GsonCreatorBinder.class), new GsonBinder()),
-                Arguments.of("jackson2", CompiledInstances.global(Jackson2CreatorBinder.class), new Jackson2Binder()),
-                Arguments.of("jackson3", CompiledInstances.global(Jackson3CreatorBinder.class), new Jackson3Binder()),
-                Arguments.of("fastjson2", CompiledInstances.global(Fastjson2CreatorBinder.class), new Fastjson2Binder()),
-                Arguments.of("jsonp", CompiledInstances.global(JsonpCreatorBinder.class), new JsonpBinder())
+                Arguments.of("simple", CompiledInstances.create(SimpleCreatorBinder.class), new SimpleJsonBinder()),
+                Arguments.of("gson", CompiledInstances.create(GsonCreatorBinder.class), new GsonBinder()),
+                Arguments.of("jackson2", CompiledInstances.create(Jackson2CreatorBinder.class), new Jackson2Binder()),
+                Arguments.of("jackson3", CompiledInstances.create(Jackson3CreatorBinder.class), new Jackson3Binder()),
+                Arguments.of("fastjson2", CompiledInstances.create(Fastjson2CreatorBinder.class), new Fastjson2Binder()),
+                Arguments.of("jsonp", CompiledInstances.create(JsonpCreatorBinder.class), new JsonpBinder())
         );
     }
 
@@ -111,7 +111,7 @@ public class CreatorSemanticsTest {
 
     @Test
     void fastjson2CreatorRejectsDuplicateArgumentsAcrossRawAndFallback() throws Exception {
-        Fastjson2CreatorBinder binder = CompiledInstances.global(Fastjson2CreatorBinder.class);
+        Fastjson2CreatorBinder binder = CompiledInstances.create(Fastjson2CreatorBinder.class);
         for (String json : List.of(
                 "{\"name\":\"Ada\",\"name\":\"Bob\"}",
                 "{\"name\":\"Ada\",\"legacy_name\":\"Bob\"}",
@@ -127,7 +127,7 @@ public class CreatorSemanticsTest {
 
     @Test
     void fastjson2CreatorFallbackHandlesUnknownUnicodeAndEscapedNames() throws Exception {
-        Fastjson2CreatorBinder binder = CompiledInstances.global(Fastjson2CreatorBinder.class);
+        Fastjson2CreatorBinder binder = CompiledInstances.create(Fastjson2CreatorBinder.class);
         String escapedName = "na" + (char) 92 + "u006de";
         String json = "{\"未知字段\":{\"ignored\":[1,true,null]},"
                 + "\"" + escapedName + "\":\"Ada\",\"age\":25,\"other\":7}";
@@ -147,7 +147,7 @@ public class CreatorSemanticsTest {
 
     @Test
     void fastjson2CreatorPendingPropertiesPreserveConstructorDefaultsAndPresence() throws Exception {
-        Fastjson2CreatorBinder binder = CompiledInstances.global(Fastjson2CreatorBinder.class);
+        Fastjson2CreatorBinder binder = CompiledInstances.create(Fastjson2CreatorBinder.class);
         for (String json : List.of(
                 "{\"name\":\"Ada\",\"age\":25}",
                 "{\"age\":25,\"legacy_name\":\"Ada\"}",
@@ -190,7 +190,7 @@ public class CreatorSemanticsTest {
         source.put("tags", original.tags());
         source.put("friends", original.friends());
 
-        CreatorMapper mapper = CompiledInstances.global(CreatorMapper.class);
+        CreatorMapper mapper = CompiledInstances.create(CreatorMapper.class);
         assertEquals(original, mapper.toRecord(source));
         assertNull(mapper.toRecord(null));
         JsonObject projected = mapper.project(original);

@@ -89,17 +89,17 @@ public class CompiledEnumBindingTest {
 
     @Test
     void compiledEnumReadWriteAcrossBackends() throws IOException {
-        Fastjson2EnumBinder fastjson2 = CompiledInstances.global(Fastjson2EnumBinder.class);
+        Fastjson2EnumBinder fastjson2 = CompiledInstances.create(Fastjson2EnumBinder.class);
         verify("Fastjson2", fastjson2::readEnum, fastjson2::readEnumBytes,
                 fastjson2::readPojo, fastjson2::readPojoBytes,
                 fastjson2::writePojo, fastjson2::writePojoBytes);
 
-        Jackson2EnumBinder jackson2 = CompiledInstances.global(Jackson2EnumBinder.class);
+        Jackson2EnumBinder jackson2 = CompiledInstances.create(Jackson2EnumBinder.class);
         verify("Jackson2", jackson2::readEnum, jackson2::readEnumBytes,
                 jackson2::readPojo, jackson2::readPojoBytes,
                 jackson2::writePojo, jackson2::writePojoBytes);
 
-        Jackson3EnumBinder jackson3 = CompiledInstances.global(Jackson3EnumBinder.class);
+        Jackson3EnumBinder jackson3 = CompiledInstances.create(Jackson3EnumBinder.class);
         verify("Jackson3", jackson3::readEnum, jackson3::readEnumBytes,
                 jackson3::readPojo, jackson3::readPojoBytes,
                 jackson3::writePojo, jackson3::writePojoBytes);

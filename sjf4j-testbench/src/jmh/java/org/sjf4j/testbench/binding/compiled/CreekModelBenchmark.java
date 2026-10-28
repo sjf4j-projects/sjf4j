@@ -59,10 +59,10 @@ public class CreekModelBenchmark {
             new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Fastjson2Binder FASTJSON2_RUNTIME = new Fastjson2Binder();
     private static final Fastjson2CreekBinder FASTJSON2_COMPILED =
-            CompiledInstances.global(Fastjson2CreekBinder.class);
+            CompiledInstances.create(Fastjson2CreekBinder.class);
     private static final Jackson2Binder SJF4J_RUNTIME = new Jackson2Binder();
     private static final Jackson2CreekBinder SJF4J_COMPILED =
-            CompiledInstances.global(Jackson2CreekBinder.class);
+            CompiledInstances.create(Jackson2CreekBinder.class);
 
     private String json;
 

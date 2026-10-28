@@ -31,6 +31,11 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         this.context = Asserts.notNull(context, "context");
     }
 
+    /** Returns this backend Binder's immutable SJF4J runtime settings. */
+    public final RuntimeContext context() {
+        return context;
+    }
+
     /*
      * --------------------------------------------------------------
      * Parsing

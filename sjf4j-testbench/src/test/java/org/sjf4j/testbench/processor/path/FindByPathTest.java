@@ -138,7 +138,7 @@ public class FindByPathTest {
 
     @Test
     public void wildcardReturnsAllItemNames() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         List<String> names = nodes.itemNames(root);
@@ -147,7 +147,7 @@ public class FindByPathTest {
 
     @Test
     public void unionReturnsValuesForSpecifiedKeysInOrder() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         List<Object> fields = nodes.metadataFields(root);
@@ -159,7 +159,7 @@ public class FindByPathTest {
 
     @Test
     public void indexUnionReturnsPathOrder() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("Charlie", "Alice"), nodes.itemNamesByIndexUnion(root));
@@ -167,7 +167,7 @@ public class FindByPathTest {
 
     @Test
     public void nestedWildcardReturnsValuesInNestedOrder() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of(root.items().get(0), root.items().get(1), root.items().get(2)), nodes.allChildren(root));
@@ -176,7 +176,7 @@ public class FindByPathTest {
 
     @Test
     public void rawObjectReturnReturnsItems() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         List<Object> items = nodes.allItems(root);
@@ -193,7 +193,7 @@ public class FindByPathTest {
 
     @Test
     public void wildcardWithObjectReturnReturnsAllItemNames() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         List<Object> names = nodes.itemNamesAsObject(root);
@@ -202,7 +202,7 @@ public class FindByPathTest {
 
     @Test
     public void sliceReturnsMatchingValuesInArrayOrder() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("Alice", "Bob"), nodes.firstTwoItemNames(root));
@@ -216,7 +216,7 @@ public class FindByPathTest {
 
     @Test
     public void filterReturnsMatchingValuesInArrayOrder() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("Bob", "Charlie"), nodes.adultItemNames(root));
@@ -231,7 +231,7 @@ public class FindByPathTest {
 
     @Test
     public void sequentialListsPreserveWildcardSliceFilterAndNestedOrder() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container random = container();
         IteratorOnlyList<Item> items = new IteratorOnlyList<>(random.items());
         Container sequential = new Container(items,
@@ -267,7 +267,7 @@ public class FindByPathTest {
 
     @Test
     public void descendantFallbackReturnsMatchingValuesInOrder() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 
         assertEquals(List.of("one", "Alice", "Bob", "empty", "two", "Charlie"),
@@ -276,7 +276,7 @@ public class FindByPathTest {
 
     @Test
     public void emptyResultsReturnEmptyList() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container empty = new Container(List.of(), List.of(), Map.of());
 
         List<String> names = nodes.itemNames(empty);
@@ -291,7 +291,7 @@ public class FindByPathTest {
 
     @Test
     public void nullRootThrowsNullPointerExceptionForFind() {
-        FindNodes nodes = CompiledInstances.global(FindNodes.class);
+        FindNodes nodes = CompiledInstances.create(FindNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.itemNames(null));
     }

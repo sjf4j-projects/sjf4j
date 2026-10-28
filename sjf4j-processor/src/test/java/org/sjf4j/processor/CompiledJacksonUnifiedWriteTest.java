@@ -65,8 +65,9 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("private void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("private void _writeStringMember("), backend);
-            assertTrue(generated.contains("if (value == null && !this.context.includeNulls)"), backend);
-            assertTrue(generated.contains("_writeString(g, value);"), backend);
+            assertTrue(generated.contains("if (value == null)"), backend);
+            assertTrue(generated.contains("if (this.context.includeNulls)"), backend);
+            assertTrue(generated.contains("g.writeString(value);"), backend);
             assertTrue(generated.contains("_writeStringMember(g,"), backend);
             assertTrue(generated.contains("_writeList(generator, property0);"), backend);
             assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
@@ -80,7 +81,7 @@ class CompiledJacksonUnifiedWriteTest {
                 Class<?> modelType = loader.loadClass("fixture.Model");
                 Class binderType = loader.loadClass("fixture.Binder");
                 Object model = modelType.getConstructor().newInstance();
-                Object normal = CompiledInstances.global(binderType);
+                Object normal = CompiledInstances.create(binderType);
                 Object withoutNulls = CompiledInstances.create(binderType, new RuntimeContext(false));
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
                 java.lang.reflect.Method writeList = binderType.getMethod("writeList", java.util.List.class);

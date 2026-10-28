@@ -329,7 +329,7 @@ interface StudentPath {
 ```
 
 ```java
-StudentPath path = CompiledInstances.global(StudentPath.class);
+StudentPath path = CompiledInstances.create(StudentPath.class);
 path.getScoresMath(student);
 ```
 
@@ -433,7 +433,7 @@ public interface StudentMapper {
 
 Use the generated mapper:
 ```java
-StudentMapper mapper = CompiledInstances.global(StudentMapper.class);
+StudentMapper mapper = CompiledInstances.create(StudentMapper.class);
 StudentDto studentDto = mapper.toDto(student);
 ```
 

@@ -54,7 +54,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             org.sjf4j.value.ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
             Class<?> binderType = loader.loadClass("fixture.Binder");
-            Object binder = CompiledInstances.global(binderType);
+            Object binder = CompiledInstances.create(binderType);
             Class<?> getterType = loader.loadClass("fixture.FailingGetter");
             Class<?> codecType = loader.loadClass("fixture.FailingCodec");
 
@@ -145,7 +145,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
             ((List<Instant>) beanType.getField("dates").get(bean)).add(instant);
             ((Map<String, Instant>) beanType.getField("timeline").get(bean)).put("first", instant);
 
-            Object defaults = CompiledInstances.global(type);
+            Object defaults = CompiledInstances.create(type);
             String json = (String) type.getMethod("write", beanType).invoke(defaults, bean);
             byte[] bytes = (byte[]) type.getMethod("writeBytes", beanType).invoke(defaults, bean);
             assertEquals(json, new String(bytes, StandardCharsets.UTF_8));

@@ -47,7 +47,7 @@ class CompiledBinderArrayTest {
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> binderType = loader.loadClass("fixture.Binder");
-                Object binder = CompiledInstances.global(binderType);
+                Object binder = CompiledInstances.create(binderType);
                 Class<?> clientsClass = loader.loadClass("fixture.Clients");
                 String json = "{\"names\":[\"Ada\",null,\"Bob\"],\"numbers\":[1,2,3],"
                         + "\"matrix\":[[\"a\"],[],[\"b\",\"c\"]],"

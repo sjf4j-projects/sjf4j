@@ -36,6 +36,7 @@ public final class GeneratedClass {
     private final List<Member> contextInitializers = new ArrayList<>();
 
     private boolean runtimeContextConstructor;
+    private String backendBinderType;
 
     private boolean valid = true;
 
@@ -142,10 +143,15 @@ public final class GeneratedClass {
 
     /**
      * Gives the generated implementation immutable per-instance runtime settings.
-     * The no-arg constructor preserves the default/global instance contract.
+     * The no-arg constructor preserves the default settings contract.
      */
     public void enableRuntimeContext() {
         runtimeContextConstructor = true;
+    }
+
+    /** Adds a constructor accepting the concrete backend Binder for a CompiledBinder. */
+    public void enableBackendBinder(String binderType) {
+        this.backendBinderType = Asserts.notNull(binderType, "binderType");
     }
 
     /** Adds an assignment after the generated constructor's context field is set. */
@@ -238,15 +244,28 @@ public final class GeneratedClass {
         if (runtimeContextConstructor) {
             if (written) out.blank();
             out.beginBlock("public " + simpleName + "()");
-            out.line("this(org.sjf4j.RuntimeContext.EMPTY);");
+            out.line(backendBinderType == null
+                    ? "this(org.sjf4j.RuntimeContext.EMPTY);"
+                    : "this(new " + backendBinderType + "());");
             out.endBlock();
             out.blank();
             out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
-            out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
-            for (Member initializer : contextInitializers) {
-                initializer.write(out);
+            if (backendBinderType == null) {
+                out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
+                for (Member initializer : contextInitializers) initializer.write(out);
+            } else {
+                out.line("this(new " + backendBinderType
+                        + "(java.util.Objects.requireNonNull(context, \"context\")));");
             }
             out.endBlock();
+            if (backendBinderType != null) {
+                out.blank();
+                out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
+                out.line("this.binder = java.util.Objects.requireNonNull(backendBinder, \"backendBinder\");");
+                out.line("this.context = this.binder.context();");
+                for (Member initializer : contextInitializers) initializer.write(out);
+                out.endBlock();
+            }
             written = true;
         }
 

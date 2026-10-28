@@ -21,7 +21,7 @@ public class PutByPathTest {
 
     @Test
     public void putsDeepPojoMapListAndJsonPaths() {
-        PutNodes nodes = CompiledInstances.global(PutNodes.class);
+        PutNodes nodes = CompiledInstances.create(PutNodes.class);
         Account account = account();
 
         assertEquals("last@example.com", nodes.putLastMemberEmail(account, "new@example.com"));
@@ -36,7 +36,7 @@ public class PutByPathTest {
 
     @Test
     public void putsListArrayAppendAndJsonArrayBoundaries() {
-        PutNodes nodes = CompiledInstances.global(PutNodes.class);
+        PutNodes nodes = CompiledInstances.create(PutNodes.class);
 
         List<Integer> values = new ArrayList<>(List.of(1, 2, 3));
         assertEquals(Integer.valueOf(3), nodes.putLast(values, 9));
@@ -60,7 +60,7 @@ public class PutByPathTest {
 
     @Test
     public void putReturnsOldValueForMapSetterFieldAndPrimitive() {
-        PutNodes nodes = CompiledInstances.global(PutNodes.class);
+        PutNodes nodes = CompiledInstances.create(PutNodes.class);
 
         Map<String, String> map = new HashMap<>();
         map.put("name", "old");
@@ -81,7 +81,7 @@ public class PutByPathTest {
 
     @Test
     public void thirdPartyPropertyNamesDrivePojoPutPath() {
-        PutNodes nodes = CompiledInstances.global(PutNodes.class);
+        PutNodes nodes = CompiledInstances.create(PutNodes.class);
         ThirdPartyMutableBean bean = new ThirdPartyMutableBean("first-old", "last-old");
 
         assertEquals("first-old", nodes.putThirdPartyFirstName(bean, "first-new"));
@@ -92,7 +92,7 @@ public class PutByPathTest {
 
     @Test
     public void missingPutParentThrowsNodeException() {
-        PutNodes nodes = CompiledInstances.global(PutNodes.class);
+        PutNodes nodes = CompiledInstances.create(PutNodes.class);
 
         assertThrows(NodeException.class, () -> nodes.putLastMemberEmail(null, "x"));
         assertThrows(NodeException.class, () -> nodes.putLastMemberEmail(new Account(null), "x"));
@@ -102,7 +102,7 @@ public class PutByPathTest {
 
     @Test
     public void putsDynamicBracketParams() {
-        PutNodes nodes = CompiledInstances.global(PutNodes.class);
+        PutNodes nodes = CompiledInstances.create(PutNodes.class);
         Account account = account();
 
         assertEquals("Old-District", nodes.putRegionDistrict(account, "east", 1, "New-District"));
@@ -128,7 +128,7 @@ public class PutByPathTest {
 
     @Test
     public void dynamicIndexMissingParentThrowsNodeException() {
-        PutNodes nodes = CompiledInstances.global(PutNodes.class);
+        PutNodes nodes = CompiledInstances.create(PutNodes.class);
         Account account = account();
 
         assertThrows(NodeException.class, () -> nodes.putRegionDistrict(account, "east", 9, "x"));

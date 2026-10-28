@@ -32,7 +32,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcResultMappingTest {
     @Test
     void mapsBasicValuesRowsAndMetadata() {
-        Mapper mapper = CompiledInstances.global(Mapper.class);
+        Mapper mapper = CompiledInstances.create(Mapper.class);
         Instant created = Instant.parse("2020-01-01T00:00:00Z");
 
         User user = mapper.user(result(new String[]{"full_name", "age", "created"},
@@ -81,7 +81,7 @@ class JdbcResultMappingTest {
 
     @Test
     void appliesCardinalityPoliciesAndWrapsSqlExceptions() {
-        Mapper mapper = CompiledInstances.global(Mapper.class);
+        Mapper mapper = CompiledInstances.create(Mapper.class);
 
         BindingException multiple = assertThrows(BindingException.class, () -> mapper.user(
                 result(new String[]{"full_name", "age", "created"},
@@ -98,7 +98,7 @@ class JdbcResultMappingTest {
 
     @Test
     void mapsJojoPropertiesAndPreservesUnconsumedColumnsDynamically() {
-        Mapper mapper = CompiledInstances.global(Mapper.class);
+        Mapper mapper = CompiledInstances.create(Mapper.class);
 
         Jojo one = mapper.jojo(result(new String[]{"full_name", "age", "extra", "extra"},
                 new Object[]{"Ada", 36, "first", "last"}));
@@ -122,7 +122,7 @@ class JdbcResultMappingTest {
 
     @Test
     void mapsOnlyPresentJojoPropertiesAndKeepsOtherColumnsDynamic() {
-        Mapper mapper = CompiledInstances.global(Mapper.class);
+        Mapper mapper = CompiledInstances.create(Mapper.class);
 
         Jojo jojo = mapper.presentJojo(result(new String[]{"FULL_NAME", "extra", "full_name"},
                 new Object[]{"Ada", "first", "Grace"}));
@@ -136,7 +136,7 @@ class JdbcResultMappingTest {
 
     @Test
     void ignoredRenamedMappingConsumesItsJdbcColumn() {
-        Mapper mapper = CompiledInstances.global(Mapper.class);
+        Mapper mapper = CompiledInstances.create(Mapper.class);
 
         Jojo jojo = mapper.ignoredJojo(result(new String[]{"full_name", "age", "extra"},
                 new Object[]{"Ada", 36, "yes"}));

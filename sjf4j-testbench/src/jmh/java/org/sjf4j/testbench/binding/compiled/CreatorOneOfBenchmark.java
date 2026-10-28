@@ -62,7 +62,7 @@ public class CreatorOneOfBenchmark {
     private static final ObjectMapper BLACKBIRD =
             new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Jackson2Binder RUNTIME = new Jackson2Binder();
-    private static final CompiledReader COMPILED = CompiledInstances.global(CompiledReader.class);
+    private static final CompiledReader COMPILED = CompiledInstances.create(CompiledReader.class);
 
     private String json;
     private byte[] utf8;

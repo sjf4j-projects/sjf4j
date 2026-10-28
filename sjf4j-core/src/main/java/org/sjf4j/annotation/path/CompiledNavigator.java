@@ -18,8 +18,8 @@ import java.lang.annotation.Target;
  * generated methods cannot declare type parameters.</p>
  *
  * <p>The generated class is named after the interface with the {@code _Impl}
- * suffix. Runtime lookup is normally done through
- * {@code org.sjf4j.CompiledInstances.global(...)}.</p>
+ * suffix. Runtime instantiation is done through
+ * {@code org.sjf4j.CompiledInstances.create(...)}.</p>
  *
  * <pre>{@code
  * @CompiledNavigator

@@ -16,7 +16,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 class JdbcComputeTest {
     @Test
     void computesValueFromWhitelistedJdbcType() {
-        Mapper mapper = CompiledInstances.global(Mapper.class);
+        Mapper mapper = CompiledInstances.create(Mapper.class);
         Instant created = Instant.parse("2020-01-01T00:00:00Z");
 
         Row row = mapper.row(result(new String[]{"created"},
@@ -27,7 +27,7 @@ class JdbcComputeTest {
 
     @Test
     void rejectsNullResultSet() {
-        Mapper mapper = CompiledInstances.global(Mapper.class);
+        Mapper mapper = CompiledInstances.create(Mapper.class);
 
         NullPointerException error = assertThrows(
                 NullPointerException.class,

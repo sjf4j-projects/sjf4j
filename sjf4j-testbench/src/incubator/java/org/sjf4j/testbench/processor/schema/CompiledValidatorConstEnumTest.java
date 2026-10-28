@@ -13,7 +13,7 @@ public class CompiledValidatorConstEnumTest {
 
     @Test
     public void validatesConstAndEnumInFastPath() {
-        Validator validator = CompiledInstances.global(Validator.class);
+        Validator validator = CompiledInstances.create(Validator.class);
 
         assertTrue(validator.isValid(new Choice("fixed", "red")));
         assertTrue(validator.isValid(new Choice("fixed", "blue")));

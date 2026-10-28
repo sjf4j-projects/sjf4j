@@ -65,42 +65,42 @@ public class CompiledUuidBenchmark {
     public void setUp() throws IOException {
         switch (backend) {
             case "fastjson2": {
-                Fastjson2Compiled c = CompiledInstances.global(Fastjson2Compiled.class);
+                Fastjson2Compiled c = CompiledInstances.create(Fastjson2Compiled.class);
                 runtime = new org.sjf4j.backend.fastjson2.binding.Fastjson2Binder();
                 bind(c::readRootString, c::readRootUtf8, c::writeRootString, c::writeRootUtf8,
                         c::readPojoString, c::readPojoUtf8, c::writePojoString, c::writePojoUtf8);
                 break;
             }
             case "jackson2": {
-                Jackson2Compiled c = CompiledInstances.global(Jackson2Compiled.class);
+                Jackson2Compiled c = CompiledInstances.create(Jackson2Compiled.class);
                 runtime = new org.sjf4j.backend.jackson2.binding.Jackson2Binder();
                 bind(c::readRootString, c::readRootUtf8, c::writeRootString, c::writeRootUtf8,
                         c::readPojoString, c::readPojoUtf8, c::writePojoString, c::writePojoUtf8);
                 break;
             }
             case "jackson3": {
-                Jackson3Compiled c = CompiledInstances.global(Jackson3Compiled.class);
+                Jackson3Compiled c = CompiledInstances.create(Jackson3Compiled.class);
                 runtime = new org.sjf4j.backend.jackson3.binding.Jackson3Binder();
                 bind(c::readRootString, c::readRootUtf8, c::writeRootString, c::writeRootUtf8,
                         c::readPojoString, c::readPojoUtf8, c::writePojoString, c::writePojoUtf8);
                 break;
             }
             case "gson": {
-                GsonCompiled c = CompiledInstances.global(GsonCompiled.class);
+                GsonCompiled c = CompiledInstances.create(GsonCompiled.class);
                 runtime = new org.sjf4j.backend.gson.binding.GsonBinder();
                 bind(c::readRootString, c::readRootUtf8, c::writeRootString, c::writeRootUtf8,
                         c::readPojoString, c::readPojoUtf8, c::writePojoString, c::writePojoUtf8);
                 break;
             }
             case "jsonp": {
-                JsonpCompiled c = CompiledInstances.global(JsonpCompiled.class);
+                JsonpCompiled c = CompiledInstances.create(JsonpCompiled.class);
                 runtime = new org.sjf4j.backend.jsonp.binding.JsonpBinder();
                 bind(c::readRootString, c::readRootUtf8, c::writeRootString, c::writeRootUtf8,
                         c::readPojoString, c::readPojoUtf8, c::writePojoString, c::writePojoUtf8);
                 break;
             }
             case "simple": {
-                SimpleCompiled c = CompiledInstances.global(SimpleCompiled.class);
+                SimpleCompiled c = CompiledInstances.create(SimpleCompiled.class);
                 runtime = new org.sjf4j.binding.simple.SimpleJsonBinder();
                 bind(c::readRootString, c::readRootUtf8, c::writeRootString, c::writeRootUtf8,
                         c::readPojoString, c::readPojoUtf8, c::writePojoString, c::writePojoUtf8);

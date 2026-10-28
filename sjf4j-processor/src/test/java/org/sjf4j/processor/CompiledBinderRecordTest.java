@@ -44,7 +44,7 @@ class CompiledBinderRecordTest {
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> iface = loader.loadClass("fixture.Binder");
                 Class<?> event = loader.loadClass("fixture.Event");
-                Object binder = CompiledInstances.global(iface);
+                Object binder = CompiledInstances.create(iface);
                 String json = "{\"items\":[{\"count\":7,\"label\":\"entry\"}],"
                         + "\"unused\":{\"nested\":[1,2]},\"detail\":{\"count\":5,\"label\":\"inner\"},"
                         + "\"id\":9,\"legacy_name\":\"Alice\"}";
@@ -113,7 +113,7 @@ class CompiledBinderRecordTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> iface = loader.loadClass("fixture.Binder");
-                Object binder = CompiledInstances.global(iface);
+                Object binder = CompiledInstances.create(iface);
                 Object result = iface.getMethod("read", String.class)
                         .invoke(binder, "{\"p0\":1,\"p64\":65}");
                 assertEquals(1, result.getClass().getMethod("p0").invoke(result), backend);
@@ -143,7 +143,7 @@ class CompiledBinderRecordTest {
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> iface = loader.loadClass("fixture.Binder");
-                Object binder = CompiledInstances.global(iface);
+                Object binder = CompiledInstances.create(iface);
                 Object epoch = iface.getMethod("read", String.class)
                         .invoke(binder, "{\"value\":12,\"at\":1704067200000}");
                 assertEquals(java.time.Instant.ofEpochMilli(1704067200000L),

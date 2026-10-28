@@ -15,7 +15,7 @@ public class PathProcessorTest {
 
     @Test
     public void registryCreatesInterface() {
-        BasicNodes nodes = CompiledInstances.global(BasicNodes.class);
+        BasicNodes nodes = CompiledInstances.create(BasicNodes.class);
 
         assertEquals("Hangzhou", nodes.getCityName(new User(new City("Hangzhou"))));
         assertNull(nodes.getCityName(new User(null)));
@@ -24,14 +24,14 @@ public class PathProcessorTest {
 
     @Test
     public void registryRejectsInvalidTargets() {
-        assertThrows(NullPointerException.class, () -> CompiledInstances.global(null));
+        assertThrows(NullPointerException.class, () -> CompiledInstances.create(null));
 
         IllegalArgumentException notInterface = assertThrows(IllegalArgumentException.class,
-                () -> CompiledInstances.global(NotInterface.class));
+                () -> CompiledInstances.create(NotInterface.class));
         assertTrue(notInterface.getMessage().contains("requires an interface type"), notInterface.getMessage());
         assertTrue(notInterface.getMessage().contains(NotInterface.class.getName()), notInterface.getMessage());
 
-        NodeException notCompiled = assertThrows(NodeException.class, () -> CompiledInstances.global(NotCompiled.class));
+        NodeException notCompiled = assertThrows(NodeException.class, () -> CompiledInstances.create(NotCompiled.class));
         assertTrue(notCompiled.getMessage().contains("Cannot find generated SJF4J implementation"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains("@CompiledXxx"), notCompiled.getMessage());
         assertTrue(notCompiled.getMessage().contains(NotCompiled.class.getName() + "_Impl"), notCompiled.getMessage());

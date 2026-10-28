@@ -160,12 +160,12 @@ public class CompiledOneOfFallbackTest {
 
     static Stream<Arguments> backends() {
         return Stream.of(
-                Arguments.of("simple", CompiledInstances.global(SimpleOneOfBinder.class), new SimpleJsonBinder()),
-                Arguments.of("gson", CompiledInstances.global(GsonOneOfBinder.class), new GsonBinder()),
-                Arguments.of("jackson2", CompiledInstances.global(Jackson2OneOfBinder.class), new Jackson2Binder()),
-                Arguments.of("jackson3", CompiledInstances.global(Jackson3OneOfBinder.class), new Jackson3Binder()),
-                Arguments.of("fastjson2", CompiledInstances.global(Fastjson2OneOfBinder.class), new Fastjson2Binder()),
-                Arguments.of("jsonp", CompiledInstances.global(JsonpOneOfBinder.class), new JsonpBinder()));
+                Arguments.of("simple", CompiledInstances.create(SimpleOneOfBinder.class), new SimpleJsonBinder()),
+                Arguments.of("gson", CompiledInstances.create(GsonOneOfBinder.class), new GsonBinder()),
+                Arguments.of("jackson2", CompiledInstances.create(Jackson2OneOfBinder.class), new Jackson2Binder()),
+                Arguments.of("jackson3", CompiledInstances.create(Jackson3OneOfBinder.class), new Jackson3Binder()),
+                Arguments.of("fastjson2", CompiledInstances.create(Fastjson2OneOfBinder.class), new Fastjson2Binder()),
+                Arguments.of("jsonp", CompiledInstances.create(JsonpOneOfBinder.class), new JsonpBinder()));
     }
 
     @ParameterizedTest(name = "{0}")

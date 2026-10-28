@@ -57,7 +57,7 @@ public class OneOfReadBenchmark {
             new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Jackson2Binder SJF4J_RUNTIME = new Jackson2Binder();
     private static final Jackson2CompiledBinder SJF4J_COMPILED =
-            CompiledInstances.global(Jackson2CompiledBinder.class);
+            CompiledInstances.create(Jackson2CompiledBinder.class);
 
     private static final String PET_FIRST =
             "{\"kind\":\"dog\",\"name\":\"Rex\",\"age\":7,\"trained\":true,"

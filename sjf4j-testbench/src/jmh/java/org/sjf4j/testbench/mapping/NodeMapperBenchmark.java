@@ -121,7 +121,7 @@ public class NodeMapperBenchmark {
         userGraph.setPrimaryLabel(new StringValue("primary-production"));
         userGraphNode = JsonObject.of("owner", createUserNode(0), "users", usersNode, "events", eventsNode,
                 "labels", labelNodes, "primaryLabel", "primary-production");
-        compiledMapper = CompiledInstances.global(UserGraphMapper.class);
+        compiledMapper = CompiledInstances.create(UserGraphMapper.class);
         assertGraph(compiledMapper.map(userGraphNode), userGraph);
         assertGraph((UserGraph) NodeMapper.convert(userGraphNode, UserGraph.class, false, RuntimeContext.EMPTY), userGraph);
         assertGraph(readUserGraph(userGraphNode), userGraph);

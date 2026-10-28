@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Compiled creator-bound polymorphism must retain Runtime OneOf semantics. */
 public class CompiledCreatorOneOfTest {
-    private static final JacksonReader JACKSON = CompiledInstances.global(JacksonReader.class);
-    private static final SimpleReader SIMPLE = CompiledInstances.global(SimpleReader.class);
+    private static final JacksonReader JACKSON = CompiledInstances.create(JacksonReader.class);
+    private static final SimpleReader SIMPLE = CompiledInstances.create(SimpleReader.class);
     private static final Jackson2Binder RUNTIME = new Jackson2Binder();
 
     public interface Animal {}

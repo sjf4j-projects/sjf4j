@@ -23,7 +23,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesRootPojoSourceByDiscriminator() {
-        OneOfMapper mapper = CompiledInstances.global(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.create(OneOfMapper.class);
 
         Animal cat = mapper.animal(new AnimalSource("cat", "Milo", 9, null));
         Animal dog = mapper.animal(new AnimalSource("dog", "Rex", null, Boolean.TRUE));
@@ -41,7 +41,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesMapAndJsonObjectSources() {
-        OneOfMapper mapper = CompiledInstances.global(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.create(OneOfMapper.class);
 
         Animal fromMap = mapper.animalMap(Map.of("type", "cat", "name", "MapCat", "lives", 7));
         Animal fromJson = mapper.animalJson(JsonObject.of("type", "dog", "name", "JsonDog", "goodDog", Boolean.TRUE));
@@ -52,7 +52,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesContainerElementsAndNestedProperties() {
-        OneOfMapper mapper = CompiledInstances.global(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.create(OneOfMapper.class);
 
         List<Animal> animals = mapper.animals(List.of(
                 Map.of("type", "cat", "name", "A", "lives", 8),
@@ -71,7 +71,7 @@ public class MapperOneOfTest {
 
     @Test
     public void appliesOnNoMatchPolicies() {
-        OneOfMapper mapper = CompiledInstances.global(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.create(OneOfMapper.class);
 
         assertNull(mapper.nullableAnimal(Map.of("type", "bird", "name", "Sky")));
         BindingException ex = assertThrows(BindingException.class,
@@ -81,7 +81,7 @@ public class MapperOneOfTest {
 
     @Test
     public void dispatchesByShapeWithoutDiscriminator() {
-        OneOfMapper mapper = CompiledInstances.global(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.create(OneOfMapper.class);
 
         ShapeAnimal fromMap = mapper.shapeMap(Map.<String, Object>of("name", "MapCat"));
         ShapeAnimal fromJson = mapper.shapeJson(JsonObject.of("name", "JsonCat"));
@@ -95,7 +95,7 @@ public class MapperOneOfTest {
 
     @Test
     public void appliesShapeOnNoMatchPolicies() {
-        OneOfMapper mapper = CompiledInstances.global(OneOfMapper.class);
+        OneOfMapper mapper = CompiledInstances.create(OneOfMapper.class);
 
         assertNull(mapper.nullableShape(Boolean.TRUE));
         BindingException ex = assertThrows(BindingException.class, () -> mapper.shapeFail(Boolean.TRUE));

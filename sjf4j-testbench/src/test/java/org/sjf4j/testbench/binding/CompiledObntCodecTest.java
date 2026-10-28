@@ -58,42 +58,42 @@ class CompiledObntCodecTest {
 
     @Test
     void allJsonBackendsMatchRuntimeAndRespectCodecAndJojoContracts() throws Exception {
-        Fastjson2Compiled fastjson2 = CompiledInstances.global(Fastjson2Compiled.class);
+        Fastjson2Compiled fastjson2 = CompiledInstances.create(Fastjson2Compiled.class);
         check("Fastjson2", new Fastjson2Binder(),
                 fastjson2::readCodec, fastjson2::writeCodec,
                 fastjson2::readJojo, fastjson2::writeJojo,
                 fastjson2::readObject, fastjson2::writeObject,
                 fastjson2::readArray, fastjson2::writeArray,
                 fastjson2::readToken, fastjson2::writeToken);
-        Jackson2Compiled jackson2 = CompiledInstances.global(Jackson2Compiled.class);
+        Jackson2Compiled jackson2 = CompiledInstances.create(Jackson2Compiled.class);
         check("Jackson2", new Jackson2Binder(),
                 jackson2::readCodec, jackson2::writeCodec,
                 jackson2::readJojo, jackson2::writeJojo,
                 jackson2::readObject, jackson2::writeObject,
                 jackson2::readArray, jackson2::writeArray,
                 jackson2::readToken, jackson2::writeToken);
-        Jackson3Compiled jackson3 = CompiledInstances.global(Jackson3Compiled.class);
+        Jackson3Compiled jackson3 = CompiledInstances.create(Jackson3Compiled.class);
         check("Jackson3", new Jackson3Binder(),
                 jackson3::readCodec, jackson3::writeCodec,
                 jackson3::readJojo, jackson3::writeJojo,
                 jackson3::readObject, jackson3::writeObject,
                 jackson3::readArray, jackson3::writeArray,
                 jackson3::readToken, jackson3::writeToken);
-        GsonCompiled gson = CompiledInstances.global(GsonCompiled.class);
+        GsonCompiled gson = CompiledInstances.create(GsonCompiled.class);
         check("Gson", new GsonBinder(),
                 gson::readCodec, gson::writeCodec,
                 gson::readJojo, gson::writeJojo,
                 gson::readObject, gson::writeObject,
                 gson::readArray, gson::writeArray,
                 gson::readToken, gson::writeToken);
-        JsonpCompiled jsonp = CompiledInstances.global(JsonpCompiled.class);
+        JsonpCompiled jsonp = CompiledInstances.create(JsonpCompiled.class);
         check("Jsonp", new JsonpBinder(),
                 jsonp::readCodec, jsonp::writeCodec,
                 jsonp::readJojo, jsonp::writeJojo,
                 jsonp::readObject, jsonp::writeObject,
                 jsonp::readArray, jsonp::writeArray,
                 jsonp::readToken, jsonp::writeToken);
-        SimpleCompiled simple = CompiledInstances.global(SimpleCompiled.class);
+        SimpleCompiled simple = CompiledInstances.create(SimpleCompiled.class);
         check("Simple", new SimpleJsonBinder(),
                 simple::readCodec, simple::writeCodec,
                 simple::readJojo, simple::writeJojo,
