@@ -1,6 +1,7 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.annotation.binding.WriteTo;
@@ -41,7 +42,7 @@ final class AnnotationValidator {
 
     private static final Set<String> ROOT_ANNOTATIONS =
             names(CompiledNavigator.class, CompiledMapper.class,
-                    CompiledJdbcMapper.class, CompiledBinder.class);
+                    CompiledJdbcMapper.class, CompiledBinder.class, CompiledValidator.class);
 
     private static final Set<String> PATH_METHOD_ANNOTATIONS =
             names(GetByPath.class, PutByPath.class, PutIfParentPresentByPath.class,
