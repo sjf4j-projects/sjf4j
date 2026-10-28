@@ -27,6 +27,8 @@ final class StructuralWriteEmitter {
         void writeDynamicName(JavaWriter out, String expression);
         void writeMapName(JavaWriter out, String expression);
         void writeValue(JavaWriter out, BindingValue value, String expression);
+        /** Writes a scalar property whose value has already passed a null check. */
+        void writeNonNullValue(JavaWriter out, BindingValue value, String expression);
         void writeRuntimeValue(JavaWriter out, String expression);
 
         // Jackson writes delimiters automatically. Backends with explicit
@@ -57,19 +59,33 @@ final class StructuralWriteEmitter {
                 // Evaluate a getter once, including when null properties are omitted.
                 String propertyVar = "property" + index;
                 out.line(child.type() + " " + propertyVar + " = " + expr + ";");
+                expr = propertyVar;
+                if (!stringMember && nonNullScalar(child)) {
+                    out.beginBlock("if (" + propertyVar + " == null)");
+                    out.beginBlock("if (this.context.includeNulls)");
+                    emitPropertyName(out, value, index);
+                    ops.writeNull(out);
+                    out.endBlock();
+                    out.endBlock(" else {");
+                    out.indent();
+                    emitPropertyName(out, value, index);
+                    ops.writeNonNullValue(out, child, expr);
+                    out.endBlock();
+                    index++;
+                    continue;
+                }
                 if (!stringMember) {
                     out.beginBlock("if (" + propertyVar + " != null || this.context.includeNulls)");
                 }
-                expr = propertyVar;
             }
 
-            if (ops.explicitObjectSeparators()) {
+            if (stringMember && ops.explicitObjectSeparators()) {
                 ops.beforeObjectMember(out, "memberCount++");
             }
             if (stringMember) {
                 ops.writeStringMember(out, value, index, expr);
             } else {
-                ops.writePropertyName(out, value, index);
+                emitPropertyName(out, value, index);
                 ops.writeValue(out, child, expr);
             }
             if (!child.primitive() && !stringMember) out.endBlock();
@@ -90,6 +106,32 @@ final class StructuralWriteEmitter {
             out.endBlock();
         }
         ops.endObject(out);
+    }
+
+    private void emitPropertyName(JavaWriter out, BindingValue owner, int index) {
+        if (ops.explicitObjectSeparators()) ops.beforeObjectMember(out, "memberCount++");
+        ops.writePropertyName(out, owner, index);
+    }
+
+    /** Nullable scalar values are handled at the property boundary once. */
+    private static boolean nonNullScalar(BindingValue value) {
+        switch (value.kind()) {
+            case STRING:
+            case ENUM:
+            case CHARACTER:
+            case BOOLEAN:
+            case BYTE:
+            case SHORT:
+            case INT:
+            case LONG:
+            case FLOAT:
+            case DOUBLE:
+            case BIG_INTEGER:
+            case BIG_DECIMAL:
+                return true;
+            default:
+                return false;
+        }
     }
 
     /** Random-access and sequential lists use the same element emission. */

@@ -217,6 +217,42 @@ final class Fastjson2WriteEmitter {
         }
 
         @Override
+        public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+            switch (value.kind()) {
+                case STRING:
+                    out.line("w.writeString(" + expression + ");");
+                    return;
+                case CHARACTER:
+                    out.line("w.writeString(" + expression + ".toString());");
+                    return;
+                case ENUM:
+                    String field = writes.enumField(value) + mode.suffix;
+                    if (mode == FastjsonMode.UTF8) {
+                        out.line("w.writeRaw(" + field + "[" + expression + ".ordinal()]);");
+                    } else {
+                        out.line("char[] encoded = " + field + "[" + expression + ".ordinal()];");
+                        out.line("w.writeRaw(encoded, 0, encoded.length);");
+                    }
+                    return;
+                case BOOLEAN:
+                case BYTE:
+                case SHORT:
+                case INT:
+                case LONG:
+                case FLOAT:
+                case DOUBLE:
+                case BIG_INTEGER:
+                case BIG_DECIMAL:
+                    String arg = fastjsonUnboxArgument(value.type().toString())
+                            .replace("value", expression);
+                    out.line("w." + fastjsonWriteMethod(value.kind()) + "(" + arg + ");");
+                    return;
+                default:
+                    throw new AssertionError(value.kind());
+            }
+        }
+
+        @Override
         public void writeRuntimeValue(JavaWriter out, String expression) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, "
                     + expression + ", this.context);");

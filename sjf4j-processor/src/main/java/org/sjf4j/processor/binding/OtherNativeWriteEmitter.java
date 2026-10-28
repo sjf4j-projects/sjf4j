@@ -148,6 +148,42 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         emitValue(out, child, expression, "g", null);
     }
 
+    @Override
+    public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+        String method = gson() ? "value" : "write";
+        switch (value.kind()) {
+            case ENUM:
+                out.line("g." + method + "(" + expression + ".name());");
+                return;
+            case STRING:
+                out.line("g." + method + "(" + expression + ");");
+                return;
+            case CHARACTER:
+                out.line("g." + method + "(" + expression + ".toString());");
+                return;
+            case BOOLEAN:
+            case BYTE:
+            case SHORT:
+            case INT:
+            case LONG:
+            case FLOAT:
+            case DOUBLE:
+            case BIG_INTEGER:
+            case BIG_DECIMAL:
+                String arg = expression;
+                if (!gson() && (value.kind() == BindingValue.Kind.BYTE
+                        || value.kind() == BindingValue.Kind.SHORT)) {
+                    arg += ".intValue()";
+                } else if (value.kind() == BindingValue.Kind.FLOAT) {
+                    arg += ".doubleValue()";
+                }
+                out.line("g." + method + "(" + arg + ");");
+                return;
+            default:
+                throw new AssertionError(value.kind());
+        }
+    }
+
     private void emitValue(JavaWriter out, BindingValue child, String expression,
                            String nativeGenerator, NameAllocator names) {
         // Method parameters are reserved for root values; helpers use their local scope.

@@ -170,6 +170,37 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     }
 
     @Override
+    public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+        switch (value.kind()) {
+            case STRING:
+                out.line("g.writeString(" + expression + ");");
+                return;
+            case ENUM:
+                out.line("g.writeString(" + writes.enumField(value)
+                        + "[" + expression + ".ordinal()]);");
+                return;
+            case CHARACTER:
+                out.line("g.writeString(" + expression + ".toString());");
+                return;
+            case BOOLEAN:
+                out.line("g.writeBoolean(" + expression + ");");
+                return;
+            case BYTE:
+            case SHORT:
+            case INT:
+            case LONG:
+            case FLOAT:
+            case DOUBLE:
+            case BIG_INTEGER:
+            case BIG_DECIMAL:
+                out.line("g.writeNumber(" + expression + ");");
+                return;
+            default:
+                throw new AssertionError(value.kind());
+        }
+    }
+
+    @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
         out.line(STREAMING_IO + ".writeNode(generator, " + expression
                 + ", this.context);");
