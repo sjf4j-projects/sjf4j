@@ -86,7 +86,7 @@ final class SchemaResourceResolver {
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
             JsonSchema schema = JsonSchema.fromJson(resources.get(uri));
-            scanRefs(schema, effectiveBase(uri, schema), resources, queue);
+            scanRefs(schema, uri, resources, queue);
         }
 
         Snapshot snapshot = new Snapshot(resources);
