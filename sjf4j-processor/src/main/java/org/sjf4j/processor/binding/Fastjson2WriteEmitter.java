@@ -120,8 +120,13 @@ final class Fastjson2WriteEmitter {
         out.endBlock();
 
         if (value.helperRequired()) {
+            out.beginBlock("if (" + source + " == null)");
+            out.line(raw + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(fastjsonHelperName(value, mode) + "("
                     + generator + ", " + source + ");");
+            out.endBlock();
         } else {
             emitNativeValue(out, value, source, mode, raw, generator, names.newName("item"));
         }
@@ -218,6 +223,10 @@ final class Fastjson2WriteEmitter {
 
         @Override
         public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+            if (value.helperRequired()) {
+                out.line(fastjsonHelperName(value, mode) + "(generator, " + expression + ");");
+                return;
+            }
             switch (value.kind()) {
                 case STRING:
                     out.line("w.writeString(" + expression + ");");
@@ -281,14 +290,7 @@ final class Fastjson2WriteEmitter {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
         } else {
             StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode));
-            if (value.kind() != BindingValue.Kind.ONE_OF) {
-                out.beginBlock("if (value == null)");
-                out.line("w.writeNull();");
-                out.line("return;");
-                out.endBlock();
-            }
-
-            switch (value.kind()) {
+             switch (value.kind()) {
                 case POJO:
                 case JOJO:
                     structure.emitPojo(out, value);
@@ -349,7 +351,12 @@ final class Fastjson2WriteEmitter {
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode, String raw, String generator, String item) {
         if (value.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line(raw + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(fastjsonHelperName(value, mode) + "(" + generator + ", " + expression + ");");
+            out.endBlock();
             return;
         }
 

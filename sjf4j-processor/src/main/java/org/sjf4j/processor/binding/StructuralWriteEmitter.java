@@ -60,7 +60,7 @@ final class StructuralWriteEmitter {
                 String propertyVar = "property" + index;
                 out.line(child.type() + " " + propertyVar + " = " + expr + ";");
                 expr = propertyVar;
-                if (!stringMember && nonNullScalar(child)) {
+                if (!stringMember && (nonNullScalar(child) || child.helperRequired())) {
                     out.beginBlock("if (" + propertyVar + " == null)");
                     out.beginBlock("if (this.context.includeNulls)");
                     emitPropertyName(out, value, index);
@@ -140,7 +140,12 @@ final class StructuralWriteEmitter {
         out.beginBlock("if (value instanceof java.util.RandomAccess)");
         out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
         if (ops.explicitArraySeparators()) ops.beforeArrayElement(out, "i");
-        ops.writeValue(out, value.elementValue(), "value.get(i)");
+        if (value.elementValue().helperRequired()) {
+            out.line(value.elementValue().type() + " element = value.get(i);");
+            ops.writeValue(out, value.elementValue(), "element");
+        } else {
+            ops.writeValue(out, value.elementValue(), "value.get(i)");
+        }
         out.endBlock();
         out.endBlock(" else {");
         out.indent();
@@ -184,11 +189,6 @@ final class StructuralWriteEmitter {
     }
 
     void emitOneOf(JavaWriter out, BindingValue value) {
-        out.beginBlock("if (value == null)");
-        ops.writeNull(out);
-        out.line("return;");
-        out.endBlock();
-
         boolean knownSubtype = false;
         for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
             if (subtype.compiled != null || subtype.cachedPojo) {
@@ -207,7 +207,7 @@ final class StructuralWriteEmitter {
                 out.line("org.sjf4j.binding.StreamingIO.writePojo(generator, value, "
                         + metadata + ", this.context);");
             } else {
-                ops.writeValue(out, subtype.compiled, "(" + type + ") value");
+                ops.writeNonNullValue(out, subtype.compiled, "(" + type + ") value");
             }
             out.line("return;");
             out.endBlock();

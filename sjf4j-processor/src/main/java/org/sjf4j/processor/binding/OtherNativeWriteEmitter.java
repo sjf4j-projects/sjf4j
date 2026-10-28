@@ -33,7 +33,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String generator, NameAllocator names) {
         if (value.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line(generator + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.endBlock();
             return;
         }
 
@@ -70,10 +75,6 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             case LIST:
             case SET:
             case MAP:
-                out.beginBlock("if (value == null)");
-                writeNull(out);
-                out.line("return;");
-                out.endBlock();
                 switch (value.kind()) {
                     case POJO:
                     case JOJO:
@@ -150,6 +151,10 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+        if (value.helperRequired()) {
+            out.line(value.helperName() + "(generator, " + expression + ");");
+            return;
+        }
         String method = gson() ? "value" : "write";
         switch (value.kind()) {
             case ENUM:
@@ -189,7 +194,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         // Method parameters are reserved for root values; helpers use their local scope.
         String item = names == null ? "item" : names.newName("item");
         if (child.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line("generator.writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(child.helperName() + "(generator, " + expression + ");");
+            out.endBlock();
             return;
         }
 

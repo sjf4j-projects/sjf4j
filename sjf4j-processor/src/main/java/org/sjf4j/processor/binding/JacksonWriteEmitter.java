@@ -60,7 +60,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String generator, NameAllocator names) {
         if (value.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line(generator + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.endBlock();
             return;
         }
         String nativeGenerator = names.newName("g");
@@ -84,11 +89,6 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
             out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
         } else {
-            out.beginBlock("if (value == null)");
-            out.line("g.writeNull();");
-            out.line("return;");
-            out.endBlock();
-
             switch (value.kind()) {
                 case POJO:
                 case JOJO:
@@ -171,6 +171,10 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     @Override
     public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+        if (value.helperRequired()) {
+            out.line(value.helperName() + "(generator, " + expression + ");");
+            return;
+        }
         switch (value.kind()) {
             case STRING:
                 out.line("g.writeString(" + expression + ");");
@@ -214,7 +218,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     private void emitValue(JavaWriter out, BindingValue child, String expression,
                            String generator, String nativeGenerator, String item) {
         if (child.helperRequired()) {
+            out.beginBlock("if (" + expression + " == null)");
+            out.line(generator + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
             out.line(child.helperName() + "(" + generator + ", " + expression + ");");
+            out.endBlock();
             return;
         }
         switch (child.kind()) {
