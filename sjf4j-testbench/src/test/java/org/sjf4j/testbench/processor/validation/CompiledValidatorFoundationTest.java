@@ -18,7 +18,7 @@ class CompiledValidatorFoundationTest {
         Employee shortName = new Employee("A", 3);
         Employee badLevel = new Employee("Alice", -1);
 
-        assertTrue(validator.isValid(good));
+        assertTrue(validator.isValid(good), () -> "compiled=" + validator.validate(good) + " runtime=" + new org.sjf4j.schema.SchemaValidator().validate(good));
         assertFalse(validator.isValid(shortName));
         assertFalse(validator.isValid(badLevel));
         assertTrue(validator.isValid(null));
@@ -36,7 +36,7 @@ class CompiledValidatorFoundationTest {
         Employee invalidType = new Employee("Joe", -7);
 
         assertFalse(validator.isValid(invalidType));
-        assertTrue(validator.methodSchema(invalidType));
+        assertTrue(validator.methodSchema(invalidType), () -> "method binding should override types; validation=" + validator.validate(invalidType));
         assertTrue(validator.parameterSchema(invalidType));
         assertFalse(validator.methodSchema(new Employee("", -7)));
         assertFalse(validator.parameterSchema(new Employee("J", -7)));
