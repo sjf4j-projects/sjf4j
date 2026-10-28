@@ -19,3 +19,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile processor and run compiled-validator foundation tests
         run: ./gradlew :sjf4j-processor:compileJava :sjf4j-testbench:test --tests '*CompiledValidatorFoundationTest' --stacktrace
+      - name: Print JUnit failures
+        if: failure()
+        run: |
+          for report in sjf4j-testbench/build/test-results/test/TEST-*CompiledValidatorFoundationTest*.xml; do
+            if test -f "$report"; then cat "$report"; fi
+          done
