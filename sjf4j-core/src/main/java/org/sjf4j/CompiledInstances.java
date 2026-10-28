@@ -48,9 +48,13 @@ public final class CompiledInstances {
      * Creates a CompiledBinder with an already configured backend Binder.
      * The Binder type must match the interface's compile-time selected backend.
      */
-    public static <T> T create(Class<T> type, Binder<?, ?> backendBinder) {
+    public static <T, B> T create(Class<T> type, B backendBinder) {
         Asserts.notNull(type, "type");
         Asserts.notNull(backendBinder, "backendBinder");
+        if (!(backendBinder instanceof Binder)) {
+            throw new IllegalArgumentException("Backend must be an SJF4J Binder: "
+                    + backendBinder.getClass().getName());
+        }
         Class<?> implClass = _implementationClass(type);
         Constructor<?> match = null;
         for (Constructor<?> constructor : implClass.getConstructors()) {
