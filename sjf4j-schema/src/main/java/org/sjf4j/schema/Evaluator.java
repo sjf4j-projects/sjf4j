@@ -671,68 +671,20 @@ public interface Evaluator {
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
-            Object actual = instance.node();
-            final boolean[] result = new boolean[] {true};
-            final int[] propIdx = new int[] {0};
-            boolean shouldAbort = NodeWalker.anyMatchInObject(actual, (key, sub) -> {
-                boolean matched = false;
-
-                if (properties != null) {
-                    SchemaPlan plan = properties.get(key);
-                    if (plan != null) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(propIdx[0]);
-                        result[0] = result[0] && subResult;
-                        if (!subResult && ctx.shouldAbort()) return true;
-                        matched = true;
-                    }
-                }
-
-                if (patterns != null) {
-                    for (int i = 0; i < patterns.length; i++) {
-                        if (patterns[i].matcher(key).find()) {
-                            SchemaPlan plan = patternPlans[i];
-                            if (plan != null) {
-                                InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
-                                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
-                                if (subResult) instance.markEvaluated(propIdx[0]);
-                                result[0] = result[0] && subResult;
-                                if (!subResult && ctx.shouldAbort()) return true;
-                                matched = true;
-                            }
-                        }
-                    }
-                }
-
-                if (additionalPropertiesPlan != null && !matched) {
-                    InstancedNode subInstance = instance.inferSubByKey(key, sub, ctx.reusedLeaf());
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
-                    if (subResult) instance.markEvaluated(propIdx[0]);
-                    result[0] = result[0] && subResult;
-                    if (!subResult && ctx.shouldAbort()) return true;
-                }
-                propIdx[0]++;
-                return false;
-            });
-            if (shouldAbort) return false;
-
-//            for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
-//                String key = entry.getKey();
-//                Object value = entry.getValue();
+//            final boolean[] result = new boolean[] {true};
+//            final int[] propIdx = new int[] {0};
+//            boolean shouldAbort = NodeWalker.anyMatchInObject(actual, (key, sub) -> {
 //                boolean matched = false;
+//
 //                if (properties != null) {
 //                    SchemaPlan plan = properties.get(key);
 //                    if (plan != null) {
-//                        InstancedNode subInstance = instance.inferSubByKey(key, value, null);
+//                        InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
 //                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
 //                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
-//                        if (subResult) instance.markEvaluated(propIdx);
-//                        result = result && subResult;
-//                        if (!subResult && ctx.shouldAbort()) return false;
+//                        if (subResult) instance.markEvaluated(propIdx[0]);
+//                        result[0] = result[0] && subResult;
+//                        if (!subResult && ctx.shouldAbort()) return true;
 //                        matched = true;
 //                    }
 //                }
@@ -742,12 +694,12 @@ public interface Evaluator {
 //                        if (patterns[i].matcher(key).find()) {
 //                            SchemaPlan plan = patternPlans[i];
 //                            if (plan != null) {
-//                                InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
+//                                InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
 //                                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
 //                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
-//                                if (subResult) instance.markEvaluated(propIdx);
-//                                result = result && subResult;
-//                                if (!subResult && ctx.shouldAbort()) return false;
+//                                if (subResult) instance.markEvaluated(propIdx[0]);
+//                                result[0] = result[0] && subResult;
+//                                if (!subResult && ctx.shouldAbort()) return true;
 //                                matched = true;
 //                            }
 //                        }
@@ -755,17 +707,67 @@ public interface Evaluator {
 //                }
 //
 //                if (additionalPropertiesPlan != null && !matched) {
-//                    InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
+//                    InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
 //                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
 //                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
-//                    if (subResult) instance.markEvaluated(propIdx);
-//                    result = result && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return false;
+//                    if (subResult) instance.markEvaluated(propIdx[0]);
+//                    result[0] = result[0] && subResult;
+//                    if (!subResult && ctx.shouldAbort()) return true;
 //                }
-//                propIdx++;
-//            }//for
+//                propIdx[0]++;
+//                return false;
+//            });
+//            if (shouldAbort) return false;
 
-            return result[0];
+
+            boolean result = true;
+            int propIdx = 0;
+            for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(instance.node())) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                boolean matched = false;
+                if (properties != null) {
+                    SchemaPlan plan = properties.get(key);
+                    if (plan != null) {
+                        InstancedNode subInstance = instance.inferSubByKey(key, value, null);
+                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
+                        if (subResult) instance.markEvaluated(propIdx);
+                        result = result && subResult;
+                        if (!subResult && ctx.shouldAbort()) return false;
+                        matched = true;
+                    }
+                }
+
+                if (patterns != null) {
+                    for (int i = 0; i < patterns.length; i++) {
+                        if (patterns[i].matcher(key).find()) {
+                            SchemaPlan plan = patternPlans[i];
+                            if (plan != null) {
+                                InstancedNode subInstance = instance.inferSubByKey(key, value, null);
+                                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
+                                if (subResult) instance.markEvaluated(propIdx);
+                                result = result && subResult;
+                                if (!subResult && ctx.shouldAbort()) return false;
+                                matched = true;
+                            }
+                        }
+                    }
+                }
+
+                if (additionalPropertiesPlan != null && !matched) {
+                    InstancedNode subInstance = instance.inferSubByKey(key, value, null);
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
+                    if (subResult) instance.markEvaluated(propIdx);
+                    result = result && subResult;
+                    if (!subResult && ctx.shouldAbort()) return false;
+                }
+                propIdx++;
+            }//for
+
+            return result;
         }
     }
 
@@ -1088,51 +1090,52 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.ARRAY) return true;
             if (prefixItemsPlans == null && itemsPlan == null) return true;
 
-            final boolean[] result = new boolean[] {true};
-            boolean shouldAbort = NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
-                if (prefixItemsPlans != null && i < prefixItemsPlans.length) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
-                    result[0] = result[0] && subResult;
-                    if (!subResult && ctx.shouldAbort()) return true;
-                    if (result[0]) instance.markEvaluated(i);
-                } else if (itemsPlan != null) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
-                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
-                    result[0] = result[0] && subResult;
-                    if (!subResult && ctx.shouldAbort()) return true;
-                    if (result[0]) instance.markEvaluated(i);
-                }
-                return false;
-            });
-            if (shouldAbort) return false;
-
-//            Iterator<Object> it = Nodes.iteratorInArray(instance.node());
-//            int i = 0;
-//            if (prefixItemsPlans != null) {
-//                for (; i < prefixItemsPlans.length && it.hasNext(); i++) {
-//                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+//            final boolean[] result = new boolean[] {true};
+//            boolean shouldAbort = NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
+//                if (prefixItemsPlans != null && i < prefixItemsPlans.length) {
+//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
-//                    result = result && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return false;
-//                }
-//                if (result) instance.markEvaluated(0, i);
-//            }
-//
-//            if (itemsPlan != null) {
-//                for (; it.hasNext(); i++) {
-//                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+//                    result[0] = result[0] && subResult;
+//                    if (!subResult && ctx.shouldAbort()) return true;
+//                    if (result[0]) instance.markEvaluated(i);
+//                } else if (itemsPlan != null) {
+//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
-//                    result = result && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return false;
+//                    result[0] = result[0] && subResult;
+//                    if (!subResult && ctx.shouldAbort()) return true;
+//                    if (result[0]) instance.markEvaluated(i);
 //                }
-//                if (result) instance.markEvaluated(0, i);
-//            }
-            return result[0];
+//                return false;
+//            });
+//            if (shouldAbort) return false;
+
+            boolean result = true;
+            Iterator<Object> it = Nodes.iteratorInArray(instance.node());
+            int i = 0;
+            if (prefixItemsPlans != null) {
+                for (; i < prefixItemsPlans.length && it.hasNext(); i++) {
+                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
+                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
+                    result = result && subResult;
+                    if (!subResult && ctx.shouldAbort()) return false;
+                }
+                if (result) instance.markEvaluated(0, i);
+            }
+
+            if (itemsPlan != null) {
+                for (; it.hasNext(); i++) {
+                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
+                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
+                    result = result && subResult;
+                    if (!subResult && ctx.shouldAbort()) return false;
+                }
+                if (result) instance.markEvaluated(0, i);
+            }
+            return result;
         }
     }
 
@@ -1186,55 +1189,57 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.ARRAY) return true;
             if (containsPlan == null) return true;
 
-            final int[] matches = new int[] {0};
-            NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
-                ctx.pushIgnoreError();
-                InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
-                ctx.popIgnoreError();
-                if (result) {
-                    instance.markEvaluated(i);
-                    matches[0]++;
-                    // Early exit: once minContains is met without an upper bound,
-                    // and no unevaluated tracking is active, further scanning is
-                    // unnecessary for contains semantics.
-                    if (matches[0] >= minContains && maxContains == -1 && instance.peekEvaluated() == null) {
-                        return true;
-                    }
-                }
-                return false;
-            });
-
-//            Iterator<Object> it = Nodes.iteratorInArray(actual);
-//            for (int i = 0; it.hasNext(); i++) {
-//                Object subActual = it.next();
+//            final int[] matches = new int[] {0};
+//            NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
 //                ctx.pushIgnoreError();
-//                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+//                InstancedNode subInstance = instance.inferSubByIndex(i, sub, null);
 //                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
 //                ctx.popIgnoreError();
 //                if (result) {
 //                    instance.markEvaluated(i);
-//                    matches++;
+//                    matches[0]++;
 //                    // Early exit: once minContains is met without an upper bound,
 //                    // and no unevaluated tracking is active, further scanning is
 //                    // unnecessary for contains semantics.
-//                    if (matches >= minContains && maxContains == -1
-//                            && instance.peekEvaluated() == null) {
+//                    if (matches[0] >= minContains && maxContains == -1 && instance.peekEvaluated() == null) {
 //                        return true;
 //                    }
 //                }
-//            }
+//                return false;
+//            });
 
-            if (matches[0] < minContains) {
+
+            int matches = 0;
+            Iterator<Object> it = Nodes.iteratorInArray(instance.node());
+            for (int i = 0; it.hasNext(); i++) {
+                Object subActual = it.next();
+                ctx.pushIgnoreError();
+                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
+                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
+                ctx.popIgnoreError();
+                if (result) {
+                    instance.markEvaluated(i);
+                    matches++;
+                    // Early exit: once minContains is met without an upper bound,
+                    // and no unevaluated tracking is active, further scanning is
+                    // unnecessary for contains semantics.
+                    if (matches >= minContains && maxContains == -1
+                            && instance.peekEvaluated() == null) {
+                        return true;
+                    }
+                }
+            }
+
+            if (matches < minContains) {
                 ctx.addError(instance, ps, minContainsKeywordPs, schemaUri, "minContains",
-                        "expected at least " + minContains + " matching items, found " + matches[0]);
+                        "expected at least " + minContains + " matching items, found " + matches);
                 return false;
             }
-            if (maxContains >= 0 && matches[0] > maxContains) {
+            if (maxContains >= 0 && matches > maxContains) {
                 ctx.addError(instance, ps, maxContainsKeywordPs, schemaUri, "maxContains",
-                        "expected at most " + maxContains + " matching items, found " + matches[0]);
+                        "expected at most " + maxContains + " matching items, found " + matches);
                 return false;
             }
             return true;
@@ -1501,74 +1506,47 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            final boolean[] result = new boolean[]{true};
             BitSet merged = instance.mergedEvaluated();
             Object actual = instance.node();
+            boolean result = true;
 
             if (unevaluatedPropertiesPlan != null) {
                 if (instance.jsonType() != JsonType.OBJECT) return true;
-                final int[] propIdx = new int[]{0};
-                boolean shouldAbort = NodeWalker.anyMatchInObject(actual, (key, sub) -> {
-                    if (!merged.get(propIdx[0])) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, sub, ctx.reusedLeaf());
+                int propIdx = 0;
+                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
+                    String key = entry.getKey();
+                    if (!merged.get(propIdx)) {
+                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue(), null);
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(propIdx[0]);
-                        result[0] = result[0] && subResult;
-                        if (!subResult && ctx.shouldAbort()) return true;
+                        if (subResult) instance.markEvaluated(propIdx);
+                        result = result && subResult;
+                        if (!subResult && ctx.shouldAbort()) return false;
                     }
-                    propIdx[0]++;
-                    return false;
-                });
-                if (shouldAbort) return false;
-
-//                int propIdx = 0;
-//                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
-//                    String key = entry.getKey();
-//                    if (!merged.get(propIdx)) {
-//                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
-//                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-//                        boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
-//                        if (subResult) instance.markEvaluated(propIdx);
-//                        result = result && subResult;
-//                        if (!subResult && ctx.shouldAbort()) return false;
-//                    }
-//                    propIdx++;
-//                }
+                    propIdx++;
+                }
             }
 
             if (unevaluatedItemsPlan != null) {
                 if (instance.jsonType() != JsonType.ARRAY) return true;
-                boolean shouldAbort = NodeWalker.anyMatchInArray(actual, (i, sub) -> {
+
+                Iterator<Object> it = Nodes.iteratorInArray(actual);
+                for (int i = 0; it.hasNext(); i++) {
+                    Object subActual = it.next();
                     if (!merged.get(i)) {
-                        InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
+                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                         boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);
-                        result[0] = result[0] && subResult;
-                        if (!subResult && ctx.shouldAbort()) return true;
+                        result = result && subResult;
+                        if (!subResult && ctx.shouldAbort()) return false;
                     }
-                    return false;
-                });
-                if (shouldAbort) return false;
-
-//                Iterator<Object> it = Nodes.iteratorInArray(actual);
-//                for (int i = 0; it.hasNext(); i++) {
-//                    Object subActual = it.next();
-//                    if (!merged.get(i)) {
-//                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
-//                        PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-//                        boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
-//                        if (subResult) instance.markEvaluated(i);
-//                        result = result && subResult;
-//                        if (!subResult && ctx.shouldAbort()) return false;
-//                    }
-//                }
+                }
             }
             BitSet curEvaluated = instance.popEvaluated();
             BitSet parentEvaluated = instance.peekEvaluated();
             if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
-            return result[0];
+            return result;
         }
     }
 
