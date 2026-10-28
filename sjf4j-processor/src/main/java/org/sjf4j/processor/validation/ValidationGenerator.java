@@ -58,12 +58,15 @@ public final class ValidationGenerator {
         generated.addHelper(out -> {
             out.beginBlock("private static final class Fallback");
             for (SchemaField field : fields) {
-                out.line("static final org.sjf4j.schema.SchemaPlan " + field.name
+                String snapshotName = field.name.replace("PLAN_", "SNAPSHOT_");
+                out.line("static final org.sjf4j.schema.CompiledSchemaSnapshot " + snapshotName
                         + " = org.sjf4j.schema.CompiledSchemaSnapshot.create(");
                 out.indent();
                 out.line(stringArray(field.snapshot.uris) + ",");
                 out.line(stringArray(field.snapshot.documents) + ", 0);");
                 out.dedent();
+                out.line("static final org.sjf4j.schema.SchemaPlan " + field.name
+                        + " = " + snapshotName + ".root();");
             }
             out.endBlock();
         });
