@@ -9,7 +9,8 @@ import java.lang.reflect.Constructor;
 /**
  * Factory for annotation-processor generated implementations of
  * {@code @CompiledNavigator}, {@code @CompiledMapper},
- * {@code @CompiledJdbcMapper}, and {@code @CompiledBinder} interfaces.
+ * {@code @CompiledJdbcMapper}, {@code @CompiledBinder}, and
+ * {@code @CompiledValidator} interfaces.
  *
  * <p>Each {@link #create(Class)} invocation constructs a new instance of
  * the generated {@code _Impl} class. The factory does not cache instances
