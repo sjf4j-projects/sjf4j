@@ -1,0 +1,99 @@
+name: CreekModel main vs PR107 JMH
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/creek-main-pr107-jmh.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  creek-benchmark:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 107
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+      - name: Checkout PR107 head
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/compiled-binder-static-helpers
+          path: candidate
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build both JMH jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "main: $(git -C baseline rev-parse HEAD)"
+          echo "PR107: $(git -C candidate rev-parse HEAD)"
+          (cd baseline && ./gradlew :sjf4j-testbench:jmhJar --no-daemon)
+          (cd candidate && ./gradlew :sjf4j-testbench:jmhJar --no-daemon)
+          mkdir -p results
+          java -version 2>&1 | tee results/java-version.txt
+          git -C baseline rev-parse HEAD > results/main-sha.txt
+          git -C candidate rev-parse HEAD > results/pr107-sha.txt
+      - name: Independent JMH, 3 forks, 15 warmups
+        shell: bash
+        run: |
+          set -euo pipefail
+          pattern='.*CreekModelBenchmark\.(read|write)_(compiled|native|blackbird|runtime)$'
+          for ref in baseline candidate; do
+            jar="$(find "$ref/sjf4j-testbench/build/libs" -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -n "$jar"
+            java -jar "$jar" "$pattern" \
+              -bm avgt -tu us -t 1 -f 3 \
+              -wi 15 -w 400ms -i 5 -r 400ms \
+              -rf json -rff "results/$ref.json" | tee "results/$ref.log"
+          done
+      - name: Compare ratios against Jackson
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md
+          import json
+          from pathlib import Path
+          path = Path('results')
+          print('# CreekModelBenchmark: main vs PR107')
+          print('JDK25, Linux GitHub runner, 3 forks, 15 × 400ms warmups, 5 × 400ms measurements, 1 thread.')
+          print()
+          for ref in ['baseline','candidate']:
+              file = path / (ref + '.json')
+              if not file.exists():
+                  print(f'{ref}: no results (build or benchmark failure).')
+                  continue
+              data = {d['benchmark'].split('.')[-1]: d for d in json.loads(file.read_text())}
+              print(f'## {"main" if ref == "baseline" else "PR107"}')
+              print('| Operation | Compiled (µs/op) | Jackson native | Blackbird | Runtime | Compiled/native | Compiled/Blackbird |')
+              print('|---|---:|---:|---:|---:|---:|---:|')
+              for op in ('read','write'):
+                  def score(kind):
+                      return data[op+'_'+kind]['primaryMetric']['score']
+                  compiled, native, blackbird, runtime = [score(k) for k in ('compiled','native','blackbird','runtime')]
+                  print(f'| {op} | {compiled:.3f} | {native:.3f} | {blackbird:.3f} | {runtime:.3f} | {native/compiled:.3f}x | {blackbird/compiled:.3f}x |')
+              print()
+              for op in ('read','write'):
+                  print(f'**{op} JMH errors:** ' + '; '.join(
+                      f'{kind} {data[op+"_"+kind]["primaryMetric"]["score"]:.3f} ± {data[op+"_"+kind]["primaryMetric"]["scoreError"]:.3f} µs/op'
+                      for kind in ('compiled','native','blackbird','runtime')))
+              print()
+          PY
+          cat results/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload raw JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: creek-model-main-vs-pr107-f3-wi15
+          path: results/
+          if-no-files-found: warn
