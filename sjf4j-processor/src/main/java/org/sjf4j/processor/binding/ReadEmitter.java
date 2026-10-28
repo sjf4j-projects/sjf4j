@@ -19,7 +19,7 @@ final class ReadEmitter {
     private final Fastjson2ReadEmitter fastjson2;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend) {
-        _FALLBACK_CONTEXT = context;
+        this.context = context;
         this.backend = backend;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter() : null;
