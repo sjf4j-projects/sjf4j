@@ -71,7 +71,7 @@ interface UserBinder {
     @WriteTo String write(User user) throws IOException;
 }
 
-UserBinder binder = CompiledInstances.global(UserBinder.class);
+UserBinder binder = CompiledInstances.create(UserBinder.class);
 User user = binder.read(json);
 ```
 Compile-time code generation also supports: `@CompiledNavigator` ( JSONPath navigation ), 

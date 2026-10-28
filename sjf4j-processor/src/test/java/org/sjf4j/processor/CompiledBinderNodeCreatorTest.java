@@ -58,7 +58,7 @@ class CompiledBinderNodeCreatorTest {
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> iface = loader.loadClass("fixture.Binder");
-                Object binder = CompiledInstances.global(iface);
+                Object binder = CompiledInstances.create(iface);
                 Class<?> person = loader.loadClass("fixture.Person");
                 String input = "{\"note\":\"before\",\"age\":25,"
                         + "\"address\":{\"town\":\"Paris\"},\"old_name\":\"Ada\"}";
@@ -128,7 +128,7 @@ class CompiledBinderNodeCreatorTest {
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> iface = loader.loadClass("fixture.Binder");
-                Object binder = CompiledInstances.global(iface);
+                Object binder = CompiledInstances.create(iface);
                 Object bean = iface.getMethod("bean", String.class)
                         .invoke(binder, "{\"value\":\"ok\"}");
                 assertEquals("ok", bean.getClass().getMethod("getValue").invoke(bean), backend);

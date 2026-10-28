@@ -16,7 +16,7 @@ class CompiledRuntimeContextInjectionTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void globalAndCreateKeepFormatsAndInstancesIsolated() throws Exception {
+    void createKeepsFormatsAndInstancesIsolated() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Token.java",
                 "package fixture; public final class Token { "
@@ -73,10 +73,10 @@ class CompiledRuntimeContextInjectionTest {
 
             Class mapperInterface = loader.loadClass("fixture.Mapper");
             Class binderInterface = loader.loadClass("fixture.Binder");
-            Object defaultMapper = CompiledInstances.global(mapperInterface);
-            Object defaultBinder = CompiledInstances.global(binderInterface);
-            assertSame(defaultMapper, CompiledInstances.global(mapperInterface));
-            assertSame(defaultBinder, CompiledInstances.global(binderInterface));
+            Object defaultMapper = CompiledInstances.create(mapperInterface);
+            Object defaultBinder = CompiledInstances.create(binderInterface);
+            assertNotSame(defaultMapper, CompiledInstances.create(mapperInterface));
+            assertNotSame(defaultBinder, CompiledInstances.create(binderInterface));
 
             RuntimeContext context = new RuntimeContext(Map.of(tokenClass, "alternate"), false);
             Object configuredMapper = CompiledInstances.create(mapperInterface, context);
@@ -108,7 +108,7 @@ class CompiledRuntimeContextInjectionTest {
             Class<?> targetClass = loader.loadClass("fixture.Target");
             Object source = sourceClass.getConstructor().newInstance();
             sourceClass.getField("token").set(source, token);
-            Object defaultOuter = CompiledInstances.global(outerInterface);
+            Object defaultOuter = CompiledInstances.create(outerInterface);
             Object alternateOuter = CompiledInstances.create(outerInterface, context);
             Object defaultTarget = outerInterface.getMethod("map", sourceClass)
                     .invoke(defaultOuter, source);
@@ -163,7 +163,7 @@ class CompiledRuntimeContextInjectionTest {
 
                 RuntimeContext context = new RuntimeContext(
                         Map.of(java.time.Instant.class, "epochMillis"), false);
-                Object defaults = CompiledInstances.global(type);
+                Object defaults = CompiledInstances.create(type);
                 Object configured = CompiledInstances.create(type, context);
                 String standard = (String) type.getMethod("write", beanType).invoke(defaults, bean);
                 String custom = (String) type.getMethod("write", beanType).invoke(configured, bean);
@@ -212,12 +212,12 @@ class CompiledRuntimeContextInjectionTest {
             RuntimeContext context = new RuntimeContext(Map.of(), false);
 
             Object navigator = CompiledInstances.create(pathsType, context);
-            assertNotSame(navigator, CompiledInstances.global(pathsType));
+            assertNotSame(navigator, CompiledInstances.create(pathsType));
             assertEquals("Alice", pathsType.getMethod("getName", Map.class)
                     .invoke(navigator, Map.of("name", "Alice")));
 
             Object jdbcMapper = CompiledInstances.create(rowsType, context);
-            assertNotSame(jdbcMapper, CompiledInstances.global(rowsType));
+            assertNotSame(jdbcMapper, CompiledInstances.create(rowsType));
             java.util.concurrent.atomic.AtomicBoolean advanced =
                     new java.util.concurrent.atomic.AtomicBoolean();
             java.sql.ResultSet resultSet = (java.sql.ResultSet)

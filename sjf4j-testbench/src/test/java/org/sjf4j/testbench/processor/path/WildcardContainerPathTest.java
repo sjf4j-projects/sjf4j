@@ -22,7 +22,7 @@ public class WildcardContainerPathTest {
 
     @Test
     public void listExtendsUserSupportsNestedReadsAndPropertyPut() {
-        WildcardNodes nodes = CompiledInstances.global(WildcardNodes.class);
+        WildcardNodes nodes = CompiledInstances.create(WildcardNodes.class);
         User first = new User("first");
         List<User> users = new ArrayList<>(List.of(first, new User("second")));
         ListUsers root = new ListUsers(users);
@@ -36,7 +36,7 @@ public class WildcardContainerPathTest {
 
     @Test
     public void mapExtendsUserSupportsNestedReadsAndPropertyPut() {
-        WildcardNodes nodes = CompiledInstances.global(WildcardNodes.class);
+        WildcardNodes nodes = CompiledInstances.create(WildcardNodes.class);
         User primary = new User("primary");
         Map<String, User> users = new LinkedHashMap<>();
         users.put("primary", primary);
@@ -51,7 +51,7 @@ public class WildcardContainerPathTest {
 
     @Test
     public void nestedExtendsContainersRemainReadableAtEveryLevel() {
-        WildcardNodes nodes = CompiledInstances.global(WildcardNodes.class);
+        WildcardNodes nodes = CompiledInstances.create(WildcardNodes.class);
         User first = new User("first");
         User second = new User("second");
 
@@ -68,7 +68,7 @@ public class WildcardContainerPathTest {
 
     @Test
     public void unboundedListAndMapSupportObjectReads() {
-        WildcardNodes nodes = CompiledInstances.global(WildcardNodes.class);
+        WildcardNodes nodes = CompiledInstances.create(WildcardNodes.class);
         UnknownUsers listRoot = new UnknownUsers(Arrays.asList("first", 2, null));
 
         assertEquals("first", nodes.getUnknownListValue(listRoot));
@@ -86,7 +86,7 @@ public class WildcardContainerPathTest {
 
     @Test
     public void inheritedGenericPropertiesResolveToConcreteTypes() {
-        WildcardNodes nodes = CompiledInstances.global(WildcardNodes.class);
+        WildcardNodes nodes = CompiledInstances.create(WildcardNodes.class);
         User first = new User("first");
         UserHolder root = new UserHolder();
         root.users.add(first);
@@ -98,7 +98,7 @@ public class WildcardContainerPathTest {
 
     @Test
     public void inheritedContainerSubtypesRemainReadableAndWritable() {
-        WildcardNodes nodes = CompiledInstances.global(WildcardNodes.class);
+        WildcardNodes nodes = CompiledInstances.create(WildcardNodes.class);
 
         UserList list = new UserList();
         User first = new User("first");
@@ -123,7 +123,7 @@ public class WildcardContainerPathTest {
 
     @Test
     public void nullWildcardLeavesFollowNormalReferencePathSemantics() {
-        WildcardNodes nodes = CompiledInstances.global(WildcardNodes.class);
+        WildcardNodes nodes = CompiledInstances.create(WildcardNodes.class);
 
         ListUsers listRoot = new ListUsers(Arrays.asList((User) null));
         assertNull(nodes.getListUserName(listRoot));

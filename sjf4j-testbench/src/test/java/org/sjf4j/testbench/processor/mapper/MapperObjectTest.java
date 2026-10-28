@@ -26,7 +26,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsJsonObjectToRecordWithNestedPojo() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
 
         JsonObject customer = new JsonObject();
         customer.put("name", "Ada");
@@ -49,7 +49,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsMapToRecordWithNestedPojo() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         Map<String, Object> customer = new LinkedHashMap<>();
         customer.put("name", "Grace");
         customer.put("age", Integer.valueOf(37));
@@ -71,7 +71,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsObjectRootWhenRuntimeSourceIsObjectLike() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         Map<String, Object> customer = Map.of("name", "Katherine", "age", Long.valueOf(38));
         Map<String, Object> source = Map.of(
                 "id", Integer.valueOf(300),
@@ -89,7 +89,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsJsonObjectToMutableBean() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         JsonObject source = new JsonObject();
         source.put("id", Long.valueOf(400));
         source.put("status", "ACTIVE");
@@ -106,7 +106,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsRecordToJsonObjectShallowly() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         CustomerDto customer = new CustomerDto("Ada", 36);
         ProjectionSource source = new ProjectionSource(500L, Status.ACTIVE, customer, null);
 
@@ -120,7 +120,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsBeanToJsonObjectUsingNodeNames() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         ProjectionBean source = new ProjectionBean();
         source.firstName = "Ada";
         source.setLastName("Lovelace");
@@ -133,7 +133,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsPojoToMapShallowlyUsingNodeNames() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         ProjectionBean source = new ProjectionBean();
         CustomerDto nested = new CustomerDto("Ada", 36);
         source.firstName = "Ada";
@@ -149,7 +149,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsPojoPropertyToJsonObjectTargetProperty() {
-        HolderMapper mapper = CompiledInstances.global(HolderMapper.class);
+        HolderMapper mapper = CompiledInstances.create(HolderMapper.class);
         ProjectionSource source = new ProjectionSource(600L, Status.ACTIVE, new CustomerDto("Grace", 37), "note");
 
         ProjectionHolder holder = mapper.holder(new ProjectionWrapper(source));
@@ -160,7 +160,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsMapToJsonObjectShallowly() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         JsonObject nested = JsonObject.of("city", "London");
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Long.valueOf(700));
@@ -175,7 +175,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsJsonObjectToJsonObjectShallowly() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         JsonObject nested = JsonObject.of("name", "Ada");
         JsonObject source = JsonObject.of("id", Long.valueOf(800), "nested", nested);
 
@@ -188,7 +188,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsJsonObjectToTypedMap() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         JsonObject source = JsonObject.of("a", Long.valueOf(1), "b", Integer.valueOf(2));
 
         Map<String, Integer> target = mapper.projectJsonObjectInts(source);
@@ -199,7 +199,7 @@ public class MapperObjectTest {
 
     @Test
     public void copiesDynamicJojoEntriesFromEachNonNullMultiSource() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
 
         assertEquals("second", mapper.createDynamicMulti(null, Map.of("second", "second")).getNode("second"));
         assertEquals("first", mapper.createDynamicMulti(Map.of("first", "first"), null).getNode("first"));
@@ -213,7 +213,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsObjectRuntimeMapToJsonObjectOnly() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         JsonObject nested = JsonObject.of("city", "London");
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Long.valueOf(900));
@@ -228,7 +228,7 @@ public class MapperObjectTest {
 
     @Test
     public void projectsObjectRuntimeMapToTypedMapOnly() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("x", Long.valueOf(9));
 
@@ -240,7 +240,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsMapToJojoWithNoArgsAndDynamicExtras() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         CustomerDto nested = new CustomerDto("Grace", 37);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Integer.valueOf(11));
@@ -256,7 +256,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsMapToCtorJojoWithDynamicExtras() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("id", Integer.valueOf(12));
         source.put("unknown", "v");
@@ -269,7 +269,7 @@ public class MapperObjectTest {
 
     @Test
     public void mappingCreatorJojoImplementationReceivesUnconsumedExtras() {
-        ObjectMapper mapper = CompiledInstances.global(ObjectMapper.class);
+        ObjectMapper mapper = CompiledInstances.create(ObjectMapper.class);
 
         CreatorView view = mapper.creatorJojo(Map.of("name", "Ada", "extra", "value"));
 
@@ -280,7 +280,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsAndUpdatesJojoDeclaredPropertiesPathsAndUnconsumedExtras() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("full_name", "Ada");
         source.put("ignored", "not-an-extra");
@@ -306,7 +306,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsJsonObjectJojoAndRuntimeMapSourcesToJojo() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
 
         RichJojo json = mapper.createJson(JsonObject.of("full_name", "Ada", "extra", 1));
         ChildJojo sourceJojo = new ChildJojo();
@@ -325,7 +325,7 @@ public class MapperObjectTest {
 
     @Test
     public void mapsJojoPropertiesThroughGettersAndSetters() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
         AccessorSourceJojo source = new AccessorSourceJojo();
         source.setName("Ada");
 
@@ -336,7 +336,7 @@ public class MapperObjectTest {
 
     @Test
     public void automaticObjectMappingDistinguishesMissingFromNull() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
 
         assertNotNull(mapper.copyMapDynamic(Map.of("name", "Ada")).child);
         Map<String, Object> map = new LinkedHashMap<>();
@@ -357,7 +357,7 @@ public class MapperObjectTest {
 
     @Test
     public void jojoExtrasExcludeDeclaredKeysAndConsumeAllMappingSources() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("full_name", "Ada");
         source.put("name", "must-not-overwrite");
@@ -383,7 +383,7 @@ public class MapperObjectTest {
 
     @Test
     public void ignoredRenamedMappingConsumesItsSourceExtra() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
 
         RichJojo target = mapper.ignoreRenamed(Map.of("full_name", "Ada", "extra", "yes"));
 
@@ -394,7 +394,7 @@ public class MapperObjectTest {
 
     @Test
     public void jojoSourceCopiesOnlyDynamicBackingEntriesAndSupportsDynamicOnlyUpdate() {
-        JojoMapper mapper = CompiledInstances.global(JojoMapper.class);
+        JojoMapper mapper = CompiledInstances.create(JojoMapper.class);
         SourceJojo source = new SourceJojo();
         source.typed = "typed";
         source.put("extra", "dynamic");

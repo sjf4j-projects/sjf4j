@@ -39,7 +39,7 @@ public class CreekPolyCountBenchmark {
 
     private static final ObjectMapper JACKSON_NATIVE = new ObjectMapper();
     private static final Jackson2Binder SJF4J_RUNTIME = new Jackson2Binder();
-    private static final Reader SJF4J_COMPILED = CompiledInstances.global(Reader.class);
+    private static final Reader SJF4J_COMPILED = CompiledInstances.create(Reader.class);
 
     private String json;
 

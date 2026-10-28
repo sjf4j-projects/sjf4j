@@ -90,7 +90,7 @@ public class SimplePojoReadOrderBenchmark {
 
     private static final SimpleJsonBinder RUNTIME = new SimpleJsonBinder();
     private static final SimpleCompiledBinder COMPILED =
-            CompiledInstances.global(SimpleCompiledBinder.class);
+            CompiledInstances.create(SimpleCompiledBinder.class);
 
     @Setup(Level.Trial)
     public void validate() throws IOException {

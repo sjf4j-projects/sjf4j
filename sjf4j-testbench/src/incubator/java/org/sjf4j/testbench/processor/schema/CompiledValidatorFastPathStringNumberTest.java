@@ -15,7 +15,7 @@ public class CompiledValidatorFastPathStringNumberTest {
 
     @Test
     public void validatesStringNumberAndArrayBoundariesInFastPath() {
-        Validator validator = CompiledInstances.global(Validator.class);
+        Validator validator = CompiledInstances.create(Validator.class);
 
         assertTrue(validator.isValid(new Sample("AB12", 1, 1.5, List.of("ok"))));
         assertTrue(validator.isValid(new Sample("AB1234", 10, 9.5, List.of("ok", "yo", "up"))));
@@ -34,7 +34,7 @@ public class CompiledValidatorFastPathStringNumberTest {
 
     @Test
     public void validatesEnumCharJavaArrayAndNestedRecordInFastPath() {
-        CompositeValidator validator = CompiledInstances.global(CompositeValidator.class);
+        CompositeValidator validator = CompiledInstances.create(CompositeValidator.class);
 
         assertTrue(validator.isValid(new Composite(State.ACTIVE, 'A', new String[]{"ok"}, new Address("Paris"))));
         assertTrue(validator.isValid(new Composite(State.PAUSED, 'Z', new String[]{"ok", "yo"}, new Address("Rome"))));
@@ -48,7 +48,7 @@ public class CompiledValidatorFastPathStringNumberTest {
 
     @Test
     public void validatesFormatInFastPathWhenStrict() {
-        UuidValidator validator = CompiledInstances.global(UuidValidator.class);
+        UuidValidator validator = CompiledInstances.create(UuidValidator.class);
         UuidSample good = new UuidSample("123e4567-e89b-12d3-a456-426614174000");
         UuidSample bad = new UuidSample("not-a-uuid");
 

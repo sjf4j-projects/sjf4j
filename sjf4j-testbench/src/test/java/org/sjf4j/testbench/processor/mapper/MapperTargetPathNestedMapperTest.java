@@ -21,7 +21,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @Test
     public void targetPathAppliesNamedNestedMapperToBeanListAndMapValues() {
-        NestedPathMapper mapper = CompiledInstances.global(NestedPathMapper.class);
+        NestedPathMapper mapper = CompiledInstances.create(NestedPathMapper.class);
         Source source = new Source(new Child("Ada"));
 
         Target target = mapper.create(source);
@@ -32,7 +32,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @Test
     public void targetPathNestedMapperWorksWithIfParentPresentAndEnsure() {
-        NestedPathMapper mapper = CompiledInstances.global(NestedPathMapper.class);
+        NestedPathMapper mapper = CompiledInstances.create(NestedPathMapper.class);
         Source source = new Source(new Child("Grace"));
 
         OptionalTarget optional = new OptionalTarget();
@@ -51,7 +51,7 @@ public class MapperTargetPathNestedMapperTest {
     @Test
     public void targetPathNestedMapperSupportsImportedMapperReference() {
         ImportedNestedPathMapper mapper =
-                CompiledInstances.global(ImportedNestedPathMapper.class);
+                CompiledInstances.create(ImportedNestedPathMapper.class);
         OptionalTarget target = new OptionalTarget();
 
         mapper.ensureMap(target, new Source(new Child("Ada")));

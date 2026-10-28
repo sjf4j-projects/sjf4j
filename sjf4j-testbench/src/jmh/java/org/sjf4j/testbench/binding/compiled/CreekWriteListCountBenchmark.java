@@ -34,7 +34,7 @@ public class CreekWriteListCountBenchmark {
 
     private static final ObjectMapper NATIVE = new ObjectMapper();
     private static final Jackson2Binder RUNTIME = new Jackson2Binder();
-    private static final Writer COMPILED = CompiledInstances.global(Writer.class);
+    private static final Writer COMPILED = CompiledInstances.create(Writer.class);
 
     private TestModel model;
     private List<String> strings;

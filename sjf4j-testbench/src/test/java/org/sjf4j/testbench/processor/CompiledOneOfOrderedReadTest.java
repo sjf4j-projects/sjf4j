@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class CompiledOneOfOrderedReadTest {
 
     private static final String ID = "123e4567-e89b-12d3-a456-426614174000";
-    private static final Reader READER = CompiledInstances.global(Reader.class);
+    private static final Reader READER = CompiledInstances.create(Reader.class);
 
     @OneOf(discriminatorKey = "@type", mappings = {
             @OneOfMapping(type = Alpha.class, when = "alpha"),

@@ -74,12 +74,12 @@ public class CreatorReadBenchmark {
     private static final JsonpBinder JSONP_RUNTIME = new JsonpBinder();
     private static final SimpleJsonBinder SIMPLE_RUNTIME = new SimpleJsonBinder();
 
-    private static final Jackson2CompiledBinder JACKSON2_COMPILED = CompiledInstances.global(Jackson2CompiledBinder.class);
-    private static final Jackson3CompiledBinder JACKSON3_COMPILED = CompiledInstances.global(Jackson3CompiledBinder.class);
-    private static final GsonCompiledBinder GSON_COMPILED = CompiledInstances.global(GsonCompiledBinder.class);
-    private static final Fastjson2CompiledBinder FASTJSON2_COMPILED = CompiledInstances.global(Fastjson2CompiledBinder.class);
-    private static final JsonpCompiledBinder JSONP_COMPILED = CompiledInstances.global(JsonpCompiledBinder.class);
-    private static final SimpleCompiledBinder SIMPLE_COMPILED = CompiledInstances.global(SimpleCompiledBinder.class);
+    private static final Jackson2CompiledBinder JACKSON2_COMPILED = CompiledInstances.create(Jackson2CompiledBinder.class);
+    private static final Jackson3CompiledBinder JACKSON3_COMPILED = CompiledInstances.create(Jackson3CompiledBinder.class);
+    private static final GsonCompiledBinder GSON_COMPILED = CompiledInstances.create(GsonCompiledBinder.class);
+    private static final Fastjson2CompiledBinder FASTJSON2_COMPILED = CompiledInstances.create(Fastjson2CompiledBinder.class);
+    private static final JsonpCompiledBinder JSONP_COMPILED = CompiledInstances.create(JsonpCompiledBinder.class);
+    private static final SimpleCompiledBinder SIMPLE_COMPILED = CompiledInstances.create(SimpleCompiledBinder.class);
 
     private static String reverseFields(String input) {
         try {

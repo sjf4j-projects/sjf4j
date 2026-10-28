@@ -43,8 +43,8 @@
  * <p>{@link org.sjf4j.Sjf4j} is the main entry point for parsing and writing.
  * {@link Nodes} provides conversion helpers, {@link NodeStream} provides stream
  * processing with JSONPath helpers, {@link TypeReference} captures generic
- * target types, and {@link CompiledInstances} provides compile-time generated
- * interface instances.
+ * target types, and {@link CompiledInstances} creates compile-time generated
+ * interface implementations without caching.
  */
 package org.sjf4j;
 

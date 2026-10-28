@@ -6,40 +6,28 @@ import org.sjf4j.util.Asserts;
 import java.lang.reflect.InvocationTargetException;
 
 /**
- * Creates and caches runtime instances of annotation-processor generated interfaces.
+ * Factory for annotation-processor generated implementations of
+ * {@code @CompiledNavigator}, {@code @CompiledMapper},
+ * {@code @CompiledJdbcMapper}, and {@code @CompiledBinder} interfaces.
  *
- * <p>For an interface annotated with {@code @CompiledNavigator}, {@code @CompiledMapper},
- * {@code @CompiledJdbcMapper}, or {@code @CompiledBinder}, the processor
- * generates an implementation named by appending {@code _Impl} to the interface's
- * binary name. {@link #global(Class)} loads that implementation with
- * the interface's class loader and invokes its public no-argument constructor.
- *
- * <p>{@link #global(Class)} caches one immutable-default-context instance per interface.
- * {@link #create(Class, RuntimeContext)} creates independent instances for all four
- * compiled interface families. The context configures Mapper, Binder, and JDBC
- * conversions; Navigator currently has no context-dependent operations.
- * Generated implementations must be safe to share across callers once constructed.
+ * <p>Each {@link #create(Class)} invocation constructs a new instance of
+ * the generated {@code _Impl} class. The factory does not cache instances
+ * or manage their lifecycle; applications may retain or inject instances
+ * according to their own requirements.
  */
 public final class CompiledInstances {
 
     private static final String IMPL_SUFFIX = "_Impl";
 
-    private static final ClassValue<Object> INSTANCES_CACHE = new ClassValue<Object>() {
-        @Override
-        protected Object computeValue(Class<?> type) {
-            return _create(type);
-        }
-    };
-
     private CompiledInstances() {}
 
     /**
-     * Returns the cached instance configured with {@link RuntimeContext#EMPTY}.
+     * Creates a new compiled implementation with its default settings.
+     * The returned instance is not cached.
      */
-    @SuppressWarnings("unchecked")
-    public static <T> T global(Class<T> type) {
+    public static <T> T create(Class<T> type) {
         Asserts.notNull(type, "type");
-        return (T) INSTANCES_CACHE.get(type);
+        return _create(type);
     }
 
     /**
@@ -65,13 +53,7 @@ public final class CompiledInstances {
         }
     }
 
-    /** Compatibility alias for {@link #global(Class)}. */
-    @Deprecated
-    public static <T> T of(Class<T> type) {
-        return global(type);
-    }
-
-    private static Object _create(Class<?> type) {
+    private static <T> T _create(Class<T> type) {
         Class<?> implClass = _implementationClass(type);
         try {
             return type.cast(implClass.getConstructor().newInstance());

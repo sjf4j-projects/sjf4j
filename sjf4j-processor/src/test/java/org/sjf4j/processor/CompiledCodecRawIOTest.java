@@ -78,7 +78,7 @@ class CompiledCodecRawIOTest {
                 beanType.getField("when").set(bean, instant);
                 beanType.getField("epoch").set(bean, instant);
 
-                Object defaults = CompiledInstances.global(binderType);
+                Object defaults = CompiledInstances.create(binderType);
                 Object configured = CompiledInstances.create(binderType,
                         new RuntimeContext(Map.of(Instant.class, "epochMillis")));
                 String normal = (String) binderType.getMethod("write", beanType)
@@ -142,7 +142,7 @@ class CompiledCodecRawIOTest {
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
-                Object binder = CompiledInstances.global(binderType);
+                Object binder = CompiledInstances.create(binderType);
                 UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
                 assertEquals("\"" + id + "\"",
                         binderType.getMethod("writeUuid", UUID.class).invoke(binder, id), backend);

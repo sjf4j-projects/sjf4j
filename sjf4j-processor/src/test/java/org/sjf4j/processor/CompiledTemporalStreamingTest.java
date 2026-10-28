@@ -78,7 +78,7 @@ class CompiledTemporalStreamingTest {
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> beanClass = loader.loadClass("fixture.Bean");
                 Class binderClass = loader.loadClass("fixture.Binder");
-                Object binder = CompiledInstances.global(binderClass);
+                Object binder = CompiledInstances.create(binderClass);
                 for (Object bean : new Object[]{
                         binderClass.getMethod("readString", String.class).invoke(binder, input),
                         binderClass.getMethod("readBytes", byte[].class).invoke(

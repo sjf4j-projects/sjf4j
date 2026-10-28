@@ -86,7 +86,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                 beanType.getField("offsetTime").set(bean, offsetTime);
                 beanType.getField("zonedDateTime").set(bean, zonedDateTime);
                 beanType.getField("patterned").set(bean, dateTime);
-                Object binder = CompiledInstances.global(binderType);
+                Object binder = CompiledInstances.create(binderType);
                 JsonNode normal = mapper.readTree((String) binderType.getMethod("write", beanType)
                         .invoke(binder, bean));
                 assertEquals(uuid.toString(), normal.path("uuid").asText(), backend);

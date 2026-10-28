@@ -52,7 +52,7 @@ public class CreekModelBenchmark {
             new ObjectMapper().registerModule(new BlackbirdModule());
     private static final Jackson2Binder SJF4J_RUNTIME = new Jackson2Binder();
     private static final CreekCompiledBinder SJF4J_COMPILED =
-            CompiledInstances.global(CreekCompiledBinder.class);
+            CompiledInstances.create(CreekCompiledBinder.class);
 
     private String json;
 
