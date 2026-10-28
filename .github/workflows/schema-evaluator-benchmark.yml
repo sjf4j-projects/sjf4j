@@ -1,11 +1,8 @@
 name: Schema Evaluator JMH Comparison
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'sjf4j-schema/src/jmh/java/org/sjf4j/schema/EvaluatorTraversalBenchmark.java'
-      - '.github/workflows/schema-evaluator-benchmark.yml'
+  push:
+    branches: [bench/schema-evaluator-nodewalker]
 
 permissions:
   contents: read
