@@ -127,7 +127,7 @@ public final class ValidationGenerator {
             out.line("@Override");
             out.beginBlock("public " + resultName + " " + method.getSimpleName()
                     + "(" + type + " " + value + ")");
-            out.line("if (" + value + " == null) "
+            if (!parameterType.getKind().isPrimitive()) out.line("if (" + value + " == null) "
                     + (isBoolean ? "return true;" :
                        isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
             if (isBoolean) {
@@ -219,8 +219,11 @@ public final class ValidationGenerator {
     private static String javaLiteral(String value) {
         StringBuilder sb = new StringBuilder();
         int limit = 6000;
+        boolean longValue = value.length() > limit;
+        if (longValue) sb.append("new StringBuilder(").append(value.length()).append(")");
         for (int start = 0; start < value.length(); start += limit) {
-            if (start > 0) sb.append(" + ");
+            if (longValue) sb.append(".append(");
+            else if (start > 0) sb.append(" + ");
             sb.append('"');
             for (int i = start; i < Math.min(value.length(), start + limit); i++) {
                 char ch = value.charAt(i);
@@ -237,7 +240,9 @@ public final class ValidationGenerator {
                 } else sb.append(ch);
             }
             sb.append('"');
+            if (longValue) sb.append(")");
         }
+        if (longValue) sb.append(".toString()");
         return sb.length() == 0 ? "\"\"" : sb.toString();
     }
 
