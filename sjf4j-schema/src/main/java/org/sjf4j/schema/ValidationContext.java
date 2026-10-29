@@ -15,7 +15,7 @@ public final class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
     private final boolean booleanOnly;
-    private final List<ValidationMessage> messages;
+    private List<ValidationMessage> messages;
     private boolean valid = true;
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding;
@@ -41,7 +41,6 @@ public final class ValidationContext {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
-        this.messages = !failFast && !booleanOnly ? new ArrayList<>() : null;
     }
 
     static ValidationContext booleanOnly(boolean strictFormat) {
@@ -220,14 +219,19 @@ public final class ValidationContext {
         if (instancePs == null && instance != null) instancePs = instance.materializePath();
         ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
                 instancePs, keywordPs, schemaUri, keyword, message);
-        if (messages != null) messages.add(msg);
-        else lastMessage = msg;
+        if (failFast) {
+            lastMessage = msg;
+        } else {
+            if (messages == null) messages = new ArrayList<>();
+            messages.add(msg);
+        }
         valid = false;
     }
 
     void addWarn(PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
                  String keyword, String message) {
-        if (messages != null && ignoreErrorAdding == 0) {
+        if (!failFast && !booleanOnly && ignoreErrorAdding == 0) {
+            if (messages == null) messages = new ArrayList<>();
             messages.add(new ValidationMessage(ValidationMessage.Severity.WARN,
                     instancePs, keywordPs, schemaUri, keyword, message));
         }
