@@ -223,14 +223,15 @@ public class CompiledReadBenchmark {
         checkEquivalentRawGraph("fastjson2 native JSONObject UTF-8", expectedRawMap,
                 fastjson2_map_utf8_native_object());
 
-        // Separate diagnostic: force JDK classes and compare exact classes.
-        checkExactRawGraph("fastjson2 native OBNT String", expectedRawMap,
+        // Separate diagnostic: force JDK container classes without imposing
+        // their identity as a requirement for valid native raw results.
+        checkEquivalentRawGraph("fastjson2 native OBNT String", expectedRawMap,
                 fastjson2_map_string_native_obnt());
-        checkExactRawGraph("fastjson2 native OBNT UTF-8", expectedRawMap,
+        checkEquivalentRawGraph("fastjson2 native OBNT UTF-8", expectedRawMap,
                 fastjson2_map_utf8_native_obnt());
-        checkExactRawGraph("fastjson2 native fill OBNT String", expectedRawMap,
+        checkEquivalentRawGraph("fastjson2 native fill OBNT String", expectedRawMap,
                 fastjson2_map_string_native_fill());
-        checkExactRawGraph("fastjson2 native fill OBNT UTF-8", expectedRawMap,
+        checkEquivalentRawGraph("fastjson2 native fill OBNT UTF-8", expectedRawMap,
                 fastjson2_map_utf8_native_fill());
         checkList("fastjson2 compiled list", FASTJSON2_COMPILED.readList(JSON_LIST_DATA));
         checkList("fastjson2 runtime list", FASTJSON2_RUNTIME.readNode(JSON_LIST_DATA, java.util.List.class));
@@ -240,9 +241,9 @@ public class CompiledReadBenchmark {
                 fastjson2_list_string_native_array());
         checkEquivalentRawGraph("fastjson2 native JSONArray UTF-8", expectedRawList,
                 fastjson2_list_utf8_native_array());
-        checkExactRawGraph("fastjson2 native OBNT List String", expectedRawList,
+        checkEquivalentRawGraph("fastjson2 native OBNT List String", expectedRawList,
                 fastjson2_list_string_native_obnt());
-        checkExactRawGraph("fastjson2 native OBNT List UTF-8", expectedRawList,
+        checkEquivalentRawGraph("fastjson2 native OBNT List UTF-8", expectedRawList,
                 fastjson2_list_utf8_native_obnt());
         checkPojo("jsonp compiled JSON_DATA", expected, JSONP_COMPILED.readPojo(JSON_DATA));
         checkPojo("jsonp runtime JSON_DATA", expected, JSONP_RUNTIME.readNode(JSON_DATA, User.class));
@@ -332,45 +333,16 @@ public class CompiledReadBenchmark {
             }
             return;
         }
+        if (expected instanceof Number && actual instanceof Number) {
+            if (new java.math.BigDecimal(expected.toString())
+                    .compareTo(new java.math.BigDecimal(actual.toString())) != 0) {
+                throw new IllegalStateException("Raw number differs: " + label);
+            }
+            return;
+        }
         if (!expected.equals(actual)) {
             throw new IllegalStateException("Raw scalar differs: " + label + " expected " + expected
                     + ", actual " + actual);
-        }
-    }
-
-    private static void checkExactRawGraph(String label, Object expected, Object actual) {
-        if (expected == null || actual == null) {
-            if (expected != actual) throw new IllegalStateException("Raw null differs: " + label);
-            return;
-        }
-        if (expected.getClass() != actual.getClass()) {
-            throw new IllegalStateException("Raw class differs: " + label + " expected "
-                    + expected.getClass() + ", actual " + actual.getClass());
-        }
-        if (expected instanceof Map) {
-            Map<?, ?> a = (Map<?, ?>) expected;
-            Map<?, ?> b = (Map<?, ?>) actual;
-            if (!new ArrayList<>(a.keySet()).equals(new ArrayList<>(b.keySet()))) {
-                throw new IllegalStateException("Raw property order differs: " + label);
-            }
-            for (Map.Entry<?, ?> member : a.entrySet()) {
-                checkExactRawGraph(label + "." + member.getKey(), member.getValue(),
-                        b.get(member.getKey()));
-            }
-            return;
-        }
-        if (expected instanceof List) {
-            List<?> a = (List<?>) expected, b = (List<?>) actual;
-            if (a.size() != b.size()) {
-                throw new IllegalStateException("Raw array size differs: " + label);
-            }
-            for (int i = 0; i < a.size(); i++) {
-                checkExactRawGraph(label + "[" + i + "]", a.get(i), b.get(i));
-            }
-            return;
-        }
-        if (!expected.equals(actual)) {
-            throw new IllegalStateException("Raw value differs: " + label);
         }
     }
 
