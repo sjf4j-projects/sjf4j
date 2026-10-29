@@ -38,28 +38,6 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
-    # Temporary allocation profile; restore workflow after measurements.
-    - name: Profile Fastjson2 Raw Map allocations (f3 wi15)
-      run: |
-        ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
-        test -n "$JMH_JAR"
-        java -jar "$JMH_JAR" 'Fastjson2RawAllocationBenchmark\.(rawString|rawUtf8|wrappedNativeString|wrappedNativeUtf8)$' -f 3 -wi 15 -i 5 -w 200ms -r 200ms -t 1 -prof gc -rf json -rff /tmp/map-alloc.json
-        python3 - <<'PY'
-        import json
-        print("BEGIN ALLOC PROFILE")
-        for row in json.load(open('/tmp/map-alloc.json')):
-            metrics = row.get('secondaryMetrics', {})
-            p = row['primaryMetric']
-            alloc = metrics.get('gc.alloc.rate.norm', {})
-            gc_count = metrics.get('gc.count', {})
-            print(row['benchmark'].rsplit('.', 1)[-1], row['params']['shape'],
-                  f"{p['score']:.4f}", f"{p['scoreError']:.4f}",
-                  f"{alloc.get('score', float('nan')):.1f}",
-                  f"{gc_count.get('score', float('nan')):.2f}")
-        print("END ALLOC PROFILE")
-        PY
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
