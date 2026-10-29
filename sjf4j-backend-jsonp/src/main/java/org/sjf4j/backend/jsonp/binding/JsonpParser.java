@@ -329,18 +329,18 @@ public final class JsonpParser extends StreamingParser {
 
     private List<Object> _readRawArray() throws IOException {
         advance();
-        if (!(!nextIfArrayEnd())) {
+        if (nextIfArrayEnd()) {
             ArrayList<Object> result = new ArrayList<>(0);
             return result;
         }
         Object item1 = readRaw();
-        if (!(!nextIfArrayEnd())) {
+        if (nextIfArrayEnd()) {
             ArrayList<Object> result = new ArrayList<>(1);
             result.add(item1);
             return result;
         }
         Object item2 = readRaw();
-        if (!(!nextIfArrayEnd())) {
+        if (nextIfArrayEnd()) {
             ArrayList<Object> result = new ArrayList<>(2);
             result.add(item1);
             result.add(item2);
