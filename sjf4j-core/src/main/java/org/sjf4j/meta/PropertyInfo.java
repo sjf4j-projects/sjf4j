@@ -19,7 +19,7 @@ import java.util.function.Function;
 /**
  * Cached binding metadata and accessors for one object property.
  */
-public class PropertyInfo {
+public final class PropertyInfo {
 
     public final String name;
     public final String[] alias;

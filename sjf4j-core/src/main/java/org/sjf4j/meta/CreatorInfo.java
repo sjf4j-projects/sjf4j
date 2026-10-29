@@ -18,7 +18,7 @@ import java.util.function.Supplier;
  * <p>It supports no-argument construction and argument-based constructors or
  * factory methods, including their JSON property bindings.</p>
  */
-public class CreatorInfo {
+public final class CreatorInfo {
     public final Class<?> clazz;
     public final MethodHandle noArgsCtorHandle;
     public final Supplier<?> noArgsCtorLambda;

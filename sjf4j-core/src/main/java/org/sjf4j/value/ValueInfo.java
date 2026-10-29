@@ -11,7 +11,7 @@ import java.lang.invoke.MethodHandle;
  * Cached binding metadata for a {@link ValueCodec} or {@code @NodeValue}
  * conversion methods.
  */
-public class ValueInfo {
+public final class ValueInfo {
     public final Class<?> runtimeClazz;
     public final String valueFormat;
     public final Class<?> valueClazz;

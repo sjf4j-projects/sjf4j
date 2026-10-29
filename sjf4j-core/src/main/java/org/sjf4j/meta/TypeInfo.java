@@ -12,7 +12,7 @@ import org.sjf4j.value.ValueSet;
  * <p>Value codecs may have a default and named variants. At most one of the
  * polymorphic, container, and object-binding metadata fields is populated.</p>
  */
-public class TypeInfo {
+public final class TypeInfo {
     public final Class<?> clazz;
     public final ValueSet valueSet;
     public final OneOfInfo oneOfInfo;
