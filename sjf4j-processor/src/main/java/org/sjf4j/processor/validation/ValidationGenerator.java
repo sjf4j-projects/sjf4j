@@ -122,7 +122,7 @@ public final class ValidationGenerator {
             if (name == null) {
                 name = "PLAN_" + fields.size();
                 fields.add(new SchemaField(name, snapshot,
-                        method.getSimpleName().toString(), parameterType.toString(), ordinal));
+                        method.getSimpleName().toString(), context.typeUtils.erasure(parameterType).toString(), ordinal));
                 bySnapshot.put(signatureKey, name);
             }
             names.add("Fallback." + name);
