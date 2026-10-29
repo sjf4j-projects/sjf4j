@@ -10,10 +10,11 @@ import java.lang.annotation.Target;
  * Inline {@link #value()} text takes precedence over {@link #ref()}; when both
  * are empty, the validator looks for a schema file named after the type.
  * Annotated superclasses are also validated in parent-to-child order.
- * This annotation may be placed on a parameter, but the current
- * {@code SchemaValidator} entry point resolves type annotations only.
+ * On {@code @CompiledValidator} methods, a method-level annotation overrides a
+ * parameter annotation, which overrides annotations on the parameter type.
+ * The runtime {@code SchemaValidator} resolves type annotations only.
  */
-@Target({ElementType.TYPE, ElementType.PARAMETER})
+@Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidJsonSchema {
     /** Inline JSON Schema document, if supplied. */
