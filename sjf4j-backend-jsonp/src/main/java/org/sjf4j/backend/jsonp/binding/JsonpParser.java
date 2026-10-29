@@ -241,9 +241,9 @@ public final class JsonpParser extends StreamingParser {
         }
         switch (current) {
             case START_OBJECT:
-                return readRawObject();
+                return _readRawObject();
             case START_ARRAY:
-                return readRawArray();
+                return _readRawArray();
             case VALUE_STRING:
                 return readString();
             case VALUE_NUMBER:
@@ -273,13 +273,7 @@ public final class JsonpParser extends StreamingParser {
         if (current != JsonParser.Event.START_OBJECT) {
             throw new BindingException("expected raw object or null");
         }
-        Map<String, Object> value = new LinkedHashMap<>();
-        readObjectStart();
-        String name;
-        while ((name = nextName()) != null) {
-            value.put(name, readRaw());
-        }
-        return value;
+        return _readRawObject();
     }
 
     @Override
@@ -291,8 +285,25 @@ public final class JsonpParser extends StreamingParser {
         if (current != JsonParser.Event.START_ARRAY) {
             throw new BindingException("expected raw array or null");
         }
+        return _readRawArray();
+    }
+
+    // Called only after the START_OBJECT / START_ARRAY event is established.
+    // Consume it directly: the public entry points and readRaw() already
+    // dispatched the token, so readObjectStart/readArrayStart would recheck it.
+    private Map<String, Object> _readRawObject() throws IOException {
+        advance();
+        Map<String, Object> value = new LinkedHashMap<>();
+        String name;
+        while ((name = nextName()) != null) {
+            value.put(name, readRaw());
+        }
+        return value;
+    }
+
+    private List<Object> _readRawArray() throws IOException {
+        advance();
         List<Object> value = new ArrayList<>();
-        readArrayStart();
         while (!nextIfArrayEnd()) {
             value.add(readRaw());
         }
