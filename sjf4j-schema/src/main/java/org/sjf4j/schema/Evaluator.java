@@ -687,7 +687,7 @@ public interface Evaluator {
                 if (properties != null) {
                     SchemaPlan plan = properties.get(key);
                     if (plan != null) {
-                        Instance subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
+                        Instance subInstance = instance.inferSubByKey(key, value, ctx);
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = plan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
@@ -702,7 +702,7 @@ public interface Evaluator {
                         if (patterns[i].matcher(key).find()) {
                             SchemaPlan plan = patternPlans[i];
                             if (plan != null) {
-                                Instance subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
+                                Instance subInstance = instance.inferSubByKey(key, value, ctx);
                                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                                 boolean subResult = plan.evaluate(subInstance, cps, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
@@ -715,7 +715,7 @@ public interface Evaluator {
                 }
 
                 if (additionalPropertiesPlan != null && !matched) {
-                    Instance subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
+                    Instance subInstance = instance.inferSubByKey(key, value, ctx);
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                     boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
@@ -897,7 +897,7 @@ public interface Evaluator {
             boolean result = true;
             for (String key : NodeWalker.keySetInObject(node)) {
                 ctx.pushIgnoreError();
-                boolean probed = propertyNamesPlan.evaluate(Instance.infer(key, ctx.reusedLeaf()), ps, ctx);
+                boolean probed = propertyNamesPlan.evaluate(Instance.infer(key, ctx), ps, ctx);
                 ctx.popIgnoreError();
                 if (!probed) {
                     PathSegment instanceKeywordPs = ps == null
@@ -1051,14 +1051,14 @@ public interface Evaluator {
 //            final boolean[] result = new boolean[] {true};
 //            boolean shouldAbort = NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
 //                if (prefixItemsPlans != null && i < prefixItemsPlans.length) {
-//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
+//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx);
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
 //                    result[0] = result[0] && subResult;
 //                    if (!subResult && ctx.isFailFast()) return true;
 //                    if (result[0]) instance.markEvaluated(i);
 //                } else if (itemsPlan != null) {
-//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
+//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx);
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
 //                    result[0] = result[0] && subResult;
@@ -1074,7 +1074,7 @@ public interface Evaluator {
             int i = 0;
             if (prefixItemsPlans != null) {
                 for (; i < prefixItemsPlans.length && it.hasNext(); i++) {
-                    Instance subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+                    Instance subInstance = instance.inferSubByIndex(i, it.next(), ctx);
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -1085,7 +1085,7 @@ public interface Evaluator {
 
             if (itemsPlan != null) {
                 for (; it.hasNext(); i++) {
-                    Instance subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+                    Instance subInstance = instance.inferSubByIndex(i, it.next(), ctx);
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
@@ -1173,7 +1173,7 @@ public interface Evaluator {
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
-                Instance subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                Instance subInstance = instance.inferSubByIndex(i, subActual, ctx);
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                 boolean result = containsPlan.evaluate(subInstance, cps, ctx);
                 ctx.popIgnoreError();
@@ -1476,7 +1476,7 @@ public interface Evaluator {
                 for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(node)) {
                     String key = entry.getKey();
                     if (!merged.get(propIdx)) {
-                        Instance subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
+                        Instance subInstance = instance.inferSubByKey(key, entry.getValue(), ctx);
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                         boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
@@ -1492,7 +1492,7 @@ public interface Evaluator {
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();
                     if (!merged.get(i)) {
-                        Instance subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                        Instance subInstance = instance.inferSubByIndex(i, subActual, ctx);
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                         boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);

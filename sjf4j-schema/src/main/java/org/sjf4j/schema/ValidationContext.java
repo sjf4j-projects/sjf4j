@@ -25,7 +25,7 @@ public class ValidationContext {
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
     // dedicated wrappers because they can carry branch-local runtime state.
-    private final Instance reusedLeaf;
+    private Instance reusedLeaf;
 
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding = 0;
@@ -36,7 +36,6 @@ public class ValidationContext {
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
         this.messages = failFast ? null : new ArrayList<>();
-        this.reusedLeaf = Instance.infer(null);
     }
 
 
@@ -98,7 +97,8 @@ public class ValidationContext {
         return planStack;
     }
 
-    public Instance reusedLeaf() {
+    Instance reusedLeaf() {
+        if (reusedLeaf == null) reusedLeaf = Instance.infer(null);
         return reusedLeaf;
     }
 

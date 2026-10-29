@@ -109,11 +109,11 @@ public final class Instance {
     }
 
     static Instance infer(Object node) {
-        return infer(node, null);
+        return infer(node, (ValidationContext) null);
     }
 
     /**
-     * Infers node metadata and wraps it as an InstancedNode.
+     * Infers node metadata and wraps it as an Instance.
      * <p>
      * Registered logical value node types are first encoded to raw values for
      * schema validation. The raw value is not recursively rebound or copied
@@ -121,7 +121,7 @@ public final class Instance {
      * later from converted values can be cached and reused within the same
      * validation traversal.
      */
-    static Instance infer(Object node, Instance reusedLeaf) {
+    static Instance infer(Object node, ValidationContext context) {
         Class<?> clazz = node == null ? null : node.getClass();
         NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
         if (kind == NodeKind.UNKNOWN) {
@@ -143,8 +143,8 @@ public final class Instance {
             }
         }
         JsonType jsonType = JsonType.of(kind);
-        if (jsonType.isValue() && reusedLeaf != null) {
-            return reusedLeaf.reuse(node, jsonType, false);
+        if (jsonType.isValue() && context != null) {
+            return context.reusedLeaf().reuse(node, jsonType, false);
         }
         return new Instance(node, jsonType, false);
     }
@@ -227,7 +227,7 @@ public final class Instance {
      * <p>
      * Encoded children are cached by key to avoid repeated value-binding encoding.
      */
-    Instance inferSubByKey(String key, Object subNode, Instance reusedLeaf) {
+    Instance inferSubByKey(String key, Object subNode, ValidationContext context) {
         if (jsonType != JsonType.OBJECT)
             throw new NodeException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         if (subInstanceCache != null) {
@@ -235,7 +235,7 @@ public final class Instance {
             if (subInstance != null) return subInstance.reset();
         }
 
-        Instance subInstance = Instance.infer(subNode, reusedLeaf).bindPathKey(this, key);
+        Instance subInstance = Instance.infer(subNode, context).bindPathKey(this, key);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(key, subInstance);
@@ -248,7 +248,7 @@ public final class Instance {
      * <p>
      * Encoded children are cached by index key to avoid repeated encoding.
      */
-    Instance inferSubByIndex(int idx, Object subNode, Instance reusedLeaf) {
+    Instance inferSubByIndex(int idx, Object subNode, ValidationContext context) {
         if (jsonType != JsonType.ARRAY)
             throw new NodeException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
         if (subInstanceCache != null) {
@@ -256,7 +256,7 @@ public final class Instance {
             if (subInstance != null) return subInstance.reset();
         }
 
-        Instance subInstance = Instance.infer(subNode, reusedLeaf).bindPathIndex(this, idx);
+        Instance subInstance = Instance.infer(subNode, context).bindPathIndex(this, idx);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(idx, subInstance);
