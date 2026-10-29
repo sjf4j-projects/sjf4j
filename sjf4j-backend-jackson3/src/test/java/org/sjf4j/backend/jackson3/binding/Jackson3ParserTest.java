@@ -61,6 +61,47 @@ class Jackson3ParserTest {
     }
 
     @Test
+    void expectedNameMatchingHandlesCanonicalAliasesAndUnknownForStringAndUtf8() throws Exception {
+        NameMatcher matcher = new Jackson3NameMatcher(
+                new String[]{"id", "name"},
+                new String[][]{{}, {"legacyName"}});
+        String json = "{\"id\":7,\"unknown\":{\"nested\":[1]},"
+                + "\"legacyName\":\"Ada\",\"name\":\"Eve\"}";
+
+        for (boolean utf8 : new boolean[]{false, true}) {
+            Jackson3Binder binder = new Jackson3Binder();
+            Jackson3Parser parser = utf8
+                    ? binder.createParser(json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    : binder.createParser(json);
+            try {
+                parser.readObjectStart();
+                // Successful prepared-name match.
+                assertEquals(0, parser.nextNameMatch(matcher, 0));
+                assertEquals(7, parser.readIntValue());
+
+                // A missed expected name must leave the cursor on that name.
+                assertEquals(NameMatcher.UNKNOWN, parser.nextNameMatch(matcher, 1));
+                assertEquals("unknown", parser.currentName());
+                parser.skipNode();
+
+                // Alias resolution must still use the general matcher.
+                assertEquals(1, parser.nextNameMatch(matcher, 0));
+                assertEquals("Ada", parser.readString());
+
+                // A prefetched name must not be advanced a second time.
+                assertFalse(parser.nextIfObjectEnd());
+                assertEquals(1, parser.nextNameMatch(matcher, 1));
+                assertEquals("Eve", parser.readString());
+
+                assertEquals(NameMatcher.OBJECT_END, parser.nextNameMatch(matcher, 2));
+                parser.end();
+            } finally {
+                parser.close();
+            }
+        }
+    }
+
+    @Test
     void preservesPeekAndConditionalStateAcrossObjectsAndArrays() throws Exception {
         {
             Jackson3Parser parser = parser("{\"id\":7,\"name\":\"Ada\"}");
