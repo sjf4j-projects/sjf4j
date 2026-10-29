@@ -88,6 +88,8 @@ public final class ValidationContext {
     }
 
     void leaveChild() {
+        NodeFrame frame = nodeDepth == 1 ? leaf : frames[nodeDepth];
+        frame.finishChild();
         nodeDepth--;
     }
 
