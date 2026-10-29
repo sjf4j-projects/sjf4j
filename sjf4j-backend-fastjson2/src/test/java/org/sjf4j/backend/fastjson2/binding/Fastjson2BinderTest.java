@@ -87,6 +87,32 @@ class Fastjson2BinderTest {
     }
 
     @Test
+    void nativeRawContainersMatchTheSjf4jObjectGraph() throws Exception {
+        String json = "{\"small\":7,\"large\":9876543210,\"fraction\":98.75,"
+                + "\"nested\":{\"enabled\":true,\"values\":[null,1,{\"name\":\"Ada\"}]}}";
+        Fastjson2Binder binder = new Fastjson2Binder();
+        Map<?, ?> expected = (Map<?, ?>) binder.readNode(json, Map.class);
+
+        JSONReader.Context context = JSONFactory.createReadContext();
+        context.config(JSONReader.Feature.UseDoubleForDecimals);
+        context.setObjectSupplier(LinkedHashMap::new);
+        context.setArraySupplier(ArrayList::new);
+        try (JSONReader nativeReader = JSONReader.of(json, context)) {
+            Map<?, ?> actual = nativeReader.readObject();
+
+            assertTrue(nativeReader.isEnd());
+            assertEquals(expected, actual);
+            assertEquals(LinkedHashMap.class, actual.getClass());
+            assertEquals(LinkedHashMap.class, actual.get("nested").getClass());
+            Map<?, ?> nested = (Map<?, ?>) actual.get("nested");
+            assertEquals(ArrayList.class, nested.get("values").getClass());
+            assertEquals(LinkedHashMap.class, ((List<?>) nested.get("values")).get(2).getClass());
+            assertEquals(expected.get("fraction").getClass(), actual.get("fraction").getClass());
+            assertEquals(expected.get("large").getClass(), actual.get("large").getClass());
+        }
+    }
+
+    @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(""));
         try {
