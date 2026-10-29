@@ -38,6 +38,28 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    # Temporary controlled Jackson Map allocation comparison, remove after JMH.
+    - name: Jackson2 and Jackson3 Map four-way GC JMH
+      run: |
+        ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
+        test -n "$JMH_JAR"
+        java -jar "$JMH_JAR" 'CompiledReadBenchmark\.jackson[23]_map_(string|utf8)_(native|compiled|runtime|raw)$' -f 3 -wi 15 -i 5 -w 200ms -r 200ms -t 1 -prof gc -rf json -rff /tmp/jackson-map.json
+        python3 - <<'PY'
+        import json
+        rows = json.load(open('/tmp/jackson-map.json'))
+        print("BEGIN JACKSON MAP JMH")
+        for backend in ("jackson2", "jackson3"):
+            for enc in ("string", "utf8"):
+                for method in ("native", "compiled", "raw", "runtime"):
+                    name = f"{backend}_map_{enc}_{method}"
+                    row = next(x for x in rows if x['benchmark'].endswith('.' + name))
+                    p = row['primaryMetric']
+                    alloc = row.get('secondaryMetrics', {}).get('gc.alloc.rate.norm', {})
+                    print(f"{name} {p['score']:.4f} +/- {p['scoreError']:.4f} us/op {alloc.get('score', 0):.1f} B/op")
+        print("END JACKSON MAP JMH")
+        PY
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
