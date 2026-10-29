@@ -996,7 +996,6 @@ public final class StreamingIO {
 
 
     /** Adopts the owned raw LinkedHashMap without copying its members. */
-    @SuppressWarnings("unchecked")
     public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
         Map<String, Object> raw = parser.readRawObject();
         if (raw == null) return null;
@@ -1006,7 +1005,6 @@ public final class StreamingIO {
     }
 
     /** Adopts the owned raw ArrayList without copying its elements. */
-    @SuppressWarnings("unchecked")
     public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
         List<Object> raw = parser.readRawArray();
         if (raw == null) return null;
