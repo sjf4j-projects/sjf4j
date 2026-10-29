@@ -80,6 +80,9 @@ public class CompiledReadBenchmark {
             "  ]\n" +
             "}\n";
     public static final byte[] JSON_UTF8 = JSON_DATA.getBytes(StandardCharsets.UTF_8);
+    public static final String JSON_LIST_DATA =
+            "[" + JSON_DATA + ",{\"nested\":[1,true,null]},\"tail\"]";
+    public static final byte[] JSON_LIST_UTF8 = JSON_LIST_DATA.getBytes(StandardCharsets.UTF_8);
 
     private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -164,6 +167,9 @@ public class CompiledReadBenchmark {
         checkMap("jackson2 runtime JSON_DATA", JACKSON2_RUNTIME.readNode(JSON_DATA, Map.class));
         checkMap("jackson2 compiled JSON_UTF8", JACKSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("jackson2 runtime JSON_UTF8", JACKSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkList("jackson2 compiled list", JACKSON2_COMPILED.readList(JSON_LIST_DATA));
+        checkList("jackson2 runtime list", JACKSON2_RUNTIME.readNode(JSON_LIST_DATA, java.util.List.class));
+        checkList("jackson2 compiled list utf8", JACKSON2_COMPILED.readListUtf8(JSON_LIST_UTF8));
         checkPojo("jackson3 compiled JSON_DATA", expected, JACKSON3_COMPILED.readPojo(JSON_DATA));
         checkPojo("jackson3 compiled reversed String", expected, JACKSON3_COMPILED.readPojo(JSON_REVERSED));
         checkPojo("jackson3 compiled reversed UTF-8", expected, JACKSON3_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8));
@@ -193,6 +199,9 @@ public class CompiledReadBenchmark {
         checkMap("fastjson2 runtime JSON_DATA", FASTJSON2_RUNTIME.readNode(JSON_DATA, Map.class));
         checkMap("fastjson2 compiled JSON_UTF8", FASTJSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("fastjson2 runtime JSON_UTF8", FASTJSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkList("fastjson2 compiled list", FASTJSON2_COMPILED.readList(JSON_LIST_DATA));
+        checkList("fastjson2 runtime list", FASTJSON2_RUNTIME.readNode(JSON_LIST_DATA, java.util.List.class));
+        checkList("fastjson2 compiled list utf8", FASTJSON2_COMPILED.readListUtf8(JSON_LIST_UTF8));
         checkPojo("jsonp compiled JSON_DATA", expected, JSONP_COMPILED.readPojo(JSON_DATA));
         checkPojo("jsonp runtime JSON_DATA", expected, JSONP_RUNTIME.readNode(JSON_DATA, User.class));
         checkPojo("jsonp compiled JSON_UTF8", expected, JSONP_COMPILED.readPojoUtf8(JSON_UTF8));
@@ -243,6 +252,15 @@ public class CompiledReadBenchmark {
                 || !((Map<?, ?>) result).containsKey("friends")
                 || !((Map<?, ?>) result).containsKey("address")) {
             throw new IllegalStateException("Map result differs: " + label);
+        }
+    }
+
+    private static void checkList(String label, Object result) {
+        if (!(result instanceof java.util.ArrayList)
+                || ((java.util.List<?>) result).size() != 3
+                || !(((java.util.List<?>) result).get(0) instanceof java.util.LinkedHashMap)
+                || !(((java.util.List<?>) result).get(1) instanceof java.util.Map)) {
+            throw new IllegalStateException("List result differs: " + label);
         }
     }
 
@@ -361,12 +379,54 @@ public class CompiledReadBenchmark {
         }
     }
 
+    @Benchmark
+    public Object jackson2_list_string_compiled() throws IOException {
+        return JACKSON2_COMPILED.readList(JSON_LIST_DATA);
+    }
+
+    @Benchmark
+    public Object jackson2_list_string_runtime() {
+        return JACKSON2_RUNTIME.readNode(JSON_LIST_DATA, java.util.List.class);
+    }
+
+    @Benchmark
+    public Object jackson2_list_string_raw() throws IOException {
+        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(JSON_LIST_DATA)) {
+            parser.start();
+            java.util.List<Object> value = parser.readRawArray();
+            parser.end();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object jackson2_list_utf8_compiled() throws IOException {
+        return JACKSON2_COMPILED.readListUtf8(JSON_LIST_UTF8);
+    }
+
+    @Benchmark
+    public Object jackson2_list_utf8_runtime() {
+        return JACKSON2_RUNTIME.readNode(JSON_LIST_UTF8, java.util.List.class);
+    }
+
+    @Benchmark
+    public Object jackson2_list_utf8_raw() throws IOException {
+        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(JSON_LIST_UTF8)) {
+            parser.start();
+            java.util.List<Object> value = parser.readRawArray();
+            parser.end();
+            return value;
+        }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @ReadFrom User readPojo(String json) throws IOException;
         @ReadFrom User readPojoUtf8(byte[] json) throws IOException;
         @ReadFrom Map<String, Object> readMap(String json) throws IOException;
         @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @ReadFrom java.util.List<Object> readList(String json) throws IOException;
+        @ReadFrom java.util.List<Object> readListUtf8(byte[] json) throws IOException;
     }
 
     // ----- JACKSON3 -----
@@ -648,12 +708,54 @@ public class CompiledReadBenchmark {
         }
     }
 
+    @Benchmark
+    public Object fastjson2_list_string_compiled() throws IOException {
+        return FASTJSON2_COMPILED.readList(JSON_LIST_DATA);
+    }
+
+    @Benchmark
+    public Object fastjson2_list_string_runtime() {
+        return FASTJSON2_RUNTIME.readNode(JSON_LIST_DATA, java.util.List.class);
+    }
+
+    @Benchmark
+    public Object fastjson2_list_string_raw() throws IOException {
+        try (StreamingParser parser = FASTJSON2_RUNTIME.createParser(JSON_LIST_DATA)) {
+            parser.start();
+            java.util.List<Object> value = parser.readRawArray();
+            parser.end();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_list_utf8_compiled() throws IOException {
+        return FASTJSON2_COMPILED.readListUtf8(JSON_LIST_UTF8);
+    }
+
+    @Benchmark
+    public Object fastjson2_list_utf8_runtime() {
+        return FASTJSON2_RUNTIME.readNode(JSON_LIST_UTF8, java.util.List.class);
+    }
+
+    @Benchmark
+    public Object fastjson2_list_utf8_raw() throws IOException {
+        try (StreamingParser parser = FASTJSON2_RUNTIME.createParser(JSON_LIST_UTF8)) {
+            parser.start();
+            java.util.List<Object> value = parser.readRawArray();
+            parser.end();
+            return value;
+        }
+    }
+
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2CompiledBinder {
         @ReadFrom User readPojo(String json) throws IOException;
         @ReadFrom User readPojoUtf8(byte[] json) throws IOException;
         @ReadFrom Map<String, Object> readMap(String json) throws IOException;
         @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @ReadFrom java.util.List<Object> readList(String json) throws IOException;
+        @ReadFrom java.util.List<Object> readListUtf8(byte[] json) throws IOException;
     }
 
     // ----- JSONP -----
