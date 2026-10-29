@@ -69,8 +69,8 @@ public final class SchemaPlan {
             }
         }
 
-        InstancedNode instance = InstancedNode.infer(node);
         ValidationContext ctx = new ValidationContext(failFast, strictFormat);
+        NodeFrame instance = ctx.root(node);
         PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
         evaluate(instance, ps, ctx);
         return ctx.toResult();
@@ -78,14 +78,14 @@ public final class SchemaPlan {
 
     /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
-        ValidationResult result = validate(node, true, false);
-        return result.isValid();
+        return isValid(node, false);
     }
 
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
-        ValidationResult result = validate(node, true, strictFormat);
-        return result.isValid();
+        if (booleanSchema) return booleanValue;
+        ValidationContext ctx = ValidationContext.booleanOnly(strictFormat);
+        return evaluate(ctx.root(node), null, ctx);
     }
 
     /**
@@ -114,39 +114,36 @@ public final class SchemaPlan {
     /**
      * Executes evaluator pipeline for the current instance branch.
      */
-    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+    boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
-            if (booleanValue) {
-                return true;
-            } else {
-                ctx.addError(instance, ps, keywordPs, schemaUri, "false", "schema 'false' always fails");
-                return false;
+            if (booleanValue) return true;
+            if (ctx.needsDiagnostic()) {
+                ctx.addError(instance, ps, keywordPs, schemaUri, "false",
+                        "schema 'false' always fails");
             }
+            return false;
         }
 
-        int len = evaluators.length;
-        boolean tracksEvaluated = len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator;
-        if (tracksEvaluated) {
-            instance.createEvaluated();
+        int savedEvaluatedDepth = ctx.evaluationDepth();
+        if (evaluators.length > 0
+                && evaluators[evaluators.length - 1] instanceof Evaluator.UnevaluatedEvaluator) {
+            ctx.createEvaluated();
         }
-
-        boolean result = true;
-        // Only resources that declare dynamic anchors participate in runtime
-        // dynamicRef rebinding. Other resources do not need to live on the
-        // validation scope stack.
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.pushPlan(this);
-        for (Evaluator evaluator : evaluators) {
-            boolean matched = evaluator.evaluate(instance, ps, ctx);
-            if (!matched) {
-                result = false;
-                if (ctx.isFailFast() && !tracksEvaluated) {
-                    if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
-                    return false;
+        boolean dynamic = !byDynamicAnchorPlans.isEmpty();
+        if (dynamic) ctx.pushPlan(this);
+        boolean valid = true;
+        try {
+            for (Evaluator evaluator : evaluators) {
+                if (!evaluator.evaluate(instance, ps, ctx)) {
+                    valid = false;
+                    if (ctx.shouldAbort()) return false;
                 }
             }
+            return valid;
+        } finally {
+            if (dynamic) ctx.popPlan();
+            ctx.restoreEvaluationDepth(savedEvaluatedDepth);
         }
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
-        return result;
     }
 
 

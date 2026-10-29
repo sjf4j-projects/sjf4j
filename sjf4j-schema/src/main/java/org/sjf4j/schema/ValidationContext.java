@@ -1,60 +1,205 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Deque;
 import java.util.List;
 
-/**
- * Mutable validation state shared across evaluator invocations.
- * <p>
- * Holds message aggregation, fail-fast control, temporary ignore-error scopes,
- * and dynamic-anchor resolution stack for nested schema evaluation. One context
- * instance is created per validation call and is not thread-safe. It records
- * validation failures; it does not itself write the supplied instance. Evaluator
- * reads can invoke getters, value bindings, and user extensions with side effects.
- */
-public class ValidationContext {
+/** Per-call execution state; no shared mutable state across validations. */
+public final class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
+    private final boolean booleanOnly;
     private final List<ValidationMessage> messages;
-    // Validation-scoped scratch wrapper reused only for non-converted scalar/null
-    // child instances. Container nodes and converted value nodes must allocate
-    // dedicated wrappers because they can carry branch-local runtime state.
-    private final InstancedNode reusedLeaf;
-
     private boolean valid = true;
     private ValidationMessage lastMessage;
-    private int ignoreErrorAdding = 0;
+    private int ignoreErrorAdding;
+
+    private NodeFrame root;
+    private NodeFrame[] frames;
+    private int nodeDepth;
+
+    // Evaluated annotations are isolated by instance position AND schema branch.
+    private Deque<BitSet>[] evaluatedByDepth;
     private Deque<SchemaPlan> planStack;
 
+    // Active reference invocation chain, not lifetime history.
+    private SchemaPlan[] activeRefPlans;
+    private NodeFrame[] activeRefNodes;
+    private int activeRefCount;
+
     ValidationContext(boolean failFast, boolean strictFormat) {
+        this(failFast, strictFormat, false);
+    }
+
+    private ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
-        this.messages = failFast ? null : new ArrayList<>();
-        this.reusedLeaf = InstancedNode.infer(null);
+        this.booleanOnly = booleanOnly;
+        this.messages = !failFast && !booleanOnly ? new ArrayList<>() : null;
     }
 
-    /**
-     * Returns true when validation stops at first non-ignored error.
-     */
-    public boolean isFailFast() {
-        return failFast;
+    static ValidationContext booleanOnly(boolean strictFormat) {
+        return new ValidationContext(true, strictFormat, true);
     }
 
-    /**
-     * Returns true when format validators should be enforced as assertions.
-     */
-    public boolean isStrictFormat() {
-        return strictFormat;
+    NodeFrame root(Object value) {
+        root = NodeFrame.infer(value);
+        return root;
     }
 
-    /**
-     * Builds a result snapshot from current context state.
-     */
+    private NodeFrame nextFrame() {
+        int next = nodeDepth + 1;
+        if (frames == null) {
+            frames = new NodeFrame[4];
+        } else if (next >= frames.length) {
+            frames = Arrays.copyOf(frames, frames.length << 1);
+        }
+        if (frames[next] == null) frames[next] = new NodeFrame();
+        if (evaluatedByDepth != null && next < evaluatedByDepth.length
+                && evaluatedByDepth[next] != null) {
+            evaluatedByDepth[next].clear();
+        }
+        nodeDepth = next;
+        return frames[next];
+    }
+
+    NodeFrame enterKey(NodeFrame parent, String key, Object value) {
+        return nextFrame().bindKey(parent, key, value);
+    }
+
+    NodeFrame enterIndex(NodeFrame parent, int index, Object value) {
+        return nextFrame().bindIndex(parent, index, value);
+    }
+
+    NodeFrame enterValue(Object value) {
+        return nextFrame().bind(value);
+    }
+
+    void leaveChild() {
+        nodeDepth--;
+    }
+
+    public boolean isFailFast() { return failFast; }
+    public boolean isStrictFormat() { return strictFormat; }
+    public boolean isValid() { return valid; }
+    public boolean shouldAbort() { return failFast || ignoreErrorAdding != 0; }
+    boolean needsDiagnostic() { return !booleanOnly && ignoreErrorAdding == 0; }
+
+    public void pushIgnoreError() { ignoreErrorAdding++; }
+    public void popIgnoreError() { ignoreErrorAdding--; }
+
+    public void pushPlan(SchemaPlan plan) {
+        if (planStack == null) planStack = new ArrayDeque<>();
+        planStack.push(plan);
+    }
+
+    public SchemaPlan popPlan() {
+        return planStack == null ? null : planStack.pop();
+    }
+
+    public Deque<SchemaPlan> planStack() { return planStack; }
+
+    void enterRef(SchemaPlan plan, NodeFrame node, PathSegment keywordPs) {
+        for (int i = activeRefCount - 1; i >= 0; i--) {
+            if (activeRefPlans[i] == plan && activeRefNodes[i] == node) {
+                throw new NodeException(SchemaUtil.formatSchemaLine(
+                        SchemaUtil.Code.SCHEMA_RESOLVE,
+                        "cyclic schema reference detected", keywordPs, plan.schemaUri));
+            }
+        }
+        if (activeRefPlans == null) {
+            activeRefPlans = new SchemaPlan[4];
+            activeRefNodes = new NodeFrame[4];
+        } else if (activeRefCount == activeRefPlans.length) {
+            activeRefPlans = Arrays.copyOf(activeRefPlans, activeRefCount << 1);
+            activeRefNodes = Arrays.copyOf(activeRefNodes, activeRefCount << 1);
+        }
+        activeRefPlans[activeRefCount] = plan;
+        activeRefNodes[activeRefCount++] = node;
+    }
+
+    void leaveRef() {
+        int i = --activeRefCount;
+        activeRefPlans[i] = null;
+        activeRefNodes[i] = null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Deque<BitSet> evaluated(boolean create) {
+        if (evaluatedByDepth == null) {
+            if (!create) return null;
+            evaluatedByDepth = (Deque<BitSet>[]) new Deque[4];
+        } else if (nodeDepth >= evaluatedByDepth.length) {
+            if (!create) return null;
+            evaluatedByDepth = Arrays.copyOf(evaluatedByDepth,
+                    Math.max(nodeDepth + 1, evaluatedByDepth.length << 1));
+        }
+        Deque<BitSet> stack = evaluatedByDepth[nodeDepth];
+        if (stack == null && create) {
+            stack = new ArrayDeque<>();
+            evaluatedByDepth[nodeDepth] = stack;
+        }
+        return stack;
+    }
+
+    int evaluationDepth() {
+        Deque<BitSet> stack = evaluated(false);
+        return stack == null ? 0 : stack.size();
+    }
+
+    void restoreEvaluationDepth(int depth) {
+        Deque<BitSet> stack = evaluated(false);
+        if (stack != null) while (stack.size() > depth) stack.pop();
+    }
+
+    void createEvaluated() {
+        evaluated(true).push(new BitSet());
+    }
+
+    void pushEvaluated() {
+        Deque<BitSet> stack = evaluated(false);
+        if (stack != null && !stack.isEmpty()) stack.push(new BitSet());
+    }
+
+    void pushEvaluated(BitSet bits) {
+        Deque<BitSet> stack = evaluated(false);
+        if (stack != null && bits != null) stack.push(bits);
+    }
+
+    BitSet popEvaluated() {
+        Deque<BitSet> stack = evaluated(false);
+        return stack == null || stack.isEmpty() ? null : stack.pop();
+    }
+
+    BitSet peekEvaluated() {
+        Deque<BitSet> stack = evaluated(false);
+        return stack == null || stack.isEmpty() ? null : stack.peek();
+    }
+
+    void markEvaluated(int index) {
+        BitSet bits = peekEvaluated();
+        if (bits != null) bits.set(index);
+    }
+
+    void markEvaluated(int from, int to) {
+        BitSet bits = peekEvaluated();
+        if (bits != null) bits.set(from, to);
+    }
+
+    BitSet mergedEvaluated() {
+        BitSet merged = new BitSet();
+        Deque<BitSet> stack = evaluated(false);
+        if (stack != null) for (BitSet bits : stack) merged.or(bits);
+        return merged;
+    }
+
     public ValidationResult toResult() {
         if (valid && (messages == null || messages.isEmpty()) && lastMessage == null) {
             return ValidationResult.SUCCESS;
@@ -62,90 +207,22 @@ public class ValidationContext {
         return new ValidationResult(valid, messages, lastMessage);
     }
 
-    /**
-     * Returns true when no validation error was added.
-     */
-    public boolean isValid() {
-        return valid;
+    void addError(NodeFrame instance, PathSegment instancePs, PathSegment keywordPs,
+                  URI schemaUri, String keyword, String message) {
+        if (!needsDiagnostic()) return;
+        if (instancePs == null && instance != null) instancePs = instance.materializePath();
+        ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                instancePs, keywordPs, schemaUri, keyword, message);
+        if (messages != null) messages.add(msg);
+        else lastMessage = msg;
+        valid = false;
     }
 
-    /**
-     * Returns true when validation should abort early.
-     * <p>
-     * This is true only in fail-fast mode after the first non-ignored error.
-     */
-    public boolean shouldAbort() {
-        return failFast && !valid;
-    }
-
-    // Ignore
-    /**
-     * Pushes an error-ignore frame.
-     * <p>
-     * Errors added while ignore-depth is positive are suppressed. Calls must be
-     * balanced with {@link #popIgnoreError()}.
-     */
-    public void pushIgnoreError() {
-        ignoreErrorAdding++;
-    }
-    /**
-     * Pops an error-ignore frame started by {@link #pushIgnoreError()}.
-     */
-    public void popIgnoreError() {
-        ignoreErrorAdding--;
-    }
-
-    // PlanStack
-    public void pushPlan(SchemaPlan plan) {
-        if (planStack == null) planStack = new ArrayDeque<>();
-        planStack.push(plan);
-    }
-    public SchemaPlan popPlan() {
-        if (planStack == null) return null;
-        return planStack.pop();
-    }
-    public Deque<SchemaPlan> planStack() {
-        return planStack;
-    }
-
-    public InstancedNode reusedLeaf() {
-        return reusedLeaf;
-    }
-
-    // message
-    /**
-     * Adds a validation error message.
-     * <p>
-     * In fail-fast mode only the last error is retained.
-     */
-    void addError(InstancedNode instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
-                  String keyword, String message) {
-        if (ignoreErrorAdding < 1) {
-            if (instancePs == null && instance != null) {
-                instancePs = instance.materializePath();
-            }
-                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                        instancePs, keywordPs, schemaUri, keyword, message);
-            if (messages != null) {
-                messages.add(msg);
-            } else {
-                lastMessage = msg;
-            }
-            valid = false;
+    void addWarn(PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
+                 String keyword, String message) {
+        if (messages != null && ignoreErrorAdding == 0) {
+            messages.add(new ValidationMessage(ValidationMessage.Severity.WARN,
+                    instancePs, keywordPs, schemaUri, keyword, message));
         }
     }
-
-    /**
-     * Adds a validation warning message.
-     * <p>
-     * Warnings are collected only when message list is enabled (non fail-fast).
-     */
-    void addWarn(PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword, String message) {
-        if (messages != null) {
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN,
-                    instancePs, keywordPs, schemaUri, keyword, message);
-            messages.add(msg);
-        }
-    }
-
 }

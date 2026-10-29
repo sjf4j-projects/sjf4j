@@ -41,7 +41,7 @@ public interface Evaluator {
      *
      * @return true when keyword validation succeeds for current instance branch
      */
-    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx);
+    boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx);
 
 
     /*
@@ -68,10 +68,14 @@ public interface Evaluator {
         }
 
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (plan != null) {
-                instance.checkCyclicRef(plan, keywordPs);
-                return plan.evaluate(instance, ps, ctx);
+                ctx.enterRef(plan, instance, keywordPs);
+                try {
+                    return plan.evaluate(instance, ps, ctx);
+                } finally {
+                    ctx.leaveRef();
+                }
             }
             throw new AssertionError(RefEvaluator.class);
         }
@@ -99,7 +103,7 @@ public interface Evaluator {
         }
 
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (initialPlan != null) {
                 SchemaPlan plan = initialPlan;
                 if (dynamicAnchorName != null) {
@@ -120,8 +124,12 @@ public interface Evaluator {
                     }
                 }
 
-                instance.checkCyclicRef(plan, keywordPs);
-                return plan.evaluate(instance, ps, ctx);
+                ctx.enterRef(plan, instance, keywordPs);
+                try {
+                    return plan.evaluate(instance, ps, ctx);
+                } finally {
+                    ctx.leaveRef();
+                }
             }
             throw new AssertionError(DynamicRefEvaluator.class);
         }
@@ -167,7 +175,7 @@ public interface Evaluator {
          * Validates instance type against a single or union type.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (jsonType != null) {
                 if (!_matches(jsonType, instance)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "type",
@@ -189,7 +197,7 @@ public interface Evaluator {
             return true;
         }
 
-        private boolean _matches(JsonType expected, InstancedNode instance) {
+        private boolean _matches(JsonType expected, NodeFrame instance) {
             JsonType jt = instance.jsonType();
             if (expected != jt) {
                 // JSON Schema compatibility: integer ⊂ number
@@ -222,7 +230,7 @@ public interface Evaluator {
          * Ensures the instance equals the const value using node semantics.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             Object actual = instance.node();
             if (!Nodes.equals(constValue, actual)) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "const",
@@ -250,7 +258,7 @@ public interface Evaluator {
          * Checks whether the instance matches any value in the enum.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             Object actual = instance.node();
             for (Object allowed : enumValues) {
                 if (Nodes.equals(allowed, actual)) return true;
@@ -300,7 +308,7 @@ public interface Evaluator {
          * Enforces min/max and exclusive bounds for numbers.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             JsonType jt = instance.jsonType();
             if (jt != JsonType.NUMBER && jt != JsonType.INTEGER) {
                 return true;
@@ -357,7 +365,7 @@ public interface Evaluator {
          * Validates that a numeric instance is a multiple of the divisor.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             JsonType jt = instance.jsonType();
             if (jt != JsonType.NUMBER && jt != JsonType.INTEGER) {
                 return true;
@@ -429,7 +437,7 @@ public interface Evaluator {
          * Enforces minLength/maxLength for strings.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
 
             String actual = Nodes.toString(instance.node());
@@ -468,7 +476,7 @@ public interface Evaluator {
          * Ensures a string matches the configured regex pattern.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
 
             String actual = Nodes.toString(instance.node());
@@ -502,7 +510,7 @@ public interface Evaluator {
          * Validates a string against the configured format when assertion is enabled.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
             String actual = Nodes.toString(instance.node());
             if (assertion || ctx.isStrictFormat()) {
@@ -534,7 +542,7 @@ public interface Evaluator {
         }
 
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
 
             String content = Nodes.toString(instance.node());
@@ -614,7 +622,7 @@ public interface Evaluator {
          * Enforces minProperties/maxProperties for objects.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.node();
@@ -668,7 +676,7 @@ public interface Evaluator {
          * unevaluatedProperties processing.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
 //            final boolean[] result = new boolean[] {true};
@@ -679,10 +687,10 @@ public interface Evaluator {
 //                if (properties != null) {
 //                    SchemaPlan plan = properties.get(key);
 //                    if (plan != null) {
-//                        InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
+//                        NodeFrame subInstance = instance.inferSubByKey(key, sub, null);
 //                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
 //                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
-//                        if (subResult) instance.markEvaluated(propIdx[0]);
+//                        if (subResult) ctx.markEvaluated(propIdx[0]);
 //                        result[0] = result[0] && subResult;
 //                        if (!subResult && ctx.shouldAbort()) return true;
 //                        matched = true;
@@ -694,10 +702,10 @@ public interface Evaluator {
 //                        if (patterns[i].matcher(key).find()) {
 //                            SchemaPlan plan = patternPlans[i];
 //                            if (plan != null) {
-//                                InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
+//                                NodeFrame subInstance = instance.inferSubByKey(key, sub, null);
 //                                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
 //                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
-//                                if (subResult) instance.markEvaluated(propIdx[0]);
+//                                if (subResult) ctx.markEvaluated(propIdx[0]);
 //                                result[0] = result[0] && subResult;
 //                                if (!subResult && ctx.shouldAbort()) return true;
 //                                matched = true;
@@ -707,10 +715,10 @@ public interface Evaluator {
 //                }
 //
 //                if (additionalPropertiesPlan != null && !matched) {
-//                    InstancedNode subInstance = instance.inferSubByKey(key, sub, null);
+//                    NodeFrame subInstance = instance.inferSubByKey(key, sub, null);
 //                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
 //                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
-//                    if (subResult) instance.markEvaluated(propIdx[0]);
+//                    if (subResult) ctx.markEvaluated(propIdx[0]);
 //                    result[0] = result[0] && subResult;
 //                    if (!subResult && ctx.shouldAbort()) return true;
 //                }
@@ -726,47 +734,55 @@ public interface Evaluator {
                 String key = entry.getKey();
                 Object value = entry.getValue();
                 boolean matched = false;
-                if (properties != null) {
-                    SchemaPlan plan = properties.get(key);
-                    if (plan != null) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(propIdx);
-                        result = result && subResult;
-                        if (!subResult && ctx.shouldAbort()) return false;
-                        matched = true;
+                NodeFrame child = null;
+                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                try {
+                    if (properties != null) {
+                        SchemaPlan plan = properties.get(key);
+                        if (plan != null) {
+                            child = ctx.enterKey(instance, key, value);
+                            boolean subResult = plan.evaluate(child, cps, ctx);
+                            if (subResult) ctx.markEvaluated(propIdx);
+                            else {
+                                result = false;
+                                if (ctx.shouldAbort()) return false;
+                            }
+                            matched = true;
+                        }
                     }
-                }
 
-                if (patterns != null) {
-                    for (int i = 0; i < patterns.length; i++) {
-                        if (patterns[i].matcher(key).find()) {
-                            SchemaPlan plan = patternPlans[i];
-                            if (plan != null) {
-                                InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
-                                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
-                                if (subResult) instance.markEvaluated(propIdx);
-                                result = result && subResult;
-                                if (!subResult && ctx.shouldAbort()) return false;
-                                matched = true;
+                    if (patterns != null) {
+                        for (int i = 0; i < patterns.length; i++) {
+                            if (patterns[i].matcher(key).find()) {
+                                SchemaPlan plan = patternPlans[i];
+                                if (plan != null) {
+                                    if (child == null) child = ctx.enterKey(instance, key, value);
+                                    boolean subResult = plan.evaluate(child, cps, ctx);
+                                    if (subResult) ctx.markEvaluated(propIdx);
+                                    else {
+                                        result = false;
+                                        if (ctx.shouldAbort()) return false;
+                                    }
+                                    matched = true;
+                                }
                             }
                         }
                     }
-                }
 
-                if (additionalPropertiesPlan != null && !matched) {
-                    InstancedNode subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
-                    if (subResult) instance.markEvaluated(propIdx);
-                    result = result && subResult;
-                    if (!subResult && ctx.shouldAbort()) return false;
+                    if (additionalPropertiesPlan != null && !matched) {
+                        if (child == null) child = ctx.enterKey(instance, key, value);
+                        boolean subResult = additionalPropertiesPlan.evaluate(child, cps, ctx);
+                        if (subResult) ctx.markEvaluated(propIdx);
+                        else {
+                            result = false;
+                            if (ctx.shouldAbort()) return false;
+                        }
+                    }
+                } finally {
+                    if (child != null) ctx.leaveChild();
                 }
                 propIdx++;
-            }//for
-
+            }
             return result;
         }
     }
@@ -793,7 +809,7 @@ public interface Evaluator {
          * Validates required and dependentRequired keys.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.node();
@@ -850,7 +866,7 @@ public interface Evaluator {
          * Applies array and schema forms of legacy dependencies.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.node();
@@ -897,7 +913,7 @@ public interface Evaluator {
          * Applies schemas when dependent properties are present.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.node();
@@ -932,15 +948,21 @@ public interface Evaluator {
          * Validates each property name against propertyNames schema.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.node();
             boolean result = true;
             for (String key : NodeWalker.keySetInObject(actual)) {
                 ctx.pushIgnoreError();
-                boolean probed = propertyNamesPlan.evaluate(InstancedNode.infer(key, ctx.reusedLeaf()), ps, ctx);
-                ctx.popIgnoreError();
+                NodeFrame keyFrame = ctx.enterValue(key);
+                boolean probed;
+                try {
+                    probed = propertyNamesPlan.evaluate(keyFrame, ps, ctx);
+                } finally {
+                    ctx.leaveChild();
+                    ctx.popIgnoreError();
+                }
                 if (!probed) {
                     PathSegment instanceKeywordPs = ps == null
                             ? new PathSegment.Name(instance.materializePath(), key)
@@ -1004,7 +1026,7 @@ public interface Evaluator {
          * runtime values.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.ARRAY) return true;
 
             Object actual = instance.node();
@@ -1086,26 +1108,36 @@ public interface Evaluator {
          * Validates prefixItems and items schemas for array elements.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.ARRAY) return true;
             if (prefixItemsPlans == null && itemsPlan == null) return true;
 
 //            final boolean[] result = new boolean[] {true};
 //            boolean shouldAbort = NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
 //                if (prefixItemsPlans != null && i < prefixItemsPlans.length) {
-//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
+//                    NodeFrame subInstance = ctx.enterIndex(instance, i, sub);
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-//                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
+//                    boolean subResult;
+                    try {
+                        subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
+                    } finally {
+                        ctx.leaveChild();
+                    }
 //                    result[0] = result[0] && subResult;
 //                    if (!subResult && ctx.shouldAbort()) return true;
-//                    if (result[0]) instance.markEvaluated(i);
+//                    if (result[0]) ctx.markEvaluated(i);
 //                } else if (itemsPlan != null) {
-//                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
+//                    NodeFrame subInstance = ctx.enterIndex(instance, i, sub);
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-//                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
+//                    boolean subResult;
+                    try {
+                        subResult = itemsPlan.evaluate(subInstance, cps, ctx);
+                    } finally {
+                        ctx.leaveChild();
+                    }
 //                    result[0] = result[0] && subResult;
 //                    if (!subResult && ctx.shouldAbort()) return true;
-//                    if (result[0]) instance.markEvaluated(i);
+//                    if (result[0]) ctx.markEvaluated(i);
 //                }
 //                return false;
 //            });
@@ -1116,24 +1148,34 @@ public interface Evaluator {
             int i = 0;
             if (prefixItemsPlans != null) {
                 for (; i < prefixItemsPlans.length && it.hasNext(); i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+                    NodeFrame subInstance = ctx.enterIndex(instance, i, it.next());
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
+                    boolean subResult;
+                    try {
+                        subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
+                    } finally {
+                        ctx.leaveChild();
+                    }
                     result = result && subResult;
                     if (!subResult && ctx.shouldAbort()) return false;
                 }
-                if (result) instance.markEvaluated(0, i);
+                if (result) ctx.markEvaluated(0, i);
             }
 
             if (itemsPlan != null) {
                 for (; it.hasNext(); i++) {
-                    InstancedNode subInstance = instance.inferSubByIndex(i, it.next(), ctx.reusedLeaf());
+                    NodeFrame subInstance = ctx.enterIndex(instance, i, it.next());
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
+                    boolean subResult;
+                    try {
+                        subResult = itemsPlan.evaluate(subInstance, cps, ctx);
+                    } finally {
+                        ctx.leaveChild();
+                    }
                     result = result && subResult;
                     if (!subResult && ctx.shouldAbort()) return false;
                 }
-                if (result) instance.markEvaluated(0, i);
+                if (result) ctx.markEvaluated(0, i);
             }
             return result;
         }
@@ -1185,24 +1227,24 @@ public interface Evaluator {
          * aggregate cardinality errors are reported.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.ARRAY) return true;
             if (containsPlan == null) return true;
 
 //            final int[] matches = new int[] {0};
 //            NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
 //                ctx.pushIgnoreError();
-//                InstancedNode subInstance = instance.inferSubByIndex(i, sub, null);
+//                NodeFrame subInstance = instance.inferSubByIndex(i, sub, null);
 //                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
 //                ctx.popIgnoreError();
 //                if (result) {
-//                    instance.markEvaluated(i);
+//                    ctx.markEvaluated(i);
 //                    matches[0]++;
 //                    // Early exit: once minContains is met without an upper bound,
 //                    // and no unevaluated tracking is active, further scanning is
 //                    // unnecessary for contains semantics.
-//                    if (matches[0] >= minContains && maxContains == -1 && instance.peekEvaluated() == null) {
+//                    if (matches[0] >= minContains && maxContains == -1 && ctx.peekEvaluated() == null) {
 //                        return true;
 //                    }
 //                }
@@ -1215,18 +1257,23 @@ public interface Evaluator {
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
-                InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                NodeFrame subInstance = ctx.enterIndex(instance, i, subActual);
                 PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
-                ctx.popIgnoreError();
+                boolean result;
+                try {
+                    result = containsPlan.evaluate(subInstance, cps, ctx);
+                } finally {
+                    ctx.leaveChild();
+                    ctx.popIgnoreError();
+                }
                 if (result) {
-                    instance.markEvaluated(i);
+                    ctx.markEvaluated(i);
                     matches++;
                     // Early exit: once minContains is met without an upper bound,
                     // and no unevaluated tracking is active, further scanning is
                     // unnecessary for contains semantics.
                     if (matches >= minContains && maxContains == -1
-                            && instance.peekEvaluated() == null) {
+                            && ctx.peekEvaluated() == null) {
                         return true;
                     }
                 }
@@ -1264,12 +1311,12 @@ public interface Evaluator {
          * Applies then/else depending on whether if schema matches.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (ifPlan == null) return true;
 
             boolean result = true;
-            BitSet cousinEvaluated = instance.popEvaluated();
-            instance.pushEvaluated();
+            BitSet cousinEvaluated = ctx.popEvaluated();
+            ctx.pushEvaluated();
             ctx.pushIgnoreError();
             boolean tested = ifPlan.evaluate(instance, ps, ctx);
             ctx.popIgnoreError();
@@ -1277,20 +1324,20 @@ public interface Evaluator {
                 if (thenPlan != null) {
                     result = thenPlan.evaluate(instance, ps, ctx);
                 }
-                BitSet ifThenEvaluated = instance.popEvaluated();
+                BitSet ifThenEvaluated = ctx.popEvaluated();
                 if (result && cousinEvaluated != null && ifThenEvaluated != null)
                     cousinEvaluated.or(ifThenEvaluated);
             } else {
-                BitSet droppedEvaluated = instance.popEvaluated();
+                BitSet droppedEvaluated = ctx.popEvaluated();
                 if (elsePlan != null) {
-                    instance.pushEvaluated();
+                    ctx.pushEvaluated();
                     result = elsePlan.evaluate(instance, ps, ctx);
-                    BitSet elseEvaluated = instance.popEvaluated();
+                    BitSet elseEvaluated = ctx.popEvaluated();
                     if (result && cousinEvaluated != null && elseEvaluated != null)
                         cousinEvaluated.or(elseEvaluated);
                 }
             }
-            if (cousinEvaluated != null) instance.pushEvaluated(cousinEvaluated);
+            if (cousinEvaluated != null) ctx.pushEvaluated(cousinEvaluated);
             return result;
         }
     }
@@ -1310,24 +1357,24 @@ public interface Evaluator {
          * Evaluated-location marks are merged only when all branches succeed.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             boolean result = true;
             BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = instance.popEvaluated();
+            BitSet cousinEvaluated = ctx.popEvaluated();
             if (cousinEvaluated != null) {
                 evaluatedArr = new BitSet[allOfPlans.length];
             }
             for (int i = 0; i < allOfPlans.length; i++) {
                 SchemaPlan plan = allOfPlans[i];
-                instance.pushEvaluated();
+                ctx.pushEvaluated();
                 boolean subResult = plan.evaluate(instance, ps, ctx);
-                BitSet childEvaluated = instance.popEvaluated();
+                BitSet childEvaluated = ctx.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 result = result && subResult;
                 if (!subResult && ctx.shouldAbort()) return false;
             }
             if (cousinEvaluated != null)
-                instance.pushEvaluated(cousinEvaluated);
+                ctx.pushEvaluated(cousinEvaluated);
             if (result && evaluatedArr != null) {
                 for (BitSet evaluated : evaluatedArr) {
                     if (evaluated != null) cousinEvaluated.or(evaluated);
@@ -1357,20 +1404,20 @@ public interface Evaluator {
          * is emitted when no branch matches.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             boolean result = false;
             BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = instance.popEvaluated();
+            BitSet cousinEvaluated = ctx.popEvaluated();
             if (cousinEvaluated != null) {
                 evaluatedArr = new BitSet[anyOfPlans.length];
             }
             for (int i = 0; i < anyOfPlans.length; i++) {
                 SchemaPlan plan = anyOfPlans[i];
-                instance.pushEvaluated();
+                ctx.pushEvaluated();
                 ctx.pushIgnoreError();
                 boolean subResult = plan.evaluate(instance, ps, ctx);
                 ctx.popIgnoreError();
-                BitSet childEvaluated = instance.popEvaluated();
+                BitSet childEvaluated = ctx.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) {
                     evaluatedArr[i] = childEvaluated;
                 }
@@ -1382,7 +1429,7 @@ public interface Evaluator {
                 }
             }
             if (cousinEvaluated != null)
-                instance.pushEvaluated(cousinEvaluated);
+                ctx.pushEvaluated(cousinEvaluated);
             if (result && evaluatedArr != null) {
                 for (BitSet evaluated : evaluatedArr) {
                     if (evaluated != null) cousinEvaluated.or(evaluated);
@@ -1416,20 +1463,20 @@ public interface Evaluator {
          * are merged only for successful single-match result.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             int matches = 0;
             BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = instance.popEvaluated();
+            BitSet cousinEvaluated = ctx.popEvaluated();
             if (cousinEvaluated != null) {
                 evaluatedArr = new BitSet[oneOfPlans.length];
             }
             for (int i = 0; i < oneOfPlans.length; i++) {
                 SchemaPlan plan = oneOfPlans[i];
-                instance.pushEvaluated();
+                ctx.pushEvaluated();
                 ctx.pushIgnoreError();
                 boolean subResult = plan.evaluate(instance, ps, ctx);
                 ctx.popIgnoreError();
-                BitSet childEvaluated = instance.popEvaluated();
+                BitSet childEvaluated = ctx.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 if (subResult) {
                     matches++;
@@ -1437,7 +1484,7 @@ public interface Evaluator {
                 }
             }
             if (cousinEvaluated != null)
-                instance.pushEvaluated(cousinEvaluated);
+                ctx.pushEvaluated(cousinEvaluated);
             if (matches == 1 && evaluatedArr != null) {
                 for (BitSet evaluated : evaluatedArr) {
                     if (evaluated != null) cousinEvaluated.or(evaluated);
@@ -1473,12 +1520,12 @@ public interface Evaluator {
          * Fails when the subschema matches.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            instance.pushEvaluated();
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
+            ctx.pushEvaluated();
             ctx.pushIgnoreError();
             boolean result = notPlan.evaluate(instance, ps, ctx);
             ctx.popIgnoreError();
-            instance.popEvaluated();
+            ctx.popEvaluated();
 
             if (result) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "not",
@@ -1505,8 +1552,8 @@ public interface Evaluator {
          * evaluated marks back to parent scope.
          */
         @Override
-        public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            BitSet merged = instance.mergedEvaluated();
+        public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
+            BitSet merged = ctx.mergedEvaluated();
             Object actual = instance.node();
             boolean result = true;
 
@@ -1515,10 +1562,15 @@ public interface Evaluator {
                 for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(actual)) {
                     String key = entry.getKey();
                     if (!merged.get(propIdx)) {
-                        InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
+                        NodeFrame subInstance = ctx.enterKey(instance, key, entry.getValue());
                         PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                        boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(propIdx);
+                        boolean subResult;
+                        try {
+                            subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
+                        } finally {
+                            ctx.leaveChild();
+                        }
+                        if (subResult) ctx.markEvaluated(propIdx);
                         result = result && subResult;
                         if (!subResult && ctx.shouldAbort()) return false;
                     }
@@ -1531,17 +1583,22 @@ public interface Evaluator {
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();
                     if (!merged.get(i)) {
-                        InstancedNode subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                        NodeFrame subInstance = ctx.enterIndex(instance, i, subActual);
                         PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                        boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(i);
+                        boolean subResult;
+                        try {
+                            subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
+                        } finally {
+                            ctx.leaveChild();
+                        }
+                        if (subResult) ctx.markEvaluated(i);
                         result = result && subResult;
                         if (!subResult && ctx.shouldAbort()) return false;
                     }
                 }
             }
-            BitSet curEvaluated = instance.popEvaluated();
-            BitSet parentEvaluated = instance.peekEvaluated();
+            BitSet curEvaluated = ctx.popEvaluated();
+            BitSet parentEvaluated = ctx.peekEvaluated();
             if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
             return result;
         }
