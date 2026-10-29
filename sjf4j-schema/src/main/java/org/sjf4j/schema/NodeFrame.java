@@ -57,11 +57,26 @@ final class NodeFrame {
         convertedChildren = null;
         cachedValue = null;
         converted = false;
+        node = value;
 
-        Class<?> clazz = value == null ? null : value.getClass();
-        NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
-        if (kind == NodeKind.UNKNOWN) {
-            TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+        if (value == null) {
+            jsonType = JsonType.NULL;
+        } else if (value instanceof String || value instanceof Character
+                || value instanceof Enum<?>) {
+            jsonType = JsonType.STRING;
+        } else if (value instanceof Number) {
+            jsonType = JsonType.NUMBER;
+        } else if (value instanceof Boolean) {
+            jsonType = JsonType.BOOLEAN;
+        } else if (value instanceof Map<?, ?>
+                || value instanceof org.sjf4j.JsonObject) {
+            jsonType = JsonType.OBJECT;
+        } else if (value instanceof java.util.List<?>
+                || value instanceof org.sjf4j.JsonArray
+                || value.getClass().isArray() || value instanceof java.util.Set<?>) {
+            jsonType = JsonType.ARRAY;
+        } else {
+            TypeInfo ti = TypeRegistry.registerTypeInfo(value.getClass());
             if (ti.valueSet != null) {
                 ValueInfo vi = ti.valueSet.defaultInfo;
                 if (vi != null) {
@@ -71,15 +86,11 @@ final class NodeFrame {
                     converted = true;
                     return this;
                 }
-                kind = NodeKind.VALUE_BINDING;
-            } else if (ti.externalNode != null) {
-                kind = ti.externalNode.nodeKind(value);
-            } else if (ti.pojoInfo != null) {
-                kind = NodeKind.OBJECT_POJO;
             }
+            jsonType = ti.externalNode != null
+                    ? JsonType.of(ti.externalNode.nodeKind(value))
+                    : ti.pojoInfo != null ? JsonType.OBJECT : JsonType.UNKNOWN;
         }
-        node = value;
-        jsonType = JsonType.of(kind);
         return this;
     }
 
