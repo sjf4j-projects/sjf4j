@@ -550,110 +550,73 @@ public final class Jackson3Parser extends StreamingParser {
         return _readRawArray();
     }
 
-    // Buffer up to five members/elements in locals before allocating a
-    // right-sized JDK container. Larger inputs continue with the normal loop.
+    // Buffer up to three entries before creating a right-sized map.
     private Map<String, Object> _readRawObject() throws IOException {
         String name1 = parser.nextName();
         if (name1 == null) return new LinkedHashMap<>(0);
         Object value1 = readRaw(parser.nextToken());
+
         String name2 = parser.nextName();
         if (name2 == null) {
-            LinkedHashMap<String, Object> value = new LinkedHashMap<>(2);
-            value.put(name1, value1);
-            return value;
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(2);
+            result.put(name1, value1);
+            return result;
         }
         Object value2 = readRaw(parser.nextToken());
+
         String name3 = parser.nextName();
         if (name3 == null) {
-            LinkedHashMap<String, Object> value = new LinkedHashMap<>(4);
-            value.put(name1, value1);
-            value.put(name2, value2);
-            return value;
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(4);
+            result.put(name1, value1);
+            result.put(name2, value2);
+            return result;
         }
         Object value3 = readRaw(parser.nextToken());
-        String name4 = parser.nextName();
-        if (name4 == null) {
-            LinkedHashMap<String, Object> value = new LinkedHashMap<>(4);
-            value.put(name1, value1);
-            value.put(name2, value2);
-            value.put(name3, value3);
-            return value;
-        }
-        Object value4 = readRaw(parser.nextToken());
-        String name5 = parser.nextName();
-        if (name5 == null) {
-            LinkedHashMap<String, Object> value = new LinkedHashMap<>(8);
-            value.put(name1, value1);
-            value.put(name2, value2);
-            value.put(name3, value3);
-            value.put(name4, value4);
-            return value;
-        }
-        Object value5 = readRaw(parser.nextToken());
+
         String name = parser.nextName();
-        LinkedHashMap<String, Object> value = new LinkedHashMap<>(name == null ? 8 : 16);
-        value.put(name1, value1);
-        value.put(name2, value2);
-        value.put(name3, value3);
-        value.put(name4, value4);
-        value.put(name5, value5);
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>(name == null ? 4 : 16);
+        result.put(name1, value1);
+        result.put(name2, value2);
+        result.put(name3, value3);
         while (name != null) {
-            value.put(name, readRaw(parser.nextToken()));
+            result.put(name, readRaw(parser.nextToken()));
             name = parser.nextName();
         }
-        return value;
+        return result;
     }
 
     private List<Object> _readRawArray() throws IOException {
         JsonToken token1 = parser.nextToken();
         if (token1 == JsonToken.END_ARRAY) return new ArrayList<>(0);
         Object item1 = readRaw(token1);
+
         JsonToken token2 = parser.nextToken();
         if (token2 == JsonToken.END_ARRAY) {
-            ArrayList<Object> value = new ArrayList<>(1);
-            value.add(item1);
-            return value;
+            ArrayList<Object> result = new ArrayList<>(1);
+            result.add(item1);
+            return result;
         }
         Object item2 = readRaw(token2);
+
         JsonToken token3 = parser.nextToken();
         if (token3 == JsonToken.END_ARRAY) {
-            ArrayList<Object> value = new ArrayList<>(2);
-            value.add(item1);
-            value.add(item2);
-            return value;
+            ArrayList<Object> result = new ArrayList<>(2);
+            result.add(item1);
+            result.add(item2);
+            return result;
         }
         Object item3 = readRaw(token3);
-        JsonToken token4 = parser.nextToken();
-        if (token4 == JsonToken.END_ARRAY) {
-            ArrayList<Object> value = new ArrayList<>(3);
-            value.add(item1);
-            value.add(item2);
-            value.add(item3);
-            return value;
-        }
-        Object item4 = readRaw(token4);
-        JsonToken token5 = parser.nextToken();
-        if (token5 == JsonToken.END_ARRAY) {
-            ArrayList<Object> value = new ArrayList<>(4);
-            value.add(item1);
-            value.add(item2);
-            value.add(item3);
-            value.add(item4);
-            return value;
-        }
-        Object item5 = readRaw(token5);
+
         JsonToken current = parser.nextToken();
-        ArrayList<Object> value = new ArrayList<>(current == JsonToken.END_ARRAY ? 5 : 10);
-        value.add(item1);
-        value.add(item2);
-        value.add(item3);
-        value.add(item4);
-        value.add(item5);
+        ArrayList<Object> result = new ArrayList<>(current == JsonToken.END_ARRAY ? 3 : 10);
+        result.add(item1);
+        result.add(item2);
+        result.add(item3);
         while (current != JsonToken.END_ARRAY) {
-            value.add(readRaw(current));
+            result.add(readRaw(current));
             current = parser.nextToken();
         }
-        return value;
+        return result;
     }
 
     /* --------------------------------------------------------------
