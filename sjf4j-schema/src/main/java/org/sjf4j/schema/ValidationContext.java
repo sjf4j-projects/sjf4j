@@ -100,8 +100,14 @@ public final class ValidationContext {
     public boolean shouldAbort() { return failFast || ignoreErrorAdding != 0; }
     boolean needsDiagnostic() { return !booleanOnly && ignoreErrorAdding == 0; }
 
-    public void pushIgnoreError() { ignoreErrorAdding++; }
-    public void popIgnoreError() { ignoreErrorAdding--; }
+    // Boolean-only evaluation never constructs diagnostics. Ignore scopes only
+    // matter when a failed branch could otherwise report an error.
+    public void pushIgnoreError() {
+        if (!booleanOnly) ignoreErrorAdding++;
+    }
+    public void popIgnoreError() {
+        if (!booleanOnly) ignoreErrorAdding--;
+    }
 
     public void pushPlan(SchemaPlan plan) {
         if (planStack == null) planStack = new ArrayDeque<>();
