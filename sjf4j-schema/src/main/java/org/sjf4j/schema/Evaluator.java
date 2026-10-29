@@ -1510,8 +1510,7 @@ public interface Evaluator {
             Object actual = instance.node();
             boolean result = true;
 
-            if (unevaluatedPropertiesPlan != null) {
-                if (instance.jsonType() != JsonType.OBJECT) return true;
+            if (unevaluatedPropertiesPlan != null && instance.jsonType() == JsonType.OBJECT) {
                 int propIdx = 0;
                 for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(actual)) {
                     String key = entry.getKey();
@@ -1527,9 +1526,7 @@ public interface Evaluator {
                 }
             }
 
-            if (unevaluatedItemsPlan != null) {
-                if (instance.jsonType() != JsonType.ARRAY) return true;
-
+            if (unevaluatedItemsPlan != null && instance.jsonType() == JsonType.ARRAY) {
                 Iterator<Object> it = NodeWalker.iteratorInArray(actual);
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();

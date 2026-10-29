@@ -125,7 +125,8 @@ public final class SchemaPlan {
         }
 
         int len = evaluators.length;
-        if (len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator) {
+        boolean tracksEvaluated = len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator;
+        if (tracksEvaluated) {
             instance.createEvaluated();
         }
 
@@ -138,7 +139,10 @@ public final class SchemaPlan {
             boolean matched = evaluator.evaluate(instance, ps, ctx);
             if (!matched) {
                 result = false;
-                if (ctx.shouldAbort()) return false;
+                if (ctx.isFailFast() && !tracksEvaluated) {
+                    if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
+                    return false;
+                }
             }
         }
         if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
