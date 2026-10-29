@@ -692,7 +692,7 @@ public interface Evaluator {
                         boolean subResult = plan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
-                        if (!subResult && ctx.shouldAbort()) return false;
+                        if (!subResult && ctx.isFailFast()) return false;
                         matched = true;
                     }
                 }
@@ -707,7 +707,7 @@ public interface Evaluator {
                                 boolean subResult = plan.evaluate(subInstance, cps, ctx);
                                 if (subResult) instance.markEvaluated(propIdx);
                                 result = result && subResult;
-                                if (!subResult && ctx.shouldAbort()) return false;
+                                if (!subResult && ctx.isFailFast()) return false;
                                 matched = true;
                             }
                         }
@@ -720,7 +720,7 @@ public interface Evaluator {
                     boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
                     result = result && subResult;
-                    if (!subResult && ctx.shouldAbort()) return false;
+                    if (!subResult && ctx.isFailFast()) return false;
                 }
                 propIdx++;
             }//for
@@ -764,7 +764,7 @@ public interface Evaluator {
                         result = false;
                     }
                 }
-                if (ctx.shouldAbort()) return false;
+                if (!result && ctx.isFailFast()) return false;
             }
 
             if (dependentRequired != null) {
@@ -779,7 +779,7 @@ public interface Evaluator {
                                 result = false;
                             }
                         }
-                        if (ctx.shouldAbort()) return false;
+                        if (!result && ctx.isFailFast()) return false;
                     }
                 }
             }
@@ -824,7 +824,7 @@ public interface Evaluator {
                                 result = false;
                             }
                         }
-                        if (ctx.shouldAbort()) return false;
+                        if (!result && ctx.isFailFast()) return false;
                     }
                 }
             }
@@ -834,7 +834,7 @@ public interface Evaluator {
                     if (NodeWalker.containsInObject(node, key)) {
                         boolean subResult = entry.getValue().evaluate(instance, ps, ctx);
                         result = result && subResult;
-                        if (!subResult && ctx.shouldAbort()) return false;
+                        if (!subResult && ctx.isFailFast()) return false;
                     }
                 }
             }
@@ -866,7 +866,7 @@ public interface Evaluator {
                     SchemaPlan plan = dependentPlans.get(key);
                     boolean subResult = plan.evaluate(instance, ps, ctx);
                     result = result && subResult;
-                    if (!subResult && ctx.shouldAbort()) return false;
+                    if (!subResult && ctx.isFailFast()) return false;
                 }
             }
             return result;
@@ -906,7 +906,7 @@ public interface Evaluator {
                     ctx.addError(instance, instanceKeywordPs, keywordPs, schemaUri, "propertyNames",
                             ctx.needsMessage() ? ("invalid property name '" + key + "'") : null);
                     result = false;
-                    if (ctx.shouldAbort()) return false;
+                    if (!result && ctx.isFailFast()) return false;
                 }
             }
             return result;
@@ -978,7 +978,7 @@ public interface Evaluator {
                         ctx.needsMessage() ? ("expected at most " + maxItems + " items, found " + size) : null);
                 result = false;
             }
-            if (ctx.shouldAbort()) return false;
+            if (!result && ctx.isFailFast()) return false;
             if (uniqueItems && size > 1) {
                 if (hasDuplicate(node, size)) {
                     ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
@@ -1055,14 +1055,14 @@ public interface Evaluator {
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                    boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
 //                    result[0] = result[0] && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return true;
+//                    if (!subResult && ctx.isFailFast()) return true;
 //                    if (result[0]) instance.markEvaluated(i);
 //                } else if (itemsPlan != null) {
 //                    InstancedNode subInstance = instance.inferSubByIndex(i, sub, ctx.reusedLeaf());
 //                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
 //                    boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
 //                    result[0] = result[0] && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return true;
+//                    if (!subResult && ctx.isFailFast()) return true;
 //                    if (result[0]) instance.markEvaluated(i);
 //                }
 //                return false;
@@ -1078,7 +1078,7 @@ public interface Evaluator {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
                     result = result && subResult;
-                    if (!subResult && ctx.shouldAbort()) return false;
+                    if (!subResult && ctx.isFailFast()) return false;
                 }
                 if (result) instance.markEvaluated(0, i);
             }
@@ -1089,7 +1089,7 @@ public interface Evaluator {
                     PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                     boolean subResult = itemsPlan.evaluate(subInstance, cps, ctx);
                     result = result && subResult;
-                    if (!subResult && ctx.shouldAbort()) return false;
+                    if (!subResult && ctx.isFailFast()) return false;
                 }
                 if (result) instance.markEvaluated(0, i);
             }
@@ -1282,7 +1282,10 @@ public interface Evaluator {
                 EvaluationBits childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 result = result && subResult;
-                if (!subResult && ctx.shouldAbort()) return false;
+                if (!subResult && ctx.isFailFast()) {
+                    if (cousinEvaluated != null) instance.pushEvaluated(cousinEvaluated);
+                    return false;
+                }
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
@@ -1478,7 +1481,7 @@ public interface Evaluator {
                         boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(propIdx);
                         result = result && subResult;
-                        if (!subResult && ctx.shouldAbort()) return false;
+                        if (!subResult && ctx.isFailFast()) return false;
                     }
                     propIdx++;
                 }
@@ -1494,7 +1497,7 @@ public interface Evaluator {
                         boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                         if (subResult) instance.markEvaluated(i);
                         result = result && subResult;
-                        if (!subResult && ctx.shouldAbort()) return false;
+                        if (!subResult && ctx.isFailFast()) return false;
                     }
                 }
             }

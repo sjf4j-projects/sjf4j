@@ -27,7 +27,6 @@ public class ValidationContext {
     // dedicated wrappers because they can carry branch-local runtime state.
     private final Instance reusedLeaf;
 
-    private boolean valid = true;
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding = 0;
     private Deque<SchemaPlan> planStack;
@@ -62,27 +61,11 @@ public class ValidationContext {
     /**
      * Builds a result snapshot from current context state.
      */
-    public ValidationResult toResult() {
+    public ValidationResult toResult(boolean valid) {
         if (valid && (messages == null || messages.isEmpty()) && lastMessage == null) {
             return ValidationResult.SUCCESS;
         }
         return new ValidationResult(valid, messages, lastMessage);
-    }
-
-    /**
-     * Returns true when no validation error was added.
-     */
-    public boolean isValid() {
-        return valid;
-    }
-
-    /**
-     * Returns true when validation should abort early.
-     * <p>
-     * This is true only in fail-fast mode after the first non-ignored error.
-     */
-    public boolean shouldAbort() {
-        return failFast && !valid;
     }
 
     // Ignore
@@ -128,7 +111,6 @@ public class ValidationContext {
     void addError(Instance instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
                   String keyword, String message) {
         if (ignoreErrorAdding < 1) {
-            valid = false;
             if (booleanOnly) return;
             if (instancePs == null && instance != null) {
                 instancePs = instance.materializePath();
