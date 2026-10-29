@@ -69,8 +69,12 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             if (plan != null) {
-                instance.checkCyclicRef(plan, keywordPs);
-                return plan.evaluate(instance, ps, ctx);
+                instance.enterRef(plan, keywordPs);
+                try {
+                    return plan.evaluate(instance, ps, ctx);
+                } finally {
+                    instance.leaveRef();
+                }
             }
             throw new AssertionError(RefEvaluator.class);
         }
@@ -119,8 +123,12 @@ public interface Evaluator {
                     }
                 }
 
-                instance.checkCyclicRef(plan, keywordPs);
-                return plan.evaluate(instance, ps, ctx);
+                instance.enterRef(plan, keywordPs);
+                try {
+                    return plan.evaluate(instance, ps, ctx);
+                } finally {
+                    instance.leaveRef();
+                }
             }
             throw new AssertionError(DynamicRefEvaluator.class);
         }
