@@ -16,6 +16,7 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
+import org.sjf4j.backend.fastjson2.binding.Fastjson2Parser;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.binding.StreamingParser;
@@ -224,6 +225,14 @@ public class CompiledReadBenchmark {
                 fastjson2_map_string_native_object());
         checkEquivalentRawGraph("fastjson2 native JSONObject UTF-8", expectedRawMap,
                 fastjson2_map_utf8_native_object());
+        checkEquivalentRawGraph("fastjson2 wrapped native String", expectedRawMap,
+                fastjson2_map_string_raw_native());
+        checkEquivalentRawGraph("fastjson2 wrapped native UTF-8", expectedRawMap,
+                fastjson2_map_utf8_raw_native());
+        checkEquivalentRawGraph("fastjson2 wrapped native Any String", expectedRawMap,
+                fastjson2_map_string_raw_native_any());
+        checkEquivalentRawGraph("fastjson2 wrapped native Any UTF-8", expectedRawMap,
+                fastjson2_map_utf8_raw_native_any());
 
         // Separate diagnostic: force JDK container classes without imposing
         // their identity as a requirement for valid native raw results.
@@ -854,6 +863,49 @@ public class CompiledReadBenchmark {
 
     // Unrestricted native JSONObject/JSONArray construction: the main
     // performance baseline for Fastjson2 raw object/array materialization.
+    // Experimental wrapped-native paths: isolate the cost of the SJF4J
+    // StreamingParser wrapper from the cost of the handwritten raw loop.
+    // No production binding path is changed by these benchmarks.
+    @Benchmark
+    public Object fastjson2_map_string_raw_native() throws IOException {
+        try (Fastjson2Parser parser = FASTJSON2_RUNTIME.createParser(JSON_DATA)) {
+            parser.start();
+            Map<String, Object> value = parser.rawReader().readObject();
+            parser.end();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_utf8_raw_native() throws IOException {
+        try (Fastjson2Parser parser = FASTJSON2_RUNTIME.createParser(JSON_UTF8)) {
+            parser.start();
+            Map<String, Object> value = parser.rawReader().readObject();
+            parser.end();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_string_raw_native_any() throws IOException {
+        try (Fastjson2Parser parser = FASTJSON2_RUNTIME.createParser(JSON_DATA)) {
+            parser.start();
+            Object value = parser.rawReader().readAny();
+            parser.end();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_utf8_raw_native_any() throws IOException {
+        try (Fastjson2Parser parser = FASTJSON2_RUNTIME.createParser(JSON_UTF8)) {
+            parser.start();
+            Object value = parser.rawReader().readAny();
+            parser.end();
+            return value;
+        }
+    }
+
     @Benchmark
     public Object fastjson2_map_string_native_object() {
         try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
