@@ -155,33 +155,51 @@ public final class SchemaPlan {
                 return true;
             case 1:
                 return evaluators[0].evaluate(instance, ps, ctx);
-            case 2:
-            case 3:
+            case 2: {
+                boolean ok = true;
+                if (!evaluators[0].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[1].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                return ok;
+            }
+            case 3: {
+                boolean ok = true;
+                if (!evaluators[0].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[1].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[2].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                return ok;
+            }
             case 4: {
                 boolean ok = true;
-                if (evaluators.length > 0) {
-                    if (!evaluators[0].evaluate(instance, ps, ctx)) {
-                        ok = false;
-                        if (ctx.shouldAbort()) return false;
-                    }
+                if (!evaluators[0].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
                 }
-                if (evaluators.length > 1) {
-                    if (!evaluators[1].evaluate(instance, ps, ctx)) {
-                        ok = false;
-                        if (ctx.shouldAbort()) return false;
-                    }
+                if (!evaluators[1].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
                 }
-                if (evaluators.length > 2) {
-                    if (!evaluators[2].evaluate(instance, ps, ctx)) {
-                        ok = false;
-                        if (ctx.shouldAbort()) return false;
-                    }
+                if (!evaluators[2].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
                 }
-                if (evaluators.length > 3) {
-                    if (!evaluators[3].evaluate(instance, ps, ctx)) {
-                        ok = false;
-                        if (ctx.shouldAbort()) return false;
-                    }
+                if (!evaluators[3].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
                 }
                 return ok;
             }
