@@ -1,0 +1,57 @@
+name: Experiment short-plan dispatch versus original main
+on:
+  push:
+    branches: [experiment/schema-short-plan-unroll]
+    paths: [.github/workflows/schema-short-vs-main-exp.yml]
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build original main and fixed-short-plan variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-main" 41070c488151baf831ecf53beeb3beea92cad2d5
+          file="sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java"
+          cp "$GITHUB_WORKSPACE/$file" "$RUNNER_TEMP/sjf4j-main/$file"
+          for variant in main short; do
+            if [ "$variant" = main ]; then root="$RUNNER_TEMP/sjf4j-main"; else root="$GITHUB_WORKSPACE"; fi
+            (cd "$root" && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          done
+      - name: JMH main versus short plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          regex='.*CreekSchemaBenchmark\.(schema_validate_map|schema_is_valid_map|schema_is_valid_fail_nested|schema_validate_fail_nested|round_trip_validate)$'
+          for variant in main short; do
+            if [ "$variant" = main ]; then root="$RUNNER_TEMP/sjf4j-main"; else root="$GITHUB_WORKSPACE"; fi
+            jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -name '*jmh*.jar' -type f | head -n 1)
+            java -jar "$jar" "$regex" -f 2 -wi 15 -i 5 -w 350ms -r 350ms -prof gc \
+              -rf json -rff "$GITHUB_WORKSPACE/results/$variant.json" | tee "$GITHUB_WORKSPACE/results/$variant.txt"
+          done
+          python3 - <<'PY'
+          import json
+          for name in ('main','short'):
+              print('===',name,'===')
+              for row in json.load(open('results/'+name+'.json')):
+                  p=row['primaryMetric']
+                  alloc=next((v['score'] for k,v in row['secondaryMetrics'].items() if k.endswith('gc.alloc.rate.norm')),None)
+                  print(row['benchmark'].rsplit('.',1)[-1],round(p['score'],5),'+/-',round(p['scoreError'],5),'us/op',round(alloc,2),'B/op')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schema-short-vs-main-results
+          path: results/
