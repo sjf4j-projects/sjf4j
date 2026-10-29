@@ -393,54 +393,22 @@ public final class Fastjson2Parser extends StreamingParser {
         }
     }
 
-    // Special-case empty, one and two values without allocating an
-    // oversized container. Longer values use the original streaming loop.
+    // The caller has already checked the opening delimiter. Consume it
+    // directly to avoid repeating the token-type branch at every level.
     private Map<String, Object> _readRawObjectBody() throws IOException {
         reader.next();
-        if (reader.nextIfObjectEnd()) return new LinkedHashMap<>(0);
-
-        String name1 = reader.readFieldName();
-        Object value1 = _readRaw();
-        if (reader.nextIfObjectEnd()) {
-            Map<String, Object> value = new LinkedHashMap<>(2);
-            value.put(name1, value1);
-            return value;
-        }
-
-        String name2 = reader.readFieldName();
-        Object value2 = _readRaw();
-        boolean complete = reader.nextIfObjectEnd();
-        Map<String, Object> value = new LinkedHashMap<>(complete ? 4 : 16);
-        value.put(name1, value1);
-        value.put(name2, value2);
-        if (!complete) {
-            do {
-                value.put(reader.readFieldName(), _readRaw());
-            } while (!reader.nextIfObjectEnd());
+        Map<String, Object> value = new LinkedHashMap<>();
+        while (!reader.nextIfObjectEnd()) {
+            value.put(reader.readFieldName(), _readRaw());
         }
         return value;
     }
 
     private List<Object> _readRawArrayBody() throws IOException {
         reader.next();
-        if (reader.nextIfArrayEnd()) return new ArrayList<>(0);
-
-        Object item1 = _readRaw();
-        if (reader.nextIfArrayEnd()) {
-            List<Object> value = new ArrayList<>(1);
-            value.add(item1);
-            return value;
-        }
-
-        Object item2 = _readRaw();
-        boolean complete = reader.nextIfArrayEnd();
-        List<Object> value = new ArrayList<>(complete ? 2 : 10);
-        value.add(item1);
-        value.add(item2);
-        if (!complete) {
-            do {
-                value.add(_readRaw());
-            } while (!reader.nextIfArrayEnd());
+        List<Object> value = new ArrayList<>();
+        while (!reader.nextIfArrayEnd()) {
+            value.add(_readRaw());
         }
         return value;
     }
