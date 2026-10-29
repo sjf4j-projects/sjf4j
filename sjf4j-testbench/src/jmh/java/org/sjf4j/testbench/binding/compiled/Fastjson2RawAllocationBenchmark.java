@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
  * native = Fastjson2 JSONReader.readObject(), compiled = @CompiledBinder,
  * runtime = Fastjson2Binder.readNode(Map.class).
  *
- * Each invocation includes parser construction and closing; fixture generation
+ * Tiny fixtures isolate root parsing overhead: empty (2 B), one and two fields.\n * Each invocation includes parser construction and closing; fixture generation
  * and validation are excluded from the timed operation. Native JSONObject and
  * JSONArray are valid Map/List results, not conversions to be benchmarked away.
  * Run with -prof gc to compare gc.alloc.rate.norm (bytes per operation).
@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class Fastjson2RawAllocationBenchmark {
 
-    @Param({"small", "wide", "deep"})
+    @Param({"empty", "one", "two", "small", "wide", "deep"})
     public String shape;
 
     private final Fastjson2Binder binder = new Fastjson2Binder();
@@ -47,6 +47,15 @@ public class Fastjson2RawAllocationBenchmark {
     @Setup(Level.Trial)
     public void setup() throws IOException {
         switch (shape) {
+            case "empty":
+                json = "{}";
+                break;
+            case "one":
+                json = "{\"id\":7}";
+                break;
+            case "two":
+                json = "{\"id\":7,\"name\":\"Ada\"}";
+                break;
             case "small":
                 json = "{\"id\":7,\"name\":\"Ada\",\"values\":[1,true,null]}";
                 break;
