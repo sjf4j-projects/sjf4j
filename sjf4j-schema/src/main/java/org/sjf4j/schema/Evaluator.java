@@ -678,53 +678,7 @@ public interface Evaluator {
         public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
-//            final boolean[] result = new boolean[] {true};
-//            final int[] propIdx = new int[] {0};
-//            boolean shouldAbort = NodeWalker.anyMatchInObject(actual, (key, sub) -> {
-//                boolean matched = false;
-//
-//                if (properties != null) {
-//                    SchemaPlan plan = properties.get(key);
-//                    if (plan != null) {
-//                        NodeFrame subInstance = instance.inferSubByKey(key, sub, null);
-//                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-//                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
-//                        if (subResult) ctx.markEvaluated(propIdx[0]);
-//                        result[0] = result[0] && subResult;
-//                        if (!subResult && ctx.shouldAbort()) return true;
-//                        matched = true;
-//                    }
-//                }
-//
-//                if (patterns != null) {
-//                    for (int i = 0; i < patterns.length; i++) {
-//                        if (patterns[i].matcher(key).find()) {
-//                            SchemaPlan plan = patternPlans[i];
-//                            if (plan != null) {
-//                                NodeFrame subInstance = instance.inferSubByKey(key, sub, null);
-//                                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-//                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
-//                                if (subResult) ctx.markEvaluated(propIdx[0]);
-//                                result[0] = result[0] && subResult;
-//                                if (!subResult && ctx.shouldAbort()) return true;
-//                                matched = true;
-//                            }
-//                        }
-//                    }
-//                }
-//
-//                if (additionalPropertiesPlan != null && !matched) {
-//                    NodeFrame subInstance = instance.inferSubByKey(key, sub, null);
-//                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-//                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
-//                    if (subResult) ctx.markEvaluated(propIdx[0]);
-//                    result[0] = result[0] && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return true;
-//                }
-//                propIdx[0]++;
-//                return false;
-//            });
-//            if (shouldAbort) return false;
+
 
 
             boolean result = true;
@@ -821,6 +775,7 @@ public interface Evaluator {
                         if (ctx.needsDiagnostic()) { ctx.addError(instance, ps, requiredKeywordPs, schemaUri, "required",
                                 "missing required property '" + key + "'"); }
                         result = false;
+                        if (ctx.shouldAbort()) return false;
                     }
                 }
                 if (!result && ctx.shouldAbort()) return false;
@@ -836,6 +791,8 @@ public interface Evaluator {
                                 if (ctx.needsDiagnostic()) { ctx.addError(instance, ps, dependentRequiredKeywordPs, schemaUri, "dependentRequired",
                                         "missing property '" + property + "' required when '" + key + "' is present"); }
                                 result = false;
+                                if (ctx.shouldAbort()) return false;
+                                if (ctx.shouldAbort()) return false;
                             }
                         }
                         if (!result && ctx.shouldAbort()) return false;
@@ -1205,25 +1162,7 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.ARRAY) return true;
             if (containsPlan == null) return true;
 
-//            final int[] matches = new int[] {0};
-//            NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
-//                ctx.pushIgnoreError();
-//                NodeFrame subInstance = instance.inferSubByIndex(i, sub, null);
-//                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-//                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
-//                ctx.popIgnoreError();
-//                if (result) {
-//                    ctx.markEvaluated(i);
-//                    matches[0]++;
-//                    // Early exit: once minContains is met without an upper bound,
-//                    // and no unevaluated tracking is active, further scanning is
-//                    // unnecessary for contains semantics.
-//                    if (matches[0] >= minContains && maxContains == -1 && ctx.peekEvaluated() == null) {
-//                        return true;
-//                    }
-//                }
-//                return false;
-//            });
+
 
 
             int matches = 0;
@@ -1288,31 +1227,40 @@ public interface Evaluator {
         public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             if (ifPlan == null) return true;
 
-            boolean result = true;
-            EvaluationBits cousinEvaluated = ctx.popEvaluated();
-            if (cousinEvaluated != null) ctx.pushEvaluated();
-            ctx.pushIgnoreError();
-            boolean tested = ifPlan.evaluate(instance, ps, ctx);
-            ctx.popIgnoreError();
-            if (tested) {
-                if (thenPlan != null) {
-                    result = thenPlan.evaluate(instance, ps, ctx);
+            EvaluationBits parent = ctx.popEvaluated();
+            int savedDepth = ctx.evaluationDepth();
+            try {
+                if (parent != null) ctx.pushEvaluated();
+                ctx.pushIgnoreError();
+                boolean tested;
+                try {
+                    tested = ifPlan.evaluate(instance, ps, ctx);
+                } finally {
+                    ctx.popIgnoreError();
                 }
-                EvaluationBits ifThenEvaluated = ctx.popEvaluated();
-                if (result && cousinEvaluated != null && ifThenEvaluated != null)
-                    cousinEvaluated.or(ifThenEvaluated);
-            } else {
-                EvaluationBits droppedEvaluated = ctx.popEvaluated();
-                if (elsePlan != null) {
-                    if (cousinEvaluated != null) ctx.pushEvaluated();
-                    result = elsePlan.evaluate(instance, ps, ctx);
-                    EvaluationBits elseEvaluated = ctx.popEvaluated();
-                    if (result && cousinEvaluated != null && elseEvaluated != null)
-                        cousinEvaluated.or(elseEvaluated);
+
+                if (tested) {
+                    boolean passed = thenPlan == null || thenPlan.evaluate(instance, ps, ctx);
+                    if (parent != null) {
+                        EvaluationBits marks = ctx.popEvaluated();
+                        if (passed && marks != null) parent.or(marks);
+                    }
+                    return passed;
                 }
+
+                if (parent != null) ctx.popEvaluated();
+                if (elsePlan == null) return true;
+                if (parent != null) ctx.pushEvaluated();
+                boolean passed = elsePlan.evaluate(instance, ps, ctx);
+                if (parent != null) {
+                    EvaluationBits marks = ctx.popEvaluated();
+                    if (passed && marks != null) parent.or(marks);
+                }
+                return passed;
+            } finally {
+                ctx.restoreEvaluationDepth(savedDepth);
+                if (parent != null) ctx.pushEvaluated(parent);
             }
-            if (cousinEvaluated != null) ctx.pushEvaluated(cousinEvaluated);
-            return result;
         }
     }
 
