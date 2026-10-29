@@ -380,23 +380,10 @@ public final class SimpleJsonParser extends StreamingParser {
     public Object readRaw() throws IOException {
         if (nextIfNull()) return null;
         switch (peekToken()) {
-            case OBJECT_START: {
-                Map<String, Object> value = new LinkedHashMap<>();
-                readObjectStart();
-                String name;
-                while ((name = nextName()) != null) {
-                    value.put(name, readRaw());
-                }
-                return value;
-            }
-            case ARRAY_START: {
-                List<Object> value = new ArrayList<>();
-                readArrayStart();
-                while (!nextIfArrayEnd()) {
-                    value.add(readRaw());
-                }
-                return value;
-            }
+            case OBJECT_START:
+                return _readRawObject();
+            case ARRAY_START:
+                return _readRawArray();
             case STRING:
                 return _readStringValue();
             case NUMBER:
@@ -406,6 +393,39 @@ public final class SimpleJsonParser extends StreamingParser {
             default:
                 throw new BindingException("unexpected token '" + peekToken() + "'");
         }
+    }
+
+    @Override
+    public Map<String, Object> readRawObject() throws IOException {
+        if (nextIfNull()) return null;
+        return _readRawObject();
+    }
+
+    @Override
+    public List<Object> readRawArray() throws IOException {
+        if (nextIfNull()) return null;
+        return _readRawArray();
+    }
+
+    // The normal raw dispatch already knows the container shape.
+    // Keep null checks at the public entry point only.
+    private Map<String, Object> _readRawObject() throws IOException {
+        Map<String, Object> value = new LinkedHashMap<>();
+        readObjectStart();
+        String name;
+        while ((name = nextName()) != null) {
+            value.put(name, readRaw());
+        }
+        return value;
+    }
+
+    private List<Object> _readRawArray() throws IOException {
+        List<Object> value = new ArrayList<>();
+        readArrayStart();
+        while (!nextIfArrayEnd()) {
+            value.add(readRaw());
+        }
+        return value;
     }
 
     /**
