@@ -21,7 +21,7 @@ public final class ValidationContext {
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding;
 
-    private NodeFrame root;
+    private NodeFrame leaf;
     private NodeFrame[] frames;
     private int nodeDepth;
 
@@ -50,24 +50,30 @@ public final class ValidationContext {
     }
 
     NodeFrame root(Object value) {
-        root = NodeFrame.infer(value);
-        return root;
+        return NodeFrame.infer(value);
     }
 
     private NodeFrame nextFrame() {
         int next = nodeDepth + 1;
-        if (frames == null) {
-            frames = new NodeFrame[4];
-        } else if (next >= frames.length) {
-            frames = Arrays.copyOf(frames, frames.length << 1);
+        NodeFrame frame;
+        if (next == 1) {
+            if (leaf == null) leaf = new NodeFrame();
+            frame = leaf;
+        } else {
+            if (frames == null) {
+                frames = new NodeFrame[4];
+            } else if (next >= frames.length) {
+                frames = Arrays.copyOf(frames, frames.length << 1);
+            }
+            if (frames[next] == null) frames[next] = new NodeFrame();
+            frame = frames[next];
         }
-        if (frames[next] == null) frames[next] = new NodeFrame();
         if (evaluatedByDepth != null && next < evaluatedByDepth.length
                 && evaluatedByDepth[next] != null) {
             evaluatedByDepth[next].clear();
         }
         nodeDepth = next;
-        return frames[next];
+        return frame;
     }
 
     NodeFrame enterKey(NodeFrame parent, String key, Object value) {

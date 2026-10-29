@@ -75,6 +75,29 @@ public class SchemaValidationTest {
     }
 
     @Test
+    public void testConvertedChildCachedAcrossSchemaBranches() {
+        StringValue value = new StringValue();
+        Map<String, Object> object = Collections.singletonMap("x", value);
+        SchemaPlan plan = JsonSchema.fromJson("{\"allOf\":["
+                + "{\"properties\":{\"x\":{\"type\":\"null\"}}},"
+                + "{\"properties\":{\"x\":{\"type\":\"null\"}}}]}").createPlan();
+
+        assertTrue(plan.isValid(object));
+        assertEquals(1, value.encodes);
+    }
+
+    @Test
+    public void testConvertedChildSharedByPropertiesAndPatterns() {
+        StringValue value = new StringValue();
+        Map<String, Object> object = Collections.singletonMap("x", value);
+        SchemaPlan plan = JsonSchema.fromJson("{\"properties\":{\"x\":{\"type\":\"null\"}},"
+                + "\"patternProperties\":{\"^x$\":{\"type\":\"null\"}}}").createPlan();
+
+        assertTrue(plan.isValid(object));
+        assertEquals(1, value.encodes);
+    }
+
+    @Test
     public void testInferClassifiesPojoObject() {
         PlainPojo value = new PlainPojo();
 
