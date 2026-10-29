@@ -338,7 +338,7 @@ class Jackson3ParserTest {
     }
 
     @Test
-    void specializesRawCollectionsAtFiveElementBoundary() throws Exception {
+    void specializesRawCollectionsAtThreeElementBoundary() throws Exception {
         for (int count = 0; count <= 8; count++) {
             StringBuilder objectJson = new StringBuilder("{");
             StringBuilder arrayJson = new StringBuilder("[");
