@@ -996,14 +996,14 @@ public final class StreamingIO {
 
 
     /**
-     * Adopts an owned LinkedHashMap, including backend-native subclasses such
-     * as Fastjson2 JSONObject, without copying its parsed members.
+     * Adopts an owned LinkedHashMap without copying its parsed members.
+     * Other Map implementations use the defensive-copy constructor.
      */
     @SuppressWarnings("unchecked")
     public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
         Map<String, Object> raw = parser.readRawObject();
         if (raw == null) return null;
-        if (raw instanceof LinkedHashMap) {
+        if (raw.getClass() == LinkedHashMap.class) {
             JsonObject result = new JsonObject();
             InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
             return result;
@@ -1012,14 +1012,14 @@ public final class StreamingIO {
     }
 
     /**
-     * Adopts an owned ArrayList, including backend-native subclasses such
-     * as Fastjson2 JSONArray, without copying its parsed elements.
+     * Adopts an owned ArrayList without copying its parsed elements.
+     * Other List implementations use the defensive-copy constructor.
      */
     @SuppressWarnings("unchecked")
     public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
         List<Object> raw = parser.readRawArray();
         if (raw == null) return null;
-        if (raw instanceof ArrayList) {
+        if (raw.getClass() == ArrayList.class) {
             JsonArray result = new JsonArray();
             InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
             return result;
