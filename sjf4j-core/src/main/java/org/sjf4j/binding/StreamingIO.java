@@ -690,10 +690,14 @@ public final class StreamingIO {
     public static Map<String, Object> readMap(StreamingParser parser, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
                                               RuntimeContext context) throws IOException {
+        // Exact raw container declarations have no generic work to do.
+        // Route them before token probes or type metadata initialization.
+        if (valueType == null && (type == Map.class || type == LinkedHashMap.class)) {
+            return parser.readRawObject();
+        }
+
         if (valueType == null) {
-            // The raw Map and LinkedHashMap types have no declared value binding.
-            valueType = type == boxed && (boxed == Map.class || boxed == LinkedHashMap.class)
-                    ? Object.class : Types.resolveTypeArgument(type, Map.class, 1);
+            valueType = Types.resolveTypeArgument(type, Map.class, 1);
             valueBoxed = Types.rawBox(valueType);
             valueTi = valueBoxed == Object.class
                     ? TypeInfo.NONE : TypeRegistry.registerTypeInfo(valueBoxed);
