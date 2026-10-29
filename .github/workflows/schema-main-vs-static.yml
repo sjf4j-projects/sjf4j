@@ -1,0 +1,67 @@
+name: Experiment schema original main versus static PR
+on:
+  push:
+    branches: [experiment/schema-main-vs-static]
+    paths: [.github/workflows/schema-main-vs-static.yml]
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build both revisions with identical testbench
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-original" 41070c488151baf831ecf53beeb3beea92cad2d5
+          source="sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java"
+          cp "$GITHUB_WORKSPACE/$source" "$RUNNER_TEMP/sjf4j-original/$source"
+          for variant in original static; do
+            if [ "$variant" = original ]; then root="$RUNNER_TEMP/sjf4j-original"; else root="$GITHUB_WORKSPACE"; fi
+            echo "=== Build $variant ==="
+            (cd "$root" && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          done
+      - name: Two-order same-runner A/B with GC allocations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          regex='.*CreekSchemaBenchmark\.(schema_validate_map|schema_is_valid_map|schema_is_valid_fail_nested|schema_validate_fail_nested|schema_is_valid_fail_property|schema_validate_fail_property|round_trip_validate|round_trip_is_valid|jackson_round_trip)$'
+          for variant in original static static original; do
+            idx=$(find results -maxdepth 1 -type f -name "$variant-*.json" | wc -l)
+            if [ "$variant" = original ]; then root="$RUNNER_TEMP/sjf4j-original"; else root="$GITHUB_WORKSPACE"; fi
+            jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -type f -name '*jmh*.jar' | head -n 1)
+            echo "=== Run $variant pass $idx ==="
+            java -jar "$jar" "$regex" -f 2 -wi 12 -i 5 -w 300ms -r 350ms -prof gc \
+              -rf json -rff "$GITHUB_WORKSPACE/results/$variant-$idx.json" \
+              | tee "$GITHUB_WORKSPACE/results/$variant-$idx.txt"
+          done
+          python3 - <<'PY'
+          import json
+          files = ["original-0", "static-0", "static-1", "original-1"]
+          rows={}
+          for f in files:
+              d=json.load(open(f"results/{f}.json"))
+              rows[f]={row['benchmark'].rsplit('.',1)[-1]:row for row in d}
+          for key in sorted(rows['original-0']):
+              print("===",key,"===")
+              for f in files:
+                  p=rows[f][key]['primaryMetric']
+                  extras=rows[f][key]['secondaryMetrics']
+                  alloc=next((v['score'] for k,v in extras.items() if k.endswith('gc.alloc.rate.norm')),None)
+                  print(f'{f:12} {p["score"]:.5f} +/- {p["scoreError"]:.5f} us/op, {alloc:.2f} B/op')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schema-main-vs-static-results
+          path: results/
