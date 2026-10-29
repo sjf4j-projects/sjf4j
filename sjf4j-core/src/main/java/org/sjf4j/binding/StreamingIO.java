@@ -995,36 +995,24 @@ public final class StreamingIO {
     }
 
 
-    /**
-     * Adopts an owned LinkedHashMap without copying its parsed members.
-     * Other Map implementations use the defensive-copy constructor.
-     */
+    /** Adopts the owned raw LinkedHashMap without copying its members. */
     @SuppressWarnings("unchecked")
     public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
         Map<String, Object> raw = parser.readRawObject();
         if (raw == null) return null;
-        if (raw.getClass() == LinkedHashMap.class) {
-            JsonObject result = new JsonObject();
-            InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
-            return result;
-        }
-        return new JsonObject(raw);
+        JsonObject result = new JsonObject();
+        InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
+        return result;
     }
 
-    /**
-     * Adopts an owned ArrayList without copying its parsed elements.
-     * Other List implementations use the defensive-copy constructor.
-     */
+    /** Adopts the owned raw ArrayList without copying its elements. */
     @SuppressWarnings("unchecked")
     public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
         List<Object> raw = parser.readRawArray();
         if (raw == null) return null;
-        if (raw.getClass() == ArrayList.class) {
-            JsonArray result = new JsonArray();
-            InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
-            return result;
-        }
-        return new JsonArray(raw);
+        JsonArray result = new JsonArray();
+        InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
+        return result;
     }
 
     /**
