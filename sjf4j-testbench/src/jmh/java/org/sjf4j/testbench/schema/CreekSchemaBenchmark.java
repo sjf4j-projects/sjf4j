@@ -25,6 +25,9 @@ import org.sjf4j.testbench.model.creek.TestModel;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -55,6 +58,8 @@ public class CreekSchemaBenchmark {
     private TestModel model;
     private TestModel deserializedModel;
     private Map<String, Object> mapNode;
+    private Map<String, Object> invalidMap;
+    private Map<String, Object> invalidNestedMap;
     private byte[] jsonBytes;
 
     public static void main(String[] args) throws Exception {
@@ -77,6 +82,21 @@ public class CreekSchemaBenchmark {
         jsonBytes = JACKSON.writeValueAsBytes(model);
         deserializedModel = JACKSON.readValue(jsonBytes, TestModel.class);
         mapNode = JACKSON.readValue(jsonBytes, new TypeReference<Map<String, Object>>() {});
+
+        invalidMap = new LinkedHashMap<>(mapNode);
+        invalidMap.put("name", 123);
+
+        invalidNestedMap = new LinkedHashMap<>(mapNode);
+        List<Object> poly = new ArrayList<>((List<?>) mapNode.get("polymorphicTypes"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> first = new LinkedHashMap<>((Map<String, Object>) poly.get(0));
+        first.put("@type", "not-a-valid-subtype");
+        poly.set(0, first);
+        invalidNestedMap.put("polymorphicTypes", poly);
+
+        if (plan.isValid(invalidMap) || plan.isValid(invalidNestedMap) || plan.isValid("wrong")) {
+            throw new IllegalStateException("Invalid Creek benchmark fixtures unexpectedly passed");
+        }
 
         // Fail before measurement if the POJO/Map representations or JSON round trip
         // do not satisfy the exact schema used by the comparison project.
@@ -119,6 +139,39 @@ public class CreekSchemaBenchmark {
     @Benchmark
     public void schema_validate_map() {
         plan.requireValid(mapNode, false);
+    }
+
+    /** A root type mismatch: the simplest invalid input. */
+    @Benchmark
+    public boolean schema_is_valid_fail_root() {
+        return plan.isValid("wrong");
+    }
+
+    @Benchmark
+    public org.sjf4j.schema.ValidationResult schema_validate_fail_root() {
+        return plan.validate("wrong", true, false);
+    }
+
+    /** Invalid ordinary property, with fast-fail diagnostics as the control. */
+    @Benchmark
+    public boolean schema_is_valid_fail_property() {
+        return plan.isValid(invalidMap);
+    }
+
+    @Benchmark
+    public org.sjf4j.schema.ValidationResult schema_validate_fail_property() {
+        return plan.validate(invalidMap, true, false);
+    }
+
+    /** A malformed polymorphic child that reaches a oneOf branch. */
+    @Benchmark
+    public boolean schema_is_valid_fail_nested() {
+        return plan.isValid(invalidNestedMap);
+    }
+
+    @Benchmark
+    public org.sjf4j.schema.ValidationResult schema_validate_fail_nested() {
+        return plan.validate(invalidNestedMap, true, false);
     }
 
     @Benchmark
