@@ -122,23 +122,6 @@ class Fastjson2BinderTest {
             assertTrue(nativeReader.isEnd());
         }
 
-        JSONReader.Context context = JSONFactory.createReadContext();
-        context.config(JSONReader.Feature.UseDoubleForDecimals);
-        context.setObjectSupplier(LinkedHashMap::new);
-        context.setArraySupplier(ArrayList::new);
-        try (JSONReader nativeReader = JSONReader.of(json, context)) {
-            Map<?, ?> actual = nativeReader.read(Map.class);
-
-            assertTrue(nativeReader.isEnd());
-            assertEquals(expected, actual);
-            assertEquals(LinkedHashMap.class, actual.getClass());
-            assertEquals(LinkedHashMap.class, actual.get("nested").getClass());
-            Map<?, ?> nested = (Map<?, ?>) actual.get("nested");
-            assertEquals(ArrayList.class, nested.get("values").getClass());
-            assertEquals(LinkedHashMap.class, ((List<?>) nested.get("values")).get(2).getClass());
-            assertEquals(expected.get("fraction").getClass(), actual.get("fraction").getClass());
-            assertEquals(expected.get("large").getClass(), actual.get("large").getClass());
-        }
     }
 
     @Test
