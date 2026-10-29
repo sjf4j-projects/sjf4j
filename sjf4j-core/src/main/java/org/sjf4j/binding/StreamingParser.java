@@ -575,8 +575,9 @@ public abstract class StreamingParser implements Closeable {
     public abstract Object readRaw() throws IOException;
 
     /**
-     * Reads one complete raw JSON object, returning the backend's mutable
-     * insertion-ordered Map representation, or null for JSON null.
+     * Reads one complete raw JSON object, returning an owned mutable
+     * {@link java.util.LinkedHashMap}, or null for JSON null.
+     * Implementations must preserve this backing type for zero-copy JsonObject adoption.
      * Backends may override this to avoid generic raw-value dispatch.
      */
     @SuppressWarnings("unchecked")
@@ -589,8 +590,9 @@ public abstract class StreamingParser implements Closeable {
     }
 
     /**
-     * Reads one complete raw JSON array, returning the backend's mutable
-     * List representation, or null for JSON null.
+     * Reads one complete raw JSON array, returning an owned mutable
+     * {@link java.util.ArrayList}, or null for JSON null.
+     * Implementations must preserve this backing type for zero-copy JsonArray adoption.
      */
     @SuppressWarnings("unchecked")
     public List<Object> readRawArray() throws IOException {
