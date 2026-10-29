@@ -35,6 +35,8 @@ final class BindingValue {
         LIST,
         SET,
         MAP,
+        /** Read-only untyped Map; parse the complete OBNT object natively. */
+        RAW_MAP,
 
         /** Runtime dispatch for unknown nodes and whole-POJO OneOf fallbacks. */
         RUNTIME
