@@ -391,11 +391,7 @@ public final class StreamingIO {
         }
 
         if (raw == List.class) {
-            Object value = parser.readRaw();
-            if (value == null) {
-                return valueInfo.rawToValue(null);
-            }
-            return valueInfo.rawToValue(castList(value));
+            return valueInfo.rawToValue(parser.readRawArray());
         }
 
         throw new BindingException("cannot read value with ValueCodec into type '" + raw.getName() + "'");
@@ -739,18 +735,31 @@ public final class StreamingIO {
     public static List<Object> readList(StreamingParser parser, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                         RuntimeContext context) throws IOException {
+        // Exact raw List targets have no generic metadata to resolve.
+        if (elementType == null && (type == List.class || type == ArrayList.class)) {
+            return parser.readRawArray();
+        }
+
+        if (elementType == null) {
+            elementType = Types.resolveTypeArgument(type, List.class, 0);
+            elementBoxed = Types.rawBox(elementType);
+            elementTi = elementBoxed == Object.class
+                    ? TypeInfo.NONE : TypeRegistry.registerTypeInfo(elementBoxed);
+        }
+
+        // Preserve concrete list implementations and typed element bindings.
+        if ((boxed == List.class || boxed == ArrayList.class)
+                && elementType == Object.class
+                && (elementTi == null || elementTi == TypeInfo.NONE)) {
+            return parser.readRawArray();
+        }
+
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
             }
             throw new BindingException("cannot read token '" + parser.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
-        }
-
-        if (elementType == null) {
-            elementType = Types.resolveTypeArgument(type, List.class, 0);
-            elementBoxed = Types.rawBox(elementType);
-            elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
         }
 
         List<Object> list = boxed == List.class || boxed == ArrayList.class
@@ -1011,15 +1020,14 @@ public final class StreamingIO {
      */
     @SuppressWarnings("unchecked")
     public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
-        Object raw = parser.readRaw();
+        List<Object> raw = parser.readRawArray();
         if (raw == null) return null;
         if (raw.getClass() == ArrayList.class) {
             JsonArray result = new JsonArray();
             InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
             return result;
         }
-        if (raw instanceof List) return new JsonArray((List<Object>) raw);
-        throw new BindingException("cannot read non-array value as JsonArray");
+        return new JsonArray(raw);
     }
 
     /**
