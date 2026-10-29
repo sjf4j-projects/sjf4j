@@ -19,7 +19,6 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -94,6 +93,19 @@ public class SchemaValidationTest {
                 + "\"patternProperties\":{\"^x$\":{\"type\":\"null\"}}}").createPlan();
 
         assertTrue(plan.isValid(object));
+        assertEquals(1, value.encodes);
+    }
+
+    @Test
+    public void testNestedValueConversionCachedAcrossBranches() {
+        StringValue value = new StringValue();
+        Map<String, Object> nested = Collections.singletonMap("x", value);
+        Map<String, Object> root = Collections.singletonMap("nested", nested);
+        SchemaPlan plan = JsonSchema.fromJson("{\"allOf\":["
+                + "{\"properties\":{\"nested\":{\"properties\":{\"x\":{\"type\":\"null\"}}}}},"
+                + "{\"properties\":{\"nested\":{\"properties\":{\"x\":{\"type\":\"null\"}}}}}]}").createPlan();
+
+        assertTrue(plan.isValid(root));
         assertEquals(1, value.encodes);
     }
 
