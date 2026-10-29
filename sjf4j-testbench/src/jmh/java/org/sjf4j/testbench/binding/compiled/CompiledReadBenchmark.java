@@ -173,6 +173,16 @@ public class CompiledReadBenchmark {
         checkMap("jackson2 runtime JSON_DATA", JACKSON2_RUNTIME.readNode(JSON_DATA, Map.class));
         checkMap("jackson2 compiled JSON_UTF8", JACKSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("jackson2 runtime JSON_UTF8", JACKSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
+        // Match the full JSON value graph, not only a couple of root keys.
+        Object jackson2Map = JACKSON2_COMPILED.readMap(JSON_DATA);
+        checkEquivalentRawGraph("jackson2 native String", jackson2Map, jackson2_map_string_native());
+        checkEquivalentRawGraph("jackson2 raw String", jackson2Map, jackson2_map_string_raw());
+        checkEquivalentRawGraph("jackson2 runtime String", jackson2Map, jackson2_map_string_runtime());
+        checkEquivalentRawGraph("jackson2 native UTF-8", jackson2Map, jackson2_map_utf8_native());
+        checkEquivalentRawGraph("jackson2 compiled UTF-8", jackson2Map, jackson2_map_utf8_compiled());
+        checkEquivalentRawGraph("jackson2 raw UTF-8", jackson2Map, jackson2_map_utf8_raw());
+        checkEquivalentRawGraph("jackson2 runtime UTF-8", jackson2Map, jackson2_map_utf8_runtime());
+
         checkList("jackson2 compiled list", JACKSON2_COMPILED.readList(JSON_LIST_DATA));
         checkList("jackson2 runtime list", JACKSON2_RUNTIME.readNode(JSON_LIST_DATA, java.util.List.class));
         checkList("jackson2 compiled list utf8", JACKSON2_COMPILED.readListUtf8(JSON_LIST_UTF8));
@@ -186,6 +196,15 @@ public class CompiledReadBenchmark {
         checkMap("jackson3 runtime JSON_DATA", JACKSON3_RUNTIME.readNode(JSON_DATA, Map.class));
         checkMap("jackson3 compiled JSON_UTF8", JACKSON3_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("jackson3 runtime JSON_UTF8", JACKSON3_RUNTIME.readNode(JSON_UTF8, Map.class));
+        Object jackson3Map = JACKSON3_COMPILED.readMap(JSON_DATA);
+        checkEquivalentRawGraph("jackson3 native String", jackson3Map, jackson3_map_string_native());
+        checkEquivalentRawGraph("jackson3 raw String", jackson3Map, jackson3_map_string_raw());
+        checkEquivalentRawGraph("jackson3 runtime String", jackson3Map, jackson3_map_string_runtime());
+        checkEquivalentRawGraph("jackson3 native UTF-8", jackson3Map, jackson3_map_utf8_native());
+        checkEquivalentRawGraph("jackson3 compiled UTF-8", jackson3Map, jackson3_map_utf8_compiled());
+        checkEquivalentRawGraph("jackson3 raw UTF-8", jackson3Map, jackson3_map_utf8_raw());
+        checkEquivalentRawGraph("jackson3 runtime UTF-8", jackson3Map, jackson3_map_utf8_runtime());
+
         checkPojo("gson compiled JSON_DATA", expected, GSON_COMPILED.readPojo(JSON_DATA));
         checkPojo("gson runtime JSON_DATA", expected, GSON_RUNTIME.readNode(JSON_DATA, User.class));
         checkPojo("gson compiled JSON_UTF8", expected, GSON_COMPILED.readPojoUtf8(JSON_UTF8));
