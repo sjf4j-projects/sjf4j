@@ -9,7 +9,6 @@ import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayDeque;
-import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +35,7 @@ public final class InstancedNode {
     private boolean pathByIndex;
 
     // runtime state
-    private Deque<BitSet> evaluatedStack;
+    private Deque<EvaluationBits> evaluatedStack;
     private int refSchemaTimes = 0;
     private Deque<Object> refSchemaStack;
 
@@ -153,7 +152,7 @@ public final class InstancedNode {
      */
     void markEvaluated(int propIdx) {
         if (evaluatedStack == null) return;
-        BitSet evaluated = evaluatedStack.peek();
+        EvaluationBits evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(propIdx);
     }
@@ -163,7 +162,7 @@ public final class InstancedNode {
      */
     void markEvaluated(int fromIdx, int toIdx) {
         if (evaluatedStack == null) return;
-        BitSet evaluated = evaluatedStack.peek();
+        EvaluationBits evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(fromIdx, toIdx);
     }
@@ -175,7 +174,7 @@ public final class InstancedNode {
      */
     void createEvaluated() {
         if (evaluatedStack == null) evaluatedStack = new ArrayDeque<>();
-        evaluatedStack.push(new BitSet());
+        evaluatedStack.push(new EvaluationBits());
     }
 
     /**
@@ -183,13 +182,13 @@ public final class InstancedNode {
      */
     void pushEvaluated() {
         if (evaluatedStack == null) return;
-        evaluatedStack.push(new BitSet());
+        evaluatedStack.push(new EvaluationBits());
     }
 
     /**
      * Pushes an existing evaluated frame.
      */
-    void pushEvaluated(BitSet evaluated) {
+    void pushEvaluated(EvaluationBits evaluated) {
         if (evaluatedStack == null) return;
         evaluatedStack.push(evaluated);
     }
@@ -197,7 +196,7 @@ public final class InstancedNode {
     /**
      * Pops the current evaluated frame.
      */
-    BitSet popEvaluated() {
+    EvaluationBits popEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.pop();
     }
@@ -205,18 +204,18 @@ public final class InstancedNode {
     /**
      * Returns the current evaluated frame.
      */
-    BitSet peekEvaluated() {
+    EvaluationBits peekEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.peek();
     }
 
     /**
-     * Merges all evaluated frames into one BitSet snapshot.
+     * Merges all evaluated frames into one EvaluationBits snapshot.
      */
-    BitSet mergedEvaluated() {
-        BitSet merged = new BitSet();
+    EvaluationBits mergedEvaluated() {
+        EvaluationBits merged = new EvaluationBits();
         if (evaluatedStack != null) {
-            for (BitSet bs : evaluatedStack) merged.or(bs);
+            for (EvaluationBits bs : evaluatedStack) merged.or(bs);
         }
         return merged;
     }
