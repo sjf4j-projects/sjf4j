@@ -1,9 +1,9 @@
-name: Jackson Raw JDK25 Isolation
+name: Original CompiledReadBenchmark JDK25
 
 on:
   push:
     branches:
-      - experiment/jackson-jdk25-20261029
+      - experiment/jackson-original-jdk25-20261029
 
 jobs:
   benchmark:
@@ -25,13 +25,21 @@ jobs:
       - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
       - name: Build JMH with JDK17 toolchain
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Benchmark original JSON with JDK25
+      - name: Reproduce original CompiledReadBenchmark on JDK25
         run: |
           "$JAVA_HOME_25_X64/bin/java" -version
           JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
           "$JAVA_HOME_25_X64/bin/java" -jar "$JAR" \
-            '.*JacksonFactoryIsolationExperiment.(nativeDirect|rawShared|rawIndependent)$' \
-            -p shape=nested -p backend=j2,j3 -p input=string,utf8 \
+            '.*CompiledReadBenchmark.jackson[23]_map_(string|utf8)_(compiled|native|raw|runtime)
+            -rf json -rff jackson-jdk25-results.json
+      - name: Upload JDK25 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson-jdk25-results
+          path: jackson-jdk25-results.json
+          if-no-files-found: ignore
+ \
             -f 2 -wi 6 -i 8 -w 250ms -r 250ms -prof gc \
             -rf json -rff jackson-jdk25-results.json
       - name: Upload JDK25 results
