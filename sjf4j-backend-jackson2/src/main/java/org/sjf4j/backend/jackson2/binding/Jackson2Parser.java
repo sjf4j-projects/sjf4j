@@ -530,7 +530,7 @@ public final class Jackson2Parser extends StreamingParser {
         JsonToken current = nextValue();
         if (current == JsonToken.VALUE_NULL) return null;
         if (current != JsonToken.START_OBJECT) {
-            throw expected("object or null", current);
+            throw new BindingException("expected raw object or null, but was " + current);
         }
         return _readRawObject();
     }
@@ -540,7 +540,7 @@ public final class Jackson2Parser extends StreamingParser {
         JsonToken current = nextValue();
         if (current == JsonToken.VALUE_NULL) return null;
         if (current != JsonToken.START_ARRAY) {
-            throw expected("array or null", current);
+            throw new BindingException("expected raw array or null, but was " + current);
         }
         return _readRawArray();
     }
