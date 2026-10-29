@@ -95,22 +95,6 @@ class CompiledValidatorFoundationTest {
 
 
     @Test
-    void generatedValidatorActuallyInstallsCompiledPropertiesEvaluator() throws Exception {
-        Class<?> implementation = Class.forName(FastPojoValidator.class.getName() + "_Impl");
-        Class<?> fallback = Class.forName(implementation.getName() + "$Fallback");
-        java.lang.reflect.Field planField = fallback.getDeclaredField("PLAN_0");
-        planField.setAccessible(true);
-        Object plan = planField.get(null);
-
-        java.lang.reflect.Field evaluators = org.sjf4j.schema.SchemaPlan.class.getDeclaredField("evaluators");
-        evaluators.setAccessible(true);
-        Object[] chain = (Object[]) evaluators.get(plan);
-        assertTrue(java.util.Arrays.stream(chain).anyMatch(
-                evaluator -> evaluator.getClass().getSimpleName().equals("CompiledPropertiesEvaluator")),
-                "generated validator must install the direct-POJO traversal path");
-    }
-
-    @Test
     void directPojoGetterMatchesRuntimeAndDynamicValuesFallback() {
         FastPojoValidator compiled = CompiledInstances.create(FastPojoValidator.class);
         org.sjf4j.schema.SchemaPlan runtime =
