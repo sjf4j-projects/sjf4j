@@ -1,4 +1,4 @@
-name: Experiment SchemaPlan static execution modes
+name: Experiment SchemaPlan static modes reverse order
 on:
   push:
     branches: [experiment/schema-static-plan-mode]
@@ -32,7 +32,7 @@ jobs:
           set -euo pipefail
           mkdir -p results
           regex='.*CreekSchemaBenchmark\.(schema_validate_map|schema_is_valid_map|schema_is_valid_fail_nested|schema_validate_fail_nested|schema_is_valid_fail_property)'
-          for variant in optimized baseline; do
+          for variant in baseline optimized; do
             if [ "$variant" = optimized ]; then root="$GITHUB_WORKSPACE"; else root="$RUNNER_TEMP/sjf4j-baseline"; fi
             jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -name '*jmh*.jar' -type f | head -n 1)
             java -jar "$jar" "$regex" -f 2 -wi 15 -i 5 -w 350ms -r 350ms -prof gc \
