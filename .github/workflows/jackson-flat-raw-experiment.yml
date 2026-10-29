@@ -1,13 +1,13 @@
-name: Jackson Original JMH - f2 wi20 i5
+name: Jackson Original JMH Linux ARM64 - f2 wi20 i5
 
 on:
   push:
     branches:
-      - experiment/jackson-f2-wi20-i5-20261030
+      - experiment/jackson-linux-arm64-f2-wi20-i5-20261030
 
 jobs:
   benchmark:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
     steps:
@@ -29,11 +29,11 @@ jobs:
         run: |
           uname -a
           lscpu
-          "$JAVA_HOME_25_X64/bin/java" -version
+          "$JAVA_HOME_25_ARM64/bin/java" -version
       - name: Run original Jackson 2/3 Map benchmark - 2 forks, 20 warmups, 5 measurements
         run: |
           JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
-          "$JAVA_HOME_25_X64/bin/java" -jar "$JAR" \
+          "$JAVA_HOME_25_ARM64/bin/java" -jar "$JAR" \
             '.*CompiledReadBenchmark.jackson[23]_map_(string|utf8)_(compiled|native|raw|runtime)$' \
             -f 2 -wi 20 -i 5 -w 250ms -r 250ms -prof gc \
             -rf json -rff jackson-f2-wi20-i5-results.json
