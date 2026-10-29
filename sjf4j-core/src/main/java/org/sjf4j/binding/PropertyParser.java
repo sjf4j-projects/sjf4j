@@ -18,6 +18,7 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -175,6 +176,13 @@ public interface PropertyParser {
         if (List.class.isAssignableFrom(fieldBoxed)) {
             Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
             Class<?> elementBoxed = Types.rawBox(elementType);
+            if ((fieldBoxed == List.class || fieldBoxed == ArrayList.class)
+                    && elementType == Object.class) {
+                return (parser, owner, ownerType, ownerBoxed, context) -> {
+                    Object value = parser.readRawArray();
+                    Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                };
+            }
             LazyTypeInfo elementTiRef = new LazyTypeInfo(elementBoxed);
             return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo elementTi = elementTiRef.get();
