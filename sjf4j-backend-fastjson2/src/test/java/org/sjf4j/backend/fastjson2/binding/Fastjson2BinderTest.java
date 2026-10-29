@@ -93,6 +93,21 @@ class Fastjson2BinderTest {
         Fastjson2Binder binder = new Fastjson2Binder();
         Map<?, ?> expected = (Map<?, ?>) binder.readNode(json, Map.class);
 
+        // Backend-native JSONObject/JSONArray are legitimate Map/List nodes.
+        // Their concrete class is deliberately NOT forced to match SJF4J's
+        // LinkedHashMap/ArrayList representation.
+        JSONReader.Context nativeContext =
+                JSONFactory.createReadContext(JSONReader.Feature.UseDoubleForDecimals);
+        try (JSONReader nativeReader = JSONReader.of(json, nativeContext)) {
+            Map<?, ?> nativeObject = nativeReader.readObject();
+            assertEquals(expected, nativeObject);
+            assertEquals(com.alibaba.fastjson2.JSONObject.class, nativeObject.getClass());
+            Map<?, ?> nested = (Map<?, ?>) nativeObject.get("nested");
+            assertEquals(com.alibaba.fastjson2.JSONObject.class, nested.getClass());
+            assertEquals(com.alibaba.fastjson2.JSONArray.class, nested.get("values").getClass());
+            assertTrue(nativeReader.isEnd());
+        }
+
         JSONReader.Context context = JSONFactory.createReadContext();
         context.config(JSONReader.Feature.UseDoubleForDecimals);
         context.setObjectSupplier(LinkedHashMap::new);
