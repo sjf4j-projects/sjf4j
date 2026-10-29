@@ -99,6 +99,7 @@ class CompiledValidatorFoundationTest {
         FastPojoValidator compiled = CompiledInstances.create(FastPojoValidator.class);
         org.sjf4j.schema.SchemaPlan runtime =
                 new org.sjf4j.schema.SchemaRegistry().register(
+                        java.net.URI.create("sjf4j:/test/fast-pojo.json"),
                         org.sjf4j.schema.JsonSchema.fromJson(FAST_SCHEMA));
 
         FastPojo good = new FastPojo("Alice", 3);
