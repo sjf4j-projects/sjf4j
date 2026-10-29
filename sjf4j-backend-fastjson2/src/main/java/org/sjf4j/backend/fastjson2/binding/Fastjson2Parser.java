@@ -19,6 +19,8 @@ import java.time.LocalDateTime;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -62,9 +64,8 @@ public final class Fastjson2Parser extends StreamingParser {
     /**
      * Reads the next value as the raw SJF4J object graph.
      *
-     * <p>Objects and arrays use Fastjson2's native mutable Map/List
-     * containers (JSONObject/JSONArray with the default reader context).
-     * These are valid OBNT containers and need no intermediate copy.</p>
+     * <p>Objects are represented by insertion-ordered LinkedHashMap values
+     * and arrays by ArrayList values. Nested containers are parsed by SJF4J.</p>
      */
     @Override
     public Object readRaw() throws IOException {
@@ -78,9 +79,7 @@ public final class Fastjson2Parser extends StreamingParser {
     @Override
     public Map<String, Object> readRawObject() throws IOException {
         try {
-            // The native object loop is faster than a duplicate field/value
-            // dispatcher. Validate the root shape without consuming it.
-            if (reader.current() == '{') return reader.readObject();
+            if (reader.current() == '{') return _readRawObjectBody();
             if (reader.nextIfNull()) return null;
             throw new BindingException("expected token '{', but was '" + reader.current() + "'");
         } finally {
@@ -91,7 +90,7 @@ public final class Fastjson2Parser extends StreamingParser {
     @Override
     public List<Object> readRawArray() throws IOException {
         try {
-            if (reader.current() == '[') return reader.readArray();
+            if (reader.current() == '[') return _readRawArrayBody();
             if (reader.nextIfNull()) return null;
             throw new BindingException("expected token '[', but was '" + reader.current() + "'");
         } finally {
@@ -374,9 +373,9 @@ public final class Fastjson2Parser extends StreamingParser {
         char current = reader.current();
         switch (current) {
             case '{':
-                return reader.readObject();
+                return _readRawObjectBody();
             case '[':
-                return reader.readArray();
+                return _readRawArrayBody();
             case '"':
                 return reader.readString();
             case 't':
@@ -392,6 +391,26 @@ public final class Fastjson2Parser extends StreamingParser {
                 Token token = reader.isEnd() ? Token.EOF : _token(current);
                 throw new BindingException("unexpected token '" + token + "'");
         }
+    }
+
+    // The caller has already checked the opening delimiter. Consume it
+    // directly to avoid repeating the token-type branch at every level.
+    private Map<String, Object> _readRawObjectBody() throws IOException {
+        reader.next();
+        Map<String, Object> value = new LinkedHashMap<>();
+        while (!reader.nextIfObjectEnd()) {
+            value.put(reader.readFieldName(), _readRaw());
+        }
+        return value;
+    }
+
+    private List<Object> _readRawArrayBody() throws IOException {
+        reader.next();
+        List<Object> value = new ArrayList<>();
+        while (!reader.nextIfArrayEnd()) {
+            value.add(_readRaw());
+        }
+        return value;
     }
 
     private static Token _token(char ch) {
