@@ -119,10 +119,6 @@ class Fastjson2BinderTest {
         try (JSONReader nativeReader = JSONReader.of(json, nativeContext)) {
             Map<?, ?> nativeObject = nativeReader.read(Map.class);
             assertEquals(expected, nativeObject);
-            assertEquals(LinkedHashMap.class, nativeObject.getClass());
-            Map<?, ?> nested = (Map<?, ?>) nativeObject.get("nested");
-            assertEquals(LinkedHashMap.class, nested.getClass());
-            assertEquals(ArrayList.class, nested.get("values").getClass());
             assertTrue(nativeReader.isEnd());
         }
 
@@ -142,6 +138,22 @@ class Fastjson2BinderTest {
             assertEquals(LinkedHashMap.class, ((List<?>) nested.get("values")).get(2).getClass());
             assertEquals(expected.get("fraction").getClass(), actual.get("fraction").getClass());
             assertEquals(expected.get("large").getClass(), actual.get("large").getClass());
+        }
+    }
+
+    @Test
+    void rawParserKeepsOrderedJdkContainersWithNativeObjectFeature() throws Exception {
+        JSONReader.Context context = JSONFactory.createReadContext(
+                JSONReader.Feature.UseNativeObject);
+        try (Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
+                "{\"first\":[{\"nested\":1}],\"second\":2}", context))) {
+            Map<String, Object> root = parser.readRawObject();
+            assertEquals(LinkedHashMap.class, root.getClass());
+            assertEquals(Arrays.asList("first", "second"), new ArrayList<>(root.keySet()));
+            List<?> array = (List<?>) root.get("first");
+            assertEquals(ArrayList.class, array.getClass());
+            assertEquals(LinkedHashMap.class, array.get(0).getClass());
+            parser.end();
         }
     }
 
