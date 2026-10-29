@@ -622,15 +622,6 @@ final class ReadEmitter {
     }
 
     private void emitMap(JavaWriter out, BindingValue value) {
-        // Unstructured Map<String, Object> uses the same streaming Map path as
-        // runtime binding. Typed containers keep their compiled element plan.
-        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
-                && context.types.isObject(value.mapValue().type())) {
-            out.line("return " + STREAMING_IO + ".readMap(parser, java.util.Map.class, "
-                    + "java.util.Map.class, null, null, null, this.context);");
-            return;
-        }
-
         emitObjectStart(out);
 
         out.line(value.type() + " value = new java.util.LinkedHashMap<>();");
@@ -775,6 +766,9 @@ final class ReadEmitter {
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
                 return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
                         + ".readOneOf(" + parser + ", " + value.helperName() + "_info, this.context)";
+
+            case RAW_MAP:
+                return "(" + value.type() + ") " + parser + ".readRawObject()";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) return "(" + value.type() + ") " + parser + ".readRaw()";
