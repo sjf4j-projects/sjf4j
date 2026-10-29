@@ -996,33 +996,30 @@ public final class StreamingIO {
 
 
     /**
-     * Reads a plain JsonObject while adopting a newly parsed LinkedHashMap.
-     * Other Map implementations use the public defensive-copy constructor.
-     * Nested raw values retain their original representations.
+     * Adopts an owned LinkedHashMap, including backend-native subclasses such
+     * as Fastjson2 JSONObject, without copying its parsed members.
      */
     @SuppressWarnings("unchecked")
     public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
-        Object raw = parser.readRaw();
+        Map<String, Object> raw = parser.readRawObject();
         if (raw == null) return null;
-        if (raw.getClass() == LinkedHashMap.class) {
+        if (raw instanceof LinkedHashMap) {
             JsonObject result = new JsonObject();
             InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
             return result;
         }
-        if (raw instanceof Map) return new JsonObject((Map<String, Object>) raw);
-        throw new BindingException("cannot read non-object value as JsonObject");
+        return new JsonObject(raw);
     }
 
     /**
-     * Reads a plain JsonArray while adopting a newly parsed ArrayList.
-     * Other List implementations use the public defensive-copy constructor.
-     * Nested raw values retain their original representations.
+     * Adopts an owned ArrayList, including backend-native subclasses such
+     * as Fastjson2 JSONArray, without copying its parsed elements.
      */
     @SuppressWarnings("unchecked")
     public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
         List<Object> raw = parser.readRawArray();
         if (raw == null) return null;
-        if (raw.getClass() == ArrayList.class) {
+        if (raw instanceof ArrayList) {
             JsonArray result = new JsonArray();
             InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
             return result;
