@@ -149,6 +149,13 @@ public interface PropertyParser {
         if (Map.class.isAssignableFrom(fieldBoxed)) {
             Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
             Class<?> valueBoxed = Types.rawBox(valueType);
+            if ((fieldBoxed == Map.class || fieldBoxed == LinkedHashMap.class)
+                    && valueType == Object.class) {
+                return (parser, owner, ownerType, ownerBoxed, context) -> {
+                    Object value = parser.readRawObject();
+                    Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
+                };
+            }
             LazyTypeInfo valueTiRef = new LazyTypeInfo(valueBoxed);
             return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo valueTi = valueTiRef.get();
