@@ -1,0 +1,30 @@
+name: Experimental Jackson Raw JMH
+
+on:
+  push:
+    branches:
+      - experiment/jackson-string-end-listmap-20261029
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Same-factory String vs UTF8 and EOF
+        run: |
+          JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
+          echo "JMH jar: $JAR"
+          java -jar "$JAR" '.*JacksonStringEndExperiment.*' -f 1 -wi 6 -i 6 -w 250ms -r 250ms -prof gc
+      - name: Repeated List Map constructor
+        run: |
+          JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
+          java -jar "$JAR" '.*JacksonListMapExperiment.*' -f 1 -wi 5 -i 5 -w 200ms -r 200ms -prof gc
