@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Fastjson2BinderTest {
 
     @Test
-    void readsRawNodesWithFastjson2NativeContainers() throws Exception {
+    void readsRawNodesWithSjf4jContainers() throws Exception {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"));
@@ -43,16 +43,16 @@ class Fastjson2BinderTest {
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
             Map<?, ?> value = (Map<?, ?>) parser.readRaw();
 
-            assertEquals(com.alibaba.fastjson2.JSONObject.class, value.getClass());
+            assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                     Arrays.asList(value.keySet().toArray()));
             assertEquals("Ada", value.get("text"));
             assertEquals(7, value.get("number"));
             assertEquals(true, value.get("enabled"));
             assertNull(value.get("empty"));
-            assertEquals(com.alibaba.fastjson2.JSONObject.class, value.get("nested").getClass());
-            assertEquals(com.alibaba.fastjson2.JSONArray.class, value.get("items").getClass());
-            assertEquals(com.alibaba.fastjson2.JSONObject.class, ((List<?>) value.get("items")).get(1).getClass());
+            assertEquals(LinkedHashMap.class, value.get("nested").getClass());
+            assertEquals(ArrayList.class, value.get("items").getClass());
+            assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
             assertEquals(StreamingParser.Token.EOF, parser.peekToken());
             parser.end();
         } finally {
@@ -68,12 +68,12 @@ class Fastjson2BinderTest {
             parser.readArrayStart();
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
             Map<String, Object> object = parser.readRawObject();
-            assertEquals(com.alibaba.fastjson2.JSONObject.class, object.getClass());
+            assertEquals(LinkedHashMap.class, object.getClass());
             assertEquals(7, object.get("id"));
             assertEquals(StreamingParser.Token.ARRAY_START, parser.peekToken());
             List<Object> array = parser.readRawArray();
-            assertEquals(com.alibaba.fastjson2.JSONArray.class, array.getClass());
-            assertEquals(com.alibaba.fastjson2.JSONObject.class, array.get(1).getClass());
+            assertEquals(ArrayList.class, array.getClass());
+            assertEquals(LinkedHashMap.class, array.get(1).getClass());
             assertNull(parser.readRawObject());
             assertNull(parser.readRawArray());
             parser.readArrayEnd();
@@ -90,40 +90,39 @@ class Fastjson2BinderTest {
     }
 
     @Test
-    void jsonNodesAdoptNativeRawContainersWithoutCopy() {
+    void jsonNodesAdoptOwnedRawContainersWithoutCopy() {
         Fastjson2Binder binder = new Fastjson2Binder();
         JsonObject object = (JsonObject) binder.readNode(
                 "{\"id\":7,\"nested\":[1,{\"ok\":true}]}", JsonObject.class);
         JsonArray array = (JsonArray) binder.readNode(
                 "[1,{\"name\":\"Ada\"}]", JsonArray.class);
 
-        assertEquals(com.alibaba.fastjson2.JSONObject.class,
+        assertEquals(LinkedHashMap.class,
                 InternalAccess.dynamicMembers(object).getClass());
-        assertEquals(com.alibaba.fastjson2.JSONArray.class,
+        assertEquals(ArrayList.class,
                 InternalAccess.dynamicElements(array).getClass());
         assertEquals(7, object.get("id"));
         assertEquals(2, array.size());
     }
 
     @Test
-    void nativeRawContainersMatchTheSjf4jObjectGraph() throws Exception {
+    void nativeMapBindingMatchesTheSjf4jObjectGraph() throws Exception {
         String json = "{\"small\":7,\"large\":9876543210,\"fraction\":98.75,"
                 + "\"nested\":{\"enabled\":true,\"values\":[null,1,{\"name\":\"Ada\"}]}}";
         Fastjson2Binder binder = new Fastjson2Binder();
         Map<?, ?> expected = (Map<?, ?>) binder.readNode(json, Map.class);
 
-        // Backend-native JSONObject/JSONArray are legitimate Map/List nodes.
-        // Their concrete class is deliberately NOT forced to match SJF4J's
-        // LinkedHashMap/ArrayList representation.
+        // Compare the native Map reader with SJF4J raw parsing, while
+        // preserving SJF4J's insertion-ordered JDK containers.
         JSONReader.Context nativeContext =
                 JSONFactory.createReadContext(JSONReader.Feature.UseDoubleForDecimals);
         try (JSONReader nativeReader = JSONReader.of(json, nativeContext)) {
-            Map<?, ?> nativeObject = nativeReader.readObject();
+            Map<?, ?> nativeObject = nativeReader.read(Map.class);
             assertEquals(expected, nativeObject);
-            assertEquals(com.alibaba.fastjson2.JSONObject.class, nativeObject.getClass());
+            assertEquals(LinkedHashMap.class, nativeObject.getClass());
             Map<?, ?> nested = (Map<?, ?>) nativeObject.get("nested");
-            assertEquals(com.alibaba.fastjson2.JSONObject.class, nested.getClass());
-            assertEquals(com.alibaba.fastjson2.JSONArray.class, nested.get("values").getClass());
+            assertEquals(LinkedHashMap.class, nested.getClass());
+            assertEquals(ArrayList.class, nested.get("values").getClass());
             assertTrue(nativeReader.isEnd());
         }
 
@@ -132,7 +131,7 @@ class Fastjson2BinderTest {
         context.setObjectSupplier(LinkedHashMap::new);
         context.setArraySupplier(ArrayList::new);
         try (JSONReader nativeReader = JSONReader.of(json, context)) {
-            Map<?, ?> actual = nativeReader.readObject();
+            Map<?, ?> actual = nativeReader.read(Map.class);
 
             assertTrue(nativeReader.isEnd());
             assertEquals(expected, actual);
