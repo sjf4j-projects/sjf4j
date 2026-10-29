@@ -38,6 +38,37 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    # Temporary Fastjson2 two-value A/B; restore workflow after measurement.
+    - name: Compare Fastjson2 generic and two-value raw parser
+      run: |
+        git fetch --no-tags --depth=1 origin be9833a6a9dfc80e6a40f071d1a1bb668066dafe
+        cp sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Parser.java /tmp/current-fastjson2.java
+        git show be9833a6a9dfc80e6a40f071d1a1bb668066dafe:sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Parser.java > sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Parser.java
+        ./gradlew :sjf4j-testbench:jmhJar --no-daemon --rerun-tasks
+        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
+        java -jar "$JMH_JAR" 'Fastjson2RawAllocationBenchmark\.(map|list)(Native|Compiled|Runtime)String$' -p shape=two,five,six,wide -f 2 -wi 8 -i 4 -w 100ms -r 100ms -t 1 -prof gc -rf json -rff /tmp/fastjson-generic.json
+        cp /tmp/current-fastjson2.java sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Parser.java
+        ./gradlew :sjf4j-testbench:jmhJar --no-daemon --rerun-tasks
+        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
+        java -jar "$JMH_JAR" 'Fastjson2RawAllocationBenchmark\.(map|list)(Native|Compiled|Runtime)String$' -p shape=two,five,six,wide -f 2 -wi 8 -i 4 -w 100ms -r 100ms -t 1 -prof gc -rf json -rff /tmp/fastjson-two.json
+        python3 - <<'PY'
+        import json
+        a = json.load(open('/tmp/fastjson-generic.json'))
+        b = json.load(open('/tmp/fastjson-two.json'))
+        print("BEGIN FASTJSON TWO A/B")
+        for shape in ("two", "five", "six", "wide"):
+            for kind in ("map", "list"):
+                for mode in ("Native", "Compiled", "Runtime"):
+                    method = kind + mode + "String"
+                    before = next(x for x in a if x['params']['shape'] == shape and x['benchmark'].endswith('.' + method))
+                    after = next(x for x in b if x['params']['shape'] == shape and x['benchmark'].endswith('.' + method))
+                    x,y = before['primaryMetric']['score'],after['primaryMetric']['score']
+                    bx = before['secondaryMetrics']['gc.alloc.rate.norm']['score']
+                    by = after['secondaryMetrics']['gc.alloc.rate.norm']['score']
+                    print(f"{shape} {kind} {mode}: generic {x:.4f} us/op, two {y:.4f} us/op, B/op {bx:.1f}->{by:.1f}")
+        print("END FASTJSON TWO A/B")
+        PY
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
