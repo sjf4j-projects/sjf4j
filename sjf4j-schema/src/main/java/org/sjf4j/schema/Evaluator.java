@@ -733,6 +733,7 @@ public interface Evaluator {
                 String key = entry.getKey();
                 Object value = entry.getValue();
                 boolean matched = false;
+                boolean evaluated = false;
                 NodeFrame child = null;
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                 try {
@@ -741,7 +742,7 @@ public interface Evaluator {
                         if (plan != null) {
                             child = ctx.enterKey(instance, key, value);
                             boolean subResult = plan.evaluate(child, cps, ctx);
-                            if (subResult) ctx.markEvaluated(propIdx);
+                            if (subResult) evaluated = true;
                             else {
                                 result = false;
                                 if (!result && ctx.shouldAbort()) return false;
@@ -757,7 +758,7 @@ public interface Evaluator {
                                 if (plan != null) {
                                     if (child == null) child = ctx.enterKey(instance, key, value);
                                     boolean subResult = plan.evaluate(child, cps, ctx);
-                                    if (subResult) ctx.markEvaluated(propIdx);
+                                    if (subResult) evaluated = true;
                                     else {
                                         result = false;
                                         if (!result && ctx.shouldAbort()) return false;
@@ -771,7 +772,7 @@ public interface Evaluator {
                     if (additionalPropertiesPlan != null && !matched) {
                         if (child == null) child = ctx.enterKey(instance, key, value);
                         boolean subResult = additionalPropertiesPlan.evaluate(child, cps, ctx);
-                        if (subResult) ctx.markEvaluated(propIdx);
+                        if (subResult) evaluated = true;
                         else {
                             result = false;
                             if (!result && ctx.shouldAbort()) return false;
@@ -780,6 +781,7 @@ public interface Evaluator {
                 } finally {
                     if (child != null) ctx.leaveChild();
                 }
+                if (evaluated) ctx.markEvaluated(propIdx);
                 propIdx++;
             }
             return result;
