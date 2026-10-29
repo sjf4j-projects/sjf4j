@@ -77,6 +77,26 @@ public final class Fastjson2Parser extends StreamingParser {
     }
 
     @Override
+    public Map<String, Object> readRawObject() throws IOException {
+        try {
+            if (reader.nextIfNull()) return null;
+            return _readRawObject();
+        } finally {
+            peeked = null;
+        }
+    }
+
+    @Override
+    public List<Object> readRawArray() throws IOException {
+        try {
+            if (reader.nextIfNull()) return null;
+            return _readRawArray();
+        } finally {
+            peeked = null;
+        }
+    }
+
+    @Override
     public Token peekToken() {
         if (peeked == null) {
             peeked = reader.isEnd() ? Token.EOF : _token(reader.current());
