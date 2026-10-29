@@ -139,11 +139,11 @@ public class CompiledBinderTest {
 
         assertEquals(new SimpleJsonBinder().readNode(input, Object.class), list);
         assertEquals(list, concrete);
-        assertEquals(ArrayList.class, list.getClass());
-        assertEquals(ArrayList.class, concrete.getClass());
-        assertEquals(LinkedHashMap.class, list.get(0).getClass());
-        assertEquals(ArrayList.class, list.get(1).getClass());
-        assertEquals(LinkedHashMap.class, ((List<?>) list.get(1)).get(1).getClass());
+        assertTrue(list instanceof ArrayList);
+        assertTrue(concrete instanceof ArrayList);
+        assertTrue(list.get(0) instanceof LinkedHashMap);
+        assertTrue(list.get(1) instanceof ArrayList);
+        assertTrue(((List<?>) list.get(1)).get(1) instanceof LinkedHashMap);
 
         assertNull(binder.readRawList("null"));
         assertNull(binder.readRawArrayList("null"));
@@ -152,10 +152,10 @@ public class CompiledBinderTest {
 
         RawListHolder holder = binder.readRawListHolder(
                 "{\"list\":[{\"x\":1},[false]],\"arrayList\":[1,null,\"last\"]}");
-        assertEquals(ArrayList.class, holder.list.getClass());
-        assertEquals(ArrayList.class, holder.arrayList.getClass());
-        assertEquals(LinkedHashMap.class, holder.list.get(0).getClass());
-        assertEquals(ArrayList.class, holder.list.get(1).getClass());
+        assertTrue(holder.list instanceof ArrayList);
+        assertTrue(holder.arrayList instanceof ArrayList);
+        assertTrue(holder.list.get(0) instanceof LinkedHashMap);
+        assertTrue(holder.list.get(1) instanceof ArrayList);
     }
 
     @Test
@@ -298,24 +298,24 @@ public class CompiledBinderTest {
         Map<String, Object> compiled = binder.readObjectMap(input);
         LinkedHashMap<String, Object> linked = binder.readLinkedObjectMap(input);
         assertEquals(compiled, linked);
-        assertEquals(LinkedHashMap.class, linked.getClass());
+        assertInstanceOf(LinkedHashMap.class, linked.getClass());
         assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                 new ArrayList<String>(linked.keySet()));
-        assertEquals(LinkedHashMap.class, linked.get("nested").getClass());
+        assertInstanceOf(LinkedHashMap.class, linked.get("nested").getClass());
 
         Map<?, ?> runtime = (Map<?, ?>) new SimpleJsonBinder().readNode(input, Object.class);
 
         assertEquals(runtime, compiled);
-        assertEquals(LinkedHashMap.class, compiled.getClass());
+        assertInstanceOf(LinkedHashMap.class, compiled.getClass());
         assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                 new ArrayList<String>(compiled.keySet()));
 
         Map<?, ?> nested = (Map<?, ?>) compiled.get("nested");
         List<?> items = (List<?>) compiled.get("items");
-        assertEquals(LinkedHashMap.class, nested.getClass());
-        assertEquals(ArrayList.class, items.getClass());
+        assertInstanceOf(LinkedHashMap.class, nested.getClass());
+        assertInstanceOf(ArrayList.class, items.getClass());
         assertEquals(Arrays.asList("first", "second"), new ArrayList<Object>(nested.keySet()));
-        assertEquals(LinkedHashMap.class, items.get(1).getClass());
+        assertInstanceOf(LinkedHashMap.class, items.get(1).getClass());
 
         String holderInput = "{"
                 + "\"value\":{\"text\":\"Ada\",\"nested\":[1,{\"enabled\":true}]},"
@@ -329,12 +329,12 @@ public class CompiledBinderTest {
 
         assertEquals(runtimeHolder.get("value"), holder.getValue());
         assertEquals(runtimeHolder.get("values"), holderValues);
-        assertEquals(LinkedHashMap.class, holderValue.getClass());
+        assertInstanceOf(LinkedHashMap.class, holderValue.getClass());
         assertEquals(Arrays.asList("text", "nested"), new ArrayList<Object>(holderValue.keySet()));
-        assertEquals(ArrayList.class, holderNested.getClass());
-        assertEquals(ArrayList.class, holderValues.getClass());
-        assertEquals(LinkedHashMap.class, holderValues.get(1).getClass());
-        assertEquals(ArrayList.class, holderValues.get(2).getClass());
+        assertInstanceOf(ArrayList.class, holderNested.getClass());
+        assertInstanceOf(ArrayList.class, holderValues.getClass());
+        assertInstanceOf(LinkedHashMap.class, holderValues.get(1).getClass());
+        assertInstanceOf(ArrayList.class, holderValues.get(2).getClass());
     }
 
     @ParameterizedTest(name = "{0}")
