@@ -109,8 +109,12 @@ public final class ValidationContext {
     }
 
     public SchemaPlan popPlan() {
-        return planStack == null ? null : planStack.pop()    void enterRef(SchemaPlan plan, NodeFrame node, PathSegment keywordPs) {
-        // The common case is a single $ref; avoid arrays and a scan altogether.
+        return planStack == null ? null : planStack.pop();
+    }
+
+    public Deque<SchemaPlan> planStack() { return planStack; }
+
+    void enterRef(SchemaPlan plan, NodeFrame node, PathSegment keywordPs) {
         if (activeRefCount == 0) {
             firstRefPlan = plan;
             firstRefNode = node;
@@ -153,10 +157,6 @@ public final class ValidationContext {
             activeRefPlans[activeRefCount] = null;
             activeRefNodes[activeRefCount] = null;
         }
-    }
-
-      activeRefPlans[i] = null;
-        activeRefNodes[i] = null;
     }
 
     @SuppressWarnings("unchecked")
