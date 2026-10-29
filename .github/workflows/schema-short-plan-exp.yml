@@ -1,4 +1,4 @@
-name: Experiment schema short-plan unrolling
+name: Experiment schema short-plan unrolling reversed A/B
 on:
   push:
     branches: [experiment/schema-short-plan-unroll]
@@ -32,10 +32,10 @@ jobs:
           set -euo pipefail
           mkdir -p results
           regex='.*CreekSchemaBenchmark\.(schema_validate_map|schema_is_valid_map|schema_is_valid_fail_nested|schema_validate_fail_nested)$'
-          for variant in baseline optimized; do
+          for variant in optimized baseline; do
             if [ "$variant" = baseline ]; then root="$RUNNER_TEMP/sjf4j-baseline"; else root="$GITHUB_WORKSPACE"; fi
             jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -type f -name '*jmh*.jar' | head -n 1)
-            java -jar "$jar" "$regex" -f 2 -wi 12 -i 5 -w 300ms -r 350ms -prof gc \
+            java -jar "$jar" "$regex" -f 2 -wi 15 -i 5 -w 350ms -r 350ms -prof gc \
               -rf json -rff "$GITHUB_WORKSPACE/results/$variant.json" | tee "$GITHUB_WORKSPACE/results/$variant.txt"
           done
           python3 - <<'PY'
