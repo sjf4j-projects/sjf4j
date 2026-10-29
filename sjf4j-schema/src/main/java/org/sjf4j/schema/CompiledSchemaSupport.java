@@ -1,5 +1,7 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.annotation.node.NodeObject;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.TypeInfo;
@@ -19,6 +21,9 @@ public final class CompiledSchemaSupport {
         if (plan == null || access == null) throw new IllegalArgumentException("null compiled schema input");
         Class<?> type = access.type();
         if (type == null || !Modifier.isPublic(type.getModifiers())) return plan;
+        NodeObject options = type.getAnnotation(NodeObject.class);
+        if (options != null && options.propertyStrategy() != PropertyStrategy.BEAN_FIELD &&
+                options.propertyStrategy() != PropertyStrategy.BEAN_ONLY) return plan;
         TypeInfo info = TypeRegistry.registerTypeInfo(type);
         PojoInfo pojo = info.pojoInfo;
         if (pojo == null || pojo.isJojo) return plan;
