@@ -550,8 +550,8 @@ public final class Jackson3Parser extends StreamingParser {
         return _readRawArray();
     }
 
-    // Delay allocation for up to five members/elements. Most small JSON
-    // containers then receive an exactly sized backing table/array.
+    // Buffer up to five members/elements in locals before allocating a
+    // right-sized JDK container. Larger inputs continue with the normal loop.
     private Map<String, Object> _readRawObject() throws IOException {
         String name1 = parser.nextName();
         if (name1 == null) return new LinkedHashMap<>(0);
