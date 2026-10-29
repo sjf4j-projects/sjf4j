@@ -33,6 +33,8 @@ final class BindingValue {
         JSON_ARRAY,
         ARRAY,
         LIST,
+        /** Read-only untyped List; parse the complete OBNT array natively. */
+        RAW_LIST,
         SET,
         MAP,
         /** Read-only untyped Map; parse the complete OBNT object natively. */
