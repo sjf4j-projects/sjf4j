@@ -241,6 +241,27 @@ public class EvaluatorTraversalBenchmark {
         }
     }
 
+    /** Measures the diagnostic-free, first-failure boolean execution path. */
+    @Benchmark
+    public boolean properties_booleanOnly(ObjectState state) {
+        return state.propertiesPlan.isValid(state.propertiesNode);
+    }
+
+    @Benchmark
+    public boolean unevaluated_properties_booleanOnly(ObjectState state) {
+        return state.unevaluatedPlan.isValid(state.unevaluatedNode);
+    }
+
+    @Benchmark
+    public boolean items_booleanOnly(ArrayState state) {
+        return state.itemsPlan.isValid(state.itemsNode);
+    }
+
+    @Benchmark
+    public boolean contains_booleanOnly(ArrayState state) {
+        return state.containsPlan.isValid(state.containsNode);
+    }
+
     @Benchmark
     public ValidationResult properties(ObjectState state) {
         return state.propertiesPlan.validate(state.propertiesNode, state.failFast, false);
