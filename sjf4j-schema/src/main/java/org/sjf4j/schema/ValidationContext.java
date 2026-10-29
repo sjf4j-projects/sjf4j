@@ -48,7 +48,7 @@ public class ValidationContext {
         return new ValidationContext(true, strictFormat, true);
     }
 
-    boolean needsDiagnostic() {
+    boolean shouldReportError() {
         return !booleanOnly && ignoreErrorAdding == 0;
     }
 
