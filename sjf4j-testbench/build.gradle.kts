@@ -84,6 +84,11 @@ tasks.withType<JavaCompile>().configureEach {
     ))
 }
 
+tasks.named<JavaCompile>("compileTestJava") {
+    options.compilerArgs.add("-Asjf4j.schemaDir=" +
+            layout.projectDirectory.dir("src/test/resources").asFile.absolutePath)
+}
+
 tasks.test {
     useJUnitPlatform()
     jvmArgs(
