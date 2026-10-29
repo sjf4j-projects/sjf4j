@@ -744,7 +744,7 @@ public interface Evaluator {
                             if (subResult) ctx.markEvaluated(propIdx);
                             else {
                                 result = false;
-                                if (ctx.shouldAbort()) return false;
+                                if (!result && ctx.shouldAbort()) return false;
                             }
                             matched = true;
                         }
@@ -760,7 +760,7 @@ public interface Evaluator {
                                     if (subResult) ctx.markEvaluated(propIdx);
                                     else {
                                         result = false;
-                                        if (ctx.shouldAbort()) return false;
+                                        if (!result && ctx.shouldAbort()) return false;
                                     }
                                     matched = true;
                                 }
@@ -774,7 +774,7 @@ public interface Evaluator {
                         if (subResult) ctx.markEvaluated(propIdx);
                         else {
                             result = false;
-                            if (ctx.shouldAbort()) return false;
+                            if (!result && ctx.shouldAbort()) return false;
                         }
                     }
                 } finally {
@@ -821,7 +821,7 @@ public interface Evaluator {
                         result = false;
                     }
                 }
-                if (ctx.shouldAbort()) return false;
+                if (!result && ctx.shouldAbort()) return false;
             }
 
             if (dependentRequired != null) {
@@ -836,7 +836,7 @@ public interface Evaluator {
                                 result = false;
                             }
                         }
-                        if (ctx.shouldAbort()) return false;
+                        if (!result && ctx.shouldAbort()) return false;
                     }
                 }
             }
@@ -881,7 +881,7 @@ public interface Evaluator {
                                 result = false;
                             }
                         }
-                        if (ctx.shouldAbort()) return false;
+                        if (!result && ctx.shouldAbort()) return false;
                     }
                 }
             }
@@ -971,7 +971,7 @@ public interface Evaluator {
                                 "invalid property name '" + key + "'");
                     }
                     result = false;
-                    if (ctx.shouldAbort()) return false;
+                    if (!result && ctx.shouldAbort()) return false;
                 }
             }
             return result;
@@ -1043,7 +1043,7 @@ public interface Evaluator {
                         "expected at most " + maxItems + " items, found " + size); }
                 result = false;
             }
-            if (ctx.shouldAbort()) return false;
+            if (!result && ctx.shouldAbort()) return false;
             if (uniqueItems && size > 1) {
                 if (hasDuplicate(actual, size)) {
                     if (ctx.needsDiagnostic()) { ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
@@ -1344,7 +1344,7 @@ public interface Evaluator {
                     }
                     if (!passed) {
                         valid = false;
-                        if (ctx.shouldAbort()) return false;
+                        if (!result && ctx.shouldAbort()) return false;
                     }
                 }
                 // allOf annotations contribute only when the entire applicator succeeds.
