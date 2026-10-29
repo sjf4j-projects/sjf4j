@@ -36,7 +36,7 @@ import java.util.function.Function;
   * representations. Gettable POJO properties participate in object views; indexed
  * mutations depend on whether an array representation supports them.
  */
-public class NodeWalker {
+public final class NodeWalker {
 
 
     /**
