@@ -3,24 +3,26 @@ package org.sjf4j.testbench.binding.compiled;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import org.openjdk.jmh.annotations.*;
+import org.sjf4j.CompiledInstances;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
-import org.sjf4j.backend.fastjson2.binding.Fastjson2Parser;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Allocation and throughput comparison for raw JSON objects of different shapes.
+ * Allocation and throughput comparison using the three production entry points:
+ * native = Fastjson2 JSONReader.readObject(), compiled = @CompiledBinder,
+ * runtime = Fastjson2Binder.readNode(Map.class).
  *
- * Each invocation includes parser construction and closing; inputs are created
- * once in trial setup. Native JSONObject/JSONArray are valid Map/List results.
- * The forced-JDK variant isolates the container implementation, not fairness.
- *
- * Compare with -prof gc to measure gc.alloc.rate.norm (bytes per operation).
+ * Each invocation includes parser construction and closing; fixture generation
+ * and validation are excluded from the timed operation. Native JSONObject and
+ * JSONArray are valid Map/List results, not conversions to be benchmarked away.
+ * Run with -prof gc to compare gc.alloc.rate.norm (bytes per operation).
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -37,17 +39,13 @@ public class Fastjson2RawAllocationBenchmark {
     private final Fastjson2Binder binder = new Fastjson2Binder();
     private final JSONReader.Context nativeContext =
             JSONFactory.createReadContext(JSONReader.Feature.UseDoubleForDecimals);
-    private final JSONReader.Context jdkContext =
-            JSONFactory.createReadContext(JSONReader.Feature.UseDoubleForDecimals);
+    private final RawCompiledBinder compiled = CompiledInstances.create(RawCompiledBinder.class);
 
     private String json;
     private byte[] utf8;
 
     @Setup(Level.Trial)
     public void setup() throws IOException {
-        jdkContext.setObjectSupplier(LinkedHashMap::new);
-        jdkContext.setArraySupplier(ArrayList::new);
-
         switch (shape) {
             case "small":
                 json = "{\"id\":7,\"name\":\"Ada\",\"values\":[1,true,null]}";
@@ -63,14 +61,12 @@ public class Fastjson2RawAllocationBenchmark {
         }
         utf8 = json.getBytes(StandardCharsets.UTF_8);
 
-        Map<String, Object> expected = readRawString();
+        Map<String, Object> expected = compiled.readMap(json);
+        verifyEquivalent(expected, compiled.readMapUtf8(utf8));
         verifyEquivalent(expected, nativeString());
         verifyEquivalent(expected, nativeUtf8());
-        verifyEquivalent(expected, wrappedNativeString());
-        verifyEquivalent(expected, wrappedNativeUtf8());
-        verifyEquivalent(expected, nativeJdkString());
-        verifyEquivalent(expected, nativeJdkUtf8());
-        verifyEquivalent(expected, readRawUtf8());
+        verifyEquivalent(expected, runtimeString());
+        verifyEquivalent(expected, runtimeUtf8());
     }
 
     private static String createWideObject() {
@@ -109,59 +105,22 @@ public class Fastjson2RawAllocationBenchmark {
         }
     }
 
-    private Map<String, Object> readRawString() throws IOException {
-        try (Fastjson2Parser parser = binder.createParser(json)) {
-            parser.start();
-            Map<String, Object> result = parser.readRawObject();
-            parser.end();
-            return result;
-        }
-    }
-
-    private Map<String, Object> readRawUtf8() throws IOException {
-        try (Fastjson2Parser parser = binder.createParser(utf8)) {
-            parser.start();
-            Map<String, Object> result = parser.readRawObject();
-            parser.end();
-            return result;
-        }
-    }
-
-    @Benchmark
-    public Object rawString() throws IOException {
-        return readRawString();
-    }
-
-    @Benchmark
-    public Object rawUtf8() throws IOException {
-        return readRawUtf8();
-    }
-
-    @Benchmark
-    public Object wrappedNativeString() throws IOException {
-        try (Fastjson2Parser parser = binder.createParser(json)) {
-            parser.start();
-            Map<String, Object> result = parser.rawReader().readObject();
-            parser.end();
-            return result;
-        }
-    }
-
-    @Benchmark
-    public Object wrappedNativeUtf8() throws IOException {
-        try (Fastjson2Parser parser = binder.createParser(utf8)) {
-            parser.start();
-            Map<String, Object> result = parser.rawReader().readObject();
-            parser.end();
-            return result;
-        }
-    }
-
+    // Main comparison: always keep native / compiled / runtime together.
     @Benchmark
     public Object nativeString() {
         try (JSONReader reader = JSONReader.of(json, nativeContext)) {
             return reader.readObject();
         }
+    }
+
+    @Benchmark
+    public Object compiledString() throws IOException {
+        return compiled.readMap(json);
+    }
+
+    @Benchmark
+    public Object runtimeString() {
+        return binder.readNode(json, Map.class);
     }
 
     @Benchmark
@@ -172,16 +131,18 @@ public class Fastjson2RawAllocationBenchmark {
     }
 
     @Benchmark
-    public Object nativeJdkString() {
-        try (JSONReader reader = JSONReader.of(json, jdkContext)) {
-            return reader.readObject();
-        }
+    public Object compiledUtf8() throws IOException {
+        return compiled.readMapUtf8(utf8);
     }
 
     @Benchmark
-    public Object nativeJdkUtf8() {
-        try (JSONReader reader = JSONReader.of(utf8, jdkContext)) {
-            return reader.readObject();
-        }
+    public Object runtimeUtf8() {
+        return binder.readNode(utf8, Map.class);
+    }
+
+    @CompiledBinder(backend = Backend.FASTJSON2)
+    public interface RawCompiledBinder {
+        @ReadFrom Map<String, Object> readMap(String input) throws IOException;
+        @ReadFrom Map<String, Object> readMapUtf8(byte[] input) throws IOException;
     }
 }
