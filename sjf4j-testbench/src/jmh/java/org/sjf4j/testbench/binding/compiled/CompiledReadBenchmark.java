@@ -45,6 +45,8 @@ import java.util.concurrent.TimeUnit;
  * native_reader: Gson has no byte[] decoding API; it receives a UTF-8 Reader.
  * native_tree: JSON-P returns JsonValue, NOT a Java Map or POJO; compare separately.
  * No Simple native baseline exists.
+ * Fastjson2 native Map results may use JSONObject/JSONArray; compare JSON values,
+ * not concrete container classes, when evaluating backend performance.
  *
  * Output: microseconds per operation. Compare identical backend/shape/input.
  */
