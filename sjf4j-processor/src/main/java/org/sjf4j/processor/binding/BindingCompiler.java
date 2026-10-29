@@ -305,7 +305,15 @@ final class BindingCompiler {
                         ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
 
             case ARRAY_LIST:
-                if (directList(direction, type)) return BindingValue.Kind.LIST;
+                if (directList(direction, type)) {
+                    if (direction == BindingPlan.Direction.READ_FROM
+                            && context.types.isObject(context.types.listWriteElementType(type))
+                            && ("java.util.List".equals(erased)
+                                || "java.util.ArrayList".equals(erased))) {
+                        return BindingValue.Kind.RAW_LIST;
+                    }
+                    return BindingValue.Kind.LIST;
+                }
                 return unsupported(
                         method,
                         generated,
