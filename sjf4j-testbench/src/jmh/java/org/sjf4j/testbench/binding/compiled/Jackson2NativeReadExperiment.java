@@ -136,6 +136,7 @@ public class Jackson2NativeReadExperiment {
                 if (expected < NAMES.length && parser.nextFieldName(NAMES[expected])) {
                     field = expected;
                 } else {
+                    if (expected >= NAMES.length) parser.nextFieldName();
                     if (parser.currentToken() == JsonToken.END_OBJECT) break;
                     if (parser.currentToken() != JsonToken.FIELD_NAME) {
                         throw new IOException("Expected FIELD_NAME");
