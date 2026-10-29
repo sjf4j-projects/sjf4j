@@ -130,7 +130,16 @@ public final class SchemaPlan {
         // Most schemas (including nested Creek schemas) need no execution scope.
         // Keep one evaluator loop for scoped and unscoped plans alike.
         if (!tracksEvaluated && !dynamicScope) {
-            return evaluateKeywords(instance, ps, ctx);
+            // Common unscoped path: keep the evaluator dispatch loop directly
+            // in this method, avoiding an extra recursive call frame.
+            boolean valid = true;
+            for (Evaluator evaluator : evaluators) {
+                if (!evaluator.evaluate(instance, ps, ctx)) {
+                    valid = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+            }
+            return valid;
         }
 
         int savedDepth = tracksEvaluated ? ctx.evaluationDepth() : 0;
