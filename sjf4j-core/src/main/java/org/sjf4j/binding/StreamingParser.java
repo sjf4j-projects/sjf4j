@@ -9,6 +9,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -571,6 +573,33 @@ public abstract class StreamingParser implements Closeable {
      * may adopt those containers without copying.</p>
      */
     public abstract Object readRaw() throws IOException;
+
+    /**
+     * Reads one complete raw JSON object, returning the backend's mutable
+     * insertion-ordered Map representation, or null for JSON null.
+     * Backends may override this to avoid generic raw-value dispatch.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> readRawObject() throws IOException {
+        Object value = readRaw();
+        if (value == null || value instanceof Map) {
+            return (Map<String, Object>) value;
+        }
+        throw new BindingException("expected raw object or null");
+    }
+
+    /**
+     * Reads one complete raw JSON array, returning the backend's mutable
+     * List representation, or null for JSON null.
+     */
+    @SuppressWarnings("unchecked")
+    public List<Object> readRawArray() throws IOException {
+        Object value = readRaw();
+        if (value == null || value instanceof List) {
+            return (List<Object>) value;
+        }
+        throw new BindingException("expected raw array or null");
+    }
 
     /** Closes the backend parser without closing caller-owned input. */
     @Override
