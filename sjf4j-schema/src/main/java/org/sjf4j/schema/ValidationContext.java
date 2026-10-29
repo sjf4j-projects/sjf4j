@@ -29,6 +29,8 @@ public final class ValidationContext {
     private Deque<SchemaPlan> planStack;
 
     // Active reference invocation chain, not lifetime history.
+    private SchemaPlan firstRefPlan;
+    private NodeFrame firstRefNode;
     private SchemaPlan[] activeRefPlans;
     private NodeFrame[] activeRefNodes;
     private int activeRefCount;
@@ -107,19 +109,24 @@ public final class ValidationContext {
     }
 
     public SchemaPlan popPlan() {
-        return planStack == null ? null : planStack.pop();
-    }
+        return planStack == null ? null : planStack.pop()    void enterRef(SchemaPlan plan, NodeFrame node, PathSegment keywordPs) {
+        // The common case is a single $ref; avoid arrays and a scan altogether.
+        if (activeRefCount == 0) {
+            firstRefPlan = plan;
+            firstRefNode = node;
+            activeRefCount = 1;
+            return;
+        }
 
-    public Deque<SchemaPlan> planStack() { return planStack; }
-
-    void enterRef(SchemaPlan plan, NodeFrame node, PathSegment keywordPs) {
-        for (int i = activeRefCount - 1; i >= 0; i--) {
+        if (firstRefPlan == plan && firstRefNode == node) {
+            throw cyclicReference(plan, keywordPs);
+        }
+        for (int i = 1; i < activeRefCount; i++) {
             if (activeRefPlans[i] == plan && activeRefNodes[i] == node) {
-                throw new NodeException(SchemaUtil.formatSchemaLine(
-                        SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cyclic schema reference detected", keywordPs, plan.schemaUri));
+                throw cyclicReference(plan, keywordPs);
             }
         }
+
         if (activeRefPlans == null) {
             activeRefPlans = new SchemaPlan[4];
             activeRefNodes = new NodeFrame[4];
@@ -128,12 +135,27 @@ public final class ValidationContext {
             activeRefNodes = Arrays.copyOf(activeRefNodes, activeRefCount << 1);
         }
         activeRefPlans[activeRefCount] = plan;
-        activeRefNodes[activeRefCount++] = node;
+        activeRefNodes[activeRefCount] = node;
+        activeRefCount++;
+    }
+
+    private static NodeException cyclicReference(SchemaPlan plan, PathSegment keywordPs) {
+        return new NodeException(SchemaUtil.formatSchemaLine(
+                SchemaUtil.Code.SCHEMA_RESOLVE,
+                "cyclic schema reference detected", keywordPs, plan.schemaUri));
     }
 
     void leaveRef() {
-        int i = --activeRefCount;
-        activeRefPlans[i] = null;
+        if (--activeRefCount == 0) {
+            firstRefPlan = null;
+            firstRefNode = null;
+        } else {
+            activeRefPlans[activeRefCount] = null;
+            activeRefNodes[activeRefCount] = null;
+        }
+    }
+
+      activeRefPlans[i] = null;
         activeRefNodes[i] = null;
     }
 
