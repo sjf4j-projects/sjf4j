@@ -1,0 +1,54 @@
+name: Experiment linked NodeFrame baseline comparison
+on:
+  push:
+    branches: [experiment/schema-linked-frame]
+    paths: [.github/workflows/schema-linked-exp.yml]
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Validate experiment
+        run: ./gradlew :sjf4j-schema:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar --no-daemon --console=plain
+      - name: Compile original PR benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-pr" 0042101875d9a71c499ac3a59fb79a2d7ef3c082
+          (cd "$RUNNER_TEMP/sjf4j-pr" && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+      - name: Compare original and linked
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          regex='.*CreekSchemaBenchmark\.(schema_validate_map|schema_is_valid_map|schema_validate_pojo|schema_is_valid_pojo)'
+          for variant in previous linked; do
+            if [ "$variant" = previous ]; then root="$RUNNER_TEMP/sjf4j-pr"; else root="$GITHUB_WORKSPACE"; fi
+            jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -name '*jmh*.jar' -type f | head -n 1)
+            java -jar "$jar" "$regex" -f 2 -wi 15 -i 5 -w 350ms -r 350ms -prof gc \
+              -rf json -rff "$GITHUB_WORKSPACE/results/$variant.json" | tee "$GITHUB_WORKSPACE/results/$variant.txt"
+          done
+          python3 - <<'PY'
+          import json
+          for variant in ("previous", "linked"):
+              print("===",variant,"===")
+              for row in json.load(open("results/"+variant+".json")):
+                  primary=row["primaryMetric"]
+                  alloc=next((v["score"] for k,v in row["secondaryMetrics"].items() if k.endswith("gc.alloc.rate.norm")),None)
+                  print(row["benchmark"].rsplit(".",1)[-1],round(primary["score"],4),"+/-",round(primary["scoreError"],4),"us/op",round(alloc,1),"B/op")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linked-frame-jmh
+          path: results/
