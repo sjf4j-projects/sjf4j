@@ -141,7 +141,6 @@ public class CompiledBinderTest {
         assertEquals(new SimpleJsonBinder().readNode(input, Object.class), list);
         assertEquals(list, concrete);
         assertTrue(list instanceof ArrayList);
-        assertTrue(concrete instanceof ArrayList);
         assertTrue(list.get(0) instanceof LinkedHashMap);
         assertTrue(list.get(1) instanceof ArrayList);
         assertTrue(((List<?>) list.get(1)).get(1) instanceof LinkedHashMap);
@@ -154,7 +153,6 @@ public class CompiledBinderTest {
         RawListHolder holder = binder.readRawListHolder(
                 "{\"list\":[{\"x\":1},[false]],\"arrayList\":[1,null,\"last\"]}");
         assertTrue(holder.list instanceof ArrayList);
-        assertTrue(holder.arrayList instanceof ArrayList);
         assertTrue(holder.list.get(0) instanceof LinkedHashMap);
         assertTrue(holder.list.get(1) instanceof ArrayList);
     }
@@ -299,7 +297,6 @@ public class CompiledBinderTest {
         Map<String, Object> compiled = binder.readObjectMap(input);
         LinkedHashMap<String, Object> linked = binder.readLinkedObjectMap(input);
         assertEquals(compiled, linked);
-        assertInstanceOf(LinkedHashMap.class, linked);
         assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                 new ArrayList<String>(linked.keySet()));
         assertInstanceOf(LinkedHashMap.class, linked.get("nested"));
