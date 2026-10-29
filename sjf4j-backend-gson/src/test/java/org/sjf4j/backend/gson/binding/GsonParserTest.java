@@ -253,7 +253,7 @@ class GsonParserTest {
 
 
     @Test
-    void rawCollectionsPreserveValuesAcrossThreeEntryBoundary() throws Exception {
+    void rawCollectionsPreserveValuesAcrossSizes() throws Exception {
         for (int size = 0; size <= 8; size++) {
             StringBuilder objectJson = new StringBuilder("{");
             StringBuilder arrayJson = new StringBuilder("[");

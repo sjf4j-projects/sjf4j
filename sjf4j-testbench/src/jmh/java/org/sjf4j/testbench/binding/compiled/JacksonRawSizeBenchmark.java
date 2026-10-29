@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Controlled size study for Jackson raw container specialization.
+ * Controlled size study for Jackson raw container reads.
  * Each native / compiled / runtime trio uses the same JSON shape and input
  * representation, including parser construction and disposal. No conversion
  * of returned containers is timed. Run with -prof gc to inspect B/op.
