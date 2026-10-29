@@ -622,12 +622,12 @@ final class ReadEmitter {
     }
 
     private void emitMap(JavaWriter out, BindingValue value) {
-        // Raw Map<String, Object> uses the same backend-independent strategy
-        // as List<Object>; typed containers keep their compiled element plan.
+        // Unstructured Map<String, Object> uses the same streaming Map path as
+        // runtime binding. Typed containers keep their compiled element plan.
         if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
                 && context.types.isObject(value.mapValue().type())) {
-            out.line("Object raw = parser.readRaw();");
-            out.line("return raw == null ? null : " + STREAMING_IO + ".castMap(raw);");
+            out.line("return " + STREAMING_IO + ".readMap(parser, java.util.Map.class, "
+                    + "java.util.Map.class, null, null, null, this.context);");
             return;
         }
 
