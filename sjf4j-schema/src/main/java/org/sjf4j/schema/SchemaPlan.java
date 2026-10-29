@@ -72,8 +72,8 @@ public final class SchemaPlan {
         Instance instance = Instance.infer(node);
         ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
         PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
-        evaluate(instance, ps, ctx);
-        return ctx.toResult();
+        boolean valid = evaluate(instance, ps, ctx);
+        return ctx.toResult(valid);
     }
 
     /** Returns whether the instance passes validation in fail-fast mode. */
@@ -86,8 +86,7 @@ public final class SchemaPlan {
         if (booleanSchema) return booleanValue;
         Instance instance = Instance.infer(node);
         ValidationContext ctx = new ValidationContext(true, strictFormat, true);
-        boolean matched = evaluate(instance, null, ctx);
-        return matched && ctx.isValid();
+        return evaluate(instance, null, ctx);
     }
 
     /**
