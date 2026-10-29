@@ -1,13 +1,13 @@
-name: Jackson Original JMH Mac - f2 wi20 i5
+name: Jackson Original JMH Mac ARM64 - f2 wi20 i5
 
 on:
   push:
     branches:
-      - experiment/jackson-macos-f2-wi20-i5-20261030
+      - experiment/jackson-macos-arm64-f2-wi20-i5-20261030
 
 jobs:
   benchmark:
-    runs-on: macos-15
+    runs-on: macos-15-arm64
     permissions:
       contents: read
     steps:
@@ -28,14 +28,14 @@ jobs:
       - name: System and JVM details
         run: |
           uname -a
-          sysctl -n machdep.cpu.brand_string
+          sysctl -n machdep.cpu.brand_string || true
           sysctl -n hw.ncpu
           sysctl -n hw.memsize
-          "$JAVA_HOME_25_X64/bin/java" -version
+          "$JAVA_HOME_25_ARM64/bin/java" -version
       - name: Run original Jackson 2/3 Map benchmark - 2 forks, 20 warmups, 5 measurements
         run: |
           JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
-          "$JAVA_HOME_25_X64/bin/java" -jar "$JAR" \
+          "$JAVA_HOME_25_ARM64/bin/java" -jar "$JAR" \
             '.*CompiledReadBenchmark.jackson[23]_map_(string|utf8)_(compiled|native|raw|runtime)$' \
             -f 2 -wi 20 -i 5 -w 250ms -r 250ms -prof gc \
             -rf json -rff jackson-f2-wi20-i5-results.json
