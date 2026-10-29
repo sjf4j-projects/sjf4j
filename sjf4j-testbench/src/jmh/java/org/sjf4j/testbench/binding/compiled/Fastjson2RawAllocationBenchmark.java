@@ -16,12 +16,12 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Allocation and throughput comparison using the three production entry points:
- * native = Fastjson2 JSONReader.readObject(), compiled = @CompiledBinder,
+ * native = Fastjson2 JSONReader.read(Map.class), compiled = @CompiledBinder,
  * runtime = Fastjson2Binder.readNode(Map.class).
  *
  * Tiny fixtures isolate root parsing overhead: empty (2 B), one and two fields.\n * Each invocation includes parser construction and closing; fixture generation
- * and validation are excluded from the timed operation. Native JSONObject and
- * JSONArray are valid Map/List results, not conversions to be benchmarked away.
+ * and validation are excluded from the timed operation. The native reader is
+ * measured without converting its Map implementation to a different class.
  * Run with -prof gc to compare gc.alloc.rate.norm (bytes per operation).
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -118,7 +118,7 @@ public class Fastjson2RawAllocationBenchmark {
     @Benchmark
     public Object nativeString() {
         try (JSONReader reader = JSONReader.of(json, nativeContext)) {
-            return reader.readObject();
+            return reader.read(Map.class);
         }
     }
 
@@ -135,7 +135,7 @@ public class Fastjson2RawAllocationBenchmark {
     @Benchmark
     public Object nativeUtf8() {
         try (JSONReader reader = JSONReader.of(utf8, nativeContext)) {
-            return reader.readObject();
+            return reader.read(Map.class);
         }
     }
 
