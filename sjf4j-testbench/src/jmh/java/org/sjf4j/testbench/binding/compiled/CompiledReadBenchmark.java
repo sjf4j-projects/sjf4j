@@ -41,8 +41,8 @@ import java.util.concurrent.TimeUnit;
  * full binding, and owned-reader closing. No parsing or conversion in JMH setup
  * is included in the measurements.
  *
- * native: backend-native parsing. Fastjson2 raw Map/List use
- * JSONReader.readObject()/readArray(), without JDK-container normalization.
+ * native: backend-native Map/List binding for the same logical target type.
+ * Fastjson2 uses JSONReader.read(Map.class)/read(List.class).
  * native_reader: Gson has no byte[] decoding API; it receives a UTF-8 Reader.
  * native_tree: JSON-P returns JsonValue, NOT a Java Map or POJO; compare separately.
  * No Simple native baseline exists.
@@ -736,13 +736,12 @@ public class CompiledReadBenchmark {
         }
     }
 
-    // Raw Map/List baselines: always compare native, compiled, and runtime
-    // on the same JSON payload and encoding. Avoid benchmark-only wrapped
-    // native reader variants; compiled already calls parser.readRawObject().
+    // Compare native typed Map/List binding, compiled, and runtime on the
+    // same payload. SJF4J owns its raw recursion and JDK container types.
     @Benchmark
     public Object fastjson2_map_string_native() {
         try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.readObject();
+            return reader.read(Map.class);
         }
     }
 
@@ -759,7 +758,7 @@ public class CompiledReadBenchmark {
     @Benchmark
     public Object fastjson2_map_utf8_native() {
         try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.readObject();
+            return reader.read(Map.class);
         }
     }
 
@@ -776,7 +775,7 @@ public class CompiledReadBenchmark {
     @Benchmark
     public Object fastjson2_list_string_native() {
         try (JSONReader reader = JSONReader.of(JSON_LIST_DATA, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.readArray();
+            return reader.read(List.class);
         }
     }
 
@@ -793,7 +792,7 @@ public class CompiledReadBenchmark {
     @Benchmark
     public Object fastjson2_list_utf8_native() {
         try (JSONReader reader = JSONReader.of(JSON_LIST_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.readArray();
+            return reader.read(List.class);
         }
     }
 
