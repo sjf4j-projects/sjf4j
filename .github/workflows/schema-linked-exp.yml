@@ -1,4 +1,4 @@
-name: Experiment linked NodeFrame baseline comparison
+name: Experiment linked NodeFrame baseline comparison fixed
 on:
   push:
     branches: [experiment/schema-linked-frame]
