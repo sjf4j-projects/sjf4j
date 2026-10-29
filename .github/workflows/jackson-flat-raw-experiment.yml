@@ -30,16 +30,7 @@ jobs:
           "$JAVA_HOME_25_X64/bin/java" -version
           JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
           "$JAVA_HOME_25_X64/bin/java" -jar "$JAR" \
-            '.*CompiledReadBenchmark.jackson[23]_map_(string|utf8)_(compiled|native|raw|runtime)
-            -rf json -rff jackson-jdk25-results.json
-      - name: Upload JDK25 results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jackson-jdk25-results
-          path: jackson-jdk25-results.json
-          if-no-files-found: ignore
- \
+            '.*CompiledReadBenchmark.jackson[23]_map_(string|utf8)_(compiled|native|raw|runtime)$' \
             -f 2 -wi 6 -i 8 -w 250ms -r 250ms -prof gc \
             -rf json -rff jackson-jdk25-results.json
       - name: Upload JDK25 results
