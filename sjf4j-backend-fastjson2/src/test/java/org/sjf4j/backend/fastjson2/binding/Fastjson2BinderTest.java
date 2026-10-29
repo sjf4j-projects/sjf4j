@@ -4,6 +4,9 @@ import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.InternalAccess;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.StreamingParser;
@@ -84,6 +87,22 @@ class Fastjson2BinderTest {
         } finally {
             mismatch.close();
         }
+    }
+
+    @Test
+    void jsonNodesAdoptNativeRawContainersWithoutCopy() {
+        Fastjson2Binder binder = new Fastjson2Binder();
+        JsonObject object = (JsonObject) binder.readNode(
+                "{\"id\":7,\"nested\":[1,{\"ok\":true}]}", JsonObject.class);
+        JsonArray array = (JsonArray) binder.readNode(
+                "[1,{\"name\":\"Ada\"}]", JsonArray.class);
+
+        assertEquals(com.alibaba.fastjson2.JSONObject.class,
+                InternalAccess.dynamicMembers(object).getClass());
+        assertEquals(com.alibaba.fastjson2.JSONArray.class,
+                InternalAccess.dynamicElements(array).getClass());
+        assertEquals(7, object.get("id"));
+        assertEquals(2, array.size());
     }
 
     @Test
