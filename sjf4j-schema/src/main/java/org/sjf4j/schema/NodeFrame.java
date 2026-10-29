@@ -31,11 +31,13 @@ final class NodeFrame {
     private static final class CachedValue {
         final Object raw;
         final JsonType type;
+        final boolean converted;
         Map<Object, CachedValue> children;
 
-        CachedValue(Object raw, JsonType type) {
+        CachedValue(Object raw, JsonType type, boolean converted) {
             this.raw = raw;
             this.type = type;
+            this.converted = converted;
         }
     }
 
@@ -100,16 +102,16 @@ final class NodeFrame {
     private void bindChild(NodeFrame parent, Object key, Object value) {
         CachedValue cached = parent.convertedChildren == null
                 ? null : parent.convertedChildren.get(key);
-        if (cached != null) {
+        if (cached != null && (cached.converted || cached.raw == value)) {
             node = cached.raw;
             jsonType = cached.type;
-            converted = true;
+            converted = cached.converted;
             convertedChildren = cached.children;
             cachedValue = cached;
         } else {
             bind(value);
             if (converted) {
-                cached = new CachedValue(node, jsonType);
+                cached = new CachedValue(node, jsonType, true);
                 if (parent.convertedChildren == null) {
                     parent.convertedChildren = new HashMap<>();
                     if (parent.cachedValue != null) {
@@ -120,6 +122,26 @@ final class NodeFrame {
                 cachedValue = cached;
             }
         }
+    }
+
+    /**
+     * Preserve nested conversion caches when an ordinary container frame is
+     * reused for a sibling. No cache record is allocated for unconverted nodes
+     * unless one of their descendants actually needed value encoding.
+     */
+    void finishChild() {
+        if (pathParent == null || convertedChildren == null || cachedValue != null) return;
+
+        CachedValue saved = new CachedValue(node, jsonType, false);
+        saved.children = convertedChildren;
+        Object key = pathByIndex ? Integer.valueOf(pathIndex) : pathKey;
+        if (pathParent.convertedChildren == null) {
+            pathParent.convertedChildren = new HashMap<>();
+            if (pathParent.cachedValue != null) {
+                pathParent.cachedValue.children = pathParent.convertedChildren;
+            }
+        }
+        pathParent.convertedChildren.put(key, saved);
     }
 
     PathSegment materializePath() {
