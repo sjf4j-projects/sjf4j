@@ -1,9 +1,9 @@
-name: Original CompiledReadBenchmark JDK25
+name: Jackson Original JMH - f2 wi20 i5
 
 on:
   push:
     branches:
-      - experiment/jackson-original-jdk25-20261029
+      - experiment/jackson-f2-wi20-i5-20261030
 
 jobs:
   benchmark:
@@ -23,20 +23,24 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
-      - name: Build JMH with JDK17 toolchain
+      - name: Build original JMH (unchanged)
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Reproduce original CompiledReadBenchmark on JDK25
+      - name: System and JVM details
         run: |
+          uname -a
+          lscpu
           "$JAVA_HOME_25_X64/bin/java" -version
+      - name: Run original Jackson 2/3 Map benchmark - 2 forks, 20 warmups, 5 measurements
+        run: |
           JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
           "$JAVA_HOME_25_X64/bin/java" -jar "$JAR" \
             '.*CompiledReadBenchmark.jackson[23]_map_(string|utf8)_(compiled|native|raw|runtime)$' \
-            -f 2 -wi 6 -i 8 -w 250ms -r 250ms -prof gc \
-            -rf json -rff jackson-jdk25-results.json
-      - name: Upload JDK25 results
+            -f 2 -wi 20 -i 5 -w 250ms -r 250ms -prof gc \
+            -rf json -rff jackson-f2-wi20-i5-results.json
+      - name: Upload JMH results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson-jdk25-results
-          path: jackson-jdk25-results.json
+          name: jackson-f2-wi20-i5-results
+          path: jackson-f2-wi20-i5-results.json
           if-no-files-found: ignore
