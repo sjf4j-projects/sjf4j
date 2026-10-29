@@ -49,8 +49,8 @@ public final class CompiledSchemaSupport {
         for (int i = 0; i < original.length; i++) {
             if (original[i] instanceof Evaluator.PropertiesEvaluator) {
                 if (compiled == null) compiled = original.clone();
-                compiled[i] = ((Evaluator.PropertiesEvaluator) original[i])
-                        .withCompiledAccess(access, order, actual);
+                compiled[i] = new CompiledPropertiesEvaluator(
+                        (Evaluator.PropertiesEvaluator) original[i], access, order, actual);
             }
         }
         if (compiled == null) return plan;
