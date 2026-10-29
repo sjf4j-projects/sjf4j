@@ -124,27 +124,26 @@ public final class SchemaPlan {
             return false;
         }
 
-        // Dynamic anchor maps may be populated after a plan is constructed;
-        // unlike evaluated tracking, they must be checked at execution time.
-        boolean dynamicScope = !byDynamicAnchorPlans.isEmpty();
-        // Most schemas (including nested Creek schemas) need no execution scope.
-        // Keep one evaluator loop for scoped and unscoped plans alike.
-        if (!tracksEvaluated && !dynamicScope) {
-            // Single-keyword leaf plans need no generic evaluator loop.
-            if (evaluators.length == 1) {
-                return evaluators[0].evaluate(instance, ps, ctx);
-            }
+        // Execution mode is fixed when the schema resource is planned.
+        // Dynamic anchors are discovered from the source resource, including
+        // fragments whose plans may only be materialized by a later $ref.
+        if (singleEvaluator != null) {
+            return singleEvaluator.evaluate(instance, ps, ctx);
+        }
+        if (executionMode == MODE_UNSCOPED) {
             return evaluateKeywords(instance, ps, ctx);
         }
 
-        int savedDepth = tracksEvaluated ? ctx.evaluationDepth() : 0;
-        if (tracksEvaluated) ctx.createEvaluated();
-        if (dynamicScope) ctx.pushPlan(this);
+        boolean evaluated = (executionMode & MODE_EVALUATED) != 0;
+        boolean dynamic = (executionMode & MODE_DYNAMIC) != 0;
+        int savedDepth = evaluated ? ctx.evaluationDepth() : 0;
+        if (evaluated) ctx.createEvaluated();
+        if (dynamic) ctx.pushPlan(this);
         try {
             return evaluateKeywords(instance, ps, ctx);
         } finally {
-            if (dynamicScope) ctx.popPlan();
-            if (tracksEvaluated) ctx.restoreEvaluationDepth(savedDepth);
+            if (dynamic) ctx.popPlan();
+            if (evaluated) ctx.restoreEvaluationDepth(savedDepth);
         }
     }
 
@@ -171,7 +170,14 @@ public final class SchemaPlan {
     final Evaluator[] evaluators;
     final boolean booleanSchema;
     final boolean booleanValue;
+    private static final byte MODE_UNSCOPED = 0;
+    private static final byte MODE_EVALUATED = 1;
+    private static final byte MODE_DYNAMIC = 2;
+
     final boolean tracksEvaluated;
+    final boolean scopesDynamicAnchors;
+    final byte executionMode;
+    final Evaluator singleEvaluator;
 
     final String dynamicAnchor;
     final Map<String, SchemaPlan> byAnchorPlans;
@@ -187,7 +193,8 @@ public final class SchemaPlan {
                Map<String, SchemaPlan> byAnchorPlans,
                Map<String, SchemaPlan> byDynamicAnchorPlans,
                Map<String, SchemaPlan> byPathPlans,
-               ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary) {
+               ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary,
+               boolean scopesDynamicAnchors) {
         this.schemaUri = schemaUri;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
@@ -195,6 +202,11 @@ public final class SchemaPlan {
         this.booleanValue = booleanValue;
         this.tracksEvaluated = evaluators.length != 0
                 && evaluators[evaluators.length - 1] instanceof Evaluator.UnevaluatedEvaluator;
+        this.scopesDynamicAnchors = scopesDynamicAnchors;
+        this.executionMode = (byte) ((tracksEvaluated ? MODE_EVALUATED : 0)
+                | (scopesDynamicAnchors ? MODE_DYNAMIC : 0));
+        this.singleEvaluator = this.executionMode == MODE_UNSCOPED && evaluators.length == 1
+                ? evaluators[0] : null;
 
         this.dynamicAnchor = dynamicAnchor;
         this.byAnchorPlans = byAnchorPlans;
@@ -208,17 +220,17 @@ public final class SchemaPlan {
 
     static SchemaPlan of(URI schemaUri, PathSegment keywordPs, BooleanSchema booleanSchema) {
         return new SchemaPlan(schemaUri, keywordPs, new Evaluator[0], true, booleanSchema.booleanValue(),
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, false);
     }
 
     static SchemaPlan of(URI schemaUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
                          Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                          Map<String, SchemaPlan> byPathPlans,
                          ObjectSchema resourceRootSchema, SchemaDialect resourceDialect,
-                         Map<String, Boolean> resourceVocabulary) {
+                         Map<String, Boolean> resourceVocabulary, boolean scopesDynamicAnchors) {
         return new SchemaPlan(schemaUri, keywordPs, evaluators.toArray(new Evaluator[0]), false, false,
                 dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                resourceRootSchema, resourceDialect, resourceVocabulary);
+                resourceRootSchema, resourceDialect, resourceVocabulary, scopesDynamicAnchors);
     }
 
 }
