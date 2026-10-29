@@ -1,0 +1,54 @@
+name: Experiment inline evaluator dispatch JMH
+on:
+  push:
+    branches: [experiment/schema-inline-evaluator-loop]
+    paths: [.github/workflows/schema-inline-loop-exp.yml]
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test optimized implementation
+        run: ./gradlew :sjf4j-schema:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar --no-daemon --console=plain
+      - name: Build baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-baseline" 3a22baf727ec9b2c4d2feb1a16c3c8b3ddf195eb
+          (cd "$RUNNER_TEMP/sjf4j-baseline" && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+      - name: JMH A/B with GC
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          regex='.*CreekSchemaBenchmark\.(schema_validate_map|schema_is_valid_map|schema_is_valid_fail_nested|schema_validate_fail_nested|schema_is_valid_fail_root|schema_validate_fail_root)'
+          for variant in baseline optimized; do
+            if [ "$variant" = baseline ]; then root="$RUNNER_TEMP/sjf4j-baseline"; else root="$GITHUB_WORKSPACE"; fi
+            jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -name '*jmh*.jar' -type f | head -n 1)
+            java -jar "$jar" "$regex" -f 2 -wi 12 -i 5 -w 300ms -r 300ms -prof gc \
+              -rf json -rff "$GITHUB_WORKSPACE/results/$variant.json" | tee "$GITHUB_WORKSPACE/results/$variant.txt"
+          done
+          python3 - <<'PY'
+          import json
+          for variant in ('baseline','optimized'):
+              print('===',variant,'===')
+              for row in json.load(open('results/'+variant+'.json')):
+                  p=row['primaryMetric']
+                  alloc=next((v['score'] for k,v in row['secondaryMetrics'].items() if k.endswith('gc.alloc.rate.norm')),None)
+                  print(row['benchmark'].rsplit('.',1)[-1],round(p['score'],5),'+/-',round(p['scoreError'],5),'us/op',round(alloc,2),'B/op')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schema-inline-loop-jmh
+          path: results/
