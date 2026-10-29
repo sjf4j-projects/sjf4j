@@ -18,6 +18,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.util.Objects;
+import java.util.Map;
 
 /**
  * Compiler services and shared metadata resolvers for one processing run.
@@ -30,6 +31,7 @@ public final class ProcessorContext {
     public final Elements elements;
     public final Messager messager;
     public final Filer filer;
+    public final Map<String, String> options;
 
     public final TypeSystem types;
     public final RegistryDiscovery discovery;
@@ -45,6 +47,7 @@ public final class ProcessorContext {
         this.elements = environment.getElementUtils();
         this.messager = environment.getMessager();
         this.filer = environment.getFiler();
+        this.options = environment.getOptions();
 
         this.types = new TypeSystem(typeUtils, elements);
         this.discovery = new RegistryDiscovery(this);

@@ -1,6 +1,8 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.schema.CompiledValidator;
+import org.sjf4j.processor.validation.ValidationGenerator;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.path.CompiledNavigator;
@@ -18,6 +20,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
 import java.util.Set;
+import java.util.Collections;
 import java.util.function.Consumer;
 
 /**
@@ -35,6 +38,7 @@ public final class CodegenProcessor extends AbstractProcessor {
     private MapperGenerator mapperGenerator;
     private JdbcMapperGenerator jdbcMapperGenerator;
     private BindingGenerator bindingGenerator;
+    private ValidationGenerator validationGenerator;
 
     /**
      * Lists both root and method-level annotations so invalid element kinds
@@ -43,6 +47,11 @@ public final class CodegenProcessor extends AbstractProcessor {
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         return AnnotationValidator.supportedAnnotationTypes();
+    }
+
+    @Override
+    public Set<String> getSupportedOptions() {
+        return Collections.singleton("sjf4j.schemaDir");
     }
 
     @Override
@@ -59,6 +68,7 @@ public final class CodegenProcessor extends AbstractProcessor {
         this.mapperGenerator = new MapperGenerator(context);
         this.jdbcMapperGenerator = new JdbcMapperGenerator(context);
         this.bindingGenerator = new BindingGenerator(context);
+        this.validationGenerator = new ValidationGenerator(context);
     }
 
     /** Processes each discovered interface; other processors may see the same annotations. */
@@ -76,6 +86,7 @@ public final class CodegenProcessor extends AbstractProcessor {
         processInterfaces(roundEnv, CompiledMapper.class, this::generateMapper);
         processInterfaces(roundEnv, CompiledJdbcMapper.class, this::generateJdbcMapper);
         processInterfaces(roundEnv, CompiledBinder.class, bindingGenerator::generate);
+        processInterfaces(roundEnv, CompiledValidator.class, validationGenerator::generate);
 
         return false;
     }
