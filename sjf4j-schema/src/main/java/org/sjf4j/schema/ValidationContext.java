@@ -165,7 +165,7 @@ public final class ValidationContext {
 
     void pushEvaluated() {
         Deque<BitSet> stack = evaluated(false);
-        if (stack != null && !stack.isEmpty()) stack.push(new BitSet());
+        if (stack != null) stack.push(new BitSet());
     }
 
     void pushEvaluated(BitSet bits) {
