@@ -53,40 +53,41 @@ public final class ValidationContext {
         return activeFrame;
     }
 
-    private NodeFrame nextFrame(NodeFrame parent) {
-        NodeFrame frame = parent.reusableChild();
-        int next = nodeDepth + 1;
-        if (evaluatedByDepth != null && next < evaluatedByDepth.length
-                && evaluatedByDepth[next] != null) {
-            evaluatedByDepth[next].clear();
-        }
+    /**
+     * Scalar instances cannot contribute object/item evaluated locations.
+     * Reuse the linked child frame without pushing a distinct annotation depth.
+     */
+    private NodeFrame activateChild(NodeFrame parent, NodeFrame frame) {
         frame.setPreviousFrame(parent);
-        nodeDepth = next;
+        activeFrame = frame;
+        if (!frame.jsonType().isValue()) {
+            int next = nodeDepth + 1;
+            if (evaluatedByDepth != null && next < evaluatedByDepth.length
+                    && evaluatedByDepth[next] != null) {
+                evaluatedByDepth[next].clear();
+            }
+            nodeDepth = next;
+        }
         return frame;
     }
 
     NodeFrame enterKey(NodeFrame parent, String key, Object value) {
-        NodeFrame frame = nextFrame(parent).bindKey(parent, key, value);
-        activeFrame = frame;
-        return frame;
+        return activateChild(parent, parent.reusableChild().bindKey(parent, key, value));
     }
 
     NodeFrame enterIndex(NodeFrame parent, int index, Object value) {
-        NodeFrame frame = nextFrame(parent).bindIndex(parent, index, value);
-        activeFrame = frame;
-        return frame;
+        return activateChild(parent, parent.reusableChild().bindIndex(parent, index, value));
     }
 
     NodeFrame enterValue(NodeFrame parent, Object value) {
-        NodeFrame frame = nextFrame(parent).bind(value);
-        activeFrame = frame;
-        return frame;
+        return activateChild(parent, parent.reusableChild().bind(value));
     }
 
     void leaveChild() {
-        activeFrame.finishChild();
-        activeFrame = activeFrame.previousFrame();
-        nodeDepth--;
+        NodeFrame frame = activeFrame;
+        frame.finishChild();
+        activeFrame = frame.previousFrame();
+        if (!frame.jsonType().isValue()) nodeDepth--;
     }
 
     public boolean isFailFast() { return failFast; }
