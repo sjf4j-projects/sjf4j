@@ -1,9 +1,9 @@
-name: Jackson Factory Isolation Performance Experiment
+name: Jackson Raw JDK25 Isolation
 
 on:
   push:
     branches:
-      - experiment/jackson-flat-raw-20261029
+      - experiment/jackson-jdk25-20261029
 
 jobs:
   benchmark:
@@ -12,22 +12,32 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: Set up Temurin 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Temurin 17 for Gradle
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
-      - name: Build focused JMH
+      - name: Build JMH with JDK17 toolchain
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Same versus independent JsonFactory benchmarks
+      - name: Benchmark original JSON with JDK25
         run: |
+          "$JAVA_HOME_25_X64/bin/java" -version
           JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
-          echo "JMH jar: $JAR"
-          java -jar "$JAR" '.*JacksonFactoryIsolationExperiment.*' -f 2 -wi 4 -i 6 -w 180ms -r 180ms -prof gc -rf json -rff jackson-flat-results.json
-      - name: Upload JSON results
+          "$JAVA_HOME_25_X64/bin/java" -jar "$JAR" \
+            '.*JacksonFactoryIsolationExperiment.(nativeDirect|rawShared|rawIndependent)$' \
+            -p shape=nested -p backend=j2,j3 -p input=string,utf8 \
+            -f 2 -wi 6 -i 8 -w 250ms -r 250ms -prof gc \
+            -rf json -rff jackson-jdk25-results.json
+      - name: Upload JDK25 results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson-flat-results
-          path: jackson-flat-results.json
+          name: jackson-jdk25-results
+          path: jackson-jdk25-results.json
           if-no-files-found: ignore
