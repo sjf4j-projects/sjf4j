@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Fastjson2BinderTest {
 
     @Test
-    void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
+    void readsRawNodesWithFastjson2NativeContainers() throws Exception {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"));
@@ -40,16 +40,16 @@ class Fastjson2BinderTest {
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
             Map<?, ?> value = (Map<?, ?>) parser.readRaw();
 
-            assertEquals(LinkedHashMap.class, value.getClass());
+            assertEquals(com.alibaba.fastjson2.JSONObject.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                     Arrays.asList(value.keySet().toArray()));
             assertEquals("Ada", value.get("text"));
             assertEquals(7, value.get("number"));
             assertEquals(true, value.get("enabled"));
             assertNull(value.get("empty"));
-            assertEquals(LinkedHashMap.class, value.get("nested").getClass());
-            assertEquals(ArrayList.class, value.get("items").getClass());
-            assertEquals(LinkedHashMap.class, ((List<?>) value.get("items")).get(1).getClass());
+            assertEquals(com.alibaba.fastjson2.JSONObject.class, value.get("nested").getClass());
+            assertEquals(com.alibaba.fastjson2.JSONArray.class, value.get("items").getClass());
+            assertEquals(com.alibaba.fastjson2.JSONObject.class, ((List<?>) value.get("items")).get(1).getClass());
             assertEquals(StreamingParser.Token.EOF, parser.peekToken());
             parser.end();
         } finally {
@@ -65,12 +65,12 @@ class Fastjson2BinderTest {
             parser.readArrayStart();
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
             Map<String, Object> object = parser.readRawObject();
-            assertEquals(LinkedHashMap.class, object.getClass());
+            assertEquals(com.alibaba.fastjson2.JSONObject.class, object.getClass());
             assertEquals(7, object.get("id"));
             assertEquals(StreamingParser.Token.ARRAY_START, parser.peekToken());
             List<Object> array = parser.readRawArray();
-            assertEquals(ArrayList.class, array.getClass());
-            assertEquals(LinkedHashMap.class, array.get(1).getClass());
+            assertEquals(com.alibaba.fastjson2.JSONArray.class, array.getClass());
+            assertEquals(com.alibaba.fastjson2.JSONObject.class, array.get(1).getClass());
             assertNull(parser.readRawObject());
             assertNull(parser.readRawArray());
             parser.readArrayEnd();
