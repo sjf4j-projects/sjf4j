@@ -53,32 +53,32 @@ public final class ValidationContext {
         return activeFrame;
     }
 
-    private NodeFrame nextFrame() {
-        NodeFrame frame = activeFrame.reusableChild();
+    private NodeFrame nextFrame(NodeFrame parent) {
+        NodeFrame frame = parent.reusableChild();
         int next = nodeDepth + 1;
         if (evaluatedByDepth != null && next < evaluatedByDepth.length
                 && evaluatedByDepth[next] != null) {
             evaluatedByDepth[next].clear();
         }
-        frame.setPreviousFrame(activeFrame);
+        frame.setPreviousFrame(parent);
         nodeDepth = next;
         return frame;
     }
 
     NodeFrame enterKey(NodeFrame parent, String key, Object value) {
-        NodeFrame frame = nextFrame().bindKey(parent, key, value);
+        NodeFrame frame = nextFrame(parent).bindKey(parent, key, value);
         activeFrame = frame;
         return frame;
     }
 
     NodeFrame enterIndex(NodeFrame parent, int index, Object value) {
-        NodeFrame frame = nextFrame().bindIndex(parent, index, value);
+        NodeFrame frame = nextFrame(parent).bindIndex(parent, index, value);
         activeFrame = frame;
         return frame;
     }
 
-    NodeFrame enterValue(Object value) {
-        NodeFrame frame = nextFrame().bind(value);
+    NodeFrame enterValue(NodeFrame parent, Object value) {
+        NodeFrame frame = nextFrame(parent).bind(value);
         activeFrame = frame;
         return frame;
     }
