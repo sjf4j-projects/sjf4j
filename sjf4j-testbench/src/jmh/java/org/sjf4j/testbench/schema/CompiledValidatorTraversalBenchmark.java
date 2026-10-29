@@ -46,6 +46,7 @@ public class CompiledValidatorTraversalBenchmark {
         private final String name;
         private final int age;
         private final String city;
+        public Bean() { this(null, 0, null); }
         public Bean(String name, int age, String city) {
             this.name = name; this.age = age; this.city = city;
         }

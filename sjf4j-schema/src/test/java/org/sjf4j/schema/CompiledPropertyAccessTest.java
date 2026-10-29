@@ -24,7 +24,8 @@ class CompiledPropertyAccessTest {
             }
         };
         SchemaPlan compiled = CompiledSchemaSupport.specialize(runtime, accessor);
-        assertNotSame(runtime, compiled);
+        assertNotSame(runtime, compiled, "getter metadata should enable specialization");
+        assertTrue(runtime.isValid(new Bean("valid"), true));
         for (Bean value : new Bean[]{new Bean("valid"), new Bean("x"), new Bean(null)}) {
             assertEquals(runtime.isValid(value, true), compiled.isValid(value, true));
             assertEquals(runtime.validate(value).isValid(), compiled.validate(value).isValid());
@@ -41,6 +42,7 @@ class CompiledPropertyAccessTest {
 
     public static final class Bean {
         private final String value;
+        public Bean() { this(null); }
         public Bean(String value) { this.value = value; }
         public String getValue() { return value; }
     }

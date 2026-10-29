@@ -105,6 +105,8 @@ class CompiledValidatorFoundationTest {
         FastPojo good = new FastPojo("Alice", 3);
         FastPojo shortName = new FastPojo("A", 3);
         FastPojo badLevel = new FastPojo("Alice", -1);
+        assertTrue(runtime.isValid(good, true));
+        assertTrue(compiled.test(good));
         assertEquals(runtime.isValid(good, true), compiled.test(good));
         assertEquals(runtime.isValid(shortName, true), compiled.test(shortName));
         assertEquals(runtime.isValid(badLevel, true), compiled.test(badLevel));
@@ -119,6 +121,7 @@ class CompiledValidatorFoundationTest {
     public static final class FastPojo {
         private final String name;
         private final int level;
+        public FastPojo() { this(null, 0); }
         public FastPojo(String name, int level) { this.name = name; this.level = level; }
         public String getName() { return name; }
         public int getLevel() { return level; }
