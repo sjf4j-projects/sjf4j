@@ -54,6 +54,43 @@ class SchemaRuntimeFrameTest {
     }
 
     @Test
+    void requiredSuccessMustNotSkipFollowingProperties() {
+        SchemaPlan schema = plan("{\"type\":\"object\",\"required\":[\"id\"],"
+                + "\"properties\":{\"id\":{\"type\":\"integer\",\"minimum\":1}}}");
+        assertTrue(schema.validate(Collections.singletonMap("id", 2), true, false).isValid());
+        assertFalse(schema.validate(Collections.singletonMap("id", 0), true, false).isValid());
+        assertFalse(schema.isValid(Collections.singletonMap("id", 0)));
+    }
+
+    @Test
+    void sizeSuccessMustNotSkipFollowingItems() {
+        SchemaPlan schema = plan("{\"type\":\"array\",\"maxItems\":4,"
+                + "\"items\":{\"type\":\"integer\",\"minimum\":1}}");
+        assertTrue(schema.isValid(Collections.singletonList(2)));
+        assertFalse(schema.isValid(Collections.singletonList(0)));
+        assertFalse(schema.validate(Collections.singletonList(0), true, false).isValid());
+    }
+
+    @Test
+    void inlineEvaluatedMaskHandlesBoundaryAndOverflow() {
+        EvaluationBits a = new EvaluationBits();
+        a.set(0);
+        a.set(62, 66);
+        assertTrue(a.get(0));
+        assertTrue(a.get(62));
+        assertTrue(a.get(63));
+        assertTrue(a.get(64));
+        assertTrue(a.get(65));
+        assertFalse(a.get(66));
+
+        EvaluationBits b = new EvaluationBits();
+        b.set(130);
+        a.or(b);
+        assertTrue(a.get(130));
+        assertFalse(a.get(129));
+    }
+
+    @Test
     void nestedBranchesKeepUnevaluatedLocationsIsolated() {
         SchemaPlan schema = plan("{\"anyOf\":["
                 + "{\"properties\":{\"a\":{\"type\":\"integer\"}}},"
