@@ -19,8 +19,6 @@ import java.time.LocalDateTime;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,8 +62,9 @@ public final class Fastjson2Parser extends StreamingParser {
     /**
      * Reads the next value as the raw SJF4J object graph.
      *
-     * <p>Objects are represented by {@link LinkedHashMap} and arrays by
-     * {@link ArrayList}.</p>
+     * <p>Objects and arrays use Fastjson2's native mutable Map/List
+     * containers (JSONObject/JSONArray with the default reader context).
+     * These are valid OBNT containers and need no intermediate copy.</p>
      */
     @Override
     public Object readRaw() throws IOException {
@@ -79,11 +78,11 @@ public final class Fastjson2Parser extends StreamingParser {
     @Override
     public Map<String, Object> readRawObject() throws IOException {
         try {
+            // The native object loop is faster than a duplicate field/value
+            // dispatcher. Validate the root shape without consuming it.
+            if (reader.current() == '{') return reader.readObject();
             if (reader.nextIfNull()) return null;
-            if (!reader.nextIfObjectStart()) {
-                throw new BindingException("expected token '{', but was '" + reader.current() + "'");
-            }
-            return _readRawObjectBody();
+            throw new BindingException("expected token '{', but was '" + reader.current() + "'");
         } finally {
             peeked = null;
         }
@@ -92,11 +91,9 @@ public final class Fastjson2Parser extends StreamingParser {
     @Override
     public List<Object> readRawArray() throws IOException {
         try {
+            if (reader.current() == '[') return reader.readArray();
             if (reader.nextIfNull()) return null;
-            if (!reader.nextIfArrayStart()) {
-                throw new BindingException("expected token '[', but was '" + reader.current() + "'");
-            }
-            return _readRawArrayBody();
+            throw new BindingException("expected token '[', but was '" + reader.current() + "'");
         } finally {
             peeked = null;
         }
@@ -377,13 +374,9 @@ public final class Fastjson2Parser extends StreamingParser {
         char current = reader.current();
         switch (current) {
             case '{':
-                // The switch already established the container type. Consume
-                // its opening token without repeating nextIfObjectStart().
-                reader.next();
-                return _readRawObjectBody();
+                return reader.readObject();
             case '[':
-                reader.next();
-                return _readRawArrayBody();
+                return reader.readArray();
             case '"':
                 return reader.readString();
             case 't':
@@ -399,22 +392,6 @@ public final class Fastjson2Parser extends StreamingParser {
                 Token token = reader.isEnd() ? Token.EOF : _token(current);
                 throw new BindingException("unexpected token '" + token + "'");
         }
-    }
-
-    private Map<String, Object> _readRawObjectBody() throws IOException {
-        Map<String, Object> value = new LinkedHashMap<>();
-        while (!reader.nextIfObjectEnd()) {
-            value.put(reader.readFieldName(), _readRaw());
-        }
-        return value;
-    }
-
-    private List<Object> _readRawArrayBody() throws IOException {
-        List<Object> value = new ArrayList<>();
-        while (!reader.nextIfArrayEnd()) {
-            value.add(_readRaw());
-        }
-        return value;
     }
 
     private static Token _token(char ch) {
