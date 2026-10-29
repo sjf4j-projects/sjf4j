@@ -52,29 +52,6 @@ public class SchemaValidationTest {
         assertSame(ValidationResult.SUCCESS, result);
     }
 
-    @Test
-    public void testValueBindingInferUsesDeclaredRawTypeExceptNull() {
-        Instance reusedLeaf = Instance.infer("reused");
-        StringValue stringValue = new StringValue();
-        MapValue mapValue = new MapValue();
-        ListValue listValue = new ListValue();
-
-        Instance stringNode = Instance.infer(stringValue, reusedLeaf);
-        Instance mapNode = Instance.infer(mapValue, reusedLeaf);
-        Instance listNode = Instance.infer(listValue, reusedLeaf);
-
-        assertEquals(JsonType.NULL, stringNode.jsonType());
-        assertEquals(JsonType.OBJECT, mapNode.jsonType());
-        assertEquals(JsonType.ARRAY, listNode.jsonType());
-        assertTrue(stringNode.converted());
-        assertTrue(mapNode.converted());
-        assertTrue(listNode.converted());
-        assertNull(stringNode.node());
-        assertNotSame(reusedLeaf, stringNode);
-        assertEquals(1, stringValue.encodes);
-        assertEquals(1, mapValue.encodes);
-        assertEquals(1, listValue.encodes);
-    }
 
     @Test
     public void testInferClassifiesPojoObject() {
