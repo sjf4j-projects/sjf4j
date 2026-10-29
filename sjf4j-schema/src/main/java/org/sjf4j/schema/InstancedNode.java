@@ -36,8 +36,10 @@ public final class InstancedNode {
 
     // runtime state
     private Deque<EvaluationBits> evaluatedStack;
-    private int refSchemaTimes = 0;
-    private Deque<Object> refSchemaStack;
+    // Active references for this instance only; the common single-ref case
+    // needs no stack allocation.
+    private SchemaPlan firstActiveRef;
+    private Deque<SchemaPlan> nestedActiveRefs;
 
 
     private InstancedNode(Object node, JsonType jsonType, boolean converted) {
@@ -73,8 +75,8 @@ public final class InstancedNode {
      */
     InstancedNode reset() {
         this.evaluatedStack = null;
-        this.refSchemaTimes = 0;
-        this.refSchemaStack = null;
+        this.firstActiveRef = null;
+        this.nestedActiveRefs = null;
         return this;
     }
 
@@ -264,21 +266,29 @@ public final class InstancedNode {
 
 
     /**
-     * Detects cyclic schema references for the current runtime instance branch.
-     * <p>
-     * The same compiled plan may be revisited across independent branches, but a
-     * recursive revisit while validating one branch indicates an unbounded
-     * schema-reference loop.
+     * Checks only the active reference chain for this instance. Sequential
+     * references to the same plan are valid; nested references to an active
+     * plan without advancing to a child instance are cyclic.
      */
-    void checkCyclicRef(SchemaPlan plan, PathSegment keywordPs) {
-        if (refSchemaTimes++ > 0) {
-            if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();
-            if (refSchemaStack.contains(plan)) {
-                throw new NodeException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cyclic schema reference detected", keywordPs, plan.schemaUri));
-            } else {
-                refSchemaStack.push(plan);
-            }
+    void enterRef(SchemaPlan plan, PathSegment keywordPs) {
+        if (firstActiveRef == null) {
+            firstActiveRef = plan;
+            return;
+        }
+        if (firstActiveRef == plan || (nestedActiveRefs != null && nestedActiveRefs.contains(plan))) {
+            throw new NodeException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                    "cyclic schema reference detected", keywordPs, plan.schemaUri));
+        }
+        if (nestedActiveRefs == null) nestedActiveRefs = new ArrayDeque<>();
+        nestedActiveRefs.push(plan);
+    }
+
+    /** Leaves the reference entered by the matching enterRef call. */
+    void leaveRef() {
+        if (nestedActiveRefs != null && !nestedActiveRefs.isEmpty()) {
+            nestedActiveRefs.pop();
+        } else {
+            firstActiveRef = null;
         }
     }
 
