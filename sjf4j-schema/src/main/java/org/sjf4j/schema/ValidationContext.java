@@ -7,7 +7,6 @@ import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Deque;
 import java.util.List;
 
@@ -26,7 +25,7 @@ public final class ValidationContext {
     private int nodeDepth;
 
     // Evaluated annotations are isolated by instance position AND schema branch.
-    private Deque<BitSet>[] evaluatedByDepth;
+    private Deque<EvaluationBits>[] evaluatedByDepth;
     private Deque<SchemaPlan> planStack;
 
     // Active reference invocation chain, not lifetime history.
@@ -138,16 +137,16 @@ public final class ValidationContext {
     }
 
     @SuppressWarnings("unchecked")
-    private Deque<BitSet> evaluated(boolean create) {
+    private Deque<EvaluationBits> evaluated(boolean create) {
         if (evaluatedByDepth == null) {
             if (!create) return null;
-            evaluatedByDepth = (Deque<BitSet>[]) new Deque[4];
+            evaluatedByDepth = (Deque<EvaluationBits>[]) new Deque[4];
         } else if (nodeDepth >= evaluatedByDepth.length) {
             if (!create) return null;
             evaluatedByDepth = Arrays.copyOf(evaluatedByDepth,
                     Math.max(nodeDepth + 1, evaluatedByDepth.length << 1));
         }
-        Deque<BitSet> stack = evaluatedByDepth[nodeDepth];
+        Deque<EvaluationBits> stack = evaluatedByDepth[nodeDepth];
         if (stack == null && create) {
             stack = new ArrayDeque<>();
             evaluatedByDepth[nodeDepth] = stack;
@@ -156,53 +155,53 @@ public final class ValidationContext {
     }
 
     int evaluationDepth() {
-        Deque<BitSet> stack = evaluated(false);
+        Deque<EvaluationBits> stack = evaluated(false);
         return stack == null ? 0 : stack.size();
     }
 
     void restoreEvaluationDepth(int depth) {
-        Deque<BitSet> stack = evaluated(false);
+        Deque<EvaluationBits> stack = evaluated(false);
         if (stack != null) while (stack.size() > depth) stack.pop();
     }
 
     void createEvaluated() {
-        evaluated(true).push(new BitSet());
+        evaluated(true).push(new EvaluationBits());
     }
 
     void pushEvaluated() {
-        Deque<BitSet> stack = evaluated(false);
-        if (stack != null) stack.push(new BitSet());
+        Deque<EvaluationBits> stack = evaluated(false);
+        if (stack != null) stack.push(new EvaluationBits());
     }
 
-    void pushEvaluated(BitSet bits) {
-        Deque<BitSet> stack = evaluated(false);
+    void pushEvaluated(EvaluationBits bits) {
+        Deque<EvaluationBits> stack = evaluated(false);
         if (stack != null && bits != null) stack.push(bits);
     }
 
-    BitSet popEvaluated() {
-        Deque<BitSet> stack = evaluated(false);
+    EvaluationBits popEvaluated() {
+        Deque<EvaluationBits> stack = evaluated(false);
         return stack == null || stack.isEmpty() ? null : stack.pop();
     }
 
-    BitSet peekEvaluated() {
-        Deque<BitSet> stack = evaluated(false);
+    EvaluationBits peekEvaluated() {
+        Deque<EvaluationBits> stack = evaluated(false);
         return stack == null || stack.isEmpty() ? null : stack.peek();
     }
 
     void markEvaluated(int index) {
-        BitSet bits = peekEvaluated();
+        EvaluationBits bits = peekEvaluated();
         if (bits != null) bits.set(index);
     }
 
     void markEvaluated(int from, int to) {
-        BitSet bits = peekEvaluated();
+        EvaluationBits bits = peekEvaluated();
         if (bits != null) bits.set(from, to);
     }
 
-    BitSet mergedEvaluated() {
-        BitSet merged = new BitSet();
-        Deque<BitSet> stack = evaluated(false);
-        if (stack != null) for (BitSet bits : stack) merged.or(bits);
+    EvaluationBits mergedEvaluated() {
+        EvaluationBits merged = new EvaluationBits();
+        Deque<EvaluationBits> stack = evaluated(false);
+        if (stack != null) for (EvaluationBits bits : stack) merged.or(bits);
         return merged;
     }
 

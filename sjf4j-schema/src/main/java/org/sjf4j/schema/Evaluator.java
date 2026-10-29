@@ -17,7 +17,6 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.BitSet;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
@@ -1288,8 +1287,8 @@ public interface Evaluator {
             if (ifPlan == null) return true;
 
             boolean result = true;
-            BitSet cousinEvaluated = ctx.popEvaluated();
-            ctx.pushEvaluated();
+            EvaluationBits cousinEvaluated = ctx.popEvaluated();
+            if (cousinEvaluated != null) ctx.pushEvaluated();
             ctx.pushIgnoreError();
             boolean tested = ifPlan.evaluate(instance, ps, ctx);
             ctx.popIgnoreError();
@@ -1297,15 +1296,15 @@ public interface Evaluator {
                 if (thenPlan != null) {
                     result = thenPlan.evaluate(instance, ps, ctx);
                 }
-                BitSet ifThenEvaluated = ctx.popEvaluated();
+                EvaluationBits ifThenEvaluated = ctx.popEvaluated();
                 if (result && cousinEvaluated != null && ifThenEvaluated != null)
                     cousinEvaluated.or(ifThenEvaluated);
             } else {
-                BitSet droppedEvaluated = ctx.popEvaluated();
+                EvaluationBits droppedEvaluated = ctx.popEvaluated();
                 if (elsePlan != null) {
-                    ctx.pushEvaluated();
+                    if (cousinEvaluated != null) ctx.pushEvaluated();
                     result = elsePlan.evaluate(instance, ps, ctx);
-                    BitSet elseEvaluated = ctx.popEvaluated();
+                    EvaluationBits elseEvaluated = ctx.popEvaluated();
                     if (result && cousinEvaluated != null && elseEvaluated != null)
                         cousinEvaluated.or(elseEvaluated);
                 }
@@ -1331,32 +1330,31 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
-            boolean result = true;
-            BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = ctx.popEvaluated();
-            if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[allOfPlans.length];
-            }
-            for (int i = 0; i < allOfPlans.length; i++) {
-                SchemaPlan plan = allOfPlans[i];
-                ctx.pushEvaluated();
-                boolean subResult = plan.evaluate(instance, ps, ctx);
-                BitSet childEvaluated = ctx.popEvaluated();
-                if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
-                result = result && subResult;
-                if (!subResult && ctx.shouldAbort()) {
-                    if (cousinEvaluated != null) ctx.pushEvaluated(cousinEvaluated);
-                    return false;
+            boolean valid = true;
+            EvaluationBits parentMarks = ctx.popEvaluated();
+            EvaluationBits successfulMarks = null;
+            try {
+                for (SchemaPlan plan : allOfPlans) {
+                    if (parentMarks != null) ctx.pushEvaluated();
+                    boolean passed = plan.evaluate(instance, ps, ctx);
+                    EvaluationBits childMarks = parentMarks == null ? null : ctx.popEvaluated();
+                    if (passed && childMarks != null) {
+                        if (successfulMarks == null) successfulMarks = childMarks;
+                        else successfulMarks.or(childMarks);
+                    }
+                    if (!passed) {
+                        valid = false;
+                        if (ctx.shouldAbort()) return false;
+                    }
                 }
-            }
-            if (cousinEvaluated != null)
-                ctx.pushEvaluated(cousinEvaluated);
-            if (result && evaluatedArr != null) {
-                for (BitSet evaluated : evaluatedArr) {
-                    if (evaluated != null) cousinEvaluated.or(evaluated);
+                // allOf annotations contribute only when the entire applicator succeeds.
+                if (valid && parentMarks != null && successfulMarks != null) {
+                    parentMarks.or(successfulMarks);
                 }
+                return valid;
+            } finally {
+                if (parentMarks != null) ctx.pushEvaluated(parentMarks);
             }
-            return result;
         }
     }
 
@@ -1381,41 +1379,40 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
-            boolean result = false;
-            BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = ctx.popEvaluated();
-            if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[anyOfPlans.length];
-            }
-            for (int i = 0; i < anyOfPlans.length; i++) {
-                SchemaPlan plan = anyOfPlans[i];
-                ctx.pushEvaluated();
-                ctx.pushIgnoreError();
-                boolean subResult = plan.evaluate(instance, ps, ctx);
-                ctx.popIgnoreError();
-                BitSet childEvaluated = ctx.popEvaluated();
-                if (subResult && evaluatedArr != null && childEvaluated != null) {
-                    evaluatedArr[i] = childEvaluated;
+            boolean valid = false;
+            EvaluationBits parentMarks = ctx.popEvaluated();
+            EvaluationBits successfulMarks = null;
+            try {
+                for (SchemaPlan plan : anyOfPlans) {
+                    if (parentMarks != null) ctx.pushEvaluated();
+                    ctx.pushIgnoreError();
+                    boolean passed;
+                    try {
+                        passed = plan.evaluate(instance, ps, ctx);
+                    } finally {
+                        ctx.popIgnoreError();
+                    }
+                    EvaluationBits childMarks = parentMarks == null ? null : ctx.popEvaluated();
+                    if (passed) {
+                        valid = true;
+                        if (parentMarks == null) break;
+                        if (childMarks != null) {
+                            if (successfulMarks == null) successfulMarks = childMarks;
+                            else successfulMarks.or(childMarks);
+                        }
+                    }
                 }
-                if (subResult) {
-                    result = true;
-                    // Early exit: without unevaluated tracking, one success is
-                    // sufficient for anyOf semantics; no merge needed.
-                    if (cousinEvaluated == null) break;
+                if (valid && parentMarks != null && successfulMarks != null) {
+                    parentMarks.or(successfulMarks);
                 }
-            }
-            if (cousinEvaluated != null)
-                ctx.pushEvaluated(cousinEvaluated);
-            if (result && evaluatedArr != null) {
-                for (BitSet evaluated : evaluatedArr) {
-                    if (evaluated != null) cousinEvaluated.or(evaluated);
+                if (!valid && ctx.needsDiagnostic()) {
+                    ctx.addError(instance, ps, keywordPs, schemaUri, "anyOf",
+                            "expected at least one matching schema");
                 }
+                return valid;
+            } finally {
+                if (parentMarks != null) ctx.pushEvaluated(parentMarks);
             }
-            if (!result) {
-                if (ctx.needsDiagnostic()) { ctx.addError(instance, ps, keywordPs, schemaUri, "anyOf",
-                        "expected at least one matching schema"); }
-            }
-            return result;
         }
     }
 
@@ -1441,41 +1438,37 @@ public interface Evaluator {
         @Override
         public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
             int matches = 0;
-            BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = ctx.popEvaluated();
-            if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[oneOfPlans.length];
-            }
-            for (int i = 0; i < oneOfPlans.length; i++) {
-                SchemaPlan plan = oneOfPlans[i];
-                ctx.pushEvaluated();
-                ctx.pushIgnoreError();
-                boolean subResult = plan.evaluate(instance, ps, ctx);
-                ctx.popIgnoreError();
-                BitSet childEvaluated = ctx.popEvaluated();
-                if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
-                if (subResult) {
-                    matches++;
-                    if (matches > 1) break;
+            EvaluationBits parentMarks = ctx.popEvaluated();
+            EvaluationBits matchedMarks = null;
+            try {
+                for (SchemaPlan plan : oneOfPlans) {
+                    if (parentMarks != null) ctx.pushEvaluated();
+                    ctx.pushIgnoreError();
+                    boolean passed;
+                    try {
+                        passed = plan.evaluate(instance, ps, ctx);
+                    } finally {
+                        ctx.popIgnoreError();
+                    }
+                    EvaluationBits childMarks = parentMarks == null ? null : ctx.popEvaluated();
+                    if (passed) {
+                        matches++;
+                        if (matches > 1) break;
+                        matchedMarks = childMarks;
+                    }
                 }
-            }
-            if (cousinEvaluated != null)
-                ctx.pushEvaluated(cousinEvaluated);
-            if (matches == 1 && evaluatedArr != null) {
-                for (BitSet evaluated : evaluatedArr) {
-                    if (evaluated != null) cousinEvaluated.or(evaluated);
+                if (matches == 1 && parentMarks != null && matchedMarks != null) {
+                    parentMarks.or(matchedMarks);
                 }
+                if (matches != 1 && ctx.needsDiagnostic()) {
+                    ctx.addError(instance, ps, keywordPs, schemaUri, "oneOf",
+                            matches == 0 ? "expected exactly 1 matching schema, found 0"
+                                    : "expected exactly 1 matching schema, found at least " + matches);
+                }
+                return matches == 1;
+            } finally {
+                if (parentMarks != null) ctx.pushEvaluated(parentMarks);
             }
-            if (matches == 0) {
-                if (ctx.needsDiagnostic()) { ctx.addError(instance, ps, keywordPs, schemaUri, "oneOf",
-                        "expected exactly 1 matching schema, found 0"); }
-                return false;
-            } else if (matches > 1) {
-                if (ctx.needsDiagnostic()) { ctx.addError(instance, ps, keywordPs, schemaUri, "oneOf",
-                        "expected exactly 1 matching schema, found at least " + matches); }
-                return false;
-            }
-            return true;
         }
     }
 
@@ -1497,11 +1490,16 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
-            ctx.pushEvaluated();
+            boolean tracking = ctx.peekEvaluated() != null;
+            if (tracking) ctx.pushEvaluated();
             ctx.pushIgnoreError();
-            boolean result = notPlan.evaluate(instance, ps, ctx);
-            ctx.popIgnoreError();
-            ctx.popEvaluated();
+            boolean result;
+            try {
+                result = notPlan.evaluate(instance, ps, ctx);
+            } finally {
+                ctx.popIgnoreError();
+                if (tracking) ctx.popEvaluated();
+            }
 
             if (result) {
                 if (ctx.needsDiagnostic()) { ctx.addError(instance, ps, keywordPs, schemaUri, "not",
@@ -1529,7 +1527,7 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
-            BitSet merged = ctx.mergedEvaluated();
+            EvaluationBits merged = ctx.mergedEvaluated();
             Object actual = instance.node();
             boolean result = true;
 
@@ -1573,8 +1571,8 @@ public interface Evaluator {
                     }
                 }
             }
-            BitSet curEvaluated = ctx.popEvaluated();
-            BitSet parentEvaluated = ctx.peekEvaluated();
+            EvaluationBits curEvaluated = ctx.popEvaluated();
+            EvaluationBits parentEvaluated = ctx.peekEvaluated();
             if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
             return result;
         }
