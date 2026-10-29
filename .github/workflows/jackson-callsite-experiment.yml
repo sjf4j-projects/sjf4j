@@ -1,0 +1,37 @@
+name: Jackson Raw callsite JDK25
+
+on:
+  push:
+    branches:
+      - experiment/jackson-callsite-20261030
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Run focused JMH on Java 25
+        run: |
+          JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
+          "$JAVA_HOME_25_X64/bin/java" -version
+          "$JAVA_HOME_25_X64/bin/java" -jar "$JAR" \
+            '.*JacksonCallSiteExperiment.*' -f 2 -wi 6 -i 8 -w 250ms -r 250ms -prof gc \
+            -rf json -rff jackson-callsite.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jackson-callsite
+          path: jackson-callsite.json
+          if-no-files-found: ignore
