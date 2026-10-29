@@ -334,6 +334,45 @@ class Jackson2ParserTest {
         }
     }
 
+    @Test
+    void readsTypedRawObjectsAndArraysWithoutLosingPendingTokens() throws Exception {
+        Jackson2Parser parser = parser("[{\"id\":7,\"list\":[true,null]},[1,{\"x\":2}]]");
+        try {
+            parser.readArrayStart();
+            assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+            Map<String, Object> object = parser.readRawObject();
+            assertEquals(LinkedHashMap.class, object.getClass());
+            assertEquals(7, object.get("id"));
+            assertEquals(ArrayList.class, object.get("list").getClass());
+            assertFalse(parser.nextIfArrayEnd());
+            List<Object> array = parser.readRawArray();
+            assertEquals(ArrayList.class, array.getClass());
+            assertEquals(LinkedHashMap.class, array.get(1).getClass());
+            parser.readArrayEnd();
+            parser.end();
+        } finally {
+            parser.close();
+        }
+
+        Jackson2Parser nullParser = parser("[null,null]");
+        try {
+            nullParser.readArrayStart();
+            assertNull(nullParser.readRawObject());
+            assertNull(nullParser.readRawArray());
+            nullParser.readArrayEnd();
+            nullParser.end();
+        } finally {
+            nullParser.close();
+        }
+
+        Jackson2Parser mismatch = parser("[]");
+        try {
+            assertThrows(BindingException.class, mismatch::readRawObject);
+        } finally {
+            mismatch.close();
+        }
+    }
+
     private static Jackson2Parser parser(String json) throws IOException {
         return new Jackson2Parser(new JsonFactory().createParser(json));
     }
