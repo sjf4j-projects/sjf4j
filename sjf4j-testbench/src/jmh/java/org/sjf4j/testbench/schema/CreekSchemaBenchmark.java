@@ -64,7 +64,7 @@ public class CreekSchemaBenchmark {
     @Setup(Level.Trial)
     public void setup(ModelState modelState) throws IOException {
         try (InputStream stream = CreekSchemaBenchmark.class.getResourceAsStream(
-                "/schema/creek-test-model-2020-12.json")) {
+                "/schema/creek-2020-12.json")) {
             if (stream == null) {
                 throw new IllegalStateException("Creek JSON Schema fixture not found");
             }
@@ -96,37 +96,8 @@ public class CreekSchemaBenchmark {
     }
 
     @Benchmark
-    public void schema_validate_deserialized_pojo() {
-        plan.requireValid(deserializedModel, false);
-    }
-
-    @Benchmark
     public void schema_validate_map() {
         plan.requireValid(mapNode, false);
-    }
-
-    @Benchmark
-    public byte[] jackson_serialize() throws IOException {
-        return JACKSON.writeValueAsBytes(model);
-    }
-
-    @Benchmark
-    public TestModel jackson_deserialize() throws IOException {
-        return JACKSON.readValue(jsonBytes, TestModel.class);
-    }
-
-    @Benchmark
-    public byte[] serialize_validate() throws IOException {
-        byte[] bytes = JACKSON.writeValueAsBytes(model);
-        plan.requireValid(model, false);
-        return bytes;
-    }
-
-    @Benchmark
-    public TestModel deserialize_validate() throws IOException {
-        TestModel result = JACKSON.readValue(jsonBytes, TestModel.class);
-        plan.requireValid(result, false);
-        return result;
     }
 
     @Benchmark
@@ -138,7 +109,6 @@ public class CreekSchemaBenchmark {
     @Benchmark
     public TestModel round_trip_validate() throws IOException {
         byte[] bytes = JACKSON.writeValueAsBytes(model);
-        plan.requireValid(model, false);
         TestModel result = JACKSON.readValue(bytes, TestModel.class);
         plan.requireValid(result, false);
         return result;
