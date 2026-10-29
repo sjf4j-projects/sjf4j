@@ -44,7 +44,7 @@ jobs:
         ./gradlew :sjf4j-testbench:jmhJar --no-daemon
         JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
         test -n "$JMH_JAR"
-        java -jar "$JMH_JAR" 'JacksonRawSizeBenchmark\\.jackson[23]_(map|list)_string_(native|compiled|runtime)$' -p count=2,5,6,32 -f 3 -wi 15 -i 5 -w 100ms -r 100ms -t 1 -prof gc -rf json -rff /tmp/jackson-specialization.json
+        java -jar "$JMH_JAR" 'JacksonRawSizeBenchmark\.jackson[23]_(map|list)_string_(native|compiled|runtime)$' -p count=2,5,6,32 -f 3 -wi 15 -i 5 -w 100ms -r 100ms -t 1 -prof gc -rf json -rff /tmp/jackson-specialization.json
         python3 - <<'PY'
         import json
         rows = json.load(open('/tmp/jackson-specialization.json'))
