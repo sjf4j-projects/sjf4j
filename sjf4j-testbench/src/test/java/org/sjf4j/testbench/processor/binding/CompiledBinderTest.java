@@ -131,6 +131,44 @@ public class CompiledBinderTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("jsonBackends")
+    public void readsRawListsWithNativeArrayRepresentation(String backend, BinderContract binder)
+            throws IOException {
+        String input = "[{\"id\":7,\"items\":[true,null]},[2,{\"name\":\"Ada\"}],null]";
+        List<Object> list = binder.readRawList(input);
+        ArrayList<Object> concrete = binder.readRawArrayList(input);
+
+        assertEquals(new SimpleJsonBinder().readNode(input, Object.class), list);
+        assertEquals(list, concrete);
+        assertEquals(ArrayList.class, list.getClass());
+        assertEquals(ArrayList.class, concrete.getClass());
+        assertEquals(LinkedHashMap.class, list.get(0).getClass());
+        assertEquals(ArrayList.class, list.get(1).getClass());
+        assertEquals(LinkedHashMap.class, ((List<?>) list.get(1)).get(1).getClass());
+
+        assertNull(binder.readRawList("null"));
+        assertNull(binder.readRawArrayList("null"));
+        assertThrows(BindingException.class, () -> binder.readRawList("{}"));
+        assertThrows(BindingException.class, () -> binder.readRawArrayList("{}"));
+
+        RawListHolder holder = binder.readRawListHolder(
+                "{\"list\":[{\"x\":1},[false]],\"arrayList\":[1,null,\"last\"]}");
+        assertEquals(ArrayList.class, holder.list.getClass());
+        assertEquals(ArrayList.class, holder.arrayList.getClass());
+        assertEquals(LinkedHashMap.class, holder.list.get(0).getClass());
+        assertEquals(ArrayList.class, holder.list.get(1).getClass());
+    }
+
+    @Test
+    public void runtimePreservesConcreteListTypes() {
+        SimpleJsonBinder binder = new SimpleJsonBinder();
+        assertEquals(ArrayList.class, binder.readNode("[1,2]", List.class).getClass());
+        assertEquals(ArrayList.class, binder.readNode("[1,2]", ArrayList.class).getClass());
+        assertEquals(java.util.LinkedList.class,
+                binder.readNode("[1,2]", java.util.LinkedList.class).getClass());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
     public void supportsRootCollectionsAndMaps(String backend, BinderContract binder) throws IOException {
 
         List<Integer> numbers = binder.readNumbers("[1,2,null,4]");
@@ -621,7 +659,21 @@ public class CompiledBinderTest {
     }
 
 
+    public static final class RawListHolder {
+        public List<Object> list;
+        public ArrayList<Object> arrayList;
+    }
+
     public interface BinderContract {
+
+        @ReadFrom
+        List<Object> readRawList(String input) throws IOException;
+
+        @ReadFrom
+        ArrayList<Object> readRawArrayList(String input) throws IOException;
+
+        @ReadFrom
+        RawListHolder readRawListHolder(String input) throws IOException;
 
         @ReadFrom
         int readInt(String input) throws IOException;
