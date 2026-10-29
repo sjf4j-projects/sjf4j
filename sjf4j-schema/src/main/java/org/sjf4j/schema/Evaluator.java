@@ -1282,7 +1282,10 @@ public interface Evaluator {
                 EvaluationBits childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 result = result && subResult;
-                if (!subResult && ctx.isFailFast()) return false;
+                if (!subResult && ctx.isFailFast()) {
+                    if (cousinEvaluated != null) instance.pushEvaluated(cousinEvaluated);
+                    return false;
+                }
             }
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
