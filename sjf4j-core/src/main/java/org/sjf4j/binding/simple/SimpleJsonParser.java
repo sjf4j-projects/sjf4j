@@ -408,8 +408,8 @@ public final class SimpleJsonParser extends StreamingParser {
     }
 
     // The normal raw dispatch already knows the container shape.
-    // Keep null checks at the public entry point only.
-    // Hold up to three members locally, then allocate the backing map.
+    // Keep null checks at the public entry point only. Buffer at most three
+    // members before allocating a map.
     private Map<String, Object> _readRawObject() throws IOException {
         readObjectStart();
         String name1 = nextName();
