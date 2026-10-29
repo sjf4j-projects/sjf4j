@@ -302,7 +302,7 @@ public class CompiledBinderTest {
         assertInstanceOf(LinkedHashMap.class, linked);
         assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                 new ArrayList<String>(linked.keySet()));
-        assertInstanceOf(LinkedHashMap.class, linked.get("nested").getClass());
+        assertInstanceOf(LinkedHashMap.class, linked.get("nested"));
 
         Map<?, ?> runtime = (Map<?, ?>) new SimpleJsonBinder().readNode(input, Object.class);
 
@@ -316,7 +316,7 @@ public class CompiledBinderTest {
         assertInstanceOf(LinkedHashMap.class, nested);
         assertInstanceOf(ArrayList.class, items);
         assertEquals(Arrays.asList("first", "second"), new ArrayList<Object>(nested.keySet()));
-        assertInstanceOf(LinkedHashMap.class, items.get(1).getClass());
+        assertInstanceOf(LinkedHashMap.class, items.get(1));
 
         String holderInput = "{"
                 + "\"value\":{\"text\":\"Ada\",\"nested\":[1,{\"enabled\":true}]},"
@@ -334,8 +334,8 @@ public class CompiledBinderTest {
         assertEquals(Arrays.asList("text", "nested"), new ArrayList<Object>(holderValue.keySet()));
         assertInstanceOf(ArrayList.class, holderNested);
         assertInstanceOf(ArrayList.class, holderValues);
-        assertInstanceOf(LinkedHashMap.class, holderValues.get(1).getClass());
-        assertInstanceOf(ArrayList.class, holderValues.get(2).getClass());
+        assertInstanceOf(LinkedHashMap.class, holderValues.get(1));
+        assertInstanceOf(ArrayList.class, holderValues.get(2));
     }
 
     @ParameterizedTest(name = "{0}")
