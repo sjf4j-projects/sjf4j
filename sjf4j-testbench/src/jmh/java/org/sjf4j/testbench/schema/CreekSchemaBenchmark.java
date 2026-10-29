@@ -58,6 +58,7 @@ public class CreekSchemaBenchmark {
     private TestModel model;
     private TestModel deserializedModel;
     private Map<String, Object> mapNode;
+    private Object invalidRoot;
     private Map<String, Object> invalidMap;
     private Map<String, Object> invalidNestedMap;
     private byte[] jsonBytes;
@@ -83,6 +84,7 @@ public class CreekSchemaBenchmark {
         deserializedModel = JACKSON.readValue(jsonBytes, TestModel.class);
         mapNode = JACKSON.readValue(jsonBytes, new TypeReference<Map<String, Object>>() {});
 
+        invalidRoot = new String(new char[]{'w', 'r', 'o', 'n', 'g'});
         invalidMap = new LinkedHashMap<>(mapNode);
         invalidMap.put("name", 123);
 
@@ -94,7 +96,7 @@ public class CreekSchemaBenchmark {
         poly.set(0, first);
         invalidNestedMap.put("polymorphicTypes", poly);
 
-        if (plan.isValid(invalidMap) || plan.isValid(invalidNestedMap) || plan.isValid("wrong")) {
+        if (plan.isValid(invalidMap) || plan.isValid(invalidNestedMap) || plan.isValid(invalidRoot)) {
             throw new IllegalStateException("Invalid Creek benchmark fixtures unexpectedly passed");
         }
 
@@ -144,12 +146,12 @@ public class CreekSchemaBenchmark {
     /** A root type mismatch: the simplest invalid input. */
     @Benchmark
     public boolean schema_is_valid_fail_root() {
-        return plan.isValid("wrong");
+        return plan.isValid(invalidRoot);
     }
 
     @Benchmark
     public org.sjf4j.schema.ValidationResult schema_validate_fail_root() {
-        return plan.validate("wrong", true, false);
+        return plan.validate(invalidRoot, true, false);
     }
 
     /** Invalid ordinary property, with fast-fail diagnostics as the control. */
