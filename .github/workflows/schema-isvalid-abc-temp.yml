@@ -1,0 +1,68 @@
+name: Temporary schema A/B/C JMH
+on:
+  push:
+    branches: [refactor/schema-node-frame-fastfail]
+    paths:
+      - .github/workflows/schema-isvalid-abc-temp.yml
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build identical Creek benchmarks against main, original PR and optimized PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-main" 41070c488151baf831ecf53beeb3beea92cad2d5
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-pr-old" 7b7e1df71cbd8ad862a68f1d23f0c7d647fd6cce
+          sourcepath="sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java"
+          cp "$GITHUB_WORKSPACE/$sourcepath" "$RUNNER_TEMP/sjf4j-main/$sourcepath"
+          cp "$GITHUB_WORKSPACE/$sourcepath" "$RUNNER_TEMP/sjf4j-pr-old/$sourcepath"
+          for variant in main pr-old optimized; do
+            if [ "$variant" = optimized ]; then root="$GITHUB_WORKSPACE"; else root="$RUNNER_TEMP/sjf4j-$variant"; fi
+            echo "=== Compiling $variant ==="
+            (cd "$root" && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          done
+      - name: Run JMH on same runner with GC allocation profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p schema-abc-results
+          regex='.*CreekSchemaBenchmark\.(schema_validate_map|schema_validate_pojo|schema_is_valid_map|schema_is_valid_pojo|jackson_round_trip|round_trip_validate|round_trip_is_valid)'
+          for variant in main pr-old optimized; do
+            if [ "$variant" = optimized ]; then root="$GITHUB_WORKSPACE"; else root="$RUNNER_TEMP/sjf4j-$variant"; fi
+            jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -type f -name '*jmh*.jar' | head -n 1)
+            echo "=== Measuring $variant JAR=$jar ==="
+            java -jar "$jar" "$regex" -f 2 -wi 15 -i 5 -w 300ms -r 300ms -prof gc \
+              -rf json -rff "$GITHUB_WORKSPACE/schema-abc-results/$variant.json" \
+              | tee "$GITHUB_WORKSPACE/schema-abc-results/$variant.txt"
+          done
+          python3 - <<'PY'
+          import json
+          metrics = {}
+          for variant in ('main', 'pr-old', 'optimized'):
+              records=json.load(open(f'schema-abc-results/{variant}.json'))
+              metrics[variant]={r['benchmark'].rsplit('.',1)[-1]:r for r in records}
+          for name in sorted(metrics['main']):
+              print(f"=== {name} ===")
+              for variant in metrics:
+                  r=metrics[variant][name]
+                  p=r['primaryMetric']
+                  alloc=next((v['score'] for k,v in r['secondaryMetrics'].items() if k.endswith('gc.alloc.rate.norm')), None)
+                  print(f"  {variant}: {p['score']:.5f} +/- {p['scoreError']:.5f} us/op, {alloc:.2f} B/op")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schema-isvalid-abc-jmh
+          path: schema-abc-results/
