@@ -1,0 +1,55 @@
+name: Experiment schema compilation cost
+on:
+  push:
+    branches: [experiment/schema-compile-cost]
+    paths: [.github/workflows/schema-compile-cost-exp.yml]
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build original main and static plan benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach "$RUNNER_TEMP/sjf4j-original" 41070c488151baf831ecf53beeb3beea92cad2d5
+          file="sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/SchemaPlanCompilationBenchmark.java"
+          cp "$GITHUB_WORKSPACE/$file" "$RUNNER_TEMP/sjf4j-original/$file"
+          for variant in original static; do
+            if [ "$variant" = original ]; then root="$RUNNER_TEMP/sjf4j-original"; else root="$GITHUB_WORKSPACE"; fi
+            (cd "$root" && ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain)
+          done
+      - name: Compile-plan JMH same runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for variant in original static; do
+            if [ "$variant" = original ]; then root="$RUNNER_TEMP/sjf4j-original"; else root="$GITHUB_WORKSPACE"; fi
+            jar=$(find "$root/sjf4j-testbench/build/libs" -maxdepth 1 -name '*jmh*.jar' -type f | head -n 1)
+            java -jar "$jar" '.*SchemaPlanCompilationBenchmark.parseAndCompile$' -f 2 -wi 10 -i 5 -w 350ms -r 350ms -prof gc \
+              -rf json -rff "$GITHUB_WORKSPACE/results/$variant.json" | tee "$GITHUB_WORKSPACE/results/$variant.txt"
+          done
+          python3 - <<'PY'
+          import json
+          for name in ('original','static'):
+              row=json.load(open('results/'+name+'.json'))[0]
+              p=row['primaryMetric']
+              alloc=next((v['score'] for k,v in row['secondaryMetrics'].items() if k.endswith('gc.alloc.rate.norm')),None)
+              print(f'{name}: {p["score"]:.4f} +/- {p["scoreError"]:.4f} us/op; {alloc:.1f} B/op')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schema-compile-cost
+          path: results/
