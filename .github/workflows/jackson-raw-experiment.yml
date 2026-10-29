@@ -17,6 +17,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Check Jackson field-name identity
+        run: ./gradlew :sjf4j-testbench:test --tests '*JacksonNameIdentityExperimentTest' --info --no-daemon
       - name: Build JMH
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Same-factory String vs UTF8 and EOF
