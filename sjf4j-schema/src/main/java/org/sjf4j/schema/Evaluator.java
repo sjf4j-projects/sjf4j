@@ -913,7 +913,7 @@ public interface Evaluator {
             boolean result = true;
             for (String key : NodeWalker.keySetInObject(actual)) {
                 ctx.pushIgnoreError();
-                NodeFrame keyFrame = ctx.enterValue(key);
+                NodeFrame keyFrame = ctx.enterValue(instance, key);
                 boolean probed;
                 try {
                     probed = propertyNamesPlan.evaluate(keyFrame, ps, ctx);
