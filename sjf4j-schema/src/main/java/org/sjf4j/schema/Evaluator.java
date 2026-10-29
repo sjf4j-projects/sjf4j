@@ -1114,36 +1114,7 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.ARRAY) return true;
             if (prefixItemsPlans == null && itemsPlan == null) return true;
 
-//            final boolean[] result = new boolean[] {true};
-//            boolean shouldAbort = NodeWalker.anyMatchInArray(instance.node(), (i, sub) -> {
-//                if (prefixItemsPlans != null && i < prefixItemsPlans.length) {
-//                    NodeFrame subInstance = ctx.enterIndex(instance, i, sub);
-//                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-//                    boolean subResult;
-                    try {
-                        subResult = prefixItemsPlans[i].evaluate(subInstance, cps, ctx);
-                    } finally {
-                        ctx.leaveChild();
-                    }
-//                    result[0] = result[0] && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return true;
-//                    if (result[0]) ctx.markEvaluated(i);
-//                } else if (itemsPlan != null) {
-//                    NodeFrame subInstance = ctx.enterIndex(instance, i, sub);
-//                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-//                    boolean subResult;
-                    try {
-                        subResult = itemsPlan.evaluate(subInstance, cps, ctx);
-                    } finally {
-                        ctx.leaveChild();
-                    }
-//                    result[0] = result[0] && subResult;
-//                    if (!subResult && ctx.shouldAbort()) return true;
-//                    if (result[0]) ctx.markEvaluated(i);
-//                }
-//                return false;
-//            });
-//            if (shouldAbort) return false;
+
 
             boolean result = true;
             Iterator<Object> it = NodeWalker.iteratorInArray(instance.node());
