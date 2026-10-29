@@ -235,7 +235,10 @@ public final class SchemaPlanner {
         // minLength maxLength
         Integer minLength = schema.getInt("minLength");
         Integer maxLength = schema.getInt("maxLength");
-        if (_allowsKeyword(dialect, vocabulary, "minLength") && (minLength != null || maxLength != null)) {
+        // minLength: 0 has no constraint effect without maxLength. Prune it
+        // from the runtime pipeline rather than computing Unicode length.
+        if (_allowsKeyword(dialect, vocabulary, "minLength")
+                && ((minLength != null && minLength != 0) || maxLength != null)) {
             evaluators.add(new Evaluator.StringEvaluator(new PathSegment.Name(ps, "minLength"),
                     new PathSegment.Name(ps, "maxLength"), idUri, minLength, maxLength));
         }
