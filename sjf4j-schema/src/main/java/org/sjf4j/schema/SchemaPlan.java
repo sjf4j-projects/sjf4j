@@ -124,19 +124,22 @@ public final class SchemaPlan {
             return false;
         }
 
+        // Dynamic anchor maps may be populated after a plan is constructed;
+        // unlike evaluated tracking, they must be checked at execution time.
+        boolean dynamicScope = !byDynamicAnchorPlans.isEmpty();
         // Most schemas (including nested Creek schemas) need no execution scope.
         // Keep one evaluator loop for scoped and unscoped plans alike.
-        if (!tracksEvaluated && !hasDynamicScope) {
+        if (!tracksEvaluated && !dynamicScope) {
             return evaluateKeywords(instance, ps, ctx);
         }
 
         int savedDepth = tracksEvaluated ? ctx.evaluationDepth() : 0;
         if (tracksEvaluated) ctx.createEvaluated();
-        if (hasDynamicScope) ctx.pushPlan(this);
+        if (dynamicScope) ctx.pushPlan(this);
         try {
             return evaluateKeywords(instance, ps, ctx);
         } finally {
-            if (hasDynamicScope) ctx.popPlan();
+            if (dynamicScope) ctx.popPlan();
             if (tracksEvaluated) ctx.restoreEvaluationDepth(savedDepth);
         }
     }
@@ -165,7 +168,6 @@ public final class SchemaPlan {
     final boolean booleanSchema;
     final boolean booleanValue;
     final boolean tracksEvaluated;
-    final boolean hasDynamicScope;
 
     final String dynamicAnchor;
     final Map<String, SchemaPlan> byAnchorPlans;
@@ -189,7 +191,6 @@ public final class SchemaPlan {
         this.booleanValue = booleanValue;
         this.tracksEvaluated = evaluators.length != 0
                 && evaluators[evaluators.length - 1] instanceof Evaluator.UnevaluatedEvaluator;
-        this.hasDynamicScope = byDynamicAnchorPlans != null && !byDynamicAnchorPlans.isEmpty();
 
         this.dynamicAnchor = dynamicAnchor;
         this.byAnchorPlans = byAnchorPlans;
