@@ -130,7 +130,20 @@ public final class SchemaPlan {
         // Most schemas (including nested Creek schemas) need no execution scope.
         // Keep one evaluator loop for scoped and unscoped plans alike.
         if (!tracksEvaluated && !dynamicScope) {
-            return evaluateKeywords(instance, ps, ctx);
+            // The hot path for unscoped leaf schemas avoids generic loop setup.
+            if (evaluators.length == 1) {
+                return evaluators[0].evaluate(instance, ps, ctx);
+            }
+            // Keep the generic dispatch loop in the same call frame for
+            // multi-keyword plans. Evaluator order and semantics are unchanged.
+            boolean valid = true;
+            for (Evaluator evaluator : evaluators) {
+                if (!evaluator.evaluate(instance, ps, ctx)) {
+                    valid = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+            }
+            return valid;
         }
 
         int savedDepth = tracksEvaluated ? ctx.evaluationDepth() : 0;
