@@ -646,11 +646,35 @@ public interface Evaluator {
         final Pattern[] patterns;
         final SchemaPlan[] patternPlans;
         final SchemaPlan additionalPropertiesPlan;
+        // Present only in an independently specialized plan.
+        private final CompiledPropertyAccess compiledAccess;
+        private final int[] compiledOrder;
+        private final String[] compiledNames;
+
+        PropertiesEvaluator withCompiledAccess(CompiledPropertyAccess access, int[] order,
+                                              org.sjf4j.meta.PropertyInfo[] properties) {
+            return new PropertiesEvaluator(this, access, order, properties);
+        }
+
+        private PropertiesEvaluator(PropertiesEvaluator source, CompiledPropertyAccess access,
+                                    int[] order, org.sjf4j.meta.PropertyInfo[] properties) {
+            this.properties = source.properties;
+            this.patterns = source.patterns;
+            this.patternPlans = source.patternPlans;
+            this.additionalPropertiesPlan = source.additionalPropertiesPlan;
+            this.compiledAccess = access;
+            this.compiledOrder = order;
+            this.compiledNames = new String[properties.length];
+            for (int i = 0; i < properties.length; i++) compiledNames[i] = properties[i].name;
+        }
         public PropertiesEvaluator(PathSegment patternPropertiesKeywordPs, URI schemaUri,
                                    Map<String, SchemaPlan> properties,
                                    Map<String, SchemaPlan> patternProperties,
                                    SchemaPlan additionalPropertiesPlan) {
             this.properties = properties;
+            this.compiledAccess = null;
+            this.compiledOrder = null;
+            this.compiledNames = null;
             if (patternProperties != null) {
                 this.patterns = new Pattern[patternProperties.size()];
                 this.patternPlans = new SchemaPlan[patternProperties.size()];
@@ -679,10 +703,21 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
             boolean result = true;
-            int propIdx = 0;
-            for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(instance.node())) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
+            Object node = instance.node();
+            boolean fast = compiledAccess != null && node.getClass() == compiledAccess.type();
+            Iterator<Map.Entry<String, Object>> entries = fast ? null : NodeWalker.entrySetInObject(node).iterator();
+            int count = fast ? compiledNames.length : -1;
+            for (int propIdx = 0; fast ? propIdx < count : entries.hasNext(); propIdx++) {
+                String key;
+                Object value;
+                if (fast) {
+                    key = compiledNames[propIdx];
+                    value = compiledAccess.read(node, compiledOrder[propIdx]);
+                } else {
+                    Map.Entry<String, Object> entry = entries.next();
+                    key = entry.getKey();
+                    value = entry.getValue();
+                }
                 boolean matched = false;
                 if (properties != null) {
                     SchemaPlan plan = properties.get(key);
@@ -722,7 +757,6 @@ public interface Evaluator {
                     result = result && subResult;
                     if (!subResult && ctx.isFailFast()) return false;
                 }
-                propIdx++;
             }//for
 
             return result;
