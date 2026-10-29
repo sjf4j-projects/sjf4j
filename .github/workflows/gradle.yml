@@ -38,24 +38,6 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
-    # Experimental JMH, remove this step after collecting benchmarks.
-    - name: Compare SJF4J raw and wrapped Fastjson2 native (3 forks)
-      run: |
-        ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
-        echo "Benchmark jar: $JMH_JAR"
-        test -n "$JMH_JAR"
-        java -version
-        java -jar "$JMH_JAR" 'CompiledReadBenchmark\.fastjson2_map_(string|utf8)_(raw|raw_native|raw_native_any|native_object|native)$' -f 3 -wi 15 -i 5 -w 400ms -r 400ms -t 1 -rf json -rff /tmp/native-wrap-jmh.json
-        python3 - <<'PY'
-        import json
-        print('BEGIN JMH DATA')
-        for row in json.load(open('/tmp/native-wrap-jmh.json')):
-            p=row['primaryMetric']
-            print(row['benchmark'], round(p['score'],4), round(p['scoreError'],4),p['scoreUnit'])
-        print('END JMH DATA')
-        PY
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
