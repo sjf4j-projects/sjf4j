@@ -393,22 +393,112 @@ public final class Fastjson2Parser extends StreamingParser {
         }
     }
 
-    // The caller has already checked the opening delimiter. Consume it
-    // directly to avoid repeating the token-type branch at every level.
+    // The opening delimiter is known; defer allocating small containers.
     private Map<String, Object> _readRawObjectBody() throws IOException {
         reader.next();
-        Map<String, Object> value = new LinkedHashMap<>();
-        while (!reader.nextIfObjectEnd()) {
-            value.put(reader.readFieldName(), _readRaw());
+        if (reader.nextIfObjectEnd()) {
+            LinkedHashMap<String, Object> value = new LinkedHashMap<>(0);
+            return value;
+        }
+        String name1 = reader.readFieldName();
+        Object value1 = _readRaw();
+        if (reader.nextIfObjectEnd()) {
+            LinkedHashMap<String, Object> value = new LinkedHashMap<>(2);
+            value.put(name1, value1);
+            return value;
+        }
+        String name2 = reader.readFieldName();
+        Object value2 = _readRaw();
+        if (reader.nextIfObjectEnd()) {
+            LinkedHashMap<String, Object> value = new LinkedHashMap<>(4);
+            value.put(name1, value1);
+            value.put(name2, value2);
+            return value;
+        }
+        String name3 = reader.readFieldName();
+        Object value3 = _readRaw();
+        if (reader.nextIfObjectEnd()) {
+            LinkedHashMap<String, Object> value = new LinkedHashMap<>(4);
+            value.put(name1, value1);
+            value.put(name2, value2);
+            value.put(name3, value3);
+            return value;
+        }
+        String name4 = reader.readFieldName();
+        Object value4 = _readRaw();
+        if (reader.nextIfObjectEnd()) {
+            LinkedHashMap<String, Object> value = new LinkedHashMap<>(8);
+            value.put(name1, value1);
+            value.put(name2, value2);
+            value.put(name3, value3);
+            value.put(name4, value4);
+            return value;
+        }
+        String name5 = reader.readFieldName();
+        Object value5 = _readRaw();
+        boolean complete = reader.nextIfObjectEnd();
+        LinkedHashMap<String, Object> value = new LinkedHashMap<>(complete ? 8 : 16);
+        value.put(name1, value1);
+        value.put(name2, value2);
+        value.put(name3, value3);
+        value.put(name4, value4);
+        value.put(name5, value5);
+        if (!complete) {
+            do {
+                value.put(reader.readFieldName(), _readRaw());
+            } while (!reader.nextIfObjectEnd());
         }
         return value;
     }
 
     private List<Object> _readRawArrayBody() throws IOException {
         reader.next();
-        List<Object> value = new ArrayList<>();
-        while (!reader.nextIfArrayEnd()) {
-            value.add(_readRaw());
+        if (reader.nextIfArrayEnd()) {
+            ArrayList<Object> value = new ArrayList<>(0);
+            return value;
+        }
+        Object item1 = _readRaw();
+        if (reader.nextIfArrayEnd()) {
+            ArrayList<Object> value = new ArrayList<>(1);
+            value.add(item1);
+            return value;
+        }
+        Object item2 = _readRaw();
+        if (reader.nextIfArrayEnd()) {
+            ArrayList<Object> value = new ArrayList<>(2);
+            value.add(item1);
+            value.add(item2);
+            return value;
+        }
+        Object item3 = _readRaw();
+        if (reader.nextIfArrayEnd()) {
+            ArrayList<Object> value = new ArrayList<>(3);
+            value.add(item1);
+            value.add(item2);
+            value.add(item3);
+            return value;
+        }
+        Object item4 = _readRaw();
+        if (reader.nextIfArrayEnd()) {
+            ArrayList<Object> value = new ArrayList<>(4);
+            value.add(item1);
+            value.add(item2);
+            value.add(item3);
+            value.add(item4);
+            return value;
+        }
+        Object item5 = _readRaw();
+        boolean complete = reader.nextIfArrayEnd();
+        ArrayList<Object> value = new ArrayList<>(complete ? 5 : 10);
+        value.add(item1);
+        value.add(item2);
+        value.add(item3);
+        value.add(item4);
+        value.add(item5);
+        if (!complete) {
+            do {
+                value.add(_readRaw());
+            } while (!reader.nextIfArrayEnd());
         }
         return value;
     }
