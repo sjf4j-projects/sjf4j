@@ -1,4 +1,4 @@
-name: Temporary ref-inline JMH A/B
+name: Temporary ref-inline JMH A/B fixed
 on:
   push:
     branches: [refactor/schema-node-frame-fastfail]
