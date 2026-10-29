@@ -618,7 +618,7 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
             Object actual = instance.node();
-            int size = Nodes.sizeInObject(actual);
+            int size = NodeWalker.sizeInObject(actual);
             if (minProperties >= 0 && size < minProperties) {
                 ctx.addError(instance, ps, minPropertiesKeywordPs, schemaUri, "minProperties",
                         "expected at least " + minProperties + " properties, found " + size);
@@ -722,7 +722,7 @@ public interface Evaluator {
 
             boolean result = true;
             int propIdx = 0;
-            for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(instance.node())) {
+            for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(instance.node())) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
                 boolean matched = false;
@@ -800,7 +800,7 @@ public interface Evaluator {
             boolean result = true;
             if (required != null) {
                 for (String key : required) {
-                    if (!Nodes.containsInObject(actual, key)) {
+                    if (!NodeWalker.containsInObject(actual, key)) {
                         ctx.addError(instance, ps, requiredKeywordPs, schemaUri, "required",
                                 "missing required property '" + key + "'");
                         result = false;
@@ -812,10 +812,10 @@ public interface Evaluator {
             if (dependentRequired != null) {
                 for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
                     String key = entry.getKey();
-                    if (Nodes.containsInObject(actual, key)) {
+                    if (NodeWalker.containsInObject(actual, key)) {
                         String[] required = entry.getValue();
                         for (String property : required) {
-                            if (!Nodes.containsInObject(actual, property)) {
+                            if (!NodeWalker.containsInObject(actual, property)) {
                                 ctx.addError(instance, ps, dependentRequiredKeywordPs, schemaUri, "dependentRequired",
                                         "missing property '" + property + "' required when '" + key + "' is present");
                                 result = false;
@@ -858,9 +858,9 @@ public interface Evaluator {
             if (dependentRequired != null) {
                 for (Map.Entry<String, String[]> entry : dependentRequired.entrySet()) {
                     String key = entry.getKey();
-                    if (Nodes.containsInObject(actual, key)) {
+                    if (NodeWalker.containsInObject(actual, key)) {
                         for (String property : entry.getValue()) {
-                            if (!Nodes.containsInObject(actual, property)) {
+                            if (!NodeWalker.containsInObject(actual, property)) {
                                 ctx.addError(instance, ps, keywordPs, schemaUri, "dependencies",
                                         "missing property '" + property + "' required when '" + key + "' is present");
                                 result = false;
@@ -873,7 +873,7 @@ public interface Evaluator {
             if (dependentPlans != null) {
                 for (Map.Entry<String, SchemaPlan> entry : dependentPlans.entrySet()) {
                     String key = entry.getKey();
-                    if (Nodes.containsInObject(actual, key)) {
+                    if (NodeWalker.containsInObject(actual, key)) {
                         boolean subResult = entry.getValue().evaluate(instance, ps, ctx);
                         result = result && subResult;
                         if (!subResult && ctx.shouldAbort()) return false;
@@ -904,7 +904,7 @@ public interface Evaluator {
             boolean result = true;
             for (Map.Entry<String, SchemaPlan> entry : dependentPlans.entrySet()) {
                 String key = entry.getKey();
-                if (Nodes.containsInObject(actual, key)) {
+                if (NodeWalker.containsInObject(actual, key)) {
                     SchemaPlan plan = dependentPlans.get(key);
                     boolean subResult = plan.evaluate(instance, ps, ctx);
                     result = result && subResult;
@@ -937,7 +937,7 @@ public interface Evaluator {
 
             Object actual = instance.node();
             boolean result = true;
-            for (String key : Nodes.keySetInObject(actual)) {
+            for (String key : NodeWalker.keySetInObject(actual)) {
                 ctx.pushIgnoreError();
                 boolean probed = propertyNamesPlan.evaluate(InstancedNode.infer(key, ctx.reusedLeaf()), ps, ctx);
                 ctx.popIgnoreError();
@@ -1009,7 +1009,7 @@ public interface Evaluator {
 
             Object actual = instance.node();
             boolean result = true;
-            int size = Nodes.sizeInArray(actual);
+            int size = NodeWalker.sizeInArray(actual);
             if (minItems >= 0 && size < minItems) {
                 ctx.addError(instance, ps, minItemsKeywordPs, schemaUri, "minItems",
                         "expected at least " + minItems + " items, found " + size);
@@ -1034,7 +1034,7 @@ public interface Evaluator {
 
         private static boolean hasDuplicate(Object array, int size) {
             if (size < 2) return false;
-            Iterator<Object> it = Nodes.iteratorInArray(array);
+            Iterator<Object> it = NodeWalker.iteratorInArray(array);
             // Keep load factor <= 0.5 for inexpensive linear probing.
             int capacity = 16;
             while (capacity < (long) size * 2) {
@@ -1112,7 +1112,7 @@ public interface Evaluator {
 //            if (shouldAbort) return false;
 
             boolean result = true;
-            Iterator<Object> it = Nodes.iteratorInArray(instance.node());
+            Iterator<Object> it = NodeWalker.iteratorInArray(instance.node());
             int i = 0;
             if (prefixItemsPlans != null) {
                 for (; i < prefixItemsPlans.length && it.hasNext(); i++) {
@@ -1211,7 +1211,7 @@ public interface Evaluator {
 
 
             int matches = 0;
-            Iterator<Object> it = Nodes.iteratorInArray(instance.node());
+            Iterator<Object> it = NodeWalker.iteratorInArray(instance.node());
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
@@ -1513,7 +1513,7 @@ public interface Evaluator {
             if (unevaluatedPropertiesPlan != null) {
                 if (instance.jsonType() != JsonType.OBJECT) return true;
                 int propIdx = 0;
-                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(actual)) {
+                for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(actual)) {
                     String key = entry.getKey();
                     if (!merged.get(propIdx)) {
                         InstancedNode subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
@@ -1530,7 +1530,7 @@ public interface Evaluator {
             if (unevaluatedItemsPlan != null) {
                 if (instance.jsonType() != JsonType.ARRAY) return true;
 
-                Iterator<Object> it = Nodes.iteratorInArray(actual);
+                Iterator<Object> it = NodeWalker.iteratorInArray(actual);
                 for (int i = 0; it.hasNext(); i++) {
                     Object subActual = it.next();
                     if (!merged.get(i)) {
