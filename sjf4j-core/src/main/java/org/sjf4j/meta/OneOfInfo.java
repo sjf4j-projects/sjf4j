@@ -17,7 +17,7 @@ import java.util.Map;
  * <p>Mappings are selected by discriminator value when one is configured, or
  * by JSON type otherwise.</p>
  */
-public class OneOfInfo {
+public final class OneOfInfo {
     public final Class<?> clazz;
     public final OneOfMapping[] mappings;
     public final String discriminatorKey;

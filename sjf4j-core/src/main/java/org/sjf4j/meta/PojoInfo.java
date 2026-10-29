@@ -22,7 +22,7 @@ import java.util.Set;
  * <p>It describes construction, property access, naming, dynamic JSON-object
  * behavior, and whether the framework reader or writer is required.</p>
  */
-public class PojoInfo {
+public final class PojoInfo {
     public final Class<?> clazz;
     public final CreatorInfo creatorInfo;
 
