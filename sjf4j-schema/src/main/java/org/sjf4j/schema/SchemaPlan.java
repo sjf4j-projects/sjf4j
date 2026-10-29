@@ -148,7 +148,7 @@ public final class SchemaPlan {
     }
 
     private boolean evaluateKeywords(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
-        // Experiment: separate bytecode call sites for short fixed plans.
+        // Distinct call sites for short plans help the JIT specialize dispatch.
         // Keyword order and early-abort semantics are unchanged.
         switch (evaluators.length) {
             case 0:

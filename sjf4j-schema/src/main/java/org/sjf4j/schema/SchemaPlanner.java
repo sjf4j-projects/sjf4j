@@ -1,18 +1,18 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPath;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import org.sjf4j.JsonObject;
-import org.sjf4j.JsonArray;
-import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
