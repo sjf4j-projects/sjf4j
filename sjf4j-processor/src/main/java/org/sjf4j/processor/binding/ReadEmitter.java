@@ -592,14 +592,6 @@ final class ReadEmitter {
     }
 
     private void emitList(JavaWriter out, BindingValue value) {
-        // Raw List<Object> is already handled by each backend's raw parser.
-        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.List")
-                && context.types.isObject(value.elementValue().type())) {
-            out.line("Object raw = parser.readRaw();");
-            out.line("return raw == null ? null : " + STREAMING_IO + ".castList(raw);");
-            return;
-        }
-
         emitArrayStart(out);
 
         out.line(value.type() + " value = new java.util.ArrayList<>();");
@@ -769,6 +761,9 @@ final class ReadEmitter {
 
             case RAW_MAP:
                 return "(" + value.type() + ") " + parser + ".readRawObject()";
+
+            case RAW_LIST:
+                return "(" + value.type() + ") " + parser + ".readRawArray()";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) return "(" + value.type() + ") " + parser + ".readRaw()";
