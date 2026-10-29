@@ -66,6 +66,8 @@ public class Fastjson2RawAllocationBenchmark {
         Map<String, Object> expected = readRawString();
         verifyEquivalent(expected, nativeString());
         verifyEquivalent(expected, nativeUtf8());
+        verifyEquivalent(expected, wrappedNativeString());
+        verifyEquivalent(expected, wrappedNativeUtf8());
         verifyEquivalent(expected, nativeJdkString());
         verifyEquivalent(expected, nativeJdkUtf8());
         verifyEquivalent(expected, readRawUtf8());
@@ -133,6 +135,26 @@ public class Fastjson2RawAllocationBenchmark {
     @Benchmark
     public Object rawUtf8() throws IOException {
         return readRawUtf8();
+    }
+
+    @Benchmark
+    public Object wrappedNativeString() throws IOException {
+        try (Fastjson2Parser parser = binder.createParser(json)) {
+            parser.start();
+            Map<String, Object> result = parser.rawReader().readObject();
+            parser.end();
+            return result;
+        }
+    }
+
+    @Benchmark
+    public Object wrappedNativeUtf8() throws IOException {
+        try (Fastjson2Parser parser = binder.createParser(utf8)) {
+            parser.start();
+            Map<String, Object> result = parser.rawReader().readObject();
+            parser.end();
+            return result;
+        }
     }
 
     @Benchmark
