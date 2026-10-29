@@ -68,7 +68,7 @@ public class JacksonListMapExperiment {
             s.append('}');
         }
         json = s.append(']').toString();
-        Object expected = native();
+        Object expected = readNative();
         for (Object actual : new Object[] {
                 compiled(), runtimeTyped(), rawArray(), manualCapacity4(), manualCapacity16()
         }) {
@@ -82,9 +82,9 @@ public class JacksonListMapExperiment {
         return "j2".equals(backend) ? binder2.createParser(json) : binder3.createParser(json);
     }
 
-    @Benchmark public Object nativeDeserialize() throws Exception { return native(); }
+    @Benchmark public Object nativeDeserialize() throws Exception { return readNative(); }
 
-    private Object native() throws Exception {
+    private Object readNative() throws Exception {
         return "j2".equals(backend) ? native2.readValue(json, List.class)
                 : native3.readValue(json, List.class);
     }
