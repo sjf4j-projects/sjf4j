@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
  * native = Fastjson2 JSONReader.read(Map.class), compiled = @CompiledBinder,
  * runtime = Fastjson2Binder.readNode(Map.class).
  *
- * Tiny fixtures isolate root parsing overhead; threshold fixtures test five vs six values.
+ * Tiny fixtures isolate root parsing overhead; larger fixtures detect regression beyond the two-entry fast path.
  * Each invocation includes parser construction and closing; fixture generation
  * and validation are excluded from the timed operation. The native reader is
  * measured without converting its Map implementation to a different class.
