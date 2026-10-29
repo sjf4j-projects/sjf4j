@@ -234,24 +234,80 @@ public final class GsonParser extends StreamingParser {
         // Gson has no pooled parser resources; the caller owns the input.
     }
 
+    // Hold up to three members locally, then allocate the backing map.
     private Map<String, Object> _readRawObject() throws IOException {
-        Map<String, Object> value = new LinkedHashMap<>();
         reader.beginObject();
-        while (reader.hasNext()) {
-            value.put(reader.nextName(), readRaw());
+        String name1 = reader.hasNext() ? reader.nextName() : null;
+        if (name1 == null) {
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(0);
+            reader.endObject();
+            return result;
+        }
+        Object value1 = readRaw();
+        String name2 = reader.hasNext() ? reader.nextName() : null;
+        if (name2 == null) {
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(2);
+            result.put(name1, value1);
+            reader.endObject();
+            return result;
+        }
+        Object value2 = readRaw();
+        String name3 = reader.hasNext() ? reader.nextName() : null;
+        if (name3 == null) {
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(4);
+            result.put(name1, value1);
+            result.put(name2, value2);
+            reader.endObject();
+            return result;
+        }
+        Object value3 = readRaw();
+        String name = reader.hasNext() ? reader.nextName() : null;
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>(name == null ? 4 : 16);
+        result.put(name1, value1);
+        result.put(name2, value2);
+        result.put(name3, value3);
+        while (name != null) {
+            result.put(name, readRaw());
+            name = reader.hasNext() ? reader.nextName() : null;
         }
         reader.endObject();
-        return value;
+        return result;
     }
 
     private List<Object> _readRawArray() throws IOException {
-        List<Object> value = new ArrayList<>();
         reader.beginArray();
-        while (reader.hasNext()) {
-            value.add(readRaw());
+        if (!(reader.hasNext())) {
+            ArrayList<Object> result = new ArrayList<>(0);
+            reader.endArray();
+            return result;
+        }
+        Object item1 = readRaw();
+        if (!(reader.hasNext())) {
+            ArrayList<Object> result = new ArrayList<>(1);
+            result.add(item1);
+            reader.endArray();
+            return result;
+        }
+        Object item2 = readRaw();
+        if (!(reader.hasNext())) {
+            ArrayList<Object> result = new ArrayList<>(2);
+            result.add(item1);
+            result.add(item2);
+            reader.endArray();
+            return result;
+        }
+        Object item3 = readRaw();
+        boolean hasMore = reader.hasNext();
+        ArrayList<Object> result = new ArrayList<>(hasMore ? 10 : 3);
+        result.add(item1);
+        result.add(item2);
+        result.add(item3);
+        while (hasMore) {
+            result.add(readRaw());
+            hasMore = reader.hasNext();
         }
         reader.endArray();
-        return value;
+        return result;
     }
 
     private static Token _token(JsonToken token) {
