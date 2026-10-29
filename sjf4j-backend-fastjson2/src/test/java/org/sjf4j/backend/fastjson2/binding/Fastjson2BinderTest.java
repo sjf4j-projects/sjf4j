@@ -58,6 +58,35 @@ class Fastjson2BinderTest {
     }
 
     @Test
+    void typedRawContainerEntryPointsPreservePeekAndNullSemantics() throws Exception {
+        Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
+                "[{\"id\":7},[null,{\"active\":true}],null,null]"));
+        try {
+            parser.readArrayStart();
+            assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+            Map<String, Object> object = parser.readRawObject();
+            assertEquals(LinkedHashMap.class, object.getClass());
+            assertEquals(7, object.get("id"));
+            assertEquals(StreamingParser.Token.ARRAY_START, parser.peekToken());
+            List<Object> array = parser.readRawArray();
+            assertEquals(ArrayList.class, array.getClass());
+            assertEquals(LinkedHashMap.class, array.get(1).getClass());
+            assertNull(parser.readRawObject());
+            assertNull(parser.readRawArray());
+            parser.readArrayEnd();
+            parser.end();
+        } finally {
+            parser.close();
+        }
+        Fastjson2Parser mismatch = new Fastjson2Parser(JSONReader.of("[]"));
+        try {
+            assertThrows(BindingException.class, mismatch::readRawObject);
+        } finally {
+            mismatch.close();
+        }
+    }
+
+    @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(""));
         try {
