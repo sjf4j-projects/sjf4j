@@ -100,9 +100,9 @@ public class CompiledReadBenchmark {
             JSONFactory.createReadContext(new ObjectReaderProvider(),
                     JSONReader.Feature.UseDoubleForDecimals);
 
-    // Native Fastjson2's read(Map.class) may return HashMap/JSONObject and
-    // nested JSONObject/JSONArray. Compare its native object materializer
-    // under the *same* LinkedHashMap/ArrayList contract as SJF4J Raw.
+    // Optional diagnostic: force JDK container types to isolate container
+    // implementation effects. This is NOT the native performance baseline:
+    // JSONObject/JSONArray are valid Map/List results and may be faster.
     private static final JSONReader.Context FASTJSON2_NATIVE_OBNT_CONTEXT =
             JSONFactory.createReadContext(new ObjectReaderProvider(),
                     JSONReader.Feature.UseDoubleForDecimals);
@@ -214,10 +214,16 @@ public class CompiledReadBenchmark {
         checkMap("fastjson2 runtime JSON_DATA", FASTJSON2_RUNTIME.readNode(JSON_DATA, Map.class));
         checkMap("fastjson2 compiled JSON_UTF8", FASTJSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("fastjson2 runtime JSON_UTF8", FASTJSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
-        // Full recursive equality: numeric types, exact container classes,
-        // insertion order and scalar values, not just selected property names.
+        // Native JSONObject/JSONArray are valid Map/List values. Compare their
+        // actual JSON graph, without penalizing backend-native collection types.
         Map<String, Object> expectedRawMap =
                 (Map<String, Object>) FASTJSON2_RUNTIME.readNode(JSON_DATA, Map.class);
+        checkEquivalentRawGraph("fastjson2 native JSONObject String", expectedRawMap,
+                fastjson2_map_string_native_object());
+        checkEquivalentRawGraph("fastjson2 native JSONObject UTF-8", expectedRawMap,
+                fastjson2_map_utf8_native_object());
+
+        // Separate diagnostic: force JDK classes and compare exact classes.
         checkExactRawGraph("fastjson2 native OBNT String", expectedRawMap,
                 fastjson2_map_string_native_obnt());
         checkExactRawGraph("fastjson2 native OBNT UTF-8", expectedRawMap,
@@ -230,6 +236,10 @@ public class CompiledReadBenchmark {
         checkList("fastjson2 runtime list", FASTJSON2_RUNTIME.readNode(JSON_LIST_DATA, java.util.List.class));
         checkList("fastjson2 compiled list utf8", FASTJSON2_COMPILED.readListUtf8(JSON_LIST_UTF8));
         Object expectedRawList = FASTJSON2_RUNTIME.readNode(JSON_LIST_DATA, List.class);
+        checkEquivalentRawGraph("fastjson2 native JSONArray String", expectedRawList,
+                fastjson2_list_string_native_array());
+        checkEquivalentRawGraph("fastjson2 native JSONArray UTF-8", expectedRawList,
+                fastjson2_list_utf8_native_array());
         checkExactRawGraph("fastjson2 native OBNT List String", expectedRawList,
                 fastjson2_list_string_native_obnt());
         checkExactRawGraph("fastjson2 native OBNT List UTF-8", expectedRawList,
@@ -293,6 +303,38 @@ public class CompiledReadBenchmark {
                 || !(((java.util.List<?>) result).get(0) instanceof java.util.LinkedHashMap)
                 || !(((java.util.List<?>) result).get(1) instanceof java.util.Map)) {
             throw new IllegalStateException("List result differs: " + label);
+        }
+    }
+
+    // Compare JSON values, not Java implementation classes. Numeric equality
+    // is still checked (e.g. Double vs BigDecimal is NOT silently ignored).
+    private static void checkEquivalentRawGraph(String label, Object expected, Object actual) {
+        if (expected == null || actual == null) {
+            if (expected != actual) throw new IllegalStateException("Raw null differs: " + label);
+            return;
+        }
+        if ((expected instanceof Map) && (actual instanceof Map)) {
+            Map<?, ?> a = (Map<?, ?>) expected, b = (Map<?, ?>) actual;
+            if (a.size() != b.size() || !a.keySet().equals(b.keySet())) {
+                throw new IllegalStateException("Raw object keys differ: " + label);
+            }
+            for (Map.Entry<?, ?> member : a.entrySet()) {
+                checkEquivalentRawGraph(label + "." + member.getKey(),
+                        member.getValue(), b.get(member.getKey()));
+            }
+            return;
+        }
+        if ((expected instanceof List) && (actual instanceof List)) {
+            List<?> a = (List<?>) expected, b = (List<?>) actual;
+            if (a.size() != b.size()) throw new IllegalStateException("Raw array size differs: " + label);
+            for (int i = 0; i < a.size(); i++) {
+                checkEquivalentRawGraph(label + "[" + i + "]", a.get(i), b.get(i));
+            }
+            return;
+        }
+        if (!expected.equals(actual)) {
+            throw new IllegalStateException("Raw scalar differs: " + label + " expected " + expected
+                    + ", actual " + actual);
         }
     }
 
@@ -836,6 +878,37 @@ public class CompiledReadBenchmark {
         }
     }
 
+    // Unrestricted native JSONObject/JSONArray construction: the main
+    // performance baseline for Fastjson2 raw object/array materialization.
+    @Benchmark
+    public Object fastjson2_map_string_native_object() {
+        try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.readObject();
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_utf8_native_object() {
+        try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.readObject();
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_list_string_native_array() {
+        try (JSONReader reader = JSONReader.of(JSON_LIST_DATA, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.readArray();
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_list_utf8_native_array() {
+        try (JSONReader reader = JSONReader.of(JSON_LIST_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
+            return reader.readArray();
+        }
+    }
+
+    // Forced JDK containers: diagnostic only, not a prerequisite for fairness.
     @Benchmark
     public Object fastjson2_map_string_native_obnt() {
         try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_OBNT_CONTEXT)) {
