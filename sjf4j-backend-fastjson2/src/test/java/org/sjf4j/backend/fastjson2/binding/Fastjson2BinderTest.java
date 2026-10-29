@@ -12,8 +12,8 @@ import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 
-import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -121,7 +121,6 @@ class Fastjson2BinderTest {
             assertEquals(expected, nativeObject);
             assertTrue(nativeReader.isEnd());
         }
-
     }
 
     @Test

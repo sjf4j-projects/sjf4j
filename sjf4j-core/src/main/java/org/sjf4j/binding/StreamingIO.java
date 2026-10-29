@@ -383,11 +383,7 @@ public final class StreamingIO {
         }
 
         if (raw == Map.class) {
-            Object value = parser.readRaw();
-            if (value == null) {
-                return valueInfo.rawToValue(null);
-            }
-            return valueInfo.rawToValue(castMap(value));
+            return valueInfo.rawToValue(parser.readRawObject());
         }
 
         if (raw == List.class) {

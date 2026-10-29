@@ -139,7 +139,7 @@ public class CompiledBinderTest {
         ArrayList<Object> concrete = binder.readRawArrayList(input);
 
         assertEquals(new SimpleJsonBinder().readNode(input, Object.class), list);
-        assertEquals(list, concrete);
+        assertEquals(list, concrete, backend);
         assertTrue(list instanceof ArrayList);
         assertTrue(list.get(0) instanceof LinkedHashMap);
         assertTrue(list.get(1) instanceof ArrayList);
@@ -341,7 +341,7 @@ public class CompiledBinderTest {
             throws IOException {
         Map<String, Integer> values = binder.readIntegerMap(
                 "{\"first\":1,\"second\":null,\"third\":42}");
-        assertEquals(LinkedHashMap.class, values.getClass());
+        assertEquals(LinkedHashMap.class, values.getClass(), backend);
         assertEquals(Arrays.asList("first", "second", "third"),
                 new ArrayList<String>(values.keySet()));
         assertEquals(Integer.valueOf(1), values.get("first"));
