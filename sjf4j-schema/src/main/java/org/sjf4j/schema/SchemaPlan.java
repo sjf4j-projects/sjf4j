@@ -78,14 +78,16 @@ public final class SchemaPlan {
 
     /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
-        ValidationResult result = validate(node, true, false);
-        return result.isValid();
+        return isValid(node, false);
     }
 
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
-        ValidationResult result = validate(node, true, strictFormat);
-        return result.isValid();
+        if (booleanSchema) return booleanValue;
+        InstancedNode instance = InstancedNode.infer(node);
+        ValidationContext ctx = ValidationContext.booleanOnly(strictFormat);
+        boolean matched = evaluate(instance, null, ctx);
+        return matched && ctx.isValid();
     }
 
     /**

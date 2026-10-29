@@ -21,6 +21,7 @@ public class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
     private final List<ValidationMessage> messages;
+    private final boolean booleanOnly;
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
     // dedicated wrappers because they can carry branch-local runtime state.
@@ -32,10 +33,23 @@ public class ValidationContext {
     private Deque<SchemaPlan> planStack;
 
     ValidationContext(boolean failFast, boolean strictFormat) {
+        this(failFast, strictFormat, false);
+    }
+
+    private ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
+        this.booleanOnly = booleanOnly;
         this.messages = failFast ? null : new ArrayList<>();
         this.reusedLeaf = InstancedNode.infer(null);
+    }
+
+    static ValidationContext booleanOnly(boolean strictFormat) {
+        return new ValidationContext(true, strictFormat, true);
+    }
+
+    boolean needsDiagnostic() {
+        return !booleanOnly && ignoreErrorAdding == 0;
     }
 
     /**
@@ -121,6 +135,8 @@ public class ValidationContext {
     void addError(InstancedNode instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
                   String keyword, String message) {
         if (ignoreErrorAdding < 1) {
+            valid = false;
+            if (booleanOnly) return;
             if (instancePs == null && instance != null) {
                 instancePs = instance.materializePath();
             }
@@ -131,7 +147,6 @@ public class ValidationContext {
             } else {
                 lastMessage = msg;
             }
-            valid = false;
         }
     }
 
