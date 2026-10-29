@@ -32,8 +32,8 @@ import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
-@Warmup(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
-@Measurement(iterations = 10, time = 500, timeUnit = TimeUnit.MILLISECONDS)
+@Warmup(iterations = 15, time = 400, timeUnit = TimeUnit.MILLISECONDS)
+@Measurement(iterations = 5, time = 400, timeUnit = TimeUnit.MILLISECONDS)
 @Fork(value = 1)
 @Threads(1)
 @State(Scope.Thread)
@@ -290,34 +290,15 @@ public class JsonPathBenchmark {
     }
 
     @Benchmark
-    public Object compile_sjf4j(CompileState state) {
+    public Object parse_sjf4j(CompileState state) {
         return JsonPath.parse(state.expr);
     }
 
     @Benchmark
-    public Object compile_jayway(CompileState state) {
+    public Object parse_jayway(CompileState state) {
         return com.jayway.jsonpath.JsonPath.compile(state.expr);
     }
 
-    @Benchmark
-    public Object parse_only_sjf4j() {
-        return Sjf4j.global().fromJson(BOOKSTORE_JSON);
-    }
-
-    @Benchmark
-    public Object parse_only_jackson_plain() throws IOException {
-        return MAPPER.readValue(BOOKSTORE_JSON, Object.class);
-    }
-
-    @Benchmark
-    public Object parse_only_jackson_tree() throws IOException {
-        return MAPPER.readTree(BOOKSTORE_JSON);
-    }
-
-    @Benchmark
-    public Object parse_only_jayway() {
-        return JAYWAY_MAP_LIST_CONFIG.jsonProvider().parse(BOOKSTORE_JSON);
-    }
 
     // JsonNode
     @Benchmark
