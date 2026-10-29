@@ -17,7 +17,6 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.BitSet;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
@@ -1268,7 +1267,7 @@ public interface Evaluator {
             if (ifPlan == null) return true;
 
             boolean result = true;
-            BitSet cousinEvaluated = instance.popEvaluated();
+            EvaluationBits cousinEvaluated = instance.popEvaluated();
             instance.pushEvaluated();
             ctx.pushIgnoreError();
             boolean tested = ifPlan.evaluate(instance, ps, ctx);
@@ -1277,15 +1276,15 @@ public interface Evaluator {
                 if (thenPlan != null) {
                     result = thenPlan.evaluate(instance, ps, ctx);
                 }
-                BitSet ifThenEvaluated = instance.popEvaluated();
+                EvaluationBits ifThenEvaluated = instance.popEvaluated();
                 if (result && cousinEvaluated != null && ifThenEvaluated != null)
                     cousinEvaluated.or(ifThenEvaluated);
             } else {
-                BitSet droppedEvaluated = instance.popEvaluated();
+                EvaluationBits droppedEvaluated = instance.popEvaluated();
                 if (elsePlan != null) {
                     instance.pushEvaluated();
                     result = elsePlan.evaluate(instance, ps, ctx);
-                    BitSet elseEvaluated = instance.popEvaluated();
+                    EvaluationBits elseEvaluated = instance.popEvaluated();
                     if (result && cousinEvaluated != null && elseEvaluated != null)
                         cousinEvaluated.or(elseEvaluated);
                 }
@@ -1312,16 +1311,16 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = true;
-            BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = instance.popEvaluated();
+            EvaluationBits[] evaluatedArr = null;
+            EvaluationBits cousinEvaluated = instance.popEvaluated();
             if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[allOfPlans.length];
+                evaluatedArr = new EvaluationBits[allOfPlans.length];
             }
             for (int i = 0; i < allOfPlans.length; i++) {
                 SchemaPlan plan = allOfPlans[i];
                 instance.pushEvaluated();
                 boolean subResult = plan.evaluate(instance, ps, ctx);
-                BitSet childEvaluated = instance.popEvaluated();
+                EvaluationBits childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 result = result && subResult;
                 if (!subResult && ctx.shouldAbort()) return false;
@@ -1329,7 +1328,7 @@ public interface Evaluator {
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
             if (result && evaluatedArr != null) {
-                for (BitSet evaluated : evaluatedArr) {
+                for (EvaluationBits evaluated : evaluatedArr) {
                     if (evaluated != null) cousinEvaluated.or(evaluated);
                 }
             }
@@ -1359,10 +1358,10 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             boolean result = false;
-            BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = instance.popEvaluated();
+            EvaluationBits[] evaluatedArr = null;
+            EvaluationBits cousinEvaluated = instance.popEvaluated();
             if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[anyOfPlans.length];
+                evaluatedArr = new EvaluationBits[anyOfPlans.length];
             }
             for (int i = 0; i < anyOfPlans.length; i++) {
                 SchemaPlan plan = anyOfPlans[i];
@@ -1370,7 +1369,7 @@ public interface Evaluator {
                 ctx.pushIgnoreError();
                 boolean subResult = plan.evaluate(instance, ps, ctx);
                 ctx.popIgnoreError();
-                BitSet childEvaluated = instance.popEvaluated();
+                EvaluationBits childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) {
                     evaluatedArr[i] = childEvaluated;
                 }
@@ -1384,7 +1383,7 @@ public interface Evaluator {
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
             if (result && evaluatedArr != null) {
-                for (BitSet evaluated : evaluatedArr) {
+                for (EvaluationBits evaluated : evaluatedArr) {
                     if (evaluated != null) cousinEvaluated.or(evaluated);
                 }
             }
@@ -1418,10 +1417,10 @@ public interface Evaluator {
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
             int matches = 0;
-            BitSet[] evaluatedArr = null;
-            BitSet cousinEvaluated = instance.popEvaluated();
+            EvaluationBits[] evaluatedArr = null;
+            EvaluationBits cousinEvaluated = instance.popEvaluated();
             if (cousinEvaluated != null) {
-                evaluatedArr = new BitSet[oneOfPlans.length];
+                evaluatedArr = new EvaluationBits[oneOfPlans.length];
             }
             for (int i = 0; i < oneOfPlans.length; i++) {
                 SchemaPlan plan = oneOfPlans[i];
@@ -1429,7 +1428,7 @@ public interface Evaluator {
                 ctx.pushIgnoreError();
                 boolean subResult = plan.evaluate(instance, ps, ctx);
                 ctx.popIgnoreError();
-                BitSet childEvaluated = instance.popEvaluated();
+                EvaluationBits childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 if (subResult) {
                     matches++;
@@ -1439,7 +1438,7 @@ public interface Evaluator {
             if (cousinEvaluated != null)
                 instance.pushEvaluated(cousinEvaluated);
             if (matches == 1 && evaluatedArr != null) {
-                for (BitSet evaluated : evaluatedArr) {
+                for (EvaluationBits evaluated : evaluatedArr) {
                     if (evaluated != null) cousinEvaluated.or(evaluated);
                 }
             }
@@ -1506,7 +1505,7 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
-            BitSet merged = instance.mergedEvaluated();
+            EvaluationBits merged = instance.mergedEvaluated();
             Object actual = instance.node();
             boolean result = true;
 
@@ -1540,8 +1539,8 @@ public interface Evaluator {
                     }
                 }
             }
-            BitSet curEvaluated = instance.popEvaluated();
-            BitSet parentEvaluated = instance.peekEvaluated();
+            EvaluationBits curEvaluated = instance.popEvaluated();
+            EvaluationBits parentEvaluated = instance.peekEvaluated();
             if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
             return result;
         }
