@@ -37,4 +37,13 @@ class ValidationContextResultTest {
         check("{\"properties\":{\"x\":{\"type\":\"string\"}},\"unevaluatedProperties\":{\"type\":\"integer\"}}",
                 Collections.singletonMap("extra",1), Collections.singletonMap("extra","wrong"));
     }
+    @Test void allOfProbeRestoresEnclosingEvaluatedFrame() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"properties\":{\"x\":true},"
+                + "\"not\":{\"allOf\":[false]},\"unevaluatedProperties\":false}").createPlan();
+        Map<String, Object> instance = Collections.singletonMap("x", 1);
+        assertTrue(plan.isValid(instance));
+        assertTrue(plan.validate(instance, true, false).isValid());
+        assertTrue(plan.validate(instance).isValid());
+    }
+
 }
