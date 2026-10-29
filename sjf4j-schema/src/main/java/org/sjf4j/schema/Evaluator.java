@@ -1344,7 +1344,7 @@ public interface Evaluator {
                     }
                     if (!passed) {
                         valid = false;
-                        if (!result && ctx.shouldAbort()) return false;
+                        if (ctx.shouldAbort()) return false;
                     }
                 }
                 // allOf annotations contribute only when the entire applicator succeeds.
