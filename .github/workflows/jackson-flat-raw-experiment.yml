@@ -1,13 +1,13 @@
-name: Jackson Original JMH - f2 wi20 i5
+name: Jackson Original JMH Mac - f2 wi20 i5
 
 on:
   push:
     branches:
-      - experiment/jackson-f2-wi20-i5-20261030
+      - experiment/jackson-macos-f2-wi20-i5-20261030
 
 jobs:
   benchmark:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     permissions:
       contents: read
     steps:
@@ -28,7 +28,9 @@ jobs:
       - name: System and JVM details
         run: |
           uname -a
-          lscpu
+          sysctl -n machdep.cpu.brand_string
+          sysctl -n hw.ncpu
+          sysctl -n hw.memsize
           "$JAVA_HOME_25_X64/bin/java" -version
       - name: Run original Jackson 2/3 Map benchmark - 2 forks, 20 warmups, 5 measurements
         run: |
