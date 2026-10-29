@@ -124,26 +124,32 @@ public final class SchemaPlan {
             return false;
         }
 
-        int savedEvaluatedDepth = ctx.evaluationDepth();
-        if (evaluators.length > 0
-                && evaluators[evaluators.length - 1] instanceof Evaluator.UnevaluatedEvaluator) {
-            ctx.createEvaluated();
+        // Most schemas (including nested Creek schemas) need no execution scope.
+        // Keep one evaluator loop for scoped and unscoped plans alike.
+        if (!tracksEvaluated && !hasDynamicScope) {
+            return evaluateKeywords(instance, ps, ctx);
         }
-        boolean dynamic = !byDynamicAnchorPlans.isEmpty();
-        if (dynamic) ctx.pushPlan(this);
-        boolean valid = true;
+
+        int savedDepth = tracksEvaluated ? ctx.evaluationDepth() : 0;
+        if (tracksEvaluated) ctx.createEvaluated();
+        if (hasDynamicScope) ctx.pushPlan(this);
         try {
-            for (Evaluator evaluator : evaluators) {
-                if (!evaluator.evaluate(instance, ps, ctx)) {
-                    valid = false;
-                    if (ctx.shouldAbort()) return false;
-                }
-            }
-            return valid;
+            return evaluateKeywords(instance, ps, ctx);
         } finally {
-            if (dynamic) ctx.popPlan();
-            ctx.restoreEvaluationDepth(savedEvaluatedDepth);
+            if (hasDynamicScope) ctx.popPlan();
+            if (tracksEvaluated) ctx.restoreEvaluationDepth(savedDepth);
         }
+    }
+
+    private boolean evaluateKeywords(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
+        boolean valid = true;
+        for (Evaluator evaluator : evaluators) {
+            if (!evaluator.evaluate(instance, ps, ctx)) {
+                valid = false;
+                if (ctx.shouldAbort()) return false;
+            }
+        }
+        return valid;
     }
 
 
@@ -158,6 +164,8 @@ public final class SchemaPlan {
     final Evaluator[] evaluators;
     final boolean booleanSchema;
     final boolean booleanValue;
+    final boolean tracksEvaluated;
+    final boolean hasDynamicScope;
 
     final String dynamicAnchor;
     final Map<String, SchemaPlan> byAnchorPlans;
@@ -179,6 +187,9 @@ public final class SchemaPlan {
         this.evaluators = evaluators;
         this.booleanSchema = booleanSchema;
         this.booleanValue = booleanValue;
+        this.tracksEvaluated = evaluators.length != 0
+                && evaluators[evaluators.length - 1] instanceof Evaluator.UnevaluatedEvaluator;
+        this.hasDynamicScope = byDynamicAnchorPlans != null && !byDynamicAnchorPlans.isEmpty();
 
         this.dynamicAnchor = dynamicAnchor;
         this.byAnchorPlans = byAnchorPlans;

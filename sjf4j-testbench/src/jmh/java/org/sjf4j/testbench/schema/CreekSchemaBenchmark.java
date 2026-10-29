@@ -90,6 +90,27 @@ public class CreekSchemaBenchmark {
         }
     }
 
+    /** Boolean-only path with no ValidationResult or failure diagnostics. */
+    @Benchmark
+    public boolean schema_is_valid_pojo() {
+        return plan.isValid(model);
+    }
+
+    @Benchmark
+    public boolean schema_is_valid_map() {
+        return plan.isValid(mapNode);
+    }
+
+    @Benchmark
+    public TestModel round_trip_is_valid() throws IOException {
+        byte[] bytes = JACKSON.writeValueAsBytes(model);
+        TestModel result = JACKSON.readValue(bytes, TestModel.class);
+        if (!plan.isValid(result)) {
+            throw new IllegalStateException("round-trip schema validation failed");
+        }
+        return result;
+    }
+
     @Benchmark
     public void schema_validate_pojo() {
         plan.requireValid(model, false);
