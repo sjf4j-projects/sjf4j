@@ -38,7 +38,7 @@ public final class Jackson3NameMatcher extends NameMatcher {
         super(properties, names, aliases);
 
         String[] propertyNames = new String[size()];
-        for (int i = 0; i < size(); i++) {
+        for (int i = 0, len = size(); i < len; i++) {
             propertyNames[i] = name(i);
         }
         matcher = BinaryNameMatcher.construct(Arrays.asList(propertyNames));
