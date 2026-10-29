@@ -9,6 +9,10 @@ import org.sjf4j.util.Asserts;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
+import org.sjf4j.JsonObject;
+import org.sjf4j.JsonArray;
+import java.lang.reflect.Array;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,6 +32,23 @@ public final class SchemaPlanner {
         final SchemaRegistry registry;
         final List<Evaluator.RefEvaluator> refEvaluators;
         final List<Evaluator.DynamicRefEvaluator> dynamicRefEvaluators;
+        // Identity keys: resource maps are mutable and separate resources may
+        // start out with equal (empty) maps.
+        final Map<Map<String, SchemaPlan>, Boolean> dynamicScopes = new IdentityHashMap<>();
+
+        void registerDynamicScope(Map<String, SchemaPlan> resourceAnchors, ObjectSchema root) {
+            if (!dynamicScopes.containsKey(resourceAnchors)) {
+                dynamicScopes.put(resourceAnchors, containsDynamicAnchor(root));
+            }
+        }
+
+        void registerDynamicScope(Map<String, SchemaPlan> resourceAnchors, boolean enabled) {
+            dynamicScopes.put(resourceAnchors, enabled);
+        }
+
+        boolean dynamicScope(Map<String, SchemaPlan> resourceAnchors) {
+            return Boolean.TRUE.equals(dynamicScopes.get(resourceAnchors));
+        }
 
         PlanningContext(SchemaRegistry registry) {
             this.registry = registry;
@@ -52,8 +73,12 @@ public final class SchemaPlanner {
         SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
         Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
                 idUri, PathSegment.Root.INSTANCE);
+        Map<String, SchemaPlan> anchors = new HashMap<>();
+        Map<String, SchemaPlan> dynamicAnchors = new HashMap<>();
+        Map<String, SchemaPlan> paths = new HashMap<>();
+        context.registerDynamicScope(dynamicAnchors, schema);
         plan = _buildPlan(schema, idUri, PathSegment.Root.INSTANCE,
-                new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
+                anchors, dynamicAnchors, paths, context, dialect, vocabulary);
         context.registry.putPlan(idUri, plan);
 
         if (retrievalUri != null && !retrievalUri.equals(idUri)) {
@@ -79,6 +104,9 @@ public final class SchemaPlanner {
                                          PlanningContext context, SchemaDialect dialect,
                                          Map<String, Boolean> vocabulary) {
         _checkVocabulary(schema, ps, vocabulary);
+        // A new nested $id creates a separate resource. The root resource
+        // was registered before descending into $defs.
+        context.registerDynamicScope(byDynamicAnchorPlans, schema);
 
         // $defs / definitions
         if (_allowsKeyword(dialect, vocabulary, "$defs")) {
@@ -116,7 +144,7 @@ public final class SchemaPlanner {
                 // end up
                 SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor,
                         byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                        schema, dialect, vocabulary);
+                        schema, dialect, vocabulary, context.dynamicScope(byDynamicAnchorPlans));
                 byPathPlans.put(ps.rootedPointerExpr(), plan);
                 return plan;
             }
@@ -412,7 +440,7 @@ public final class SchemaPlanner {
         // end up
         SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                schema, dialect, vocabulary);
+                schema, dialect, vocabulary, context.dynamicScope(byDynamicAnchorPlans));
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", idUri, ps);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", idUri, ps);
@@ -420,6 +448,44 @@ public final class SchemaPlanner {
         }
         byPathPlans.put(ps.rootedPointerExpr(), plan);
         return plan;
+    }
+
+    /**
+     * Conservative resource-level pre-scan. Late JSON Pointer compilation may
+     * expose previously unplanned dynamic anchors, so testing the mutable anchor
+     * map during SchemaPlan construction is insufficient. False positives only
+     * cost scope bookkeeping; they do not change reference resolution.
+     */
+    private static boolean containsDynamicAnchor(Object node) {
+        if (node instanceof JsonObject) {
+            JsonObject object = (JsonObject) node;
+            if (object.hasNonNull("$dynamicAnchor")
+                    || Boolean.TRUE.equals(object.getBoolean("$recursiveAnchor"))) return true;
+            for (Map.Entry<String, Object> entry : object.entrySet()) {
+                if (containsDynamicAnchor(entry.getValue())) return true;
+            }
+        } else if (node instanceof Map) {
+            Map<?, ?> object = (Map<?, ?>) node;
+            if (object.get("$dynamicAnchor") != null
+                    || Boolean.TRUE.equals(object.get("$recursiveAnchor"))) return true;
+            for (Object child : object.values()) {
+                if (containsDynamicAnchor(child)) return true;
+            }
+        } else if (node instanceof JsonArray) {
+            JsonArray array = (JsonArray) node;
+            for (int i = 0, size = array.size(); i < size; i++) {
+                if (containsDynamicAnchor(array.getNode(i))) return true;
+            }
+        } else if (node instanceof Iterable) {
+            for (Object child : (Iterable<?>) node) {
+                if (containsDynamicAnchor(child)) return true;
+            }
+        } else if (node != null && node.getClass().isArray()) {
+            for (int i = 0, size = Array.getLength(node); i < size; i++) {
+                if (containsDynamicAnchor(Array.get(node, i))) return true;
+            }
+        }
+        return false;
     }
 
     static SchemaPlan lazyBuildPlanByPath(SchemaPlan resourcePlan, String path, SchemaRegistry registry) {
@@ -432,6 +498,7 @@ public final class SchemaPlanner {
         Object node = jsonPath.getNode(resourcePlan.schema);
         if (node == null) return null;
         PlanningContext context = new PlanningContext(registry);
+        context.registerDynamicScope(resourcePlan.byDynamicAnchorPlans, resourcePlan.scopesDynamicAnchors);
         SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.schemaUri, jsonPath.tail(),
                 resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
                 context, resourcePlan.dialect, resourcePlan.vocabulary);
