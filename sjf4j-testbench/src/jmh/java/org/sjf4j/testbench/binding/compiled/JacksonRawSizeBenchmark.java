@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 @Threads(1)
 @State(Scope.Thread)
 public class JacksonRawSizeBenchmark {
-    @Param({"0", "1", "2", "5", "6", "32"})
+    @Param({"0", "1", "2", "3", "4", "5", "6", "32"})
     public int count;
 
     private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper();
