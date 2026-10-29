@@ -264,7 +264,15 @@ public final class JsonpParser extends StreamingParser {
         parser.close();
     }
 
-    private Map<String, Object> readRawObject() throws IOException {
+    @Override
+    public Map<String, Object> readRawObject() throws IOException {
+        if (current == JsonParser.Event.VALUE_NULL) {
+            advance();
+            return null;
+        }
+        if (current != JsonParser.Event.START_OBJECT) {
+            throw expected("object or null");
+        }
         Map<String, Object> value = new LinkedHashMap<>();
         readObjectStart();
         String name;
@@ -274,7 +282,15 @@ public final class JsonpParser extends StreamingParser {
         return value;
     }
 
-    private List<Object> readRawArray() throws IOException {
+    @Override
+    public List<Object> readRawArray() throws IOException {
+        if (current == JsonParser.Event.VALUE_NULL) {
+            advance();
+            return null;
+        }
+        if (current != JsonParser.Event.START_ARRAY) {
+            throw expected("array or null");
+        }
         List<Object> value = new ArrayList<>();
         readArrayStart();
         while (!nextIfArrayEnd()) {
