@@ -38,6 +38,29 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    # Temporary: remove after the raw-container specialization experiment.
+    - name: Profile Jackson raw Map/List size specialization
+      run: |
+        ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
+        test -n "$JMH_JAR"
+        java -jar "$JMH_JAR" 'JacksonRawSizeBenchmark\\.jackson[23]_(map|list)_string_(native|compiled|runtime)$' -p count=2,5,6,32 -f 3 -wi 15 -i 5 -w 100ms -r 100ms -t 1 -prof gc -rf json -rff /tmp/jackson-specialization.json
+        python3 - <<'PY'
+        import json
+        rows = json.load(open('/tmp/jackson-specialization.json'))
+        print("BEGIN SPECIALIZATION JMH")
+        for shape in ("map", "list"):
+            for count in ("2", "5", "6", "32"):
+                for backend in ("jackson2", "jackson3"):
+                    for mode in ("native", "compiled", "runtime"):
+                        method = f"{backend}_{shape}_string_{mode}"
+                        row = next(x for x in rows if x['params']['count'] == count and x['benchmark'].endswith('.' + method))
+                        p = row['primaryMetric']
+                        alloc = row.get('secondaryMetrics', {}).get('gc.alloc.rate.norm', {})
+                        print(f"{shape} count={count} {backend} {mode} {p['score']:.2f} +/- {p['scoreError']:.2f} ns/op {alloc.get('score',0):.1f} B/op")
+        print("END SPECIALIZATION JMH")
+        PY
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
