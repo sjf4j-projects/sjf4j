@@ -682,6 +682,8 @@ public interface Evaluator {
 
 
             boolean result = true;
+            // One annotation lookup per object instead of one per matched member.
+            final boolean trackEvaluated = ctx.peekEvaluated() != null;
             int propIdx = 0;
             for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(instance.node())) {
                 String key = entry.getKey();
@@ -735,7 +737,7 @@ public interface Evaluator {
                 } finally {
                     if (child != null) ctx.leaveChild();
                 }
-                if (evaluated) ctx.markEvaluated(propIdx);
+                if (evaluated && trackEvaluated) ctx.markEvaluated(propIdx);
                 propIdx++;
             }
             return result;
