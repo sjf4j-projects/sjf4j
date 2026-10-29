@@ -38,24 +38,6 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
-    # Temporary measurement, removed after the benchmark run.
-    - name: Fastjson2 Raw Map JMH (3 forks / 15 warmup)
-      run: |
-        ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
-        echo "JMH jar: $JMH_JAR"
-        test -n "$JMH_JAR"
-        java -version
-        java -jar "$JMH_JAR" 'CompiledReadBenchmark\.fastjson2_map_(string|utf8)_(native|native_object|native_obnt|native_fill|raw|compiled)$' -f 3 -wi 15 -i 5 -w 400ms -r 400ms -t 1 -rf json -rff /tmp/raw-map-jmh.json
-        python3 - <<'PY'
-        import json
-        data = json.load(open('/tmp/raw-map-jmh.json'))
-        print('JMH BENCHMARK RESULTS')
-        for item in data:
-            p = item['primaryMetric']
-            print(f"{item['benchmark']}\t{p['score']:.4f}\t+/-{p['scoreError']:.4f}\t{p['scoreUnit']}")
-        PY
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
