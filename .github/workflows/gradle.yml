@@ -44,7 +44,7 @@ jobs:
         ./gradlew :sjf4j-testbench:jmhJar --no-daemon
         JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
         test -n "$JMH_JAR"
-        java -jar "$JMH_JAR" 'Fastjson2RawAllocationBenchmark\\.(rawString|rawUtf8|wrappedNativeString|wrappedNativeUtf8)$' -f 3 -wi 15 -i 5 -w 200ms -r 200ms -t 1 -prof gc -rf json -rff /tmp/map-alloc.json
+        java -jar "$JMH_JAR" 'Fastjson2RawAllocationBenchmark\.(rawString|rawUtf8|wrappedNativeString|wrappedNativeUtf8)$' -f 3 -wi 15 -i 5 -w 200ms -r 200ms -t 1 -prof gc -rf json -rff /tmp/map-alloc.json
         python3 - <<'PY'
         import json
         print("BEGIN ALLOC PROFILE")
