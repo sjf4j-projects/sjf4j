@@ -258,6 +258,13 @@ public class CompiledBinderTest {
                 + "}";
 
         Map<String, Object> compiled = binder.readObjectMap(input);
+        LinkedHashMap<String, Object> linked = binder.readLinkedObjectMap(input);
+        assertEquals(compiled, linked);
+        assertEquals(LinkedHashMap.class, linked.getClass());
+        assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
+                new ArrayList<String>(linked.keySet()));
+        assertEquals(LinkedHashMap.class, linked.get("nested").getClass());
+
         Map<?, ?> runtime = (Map<?, ?>) new SimpleJsonBinder().readNode(input, Object.class);
 
         assertEquals(runtime, compiled);
@@ -290,6 +297,22 @@ public class CompiledBinderTest {
         assertEquals(ArrayList.class, holderValues.getClass());
         assertEquals(LinkedHashMap.class, holderValues.get(1).getClass());
         assertEquals(ArrayList.class, holderValues.get(2).getClass());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void keepsTypedMapBindingSeparateFromRawMap(String backend, BinderContract binder)
+            throws IOException {
+        Map<String, Integer> values = binder.readIntegerMap(
+                "{\"first\":1,\"second\":null,\"third\":42}");
+        assertEquals(LinkedHashMap.class, values.getClass());
+        assertEquals(Arrays.asList("first", "second", "third"),
+                new ArrayList<String>(values.keySet()));
+        assertEquals(Integer.valueOf(1), values.get("first"));
+        assertNull(values.get("second"));
+        assertEquals(Integer.valueOf(42), values.get("third"));
+        assertNull(binder.readLinkedObjectMap("null"));
+        assertThrows(BindingException.class, () -> binder.readLinkedObjectMap("[]"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -668,6 +691,12 @@ public class CompiledBinderTest {
 
         @ReadFrom
         Map<String, Object> readObjectMap(String input) throws IOException;
+
+        @ReadFrom
+        LinkedHashMap<String, Object> readLinkedObjectMap(String input) throws IOException;
+
+        @ReadFrom
+        Map<String, Integer> readIntegerMap(String input) throws IOException;
 
         @WriteTo
         String writeObjectMap(Map<String, Object> value) throws IOException;
