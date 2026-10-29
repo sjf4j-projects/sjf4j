@@ -1,0 +1,61 @@
+name: Experiment schema JFR hotspots
+on:
+  push:
+    branches: [experiment/schema-annotation-fastpath]
+    paths: [.github/workflows/schema-jfr-exp.yml]
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon --console=plain
+      - name: Profile representative valid Map validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p jfr-results
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*jmh*.jar' -type f | head -n1)
+          java -XX:StartFlightRecording=filename=jfr-results/creek-map.jfr,settings=profile,dumponexit=true \
+            -jar "$jar" '.*CreekSchemaBenchmark.schema_is_valid_map$' -f 1 -wi 8 -i 5 -w 600ms -r 1500ms \
+            | tee jfr-results/benchmark.txt
+          jfr print --json --events jdk.ExecutionSample jfr-results/creek-map.jfr > jfr-results/samples.json
+          python3 - <<'PY'
+          import json, collections
+          dat=json.load(open('jfr-results/samples.json'))
+          events=dat.get('recording',{}).get('events',[])
+          top=collections.Counter()
+          all_sjf=collections.Counter()
+          for e in events:
+              frames=(e.get('values',{}).get('stackTrace') or {}).get('frames') or []
+              own=[]
+              for f in frames:
+                  m=f.get('method') or {}
+                  typ=(m.get('type') or {}).get('name','')
+                  name=m.get('name','')
+                  if typ.startswith('org.sjf4j') and name:
+                      own.append(typ+'.'+name)
+              if own:
+                  top[own[0]]+=1
+                  all_sjf.update(set(own))
+          print('Execution samples:',len(events))
+          print('Top SJF4J leaf frames:',top.most_common(30))
+          print('Top SJF4J inclusive frames:',all_sjf.most_common(30))
+          with open('jfr-results/top.txt','w') as f:
+              f.write('Samples: '+str(len(events))+'\n')
+              f.write('Leaves:\n'+'\n'.join(f'{n} {v}' for n,v in top.most_common(60)))
+              f.write('\nInclusive:\n'+'\n'.join(f'{n} {v}' for n,v in all_sjf.most_common(60)))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: schema-map-jfr-profile
+          path: jfr-results/
