@@ -18,6 +18,7 @@ import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
@@ -338,6 +339,28 @@ public class CompiledReadBenchmark {
         return JACKSON2_NATIVE.readValue(JSON_UTF8, Map.class);
     }
 
+    // Direct raw-object parsing baseline: includes parser creation, lifecycle
+    // and backend-native recursive OBNT materialization, like other methods.
+    @Benchmark
+    public Object jackson2_map_string_raw() throws IOException {
+        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(JSON_DATA)) {
+            parser.start();
+            Map<String, Object> value = parser.readRawObject();
+            parser.end();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object jackson2_map_utf8_raw() throws IOException {
+        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(JSON_UTF8)) {
+            parser.start();
+            Map<String, Object> value = parser.readRawObject();
+            parser.end();
+            return value;
+        }
+    }
+
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @ReadFrom User readPojo(String json) throws IOException;
@@ -602,6 +625,26 @@ public class CompiledReadBenchmark {
     public Object fastjson2_map_utf8_native() {
         try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_string_raw() throws IOException {
+        try (StreamingParser parser = FASTJSON2_RUNTIME.createParser(JSON_DATA)) {
+            parser.start();
+            Map<String, Object> value = parser.readRawObject();
+            parser.end();
+            return value;
+        }
+    }
+
+    @Benchmark
+    public Object fastjson2_map_utf8_raw() throws IOException {
+        try (StreamingParser parser = FASTJSON2_RUNTIME.createParser(JSON_UTF8)) {
+            parser.start();
+            Map<String, Object> value = parser.readRawObject();
+            parser.end();
+            return value;
         }
     }
 
