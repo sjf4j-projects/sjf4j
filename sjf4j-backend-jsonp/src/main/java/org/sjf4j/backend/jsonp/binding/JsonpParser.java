@@ -291,23 +291,72 @@ public final class JsonpParser extends StreamingParser {
     // Called only after the START_OBJECT / START_ARRAY event is established.
     // Consume it directly: the public entry points and readRaw() already
     // dispatched the token, so readObjectStart/readArrayStart would recheck it.
+    // Hold up to three members locally, then allocate the backing map.
     private Map<String, Object> _readRawObject() throws IOException {
         advance();
-        Map<String, Object> value = new LinkedHashMap<>();
-        String name;
-        while ((name = nextName()) != null) {
-            value.put(name, readRaw());
+        String name1 = nextName();
+        if (name1 == null) {
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(0);
+            return result;
         }
-        return value;
+        Object value1 = readRaw();
+        String name2 = nextName();
+        if (name2 == null) {
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(2);
+            result.put(name1, value1);
+            return result;
+        }
+        Object value2 = readRaw();
+        String name3 = nextName();
+        if (name3 == null) {
+            LinkedHashMap<String, Object> result = new LinkedHashMap<>(4);
+            result.put(name1, value1);
+            result.put(name2, value2);
+            return result;
+        }
+        Object value3 = readRaw();
+        String name = nextName();
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>(name == null ? 4 : 16);
+        result.put(name1, value1);
+        result.put(name2, value2);
+        result.put(name3, value3);
+        while (name != null) {
+            result.put(name, readRaw());
+            name = nextName();
+        }
+        return result;
     }
 
     private List<Object> _readRawArray() throws IOException {
         advance();
-        List<Object> value = new ArrayList<>();
-        while (!nextIfArrayEnd()) {
-            value.add(readRaw());
+        if (!(!nextIfArrayEnd())) {
+            ArrayList<Object> result = new ArrayList<>(0);
+            return result;
         }
-        return value;
+        Object item1 = readRaw();
+        if (!(!nextIfArrayEnd())) {
+            ArrayList<Object> result = new ArrayList<>(1);
+            result.add(item1);
+            return result;
+        }
+        Object item2 = readRaw();
+        if (!(!nextIfArrayEnd())) {
+            ArrayList<Object> result = new ArrayList<>(2);
+            result.add(item1);
+            result.add(item2);
+            return result;
+        }
+        Object item3 = readRaw();
+        boolean hasMore = !nextIfArrayEnd();
+        ArrayList<Object> result = new ArrayList<>(hasMore ? 10 : 3);
+        result.add(item1);
+        result.add(item2);
+        result.add(item3);
+        while (hasMore) {
+            result.add(readRaw());
+            hasMore = !nextIfArrayEnd();
+        }
+        return result;
     }
 
     private BigDecimal number() throws IOException {
