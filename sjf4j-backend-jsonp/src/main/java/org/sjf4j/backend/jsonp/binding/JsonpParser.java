@@ -271,7 +271,7 @@ public final class JsonpParser extends StreamingParser {
             return null;
         }
         if (current != JsonParser.Event.START_OBJECT) {
-            throw expected("object or null");
+            throw new BindingException("expected raw object or null");
         }
         Map<String, Object> value = new LinkedHashMap<>();
         readObjectStart();
@@ -289,7 +289,7 @@ public final class JsonpParser extends StreamingParser {
             return null;
         }
         if (current != JsonParser.Event.START_ARRAY) {
-            throw expected("array or null");
+            throw new BindingException("expected raw array or null");
         }
         List<Object> value = new ArrayList<>();
         readArrayStart();
