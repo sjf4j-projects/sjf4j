@@ -64,17 +64,11 @@ public final class ValidationGenerator {
         generated.addHelper(out -> {
             out.beginBlock("private static final class Fallback");
             for (SchemaField field : fields) {
-                String registryName = field.name.replace("PLAN_", "REGISTRY_");
-                out.line("static final org.sjf4j.schema.SchemaRegistry " + registryName
-                        + " = org.sjf4j.schema.SchemaRegistry.fromDocuments(");
-                out.indent();
-                out.line(stringArray(field.snapshot.uris) + ",");
-                out.line(stringArray(field.snapshot.documents) + ");");
-                out.dedent();
-                String planExpr = registryName + ".resolve(java.net.URI.create("
-                        + javaLiteral(field.snapshot.selectedUri) + "))";
                 out.line("static final org.sjf4j.schema.SchemaPlan " + field.name
-                        + " = " + planExpr + ";");
+                        + " = org.sjf4j.schema.CompiledValidatorFallback.plan("
+                        + generated.originName() + ".class, "
+                        + javaLiteral(field.methodName) + ", "
+                        + field.argumentType + ".class, " + field.ordinal + ");");
             }
             out.endBlock();
         });
@@ -113,6 +107,7 @@ public final class ValidationGenerator {
         }
 
         List<String> names = new ArrayList<String>();
+        int ordinal = 0;
         for (Binding binding : bindings) {
             SchemaResourceResolver.Snapshot snapshot;
             try {
@@ -121,14 +116,17 @@ public final class ValidationGenerator {
                 fail(generated, method, "cannot compile @ValidJsonSchema: " + e.getMessage());
                 return;
             }
-            String signatureKey = snapshotKey(snapshot) + "\u0001" + parameterType.toString();
+            String signatureKey = snapshotKey(snapshot) + "\u0001" + parameterType.toString()
+                    + "\u0001" + method.getSimpleName() + "\u0001" + ordinal;
             String name = bySnapshot.get(signatureKey);
             if (name == null) {
                 name = "PLAN_" + fields.size();
-                fields.add(new SchemaField(name, snapshot));
+                fields.add(new SchemaField(name, snapshot,
+                        method.getSimpleName().toString(), parameterType.toString(), ordinal));
                 bySnapshot.put(signatureKey, name);
             }
             names.add("Fallback." + name);
+            ordinal++;
         }
 
         String type = parameterType.toString();
@@ -357,9 +355,17 @@ public final class ValidationGenerator {
     private static final class SchemaField {
         final String name;
         final SchemaResourceResolver.Snapshot snapshot;
-        SchemaField(String name, SchemaResourceResolver.Snapshot snapshot) {
+        final String methodName;
+        final String argumentType;
+        final int ordinal;
+
+        SchemaField(String name, SchemaResourceResolver.Snapshot snapshot,
+                    String methodName, String argumentType, int ordinal) {
             this.name = name;
             this.snapshot = snapshot;
+            this.methodName = methodName;
+            this.argumentType = argumentType;
+            this.ordinal = ordinal;
         }
     }
 }
