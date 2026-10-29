@@ -28,6 +28,55 @@ class SchemaPlanTest {
     }
 
     @Test
+    void staticExecutionModeSkipsDynamicScopeForPlainResources() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"object\","
+                + "\"properties\":{\"x\":{\"type\":\"integer\"}}}").createPlan();
+        assertEquals(0, plan.executionMode);
+        assertFalse(plan.scopesDynamicAnchors);
+        assertTrue(plan.isValid(Collections.singletonMap("x", 1)));
+    }
+
+    @Test
+    void staticExecutionModeAnticipatesLazyDynamicAnchor() {
+        ObjectSchema source = (ObjectSchema) JsonSchema.fromJson("{"
+                + "\"$id\":\"https://example.test/static-lazy.json\","
+                + "\"type\":\"string\","
+                + "\"custom\":{\"late\":{\"$dynamicAnchor\":\"late\",\"type\":\"integer\"}}"
+                + "}");
+        SchemaRegistry registry = new SchemaRegistry();
+        SchemaPlan root = registry.register(source);
+
+        assertTrue(root.scopesDynamicAnchors);
+        assertTrue(root.byDynamicAnchorPlans.isEmpty());
+        assertEquals(2, root.executionMode);
+        assertTrue(root.isValid("text"));
+
+        SchemaPlan late = registry.resolve(URI.create("https://example.test/static-lazy.json#/custom/late"));
+        assertEquals("late", late.dynamicAnchor);
+        assertTrue(late.scopesDynamicAnchors);
+        assertTrue(root.byDynamicAnchorPlans.containsKey("late"));
+        assertTrue(late.isValid(5));
+        assertFalse(late.isValid("bad"));
+    }
+
+    @Test
+    void nestedResourcesHaveIndependentStaticScopeModes() {
+        ObjectSchema source = (ObjectSchema) JsonSchema.fromJson("{"
+                + "\"$id\":\"https://example.test/outer.json\","
+                + "\"$dynamicAnchor\":\"outer\","
+                + "\"properties\":{\"child\":{\"$id\":\"inner.json\",\"type\":\"string\"}}"
+                + "}");
+        SchemaRegistry registry = new SchemaRegistry();
+        SchemaPlan outer = registry.register(source);
+        SchemaPlan inner = registry.resolve(URI.create("https://example.test/inner.json"));
+
+        assertTrue(outer.scopesDynamicAnchors);
+        assertFalse(inner.scopesDynamicAnchors);
+        assertEquals(0, inner.executionMode);
+        assertTrue(inner.isValid("ok"));
+    }
+
+    @Test
     void booleanSchemaPlanStaysMinimal() {
         SchemaPlan plan = BooleanSchema.FALSE.createPlan();
 
