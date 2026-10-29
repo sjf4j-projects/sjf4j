@@ -141,6 +141,52 @@ class Fastjson2BinderTest {
     }
 
     @Test
+    void specializesRawCollectionsAtFiveElementBoundary() throws Exception {
+        for (int count = 0; count <= 8; count++) {
+            StringBuilder objectJson = new StringBuilder("{");
+            StringBuilder arrayJson = new StringBuilder("[");
+            Map<String, Object> expectedObject = new LinkedHashMap<>();
+            List<Object> expectedArray = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                if (i != 0) {
+                    objectJson.append(',');
+                    arrayJson.append(',');
+                }
+                objectJson.append('"').append('k').append(i).append("\":").append(i);
+                arrayJson.append(i);
+                expectedObject.put("k" + i, i);
+                expectedArray.add(i);
+            }
+            objectJson.append('}');
+            arrayJson.append(']');
+
+            try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(objectJson.toString()))) {
+                Map<String, Object> value = p.readRawObject();
+                assertEquals(LinkedHashMap.class, value.getClass());
+                assertEquals(expectedObject, value);
+                assertEquals(new ArrayList<>(expectedObject.keySet()),
+                        new ArrayList<>(value.keySet()));
+                p.end();
+            }
+            try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(arrayJson.toString()))) {
+                List<Object> value = p.readRawArray();
+                assertEquals(ArrayList.class, value.getClass());
+                assertEquals(expectedArray, value);
+                p.end();
+            }
+        }
+        try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(
+                "{\"a\":1,\"b\":2,\"c\":3,\"d\":4,\"e\":5,\"a\":6,\"f\":[null,{\"ok\":true}]}"))) {
+            Map<String, Object> value = p.readRawObject();
+            assertEquals(Arrays.asList("a", "b", "c", "d", "e", "f"),
+                    new ArrayList<>(value.keySet()));
+            assertEquals(6, value.get("a"));
+            assertEquals(2, ((List<?>) value.get("f")).size());
+            p.end();
+        }
+    }
+
+    @Test
     void rawNodeReportsEofUsingStreamingTokenSemantics() {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(""));
         try {
