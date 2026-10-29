@@ -20,35 +20,28 @@ import java.util.List;
 public class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
-    private final List<ValidationMessage> messages;
     private final boolean booleanOnly;
+    private final List<ValidationMessage> messages;
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
     // dedicated wrappers because they can carry branch-local runtime state.
-    private final InstancedNode reusedLeaf;
+    private final Instance reusedLeaf;
 
     private boolean valid = true;
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding = 0;
     private Deque<SchemaPlan> planStack;
 
-    ValidationContext(boolean failFast, boolean strictFormat) {
-        this(failFast, strictFormat, false);
-    }
-
-    private ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
+    ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
         this.messages = failFast ? null : new ArrayList<>();
-        this.reusedLeaf = InstancedNode.infer(null);
+        this.reusedLeaf = Instance.infer(null);
     }
 
-    static ValidationContext booleanOnly(boolean strictFormat) {
-        return new ValidationContext(true, strictFormat, true);
-    }
 
-    boolean needsDiagnostic() {
+    boolean needsMessage() {
         return !booleanOnly && ignoreErrorAdding == 0;
     }
 
@@ -122,7 +115,7 @@ public class ValidationContext {
         return planStack;
     }
 
-    public InstancedNode reusedLeaf() {
+    public Instance reusedLeaf() {
         return reusedLeaf;
     }
 
@@ -132,7 +125,7 @@ public class ValidationContext {
      * <p>
      * In fail-fast mode only the last error is retained.
      */
-    void addError(InstancedNode instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
+    void addError(Instance instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
                   String keyword, String message) {
         if (ignoreErrorAdding < 1) {
             valid = false;

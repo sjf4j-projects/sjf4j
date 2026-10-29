@@ -69,8 +69,8 @@ public final class SchemaPlan {
             }
         }
 
-        InstancedNode instance = InstancedNode.infer(node);
-        ValidationContext ctx = new ValidationContext(failFast, strictFormat);
+        Instance instance = Instance.infer(node);
+        ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
         PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
         evaluate(instance, ps, ctx);
         return ctx.toResult();
@@ -84,8 +84,8 @@ public final class SchemaPlan {
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
         if (booleanSchema) return booleanValue;
-        InstancedNode instance = InstancedNode.infer(node);
-        ValidationContext ctx = ValidationContext.booleanOnly(strictFormat);
+        Instance instance = Instance.infer(node);
+        ValidationContext ctx = new ValidationContext(true, strictFormat, true);
         boolean matched = evaluate(instance, null, ctx);
         return matched && ctx.isValid();
     }
@@ -116,7 +116,7 @@ public final class SchemaPlan {
     /**
      * Executes evaluator pipeline for the current instance branch.
      */
-    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+    boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
                 return true;

@@ -54,14 +54,14 @@ public class SchemaValidationTest {
 
     @Test
     public void testValueBindingInferUsesDeclaredRawTypeExceptNull() {
-        InstancedNode reusedLeaf = InstancedNode.infer("reused");
+        Instance reusedLeaf = Instance.infer("reused");
         StringValue stringValue = new StringValue();
         MapValue mapValue = new MapValue();
         ListValue listValue = new ListValue();
 
-        InstancedNode stringNode = InstancedNode.infer(stringValue, reusedLeaf);
-        InstancedNode mapNode = InstancedNode.infer(mapValue, reusedLeaf);
-        InstancedNode listNode = InstancedNode.infer(listValue, reusedLeaf);
+        Instance stringNode = Instance.infer(stringValue, reusedLeaf);
+        Instance mapNode = Instance.infer(mapValue, reusedLeaf);
+        Instance listNode = Instance.infer(listValue, reusedLeaf);
 
         assertEquals(JsonType.NULL, stringNode.jsonType());
         assertEquals(JsonType.OBJECT, mapNode.jsonType());
@@ -80,7 +80,7 @@ public class SchemaValidationTest {
     public void testInferClassifiesPojoObject() {
         PlainPojo value = new PlainPojo();
 
-        InstancedNode node = InstancedNode.infer(value);
+        Instance node = Instance.infer(value);
 
         assertSame(value, node.node());
         assertEquals(JsonType.OBJECT, node.jsonType());

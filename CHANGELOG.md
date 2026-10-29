@@ -274,7 +274,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed `Nodes` and `JsonObject` object views to expose readable members only, while keeping direct write paths available for writable-only bindings.
 - Changed shared and backend-native facade integrations to route through context-aware `StreamingIO`, with plugin-module fallbacks for SJF4J-managed value-codec and `AnyOf` cases.
 - Changed Jackson 2 and Fastjson2 module reader/writer selection to resolve plain `JsonObject`/`JsonArray` separately from JOJO/POJO metadata-backed types, preserving owner type information for generic bindings.
-- Changed path/schema traversal internals to use lighter `PathSegment` and `InstancedNode` metadata while standardizing rooted error-path reporting on JSONPath and JSON Pointer expressions.
+- Changed path/schema traversal internals to use lighter `PathSegment` and `Instance` metadata while standardizing rooted error-path reporting on JSONPath and JSON Pointer expressions.
 
 ### Fixed
 - Fixed backend-native Jackson/Fastjson2 streaming and module paths to skip formatted value-codec resolution when a type has no registered codecs, reducing unnecessary metadata work and avoiding null-driven fallback drift.

@@ -139,9 +139,9 @@ class SchemaPlanTest {
                 "\"required\":[\"missing\"]," +
                 "\"properties\":{\"present\":true}" +
                 "}").createPlan();
-        ValidationContext ctx = new ValidationContext(true, false);
+        ValidationContext ctx = new ValidationContext(true, false, false);
 
-        assertFalse(plan.evaluate(InstancedNode.infer(Collections.emptyMap()), null, ctx));
+        assertFalse(plan.evaluate(Instance.infer(Collections.emptyMap()), null, ctx));
         assertTrue(ctx.planStack().isEmpty());
     }
 
@@ -151,8 +151,8 @@ class SchemaPlanTest {
             SchemaPlan plan = JsonSchema.fromJson("{\"" + keyword + "\":[" +
                     "{\"required\":[\"missing\"],\"unevaluatedProperties\":true},true]," +
                     "\"unevaluatedProperties\":true}").createPlan();
-            InstancedNode instance = InstancedNode.infer(Collections.singletonMap("present", 1));
-            ValidationContext ctx = new ValidationContext(true, false);
+            Instance instance = Instance.infer(Collections.singletonMap("present", 1));
+            ValidationContext ctx = new ValidationContext(true, false, false);
 
             assertTrue(plan.evaluate(instance, null, ctx), keyword);
             assertNull(instance.peekEvaluated(), keyword);
@@ -185,8 +185,8 @@ class SchemaPlanTest {
     void inapplicableUnevaluatedPropertiesLeavesNoFrame() {
         SchemaPlan plan = JsonSchema.fromJson("{\"unevaluatedProperties\":false}").createPlan();
         for (boolean failFast : new boolean[]{true, false}) {
-            InstancedNode instance = InstancedNode.infer(Collections.singletonList(1));
-            ValidationContext ctx = new ValidationContext(failFast, false);
+            Instance instance = Instance.infer(Collections.singletonList(1));
+            ValidationContext ctx = new ValidationContext(failFast, false, false);
 
             assertTrue(plan.evaluate(instance, null, ctx));
             assertNull(instance.peekEvaluated());

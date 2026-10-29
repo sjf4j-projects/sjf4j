@@ -23,13 +23,13 @@ import java.util.Map;
  * binding before this wrapper is created, so evaluators inspect the raw OBNT
  * representation rather than the domain instance.
  */
-public final class InstancedNode {
+public final class Instance {
     private Object node;
     private JsonType jsonType;
     private boolean converted;
 
-    private Map<Object, InstancedNode> subInstanceCache;
-    private InstancedNode pathParent;
+    private Map<Object, Instance> subInstanceCache;
+    private Instance pathParent;
     private String pathKey;
     private int pathIndex;
     private boolean pathByIndex;
@@ -42,7 +42,7 @@ public final class InstancedNode {
     private Deque<SchemaPlan> nestedActiveRefs;
 
 
-    private InstancedNode(Object node, JsonType jsonType, boolean converted) {
+    private Instance(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
         this.jsonType = jsonType;
         this.converted = converted;
@@ -61,7 +61,7 @@ public final class InstancedNode {
         return converted;
     }
 
-    InstancedNode reuse(Object node, JsonType jsonType, boolean converted) {
+    Instance reuse(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
         this.jsonType = jsonType;
         this.converted = converted;
@@ -73,14 +73,14 @@ public final class InstancedNode {
      * <p>
      * Node/type metadata is preserved.
      */
-    InstancedNode reset() {
+    Instance reset() {
         this.evaluatedStack = null;
         this.firstActiveRef = null;
         this.nestedActiveRefs = null;
         return this;
     }
 
-    private InstancedNode clearPath() {
+    private Instance clearPath() {
         this.pathParent = null;
         this.pathKey = null;
         this.pathIndex = 0;
@@ -88,14 +88,14 @@ public final class InstancedNode {
         return this;
     }
 
-    private InstancedNode bindPathKey(InstancedNode pathParent, String pathKey) {
+    private Instance bindPathKey(Instance pathParent, String pathKey) {
         this.pathParent = pathParent;
         this.pathKey = pathKey;
         this.pathByIndex = false;
         return this;
     }
 
-    private InstancedNode bindPathIndex(InstancedNode pathParent, int pathIndex) {
+    private Instance bindPathIndex(Instance pathParent, int pathIndex) {
         this.pathParent = pathParent;
         this.pathIndex = pathIndex;
         this.pathByIndex = true;
@@ -108,7 +108,7 @@ public final class InstancedNode {
         return pathByIndex ? new PathSegment.Index(parentPs, pathIndex) : new PathSegment.Name(parentPs, pathKey);
     }
 
-    static InstancedNode infer(Object node) {
+    static Instance infer(Object node) {
         return infer(node, null);
     }
 
@@ -121,7 +121,7 @@ public final class InstancedNode {
      * later from converted values can be cached and reused within the same
      * validation traversal.
      */
-    static InstancedNode infer(Object node, InstancedNode reusedLeaf) {
+    static Instance infer(Object node, Instance reusedLeaf) {
         Class<?> clazz = node == null ? null : node.getClass();
         NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
         if (kind == NodeKind.UNKNOWN) {
@@ -133,7 +133,7 @@ public final class InstancedNode {
                     JsonType jsonType = node == null
                             ? JsonType.NULL
                             : JsonType.of(NodeKind.plainOf(vi.rawClazz));
-                    return new InstancedNode(node, jsonType, true);
+                    return new Instance(node, jsonType, true);
                 }
                 kind = NodeKind.VALUE_BINDING;
             } else if (ti.externalNode != null) {
@@ -146,7 +146,7 @@ public final class InstancedNode {
         if (jsonType.isValue() && reusedLeaf != null) {
             return reusedLeaf.reuse(node, jsonType, false);
         }
-        return new InstancedNode(node, jsonType, false);
+        return new Instance(node, jsonType, false);
     }
 
     /**
@@ -227,15 +227,15 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by key to avoid repeated value-binding encoding.
      */
-    InstancedNode inferSubByKey(String key, Object subNode, InstancedNode reusedLeaf) {
+    Instance inferSubByKey(String key, Object subNode, Instance reusedLeaf) {
         if (jsonType != JsonType.OBJECT)
             throw new NodeException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         if (subInstanceCache != null) {
-            InstancedNode subInstance = subInstanceCache.get(key);
+            Instance subInstance = subInstanceCache.get(key);
             if (subInstance != null) return subInstance.reset();
         }
 
-        InstancedNode subInstance = InstancedNode.infer(subNode, reusedLeaf).bindPathKey(this, key);
+        Instance subInstance = Instance.infer(subNode, reusedLeaf).bindPathKey(this, key);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(key, subInstance);
@@ -248,15 +248,15 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by index key to avoid repeated encoding.
      */
-    InstancedNode inferSubByIndex(int idx, Object subNode, InstancedNode reusedLeaf) {
+    Instance inferSubByIndex(int idx, Object subNode, Instance reusedLeaf) {
         if (jsonType != JsonType.ARRAY)
             throw new NodeException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
         if (subInstanceCache != null) {
-            InstancedNode subInstance = subInstanceCache.get(idx);
+            Instance subInstance = subInstanceCache.get(idx);
             if (subInstance != null) return subInstance.reset();
         }
 
-        InstancedNode subInstance = InstancedNode.infer(subNode, reusedLeaf).bindPathIndex(this, idx);
+        Instance subInstance = Instance.infer(subNode, reusedLeaf).bindPathIndex(this, idx);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(idx, subInstance);
