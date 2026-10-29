@@ -41,7 +41,8 @@ import java.util.concurrent.TimeUnit;
  * full binding, and owned-reader closing. No parsing or conversion in JMH setup
  * is included in the measurements.
  *
- * native: framework public data-binding API for the same Java target type.
+ * native: backend-native parsing. Fastjson2 raw Map/List use
+ * JSONReader.readObject()/readArray(), without JDK-container normalization.
  * native_reader: Gson has no byte[] decoding API; it receives a UTF-8 Reader.
  * native_tree: JSON-P returns JsonValue, NOT a Java Map or POJO; compare separately.
  * No Simple native baseline exists.
