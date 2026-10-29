@@ -54,11 +54,6 @@ final class NodeFrame {
         pathKey = null;
         pathIndex = 0;
         pathByIndex = false;
-        return bindValue(value);
-    }
-
-    /** Bind the value without touching child path state, which bindKey/bindIndex replace. */
-    private NodeFrame bindValue(Object value) {
         convertedChildren = null;
         cachedValue = null;
         converted = false;
@@ -114,7 +109,7 @@ final class NodeFrame {
             convertedChildren = cached.children;
             cachedValue = cached;
         } else {
-            bindValue(value);
+            bind(value);
             if (converted) {
                 cached = new CachedValue(node, jsonType, true);
                 if (parent.convertedChildren == null) {
