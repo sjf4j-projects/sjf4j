@@ -690,18 +690,29 @@ public final class StreamingIO {
     public static Map<String, Object> readMap(StreamingParser parser, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
                                               RuntimeContext context) throws IOException {
+        if (valueType == null) {
+            // The raw Map and LinkedHashMap types have no declared value binding.
+            valueType = type == boxed && (boxed == Map.class || boxed == LinkedHashMap.class)
+                    ? Object.class : Types.resolveTypeArgument(type, Map.class, 1);
+            valueBoxed = Types.rawBox(valueType);
+            valueTi = valueBoxed == Object.class
+                    ? TypeInfo.NONE : TypeRegistry.registerTypeInfo(valueBoxed);
+        }
+
+        // Raw object parsing owns the entire untyped graph. Do not re-enter
+        // readNode() for every member or resolve its generic type per read.
+        if ((boxed == Map.class || boxed == LinkedHashMap.class)
+                && valueType == Object.class
+                && (valueTi == null || valueTi == TypeInfo.NONE)) {
+            return parser.readRawObject();
+        }
+
         if (!parser.nextIfObjectStart()) {
             if (parser.nextIfNull()) {
                 return null;
             }
             throw new BindingException("cannot read token '" + parser.peekToken() + "' as object type '" +
                     type.getTypeName() + "'");
-        }
-
-        if (valueType == null) {
-            valueType = Types.resolveTypeArgument(type, Map.class, 1);
-            valueBoxed = Types.rawBox(valueType);
-            valueTi = TypeRegistry.registerTypeInfo(valueBoxed);
         }
 
         Map<String, Object> map = boxed == Map.class || boxed == LinkedHashMap.class
