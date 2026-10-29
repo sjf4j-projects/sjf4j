@@ -38,6 +38,28 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    # Temporary targeted tiny-object JMH. Restore main workflow after measurements.
+    - name: Tiny Raw Map native compiled runtime JMH (f3 wi15)
+      run: |
+        ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+        JMH_JAR=$(find sjf4j-testbench/build/libs -type f -iname '*jmh*.jar' | head -n 1)
+        test -n "$JMH_JAR"
+        java -jar "$JMH_JAR" Fastjson2RawAllocationBenchmark -p shape=empty,one,two,small -f 3 -wi 15 -i 5 -w 200ms -r 200ms -t 1 -prof gc -rf json -rff /tmp/raw-tiny.json
+        python3 - <<'PY'
+        import json
+        rows = json.load(open('/tmp/raw-tiny.json'))
+        print("BEGIN TINY THREE WAY JMH")
+        for shape in ("empty", "one", "two", "small"):
+            for encoding in ("String", "Utf8"):
+                for mode in ("native", "compiled", "runtime"):
+                    row = next(x for x in rows if x['params']['shape'] == shape
+                               and x['benchmark'].endswith('.' + mode + encoding))
+                    p = row['primaryMetric']
+                    alloc = row.get('secondaryMetrics', {}).get('gc.alloc.rate.norm', {})
+                    print(f"{shape} {encoding} {mode}: {p['score']:.5f} +/- {p['scoreError']:.5f} {p['scoreUnit']}; {alloc.get('score', 0):.1f} B/op")
+        print("END TINY THREE WAY JMH")
+        PY
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
