@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -298,7 +299,7 @@ public class CompiledBinderTest {
         Map<String, Object> compiled = binder.readObjectMap(input);
         LinkedHashMap<String, Object> linked = binder.readLinkedObjectMap(input);
         assertEquals(compiled, linked);
-        assertInstanceOf(LinkedHashMap.class, linked.getClass());
+        assertInstanceOf(LinkedHashMap.class, linked);
         assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                 new ArrayList<String>(linked.keySet()));
         assertInstanceOf(LinkedHashMap.class, linked.get("nested").getClass());
@@ -306,14 +307,14 @@ public class CompiledBinderTest {
         Map<?, ?> runtime = (Map<?, ?>) new SimpleJsonBinder().readNode(input, Object.class);
 
         assertEquals(runtime, compiled);
-        assertInstanceOf(LinkedHashMap.class, compiled.getClass());
+        assertInstanceOf(LinkedHashMap.class, compiled);
         assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                 new ArrayList<String>(compiled.keySet()));
 
         Map<?, ?> nested = (Map<?, ?>) compiled.get("nested");
         List<?> items = (List<?>) compiled.get("items");
-        assertInstanceOf(LinkedHashMap.class, nested.getClass());
-        assertInstanceOf(ArrayList.class, items.getClass());
+        assertInstanceOf(LinkedHashMap.class, nested);
+        assertInstanceOf(ArrayList.class, items);
         assertEquals(Arrays.asList("first", "second"), new ArrayList<Object>(nested.keySet()));
         assertInstanceOf(LinkedHashMap.class, items.get(1).getClass());
 
@@ -329,10 +330,10 @@ public class CompiledBinderTest {
 
         assertEquals(runtimeHolder.get("value"), holder.getValue());
         assertEquals(runtimeHolder.get("values"), holderValues);
-        assertInstanceOf(LinkedHashMap.class, holderValue.getClass());
+        assertInstanceOf(LinkedHashMap.class, holderValue);
         assertEquals(Arrays.asList("text", "nested"), new ArrayList<Object>(holderValue.keySet()));
-        assertInstanceOf(ArrayList.class, holderNested.getClass());
-        assertInstanceOf(ArrayList.class, holderValues.getClass());
+        assertInstanceOf(ArrayList.class, holderNested);
+        assertInstanceOf(ArrayList.class, holderValues);
         assertInstanceOf(LinkedHashMap.class, holderValues.get(1).getClass());
         assertInstanceOf(ArrayList.class, holderValues.get(2).getClass());
     }
