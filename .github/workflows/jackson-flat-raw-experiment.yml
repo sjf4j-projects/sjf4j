@@ -1,4 +1,4 @@
-name: Jackson Flat Raw Performance Experiment
+name: Jackson Factory Isolation Performance Experiment
 
 on:
   push:
@@ -19,11 +19,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
       - name: Build focused JMH
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Flat scalar Map/List microbenchmarks
+      - name: Same versus independent JsonFactory benchmarks
         run: |
           JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' | head -n 1)
           echo "JMH jar: $JAR"
-          java -jar "$JAR" '.*JacksonFlatRawExperiment.*' -f 1 -wi 5 -i 5 -w 160ms -r 160ms -prof gc -rf json -rff jackson-flat-results.json
+          java -jar "$JAR" '.*JacksonFactoryIsolationExperiment.*' -f 2 -wi 4 -i 6 -w 180ms -r 180ms -prof gc -rf json -rff jackson-flat-results.json
       - name: Upload JSON results
         if: always()
         uses: actions/upload-artifact@v4
