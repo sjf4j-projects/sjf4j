@@ -9,6 +9,11 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -471,5 +476,52 @@ try {
                 parser.close();
             }
         }
+    }    @Test
+    void rawCollectionsPreserveValuesAcrossThreeEntryBoundary() throws Exception {
+        for (int size = 0; size <= 8; size++) {
+            StringBuilder objectJson = new StringBuilder("{");
+            StringBuilder arrayJson = new StringBuilder("[");
+            for (int i = 0; i < size; i++) {
+                if (i != 0) {
+                    objectJson.append(',');
+                    arrayJson.append(',');
+                }
+                objectJson.append('"').append("k").append(i).append("\":").append(i);
+                arrayJson.append(i);
+            }
+            objectJson.append('}');
+            arrayJson.append(']');
+
+            try (SimpleJsonParser p = new SimpleJsonParser(new StringReader(objectJson.toString()))) {
+                Map<String, Object> result = p.readRawObject();
+                assertEquals(LinkedHashMap.class, result.getClass());
+                assertEquals(size, result.size());
+                for (int i = 0; i < size; i++) {
+                    assertEquals("k" + i, new ArrayList<>(result.keySet()).get(i));
+                    assertEquals(i, ((Number) result.get("k" + i)).intValue());
+                }
+                p.end();
+            }
+            try (SimpleJsonParser p = new SimpleJsonParser(new StringReader(arrayJson.toString()))) {
+                List<Object> result = p.readRawArray();
+                assertEquals(ArrayList.class, result.getClass());
+                assertEquals(size, result.size());
+                for (int i = 0; i < size; i++) {
+                    assertEquals(i, ((Number) result.get(i)).intValue());
+                }
+                p.end();
+            }
+        }
+
+        try (SimpleJsonParser p = new SimpleJsonParser(new StringReader("{\"a\":1,\"b\":2,\"c\":3,\"a\":4,\"d\":[null,{\"ok\":true}]}"))) {
+            Map<String, Object> result = p.readRawObject();
+            assertEquals(Arrays.asList("a", "b", "c", "d"),
+                    new ArrayList<>(result.keySet()));
+            assertEquals(4, ((Number) result.get("a")).intValue());
+            assertEquals(2, ((List<?>) result.get("d")).size());
+            p.end();
+        }
     }
+
+
 }
