@@ -39,7 +39,7 @@ jobs:
               own=[]
               for f in frames:
                   m=f.get('method') or {}
-                  typ=(m.get('type') or {}).get('name','')
+                  typ=(m.get('type') or {}).get('name','').replace('/','.')
                   name=m.get('name','')
                   if typ.startswith('org.sjf4j') and name:
                       own.append(typ+'.'+name)
@@ -47,6 +47,7 @@ jobs:
                   top[own[0]]+=1
                   all_sjf.update(set(own))
           print('Execution samples:',len(events))
+          print('Example frame:', next((ev['values']['stackTrace']['frames'][0] for ev in events if (ev.get('values',{}).get('stackTrace') or {}).get('frames')), None))
           print('Top SJF4J leaf frames:',top.most_common(30))
           print('Top SJF4J inclusive frames:',all_sjf.most_common(30))
           with open('jfr-results/top.txt','w') as f:
