@@ -141,7 +141,7 @@ class Fastjson2BinderTest {
     }
 
     @Test
-    void parsesRawCollectionsAroundTwoElementBoundary() throws Exception {
+    void parsesRawCollectionsAcrossSmallAndLargeSizes() throws Exception {
         for (int count = 0; count <= 8; count++) {
             StringBuilder objectJson = new StringBuilder("{");
             StringBuilder arrayJson = new StringBuilder("[");
