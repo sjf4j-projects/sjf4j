@@ -291,7 +291,7 @@ public final class JsonpParser extends StreamingParser {
     // Called only after the START_OBJECT / START_ARRAY event is established.
     // Consume it directly: the public entry points and readRaw() already
     // dispatched the token, so readObjectStart/readArrayStart would recheck it.
-    // Hold up to three members locally, then allocate the backing map.
+    // Buffer no more than three raw members before allocating a map.
     private Map<String, Object> _readRawObject() throws IOException {
         advance();
         String name1 = nextName();
