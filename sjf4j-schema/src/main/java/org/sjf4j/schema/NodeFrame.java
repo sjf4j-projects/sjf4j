@@ -16,6 +16,8 @@ import java.util.Map;
  */
 final class NodeFrame {
     private Object node;
+    private NodeFrame reusableChild;
+    private NodeFrame previousFrame;
     private JsonType jsonType;
     private boolean converted;
     private NodeFrame pathParent;
@@ -41,6 +43,12 @@ final class NodeFrame {
         }
     }
 
+    NodeFrame reusableChild() {
+        if (reusableChild == null) reusableChild = new NodeFrame();
+        return reusableChild;
+    }
+    void setPreviousFrame(NodeFrame previous) { previousFrame = previous; }
+    NodeFrame previousFrame() { return previousFrame; }
     Object node() { return node; }
     JsonType jsonType() { return jsonType; }
     boolean converted() { return converted; }

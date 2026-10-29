@@ -20,8 +20,7 @@ public final class ValidationContext {
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding;
 
-    private NodeFrame leaf;
-    private NodeFrame[] frames;
+    private NodeFrame activeFrame;
     private int nodeDepth;
 
     // Evaluated annotations are isolated by instance position AND schema branch.
@@ -50,47 +49,43 @@ public final class ValidationContext {
     }
 
     NodeFrame root(Object value) {
-        return NodeFrame.infer(value);
+        activeFrame = NodeFrame.infer(value);
+        return activeFrame;
     }
 
     private NodeFrame nextFrame() {
+        NodeFrame frame = activeFrame.reusableChild();
         int next = nodeDepth + 1;
-        NodeFrame frame;
-        if (next == 1) {
-            if (leaf == null) leaf = new NodeFrame();
-            frame = leaf;
-        } else {
-            if (frames == null) {
-                frames = new NodeFrame[4];
-            } else if (next >= frames.length) {
-                frames = Arrays.copyOf(frames, frames.length << 1);
-            }
-            if (frames[next] == null) frames[next] = new NodeFrame();
-            frame = frames[next];
-        }
         if (evaluatedByDepth != null && next < evaluatedByDepth.length
                 && evaluatedByDepth[next] != null) {
             evaluatedByDepth[next].clear();
         }
+        frame.setPreviousFrame(activeFrame);
         nodeDepth = next;
         return frame;
     }
 
     NodeFrame enterKey(NodeFrame parent, String key, Object value) {
-        return nextFrame().bindKey(parent, key, value);
+        NodeFrame frame = nextFrame().bindKey(parent, key, value);
+        activeFrame = frame;
+        return frame;
     }
 
     NodeFrame enterIndex(NodeFrame parent, int index, Object value) {
-        return nextFrame().bindIndex(parent, index, value);
+        NodeFrame frame = nextFrame().bindIndex(parent, index, value);
+        activeFrame = frame;
+        return frame;
     }
 
     NodeFrame enterValue(Object value) {
-        return nextFrame().bind(value);
+        NodeFrame frame = nextFrame().bind(value);
+        activeFrame = frame;
+        return frame;
     }
 
     void leaveChild() {
-        NodeFrame frame = nodeDepth == 1 ? leaf : frames[nodeDepth];
-        frame.finishChild();
+        activeFrame.finishChild();
+        activeFrame = activeFrame.previousFrame();
         nodeDepth--;
     }
 
