@@ -148,6 +148,64 @@ public final class SchemaPlan {
     }
 
     private boolean evaluateKeywords(NodeFrame instance, PathSegment ps, ValidationContext ctx) {
+        // Experiment: separate bytecode call sites for short fixed plans.
+        // Keyword order and early-abort semantics are unchanged.
+        switch (evaluators.length) {
+            case 0:
+                return true;
+            case 1:
+                return evaluators[0].evaluate(instance, ps, ctx);
+            case 2: {
+                boolean ok = true;
+                if (!evaluators[0].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[1].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                return ok;
+            }
+            case 3: {
+                boolean ok = true;
+                if (!evaluators[0].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[1].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[2].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                return ok;
+            }
+            case 4: {
+                boolean ok = true;
+                if (!evaluators[0].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[1].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[2].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                if (!evaluators[3].evaluate(instance, ps, ctx)) {
+                    ok = false;
+                    if (ctx.shouldAbort()) return false;
+                }
+                return ok;
+            }
+            default:
+                break;
+        }
         boolean valid = true;
         for (Evaluator evaluator : evaluators) {
             if (!evaluator.evaluate(instance, ps, ctx)) {
