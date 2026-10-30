@@ -95,9 +95,48 @@ final class SchemaEmitter {
                 emitArray(lines, plan, (SchemaCheck.ArrayCheck) check, value, expression,
                         planName, strictFormat, depth);
                 return;
+            case ONE_OF:
+                emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, expression,
+                        planName, strictFormat, depth);
+                return;
             default:
                 throw new IllegalStateException("unsupported compiled value kind: " + check.kind);
         }
+    }
+
+    private void emitOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
+                           SchemaCheck.OneOfCheck check, String expression, String name,
+                           String strictFormat, int depth) {
+        SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
+        // Explicit strict format assertions are delegated as a unit: some
+        // specialized domain values (UUID) have a format assertion in the schema.
+        if (!"false".equals(strictFormat)) {
+            lines.add("if (" + strictFormat + ") {");
+            lines.add("    if (!" + full.reference() + ".isValid(" + expression
+                    + ", true)) return false;");
+            lines.add("} else {");
+        }
+        String indent = "false".equals(strictFormat) ? "" : "    ";
+        lines.add(indent + "if (" + expression + " == null) return false;");
+        int n = 0;
+        for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
+            String typed = "_typed" + depth + "_" + name + "_" + n;
+            lines.add(indent + (n == 0 ? "if" : "else if") + " ("
+                    + expression + ".getClass() == " + subtype.type + ".class) {");
+            lines.add(indent + "    " + subtype.type + " " + typed
+                    + " = (" + subtype.type + ") " + expression + ";");
+            for (String source : emit(subtype.check, typed, plan, strictFormat)) {
+                // Shared local naming is safe: every subtype occupies a block.
+                lines.add(indent + "    " + source);
+            }
+            lines.add(indent + "}");
+            n++;
+        }
+        lines.add(indent + "else {");
+        lines.add(indent + "    if (!" + full.reference()
+                + ".isValid(" + expression + ", false)) return false;");
+        lines.add(indent + "}");
+        if (!"false".equals(strictFormat)) lines.add("}");
     }
 
     private void emitString(List<String> lines, SchemaCheck.StringCheck check,
@@ -107,7 +146,8 @@ final class SchemaEmitter {
         String temp = "_text" + depth + "_" + planName;
         if (value.shape == SchemaValue.Shape.STRING) {
             if (value.nullable) lines.add("if (" + expression + " == null) return false;");
-            if (!"java.lang.String".equals(value.type.toString())) {
+            if (!"java.lang.String".equals(value.type.toString())
+                    && (check.minLength != null || check.maxLength != null || check.choices != null)) {
                 lines.add("String " + temp + " = "
                         + (value.enumType ? expression + ".name()" : "String.valueOf(" + expression + ")") + ";");
                 text = temp;

@@ -13,7 +13,9 @@ final class ScalarCompiler {
             if (value.shape != SchemaValue.Shape.STRING && value.shape != SchemaValue.Shape.DYNAMIC) return null;
             for (String key : schema.keySet()) {
                 if (!key.equals("type") && !key.equals("minLength") && !key.equals("maxLength")
-                        && !key.equals("enum") && !SchemaCompiler.isAnnotation(key)) return null;
+                        && !key.equals("enum") && !SchemaCompiler.isAnnotation(key)
+                        && !(key.equals("format") && value.uuidType
+                                && "uuid".equals(schema.getString("format")))) return null;
             }
             Integer min = schema.getInt("minLength");
             Integer max = schema.getInt("maxLength");

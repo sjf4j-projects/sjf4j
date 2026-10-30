@@ -9,7 +9,7 @@ import java.util.List;
  * fallback field names appear here. Source generation belongs to SchemaEmitter.
  */
 abstract class SchemaCheck {
-    enum Kind { OBJECT, STRING, NUMBER, ARRAY, PASS, FALLBACK }
+    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, PASS, FALLBACK }
 
     final Kind kind;
 
@@ -19,6 +19,27 @@ abstract class SchemaCheck {
 
     boolean hasFallback() {
         return kind == Kind.FALLBACK;
+    }
+
+    /** Disjoint Java subtypes compiled directly, with one full-schema fallback for unknown types. */
+    static final class OneOfCheck extends SchemaCheck {
+        final String uri;
+        final List<Subtype> subtypes;
+        OneOfCheck(String uri, List<Subtype> subtypes) {
+            super(Kind.ONE_OF);
+            this.uri = uri;
+            this.subtypes = Collections.unmodifiableList(new ArrayList<Subtype>(subtypes));
+        }
+        @Override boolean hasFallback() { return true; }
+
+        static final class Subtype {
+            final String type;
+            final ObjectCheck check;
+            Subtype(String type, ObjectCheck check) {
+                this.type = type;
+                this.check = check;
+            }
+        }
     }
 
     static final class Pass extends SchemaCheck {
