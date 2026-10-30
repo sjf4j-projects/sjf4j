@@ -8,7 +8,7 @@ the runtime `SchemaPlan`.
 ## Usage
 
 ```java
-@CompiledValidator
+@CompiledValidator(nullAsMissing = false)
 public interface UserValidator {
     @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     boolean isValid(User user);
@@ -52,6 +52,23 @@ schema takes precedence over a URI reference; otherwise the type's
 conventional schema filename is searched. Compiled and fallback execution must
 produce equivalent validation results for supported input representations.
 
+## Null-valued object properties
+
+By default (`@CompiledValidator(nullAsMissing = false)`), the compiled
+validator follows JSON Schema: an object property with value `null` is
+**present**, so `required` succeeds, while its property schema can reject
+the JSON null value.
+
+For Java typed objects that cannot distinguish unset from explicitly null,
+opt in to `@CompiledValidator(nullAsMissing = true)`:
+- a null object member is treated as missing; `required` then fails for
+  that member, and a non-required property schema is skipped;
+- null elements **inside arrays remain present** and are validated as JSON null;
+- the rule also applies to nested object members, including validation through
+  a runtime SchemaPlan fallback, using an explicit object projection on that
+  non-default path;
+- this is a Java object convention, **not** a change to JSON Schema semantics.
+
 ## Compilation and fallback
 
 ```java
@@ -84,8 +101,12 @@ Conditional = a known Java representation/root shape and/or localized
 matrix covers **the main-source** `ValidationGenerator`, not the retired
 incubator prototype.
 
-The first-stage POJO path requires a **public final POJO with public readable
+The direct POJO path requires a **public final POJO with public readable
 properties** (public getters without checked exceptions, or public fields).
+The root is also supported for **Map, JsonObject and JOJO** representations:
+dynamic keys are checked at runtime, including `required` and
+`additionalProperties:false`. When a dynamic property's value type
+cannot be determined statically, only that property's validation falls back.
 The root may contain `type:object`, `properties`, `required`,
 `additionalProperties` (boolean), and non-applicative metadata including
 `$schema`, `title`, `definitions`, and `$defs`. For
@@ -97,9 +118,9 @@ without violating `required`, although its property schema may reject null.
 | Keyword / feature | Direct code generation | Runtime SchemaPlan | Creek status |
 | --- | --- | --- | --- |
 | Boolean root schemas (`true`, `false`) | Yes | Yes | Supported |
-| `type:object`, `properties` | Conditional, directly accessible POJO fields | Yes | Phase 1 |
-| `required` | Conditional, static readable-property presence | Yes | Phase 1 |
-| `additionalProperties:false` | Conditional, closed static POJO properties | Yes | Phase 1 |
+| `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys | Yes | Phase 1 |
+| `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes | Phase 1 |
+| `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes | Phase 1 |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes | Phase 1 |
 | `minLength`, `maxLength` | Direct string Unicode code-point length | Yes | Phase 1 |
 | `enum` | Direct for string-only enumeration of native strings/enums | Yes | Phase 1 |
@@ -108,22 +129,33 @@ without violating `required`, although its property schema may reject null.
 | `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct numeric comparisons | Yes | Phase 1 |
 | `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes | Phase 1 |
 | `minItems`, `maxItems` | Direct Collection size checks | Yes | Phase 1 |
-| `items` | Native string/number item checks; otherwise one cached item subplan | Yes | Phase 1 mixed |
+| `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes | Phase 1 mixed |
 | `format` | No | Yes, honors `strictFormat` | Later |
-| `$ref`, `definitions`, `$defs` | Trivial boolean-root reference; local definitions usable by item fallback | Yes | Partial |
+| `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes | Partial |
 | `oneOf` | No (localized item `SchemaPlan` for Creek) | Yes | Next phase |
 | `anyOf`, `allOf`, `not` | No | Yes | Later |
 | `if`, `then`, `else` | No | Yes | Later |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes | Later |
 | Root metadata (`$schema`, `title`, etc.) | Accepted when non-applicative | Yes | Phase 1 |
 
-**Conformance boundary:** direct property checks are selected only for known
+**Conformance boundary:** direct value checks are selected only for known
 native Java value shapes; custom `@NodeValue`/codec types remain on the full
 runtime path. Unsupported properties fall back as whole subtrees, not partial
-predicates. Array `items` can fall back independently while array size checks
-stay direct. `fallback=false` rejects **any** required subplan at compilation
-time. Support is about the listed combinations, not arbitrary JSON Schema
+predicates. Array `items` are traversed recursively: a supported item's
+constraints compile directly; an unsupported subtree uses a cached item plan.
+Local JSON Pointer `$ref` targets are resolved against the compile-time
+resource snapshot, without runtime fetches. Named/dynamic anchors, reference
+cycles, or sibling assertions that cannot be proven safe fall back.
+`fallback=false` rejects **any** required subplan at compilation time.
+Support is about the listed combinations, not arbitrary JSON Schema
 keyword combinations.
+
+The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest`:
+positive and negative cases for string length, enum, numeric comparisons,
+integer bounds, nested array items and sizes, required and additional
+properties across POJO/Map/JsonObject/JOJO, null-as-missing modes, and
+local `$ref` compilation. Generated-code assertions remain in
+`CompiledValidatorContractProcessorTest`.
 
 ## Creek benchmark milestone
 
@@ -134,8 +166,9 @@ benchmark is `CreekSchemaBenchmark`. It includes `required`,
 `minLength`, polymorphic `oneOf` with `$ref`, and UUID format.
 
 1. **Phase 1 (implemented):** direct root, `required`, closed
-   `additionalProperties`, native numeric/enum/string checks and array
-   sizes/items. The original Creek `oneOf` remains a localized cached item
+   `additionalProperties`, native numeric/enum/string checks and recursive
+   array item traversal, including finite local `$ref` expansion.
+   The original Creek `oneOf` remains a localized cached item
    `SchemaPlan`; this is **mixed compiled/runtime**, not full compilation.
 2. **Next:** compile the two known polymorphic branches and their local
    references (including UUID value-codec handling).

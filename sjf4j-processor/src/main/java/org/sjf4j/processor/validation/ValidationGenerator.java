@@ -53,9 +53,11 @@ public final class ValidationGenerator {
         Map<String, String> bySnapshot = new LinkedHashMap<String, String>();
         List<ResolvedMethod> methods = context.methods.abstractMethods(iface);
 
-        boolean allowFallback = iface.getAnnotation(CompiledValidator.class).fallback();
+        CompiledValidator options = iface.getAnnotation(CompiledValidator.class);
+        boolean allowFallback = options.fallback();
+        boolean nullAsMissing = options.nullAsMissing();
         for (ResolvedMethod method : methods) {
-            generateMethod(method, generated, fields, bySnapshot, allowFallback);
+            generateMethod(method, generated, fields, bySnapshot, allowFallback, nullAsMissing);
         }
         if (!generated.isValid()) return;
 
@@ -101,7 +103,8 @@ public final class ValidationGenerator {
     }
 
     private void generateMethod(ResolvedMethod resolved, GeneratedClass generated,
-                                List<SchemaField> fields, Map<String, String> bySnapshot, boolean allowFallback) {
+                                List<SchemaField> fields, Map<String, String> bySnapshot,
+                                boolean allowFallback, boolean nullAsMissing) {
         ExecutableElement method = resolved.declaration();
         ExecutableType signature = resolved.type();
 
@@ -174,7 +177,7 @@ public final class ValidationGenerator {
             if (bound != null) {
                 booleanLiteral = compileBoolean(bound.snapshot);
                 if (booleanLiteral == null) {
-                    direct = prepareDirect(parameterType, value, bound, strictParam);
+                    direct = prepareDirect(parameterType, value, bound, strictParam, nullAsMissing);
                 }
             }
         }
@@ -216,15 +219,15 @@ public final class ValidationGenerator {
                 out.line("return true;");
             } else if (isBoolean) {
                 for (String plan : names) {
-                    out.line("if (!" + plan + ".isValid(" + value + ", " + strictParam + ")) return false;");
+                    out.line("if (!" + plan + ".isValid(" + runtimeInput(value, nullAsMissing) + ", " + strictParam + ")) return false;");
                 }
                 out.line("return true;");
             } else if (isVoid) {
                 for (String plan : names) {
-                    out.line(plan + ".requireValid(" + value + ", " + strictParam + ");");
+                    out.line(plan + ".requireValid(" + runtimeInput(value, nullAsMissing) + ", " + strictParam + ");");
                 }
             } else if (names.size() == 1) {
-                out.line("return " + names.get(0) + ".validate(" + value + ", false, " + strictParam + ");");
+                out.line("return " + names.get(0) + ".validate(" + runtimeInput(value, nullAsMissing) + ", false, " + strictParam + ");");
             } else {
                 // All annotated schemas participate; report all failures in
                 // parent-to-child order instead of stopping at the first failure.
@@ -232,7 +235,7 @@ public final class ValidationGenerator {
                 out.line("boolean valid = true;");
                 out.line("org.sjf4j.schema.ValidationResult result;");
                 for (String plan : names) {
-                    out.line("result = " + plan + ".validate(" + value + ", false, " + strictParam + ");");
+                    out.line("result = " + plan + ".validate(" + runtimeInput(value, nullAsMissing) + ", false, " + strictParam + ");");
                     out.line("if (!result.isValid()) valid = false;");
                     out.line("messages.addAll(result.getMessages());");
                 }
@@ -242,6 +245,12 @@ public final class ValidationGenerator {
             }
             out.endBlock();
         });
+    }
+
+    private static String runtimeInput(String value, boolean nullAsMissing) {
+        return nullAsMissing
+                ? "org.sjf4j.schema.SchemaValidationInput.omitNullMembers(" + value + ")"
+                : value;
     }
 
     private List<Binding> resolveBindings(ExecutableElement method, TypeMirror parameterType) {
@@ -332,19 +341,31 @@ public final class ValidationGenerator {
      * never discarded.
      */
     private DirectCheck prepareDirect(TypeMirror type, String variable,
-                                      SchemaField field, String strictFormat) {
+                                      SchemaField field, String strictFormat,
+                                      boolean nullAsMissing) {
         SchemaResourceResolver.Snapshot snapshot = field.snapshot;
-        if (snapshot.documents.length != 1 ||
-                !snapshot.selectedUri.equals(snapshot.uris[0])) return null;
-        if (context.types.nodeKind(type) != NodeKind.OBJECT_POJO) return null;
+        // References and fragments are resolved from the full compile-time
+        // snapshot. No runtime document fetch is needed for direct branches.
+        NodeKind nodeKind = context.types.nodeKind(type);
+        boolean dynamic = nodeKind == NodeKind.OBJECT_MAP ||
+                nodeKind == NodeKind.OBJECT_JSON_OBJECT || nodeKind == NodeKind.OBJECT_JOJO;
+        if (!dynamic && nodeKind != NodeKind.OBJECT_POJO) return null;
         TypeElement owner = context.types.typeElement(type);
-        if (owner == null || !owner.getModifiers().contains(Modifier.FINAL) ||
+        if (!dynamic && (owner == null || !owner.getModifiers().contains(Modifier.FINAL) ||
                 !owner.getModifiers().contains(Modifier.PUBLIC) ||
-                owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return null;
+                owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null)) return null;
 
         Object parsed = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
         if (org.sjf4j.JsonType.of(parsed) != org.sjf4j.JsonType.OBJECT) return null;
         org.sjf4j.JsonObject root = org.sjf4j.Nodes.toJsonObject(parsed);
+        String resolvedRootUri = snapshot.uris[0];
+        if (root.containsKey("$ref")) {
+            RefTarget resolved = resolveRef(snapshot, root, snapshot.selectedUri);
+            if (resolved == null || org.sjf4j.JsonType.of(resolved.value) != org.sjf4j.JsonType.OBJECT)
+                return null;
+            root = org.sjf4j.Nodes.toJsonObject(resolved.value);
+            resolvedRootUri = resolved.uri;
+        }
         for (String key : root.keySet()) {
             if (!key.equals("type") && !key.equals("properties") && !key.equals("required")
                     && !key.equals("additionalProperties") && !isAnnotation(key)) return null;
@@ -354,7 +375,7 @@ public final class ValidationGenerator {
         if (org.sjf4j.JsonType.of(raw) != org.sjf4j.JsonType.OBJECT) return null;
         org.sjf4j.JsonObject propertyMap = org.sjf4j.Nodes.toJsonObject(raw);
         Map<String, Property> javaProperties = context.properties.resolve(type);
-        if (javaProperties.isEmpty()) return null;
+        if (!dynamic && javaProperties.isEmpty()) return null;
 
         // POJOs expose declared readable properties even when their values are
         // null. A required property therefore needs a getter, not a non-null value.
@@ -363,26 +384,28 @@ public final class ValidationGenerator {
             if (org.sjf4j.JsonType.of(required) != org.sjf4j.JsonType.ARRAY) return null;
             for (int i = 0; i < org.sjf4j.Nodes.sizeInArray(required); i++) {
                 Object name = org.sjf4j.Nodes.getInArray(required, i);
-                if (!(name instanceof String) || !javaProperties.containsKey(name)) return null;
+                if (!(name instanceof String) || (!dynamic && !javaProperties.containsKey(name))) return null;
             }
         }
         Object additional = root.getNode("additionalProperties");
         if (additional != null) {
             if (!(additional instanceof Boolean)) return null;
-            if (Boolean.FALSE.equals(additional) && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
+            if (!dynamic && Boolean.FALSE.equals(additional)
+                    && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
                 // Extra Java properties would always violate additionalProperties:false;
                 // use the complete runtime plan rather than silently ignoring them.
                 return null;
             }
         }
         for (String name : propertyMap.keySet()) {
-            if (!javaProperties.containsKey(name)) {
+            if (!dynamic && !javaProperties.containsKey(name)) {
                 // An absent POJO property does not trigger the properties keyword.
                 // It is safe when it is not required.
                 if (isRequired(required, name)) return null;
             }
         }
         for (Property property : javaProperties.values()) {
+            if (dynamic) break;
             if (property.read() == null ||
                     !property.read().member().getModifiers().contains(Modifier.PUBLIC) ||
                     (property.read().isMethod() &&
@@ -393,36 +416,102 @@ public final class ValidationGenerator {
         List<String> statements = new ArrayList<String>();
         List<Subplan> subplans = new ArrayList<Subplan>();
         int directCount = 0;
+
+        if (dynamic) {
+            if (required != null) {
+                for (int i = 0; i < org.sjf4j.Nodes.sizeInArray(required); i++) {
+                    String name = (String) org.sjf4j.Nodes.getInArray(required, i);
+                    if (nullAsMissing) {
+                        statements.add("if (org.sjf4j.Nodes.getInObject(" + variable
+                                + ", " + javaLiteral(name) + ") == null) return false;");
+                    } else {
+                        statements.add("if (!org.sjf4j.Nodes.keySetInObject(" + variable
+                                + ").contains(" + javaLiteral(name) + ")) return false;");
+                    }
+                }
+                directCount++;
+            }
+            if (Boolean.FALSE.equals(additional)) {
+                statements.add("for (String _key : org.sjf4j.Nodes.keySetInObject(" + variable + ")) {");
+                StringBuilder unknown = new StringBuilder();
+                for (String key : propertyMap.keySet()) {
+                    if (unknown.length() != 0) unknown.append(" && ");
+                    unknown.append("!_key.equals(").append(javaLiteral(key)).append(")");
+                }
+                String cond = unknown.length() == 0 ? "true" : unknown.toString();
+                if (nullAsMissing) cond += " && org.sjf4j.Nodes.getInObject(" + variable + ", _key) != null";
+                statements.add("    if (" + cond + ") return false;");
+                statements.add("}");
+                directCount++;
+            }
+        } else if (nullAsMissing && required != null) {
+            // Static POJO members are present even when null. The option changes
+            // that interpretation, not the JSON Schema required keyword itself.
+            for (int i = 0; i < org.sjf4j.Nodes.sizeInArray(required); i++) {
+                String name = (String) org.sjf4j.Nodes.getInArray(required, i);
+                Property property = javaProperties.get(name);
+                String access = property.read().memberName() + (property.read().isMethod() ? "()" : "");
+                statements.add("if (" + variable + "." + access + " == null) return false;");
+            }
+            directCount++;
+        }
+        if (required != null && !dynamic) directCount++;
+
         int index = 0;
-        for (Map.Entry<String, Property> entry : javaProperties.entrySet()) {
-            String name = entry.getKey();
-            if (!propertyMap.containsKey(name)) continue;
+        for (String name : propertyMap.keySet()) {
+            Property property = dynamic ? null : javaProperties.get(name);
+            if (!dynamic && property == null) continue;
             String local = "_property" + index;
-            String access = entry.getValue().read().memberName()
-                    + (entry.getValue().read().isMethod() ? "()" : "");
+            String access = dynamic
+                    ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + javaLiteral(name) + ")"
+                    : variable + "." + property.read().memberName()
+                      + (property.read().isMethod() ? "()" : "");
+            TypeMirror declared = property == null ? mapValueType(type) : property.read().type();
             List<String> checks = new ArrayList<String>();
             List<Subplan> nested = new ArrayList<Subplan>();
             Object propertySchema = propertyMap.getNode(name);
-            boolean supported = compileValue(checks, nested, propertySchema, entry.getValue().read().type(), local,
-                    "Fallback." + field.name, "SUB_" + index,
-                    snapshot.selectedUri + "#/properties/" + name, strictFormat, 0);
-            statements.add("Object " + local + " = " + variable + "." + access + ";");
+            String uri = childPointer(resolvedRootUri, "properties", name);
+            boolean supported = compileValue(checks, nested, snapshot, propertySchema, declared, local,
+                    "Fallback." + field.name, "SUB_" + index, uri, strictFormat, 0);
+            statements.add("Object " + local + " = " + access + ";");
+            if (dynamic) {
+                statements.add("if (org.sjf4j.Nodes.keySetInObject(" + variable
+                        + ").contains(" + javaLiteral(name) + ")) {");
+            }
+            if (nullAsMissing) statements.add("if (" + local + " != null) {");
             if (supported) {
                 directCount++;
-                statements.addAll(checks);
+                for (String line : checks) statements.add((dynamic || nullAsMissing ? "    " : "") + line);
                 subplans.addAll(nested);
             } else {
-                // The whole property must be checked by the fallback plan: a
-                // partially emitted predicate could change JSON Schema semantics.
-                subplans.add(new Subplan("SUB_" + index,
-                        snapshot.selectedUri + "#/properties/" + name));
-                statements.add("if (!Fallback." + field.name + ".SUB_" + index
-                        + ".isValid(" + local + ", " + strictFormat + ")) return false;");
+                subplans.add(new Subplan("SUB_" + index, uri));
+                statements.add((dynamic || nullAsMissing ? "    " : "")
+                        + "if (!Fallback." + field.name + ".SUB_" + index
+                        + ".isValid(" + runtimeInput(local, nullAsMissing)
+                        + ", " + strictFormat + ")) return false;");
             }
+            if (nullAsMissing) statements.add("}");
+            if (dynamic) statements.add("}");
             index++;
         }
         if (directCount == 0) return null;
         return new DirectCheck(statements, subplans);
+    }
+
+    private TypeMirror mapValueType(TypeMirror type) {
+        if (!(type instanceof DeclaredType) ||
+                context.types.nodeKind(type) != NodeKind.OBJECT_MAP) return null;
+        List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
+        return args.size() == 2 ? args.get(1) : null;
+    }
+
+    private static String pointerEscape(String key) {
+        return key.replace("~", "~0").replace("/", "~1");
+    }
+
+    private static String childPointer(String base, String keyword, String name) {
+        return base + (base.contains("#") ? "/" : "#/")
+                + pointerEscape(keyword) + "/" + pointerEscape(name);
     }
 
     /** Only JSON Schema annotation / definition keywords may be skipped. */
@@ -449,6 +538,7 @@ public final class ValidationGenerator {
      * possible without discarding the array's direct size checks.
      */
     private boolean compileValue(List<String> lines, List<Subplan> subplans,
+                                 SchemaResourceResolver.Snapshot snapshot,
                                  Object rawSchema, TypeMirror declaredType,
                                  String value, String planClass,
                                  String planName, String schemaUri,
@@ -460,6 +550,12 @@ public final class ValidationGenerator {
         }
         if (org.sjf4j.JsonType.of(rawSchema) != org.sjf4j.JsonType.OBJECT) return false;
         org.sjf4j.JsonObject schema = org.sjf4j.Nodes.toJsonObject(rawSchema);
+        if (schema.containsKey("$ref")) {
+            RefTarget ref = resolveRef(snapshot, schema, schemaUri);
+            if (ref == null) return false;
+            return compileValue(lines, subplans, snapshot, ref.value, declaredType, value,
+                    planClass, planName, ref.uri, strictFormat, depth + 1);
+        }
         String kind = schema.getString("type");
         if (kind == null) return false;
 
@@ -563,7 +659,7 @@ public final class ValidationGenerator {
             List<Subplan> itemPlans = new ArrayList<Subplan>();
             List<? extends TypeMirror> args = ((DeclaredType) declaredType).getTypeArguments();
             TypeMirror itemType = args.size() == 1 ? args.get(0) : null;
-            boolean directItems = compileValue(itemLines, itemPlans, itemSchema, itemType, itemVar,
+            boolean directItems = compileValue(itemLines, itemPlans, snapshot, itemSchema, itemType, itemVar,
                     planClass, planName + "_ITEM", schemaUri + "/items", strictFormat, depth + 1);
             lines.add("for (Object " + itemVar + " : (java.util.Collection<?>) " + value + ") {");
             if (directItems) {
@@ -579,6 +675,59 @@ public final class ValidationGenerator {
             return true;
         }
         return false;
+    }
+
+    /** A compile-time resolution only; unsupported anchors or sibling keywords fall back. */
+    private static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
+                                        org.sjf4j.JsonObject schema, String sourceUri) {
+        for (String keyword : schema.keySet()) {
+            if (!keyword.equals("$ref") && !isAnnotation(keyword)) return null;
+        }
+        String literal = schema.getString("$ref");
+        if (literal == null) return null;
+        java.net.URI target;
+        try {
+            target = java.net.URI.create(sourceUri).resolve(literal);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        String document = org.sjf4j.schema.SchemaLoader.documentUri(target).toString();
+        Object node = null;
+        for (int i = 0; i < snapshot.uris.length; i++) {
+            if (snapshot.uris[i].equals(document)) {
+                node = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[i]);
+                break;
+            }
+        }
+        if (node == null) return null;
+        String fragment = target.getFragment();
+        if (fragment != null && !fragment.isEmpty()) {
+            if (!fragment.startsWith("/")) return null; // Named anchors need planner resolution.
+            String[] segments = fragment.substring(1).split("/", -1);
+            for (String part : segments) {
+                String name = part.replace("~1", "/").replace("~0", "~");
+                if (org.sjf4j.JsonType.of(node) == org.sjf4j.JsonType.OBJECT) {
+                    node = org.sjf4j.Nodes.getInObject(node, name);
+                } else if (org.sjf4j.JsonType.of(node) == org.sjf4j.JsonType.ARRAY) {
+                    try {
+                        node = org.sjf4j.Nodes.getInArray(node, Integer.parseInt(name));
+                    } catch (NumberFormatException ex) {
+                        return null;
+                    }
+                } else return null;
+                if (node == null) return null;
+            }
+        }
+        return new RefTarget(node, target.toString());
+    }
+
+    private static final class RefTarget {
+        final Object value;
+        final String uri;
+        RefTarget(Object value, String uri) {
+            this.value = value;
+            this.uri = uri;
+        }
     }
 
     private boolean isNativeString(TypeMirror type) {
