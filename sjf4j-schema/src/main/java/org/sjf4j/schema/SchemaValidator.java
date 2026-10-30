@@ -198,6 +198,10 @@ public final class SchemaValidator {
                         (uri.getRawFragment() == null ? "" : "#" + uri.getRawFragment()));
             }
         }
+        if (selectedUri.isAbsolute()) {
+            SchemaPlan existing = registry.resolve(selectedUri);
+            if (existing != null) return existing;
+        }
         SchemaPlan compiled = registry.register(SchemaLoader.documentUri(selectedUri), schema);
         SchemaPlan selected = selectedUri.isAbsolute() ? registry.resolve(selectedUri) : null;
         // Boolean documents are not URI-indexed by SchemaRegistry.
