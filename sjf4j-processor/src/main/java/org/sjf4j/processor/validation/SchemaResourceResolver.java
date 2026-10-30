@@ -52,7 +52,7 @@ final class SchemaResourceResolver {
 
     SchemaResourceResolver(ProcessorContext context) {
         this.context = context;
-        this.loader = new SchemaLoader(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, this::openResource);
+        this.loader = this::loadResource;
     }
 
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName) {
@@ -67,7 +67,7 @@ final class SchemaResourceResolver {
             selectedUri = rootUri;
             rootDocument = inline;
         } else {
-            URI baseDir = loader.baseUri();
+            URI baseDir = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
             if (!ref.isEmpty()) {
                 selectedUri = baseDir.resolve(ref);
                 if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
@@ -176,18 +176,31 @@ final class SchemaResourceResolver {
     }
 
     private String read(URI uri) {
-        return loader.readText(uri);
+        URI document = SchemaLoader.documentUri(uri);
+        try (java.io.Reader reader = openResource(document)) {
+            if (reader == null) return null;
+            StringBuilder text = new StringBuilder();
+            char[] buf = new char[4096];
+            for (int n; (n = reader.read(buf)) != -1;) text.append(buf, 0, n);
+            return text.toString();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("cannot load schema: " + document, e);
+        }
     }
 
-    /**
-     * Java annotation processing has a separate resource lookup context from
-     * application runtime class loaders. Expose that context as a loader
-     * resource reader instead of teaching SchemaLoader about javac/Filer.
-     */
-    private InputStream openResource(URI uri) throws IOException {
+    private JsonSchema loadResource(URI uri) {
+        URI document = SchemaLoader.documentUri(uri);
+        try (java.io.Reader reader = openResource(document)) {
+            return reader == null ? null : SchemaLoader.parse(document, reader);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("cannot load schema: " + document, e);
+        }
+    }
+
+    private java.io.Reader openResource(URI uri) throws IOException {
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             try {
-                return java.nio.file.Files.newInputStream(Paths.get(uri));
+                return java.nio.file.Files.newBufferedReader(Paths.get(uri), java.nio.charset.StandardCharsets.UTF_8);
             } catch (NoSuchFileException e) {
                 return null;
             }
@@ -195,16 +208,15 @@ final class SchemaResourceResolver {
         if (!"classpath".equalsIgnoreCase(uri.getScheme())) {
             throw new IOException("unsupported compile-time schema URI: " + uri);
         }
-
         String path = uri.getPath();
         if (path.startsWith("/")) path = path.substring(1);
         for (StandardLocation location : new StandardLocation[]{
                 StandardLocation.CLASS_PATH, StandardLocation.CLASS_OUTPUT, StandardLocation.SOURCE_PATH}) {
             try {
                 FileObject file = context.filer.getResource(location, "", path);
-                return file.openInputStream();
+                return file.openReader(true);
             } catch (IOException | IllegalArgumentException ignored) {
-                // The resource may exist in another compiler location.
+                // Continue searching compiler resource locations.
             }
         }
         return null;

@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class SchemaValidator {
     private static final String SCHEMA_FILE_SUFFIX_2 = ".json";
 
+    private final URI baseDirUri;
     private final SchemaLoader loader;
     private final SchemaRegistry registry;
     private final boolean strictFormat;
@@ -50,7 +51,7 @@ public final class SchemaValidator {
      * caller-owned registry state.
      */
     public SchemaValidator(String baseDir, SchemaRegistry registry, boolean strictFormat) {
-        this(new SchemaLoader(resolveBaseDir(baseDir)), registry, strictFormat, true);
+        this(resolveBaseDir(baseDir), SchemaLoader.LOCAL, registry, strictFormat);
     }
 
     /**
@@ -59,10 +60,11 @@ public final class SchemaValidator {
      */
     public static SchemaValidator withLoader(SchemaLoader loader, SchemaRegistry registry,
                                              boolean strictFormat) {
-        return new SchemaValidator(loader, registry, strictFormat, true);
+        return new SchemaValidator(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, loader, registry, strictFormat);
     }
 
-    private SchemaValidator(SchemaLoader loader, SchemaRegistry registry, boolean strictFormat, boolean unused) {
+    private SchemaValidator(URI baseDirUri, SchemaLoader loader, SchemaRegistry registry, boolean strictFormat) {
+        this.baseDirUri = baseDirUri;
         this.loader = Asserts.notNull(loader, "loader");
         this.registry = SchemaRegistry.copyOf(registry);
         this.strictFormat = strictFormat;
@@ -134,7 +136,7 @@ public final class SchemaValidator {
      */
     public SchemaPlan load(String ref) {
         Asserts.notNull(ref, "ref");
-        URI refUri = loader.resolve(ref);
+        URI refUri = baseDirUri.resolve(ref);
         return _registerByRef(refUri);
     }
 
@@ -183,7 +185,7 @@ public final class SchemaValidator {
         // From ref
         String ref = anno.ref().trim();
         if (!ref.isEmpty()) {
-            URI refUri = loader.resolve(ref);
+            URI refUri = baseDirUri.resolve(ref);
             SchemaPlan plan = _registerByRef(refUri);
             if (plan == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                     "schema referenced by @ValidJsonSchema.ref on '" + clazz.getName() + "' was not found",
@@ -192,12 +194,12 @@ public final class SchemaValidator {
         }
 
         // From convention
-        URI simpleNameUri = loader.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX_2);
+        URI simpleNameUri = baseDirUri.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX_2);
         SchemaPlan plan = _registerByRef(simpleNameUri);
         if (plan != null) return plan;
 
         String snakeName = Strings.toSnakeCase(clazz.getSimpleName());
-        URI snakeNameUri = loader.resolve(snakeName + SCHEMA_FILE_SUFFIX_2);
+        URI snakeNameUri = baseDirUri.resolve(snakeName + SCHEMA_FILE_SUFFIX_2);
         plan = _registerByRef(snakeNameUri);
         if (plan != null) return plan;
 
@@ -205,7 +207,7 @@ public final class SchemaValidator {
                 "no schema found for @ValidJsonSchema on '" + clazz.getName() +
                         "'; expected annotation value/ref or file at '" + simpleNameUri +
                         "' or '" + snakeNameUri + "'",
-                PathSegment.Root.INSTANCE, loader.baseUri()));
+                PathSegment.Root.INSTANCE, baseDirUri));
     }
 
 

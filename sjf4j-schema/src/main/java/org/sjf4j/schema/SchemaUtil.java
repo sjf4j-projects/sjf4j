@@ -394,7 +394,7 @@ public final class SchemaUtil {
                     "unsupported local schema uri scheme '" + uri.getScheme()
                             + "': expected file or classpath", PathSegment.Root.INSTANCE, uri));
         }
-        JsonSchema schema = new SchemaLoader().load(uri);
+        JsonSchema schema = SchemaLoader.LOCAL.load(uri);
         if (schema == null) return null;
         if (schema instanceof ObjectSchema) return (ObjectSchema) schema;
         throw new SchemaException(formatSchemaLine(Code.SCHEMA_LOAD,
