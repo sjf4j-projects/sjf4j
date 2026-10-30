@@ -7,39 +7,24 @@ import java.util.List;
 
 /**
  * Emits the existing native fail-fast predicates from structured SchemaCheck
- * trees. Fallback helper-class emission remains in SchemaMethodGenerator.
+ * trees. Fallback references are allocated by SchemaFallbackEmitter.
  */
 final class SchemaEmitter {
-    static final class Subplan {
-        final String fieldName;
-        final String uri;
-
-        Subplan(String fieldName, String uri) {
-            this.fieldName = fieldName;
-            this.uri = uri;
-        }
-    }
-
-    static final class Result {
-        final List<String> statements = new ArrayList<String>();
-        final List<Subplan> subplans = new ArrayList<Subplan>();
-    }
-
-    Result emit(SchemaCheck.ObjectCheck check, String variable, String planClass,
-                String strictFormat) {
-        Result result = new Result();
+    List<String> emit(SchemaCheck.ObjectCheck check, String variable, SchemaFallbackEmitter.Plan plan,
+                      String strictFormat) {
+        List<String> statements = new ArrayList<String>();
         if (check.dynamic) {
             for (SchemaCheck.Required required : check.required) {
                 if (check.nullAsMissing) {
-                    result.statements.add("if (org.sjf4j.Nodes.getInObject(" + variable + ", "
+                    statements.add("if (org.sjf4j.Nodes.getInObject(" + variable + ", "
                             + literal(required.name) + ") == null) return false;");
                 } else {
-                    result.statements.add("if (!org.sjf4j.Nodes.keySetInObject(" + variable
+                    statements.add("if (!org.sjf4j.Nodes.keySetInObject(" + variable
                             + ").contains(" + literal(required.name) + ")) return false;");
                 }
             }
             if (check.additionalPropertiesFalse) {
-                result.statements.add("for (String _key : org.sjf4j.Nodes.keySetInObject(" + variable + ")) {");
+                statements.add("for (String _key : org.sjf4j.Nodes.keySetInObject(" + variable + ")) {");
                 StringBuilder condition = new StringBuilder();
                 for (String allowed : check.allowedNames) {
                     if (condition.length() != 0) condition.append(" && ");
@@ -49,12 +34,12 @@ final class SchemaEmitter {
                 if (check.nullAsMissing) {
                     unknown += " && org.sjf4j.Nodes.getInObject(" + variable + ", _key) != null";
                 }
-                result.statements.add("    if (" + unknown + ") return false;");
-                result.statements.add("}");
+                statements.add("    if (" + unknown + ") return false;");
+                statements.add("}");
             }
         } else if (check.nullAsMissing) {
             for (SchemaCheck.Required required : check.required) {
-                result.statements.add("if (" + variable + "." + required.staticAccess + " == null) return false;");
+                statements.add("if (" + variable + "." + required.staticAccess + " == null) return false;");
             }
         }
 
@@ -64,37 +49,37 @@ final class SchemaEmitter {
             String access = check.dynamic
                     ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
-            result.statements.add(property.value.localType() + " " + local + " = " + access + ";");
+            statements.add(property.value.localType() + " " + local + " = " + access + ";");
             if (check.dynamic) {
-                result.statements.add("if (org.sjf4j.Nodes.keySetInObject(" + variable
+                statements.add("if (org.sjf4j.Nodes.keySetInObject(" + variable
                         + ").contains(" + literal(property.name) + ")) {");
             }
             if (check.nullAsMissing && property.value.nullable) {
-                result.statements.add("if (" + local + " != null) {");
+                statements.add("if (" + local + " != null) {");
             }
             List<String> lines = new ArrayList<String>();
-            emitValue(lines, result.subplans, property.check, property.value, local,
-                    planClass, "SUB_" + index, strictFormat, 0);
+            emitValue(lines, plan, property.check, property.value, local,
+                    "SUB_" + index, strictFormat, 0);
             for (String line : lines) {
-                result.statements.add((check.dynamic || check.nullAsMissing ? "    " : "") + line);
+                statements.add((check.dynamic || check.nullAsMissing ? "    " : "") + line);
             }
-            if (check.nullAsMissing && property.value.nullable) result.statements.add("}");
-            if (check.dynamic) result.statements.add("}");
+            if (check.nullAsMissing && property.value.nullable) statements.add("}");
+            if (check.dynamic) statements.add("}");
             index++;
         }
-        return result;
+        return statements;
     }
 
-    private void emitValue(List<String> lines, List<Subplan> subplans,
+    private void emitValue(List<String> lines, SchemaFallbackEmitter.Plan plan,
                            SchemaCheck check, SchemaValue value, String expression,
-                           String planClass, String planName, String strictFormat, int depth) {
+                           String planName, String strictFormat, int depth) {
         switch (check.kind) {
             case PASS:
                 return;
             case FALLBACK:
-                Subplan sub = new Subplan(planName, ((SchemaCheck.Fallback) check).uri);
-                subplans.add(sub);
-                lines.add("if (!" + planClass + "." + sub.fieldName + ".isValid("
+                SchemaFallbackEmitter.Subplan sub = plan.subplan(
+                        ((SchemaCheck.Fallback) check).uri, planName);
+                lines.add("if (!" + sub.reference() + ".isValid("
                         + expression + ", " + strictFormat + ")) return false;");
                 return;
             case STRING:
@@ -104,8 +89,8 @@ final class SchemaEmitter {
                 emitNumber(lines, (SchemaCheck.NumberCheck) check, value, expression, planName, depth);
                 return;
             case ARRAY:
-                emitArray(lines, subplans, (SchemaCheck.ArrayCheck) check, value, expression,
-                        planClass, planName, strictFormat, depth);
+                emitArray(lines, plan, (SchemaCheck.ArrayCheck) check, value, expression,
+                        planName, strictFormat, depth);
                 return;
             default:
                 throw new IllegalStateException("unsupported compiled value kind: " + check.kind);
@@ -172,9 +157,9 @@ final class SchemaEmitter {
         }
     }
 
-    private void emitArray(List<String> lines, List<Subplan> subplans,
+    private void emitArray(List<String> lines, SchemaFallbackEmitter.Plan plan,
                            SchemaCheck.ArrayCheck check, SchemaValue value, String expression,
-                           String planClass, String planName, String strictFormat, int depth) {
+                           String planName, String strictFormat, int depth) {
         boolean knownCollection = value.shape == SchemaValue.Shape.COLLECTION;
         boolean knownArray = value.shape == SchemaValue.Shape.ARRAY;
         if (value.nullable) {
@@ -206,8 +191,8 @@ final class SchemaEmitter {
             lines.add("    Object " + itemVar + " = " + iterator + ".next();");
         }
         List<String> childLines = new ArrayList<String>();
-        emitValue(childLines, subplans, check.items, check.itemValue, itemVar,
-                planClass, planName + "_ITEM", strictFormat, depth + 1);
+        emitValue(childLines, plan, check.items, check.itemValue, itemVar,
+                planName + "_ITEM", strictFormat, depth + 1);
         for (String line : childLines) lines.add("    " + line);
         lines.add("}");
     }
@@ -220,6 +205,39 @@ final class SchemaEmitter {
     }
 
     private static String literal(String text) {
-        return SchemaMethodGenerator.javaLiteral(text);
+        return javaLiteral(text);
     }
+
+    static String javaLiteral(String value) {
+        StringBuilder sb = new StringBuilder();
+        int limit = 6000;
+        boolean longValue = value.length() > limit;
+        if (longValue) sb.append("new StringBuilder(").append(value.length()).append(")");
+        for (int start = 0; start < value.length(); start += limit) {
+            if (longValue) sb.append(".append(");
+            else if (start > 0) sb.append(" + ");
+            sb.append('"');
+            for (int i = start; i < Math.min(value.length(), start + limit); i++) {
+                char ch = value.charAt(i);
+                if (ch == '\\') sb.append("\\\\");
+                else if (ch == '"') sb.append("\\\"");
+                else if (ch == '\n') sb.append("\\n");
+                else if (ch == '\r') sb.append("\\r");
+                else if (ch == '\t') sb.append("\\t");
+                else if (ch < 32 || ch == 0x2028 || ch == 0x2029) {
+                    String hex = Integer.toHexString(ch);
+                    sb.append("\\u");
+                    for (int j = hex.length(); j < 4; j++) sb.append('0');
+                    sb.append(hex);
+                } else sb.append(ch);
+            }
+            sb.append('"');
+            if (longValue) sb.append(")");
+        }
+        if (longValue) sb.append(".toString()");
+        return sb.length() == 0 ? "\"\"" : sb.toString();
+    }
+
+
 }
+
