@@ -210,7 +210,16 @@ entire `oneOf` subtree, not a subset of branches. The specialized disjoint
 Java-subtype path remains for Creek and retains its existing runtime fallback
 for unknown subtypes and strict-format behavior. No evaluated tracking is
 generated; any `unevaluated*` keyword at the relevant schema scope retains
-full-scope runtime evaluation.\n\n`allOf`, `anyOf`, and `not` reuse static boolean branch helpers: all branches\nmust pass for `allOf`, any one may pass for `anyOf` (including overlaps), and\n`not` inverts a full subschema. Assertions alongside applicators are combined\nwith logical AND, not skipped. Unsupported or evaluated-state-dependent branches\nfall back as a complete combinator scope. The boolean direct path preserves\n`strictFormat` and `nullAsMissing`; diagnostic modes retain SchemaPlan.\n\nThe `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
+full-scope runtime evaluation.
+
+`allOf`, `anyOf`, and `not` reuse static boolean branch helpers: all branches
+must pass for `allOf`, any one may pass for `anyOf` (including overlaps), and
+`not` inverts a full subschema. Assertions alongside applicators are combined
+with logical AND, not skipped. Unsupported or evaluated-state-dependent branches
+fall back as a complete combinator scope. The boolean direct path preserves
+`strictFormat` and `nullAsMissing`; diagnostic modes retain SchemaPlan.
+
+The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
 `CompiledValidatorTypeDispatchTest` (typed Java paths versus dynamic Nodes
 conversions). Processor source-level assertions reject redundant type tests
 in known `String`/`Number` paths.
