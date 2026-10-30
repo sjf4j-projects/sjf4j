@@ -112,7 +112,7 @@ public class CompiledWriteBenchmark {
 
     static {
         try {
-            String json = CompiledReadBenchmark.JSON_DATA;
+            String json = User.JSON_DATA;
             USER = JACKSON2_NATIVE.readValue(json, User.class);
             MAP = JACKSON2_NATIVE.readValue(json,
                     new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});

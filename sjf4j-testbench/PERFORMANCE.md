@@ -69,7 +69,7 @@ error instead of inventing results.
 ## CreatorReadBenchmark
 
 The target is `CreatorUserRecord` (23 fields, including nested records).
-It reuses exactly `CompiledReadBenchmark.JSON_DATA` and its UTF-8 form.
+It reuses exactly `User.JSON_DATA` and its UTF-8 form.
 The reversed variants change field order only, not values.
 
 ```bash
