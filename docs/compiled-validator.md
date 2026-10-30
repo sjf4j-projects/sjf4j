@@ -142,7 +142,7 @@ implementation yet (notably `boolean`, `null`, and nested `object`).
 **Status meaning:** Direct = emitted Java checks without a runtime plan;
 Conditional = a known Java representation/root shape and/or localized
 `SchemaPlan` fallback; No = use `SchemaPlan` for that constraint. This
-matrix covers **the main-source** `ValidationGenerator`, not the retired
+matrix covers the production `org.sjf4j.processor.schema` generator, not the retired
 incubator prototype.
 
 The direct POJO path requires a **public final POJO with public readable
@@ -208,6 +208,89 @@ string enum, integer bounds, nested array `items` and sizes,
 `required` and `additionalProperties` across POJO/Map/JsonObject/JOJO,
 null-as-missing modes, and intra-/cross-resource `$ref` compilation. Generated-code assertions remain in
 `CompiledValidatorContractProcessorTest`.
+
+## Processor architecture and regression checks
+
+The annotation processor is split into **Analyze → Compile → Emit** stages,
+without a keyword plugin framework:
+
+- `SchemaGenerator` handles the validator interface and generated-class lifecycle.
+  `SchemaMethodGenerator` resolves method contracts and schema annotations.
+- `SchemaResourceResolver` supplies compile-time documents and fragment selections.
+  `SchemaCompiler` dispatches to `ObjectCompiler`, `ScalarCompiler`, and
+  `ArrayCompiler`, producing a recursive `SchemaCheck` for supported constraints.
+  The compiler **does not** assemble Java source statements.
+- `SchemaValue` classifies declared Java value shapes. `SchemaEmitter` generates
+  fail-fast predicates from the semantic checks, using native Java operations
+  when a type is known and strict Nodes conversions for dynamic values.
+- `SchemaFallbackEmitter` owns per-interface resource deduplication, root-plan
+  usage, localized URI-based subplan references, and emitted lazy `SchemaPlan`
+  helper classes. Reference names are assigned only when emitting, not inferred
+  by parsing generated strings.
+
+A mixed tree preserves a direct root and supported child checks while delegating
+an unsupported array item or property subtree to a local plan. If a keyword's
+evaluation semantics require state from other keywords (for example,
+`unevaluatedProperties`), the compiler conservatively falls back at the
+relevant scope rather than combining semantically incompatible checks.
+`fallback=false` rejects the entire method when any required subtree remains
+unsupported.
+
+Regression suites:
+`CompiledValidatorArchitectureTest` compiles representative interfaces with
+javac to inspect emitted source for a single shared fallback plan across
+methods, one shared item subplan, distinct bindings, zero fallback for
+fully compiled methods, and rejection of unsupported mixed trees.
+`CompiledValidatorContractProcessorTest` checks type-specialized code emission
+and the partial Creek fallback boundary. The testbench Creek fixtures compare
+`SchemaPlan` against compiled validation for valid and invalid inputs.
+The JMH Creek benchmark also validates negative POJO cases before measurement.
+
+To compile and test:
+
+```bash
+./gradlew :sjf4j-processor:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar
+```
+
+For an actual **three-fork** Creek comparison under identical non-strict format
+settings (the published JMH method annotations provide the warmup/measurement
+defaults):
+
+```bash
+JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' -print -quit)
+java -cp "$JMH_JAR" org.openjdk.jmh.Main \
+  'org.sjf4j.testbench.schema.CreekSchemaBenchmark\\.(schema_is_valid_pojo|compiled_schema_is_valid_pojo_non_strict)
+
+The unchanged Draft 2020-12 Creek schema is at
+`sjf4j-testbench/src/jmh/resources/schema/creek-2020-12.json`; its
+benchmark is `CreekSchemaBenchmark`. It includes `required`,
+`additionalProperties:false`, decimal comparison, an enum, lists,
+`minLength`, polymorphic `oneOf` with `$ref`, and UUID format.
+
+1. **Phase 1 (implemented):** direct root, `required`, closed
+   `additionalProperties`, native numeric/enum/string checks and recursive
+   array item traversal, including finite local `$ref` expansion.
+   The original Creek `oneOf` remains a localized cached item
+   `SchemaPlan`; this is **mixed compiled/runtime**, not full compilation.
+2. **Next:** compile the two known polymorphic branches and their local
+   references (including UUID value-codec handling).
+3. Require `@CompiledValidator(fallback=false)` to compile the **original**
+   Creek schema unchanged, and compare all three return modes against
+   `SchemaPlan` for strict and non-strict format.
+4. Benchmark the full boolean path separately from fail-fast diagnostics and
+   aggregate `ValidationResult`. Measure with JMH, same model and format mode.
+
+The original Creek benchmark is non-strict, so direct performance comparisons
+use `strictFormat=false`. CI compiles the benchmark and runs correctness
+fixtures; **no JMH throughput result is claimed** from CI alone.
+ \
+  -f 3
+```
+
+JMH timings depend on CPU, JDK, GC and host load. Compilation and JUnit
+correctness checks alone do not establish throughput parity; compare both
+methods in the same execution environment before drawing performance
+conclusions.
 
 ## Creek benchmark milestone
 

@@ -1,0 +1,36 @@
+name: Stage E Creek JMH verification
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  creek-jmh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Run Creek schema validation three-fork comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' -print -quit)
+          test -n "$JMH_JAR"
+          java -cp "$JMH_JAR" org.openjdk.jmh.Main \
+            'org.sjf4j.testbench.schema.CreekSchemaBenchmark\\.(schema_is_valid_pojo|compiled_schema_is_valid_pojo_non_strict)$' \
+            -f 3 -wi 3 -i 5 -w 300ms -r 300ms -tu us -bm avgt \
+            -rf json -rff stage-e-creek.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage-e-creek-jmh
+          path: stage-e-creek.json
+          if-no-files-found: ignore

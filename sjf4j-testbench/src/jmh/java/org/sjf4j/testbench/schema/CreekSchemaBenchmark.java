@@ -23,6 +23,7 @@ import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.SchemaRegistry;
 import org.sjf4j.testbench.model.creek.ModelState;
+import org.sjf4j.testbench.model.creek.PolyTypeA;
 import org.sjf4j.testbench.model.creek.TestModel;
 
 import java.io.IOException;
@@ -117,6 +118,30 @@ public class CreekSchemaBenchmark {
                 || !compiledValidator.isValid(deserializedModel)
                 || !compiledValidator.isValid(deserializedModel, false)) {
             throw new IllegalStateException("Compiled Creek validation disagrees with the strict schema plan");
+        }
+        // Architecture regression: a direct root predicate and a cached oneOf
+        // item plan must agree with the unmodified Creek SchemaPlan for failures
+        // as well as successes, in both format modes. Run outside measurement.
+        List<TestModel> invalidModels = List.of(
+                new TestModel(null, model.getDecimal(), model.getAnEnum(),
+                        model.getList(), model.getPolymorphicTypes()),
+                new TestModel(model.getName(), java.math.BigDecimal.ZERO,
+                        model.getAnEnum(), model.getList(), model.getPolymorphicTypes()),
+                new TestModel(model.getName(), model.getDecimal(), model.getAnEnum(),
+                        model.getList(), List.of()),
+                new TestModel(model.getName(), model.getDecimal(), model.getAnEnum(),
+                        model.getList(), List.of(new PolyTypeA(null)))
+        );
+        for (TestModel candidate : invalidModels) {
+            for (boolean strictFormat : new boolean[]{false, true}) {
+                boolean expected = plan.isValid(candidate, strictFormat);
+                boolean actual = compiledValidator.isValid(candidate, strictFormat);
+                if (expected || actual != expected) {
+                    throw new IllegalStateException("Compiled Creek invalid-case mismatch"
+                            + " (strictFormat=" + strictFormat + ", plan=" + expected
+                            + ", compiled=" + actual + ")");
+                }
+            }
         }
         if (!model.equals(deserializedModel)
                 || model.getAnEnum() != deserializedModel.getAnEnum()
