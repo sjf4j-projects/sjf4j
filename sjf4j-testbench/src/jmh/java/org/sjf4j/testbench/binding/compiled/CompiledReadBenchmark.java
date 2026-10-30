@@ -355,17 +355,17 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson2_map_string_compiled() throws IOException {
-        return JACKSON2_COMPILED.readMap(JSON_DATA);
+        return JACKSON2_COMPILED.readMap(User.JSON_DATA);
     }
 
     @Benchmark
     public Object jackson2_map_string_runtime() {
-        return JACKSON2_RUNTIME.readNode(JSON_DATA, Map.class);
+        return JACKSON2_RUNTIME.readNode(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
     public Object jackson2_map_string_native() throws Exception {
-        return JACKSON2_NATIVE.readValue(JSON_DATA, Map.class);
+        return JACKSON2_NATIVE.readValue(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
@@ -385,7 +385,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson2_map_string_raw() throws IOException {
-        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(JSON_DATA)) {
+        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(User.JSON_DATA)) {
             parser.start();
             Map<String, Object> value = parser.readRawObject();
             parser.end();
@@ -474,17 +474,17 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson3_map_string_compiled() throws IOException {
-        return JACKSON3_COMPILED.readMap(JSON_DATA);
+        return JACKSON3_COMPILED.readMap(User.JSON_DATA);
     }
 
     @Benchmark
     public Object jackson3_map_string_runtime() {
-        return JACKSON3_RUNTIME.readNode(JSON_DATA, Map.class);
+        return JACKSON3_RUNTIME.readNode(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
     public Object jackson3_map_string_native() throws Exception {
-        return JACKSON3_NATIVE.readValue(JSON_DATA, Map.class);
+        return JACKSON3_NATIVE.readValue(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
@@ -504,7 +504,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson3_map_string_raw() throws IOException {
-        try (StreamingParser parser = JACKSON3_RUNTIME.createParser(JSON_DATA)) {
+        try (StreamingParser parser = JACKSON3_RUNTIME.createParser(User.JSON_DATA)) {
             parser.start();
             Map<String, Object> value = parser.readRawObject();
             parser.end();
@@ -564,17 +564,17 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object gson_map_string_compiled() throws IOException {
-        return GSON_COMPILED.readMap(JSON_DATA);
+        return GSON_COMPILED.readMap(User.JSON_DATA);
     }
 
     @Benchmark
     public Object gson_map_string_runtime() {
-        return GSON_RUNTIME.readNode(JSON_DATA, Map.class);
+        return GSON_RUNTIME.readNode(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
     public Object gson_map_string_native() throws Exception {
-        return GSON_NATIVE.fromJson(JSON_DATA, Map.class);
+        return GSON_NATIVE.fromJson(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
@@ -658,19 +658,19 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object fastjson2_map_string_native() {
-        try (JSONReader reader = JSONReader.of(JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
+        try (JSONReader reader = JSONReader.of(User.JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
             return reader.read(Map.class);
         }
     }
 
     @Benchmark
     public Object fastjson2_map_string_compiled() throws IOException {
-        return FASTJSON2_COMPILED.readMap(JSON_DATA);
+        return FASTJSON2_COMPILED.readMap(User.JSON_DATA);
     }
 
     @Benchmark
     public Object fastjson2_map_string_runtime() {
-        return FASTJSON2_RUNTIME.readNode(JSON_DATA, Map.class);
+        return FASTJSON2_RUNTIME.readNode(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
@@ -723,12 +723,12 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jsonp_map_string_compiled() throws IOException {
-        return JSONP_COMPILED.readMap(JSON_DATA);
+        return JSONP_COMPILED.readMap(User.JSON_DATA);
     }
 
     @Benchmark
     public Object jsonp_map_string_runtime() {
-        return JSONP_RUNTIME.readNode(JSON_DATA, Map.class);
+        return JSONP_RUNTIME.readNode(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
@@ -772,12 +772,12 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object simple_map_string_compiled() throws IOException {
-        return SIMPLE_COMPILED.readMap(JSON_DATA);
+        return SIMPLE_COMPILED.readMap(User.JSON_DATA);
     }
 
     @Benchmark
     public Object simple_map_string_runtime() {
-        return SIMPLE_RUNTIME.readNode(JSON_DATA, Map.class);
+        return SIMPLE_RUNTIME.readNode(User.JSON_DATA, Map.class);
     }
 
     @Benchmark
