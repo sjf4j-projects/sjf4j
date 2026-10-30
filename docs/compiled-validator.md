@@ -168,14 +168,14 @@ without violating `required`, although its property schema may reject null.
 | `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes | Phase 1 |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes | Phase 1 |
 | `minLength`, `maxLength` | Direct string Unicode code-point length | Yes | Phase 1 |
-| `enum` | Direct for string-only enumeration of native strings/enums | Yes | Phase 1 |
-| `const` | No | Yes | Later |
+| `enum` | String enums plus scalar JSON literals (string/number/boolean/null), including type-less scalar assertions; object/array literals fall back | Yes | Compiled |
+| `const` | Scalar JSON literals with OBNT numeric equality (e.g. 1 equals 1.0); object/array constants fall back | Yes | Compiled |
 | `type:number`, `type:integer` | Native numeric Java field types | Yes | Phase 1 |
 | `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct numeric comparisons | Yes | Phase 1 |
 | `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes | Phase 1 |
 | `minItems`, `maxItems` | Direct Collection size checks | Yes | Phase 1 |
 | `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes | Phase 1 mixed |
-| `format` | For built-in UUID values, direct canonical string validation (strict mode calls `FormatValidator`); other formats fall back | Yes, honors `strictFormat` | UUID optimized |
+| `format` | Known typed-string constraints use `FormatValidator` when `strictFormat` is true; assertion vocabularies and non-standard dialects fall back | Yes; assertion vocabulary may enforce format even in non-strict mode | String optimized |
 | `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes | Partial |
 | `oneOf` | Restricted direct Java subtype dispatch when Schema discriminator values are provably disjoint and public constant properties agree; unknown subtypes and strict-format path fall back | Yes | Direct for Creek |
 | `anyOf`, `allOf`, `not` | No | Yes | Later |
@@ -196,6 +196,14 @@ cycles, or sibling assertions that cannot be proven safe fall back.
 `fallback=false` rejects **any** required subplan at compilation time.
 Support is about the listed combinations, not arbitrary JSON Schema
 keyword combinations.
+Scalar `const` and `enum` checks use `Nodes.equals` to preserve JSON
+numeric equality across Java number classes. Under a known standard
+vocabulary, typed-string `format` checks use the existing
+`FormatValidator` and the `strictFormat` flag. Explicit format-assertion
+vocabularies conservatively retain the runtime `SchemaPlan` behavior.
+General `oneOf` branch-count compilation is not yet implemented; the
+existing fast path requires statically provable discriminator-based Java
+subtypes.
 
 The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
 `CompiledValidatorTypeDispatchTest` (typed Java paths versus dynamic Nodes
