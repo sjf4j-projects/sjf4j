@@ -241,9 +241,9 @@ public final class JsonpParser extends StreamingParser {
         }
         switch (current) {
             case START_OBJECT:
-                return readRawObject();
+                return _readRawObject();
             case START_ARRAY:
-                return readRawArray();
+                return _readRawArray();
             case VALUE_STRING:
                 return readString();
             case VALUE_NUMBER:
@@ -264,9 +264,33 @@ public final class JsonpParser extends StreamingParser {
         parser.close();
     }
 
-    private Map<String, Object> readRawObject() throws IOException {
+    @Override
+    public Map<String, Object> readRawObject() throws IOException {
+        if (current == JsonParser.Event.VALUE_NULL) {
+            advance();
+            return null;
+        }
+        if (current != JsonParser.Event.START_OBJECT) {
+            throw new BindingException("expected raw object or null");
+        }
+        return _readRawObject();
+    }
+
+    @Override
+    public List<Object> readRawArray() throws IOException {
+        if (current == JsonParser.Event.VALUE_NULL) {
+            advance();
+            return null;
+        }
+        if (current != JsonParser.Event.START_ARRAY) {
+            throw new BindingException("expected raw array or null");
+        }
+        return _readRawArray();
+    }
+
+    private Map<String, Object> _readRawObject() throws IOException {
+        advance();
         Map<String, Object> value = new LinkedHashMap<>();
-        readObjectStart();
         String name;
         while ((name = nextName()) != null) {
             value.put(name, readRaw());
@@ -274,9 +298,9 @@ public final class JsonpParser extends StreamingParser {
         return value;
     }
 
-    private List<Object> readRawArray() throws IOException {
+    private List<Object> _readRawArray() throws IOException {
+        advance();
         List<Object> value = new ArrayList<>();
-        readArrayStart();
         while (!nextIfArrayEnd()) {
             value.add(readRaw());
         }

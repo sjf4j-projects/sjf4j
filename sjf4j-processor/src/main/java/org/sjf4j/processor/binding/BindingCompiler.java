@@ -305,7 +305,15 @@ final class BindingCompiler {
                         ? BindingValue.Kind.JOJO : BindingValue.Kind.POJO;
 
             case ARRAY_LIST:
-                if (directList(direction, type)) return BindingValue.Kind.LIST;
+                if (directList(direction, type)) {
+                    if (direction == BindingPlan.Direction.READ_FROM
+                            && context.types.isObject(context.types.listWriteElementType(type))
+                            && ("java.util.List".equals(erased)
+                                || "java.util.ArrayList".equals(erased))) {
+                        return BindingValue.Kind.RAW_LIST;
+                    }
+                    return BindingValue.Kind.LIST;
+                }
                 return unsupported(
                         method,
                         generated,
@@ -321,7 +329,17 @@ final class BindingCompiler {
                         "Set type cannot be bound directly with the declared generic/write constraints");
 
             case OBJECT_MAP:
-                if (directMap(direction, type)) return BindingValue.Kind.MAP;
+                if (directMap(direction, type)) {
+                    // Raw Map parsing is decided during compilation, not in
+                    // the generated hot loop or through StreamingIO.
+                    if (direction == BindingPlan.Direction.READ_FROM
+                            && context.types.isObject(context.types.mapWriteValueType(type))
+                            && ("java.util.Map".equals(erased)
+                                || "java.util.LinkedHashMap".equals(erased))) {
+                        return BindingValue.Kind.RAW_MAP;
+                    }
+                    return BindingValue.Kind.MAP;
+                }
                 return unsupported(
                         method,
                         generated,

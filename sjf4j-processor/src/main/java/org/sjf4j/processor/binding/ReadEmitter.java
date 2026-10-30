@@ -592,14 +592,6 @@ final class ReadEmitter {
     }
 
     private void emitList(JavaWriter out, BindingValue value) {
-        // Raw List<Object> is already handled by each backend's raw parser.
-        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.List")
-                && context.types.isObject(value.elementValue().type())) {
-            out.line("Object raw = parser.readRaw();");
-            out.line("return raw == null ? null : " + STREAMING_IO + ".castList(raw);");
-            return;
-        }
-
         emitArrayStart(out);
 
         out.line(value.type() + " value = new java.util.ArrayList<>();");
@@ -622,15 +614,6 @@ final class ReadEmitter {
     }
 
     private void emitMap(JavaWriter out, BindingValue value) {
-        // Unstructured Map<String, Object> uses the same streaming Map path as
-        // runtime binding. Typed containers keep their compiled element plan.
-        if (context.typeUtils.erasure(value.type()).toString().equals("java.util.Map")
-                && context.types.isObject(value.mapValue().type())) {
-            out.line("return " + STREAMING_IO + ".readMap(parser, java.util.Map.class, "
-                    + "java.util.Map.class, null, null, null, this.context);");
-            return;
-        }
-
         emitObjectStart(out);
 
         out.line(value.type() + " value = new java.util.LinkedHashMap<>();");
@@ -775,6 +758,12 @@ final class ReadEmitter {
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
                 return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
                         + ".readOneOf(" + parser + ", " + value.helperName() + "_info, this.context)";
+
+            case RAW_MAP:
+                return "(" + value.type() + ") " + parser + ".readRawObject()";
+
+            case RAW_LIST:
+                return "(" + value.type() + ") " + parser + ".readRawArray()";
 
             case RUNTIME:
                 if (context.types.isObject(value.type())) return "(" + value.type() + ") " + parser + ".readRaw()";

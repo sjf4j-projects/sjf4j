@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -128,6 +129,42 @@ public class CompiledBinderTest {
         assertPersonEquals(source, result);
     }
 
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void readsRawListsWithNativeArrayRepresentation(String backend, BinderContract binder)
+            throws IOException {
+        String input = "[{\"id\":7,\"items\":[true,null]},[2,{\"name\":\"Ada\"}],null]";
+        List<Object> list = binder.readRawList(input);
+        ArrayList<Object> concrete = binder.readRawArrayList(input);
+
+        assertEquals(new SimpleJsonBinder().readNode(input, Object.class), list);
+        assertEquals(list, concrete, backend);
+        assertTrue(list instanceof ArrayList);
+        assertTrue(list.get(0) instanceof LinkedHashMap);
+        assertTrue(list.get(1) instanceof ArrayList);
+        assertTrue(((List<?>) list.get(1)).get(1) instanceof LinkedHashMap);
+
+        assertNull(binder.readRawList("null"));
+        assertNull(binder.readRawArrayList("null"));
+        assertThrows(BindingException.class, () -> binder.readRawList("{}"));
+        assertThrows(BindingException.class, () -> binder.readRawArrayList("{}"));
+
+        RawListHolder holder = binder.readRawListHolder(
+                "{\"list\":[{\"x\":1},[false]],\"arrayList\":[1,null,\"last\"]}");
+        assertTrue(holder.list instanceof ArrayList);
+        assertTrue(holder.list.get(0) instanceof LinkedHashMap);
+        assertTrue(holder.list.get(1) instanceof ArrayList);
+    }
+
+    @Test
+    public void runtimePreservesConcreteListTypes() {
+        SimpleJsonBinder binder = new SimpleJsonBinder();
+        assertEquals(ArrayList.class, binder.readNode("[1,2]", List.class).getClass());
+        assertEquals(ArrayList.class, binder.readNode("[1,2]", ArrayList.class).getClass());
+        assertEquals(java.util.LinkedList.class,
+                binder.readNode("[1,2]", java.util.LinkedList.class).getClass());
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("jsonBackends")
@@ -258,19 +295,25 @@ public class CompiledBinderTest {
                 + "}";
 
         Map<String, Object> compiled = binder.readObjectMap(input);
+        LinkedHashMap<String, Object> linked = binder.readLinkedObjectMap(input);
+        assertEquals(compiled, linked);
+        assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
+                new ArrayList<String>(linked.keySet()));
+        assertInstanceOf(LinkedHashMap.class, linked.get("nested"));
+
         Map<?, ?> runtime = (Map<?, ?>) new SimpleJsonBinder().readNode(input, Object.class);
 
         assertEquals(runtime, compiled);
-        assertEquals(LinkedHashMap.class, compiled.getClass());
+        assertInstanceOf(LinkedHashMap.class, compiled);
         assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                 new ArrayList<String>(compiled.keySet()));
 
         Map<?, ?> nested = (Map<?, ?>) compiled.get("nested");
         List<?> items = (List<?>) compiled.get("items");
-        assertEquals(LinkedHashMap.class, nested.getClass());
-        assertEquals(ArrayList.class, items.getClass());
+        assertInstanceOf(LinkedHashMap.class, nested);
+        assertInstanceOf(ArrayList.class, items);
         assertEquals(Arrays.asList("first", "second"), new ArrayList<Object>(nested.keySet()));
-        assertEquals(LinkedHashMap.class, items.get(1).getClass());
+        assertInstanceOf(LinkedHashMap.class, items.get(1));
 
         String holderInput = "{"
                 + "\"value\":{\"text\":\"Ada\",\"nested\":[1,{\"enabled\":true}]},"
@@ -284,12 +327,28 @@ public class CompiledBinderTest {
 
         assertEquals(runtimeHolder.get("value"), holder.getValue());
         assertEquals(runtimeHolder.get("values"), holderValues);
-        assertEquals(LinkedHashMap.class, holderValue.getClass());
+        assertInstanceOf(LinkedHashMap.class, holderValue);
         assertEquals(Arrays.asList("text", "nested"), new ArrayList<Object>(holderValue.keySet()));
-        assertEquals(ArrayList.class, holderNested.getClass());
-        assertEquals(ArrayList.class, holderValues.getClass());
-        assertEquals(LinkedHashMap.class, holderValues.get(1).getClass());
-        assertEquals(ArrayList.class, holderValues.get(2).getClass());
+        assertInstanceOf(ArrayList.class, holderNested);
+        assertInstanceOf(ArrayList.class, holderValues);
+        assertInstanceOf(LinkedHashMap.class, holderValues.get(1));
+        assertInstanceOf(ArrayList.class, holderValues.get(2));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("jsonBackends")
+    public void keepsTypedMapBindingSeparateFromRawMap(String backend, BinderContract binder)
+            throws IOException {
+        Map<String, Integer> values = binder.readIntegerMap(
+                "{\"first\":1,\"second\":null,\"third\":42}");
+        assertEquals(LinkedHashMap.class, values.getClass(), backend);
+        assertEquals(Arrays.asList("first", "second", "third"),
+                new ArrayList<String>(values.keySet()));
+        assertEquals(Integer.valueOf(1), values.get("first"));
+        assertNull(values.get("second"));
+        assertEquals(Integer.valueOf(42), values.get("third"));
+        assertNull(binder.readLinkedObjectMap("null"));
+        assertThrows(BindingException.class, () -> binder.readLinkedObjectMap("[]"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -598,7 +657,21 @@ public class CompiledBinderTest {
     }
 
 
+    public static final class RawListHolder {
+        public List<Object> list;
+        public ArrayList<Object> arrayList;
+    }
+
     public interface BinderContract {
+
+        @ReadFrom
+        List<Object> readRawList(String input) throws IOException;
+
+        @ReadFrom
+        ArrayList<Object> readRawArrayList(String input) throws IOException;
+
+        @ReadFrom
+        RawListHolder readRawListHolder(String input) throws IOException;
 
         @ReadFrom
         int readInt(String input) throws IOException;
@@ -668,6 +741,12 @@ public class CompiledBinderTest {
 
         @ReadFrom
         Map<String, Object> readObjectMap(String input) throws IOException;
+
+        @ReadFrom
+        LinkedHashMap<String, Object> readLinkedObjectMap(String input) throws IOException;
+
+        @ReadFrom
+        Map<String, Integer> readIntegerMap(String input) throws IOException;
 
         @WriteTo
         String writeObjectMap(Map<String, Object> value) throws IOException;

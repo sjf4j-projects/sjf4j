@@ -383,19 +383,11 @@ public final class StreamingIO {
         }
 
         if (raw == Map.class) {
-            Object value = parser.readRaw();
-            if (value == null) {
-                return valueInfo.rawToValue(null);
-            }
-            return valueInfo.rawToValue(castMap(value));
+            return valueInfo.rawToValue(parser.readRawObject());
         }
 
         if (raw == List.class) {
-            Object value = parser.readRaw();
-            if (value == null) {
-                return valueInfo.rawToValue(null);
-            }
-            return valueInfo.rawToValue(castList(value));
+            return valueInfo.rawToValue(parser.readRawArray());
         }
 
         throw new BindingException("cannot read value with ValueCodec into type '" + raw.getName() + "'");
@@ -690,18 +682,33 @@ public final class StreamingIO {
     public static Map<String, Object> readMap(StreamingParser parser, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
                                               RuntimeContext context) throws IOException {
+        // Exact raw container declarations have no generic work to do.
+        // Route them before token probes or type metadata initialization.
+        if (valueType == null && (type == Map.class || type == LinkedHashMap.class)) {
+            return parser.readRawObject();
+        }
+
+        if (valueType == null) {
+            valueType = Types.resolveTypeArgument(type, Map.class, 1);
+            valueBoxed = Types.rawBox(valueType);
+            valueTi = valueBoxed == Object.class
+                    ? TypeInfo.NONE : TypeRegistry.registerTypeInfo(valueBoxed);
+        }
+
+        // Raw object parsing owns the entire untyped graph. Do not re-enter
+        // readNode() for every member or resolve its generic type per read.
+        if ((boxed == Map.class || boxed == LinkedHashMap.class)
+                && valueType == Object.class
+                && (valueTi == null || valueTi == TypeInfo.NONE)) {
+            return parser.readRawObject();
+        }
+
         if (!parser.nextIfObjectStart()) {
             if (parser.nextIfNull()) {
                 return null;
             }
             throw new BindingException("cannot read token '" + parser.peekToken() + "' as object type '" +
                     type.getTypeName() + "'");
-        }
-
-        if (valueType == null) {
-            valueType = Types.resolveTypeArgument(type, Map.class, 1);
-            valueBoxed = Types.rawBox(valueType);
-            valueTi = TypeRegistry.registerTypeInfo(valueBoxed);
         }
 
         Map<String, Object> map = boxed == Map.class || boxed == LinkedHashMap.class
@@ -724,18 +731,31 @@ public final class StreamingIO {
     public static List<Object> readList(StreamingParser parser, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
                                         RuntimeContext context) throws IOException {
+        // Exact raw List targets have no generic metadata to resolve.
+        if (elementType == null && (type == List.class || type == ArrayList.class)) {
+            return parser.readRawArray();
+        }
+
+        if (elementType == null) {
+            elementType = Types.resolveTypeArgument(type, List.class, 0);
+            elementBoxed = Types.rawBox(elementType);
+            elementTi = elementBoxed == Object.class
+                    ? TypeInfo.NONE : TypeRegistry.registerTypeInfo(elementBoxed);
+        }
+
+        // Preserve concrete list implementations and typed element bindings.
+        if ((boxed == List.class || boxed == ArrayList.class)
+                && elementType == Object.class
+                && (elementTi == null || elementTi == TypeInfo.NONE)) {
+            return parser.readRawArray();
+        }
+
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
             }
             throw new BindingException("cannot read token '" + parser.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
-        }
-
-        if (elementType == null) {
-            elementType = Types.resolveTypeArgument(type, List.class, 0);
-            elementBoxed = Types.rawBox(elementType);
-            elementTi = TypeRegistry.registerTypeInfo(elementBoxed);
         }
 
         List<Object> list = boxed == List.class || boxed == ArrayList.class
@@ -971,40 +991,22 @@ public final class StreamingIO {
     }
 
 
-    /**
-     * Reads a plain JsonObject while adopting a newly parsed LinkedHashMap.
-     * Other Map implementations use the public defensive-copy constructor.
-     * Nested raw values retain their original representations.
-     */
-    @SuppressWarnings("unchecked")
+    /** Adopts the owned raw LinkedHashMap without copying its members. */
     public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
-        Object raw = parser.readRaw();
+        Map<String, Object> raw = parser.readRawObject();
         if (raw == null) return null;
-        if (raw.getClass() == LinkedHashMap.class) {
-            JsonObject result = new JsonObject();
-            InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
-            return result;
-        }
-        if (raw instanceof Map) return new JsonObject((Map<String, Object>) raw);
-        throw new BindingException("cannot read non-object value as JsonObject");
+        JsonObject result = new JsonObject();
+        InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
+        return result;
     }
 
-    /**
-     * Reads a plain JsonArray while adopting a newly parsed ArrayList.
-     * Other List implementations use the public defensive-copy constructor.
-     * Nested raw values retain their original representations.
-     */
-    @SuppressWarnings("unchecked")
+    /** Adopts the owned raw ArrayList without copying its elements. */
     public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
-        Object raw = parser.readRaw();
+        List<Object> raw = parser.readRawArray();
         if (raw == null) return null;
-        if (raw.getClass() == ArrayList.class) {
-            JsonArray result = new JsonArray();
-            InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
-            return result;
-        }
-        if (raw instanceof List) return new JsonArray((List<Object>) raw);
-        throw new BindingException("cannot read non-array value as JsonArray");
+        JsonArray result = new JsonArray();
+        InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);
+        return result;
     }
 
     /**

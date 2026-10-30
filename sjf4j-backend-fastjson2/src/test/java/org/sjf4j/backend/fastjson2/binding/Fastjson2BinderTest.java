@@ -4,13 +4,16 @@ import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.InternalAccess;
+import org.sjf4j.JsonArray;
+import org.sjf4j.JsonObject;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 
-import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -31,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Fastjson2BinderTest {
 
     @Test
-    void readsRawNodesWithSjf4jCollectionSemantics() throws Exception {
+    void readsRawNodesWithSjf4jContainers() throws Exception {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}"));
@@ -54,6 +57,131 @@ class Fastjson2BinderTest {
             parser.end();
         } finally {
             parser.close();
+        }
+    }
+
+    @Test
+    void typedRawContainerEntryPointsPreservePeekAndNullSemantics() throws Exception {
+        Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
+                "[{\"id\":7},[null,{\"active\":true}],null,null]"));
+        try {
+            parser.readArrayStart();
+            assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+            Map<String, Object> object = parser.readRawObject();
+            assertEquals(LinkedHashMap.class, object.getClass());
+            assertEquals(7, object.get("id"));
+            assertEquals(StreamingParser.Token.ARRAY_START, parser.peekToken());
+            List<Object> array = parser.readRawArray();
+            assertEquals(ArrayList.class, array.getClass());
+            assertEquals(LinkedHashMap.class, array.get(1).getClass());
+            assertNull(parser.readRawObject());
+            assertNull(parser.readRawArray());
+            parser.readArrayEnd();
+            parser.end();
+        } finally {
+            parser.close();
+        }
+        Fastjson2Parser mismatch = new Fastjson2Parser(JSONReader.of("[]"));
+        try {
+            assertThrows(BindingException.class, mismatch::readRawObject);
+        } finally {
+            mismatch.close();
+        }
+    }
+
+    @Test
+    void jsonNodesAdoptOwnedRawContainersWithoutCopy() {
+        Fastjson2Binder binder = new Fastjson2Binder();
+        JsonObject object = (JsonObject) binder.readNode(
+                "{\"id\":7,\"nested\":[1,{\"ok\":true}]}", JsonObject.class);
+        JsonArray array = (JsonArray) binder.readNode(
+                "[1,{\"name\":\"Ada\"}]", JsonArray.class);
+
+        assertEquals(LinkedHashMap.class,
+                InternalAccess.dynamicMembers(object).getClass());
+        assertEquals(ArrayList.class,
+                InternalAccess.dynamicElements(array).getClass());
+        assertEquals(7, object.get("id"));
+        assertEquals(2, array.size());
+    }
+
+    @Test
+    void nativeMapBindingMatchesTheSjf4jObjectGraph() throws Exception {
+        String json = "{\"small\":7,\"large\":9876543210,\"fraction\":98.75,"
+                + "\"nested\":{\"enabled\":true,\"values\":[null,1,{\"name\":\"Ada\"}]}}";
+        Fastjson2Binder binder = new Fastjson2Binder();
+        Map<?, ?> expected = (Map<?, ?>) binder.readNode(json, Map.class);
+
+        // Compare the native Map reader with SJF4J raw parsing, while
+        // preserving SJF4J's insertion-ordered JDK containers.
+        JSONReader.Context nativeContext =
+                JSONFactory.createReadContext(JSONReader.Feature.UseDoubleForDecimals);
+        try (JSONReader nativeReader = JSONReader.of(json, nativeContext)) {
+            Map<?, ?> nativeObject = nativeReader.read(Map.class);
+            assertEquals(expected, nativeObject);
+            assertTrue(nativeReader.isEnd());
+        }
+    }
+
+    @Test
+    void rawParserKeepsOrderedJdkContainersWithNativeObjectFeature() throws Exception {
+        JSONReader.Context context = JSONFactory.createReadContext(
+                JSONReader.Feature.UseNativeObject);
+        try (Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
+                "{\"first\":[{\"nested\":1}],\"second\":2}", context))) {
+            Map<String, Object> root = parser.readRawObject();
+            assertEquals(LinkedHashMap.class, root.getClass());
+            assertEquals(Arrays.asList("first", "second"), new ArrayList<>(root.keySet()));
+            List<?> array = (List<?>) root.get("first");
+            assertEquals(ArrayList.class, array.getClass());
+            assertEquals(LinkedHashMap.class, array.get(0).getClass());
+            parser.end();
+        }
+    }
+
+    @Test
+    void parsesRawCollectionsAcrossSmallAndLargeSizes() throws Exception {
+        for (int count = 0; count <= 8; count++) {
+            StringBuilder objectJson = new StringBuilder("{");
+            StringBuilder arrayJson = new StringBuilder("[");
+            Map<String, Object> expectedObject = new LinkedHashMap<>();
+            List<Object> expectedArray = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                if (i != 0) {
+                    objectJson.append(',');
+                    arrayJson.append(',');
+                }
+                objectJson.append('"').append('k').append(i).append("\":").append(i);
+                arrayJson.append(i);
+                expectedObject.put("k" + i, i);
+                expectedArray.add(i);
+            }
+            objectJson.append('}');
+            arrayJson.append(']');
+
+            try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(objectJson.toString()))) {
+                Map<String, Object> value = p.readRawObject();
+                assertEquals(LinkedHashMap.class, value.getClass());
+                assertEquals(expectedObject, value);
+                assertEquals(new ArrayList<>(expectedObject.keySet()),
+                        new ArrayList<>(value.keySet()));
+                p.end();
+            }
+            try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(arrayJson.toString()))) {
+                List<Object> value = p.readRawArray();
+                assertEquals(ArrayList.class, value.getClass());
+                assertEquals(expectedArray, value);
+                p.end();
+            }
+        }
+        try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(
+                "{\"a\":1,\"b\":2,\"c\":3,\"d\":4,\"e\":5,\"a\":6,\"f\":[null,{\"ok\":true}]}"))) {
+            Map<String, Object> value = p.readRawObject();
+            assertEquals(Arrays.asList("a", "b", "c", "d", "e", "f"),
+                    new ArrayList<>(value.keySet()));
+            assertEquals(6, value.get("a"));
+            assertEquals(2, ((List<?>) value.get("f")).size());
+            p.end();
         }
     }
 

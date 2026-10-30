@@ -334,6 +334,91 @@ class Jackson2ParserTest {
         }
     }
 
+    @Test
+    void readsTypedRawObjectsAndArraysWithoutLosingPendingTokens() throws Exception {
+        Jackson2Parser parser = parser("[{\"id\":7,\"list\":[true,null]},[1,{\"x\":2}]]");
+        try {
+            parser.readArrayStart();
+            assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
+            Map<String, Object> object = parser.readRawObject();
+            assertEquals(LinkedHashMap.class, object.getClass());
+            assertEquals(7, object.get("id"));
+            assertEquals(ArrayList.class, object.get("list").getClass());
+            assertFalse(parser.nextIfArrayEnd());
+            List<Object> array = parser.readRawArray();
+            assertEquals(ArrayList.class, array.getClass());
+            assertEquals(LinkedHashMap.class, array.get(1).getClass());
+            parser.readArrayEnd();
+            parser.end();
+        } finally {
+            parser.close();
+        }
+
+        Jackson2Parser nullParser = parser("[null,null]");
+        try {
+            nullParser.readArrayStart();
+            assertNull(nullParser.readRawObject());
+            assertNull(nullParser.readRawArray());
+            nullParser.readArrayEnd();
+            nullParser.end();
+        } finally {
+            nullParser.close();
+        }
+
+        Jackson2Parser mismatch = parser("[]");
+        try {
+            assertThrows(BindingException.class, mismatch::readRawObject);
+        } finally {
+            mismatch.close();
+        }
+    }
+
+    @Test
+    void readsRawCollectionsAcrossSizes() throws Exception {
+        for (int count = 0; count <= 8; count++) {
+            StringBuilder objectJson = new StringBuilder("{");
+            StringBuilder arrayJson = new StringBuilder("[");
+            Map<String, Object> expectedObject = new LinkedHashMap<>();
+            List<Object> expectedArray = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                if (i != 0) {
+                    objectJson.append(',');
+                    arrayJson.append(',');
+                }
+                objectJson.append('"').append("k").append(i).append("\":").append(i);
+                arrayJson.append(i);
+                expectedObject.put("k" + i, i);
+                expectedArray.add(i);
+            }
+            objectJson.append('}');
+            arrayJson.append(']');
+
+            try (Jackson2Parser p = parser(objectJson.toString())) {
+                Map<String, Object> value = p.readRawObject();
+                assertEquals(LinkedHashMap.class, value.getClass());
+                assertEquals(expectedObject, value);
+                assertEquals(new ArrayList<>(expectedObject.keySet()),
+                        new ArrayList<>(value.keySet()));
+                p.end();
+            }
+            try (Jackson2Parser p = parser(arrayJson.toString())) {
+                List<Object> value = p.readRawArray();
+                assertEquals(ArrayList.class, value.getClass());
+                assertEquals(expectedArray, value);
+                p.end();
+            }
+        }
+
+        try (Jackson2Parser p = parser("{\"a\":1,\"b\":2,\"c\":3,\"d\":4,\"e\":5,\"a\":6,\"f\":[null,{\"ok\":true}]}")) {
+            Map<String, Object> value = p.readRawObject();
+            assertEquals(Arrays.asList("a", "b", "c", "d", "e", "f"),
+                    new ArrayList<>(value.keySet()));
+            assertEquals(6, value.get("a"));
+            assertEquals(2, ((List<?>) value.get("f")).size());
+            p.end();
+        }
+    }
+
     private static Jackson2Parser parser(String json) throws IOException {
         return new Jackson2Parser(new JsonFactory().createParser(json));
     }

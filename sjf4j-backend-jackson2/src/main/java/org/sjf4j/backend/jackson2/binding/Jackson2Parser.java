@@ -507,9 +507,9 @@ public final class Jackson2Parser extends StreamingParser {
 
         switch (current) {
             case START_OBJECT:
-                return readRawObject();
+                return _readRawObject();
             case START_ARRAY:
-                return readRawArray();
+                return _readRawArray();
             case VALUE_STRING:
                 return parser.getText();
             case VALUE_NUMBER_INT:
@@ -525,7 +525,27 @@ public final class Jackson2Parser extends StreamingParser {
         }
     }
 
-    private Map<String, Object> readRawObject() throws IOException {
+    @Override
+    public Map<String, Object> readRawObject() throws IOException {
+        JsonToken current = nextValue();
+        if (current == JsonToken.VALUE_NULL) return null;
+        if (current != JsonToken.START_OBJECT) {
+            throw new BindingException("expected raw object or null, but was " + current);
+        }
+        return _readRawObject();
+    }
+
+    @Override
+    public List<Object> readRawArray() throws IOException {
+        JsonToken current = nextValue();
+        if (current == JsonToken.VALUE_NULL) return null;
+        if (current != JsonToken.START_ARRAY) {
+            throw new BindingException("expected raw array or null, but was " + current);
+        }
+        return _readRawArray();
+    }
+
+    private Map<String, Object> _readRawObject() throws IOException {
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
         while ((name = parser.nextFieldName()) != null) {
@@ -534,7 +554,7 @@ public final class Jackson2Parser extends StreamingParser {
         return value;
     }
 
-    private List<Object> readRawArray() throws IOException {
+    private List<Object> _readRawArray() throws IOException {
         List<Object> value = new ArrayList<>();
         JsonToken current;
         while ((current = parser.nextToken()) != JsonToken.END_ARRAY) {

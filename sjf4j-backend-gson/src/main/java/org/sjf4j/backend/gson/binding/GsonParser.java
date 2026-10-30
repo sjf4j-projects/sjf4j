@@ -204,6 +204,32 @@ public final class GsonParser extends StreamingParser {
     }
 
     @Override
+    public Map<String, Object> readRawObject() throws IOException {
+        JsonToken token = reader.peek();
+        if (token == JsonToken.NULL) {
+            reader.nextNull();
+            return null;
+        }
+        if (token != JsonToken.BEGIN_OBJECT) {
+            throw new BindingException("expected raw object or null, but was '" + token + "'");
+        }
+        return _readRawObject();
+    }
+
+    @Override
+    public List<Object> readRawArray() throws IOException {
+        JsonToken token = reader.peek();
+        if (token == JsonToken.NULL) {
+            reader.nextNull();
+            return null;
+        }
+        if (token != JsonToken.BEGIN_ARRAY) {
+            throw new BindingException("expected raw array or null, but was '" + token + "'");
+        }
+        return _readRawArray();
+    }
+
+    @Override
     public void close() {
         // Gson has no pooled parser resources; the caller owns the input.
     }
