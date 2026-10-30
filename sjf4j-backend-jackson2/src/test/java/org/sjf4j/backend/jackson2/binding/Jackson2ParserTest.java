@@ -455,4 +455,39 @@ class Jackson2ParserTest {
         public int id;
         public String name;
     }
+    @Test
+    void readsNestedRawValuesAfterArrayEndProbes() throws Exception {
+        String json = "[null,{\"a\":[1,true,{\"b\":null}]},[\"x\",2],false]";
+        Jackson2Binder binder = new Jackson2Binder();
+        for (boolean utf8 : new boolean[]{false, true}) {
+            try (Jackson2Parser parser = utf8
+                    ? binder.createParser(json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    : binder.createParser(json)) {
+                parser.readArrayStart();
+
+                assertFalse(parser.nextIfArrayEnd());
+                assertNull(parser.readRaw());
+
+                assertFalse(parser.nextIfArrayEnd());
+                Map<?, ?> object = (Map<?, ?>) parser.readRaw();
+                assertEquals(LinkedHashMap.class, object.getClass());
+                List<?> nested = (List<?>) object.get("a");
+                assertEquals(3, nested.size());
+                assertEquals(1, nested.get(0));
+                assertEquals(true, nested.get(1));
+                assertNull(((Map<?, ?>) nested.get(2)).get("b"));
+
+                assertFalse(parser.nextIfArrayEnd());
+                assertEquals(Arrays.asList("x", 2), parser.readRaw());
+
+                assertFalse(parser.nextIfArrayEnd());
+                assertEquals(false, parser.readRaw());
+
+                assertTrue(parser.nextIfArrayEnd());
+                parser.end();
+            }
+        }
+    }
+
+
 }
