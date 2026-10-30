@@ -100,8 +100,11 @@ final class OneOfCompiler {
 
     private String publicConstant(TypeMirror subtype, String name) {
         TypeElement owner = context.types.typeElement(subtype);
-        if (owner == null || !owner.getModifiers().contains(Modifier.FINAL)
-                || !owner.getModifiers().contains(Modifier.PUBLIC)) return null;
+        if (owner == null || !owner.getModifiers().contains(Modifier.FINAL)) return null;
+        for (javax.lang.model.element.Element enclosing = owner;
+             enclosing instanceof TypeElement; enclosing = enclosing.getEnclosingElement()) {
+            if (!enclosing.getModifiers().contains(Modifier.PUBLIC)) return null;
+        }
         Property property = context.properties.resolve(subtype).get(name);
         if (property == null || property.read() == null) return null;
         PropertyAccess access = property.read();

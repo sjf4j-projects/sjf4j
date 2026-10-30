@@ -16,7 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Schema oneOf keeps its matching semantics when Java subtypes are compiled directly. */
-class CompiledValidatorOneOfTest {
+public class CompiledValidatorOneOfTest {
     private static final String SCHEMA = """
             {"type":"object","properties":{"items":{"type":"array","items":{"oneOf":[
               {"$ref":"#/$defs/a"},{"$ref":"#/$defs/b"}]}}},
@@ -85,6 +85,9 @@ class CompiledValidatorOneOfTest {
                 new Model(List.of(new Other())),
                 new Model(Arrays.asList(new A("valid"), null))
         )) {
+            if (caseIndex == 0) {
+                assertTrue(reference.isValid(model), reference.validate(model).toString());
+            }
             assertEquals(reference.isValid(model), compiled.valid(model),
                     "oneOf case #" + caseIndex + " default");
             assertEquals(reference.isValid(model, true), compiled.valid(model, true),
