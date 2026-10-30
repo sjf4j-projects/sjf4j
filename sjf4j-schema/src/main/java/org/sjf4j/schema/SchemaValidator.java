@@ -183,7 +183,7 @@ public final class SchemaValidator {
         // From ref
         String ref = anno.ref().trim();
         if (!ref.isEmpty()) {
-            URI refUri = baseDirUri.resolve(ref);
+            URI refUri = loader.resolve(ref);
             SchemaPlan plan = _registerByRef(refUri);
             if (plan == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                     "schema referenced by @ValidJsonSchema.ref on '" + clazz.getName() + "' was not found",
