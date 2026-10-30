@@ -359,6 +359,16 @@ public final class ValidationGenerator {
         if (org.sjf4j.JsonType.of(parsed) != org.sjf4j.JsonType.OBJECT) return null;
         org.sjf4j.JsonObject root = org.sjf4j.Nodes.toJsonObject(parsed);
         String resolvedRootUri = snapshot.uris[0];
+        if (!snapshot.selectedUri.equals(snapshot.uris[0])) {
+            // A @ValidJsonSchema(ref="document.json#/...") selects a subschema
+            // before compilation; never compile the enclosing resource root.
+            RefTarget selected = resolveRef(snapshot,
+                    org.sjf4j.JsonObject.of("$ref", snapshot.selectedUri), snapshot.uris[0]);
+            if (selected == null || org.sjf4j.JsonType.of(selected.value) != org.sjf4j.JsonType.OBJECT)
+                return null;
+            root = org.sjf4j.Nodes.toJsonObject(selected.value);
+            resolvedRootUri = selected.uri;
+        }
         if (root.containsKey("$ref")) {
             RefTarget resolved = resolveRef(snapshot, root, snapshot.selectedUri);
             if (resolved == null || org.sjf4j.JsonType.of(resolved.value) != org.sjf4j.JsonType.OBJECT)

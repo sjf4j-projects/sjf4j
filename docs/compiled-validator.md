@@ -143,18 +143,21 @@ native Java value shapes; custom `@NodeValue`/codec types remain on the full
 runtime path. Unsupported properties fall back as whole subtrees, not partial
 predicates. Array `items` are traversed recursively: a supported item's
 constraints compile directly; an unsupported subtree uses a cached item plan.
-Local JSON Pointer `$ref` targets are resolved against the compile-time
-resource snapshot, without runtime fetches. Named/dynamic anchors, reference
+Local and classpath/file resource JSON Pointer `$ref` targets are resolved
+against the compile-time resource snapshot, without runtime fetches. A
+`@ValidJsonSchema(ref = "document.json#/$defs/name")` selection can itself
+enter direct compilation when its target schema is supported. Named/dynamic anchors, reference
 cycles, or sibling assertions that cannot be proven safe fall back.
 `fallback=false` rejects **any** required subplan at compilation time.
 Support is about the listed combinations, not arbitrary JSON Schema
 keyword combinations.
 
 The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest`:
-positive and negative cases for string length, enum, numeric comparisons,
-integer bounds, nested array items and sizes, required and additional
-properties across POJO/Map/JsonObject/JOJO, null-as-missing modes, and
-local `$ref` compilation. Generated-code assertions remain in
+independent positive and negative cases for `minLength`, `maxLength`,
+`minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`,
+string enum, integer bounds, nested array `items` and sizes,
+`required` and `additionalProperties` across POJO/Map/JsonObject/JOJO,
+null-as-missing modes, and intra-/cross-resource `$ref` compilation. Generated-code assertions remain in
 `CompiledValidatorContractProcessorTest`.
 
 ## Creek benchmark milestone

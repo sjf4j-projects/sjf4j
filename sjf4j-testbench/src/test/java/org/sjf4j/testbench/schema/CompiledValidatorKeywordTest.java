@@ -53,6 +53,24 @@ class CompiledValidatorKeywordTest {
             {"type":"object","required":["text"],"additionalProperties":false,
              "properties":{"text":true}}
             """;
+    private static final String MIN_LENGTH = """
+            {"type":"object","properties":{"text":{"type":"string","minLength":2}}}
+            """;
+    private static final String MAX_LENGTH = """
+            {"type":"object","properties":{"text":{"type":"string","maxLength":4}}}
+            """;
+    private static final String MINIMUM = """
+            {"type":"object","properties":{"decimal":{"type":"number","minimum":1}}}
+            """;
+    private static final String MAXIMUM = """
+            {"type":"object","properties":{"decimal":{"type":"number","maximum":5}}}
+            """;
+    private static final String EXCLUSIVE_MINIMUM = """
+            {"type":"object","properties":{"decimal":{"type":"number","exclusiveMinimum":1}}}
+            """;
+    private static final String EXCLUSIVE_MAXIMUM = """
+            {"type":"object","properties":{"decimal":{"type":"number","exclusiveMaximum":5}}}
+            """;
     private static final String NULLABLE = """
             {"type":"object","required":["required"],
              "properties":{"required":{"type":"string","minLength":1},
@@ -81,6 +99,17 @@ class CompiledValidatorKeywordTest {
     @CompiledValidator(fallback = false)
     public interface Direct {
         @ValidJsonSchema(STRINGS) boolean strings(Values value);
+        @ValidJsonSchema(MIN_LENGTH) boolean minLength(Values value);
+        @ValidJsonSchema(MAX_LENGTH) boolean maxLength(Values value);
+        @ValidJsonSchema(MINIMUM) boolean minimum(Values value);
+        @ValidJsonSchema(MAXIMUM) boolean maximum(Values value);
+        @ValidJsonSchema(EXCLUSIVE_MINIMUM) boolean exclusiveMinimum(Values value);
+        @ValidJsonSchema(EXCLUSIVE_MAXIMUM) boolean exclusiveMaximum(Values value);
+        @ValidJsonSchema(ref = "classpath:/schema/compiled-validator-ref.json#/$defs/model")
+        boolean resourceFragment(Values value);
+        @ValidJsonSchema(ref = "classpath:/schema/compiled-validator-wrapper.json")
+        boolean externalRef(Values value);
+
         @ValidJsonSchema(NUMBERS) boolean numbers(Values value);
         @ValidJsonSchema(INTEGER) boolean integer(Values value);
         @ValidJsonSchema(ARRAYS) boolean arrays(Values value);
@@ -136,6 +165,28 @@ class CompiledValidatorKeywordTest {
     }
 
     @Test
+    void eachLengthKeywordHasIsolatedPassingAndFailingCases() {
+        Direct v = CompiledInstances.create(Direct.class);
+        assertFalse(v.minLength(value("a", BigDecimal.ONE, 1, List.of())));
+        assertTrue(v.minLength(value("ab", BigDecimal.ONE, 1, List.of())));
+        assertTrue(v.maxLength(value("a", BigDecimal.ONE, 1, List.of())));
+        assertFalse(v.maxLength(value("abcde", BigDecimal.ONE, 1, List.of())));
+    }
+
+    @Test
+    void eachNumericBoundHasIsolatedBoundaryCases() {
+        Direct v = CompiledInstances.create(Direct.class);
+        assertTrue(v.minimum(value("a", BigDecimal.ONE, 1, List.of())));
+        assertFalse(v.minimum(value("a", new BigDecimal("0.99"), 1, List.of())));
+        assertTrue(v.maximum(value("a", BigDecimal.valueOf(5), 1, List.of())));
+        assertFalse(v.maximum(value("a", new BigDecimal("5.01"), 1, List.of())));
+        assertFalse(v.exclusiveMinimum(value("a", BigDecimal.ONE, 1, List.of())));
+        assertTrue(v.exclusiveMinimum(value("a", new BigDecimal("1.01"), 1, List.of())));
+        assertFalse(v.exclusiveMaximum(value("a", BigDecimal.valueOf(5), 1, List.of())));
+        assertTrue(v.exclusiveMaximum(value("a", new BigDecimal("4.99"), 1, List.of())));
+    }
+
+    @Test
     void numberIntegerAndExclusiveBounds() {
         Direct v = CompiledInstances.create(Direct.class);
         assertTrue(v.numbers(new Values()));
@@ -169,6 +220,10 @@ class CompiledValidatorKeywordTest {
         assertFalse(v.ref(value("xxxxx", BigDecimal.ONE, 1, List.of())));
         assertTrue(v.rootRef(new Values()));
         assertFalse(v.rootRef(value("x", BigDecimal.ONE, 1, List.of())));
+        assertTrue(v.resourceFragment(new Values()));
+        assertFalse(v.resourceFragment(value("x", BigDecimal.ONE, 1, List.of())));
+        assertTrue(v.externalRef(new Values()));
+        assertFalse(v.externalRef(value("x", BigDecimal.ONE, 1, List.of())));
     }
 
     @Test
