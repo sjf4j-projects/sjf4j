@@ -30,7 +30,8 @@ final class ScalarCompiler {
                     choices.add((String) item);
                 }
             }
-            return new SchemaCheck.StringCheck(min, max, choices);
+            return new SchemaCheck.StringCheck(min, max, choices,
+                    value.uuidType ? schema.getString("format") : null);
         }
 
         if ("number".equals(kind) || "integer".equals(kind)) {

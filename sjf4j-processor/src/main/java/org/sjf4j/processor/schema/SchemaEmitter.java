@@ -85,7 +85,8 @@ final class SchemaEmitter {
                         + expression + ", " + strictFormat + ")) return false;");
                 return;
             case STRING:
-                emitString(lines, (SchemaCheck.StringCheck) check, value, expression, planName, depth);
+                emitString(lines, (SchemaCheck.StringCheck) check, value, expression, planName, depth,
+                        strictFormat);
                 return;
             case NUMBER:
                 emitNumber(lines, (SchemaCheck.NumberCheck) check, value, expression, planName, depth);
@@ -100,7 +101,8 @@ final class SchemaEmitter {
     }
 
     private void emitString(List<String> lines, SchemaCheck.StringCheck check,
-                            SchemaValue value, String expression, String planName, int depth) {
+                            SchemaValue value, String expression, String planName, int depth,
+                            String strictFormat) {
         String text = expression;
         String temp = "_text" + depth + "_" + planName;
         if (value.shape == SchemaValue.Shape.STRING) {
@@ -122,6 +124,10 @@ final class SchemaEmitter {
                     + ".codePointCount(0, " + text + ".length());");
             if (check.minLength != null) lines.add("if (" + length + " < " + check.minLength + ") return false;");
             if (check.maxLength != null) lines.add("if (" + length + " > " + check.maxLength + ") return false;");
+        }
+        if (check.format != null && !"false".equals(strictFormat)) {
+            lines.add("if (" + strictFormat + " && !org.sjf4j.schema.FormatValidator.of("
+                    + literal(check.format) + ").validate(" + expression + ".toString())) return false;");
         }
         if (check.choices != null) {
             StringBuilder condition = new StringBuilder();

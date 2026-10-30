@@ -91,11 +91,13 @@ abstract class SchemaCheck {
         final Integer minLength;
         final Integer maxLength;
         final List<String> choices;
+        final String format;
 
-        StringCheck(Integer minLength, Integer maxLength, List<String> choices) {
+        StringCheck(Integer minLength, Integer maxLength, List<String> choices, String format) {
             super(Kind.STRING);
             this.minLength = minLength;
             this.maxLength = maxLength;
+            this.format = format;
             this.choices = choices == null ? null
                     : Collections.unmodifiableList(new ArrayList<String>(choices));
         }

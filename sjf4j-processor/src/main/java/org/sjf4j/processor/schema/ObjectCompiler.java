@@ -58,6 +58,31 @@ final class ObjectCompiler {
             root = Nodes.toJsonObject(target.value);
             rootUri = target.uri;
         }
+        return compileResolved(type, snapshot, root, rootUri, nullAsMissing);
+    }
+
+    /** Compiles a concrete nested object without changing root schema selection. */
+    SchemaCheck.ObjectCheck compileNested(TypeMirror type, SchemaResourceResolver.Snapshot snapshot,
+                                           JsonObject schema, String schemaUri, boolean nullAsMissing) {
+        NodeKind kind = context.types.nodeKind(type);
+        if (kind != NodeKind.OBJECT_POJO) return null;
+        TypeElement owner = context.types.typeElement(type);
+        if (owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)
+                || !owner.getModifiers().contains(Modifier.FINAL)
+                || owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return null;
+        return compileResolved(type, snapshot, schema, schemaUri, nullAsMissing);
+    }
+
+    private SchemaCheck.ObjectCheck compileResolved(TypeMirror type,
+                    SchemaResourceResolver.Snapshot snapshot, JsonObject root,
+                    String rootUri, boolean nullAsMissing) {
+        NodeKind nodeKind = context.types.nodeKind(type);
+        boolean dynamic = nodeKind == NodeKind.OBJECT_MAP ||
+                nodeKind == NodeKind.OBJECT_JSON_OBJECT || nodeKind == NodeKind.OBJECT_JOJO;
+        // The direct POJO path only understands the public structural projection.
+        // Non-public annotated members may be visible to runtime reflection and
+        // must not silently disappear from additionalProperties/required checks.
+        if (!dynamic && hasHiddenNodeMembers(type)) return null;
         for (String key : root.keySet()) {
             if (!key.equals("type") && !key.equals("properties") && !key.equals("required")
                     && !key.equals("additionalProperties") && !SchemaCompiler.isAnnotation(key)) return null;
@@ -91,8 +116,7 @@ final class ObjectCompiler {
                 if (property.read() == null ||
                         !property.read().member().getModifiers().contains(Modifier.PUBLIC) ||
                         (property.read().isMethod() &&
-                                !((ExecutableElement) property.read().member()).getThrownTypes().isEmpty()) ||
-                        !property.name().matches("[a-zA-Z0-9_]+")) return null;
+                                !((ExecutableElement) property.read().member()).getThrownTypes().isEmpty())) return null;
             }
         }
 
@@ -128,6 +152,22 @@ final class ObjectCompiler {
         return new SchemaCheck.ObjectCheck(dynamic, nullAsMissing,
                 Boolean.FALSE.equals(additional), new ArrayList<String>(propertyMap.keySet()),
                 requiredChecks, properties);
+    }
+
+    private boolean hasHiddenNodeMembers(TypeMirror type) {
+        TypeElement owner = context.types.typeElement(type);
+        for (TypeElement current = owner; current != null; ) {
+            for (javax.lang.model.element.Element member : current.getEnclosedElements()) {
+                if (member.getModifiers().contains(Modifier.STATIC)) continue;
+                if (member.getAnnotation(org.sjf4j.annotation.node.NodeProperty.class) != null
+                        && !member.getModifiers().contains(Modifier.PUBLIC)) return true;
+                if (member.getAnnotation(org.sjf4j.annotation.node.NodeIgnore.class) != null) return true;
+            }
+            TypeMirror parent = current.getSuperclass();
+            current = parent.getKind() == javax.lang.model.type.TypeKind.NONE
+                    ? null : context.types.typeElement(parent);
+        }
+        return false;
     }
 
     private static String pointerEscape(String key) {

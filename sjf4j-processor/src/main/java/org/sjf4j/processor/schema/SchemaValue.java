@@ -21,11 +21,13 @@ final class SchemaValue {
     final Shape shape;
     final boolean nullable;
     final boolean enumType;
+    final boolean uuidType;
 
     private SchemaValue(TypeMirror type, Shape shape, boolean enumType) {
         this.type = type;
         this.shape = shape;
         this.enumType = enumType;
+        this.uuidType = type != null && "java.util.UUID".equals(type.toString());
         this.nullable = type == null || !type.getKind().isPrimitive();
     }
 
@@ -34,6 +36,7 @@ final class SchemaValue {
             return new SchemaValue(type, Shape.DYNAMIC, false);
         }
         String name = type.toString();
+        if ("java.util.UUID".equals(name)) return new SchemaValue(type, Shape.STRING, false);
         if ("java.lang.String".equals(name) || "java.lang.Character".equals(name)
                 || "char".equals(name)) {
             return new SchemaValue(type, Shape.STRING, false);

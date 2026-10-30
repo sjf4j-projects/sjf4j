@@ -17,11 +17,13 @@ final class SchemaCompiler {
     private final ObjectCompiler objects;
     private final ScalarCompiler scalars;
     private final ArrayCompiler arrays;
+    private final OneOfCompiler oneOf;
 
     SchemaCompiler(ProcessorContext context) {
         this.objects = new ObjectCompiler(context, this);
         this.scalars = new ScalarCompiler();
         this.arrays = new ArrayCompiler(context, this);
+        this.oneOf = new OneOfCompiler(context, objects);
     }
 
     SchemaCheck.ObjectCheck compileObject(TypeMirror type,
@@ -43,6 +45,9 @@ final class SchemaCompiler {
             RefTarget target = resolveRef(snapshot, schema, schemaUri);
             if (target == null) return null;
             return compileValue(snapshot, target.value, value, target.uri, depth + 1);
+        }
+        if (schema.containsKey("oneOf")) {
+            return oneOf.compile(snapshot, schema, value, schemaUri, depth);
         }
         String kind = schema.getString("type");
         if (kind == null) return null;
