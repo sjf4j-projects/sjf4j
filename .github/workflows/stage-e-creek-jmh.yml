@@ -16,6 +16,23 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+      - name: Show generated sources from failed architecture assertions
+        shell: bash
+        run: |
+          ./gradlew :sjf4j-processor:test \
+            --tests 'org.sjf4j.processor.CompiledValidatorArchitectureTest' \
+            --tests 'org.sjf4j.processor.CompiledValidatorContractProcessorTest' || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for f in Path("sjf4j-processor/build/test-results/test").glob("*.xml"):
+              root = ET.parse(f).getroot()
+              for test in root.findall("testcase"):
+                  failure = test.find("failure")
+                  if failure is not None:
+                      print("FAILED:", test.attrib.get("name"))
+                      print(failure.attrib.get("message","")[:15000])
+          PY
       - name: Build JMH jar
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Run Creek schema validation three-fork comparison
@@ -25,7 +42,7 @@ jobs:
           JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' -print -quit)
           test -n "$JMH_JAR"
           java -cp "$JMH_JAR" org.openjdk.jmh.Main \
-            'org.sjf4j.testbench.schema.CreekSchemaBenchmark\\.(schema_is_valid_pojo|compiled_schema_is_valid_pojo_non_strict)$' \
+            'org.sjf4j.testbench.schema.CreekSchemaBenchmark\.(schema_is_valid_pojo|compiled_schema_is_valid_pojo_non_strict)$' \
             -f 3 -wi 3 -i 5 -w 300ms -r 300ms -tu us -bm avgt \
             -rf json -rff stage-e-creek.json
       - uses: actions/upload-artifact@v4

@@ -259,7 +259,7 @@ defaults):
 ```bash
 JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' -print -quit)
 java -cp "$JMH_JAR" org.openjdk.jmh.Main \
-  'org.sjf4j.testbench.schema.CreekSchemaBenchmark\\.(schema_is_valid_pojo|compiled_schema_is_valid_pojo_non_strict)
+  'org.sjf4j.testbench.schema.CreekSchemaBenchmark\.(schema_is_valid_pojo|compiled_schema_is_valid_pojo_non_strict)
 
 The unchanged Draft 2020-12 Creek schema is at
 `sjf4j-testbench/src/jmh/resources/schema/creek-2020-12.json`; its
