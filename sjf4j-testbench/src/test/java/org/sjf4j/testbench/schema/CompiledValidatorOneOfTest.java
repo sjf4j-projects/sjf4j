@@ -42,7 +42,7 @@ public class CompiledValidatorOneOfTest {
         @NodeProperty("kind")
         public final String kind = "a";
         private final String name;
-        public A(String name) { this.name = name; }
+        public A(@NodeProperty("name") String name) { this.name = name; }
         public String getName() { return name; }
     }
 
@@ -50,7 +50,7 @@ public class CompiledValidatorOneOfTest {
         @NodeProperty("kind")
         public final String kind = "b";
         private final int count;
-        public B(int count) { this.count = count; }
+        public B(@NodeProperty("count") int count) { this.count = count; }
         public int getCount() { return count; }
     }
 
@@ -63,7 +63,7 @@ public class CompiledValidatorOneOfTest {
 
     public static final class Model {
         private final List<Variant> items;
-        public Model(List<Variant> items) { this.items = items; }
+        public Model(@NodeProperty("items") List<Variant> items) { this.items = items; }
         public List<Variant> getItems() { return items; }
     }
 
