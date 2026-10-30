@@ -21,6 +21,7 @@ import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.testbench.model.CreatorUserRecord;
+import org.sjf4j.testbench.model.User;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayInputStream;
@@ -49,7 +50,7 @@ public class CreatorReadBenchmark {
     }
 
     // Exact same JSON content as the mutable-User CompiledReadBenchmark.
-    private static final String JSON_DATA = CompiledReadBenchmark.JSON_DATA;
+    private static final String JSON_DATA = User.JSON_DATA;
     private static final byte[] JSON_UTF8 = JSON_DATA.getBytes(StandardCharsets.UTF_8);
     private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
