@@ -2,6 +2,7 @@ package org.sjf4j.testbench.schema;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
@@ -57,19 +58,19 @@ class CompiledValidatorGenericOneOfTest {
 
     public static final class NumberModel {
         private final Integer number;
-        public NumberModel(Integer number) { this.number = number; }
+        public NumberModel(@NodeProperty("number") Integer number) { this.number = number; }
         public Integer getNumber() { return number; }
     }
 
     public static final class ArrayModel {
         private final List<Object> values;
-        public ArrayModel(List<Object> values) { this.values = values; }
+        public ArrayModel(@NodeProperty("values") List<Object> values) { this.values = values; }
         public List<Object> getValues() { return values; }
     }
 
     public static final class TextModel {
         private final String text;
-        public TextModel(String text) { this.text = text; }
+        public TextModel(@NodeProperty("text") String text) { this.text = text; }
         public String getText() { return text; }
     }
 

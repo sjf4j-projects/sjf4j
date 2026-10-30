@@ -97,7 +97,6 @@ final class ObjectCompiler {
         if (JsonType.of(raw) != JsonType.OBJECT) return null;
         JsonObject propertyMap = Nodes.toJsonObject(raw);
         Map<String, Property> javaProperties = context.properties.resolve(type);
-        // An object with no declared properties still enforces its JSON type.
 
         Object required = root.getNode("required");
         if (required != null) {
