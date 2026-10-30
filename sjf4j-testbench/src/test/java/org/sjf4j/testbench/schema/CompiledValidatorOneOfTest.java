@@ -77,6 +77,7 @@ class CompiledValidatorOneOfTest {
     void matchesRuntimeForCompiledAndUnknownSubtypes() {
         Validator compiled = CompiledInstances.create(Validator.class);
         SchemaPlan reference = JsonSchema.fromJson(SCHEMA).createPlan();
+        int caseIndex = 0;
         for (Model model : Arrays.asList(
                 new Model(List.of(new A("valid"), new B(2))),
                 new Model(List.of(new A("x"), new B(2))),
@@ -84,8 +85,11 @@ class CompiledValidatorOneOfTest {
                 new Model(List.of(new Other())),
                 new Model(Arrays.asList(new A("valid"), null))
         )) {
-            assertEquals(reference.isValid(model), compiled.valid(model));
-            assertEquals(reference.isValid(model, true), compiled.valid(model, true));
+            assertEquals(reference.isValid(model), compiled.valid(model),
+                    "oneOf case #" + caseIndex + " default");
+            assertEquals(reference.isValid(model, true), compiled.valid(model, true),
+                    "oneOf case #" + caseIndex + " strict");
+            caseIndex++;
         }
     }
 }
