@@ -149,7 +149,34 @@ final class SchemaCompiler {
             SchemaCheck.Kind kind = negation ? SchemaCheck.Kind.NOT
                     : "allOf".equals(keyword) ? SchemaCheck.Kind.ALL_OF
                     : SchemaCheck.Kind.ANY_OF;
-            checks.add(new SchemaCheck.ApplicatorCheck(kind, branches));
+            if (kind == SchemaCheck.Kind.NOT) {
+                SchemaCheck child = branches.get(0);
+                checks.add(child.kind == SchemaCheck.Kind.PASS ? new SchemaCheck.Reject()
+                        : child.kind == SchemaCheck.Kind.REJECT ? new SchemaCheck.Pass()
+                        : new SchemaCheck.ApplicatorCheck(kind, branches));
+            } else if (kind == SchemaCheck.Kind.ALL_OF) {
+                boolean rejects = false;
+                for (SchemaCheck branch : branches) {
+                    if (branch.kind == SchemaCheck.Kind.REJECT) rejects = true;
+                }
+                if (rejects) checks.add(new SchemaCheck.Reject());
+                else {
+                    branches.removeIf(branch -> branch.kind == SchemaCheck.Kind.PASS);
+                    checks.add(branches.isEmpty() ? new SchemaCheck.Pass()
+                            : new SchemaCheck.ApplicatorCheck(kind, branches));
+                }
+            } else {
+                boolean passes = false;
+                for (SchemaCheck branch : branches) {
+                    if (branch.kind == SchemaCheck.Kind.PASS) passes = true;
+                }
+                if (passes) checks.add(new SchemaCheck.Pass());
+                else {
+                    branches.removeIf(branch -> branch.kind == SchemaCheck.Kind.REJECT);
+                    checks.add(branches.isEmpty() ? new SchemaCheck.Reject()
+                            : new SchemaCheck.ApplicatorCheck(kind, branches));
+                }
+            }
         }
         if (checks.isEmpty()) return new SchemaCheck.Pass();
         for (SchemaCheck check : checks) {

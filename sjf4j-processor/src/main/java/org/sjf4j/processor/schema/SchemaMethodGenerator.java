@@ -104,6 +104,10 @@ final class SchemaMethodGenerator {
                 SchemaCompiler compiler = new SchemaCompiler(context, nullAsMissing);
                 direct = compiler.compileObject(parameterType, bound.snapshot, nullAsMissing);
                 if (direct == null) direct = compiler.compileRoot(parameterType, bound.snapshot);
+                if (direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
+                    booleanLiteral = "false";
+                    direct = null;
+                }
             }
         }
 

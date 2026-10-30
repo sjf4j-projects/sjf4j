@@ -145,7 +145,8 @@ final class SchemaEmitter {
                 lines.addAll(emit(object, expression, plan, strictFormat, planName + "_"));
                 return;
             case REJECT:
-                lines.add("return false;");
+                // Keep following checks reachable in Java source; JIT folds this branch.
+                lines.add("if (java.lang.Boolean.TRUE) return false;");
                 return;
             case LITERAL:
                 emitLiteral(lines, (SchemaCheck.LiteralCheck) check, value, expression);
