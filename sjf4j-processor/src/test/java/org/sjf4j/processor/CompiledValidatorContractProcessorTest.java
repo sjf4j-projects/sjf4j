@@ -82,7 +82,9 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(generated.contains("Numbers.compare"), generated);
         assertTrue(generated.contains("codePointCount"), generated);
         assertTrue(generated.contains("for (") && generated.contains(".size()"), generated);
-        assertTrue(generated.contains("SUB_") && generated.contains("_ITEM.isValid("), generated);
+        assertTrue(generated.contains("private static boolean _schema_"), generated);
+        assertTrue(generated.contains("_matches_"), generated);
+        assertFalse(generated.contains("_ITEM.isValid("), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
     }
 

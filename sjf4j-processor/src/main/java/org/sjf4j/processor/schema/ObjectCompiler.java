@@ -94,8 +94,8 @@ final class ObjectCompiler {
         }
         if (!"object".equals(root.getString("type"))) return null;
         Object raw = root.getNode("properties");
-        if (raw != null && JsonType.of(raw) != JsonType.OBJECT) return null;
-        JsonObject propertyMap = raw == null ? new JsonObject() : Nodes.toJsonObject(raw);
+        if (JsonType.of(raw) != JsonType.OBJECT) return null;
+        JsonObject propertyMap = Nodes.toJsonObject(raw);
         Map<String, Property> javaProperties = context.properties.resolve(type);
         // An object with no declared properties still enforces its JSON type.
 
@@ -139,7 +139,7 @@ final class ObjectCompiler {
         }
 
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
-        int directCount = 1; // type:object itself is an assertion
+        int directCount = (required != null ? 1 : 0) + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0);
         for (String name : propertyMap.keySet()) {
             Property property = dynamic ? null : javaProperties.get(name);
             if (!dynamic && property == null) continue;

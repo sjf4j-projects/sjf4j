@@ -48,13 +48,11 @@ class CompiledValidatorArchitectureTest {
 
         assertEquals(1, occurrences(generated, "private static final class PLAN_0 {"), generated);
         assertFalse(generated.contains("private static final class PLAN_1 {"), generated);
-        java.util.regex.Matcher fragment = java.util.regex.Pattern.compile(
-                "static final SchemaPlan (SUB_[0-9]+_ITEM) =")
-                .matcher(generated);
-        assertTrue(fragment.find(), generated);
-        String subplanField = fragment.group(1);
-        assertFalse(fragment.find(), generated);
-        assertEquals(2, occurrences(generated, "." + subplanField + ".isValid("), generated);
+        // Both boolean methods now compile the overlapping oneOf branches.
+        assertTrue(generated.contains("private static boolean _schema_"), generated);
+        assertTrue(generated.contains("_matches_"), generated);
+        assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
         assertTrue(generated.contains(".ROOT.requireValid("), generated);
         assertTrue(generated.contains(".ROOT.validate("), generated);
@@ -77,8 +75,8 @@ class CompiledValidatorArchitectureTest {
         assertEquals(1, occurrences(generated, "private static final class PLAN_0 {"), generated);
         assertFalse(generated.contains("private static final class PLAN_1 {"), generated);
         assertEquals(1, occurrences(generated, "new SchemaRegistry()"), generated);
-        assertEquals(1, occurrences(generated, "static final SchemaPlan SUB_1_ITEM ="), generated);
-        assertEquals(2, occurrences(generated, "Fallback.PLAN_0.SUB_1_ITEM.isValid("), generated);
+        assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
+        assertTrue(generated.contains("_matches_"), generated);
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.requireValid("), generated);
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
     }
@@ -123,14 +121,16 @@ class CompiledValidatorArchitectureTest {
     }
 
     @Test
-    void rejectsMixedDirectAndUnsupportedSubtreeWhenFallbackIsDisabled() throws Exception {
+    void compilesPreviouslyMixedOneOfWithoutFallback() throws Exception {
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=false) public interface Check { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(MIXED) + ") "
                 + "boolean valid(Model value); }";
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
-        assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains("_matches_"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
     }
 
     private static NavigatorTestCompiler.Result compile(String model, String validator) throws Exception {
