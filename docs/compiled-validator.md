@@ -78,38 +78,52 @@ configuration before it is needed.
 
 ## Direct keyword coverage
 
-**Status meaning:** Direct = a check emitted in Java without a runtime plan;
-Conditional = only specific root/POJO shapes, with other subtrees possibly
-falling back; No = runtime `SchemaPlan` is used. The table describes
-the **main-source** `ValidationGenerator`, not retired incubator experiments.
-Combination restrictions always apply: currently the direct POJO root can
-contain only `type: object` and `properties`, must match all readable Java
-properties, and must use a public final POJO with public no-throw getters.
+**Status meaning:** Direct = emitted Java checks without a runtime plan;
+Conditional = a known Java representation/root shape and/or localized
+`SchemaPlan` fallback; No = use `SchemaPlan` for that constraint. This
+matrix covers **the main-source** `ValidationGenerator`, not the retired
+incubator prototype.
 
-| Keyword / feature | Direct code generation | Runtime SchemaPlan | Creek milestone |
+The first-stage POJO path requires a **public final POJO with public readable
+properties** (public getters without checked exceptions, or public fields).
+The root may contain `type:object`, `properties`, `required`,
+`additionalProperties` (boolean), and non-applicative metadata including
+`$schema`, `title`, `definitions`, and `$defs`. For
+`additionalProperties:false`, all readable Java properties must appear in
+the schema's declared property set; otherwise the complete root falls back.
+Required keys refer to readable POJO properties: **the value may be null**
+without violating `required`, although its property schema may reject null.
+
+| Keyword / feature | Direct code generation | Runtime SchemaPlan | Creek status |
 | --- | --- | --- | --- |
-| Boolean root schemas (`true`, `false`) | Yes | Yes | Already supported |
-| `type: object`, `properties` | Conditional | Yes | Expand root support |
-| `type: string` | Conditional for `String` properties | Yes | Direct |
-| `minLength`, `maxLength` | Conditional for direct strings (code-point length) | Yes | Direct |
-| `required` | No | Yes | Direct |
-| `additionalProperties` | No | Yes | Direct |
-| `type: number`, `type: integer` | No | Yes | Direct |
-| `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | No | Yes | Direct |
-| `enum`, `const` | No | Yes | Direct |
-| `type: array`, `items` | No | Yes | Direct |
-| `minItems`, `maxItems` | No | Yes | Direct |
-| `format` | No | Yes (subject to `strictFormat`) | Direct, preserving value-codec semantics |
-| `$ref`, `definitions`, `$defs` | Only trivial root reference to a boolean document | Yes | Compile known local references |
-| `oneOf` | No | Yes | Later milestone |
+| Boolean root schemas (`true`, `false`) | Yes | Yes | Supported |
+| `type:object`, `properties` | Conditional, directly accessible POJO fields | Yes | Phase 1 |
+| `required` | Conditional, static readable-property presence | Yes | Phase 1 |
+| `additionalProperties:false` | Conditional, closed static POJO properties | Yes | Phase 1 |
+| `type:string` | Native `String`, `Character`, and enum fields/items | Yes | Phase 1 |
+| `minLength`, `maxLength` | Direct string Unicode code-point length | Yes | Phase 1 |
+| `enum` | Direct for string-only enumeration of native strings/enums | Yes | Phase 1 |
+| `const` | No | Yes | Later |
+| `type:number`, `type:integer` | Native numeric Java field types | Yes | Phase 1 |
+| `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct numeric comparisons | Yes | Phase 1 |
+| `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes | Phase 1 |
+| `minItems`, `maxItems` | Direct Collection size checks | Yes | Phase 1 |
+| `items` | Native string/number item checks; otherwise one cached item subplan | Yes | Phase 1 mixed |
+| `format` | No | Yes, honors `strictFormat` | Later |
+| `$ref`, `definitions`, `$defs` | Trivial boolean-root reference; local definitions usable by item fallback | Yes | Partial |
+| `oneOf` | No (localized item `SchemaPlan` for Creek) | Yes | Next phase |
 | `anyOf`, `allOf`, `not` | No | Yes | Later |
 | `if`, `then`, `else` | No | Yes | Later |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes | Later |
-| Root metadata (`$schema`, `title`, etc.) | Not accepted by direct-root path yet | Yes | Ignore when semantically inert |
+| Root metadata (`$schema`, `title`, etc.) | Accepted when non-applicative | Yes | Phase 1 |
 
-In partial direct mode, unsupported property subtrees use cached fragment
-`SchemaPlan` instances. `fallback=false` currently rejects these mixed cases;
-direct coverage **does not** mean a full schema has been compiled.
+**Conformance boundary:** direct property checks are selected only for known
+native Java value shapes; custom `@NodeValue`/codec types remain on the full
+runtime path. Unsupported properties fall back as whole subtrees, not partial
+predicates. Array `items` can fall back independently while array size checks
+stay direct. `fallback=false` rejects **any** required subplan at compilation
+time. Support is about the listed combinations, not arbitrary JSON Schema
+keyword combinations.
 
 ## Creek benchmark milestone
 
@@ -119,16 +133,18 @@ benchmark is `CreekSchemaBenchmark`. It includes `required`,
 `additionalProperties:false`, decimal comparison, an enum, lists,
 `minLength`, polymorphic `oneOf` with `$ref`, and UUID format.
 
-1. Compile the root object and all non-polymorphic properties directly,
-   retaining a localized `SchemaPlan` for the `oneOf` elements.
-2. Compile the two known polymorphic branches and their local references.
+1. **Phase 1 (implemented):** direct root, `required`, closed
+   `additionalProperties`, native numeric/enum/string checks and array
+   sizes/items. The original Creek `oneOf` remains a localized cached item
+   `SchemaPlan`; this is **mixed compiled/runtime**, not full compilation.
+2. **Next:** compile the two known polymorphic branches and their local
+   references (including UUID value-codec handling).
 3. Require `@CompiledValidator(fallback=false)` to compile the **original**
-   Creek schema without changing it; check correctness against runtime
-   `SchemaPlan` for all three return modes and both format modes.
-4. Benchmark the fully compiled `boolean` path separately from fail-fast
-   diagnostics and complete `ValidationResult` collection. Keep JMH inputs,
-   format mode, and resource setup equivalent.
+   Creek schema unchanged, and compare all three return modes against
+   `SchemaPlan` for strict and non-strict format.
+4. Benchmark the full boolean path separately from fail-fast diagnostics and
+   aggregate `ValidationResult`. Measure with JMH, same model and format mode.
 
-This is a *target*, not a claim that Creek is fully compiled today. At present
-its complete schema uses a runtime-plan fallback. The original Creek benchmark
-is non-strict, so comparisons use `strictFormat=false` on the new API.
+The original Creek benchmark is non-strict, so direct performance comparisons
+use `strictFormat=false`. CI compiles the benchmark and runs correctness
+fixtures; **no JMH throughput result is claimed** from CI alone.

@@ -326,9 +326,10 @@ public final class ValidationGenerator {
     }
 
     /**
-     * Directly compile known String constraints. Other property subtrees use
-     * their existing SchemaPlan via JSON Pointer, but only when the root
-     * consists of type + properties (no context-dependent root keywords).
+     * Compiles a closed, statically readable POJO against an object schema.
+     * Root metadata and local definitions do not affect object evaluation.
+     * Unsupported property constraints are delegated to a cached fragment plan,
+     * never discarded.
      */
     private DirectCheck prepareDirect(TypeMirror type, String variable,
                                       SchemaField field, String strictFormat) {
@@ -342,76 +343,270 @@ public final class ValidationGenerator {
                 owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return null;
 
         Object parsed = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
-        if (!org.sjf4j.JsonType.of(parsed).isObject()) return null;
+        if (org.sjf4j.JsonType.of(parsed) != org.sjf4j.JsonType.OBJECT) return null;
         org.sjf4j.JsonObject root = org.sjf4j.Nodes.toJsonObject(parsed);
         for (String key : root.keySet()) {
-            if (!key.equals("type") && !key.equals("properties")) return null;
+            if (!key.equals("type") && !key.equals("properties") && !key.equals("required")
+                    && !key.equals("additionalProperties") && !isAnnotation(key)) return null;
         }
         if (!"object".equals(root.getString("type"))) return null;
         Object raw = root.getNode("properties");
-        if (raw == null) return null;
+        if (org.sjf4j.JsonType.of(raw) != org.sjf4j.JsonType.OBJECT) return null;
         org.sjf4j.JsonObject propertyMap = org.sjf4j.Nodes.toJsonObject(raw);
         Map<String, Property> javaProperties = context.properties.resolve(type);
-        if (javaProperties.isEmpty() || propertyMap.size() != javaProperties.size()) return null;
+        if (javaProperties.isEmpty()) return null;
 
+        // POJOs expose declared readable properties even when their values are
+        // null. A required property therefore needs a getter, not a non-null value.
+        Object required = root.getNode("required");
+        if (required != null) {
+            if (org.sjf4j.JsonType.of(required) != org.sjf4j.JsonType.ARRAY) return null;
+            for (Object name : org.sjf4j.Nodes.toJsonArray(required)) {
+                if (!(name instanceof String) || !javaProperties.containsKey(name)) return null;
+            }
+        }
+        Object additional = root.getNode("additionalProperties");
+        if (additional != null) {
+            if (!(additional instanceof Boolean)) return null;
+            if (Boolean.FALSE.equals(additional) && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
+                // Extra Java properties would always violate additionalProperties:false;
+                // use the complete runtime plan rather than silently ignoring them.
+                return null;
+            }
+        }
+        for (String name : propertyMap.keySet()) {
+            if (!javaProperties.containsKey(name)) {
+                // An absent POJO property does not trigger the properties keyword.
+                // It is safe when it is not required.
+                if (isRequired(required, name)) return null;
+            }
+        }
         for (Property property : javaProperties.values()) {
-            if (!propertyMap.containsKey(property.name()) ||
-                    property.read() == null || !property.read().isMethod() ||
+            if (property.read() == null ||
                     !property.read().member().getModifiers().contains(Modifier.PUBLIC) ||
-                    !((ExecutableElement) property.read().member()).getThrownTypes().isEmpty() ||
+                    (property.read().isMethod() &&
+                            !((ExecutableElement) property.read().member()).getThrownTypes().isEmpty()) ||
                     !property.name().matches("[a-zA-Z0-9_]+")) return null;
         }
 
-        java.util.List<String> statements = new java.util.ArrayList<String>();
-        java.util.List<Subplan> subplans = new java.util.ArrayList<Subplan>();
+        List<String> statements = new ArrayList<String>();
+        List<Subplan> subplans = new ArrayList<Subplan>();
         int directCount = 0;
         int index = 0;
         for (Map.Entry<String, Property> entry : javaProperties.entrySet()) {
-            Object schemaValue = propertyMap.getNode(entry.getKey());
-            org.sjf4j.JsonObject schema =
-                    org.sjf4j.JsonType.of(schemaValue) == org.sjf4j.JsonType.OBJECT
-                            ? org.sjf4j.Nodes.toJsonObject(schemaValue) : null;
-            boolean stringSchema = schema != null &&
-                    "string".equals(schema.getString("type")) &&
-                    "java.lang.String".equals(entry.getValue().read().type().toString());
-            if (stringSchema) {
-                for (String key : schema.keySet()) {
-                    if (!key.equals("type") && !key.equals("minLength") &&
-                            !key.equals("maxLength")) stringSchema = false;
-                }
-            }
-            Integer min = null;
-            Integer max = null;
-            if (stringSchema) {
-                min = schema.getInt("minLength");
-                max = schema.getInt("maxLength");
-                if (min != null && min < 0 || max != null && max < 0) stringSchema = false;
-            }
-
+            String name = entry.getKey();
+            if (!propertyMap.containsKey(name)) continue;
             String local = "_property" + index;
-            statements.add((stringSchema ? "String " : "Object ") + local
-                    + " = " + variable + "." + entry.getValue().read().memberName() + "();");
-            if (stringSchema) {
+            String access = entry.getValue().read().memberName()
+                    + (entry.getValue().read().isMethod() ? "()" : "");
+            List<String> checks = new ArrayList<String>();
+            List<Subplan> nested = new ArrayList<Subplan>();
+            Object propertySchema = propertyMap.getNode(name);
+            boolean supported = compileValue(checks, nested, propertySchema, entry.getValue().read().type(), local,
+                    "Fallback." + field.name, "SUB_" + index,
+                    snapshot.selectedUri + "#/properties/" + name, strictFormat, 0);
+            statements.add("Object " + local + " = " + variable + "." + access + ";");
+            if (supported) {
                 directCount++;
-                statements.add("if (" + local + " == null) return false;");
-                if (min != null || max != null) {
-                    String count = "_length" + index;
-                    statements.add("int " + count + " = " + local
-                            + ".codePointCount(0, " + local + ".length());");
-                    if (min != null) statements.add("if (" + count + " < " + min + ") return false;");
-                    if (max != null) statements.add("if (" + count + " > " + max + ") return false;");
-                }
+                statements.addAll(checks);
+                subplans.addAll(nested);
             } else {
-                String subName = "SUB_" + index;
-                String fragment = "#/properties/" + entry.getKey();
-                subplans.add(new Subplan(subName, snapshot.selectedUri + fragment));
-                statements.add("if (!Fallback." + field.name + "." + subName + ".isValid(" + local
-                        + ", " + strictFormat + ")) return false;");
+                // The whole property must be checked by the fallback plan: a
+                // partially emitted predicate could change JSON Schema semantics.
+                subplans.add(new Subplan("SUB_" + index,
+                        snapshot.selectedUri + "#/properties/" + name));
+                statements.add("if (!Fallback." + field.name + ".SUB_" + index
+                        + ".isValid(" + local + ", " + strictFormat + ")) return false;");
             }
             index++;
         }
         if (directCount == 0) return null;
         return new DirectCheck(statements, subplans);
+    }
+
+    /** Only JSON Schema annotation / definition keywords may be skipped. */
+    private static boolean isAnnotation(String key) {
+        return key.equals("$schema") || key.equals("$id") || key.equals("title")
+                || key.equals("description") || key.equals("default") || key.equals("examples")
+                || key.equals("$comment") || key.equals("deprecated") || key.equals("readOnly")
+                || key.equals("writeOnly") || key.equals("definitions") || key.equals("$defs");
+    }
+
+    private static boolean isRequired(Object required, String key) {
+        if (required == null) return false;
+        for (Object value : org.sjf4j.Nodes.toJsonArray(required)) {
+            if (key.equals(value)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Generates value constraints without materializing a generic node tree.
+     * On an unsupported subtree this method returns false; the caller emits a
+     * full subtree fallback instead. Localized array-items fallback remains
+     * possible without discarding the array's direct size checks.
+     */
+    private boolean compileValue(List<String> lines, List<Subplan> subplans,
+                                 Object rawSchema, TypeMirror declaredType,
+                                 String value, String planClass,
+                                 String planName, String schemaUri,
+                                 String strictFormat, int depth) {
+        if (depth > 8) return false;
+        if (rawSchema instanceof Boolean) {
+            if (!((Boolean) rawSchema).booleanValue()) lines.add("return false;");
+            return true;
+        }
+        if (org.sjf4j.JsonType.of(rawSchema) != org.sjf4j.JsonType.OBJECT) return false;
+        org.sjf4j.JsonObject schema = org.sjf4j.Nodes.toJsonObject(rawSchema);
+        String kind = schema.getString("type");
+        if (kind == null) return false;
+
+        if ("string".equals(kind)) {
+            // Custom value codecs may expose a different JSON shape. Do not
+            // bypass their conversion by guessing from a Java field type.
+            if (!isNativeString(declaredType)) return false;
+            for (String key : schema.keySet()) {
+                if (!key.equals("type") && !key.equals("minLength") && !key.equals("maxLength")
+                        && !key.equals("enum") && !isAnnotation(key)) return false;
+            }
+            Integer min = schema.getInt("minLength");
+            Integer max = schema.getInt("maxLength");
+            if ((schema.containsKey("minLength") && (min == null || min < 0))
+                    || (schema.containsKey("maxLength") && (max == null || max < 0))) return false;
+            Object enumeration = schema.getNode("enum");
+            List<String> choices = new ArrayList<String>();
+            if (enumeration != null) {
+                if (org.sjf4j.JsonType.of(enumeration) != org.sjf4j.JsonType.ARRAY) return false;
+                for (Object e : org.sjf4j.Nodes.toJsonArray(enumeration)) {
+                    if (!(e instanceof String)) return false;
+                    choices.add((String) e);
+                }
+            }
+            // String and Enum have different native Java types but the same
+            // JSON string representation. Use the enum name, never toString().
+            String textName = "_text" + depth + "_" + planName;
+            lines.add("if (!(" + value + " instanceof String) && !(" + value
+                    + " instanceof Enum) && !(" + value + " instanceof Character)) return false;");
+            lines.add("String " + textName + " = " + value + " instanceof String ? (String) "
+                    + value + " : " + value + " instanceof Enum ? ((Enum<?>) " + value
+                    + ").name() : " + value + ".toString();");
+            if (min != null || max != null) {
+                String len = "_length" + depth + "_" + planName;
+                lines.add("int " + len + " = " + textName
+                        + ".codePointCount(0, " + textName + ".length());");
+                if (min != null) lines.add("if (" + len + " < " + min + ") return false;");
+                if (max != null) lines.add("if (" + len + " > " + max + ") return false;");
+            }
+            if (enumeration != null) {
+                StringBuilder condition = new StringBuilder();
+                for (String choice : choices) {
+                    if (condition.length() != 0) condition.append(" && ");
+                    condition.append("!").append(textName).append(".equals(")
+                            .append(javaLiteral(choice)).append(")");
+                }
+                if (condition.length() == 0) lines.add("return false;");
+                else lines.add("if (" + condition + ") return false;");
+            }
+            return true;
+        }
+
+        if ("number".equals(kind) || "integer".equals(kind)) {
+            if (!isNativeNumber(declaredType)) return false;
+            for (String key : schema.keySet()) {
+                if (!key.equals("type") && !key.equals("minimum") && !key.equals("maximum")
+                        && !key.equals("exclusiveMinimum") && !key.equals("exclusiveMaximum")
+                        && !isAnnotation(key)) return false;
+            }
+            lines.add("if (!(" + value + " instanceof Number)) return false;");
+            if ("integer".equals(kind)) {
+                lines.add("if (!org.sjf4j.util.Numbers.isSemanticInteger((Number) "
+                        + value + ")) return false;");
+            }
+            for (String key : new String[]{"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"}) {
+                Object limit = schema.getNode(key);
+                if (limit == null) continue;
+                if (!(limit instanceof Number)) return false;
+                String bound = decimalConstant((Number) limit);
+                String comparison = "org.sjf4j.util.Numbers.compare((Number) " + value + ", " + bound + ")";
+                String operator = key.equals("minimum") ? " < 0"
+                        : key.equals("maximum") ? " > 0"
+                        : key.equals("exclusiveMinimum") ? " <= 0" : " >= 0";
+                lines.add("if (" + comparison + operator + ") return false;");
+            }
+            return true;
+        }
+
+        if ("array".equals(kind)) {
+            if (declaredType == null || !(declaredType instanceof DeclaredType)) return false;
+            String rawCollection = context.typeUtils.erasure(declaredType).toString();
+            if (!rawCollection.equals("java.util.List") && !rawCollection.equals("java.util.Set")
+                    && !rawCollection.equals("java.util.Collection")) return false;
+            for (String key : schema.keySet()) {
+                if (!key.equals("type") && !key.equals("items") && !key.equals("minItems")
+                        && !key.equals("maxItems") && !isAnnotation(key)) return false;
+            }
+            Integer min = schema.getInt("minItems");
+            Integer max = schema.getInt("maxItems");
+            if ((schema.containsKey("minItems") && (min == null || min < 0))
+                    || (schema.containsKey("maxItems") && (max == null || max < 0))) return false;
+            lines.add("if (!(" + value + " instanceof java.util.Collection)) return false;");
+            String size = "((java.util.Collection<?>) " + value + ").size()";
+            if (min != null) lines.add("if (" + size + " < " + min + ") return false;");
+            if (max != null) lines.add("if (" + size + " > " + max + ") return false;");
+            if (!schema.containsKey("items")) return true;
+            Object itemSchema = schema.getNode("items");
+            String itemVar = "_item" + depth + "_" + planName;
+            List<String> itemLines = new ArrayList<String>();
+            List<Subplan> itemPlans = new ArrayList<Subplan>();
+            List<? extends TypeMirror> args = ((DeclaredType) declaredType).getTypeArguments();
+            TypeMirror itemType = args.size() == 1 ? args.get(0) : null;
+            boolean directItems = compileValue(itemLines, itemPlans, itemSchema, itemType, itemVar,
+                    planClass, planName + "_ITEM", schemaUri + "/items", strictFormat, depth + 1);
+            lines.add("for (Object " + itemVar + " : (java.util.Collection<?>) " + value + ") {");
+            if (directItems) {
+                for (String line : itemLines) lines.add("    " + line);
+                subplans.addAll(itemPlans);
+            } else {
+                String sub = planName + "_ITEM";
+                subplans.add(new Subplan(sub, schemaUri + "/items"));
+                lines.add("    if (!" + planClass + "." + sub + ".isValid("
+                        + itemVar + ", " + strictFormat + ")) return false;");
+            }
+            lines.add("}");
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isNativeString(TypeMirror type) {
+        if (type == null) return false;
+        String name = type.toString();
+        if (name.equals("java.lang.String") || name.equals("java.lang.Character")
+                || name.equals("char")) return true;
+        TypeElement element = context.types.typeElement(type);
+        return element != null && element.getKind() == javax.lang.model.element.ElementKind.ENUM;
+    }
+
+    private static boolean isNativeNumber(TypeMirror type) {
+        if (type == null) return false;
+        switch (type.toString()) {
+            case "byte": case "short": case "int": case "long":
+            case "float": case "double":
+            case "java.lang.Byte": case "java.lang.Short":
+            case "java.lang.Integer": case "java.lang.Long":
+            case "java.lang.Float": case "java.lang.Double":
+            case "java.math.BigDecimal": case "java.math.BigInteger":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static String decimalConstant(Number number) {
+        String decimal = number.toString();
+        if ("0".equals(decimal) || "0.0".equals(decimal)) return "java.math.BigDecimal.ZERO";
+        if ("1".equals(decimal) || "1.0".equals(decimal)) return "java.math.BigDecimal.ONE";
+        return "new java.math.BigDecimal(" + javaLiteral(decimal) + ")";
     }
 
     private static String snapshotKey(SchemaResourceResolver.Snapshot snapshot) {

@@ -110,10 +110,12 @@ public class CreekSchemaBenchmark {
         plan.requireValid(model, false);
         plan.requireValid(deserializedModel, false);
         plan.requireValid(mapNode, false);
-        // The compiled fallback uses strict format checking, so verify against
-        // the same SchemaPlan mode rather than the original non-strict baseline.
+        // The generated validator directly checks ordinary Creek properties
+        // and uses a child SchemaPlan only for polymorphic oneOf items.
         if (!plan.isValid(model, true) || !compiledValidator.isValid(model)
-                || !compiledValidator.isValid(deserializedModel)) {
+                || !compiledValidator.isValid(model, false)
+                || !compiledValidator.isValid(deserializedModel)
+                || !compiledValidator.isValid(deserializedModel, false)) {
             throw new IllegalStateException("Compiled Creek validation disagrees with the strict schema plan");
         }
         if (!model.equals(deserializedModel)
@@ -124,15 +126,15 @@ public class CreekSchemaBenchmark {
     }
 
     /**
-     * The full Creek schema contains required, additionalProperties, definitions,
-     * arrays and oneOf/$ref, so the current code generator falls back to the
-     * existing SchemaPlan. These methods measure that generated dispatch path,
-     * not a fully inlined Creek validator.
+     * Creek phase 1: direct root required/additionalProperties, decimal, enum,
+     * String and List checks; only the oneOf array-item branch uses a cached
+     * SchemaPlan fragment. The exact original Creek schema is unchanged.
      */
     @CompiledValidator
     public interface CreekValidator {
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value);
+        boolean isValid(TestModel value, boolean strictFormat);
     }
 
     /** Strict format control matching the generated validator's fallback path. */
@@ -141,10 +143,16 @@ public class CreekSchemaBenchmark {
         return plan.isValid(model, true);
     }
 
-    /** Generated entry point; full Creek schema currently uses SchemaPlan fallback. */
+    /** Generated direct Creek checks with strict format assertion. */
     @Benchmark
     public boolean compiled_schema_is_valid_pojo() {
         return compiledValidator.isValid(model);
+    }
+
+    /** Equivalent format behavior to the original non-strict Creek baseline. */
+    @Benchmark
+    public boolean compiled_schema_is_valid_pojo_non_strict() {
+        return compiledValidator.isValid(model, false);
     }
 
     @Benchmark
