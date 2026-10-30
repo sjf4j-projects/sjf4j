@@ -12,6 +12,11 @@ import java.util.List;
 final class SchemaEmitter {
     List<String> emit(SchemaCheck.ObjectCheck check, String variable, SchemaFallbackEmitter.Plan plan,
                       String strictFormat) {
+        return emit(check, variable, plan, strictFormat, "");
+    }
+
+    private List<String> emit(SchemaCheck.ObjectCheck check, String variable,
+                              SchemaFallbackEmitter.Plan plan, String strictFormat, String prefix) {
         List<String> statements = new ArrayList<String>();
         if (check.dynamic) {
             for (SchemaCheck.Required required : check.required) {
@@ -47,7 +52,7 @@ final class SchemaEmitter {
 
         int index = 0;
         for (SchemaCheck.PropertyCheck property : check.properties) {
-            String local = "_property" + index;
+            String local = prefix + "_property" + index;
             String access = check.dynamic
                     ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
@@ -61,7 +66,7 @@ final class SchemaEmitter {
             }
             List<String> lines = new ArrayList<String>();
             emitValue(lines, plan, property.check, property.value, local,
-                    "SUB_" + index, strictFormat, 0);
+                    prefix + "SUB_" + index, strictFormat, 0);
             for (String line : lines) {
                 statements.add((check.dynamic || check.nullAsMissing ? "    " : "") + line);
             }
@@ -125,7 +130,7 @@ final class SchemaEmitter {
                     + expression + ".getClass() == " + subtype.type + ".class) {");
             lines.add(indent + "    " + subtype.type + " " + typed
                     + " = (" + subtype.type + ") " + expression + ";");
-            for (String source : emit(subtype.check, typed, plan, strictFormat)) {
+            for (String source : emit(subtype.check, typed, plan, strictFormat, typed + "_")) {
                 // Shared local naming is safe: every subtype occupies a block.
                 lines.add(indent + "    " + source);
             }
