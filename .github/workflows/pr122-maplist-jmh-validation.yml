@@ -1,0 +1,25 @@
+name: PR122 Map/List JMH Validation
+
+on:
+  push:
+    branches:
+      - experiment/pr122-maplist-jmh-check-v2-20261030
+
+jobs:
+  jmh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile generated JMH and annotated binders
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Smoke run new and existing benchmark setup
+        run: |
+          JAR=$(find sjf4j-testbench/build/libs -name '*jmh.jar' | head -n 1)
+          java -jar "$JAR" \
+            '.*(CompiledMapListBenchmark\.(jackson2_map_string_raw|fastjson2_list_string_compiled|jsonp_tree_string_native|simple_map_utf8_compiled)|CompiledReadBenchmark\.jackson2_pojo_string_compiled)$' \
+            -f 1 -wi 1 -i 1 -w 100ms -r 100ms
