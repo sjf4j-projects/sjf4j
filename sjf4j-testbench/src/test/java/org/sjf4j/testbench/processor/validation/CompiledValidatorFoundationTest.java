@@ -158,6 +158,36 @@ class CompiledValidatorFoundationTest {
         boolean valid(DirectBean input);
     }
 
+    // The generated _Impl.java should call getName() directly, then invoke the
+    // pre-resolved #/properties/tags sub-schema for the unsupported keyword.
+    @Test
+    void mixesDirectGetterChecksWithPointerSubschemaFallback() {
+        MixedValidator compiled = CompiledInstances.create(MixedValidator.class);
+        assertTrue(compiled.test(new MixedBean("Alice", java.util.Arrays.asList(1, 2))));
+        assertFalse(compiled.test(new MixedBean("A", java.util.Arrays.asList(1, 2))));
+        assertFalse(compiled.test(new MixedBean("Alice", java.util.Arrays.asList(1, 1))));
+    }
+
+    public static final class MixedBean {
+        private String name;
+        private java.util.List<Integer> tags;
+        public MixedBean() {}
+        public MixedBean(String name, java.util.List<Integer> tags) {
+            this.name = name;
+            this.tags = tags;
+        }
+        public String getName() { return name; }
+        public java.util.List<Integer> getTags() { return tags; }
+    }
+
+    @CompiledValidator
+    public interface MixedValidator {
+        @ValidJsonSchema("{\"type\":\"object\",\"properties\":{"
+                + "\"name\":{\"type\":\"string\",\"minLength\":2},"
+                + "\"tags\":{\"type\":\"array\",\"uniqueItems\":true}}}")
+        boolean test(MixedBean value);
+    }
+
     @ValidJsonSchema
     public static final class HTTPRequest {
         private String url;

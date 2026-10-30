@@ -40,29 +40,6 @@ public class SchemaRegistry {
         this.defaultDialect = defaultDialect;
     }
 
-    /**
-     * Creates an isolated registry from embedded schema documents.
-     * All resources are indexed before any references are compiled. No file or
-     * classpath lookup is performed for user-provided schemas.
-     */
-    public static SchemaRegistry fromDocuments(String[] uris, String[] documents) {
-        if (uris == null || documents == null || uris.length == 0 ||
-                uris.length != documents.length) {
-            throw new IllegalArgumentException("invalid schema resources");
-        }
-        SchemaRegistry result = new SchemaRegistry();
-        for (int i = 0; i < uris.length; i++) {
-            URI uri = URI.create(uris[i]);
-            JsonSchema schema = JsonSchema.fromJson(documents[i]);
-            if (schema instanceof BooleanSchema) {
-                result.putPlan(uri, SchemaPlan.of(uri, PathSegment.Root.INSTANCE, (BooleanSchema) schema));
-            } else {
-                result.index(uri, schema);
-            }
-        }
-        return result;
-    }
-
     /** Creates a registry defaulting to draft 2020-12. */
     public SchemaRegistry() {
         this(SchemaDialect.DRAFT_2020_12);

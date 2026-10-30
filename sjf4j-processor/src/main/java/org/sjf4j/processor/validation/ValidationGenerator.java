@@ -5,9 +5,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.processor.property.Property;
-import org.sjf4j.processor.property.PropertyAccess;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.ElementKind;
+ import javax.lang.model.element.Modifier;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -64,11 +62,38 @@ public final class ValidationGenerator {
         generated.addHelper(out -> {
             out.beginBlock("private static final class Fallback");
             for (SchemaField field : fields) {
+                if (!field.usedFallback) continue;
+                String registry = field.name.replace("PLAN_", "REGISTRY_");
+                out.line("private static final org.sjf4j.schema.SchemaRegistry " + registry
+                        + " = new org.sjf4j.schema.SchemaRegistry();");
                 out.line("static final org.sjf4j.schema.SchemaPlan " + field.name
-                        + " = org.sjf4j.schema.CompiledValidatorFallback.plan("
-                        + generated.originName() + ".class, "
-                        + javaLiteral(field.methodName) + ", "
-                        + field.argumentType + ".class, " + field.ordinal + ");");
+                        + " = load" + field.name + "();");
+                for (Subplan sub : field.subplans) {
+                    out.line("static final org.sjf4j.schema.SchemaPlan " + sub.fieldName
+                            + " = " + registry + ".resolve(java.net.URI.create("
+                            + javaLiteral(sub.uri) + "));");
+                }
+                out.beginBlock("private static org.sjf4j.schema.SchemaPlan load" + field.name + "()");
+                out.beginBlock("try");
+                for (int i = 0; i < field.snapshot.uris.length; i++) {
+                    String uri = "java.net.URI.create(" + javaLiteral(field.snapshot.uris[i]) + ")";
+                    if (i == 0 && !field.annotation.value().isEmpty()) {
+                        out.line(registry + ".index(" + uri
+                                + ", org.sjf4j.schema.JsonSchema.fromJson("
+                                + field.annotationExpression + ".value()));");
+                    } else {
+                        out.line(registry + ".index(" + uri
+                                + ", org.sjf4j.schema.SchemaUtil.loadSchemaFromLocalUri("
+                                + uri + "));");
+                    }
+                }
+                out.line("return " + registry + ".resolve(java.net.URI.create("
+                        + javaLiteral(field.snapshot.selectedUri) + "));");
+                out.endBlock();
+                out.beginBlock("catch (Exception e)");
+                out.line("throw new ExceptionInInitializerError(e);");
+                out.endBlock();
+                out.endBlock();
             }
             out.endBlock();
         });
@@ -107,7 +132,6 @@ public final class ValidationGenerator {
         }
 
         List<String> names = new ArrayList<String>();
-        int ordinal = 0;
         for (Binding binding : bindings) {
             SchemaResourceResolver.Snapshot snapshot;
             try {
@@ -117,16 +141,14 @@ public final class ValidationGenerator {
                 return;
             }
             String signatureKey = snapshotKey(snapshot) + "\u0001" + parameterType.toString()
-                    + "\u0001" + method.getSimpleName() + "\u0001" + ordinal;
+                    + "\u0001" + binding.annotationExpression;
             String name = bySnapshot.get(signatureKey);
             if (name == null) {
                 name = "PLAN_" + fields.size();
-                fields.add(new SchemaField(name, snapshot,
-                        method.getSimpleName().toString(), context.typeUtils.erasure(parameterType).toString(), ordinal));
+                fields.add(new SchemaField(name, snapshot, binding.annotation, binding.annotationExpression));
                 bySnapshot.put(signatureKey, name);
             }
             names.add("Fallback." + name);
-            ordinal++;
         }
 
         String type = parameterType.toString();
@@ -143,11 +165,15 @@ public final class ValidationGenerator {
                 SchemaField bound = null;
                 String selected = names.get(0).substring("Fallback.".length());
                 for (SchemaField field : fields) if (field.name.equals(selected)) bound = field;
-                if (bound != null && emitDirect(out, parameterType, value, bound.snapshot)) {
+                if (bound != null && (emitBoolean(out, bound.snapshot) || emitDirect(out, parameterType, value, bound))) {
+                    if (!bound.subplans.isEmpty()) bound.usedFallback = true;
                     out.line("return true;");
                     out.endBlock();
                     return;
                 }
+            }
+            for (SchemaField field : fields) {
+                if (names.contains("Fallback." + field.name)) field.usedFallback = true;
             }
             if (isBoolean) {
                 for (String plan : names) {
@@ -173,10 +199,14 @@ public final class ValidationGenerator {
     private List<Binding> resolveBindings(ExecutableElement method, TypeMirror parameterType) {
         List<Binding> result = new ArrayList<Binding>();
 
+        String methodLookup = method.getEnclosingElement().toString() + ".class.getMethod("
+                + javaLiteral(method.getSimpleName().toString()) + ", "
+                + context.typeUtils.erasure(parameterType) + ".class)";
         ValidJsonSchema methodSchema = method.getAnnotation(ValidJsonSchema.class);
         if (methodSchema != null) {
             String id = method.getEnclosingElement().toString() + "/" + method.getSimpleName();
-            result.add(new Binding(methodSchema, ownerName(parameterType), id));
+            result.add(new Binding(methodSchema, ownerName(parameterType), id,
+                    methodLookup + ".getAnnotation(org.sjf4j.annotation.schema.ValidJsonSchema.class)"));
             return result;
         }
 
@@ -184,7 +214,8 @@ public final class ValidationGenerator {
         ValidJsonSchema parameterSchema = param.getAnnotation(ValidJsonSchema.class);
         if (parameterSchema != null) {
             String id = method.getEnclosingElement().toString() + "/" + method.getSimpleName();
-            result.add(new Binding(parameterSchema, ownerName(parameterType), id));
+            result.add(new Binding(parameterSchema, ownerName(parameterType), id,
+                    methodLookup + ".getParameters()[0].getAnnotation(org.sjf4j.annotation.schema.ValidJsonSchema.class)"));
             return result;
         }
 
@@ -207,7 +238,8 @@ public final class ValidationGenerator {
         ValidJsonSchema schema = type.getAnnotation(ValidJsonSchema.class);
         if (schema != null) {
             String name = type.getQualifiedName().toString();
-            result.add(new Binding(schema, name, name));
+            result.add(new Binding(schema, name, name,
+                    name + ".class.getDeclaredAnnotation(org.sjf4j.annotation.schema.ValidJsonSchema.class)"));
         }
     }
 
@@ -219,14 +251,42 @@ public final class ValidationGenerator {
 
 
 
+
     /**
-     * Compile only a closed and statically understood subset. On any doubt,
-     * emit nothing and run the original root SchemaPlan instead.
+     * Boolean resource schemas, including a root that refers exclusively to a
+     * boolean resource, can be emitted without instantiating the fallback.
+     */
+    private boolean emitBoolean(org.sjf4j.processor.code.JavaWriter out,
+                                SchemaResourceResolver.Snapshot snapshot) {
+        String literal = snapshot.documents[0].trim();
+        if (!"true".equals(literal) && !"false".equals(literal)) {
+            JsonSchema root = JsonSchema.fromJson(literal);
+            if (!(root instanceof ObjectSchema)) return false;
+            ObjectSchema os = (ObjectSchema) root;
+            if (os.size() != 1 || os.getString("$ref") == null) return false;
+            java.net.URI base = java.net.URI.create(snapshot.uris[0]);
+            java.net.URI target = base.resolve(os.getString("$ref"));
+            if (target.getFragment() != null) return false;
+            for (int i = 0; i < snapshot.uris.length; i++) {
+                if (snapshot.uris[i].equals(target.toString())) {
+                    literal = snapshot.documents[i].trim();
+                    break;
+                }
+            }
+        }
+        if (!"true".equals(literal) && !"false".equals(literal)) return false;
+        if ("false".equals(literal)) out.line("if (true) return false;");
+        return true;
+    }
+
+    /**
+     * Directly compile known String constraints. Other property subtrees use
+     * their existing SchemaPlan via JSON Pointer, but only when the root
+     * consists of type + properties (no context-dependent root keywords).
      */
     private boolean emitDirect(org.sjf4j.processor.code.JavaWriter out,
-                               TypeMirror type, String variable,
-                               SchemaResourceResolver.Snapshot snapshot) {
-        // Inline/root selection only; references and fragments remain Runtime.
+                               TypeMirror type, String variable, SchemaField field) {
+        SchemaResourceResolver.Snapshot snapshot = field.snapshot;
         if (snapshot.documents.length != 1 ||
                 !snapshot.selectedUri.equals(snapshot.uris[0])) return false;
         if (context.types.nodeKind(type) != NodeKind.OBJECT_POJO) return false;
@@ -234,6 +294,7 @@ public final class ValidationGenerator {
         if (owner == null || !owner.getModifiers().contains(Modifier.FINAL) ||
                 !owner.getModifiers().contains(Modifier.PUBLIC) ||
                 owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return false;
+
         JsonSchema parsed = JsonSchema.fromJson(snapshot.documents[0]);
         if (!(parsed instanceof ObjectSchema)) return false;
         ObjectSchema root = (ObjectSchema) parsed;
@@ -241,47 +302,70 @@ public final class ValidationGenerator {
             if (!key.equals("type") && !key.equals("properties")) return false;
         }
         if (!"object".equals(root.getString("type"))) return false;
-        Object propNode = root.getNode("properties");
-        if (propNode == null) return false;
-        org.sjf4j.JsonObject propertyMap = org.sjf4j.Nodes.toJsonObject(propNode);
+        Object raw = root.getNode("properties");
+        if (raw == null) return false;
+        org.sjf4j.JsonObject propertyMap = org.sjf4j.Nodes.toJsonObject(raw);
         Map<String, Property> javaProperties = context.properties.resolve(type);
         if (javaProperties.isEmpty() || propertyMap.size() != javaProperties.size()) return false;
-        // Ensure every runtime-discoverable field is represented by a public getter.
+
         for (Property property : javaProperties.values()) {
             if (!propertyMap.containsKey(property.name()) ||
                     property.read() == null || !property.read().isMethod() ||
-                    !property.read().member().getModifiers().contains(Modifier.PUBLIC)) return false;
+                    !property.read().member().getModifiers().contains(Modifier.PUBLIC) ||
+                    !((ExecutableElement) property.read().member()).getThrownTypes().isEmpty() ||
+                    !property.name().matches("[a-zA-Z0-9_]+")) return false;
         }
+
         java.util.List<String> statements = new java.util.ArrayList<String>();
+        java.util.List<Subplan> subplans = new java.util.ArrayList<Subplan>();
+        int directCount = 0;
         int index = 0;
         for (Map.Entry<String, Property> entry : javaProperties.entrySet()) {
-            org.sjf4j.JsonObject schema = org.sjf4j.Nodes.toJsonObject(propertyMap.getNode(entry.getKey()));
-            if (schema == null) return false;
-            for (String key : schema.keySet()) {
-                if (!key.equals("type") && !key.equals("minLength") &&
-                        !key.equals("maxLength")) return false;
+            Object schemaValue = propertyMap.getNode(entry.getKey());
+            org.sjf4j.JsonObject schema =
+                    org.sjf4j.JsonType.of(schemaValue) == org.sjf4j.JsonType.OBJECT
+                            ? org.sjf4j.Nodes.toJsonObject(schemaValue) : null;
+            boolean stringSchema = schema != null &&
+                    "string".equals(schema.getString("type")) &&
+                    "java.lang.String".equals(entry.getValue().read().type().toString());
+            if (stringSchema) {
+                for (String key : schema.keySet()) {
+                    if (!key.equals("type") && !key.equals("minLength") &&
+                            !key.equals("maxLength")) stringSchema = false;
+                }
             }
-            if (!"string".equals(schema.getString("type"))) return false;
-            if (!"java.lang.String".equals(entry.getValue().read().type().toString())) return false;
-            javax.lang.model.element.ExecutableElement getter =
-                    (javax.lang.model.element.ExecutableElement) entry.getValue().read().member();
-            if (!getter.getThrownTypes().isEmpty()) return false;
-            Integer min = schema.getInt("minLength");
-            Integer max = schema.getInt("maxLength");
-            if (min != null && min < 0 || max != null && max < 0) return false;
-            String local = "_property" + index++;
-            statements.add("String " + local + " = " + variable + "." +
-                    getter.getSimpleName() + "();");
-            statements.add("if (" + local + " == null) return false;");
-            if (min != null || max != null) {
-                String count = "_length" + (index - 1);
-                statements.add("int " + count + " = " + local +
-                        ".codePointCount(0, " + local + ".length());");
-                if (min != null) statements.add("if (" + count + " < " + min + ") return false;");
-                if (max != null) statements.add("if (" + count + " > " + max + ") return false;");
+            Integer min = null;
+            Integer max = null;
+            if (stringSchema) {
+                min = schema.getInt("minLength");
+                max = schema.getInt("maxLength");
+                if (min != null && min < 0 || max != null && max < 0) stringSchema = false;
             }
+
+            String local = "_property" + index;
+            statements.add((stringSchema ? "String " : "Object ") + local
+                    + " = " + variable + "." + entry.getValue().read().memberName() + "();");
+            if (stringSchema) {
+                directCount++;
+                statements.add("if (" + local + " == null) return false;");
+                if (min != null || max != null) {
+                    String count = "_length" + index;
+                    statements.add("int " + count + " = " + local
+                            + ".codePointCount(0, " + local + ".length());");
+                    if (min != null) statements.add("if (" + count + " < " + min + ") return false;");
+                    if (max != null) statements.add("if (" + count + " > " + max + ") return false;");
+                }
+            } else {
+                String subName = field.name + "_SUB_" + index;
+                String fragment = "#/properties/" + entry.getKey();
+                subplans.add(new Subplan(subName, snapshot.selectedUri + fragment));
+                statements.add("if (!Fallback." + subName + ".isValid(" + local
+                        + ", true)) return false;");
+            }
+            index++;
         }
-        // The generated source only takes this path for the exact final type.
+        if (directCount == 0) return false;
+        field.subplans.addAll(subplans);
         for (String line : statements) out.line(line);
         return true;
     }
@@ -344,28 +428,41 @@ public final class ValidationGenerator {
         final ValidJsonSchema annotation;
         final String ownerName;
         final String originName;
+        final String annotationExpression;
 
-        Binding(ValidJsonSchema annotation, String ownerName, String originName) {
+        Binding(ValidJsonSchema annotation, String ownerName, String originName,
+                String annotationExpression) {
             this.annotation = annotation;
             this.ownerName = ownerName;
             this.originName = originName;
+            this.annotationExpression = annotationExpression;
+        }
+    }
+
+    private static final class Subplan {
+        final String fieldName;
+        final String uri;
+
+        Subplan(String fieldName, String uri) {
+            this.fieldName = fieldName;
+            this.uri = uri;
         }
     }
 
     private static final class SchemaField {
         final String name;
         final SchemaResourceResolver.Snapshot snapshot;
-        final String methodName;
-        final String argumentType;
-        final int ordinal;
+        final ValidJsonSchema annotation;
+        final String annotationExpression;
+        final List<Subplan> subplans = new ArrayList<Subplan>();
+        boolean usedFallback;
 
         SchemaField(String name, SchemaResourceResolver.Snapshot snapshot,
-                    String methodName, String argumentType, int ordinal) {
+                    ValidJsonSchema annotation, String annotationExpression) {
             this.name = name;
             this.snapshot = snapshot;
-            this.methodName = methodName;
-            this.argumentType = argumentType;
-            this.ordinal = ordinal;
+            this.annotation = annotation;
+            this.annotationExpression = annotationExpression;
         }
     }
 }
