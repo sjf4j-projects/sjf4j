@@ -39,7 +39,9 @@ final class SchemaEmitter {
             }
         } else if (check.nullAsMissing) {
             for (SchemaCheck.Required required : check.required) {
-                statements.add("if (" + variable + "." + required.staticAccess + " == null) return false;");
+                if (required.staticAccess != null) {
+                    statements.add("if (" + variable + "." + required.staticAccess + " == null) return false;");
+                }
             }
         }
 

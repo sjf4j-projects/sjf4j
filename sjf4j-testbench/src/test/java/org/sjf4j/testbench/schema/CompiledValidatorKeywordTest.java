@@ -77,6 +77,19 @@ class CompiledValidatorKeywordTest {
                            "optional":{"type":"string","minLength":2}}}
             """;
 
+    private static final String PRIMITIVE_REQUIRED = """
+            {"type":"object","required":["age","active"],
+             "properties":{"age":{"type":"integer","minimum":1},"active":true}}
+            """;
+    private static final String SCOPED_REF = """
+            {"type":"object","properties":{"text":{"$ref":"#/$defs/inner"}},
+             "$defs":{
+                "word":{"type":"string","minLength":2},
+                "inner":{"$id":"nested/inner","$ref":"#/$defs/word",
+                         "$defs":{"word":{"type":"string","minLength":4}}}
+             }}
+            """;
+
     public static final class Values {
         private final String text;
         private final BigDecimal decimal;
@@ -148,6 +161,28 @@ class CompiledValidatorKeywordTest {
         @ValidJsonSchema(NULLABLE) void require(Bean bean);
         @ValidJsonSchema(NULLABLE) ValidationResult validate(Bean bean);
         @ValidJsonSchema(DYNAMIC) boolean map(Map<String, Object> map);
+    }
+
+    public static final class PrimitiveModel {
+        private final int age;
+        private final boolean active;
+
+        public PrimitiveModel(int age, boolean active) {
+            this.age = age;
+            this.active = active;
+        }
+        public int getAge() { return age; }
+        public boolean isActive() { return active; }
+    }
+
+    @CompiledValidator(fallback = false, nullAsMissing = true)
+    public interface PrimitiveRequired {
+        @ValidJsonSchema(PRIMITIVE_REQUIRED) boolean valid(PrimitiveModel model);
+    }
+
+    @CompiledValidator
+    public interface ScopedRefs {
+        @ValidJsonSchema(SCOPED_REF) boolean valid(Values value);
     }
 
     private static Values value(String text, BigDecimal decimal, Integer integer,
@@ -279,4 +314,23 @@ class CompiledValidatorKeywordTest {
         data.put("extra", 3);
         assertFalse(fallback.map(data));
     }
+    @Test
+    void requiredPrimitivePropertiesNeverNeedNullChecks() {
+        PrimitiveRequired compiled = CompiledInstances.create(PrimitiveRequired.class);
+        assertTrue(compiled.valid(new PrimitiveModel(18, true)));
+        assertTrue(compiled.valid(new PrimitiveModel(18, false)));
+        assertFalse(compiled.valid(new PrimitiveModel(0, true)));
+    }
+
+    @Test
+    void nestedIdReferenceIsDelegatedToScopeAwareSchemaPlan() {
+        ScopedRefs compiled = CompiledInstances.create(ScopedRefs.class);
+        org.sjf4j.schema.SchemaPlan reference =
+                org.sjf4j.schema.JsonSchema.fromJson(SCOPED_REF).createPlan();
+        for (String text : new String[]{"a", "ab", "abcd"}) {
+            Values model = value(text, BigDecimal.ONE, 2, List.of());
+            assertEquals(reference.isValid(model), compiled.valid(model), text);
+        }
+    }
+
 }

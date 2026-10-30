@@ -125,4 +125,21 @@ class CompiledValidatorArchitectureTest {
         }
         return count;
     }
+    @Test
+    void scopedIdPreventsUnsafeDirectRefCompilation() throws Exception {
+        String schema = "{\"type\":\"object\",\"properties\":{"
+                + "\"name\":{\"$ref\":\"#/$defs/inner\"}},"
+                + "\"$defs\":{\"word\":{\"type\":\"string\",\"minLength\":2},"
+                + "\"inner\":{\"$id\":\"nested/inner\","
+                + "\"$ref\":\"#/$defs/word\","
+                + "\"$defs\":{\"word\":{\"type\":\"string\",\"minLength\":4}}}}}";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "boolean valid(Model value); }";
+        NavigatorTestCompiler.Result result = compile(MODEL, validator);
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+    }
+
 }

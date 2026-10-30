@@ -57,7 +57,7 @@ class CompiledValidatorContractTest {
     void compiledBooleanUsesStrictFormatOnlyWhenRequested() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
         Person badEmail = new Person("invalid-email", "good");
-        assertFalse(validator.isValid(badEmail));
+        assertTrue(validator.isValid(badEmail));
         assertFalse(validator.isValid(badEmail, true));
         assertTrue(validator.isValid(badEmail, false));
         SchemaPlan reference = JsonSchema.fromJson(
@@ -72,7 +72,7 @@ class CompiledValidatorContractTest {
     void requireValidReturnsOrThrowsWithDiagnostics() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
         Person badEmail = new Person("invalid-email", "good");
-        assertThrows(ValidationException.class, () -> validator.requireValid(badEmail));
+        assertDoesNotThrow(() -> validator.requireValid(badEmail));
         assertThrows(ValidationException.class, () -> validator.requireValid(badEmail, true));
         assertDoesNotThrow(() -> validator.requireValid(badEmail, false));
         assertDoesNotThrow(() -> validator.requireValid(null));
@@ -82,16 +82,17 @@ class CompiledValidatorContractTest {
     void validationResultAggregatesEveryErrorAndSupportsFormatFlag() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
         Person invalid = new Person("invalid-email", "x");
-        ValidationResult strict = validator.validate(invalid);
+        ValidationResult strict = validator.validate(invalid, true);
         assertFalse(strict.isValid());
         SchemaPlan reference = JsonSchema.fromJson(
                 Person.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
         assertEquals(reference.validate(invalid, false, true).getErrors().size(),
                 strict.getErrors().size());
         assertTrue(strict.getErrors().size() >= 2, () -> strict.toString());
-        ValidationResult lenient = validator.validate(invalid, false);
+        ValidationResult lenient = validator.validate(invalid);
         assertFalse(lenient.isValid());
         assertEquals(1, lenient.getErrors().size(), () -> lenient.toString());
+        assertEquals(lenient.getErrors().size(), validator.validate(invalid, false).getErrors().size());
         assertSame(ValidationResult.SUCCESS, validator.validate(null));
     }
 

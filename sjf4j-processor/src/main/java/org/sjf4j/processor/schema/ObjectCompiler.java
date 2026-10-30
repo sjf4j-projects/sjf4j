@@ -101,8 +101,11 @@ final class ObjectCompiler {
             for (int i = 0; i < Nodes.sizeInArray(required); i++) {
                 String name = (String) Nodes.getInArray(required, i);
                 Property property = dynamic ? null : javaProperties.get(name);
-                requiredChecks.add(new SchemaCheck.Required(name, property == null ? null
-                        : property.read().memberName() + (property.read().isMethod() ? "()" : "")));
+                if (!dynamic && (property == null || property.read() == null)) return null;
+                // Primitive members cannot be null, so a required check is redundant.
+                String requiredAccess = property == null || property.read().type().getKind().isPrimitive()
+                        ? null : property.read().memberName() + (property.read().isMethod() ? "()" : "");
+                requiredChecks.add(new SchemaCheck.Required(name, requiredAccess));
             }
         }
 

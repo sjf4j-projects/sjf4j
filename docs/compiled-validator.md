@@ -36,7 +36,8 @@ The return type, not the method name, selects the validation operation:
 
 Each abstract method accepts **one fully resolved value parameter**, optionally
 followed by a **primitive** `boolean strictFormat` parameter. The default when
-omitted is `true`. The name of the second parameter is unrestricted. It controls
+omitted is `false`, matching `SchemaPlan` and JSON Schema Draft 2020-12's
+format-annotation behavior. The name of the second parameter is unrestricted. It controls
 JSON Schema `format` assertions only; other validation keywords remain active.
 `Boolean`, other extra parameters, unsupported return types, and type variables
 are rejected at annotation processing time.
@@ -244,7 +245,8 @@ fully compiled methods, and rejection of unsupported mixed trees.
 `CompiledValidatorContractProcessorTest` checks type-specialized code emission
 and the partial Creek fallback boundary. The testbench Creek fixtures compare
 `SchemaPlan` against compiled validation for valid and invalid inputs.
-The JMH Creek benchmark also validates negative POJO cases before measurement.
+The separate `CreekSchemaFailureBenchmark` runs negative and short-circuit
+cases, keeping `CreekSchemaBenchmark` focused on the complete, valid model.
 
 To compile and test:
 
@@ -280,8 +282,9 @@ benchmark is `CreekSchemaBenchmark`. It includes `required`,
 4. Benchmark the full boolean path separately from fail-fast diagnostics and
    aggregate `ValidationResult`. Measure with JMH, same model and format mode.
 
-The original Creek benchmark is non-strict, so direct performance comparisons
-use `strictFormat=false`. CI compiles the benchmark and runs correctness
+The original Creek benchmark is non-strict, so default compiled validation
+now uses `strictFormat=false`, matching `SchemaPlan`. The explicit `_strict`
+methods provide a strict-to-strict control. CI compiles the benchmark and runs correctness
 fixtures; **no JMH throughput result is claimed** from CI alone.
  \
   -f 3
@@ -293,7 +296,7 @@ iterations per fork; non-strict format for both):
 
 | Creek validity method | Average (µs/op) | JMH error (µs/op) |
 | --- | ---: | ---: |
-| `compiled_schema_is_valid_pojo_non_strict` | 1.885 | ± 0.059 |
+| `compiled_schema_is_valid_pojo_non_strict` (previous baseline) | 1.885 | ± 0.059 |
 | `schema_is_valid_pojo` | 2.579 | ± 0.166 |
 
 This run showed approximately 26.9% lower average latency for compiled checks,

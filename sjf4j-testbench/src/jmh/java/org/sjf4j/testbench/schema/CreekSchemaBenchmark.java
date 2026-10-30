@@ -23,15 +23,11 @@ import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.SchemaRegistry;
 import org.sjf4j.testbench.model.creek.ModelState;
-import org.sjf4j.testbench.model.creek.PolyTypeA;
 import org.sjf4j.testbench.model.creek.TestModel;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -63,9 +59,6 @@ public class CreekSchemaBenchmark {
     private TestModel model;
     private TestModel deserializedModel;
     private Map<String, Object> mapNode;
-    private Object invalidRoot;
-    private Map<String, Object> invalidMap;
-    private Map<String, Object> invalidNestedMap;
     private byte[] jsonBytes;
 
     public static void main(String[] args) throws Exception {
@@ -90,22 +83,6 @@ public class CreekSchemaBenchmark {
         deserializedModel = JACKSON.readValue(jsonBytes, TestModel.class);
         mapNode = JACKSON.readValue(jsonBytes, new TypeReference<Map<String, Object>>() {});
 
-        invalidRoot = new String(new char[]{'w', 'r', 'o', 'n', 'g'});
-        invalidMap = new LinkedHashMap<>(mapNode);
-        invalidMap.put("name", 123);
-
-        invalidNestedMap = new LinkedHashMap<>(mapNode);
-        List<Object> poly = new ArrayList<>((List<?>) mapNode.get("polymorphicTypes"));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> first = new LinkedHashMap<>((Map<String, Object>) poly.get(0));
-        first.put("@type", "not-a-valid-subtype");
-        poly.set(0, first);
-        invalidNestedMap.put("polymorphicTypes", poly);
-
-        if (plan.isValid(invalidMap) || plan.isValid(invalidNestedMap) || plan.isValid(invalidRoot)) {
-            throw new IllegalStateException("Invalid Creek benchmark fixtures unexpectedly passed");
-        }
-
         // Fail before measurement if the POJO/Map representations or JSON round trip
         // do not satisfy the exact schema used by the comparison project.
         plan.requireValid(model, false);
@@ -113,35 +90,11 @@ public class CreekSchemaBenchmark {
         plan.requireValid(mapNode, false);
         // The generated validator directly checks ordinary Creek properties
         // and uses a child SchemaPlan only for polymorphic oneOf items.
-        if (!plan.isValid(model, true) || !compiledValidator.isValid(model)
+        if (!plan.isValid(model, true) || !compiledValidator.isValid(model, true)
                 || !compiledValidator.isValid(model, false)
                 || !compiledValidator.isValid(deserializedModel)
                 || !compiledValidator.isValid(deserializedModel, false)) {
             throw new IllegalStateException("Compiled Creek validation disagrees with the strict schema plan");
-        }
-        // Architecture regression: a direct root predicate and a cached oneOf
-        // item plan must agree with the unmodified Creek SchemaPlan for failures
-        // as well as successes, in both format modes. Run outside measurement.
-        List<TestModel> invalidModels = List.of(
-                new TestModel(null, model.getDecimal(), model.getAnEnum(),
-                        model.getList(), model.getPolymorphicTypes()),
-                new TestModel(model.getName(), java.math.BigDecimal.ZERO,
-                        model.getAnEnum(), model.getList(), model.getPolymorphicTypes()),
-                new TestModel(model.getName(), model.getDecimal(), model.getAnEnum(),
-                        model.getList(), List.of()),
-                new TestModel(model.getName(), model.getDecimal(), model.getAnEnum(),
-                        model.getList(), List.of(new PolyTypeA(null)))
-        );
-        for (TestModel candidate : invalidModels) {
-            for (boolean strictFormat : new boolean[]{false, true}) {
-                boolean expected = plan.isValid(candidate, strictFormat);
-                boolean actual = compiledValidator.isValid(candidate, strictFormat);
-                if (expected || actual != expected) {
-                    throw new IllegalStateException("Compiled Creek invalid-case mismatch"
-                            + " (strictFormat=" + strictFormat + ", plan=" + expected
-                            + ", compiled=" + actual + ")");
-                }
-            }
         }
         if (!model.equals(deserializedModel)
                 || model.getAnEnum() != deserializedModel.getAnEnum()
@@ -169,16 +122,16 @@ public class CreekSchemaBenchmark {
         return plan.isValid(model, true);
     }
 
-    /** Generated direct Creek checks with strict format assertion. */
+    /** Generated direct Creek checks with the default non-strict format behavior. */
     @Benchmark
     public boolean compiled_schema_is_valid_pojo() {
         return compiledValidator.isValid(model);
     }
 
-    /** Equivalent format behavior to the original non-strict Creek baseline. */
+    /** Explicit format assertion for a strict-to-strict control. */
     @Benchmark
-    public boolean compiled_schema_is_valid_pojo_non_strict() {
-        return compiledValidator.isValid(model, false);
+    public boolean compiled_schema_is_valid_pojo_strict() {
+        return compiledValidator.isValid(model, true);
     }
 
     @Benchmark
@@ -220,39 +173,6 @@ public class CreekSchemaBenchmark {
     @Benchmark
     public void schema_validate_map() {
         plan.requireValid(mapNode, false);
-    }
-
-    /** A root type mismatch: the simplest invalid input. */
-    @Benchmark
-    public boolean schema_is_valid_fail_root() {
-        return plan.isValid(invalidRoot);
-    }
-
-    @Benchmark
-    public org.sjf4j.schema.ValidationResult schema_validate_fail_root() {
-        return plan.validate(invalidRoot, true, false);
-    }
-
-    /** Invalid ordinary property, with fast-fail diagnostics as the control. */
-    @Benchmark
-    public boolean schema_is_valid_fail_property() {
-        return plan.isValid(invalidMap);
-    }
-
-    @Benchmark
-    public org.sjf4j.schema.ValidationResult schema_validate_fail_property() {
-        return plan.validate(invalidMap, true, false);
-    }
-
-    /** A malformed polymorphic child that reaches a oneOf branch. */
-    @Benchmark
-    public boolean schema_is_valid_fail_nested() {
-        return plan.isValid(invalidNestedMap);
-    }
-
-    @Benchmark
-    public org.sjf4j.schema.ValidationResult schema_validate_fail_nested() {
-        return plan.validate(invalidNestedMap, true, false);
     }
 
     @Benchmark

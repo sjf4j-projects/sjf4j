@@ -68,13 +68,17 @@ final class SchemaCompiler {
             if (!keyword.equals("$ref") && !isAnnotation(keyword)) return null;
         }
         String literal = schema.getString("$ref");
-        if (literal == null) return null;
+        if (literal == null || hasScopedId(snapshot, sourceUri) || schema.containsKey("$id")) return null;
         java.net.URI target;
         try {
             target = java.net.URI.create(sourceUri).resolve(literal);
         } catch (IllegalArgumentException e) {
             return null;
         }
+        // A nested $id establishes a new resource base. Do not compile a
+        // pointer under that scope using the retrieval URI: the runtime
+        // SchemaRegistry resolves canonical resources correctly.
+        if (hasScopedId(snapshot, target.toString())) return null;
         String document = org.sjf4j.schema.SchemaLoader.documentUri(target).toString();
         Object node = null;
         for (int i = 0; i < snapshot.uris.length; i++) {
@@ -103,6 +107,52 @@ final class SchemaCompiler {
             }
         }
         return new RefTarget(node, target.toString());
+    }
+
+    /**
+     * Detect resource scopes that cannot safely be represented by our simple
+     * retrieval-URI + JSON Pointer expansion. Such references are delegated to
+     * SchemaPlan rather than risk compiling the wrong schema branch.
+     */
+    private static boolean hasScopedId(SchemaResourceResolver.Snapshot snapshot, String reference) {
+        java.net.URI uri;
+        try {
+            uri = java.net.URI.create(reference);
+        } catch (IllegalArgumentException ex) {
+            return true;
+        }
+        String document = org.sjf4j.schema.SchemaLoader.documentUri(uri).toString();
+        for (int i = 0; i < snapshot.uris.length; i++) {
+            if (!snapshot.uris[i].equals(document)) continue;
+            Object node = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[i]);
+            if (hasId(node)) return true;
+            String fragment = uri.getFragment();
+            if (fragment == null || fragment.isEmpty()) return false;
+            if (!fragment.startsWith("/")) return true;
+            for (String part : fragment.substring(1).split("/", -1)) {
+                String name = part.replace("~1", "/").replace("~0", "~");
+                if (JsonType.of(node) == JsonType.OBJECT) {
+                    node = Nodes.getInObject(node, name);
+                } else if (JsonType.of(node) == JsonType.ARRAY) {
+                    try {
+                        node = Nodes.getInArray(node, Integer.parseInt(name));
+                    } catch (NumberFormatException ex) {
+                        return true;
+                    }
+                } else {
+                    return true;
+                }
+                if (node == null || hasId(node)) return true;
+            }
+            return false;
+        }
+        // A canonical URI of an embedded $id cannot be mapped safely through
+        // the physical document snapshot; leave it to SchemaRegistry.
+        return true;
+    }
+
+    private static boolean hasId(Object node) {
+        return JsonType.of(node) == JsonType.OBJECT && Nodes.getInObject(node, "$id") != null;
     }
 
     static final class RefTarget {

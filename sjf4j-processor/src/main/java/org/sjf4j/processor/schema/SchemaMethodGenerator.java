@@ -87,7 +87,7 @@ final class SchemaMethodGenerator {
         String type = parameterType.toString();
         String value = method.getParameters().get(0).getSimpleName().toString();
         String strictParam = parameterCount == 2
-                ? method.getParameters().get(1).getSimpleName().toString() : "true";
+                ? method.getParameters().get(1).getSimpleName().toString() : "false";
         String parameterDeclaration = type + " " + value + (parameterCount == 2
                 ? ", boolean " + strictParam : "");
 

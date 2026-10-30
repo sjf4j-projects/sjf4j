@@ -1,0 +1,19 @@
+name: Stage E Creek JMH compile check
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  jmh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582
+      - name: Compile Creek benchmark classes
+        run: |
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+          JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' -print -quit)
+          java -cp "$JMH_JAR" org.openjdk.jmh.Main -l | grep -E 'CreekSchema(Failure)?Benchmark'
