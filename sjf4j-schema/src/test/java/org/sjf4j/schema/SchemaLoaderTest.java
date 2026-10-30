@@ -9,6 +9,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -67,6 +68,29 @@ class SchemaLoaderTest {
             assertEquals(document.toUri(), ((ObjectSchema) schema).getRetrievalUri());
             assertNull(local.load(URI.create("missing.json")));
             assertEquals(document.toUri(), local.resolve(URI.create("user.json")));
+        } finally {
+            Files.deleteIfExists(document);
+            Files.deleteIfExists(directory);
+        }
+    }
+
+    @Test
+    void localLoaderAcceptsWorkingDirectoryRelativeBase() throws IOException {
+        Path cwd = Paths.get("").toAbsolutePath().normalize();
+        Path directory = Files.createTempDirectory(cwd, "sjf4j-relative-");
+        Path document = directory.resolve("user schema.json");
+        try {
+            Files.write(document, "{\"type\":\"string\"}".getBytes(StandardCharsets.UTF_8));
+            URI relativeBase = URI.create("./" + cwd.relativize(directory).toString() + "/");
+            SchemaLoader.Local loader = new SchemaLoader.Local(relativeBase);
+
+            assertEquals(directory.toUri(), loader.baseUri());
+            URI reference = URI.create("user%20schema.json#/$defs/name");
+            assertEquals(document.toUri().toString() + "#/$defs/name", loader.resolve(reference).toString());
+            JsonSchema schema = loader.load(reference);
+            assertTrue(schema instanceof ObjectSchema);
+            assertEquals(document.toUri(), ((ObjectSchema) schema).getRetrievalUri());
+            assertNull(loader.load(URI.create("missing.json")));
         } finally {
             Files.deleteIfExists(document);
             Files.deleteIfExists(directory);

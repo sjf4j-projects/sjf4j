@@ -53,14 +53,36 @@ public interface SchemaLoader {
         return schema;
     }
 
-    /** Loads file and classpath resources relative to a fixed base directory. */
+    /**
+     * Loads local {@code file:} and {@code classpath:} resources.
+     * <p>
+     * The base URI identifies a directory. An absolute {@code file:} or
+     * {@code classpath:} URI is used as provided. A relative directory URI
+     * (for example {@code schemas/} or {@code ./schemas/}) is interpreted as
+     * a file-system directory relative to the JVM working directory
+     * ({@code user.dir}), not the directory containing the application JAR.
+     * Relative schema references are resolved against the resulting base URI.
+     * Network schemes are not supported.
+     */
     final class Local implements SchemaLoader {
         private final URI baseUri;
 
+        /**
+         * Creates a loader rooted at a directory URI. Relative base URIs are
+         * resolved as paths under the JVM working directory ({@code user.dir}).
+         */
         public Local(URI baseUri) {
-            this.baseUri = Asserts.notNull(baseUri, "baseUri");
-            if (!baseUri.isAbsolute() || !baseUri.toString().endsWith("/")) {
-                throw new IllegalArgumentException("schema base URI must be an absolute directory: " + baseUri);
+            Asserts.notNull(baseUri, "baseUri");
+            if (!baseUri.toString().endsWith("/") || baseUri.getRawQuery() != null
+                    || baseUri.getRawFragment() != null) {
+                throw new IllegalArgumentException("schema base URI must be a directory: " + baseUri);
+            }
+            if (baseUri.isAbsolute()) {
+                this.baseUri = baseUri;
+            } else {
+                URI absolute = Paths.get(baseUri.getPath()).toAbsolutePath().normalize().toUri();
+                this.baseUri = absolute.toString().endsWith("/")
+                        ? absolute : URI.create(absolute.toString() + "/");
             }
         }
 
