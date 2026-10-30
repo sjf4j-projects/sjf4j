@@ -48,6 +48,44 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.diagnostics().contains("optional primitive boolean"), result.diagnostics());
     }
 
+    @Test
+    void creekPhaseGeneratesDirectChecksAndOnlyLocalizedItemFallback() throws Exception {
+        String model = "package fixture; import java.util.*; import java.math.*; "
+                + "public final class Model { public enum Kind { THIS, THAT } "
+                + "public BigDecimal getDecimal() { return BigDecimal.ONE; } "
+                + "public Kind getAnEnum() { return Kind.THIS; } "
+                + "public String getName() { return \"good\"; } "
+                + "public List<String> getList() { return List.of(\"ok\"); } "
+                + "public List<Object> getPolymorphicTypes() { return List.of(\"A\"); } }";
+        String schema = "{"
+                + "\"$schema\":\"https://json-schema.org/draft/2020-12/schema\","
+                + "\"title\":\"Creek phase\", \"type\":\"object\", \"additionalProperties\":false,"
+                + "\"required\":[\"decimal\",\"name\",\"list\",\"polymorphicTypes\"],"
+                + "\"properties\":{"
+                + "\"decimal\":{\"type\":\"number\",\"exclusiveMinimum\":0},"
+                + "\"anEnum\":{\"type\":\"string\",\"enum\":[\"THIS\",\"THAT\"]},"
+                + "\"name\":{\"type\":\"string\",\"minLength\":2},"
+                + "\"list\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},"
+                + "\"polymorphicTypes\":{\"type\":\"array\",\"minItems\":1,"
+                + "\"items\":{\"oneOf\":[{\"type\":\"string\",\"enum\":[\"A\"]},"
+                + "{\"type\":\"number\",\"minimum\":1}]}}}}";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator public interface Check { "
+                + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema)
+                + ") boolean valid(Model value, boolean strictFormat); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Model.java", model,
+                "fixture/Check.java", validator), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains("Numbers.compare"), generated);
+        assertTrue(generated.contains("codePointCount"), generated);
+        assertTrue(generated.contains("java.util.Collection"), generated);
+        assertTrue(generated.contains("SUB_") && generated.contains("_ITEM.isValid("), generated);
+        assertFalse(generated.contains(".ROOT.isValid("), generated);
+    }
+
     private static NavigatorTestCompiler.Result compile(String source) throws Exception {
         return NavigatorTestCompiler.compile(Map.of(
                 "fixture/Model.java", MODEL,
