@@ -51,7 +51,7 @@ public final class SchemaValidator {
      * caller-owned registry state.
      */
     public SchemaValidator(String baseDir, SchemaRegistry registry, boolean strictFormat) {
-        this(resolveBaseDir(baseDir), SchemaLoader.LOCAL, registry, strictFormat);
+        this(resolveBaseDir(baseDir), registry, strictFormat);
     }
 
     /**
@@ -61,6 +61,10 @@ public final class SchemaValidator {
     public static SchemaValidator withLoader(SchemaLoader loader, SchemaRegistry registry,
                                              boolean strictFormat) {
         return new SchemaValidator(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, loader, registry, strictFormat);
+    }
+
+    private SchemaValidator(URI baseDirUri, SchemaRegistry registry, boolean strictFormat) {
+        this(baseDirUri, new SchemaLoader.Local(baseDirUri), registry, strictFormat);
     }
 
     private SchemaValidator(URI baseDirUri, SchemaLoader loader, SchemaRegistry registry, boolean strictFormat) {

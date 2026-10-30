@@ -780,8 +780,8 @@ public class SchemaValidationTest {
 
     @Test
     public void testDraft2019FormatVocabularyActivatesFormatWithoutAssertion() {
-        ObjectSchema metaSchema = SchemaUtil.loadSchemaFromLocalUri(
-                URI.create("classpath:///json-schemas/draft2019-09/schema.json"));
+        ObjectSchema metaSchema = (ObjectSchema) new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR)
+                .load(URI.create("draft2019-09/schema.json"));
         SchemaRegistry registry = new SchemaRegistry();
         registry.index(metaSchema);
 

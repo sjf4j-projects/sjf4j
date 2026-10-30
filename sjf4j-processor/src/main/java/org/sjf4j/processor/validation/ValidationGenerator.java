@@ -73,7 +73,7 @@ public final class ValidationGenerator {
                 }
                 out.beginBlock("private static org.sjf4j.schema.SchemaPlan load()");
                 out.beginBlock("try");
-                out.line("org.sjf4j.schema.SchemaLoader loader = org.sjf4j.schema.SchemaLoader.LOCAL;");
+                out.line("org.sjf4j.schema.SchemaLoader loader = new org.sjf4j.schema.SchemaLoader.Local(org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR);");
                 for (int i = 0; i < field.snapshot.uris.length; i++) {
                     String uri = "java.net.URI.create(" + javaLiteral(field.snapshot.uris[i]) + ")";
                     if (i == 0 && !field.annotation.value().isEmpty()) {

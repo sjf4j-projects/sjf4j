@@ -27,7 +27,6 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
-    private final SchemaLoader loader;
 
 
 
@@ -36,19 +35,9 @@ public class SchemaRegistry {
      * meta-schemas remain visible as fallback resources.
      */
     public SchemaRegistry(SchemaDialect defaultDialect) {
-        this(defaultDialect, SchemaLoader.LOCAL);
-    }
-
-    /** Creates a registry with a caller-supplied schema loader. */
-    public SchemaRegistry(SchemaLoader loader) {
-        this(SchemaDialect.DRAFT_2020_12, loader);
-    }
-
-    public SchemaRegistry(SchemaDialect defaultDialect, SchemaLoader loader) {
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
         this.defaultDialect = defaultDialect;
-        this.loader = Asserts.notNull(loader, "loader");
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -232,7 +221,7 @@ public class SchemaRegistry {
     public static SchemaRegistry copyOf(SchemaRegistry other) {
         if (other == null) return new SchemaRegistry();
 
-        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect, other.loader);
+        SchemaRegistry registry = new SchemaRegistry(other.defaultDialect);
         for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
             SchemaPlan plan = entry.getValue();
             SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
@@ -252,30 +241,6 @@ public class SchemaRegistry {
             }
         }
         return registry;
-    }
-
-    /**
-     * Explicitly loads a document through the configured SchemaLoader if it is
-     * not already registered, then resolves its URI (including the fragment).
-     * Unlike resolve(URI), this method may perform I/O.
-     */
-    public SchemaPlan load(URI uri) {
-        Asserts.notNull(uri, "uri");
-        SchemaPlan plan = resolve(uri);
-        if (plan != null) return plan;
-        URI document = SchemaLoader.documentUri(uri);
-        JsonSchema schema = loader.load(document);
-        if (schema == null) return null;
-        SchemaPlan root = register(document, schema);
-        if (schema instanceof BooleanSchema) {
-            if (uri.getFragment() != null && !uri.getFragment().isEmpty()) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "boolean schema does not define a fragment",
-                        PathSegment.Root.INSTANCE, uri));
-            }
-            return root;
-        }
-        return resolve(uri);
     }
 
     /**
@@ -462,6 +427,10 @@ public class SchemaRegistry {
     /** Default classpath directory for annotation-based schema discovery. */
     public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
 
+    /** Fixed local resource loader for the built-in meta-schema catalog. */
+    private static final SchemaLoader.Local BUILTIN_SCHEMA_LOADER =
+            new SchemaLoader.Local(DEFAULT_JSON_SCHEMA_DIR);
+
     /**
      * Resolves a schema from the global built-in registry.
      * <p>
@@ -501,9 +470,13 @@ public class SchemaRegistry {
 
     private static void _indexGlobalSchemaByPath(String filePath, String alias) {
         URI uri = DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
-        ObjectSchema schema = SchemaUtil.loadSchemaFromLocalUri(uri);
-        if (schema == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+        JsonSchema loaded = BUILTIN_SCHEMA_LOADER.load(URI.create(filePath));
+        if (loaded == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                 "global schema not found", PathSegment.Root.INSTANCE, uri));
+        if (!(loaded instanceof ObjectSchema)) throw new SchemaException(SchemaUtil.formatSchemaLine(
+                SchemaUtil.Code.SCHEMA_LOAD, "global schema must be object-shaped",
+                PathSegment.Root.INSTANCE, uri));
+        ObjectSchema schema = (ObjectSchema) loaded;
         GLOBAL_SCHEMA_REGISTRY.index(schema);
         if (alias != null && !alias.isEmpty()) {
             GLOBAL_SCHEMA_REGISTRY._putSchema(URI.create(alias), schema);

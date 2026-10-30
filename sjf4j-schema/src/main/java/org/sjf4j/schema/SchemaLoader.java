@@ -19,9 +19,6 @@ import java.nio.file.Paths;
 @FunctionalInterface
 public interface SchemaLoader {
 
-    /** Default loader for classpath and local file resources; never makes network requests. */
-    SchemaLoader LOCAL = new Local();
-
     /**
      * Returns the parsed document, or null if it is missing.
      * Any URI fragment is ignored for retrieval; fragment resolution belongs to SchemaRegistry.
@@ -47,11 +44,29 @@ public interface SchemaLoader {
         return schema;
     }
 
-    /** Local file/classpath implementation. */
+    /** Loads file and classpath resources relative to a fixed base directory. */
     final class Local implements SchemaLoader {
+        private final URI baseUri;
+
+        public Local(URI baseUri) {
+            this.baseUri = Asserts.notNull(baseUri, "baseUri");
+            if (!baseUri.isAbsolute() || !baseUri.toString().endsWith("/")) {
+                throw new IllegalArgumentException("schema base URI must be an absolute directory: " + baseUri);
+            }
+        }
+
+        public URI baseUri() {
+            return baseUri;
+        }
+
+        /** Resolves a relative reference against the configured schema directory. */
+        public URI resolve(URI uri) {
+            return baseUri.resolve(Asserts.notNull(uri, "uri"));
+        }
+
         @Override
         public JsonSchema load(URI uri) {
-            URI document = documentUri(uri);
+            URI document = documentUri(resolve(uri));
             String scheme = document.getScheme();
             try (Reader reader = open(document, scheme)) {
                 return reader == null ? null : SchemaLoader.parse(document, reader);

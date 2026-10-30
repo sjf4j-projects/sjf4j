@@ -48,11 +48,9 @@ final class SchemaResourceResolver {
     }
 
     private final ProcessorContext context;
-    private final SchemaLoader loader;
 
     SchemaResourceResolver(ProcessorContext context) {
         this.context = context;
-        this.loader = this::loadResource;
     }
 
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName) {
@@ -183,15 +181,6 @@ final class SchemaResourceResolver {
             char[] buf = new char[4096];
             for (int n; (n = reader.read(buf)) != -1;) text.append(buf, 0, n);
             return text.toString();
-        } catch (IOException e) {
-            throw new IllegalArgumentException("cannot load schema: " + document, e);
-        }
-    }
-
-    private JsonSchema loadResource(URI uri) {
-        URI document = SchemaLoader.documentUri(uri);
-        try (java.io.Reader reader = openResource(document)) {
-            return reader == null ? null : SchemaLoader.parse(document, reader);
         } catch (IOException e) {
             throw new IllegalArgumentException("cannot load schema: " + document, e);
         }

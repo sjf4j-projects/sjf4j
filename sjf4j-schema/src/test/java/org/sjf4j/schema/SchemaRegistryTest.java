@@ -14,7 +14,8 @@ class SchemaRegistryTest {
 
     @Test
     void loadSchemaFromMissingLocalUri_returnsNull() {
-        assertNull(SchemaUtil.loadSchemaFromLocalUri(URI.create("classpath:///json-schemas/missing-schema.json")));
+        assertNull(new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR)
+                .load(URI.create("classpath:///json-schemas/missing-schema.json")));
     }
 
     @Test

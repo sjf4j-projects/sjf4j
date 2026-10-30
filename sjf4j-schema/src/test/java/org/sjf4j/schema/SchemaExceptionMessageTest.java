@@ -91,10 +91,10 @@ class SchemaExceptionMessageTest {
     void unsupportedLocalLoad_reportsRootLocation() {
         URI uri = URI.create("https://example.com/schema.json");
         SchemaException error = assertThrows(SchemaException.class,
-                () -> SchemaUtil.loadSchemaFromLocalUri(uri));
+                () -> new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR).load(uri));
 
         assertEquals(SchemaException.class, error.getClass());
-        assertSchemaMessage(error, "schema.load", "unsupported local schema uri", "/", uri.toString());
+        assertSchemaMessage(error, "schema.load", "unsupported schema URI scheme", "/", uri.toString());
     }
 
     @ParameterizedTest

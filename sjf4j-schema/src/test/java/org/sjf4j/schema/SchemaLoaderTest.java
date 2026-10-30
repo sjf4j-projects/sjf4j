@@ -37,20 +37,40 @@ class SchemaLoaderTest {
     }
 
     @Test
-    void registryExplicitLoadUsesLoaderWhileResolveRemainsPure() {
+    void registryRegistersLoadedSchemaAndResolvesFragment() {
         URI base = URI.create("memory:/schemas/");
         SchemaLoader loader = uri -> parseUnchecked(uri,
                 "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}");
-        SchemaRegistry registry = new SchemaRegistry(loader);
+        SchemaRegistry registry = new SchemaRegistry();
         URI reference = base.resolve("user.json#/$defs/name");
 
         assertNull(registry.resolve(reference));
-        SchemaPlan plan = registry.load(reference);
+        JsonSchema schema = loader.load(SchemaLoader.documentUri(reference));
+        registry.register(base.resolve("user.json"), schema);
+        SchemaPlan plan = registry.resolve(reference);
         assertNotNull(plan);
         assertTrue(plan.isValid("ok"));
         assertFalse(plan.isValid("x"));
-        assertSame(plan, registry.resolve(reference));
         assertSame(plan, SchemaRegistry.copyOf(registry).resolve(reference));
+    }
+
+    @Test
+    void localLoaderResolvesRelativeUriWithBaseDirectory() throws IOException {
+        Path directory = Files.createTempDirectory("sjf4j-schemas-");
+        Path document = directory.resolve("user.json");
+        try {
+            Files.write(document, "{\"type\":\"string\"}".getBytes(StandardCharsets.UTF_8));
+            SchemaLoader.Local local = new SchemaLoader.Local(directory.toUri());
+            URI selected = URI.create("user.json#");
+            JsonSchema schema = local.load(selected);
+            assertTrue(schema instanceof ObjectSchema);
+            assertEquals(document.toUri(), ((ObjectSchema) schema).getRetrievalUri());
+            assertNull(local.load(URI.create("missing.json")));
+            assertEquals(document.toUri(), local.resolve(URI.create("user.json")));
+        } finally {
+            Files.deleteIfExists(document);
+            Files.deleteIfExists(directory);
+        }
     }
 
     @Test
@@ -58,7 +78,7 @@ class SchemaLoaderTest {
         Path file = Files.createTempFile("sjf4j-loader-", ".json");
         try {
             Files.write(file, "false".getBytes(StandardCharsets.UTF_8));
-            JsonSchema parsed = SchemaLoader.LOCAL.load(file.toUri());
+            JsonSchema parsed = new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR).load(file.toUri());
             assertTrue(parsed instanceof BooleanSchema);
             assertFalse(parsed.createPlan().isValid("anything"));
         } finally {
@@ -75,7 +95,7 @@ class SchemaLoaderTest {
         };
         assertTrue(loader.load(base.resolve("value.json")) instanceof ObjectSchema);
 
-        SchemaLoader defaultLoader = SchemaLoader.LOCAL;
+        SchemaLoader defaultLoader = new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR);
         assertThrows(SchemaException.class, () -> defaultLoader.load(base.resolve("value.json")));
     }
 

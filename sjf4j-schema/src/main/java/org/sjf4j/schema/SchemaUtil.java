@@ -373,32 +373,4 @@ public final class SchemaUtil {
     }
 
 
-    /*
-     * --------------------------------------------------------------
-     * Load
-     * --------------------------------------------------------------
-     */
-
-    /**
-     * Loads a schema from local URI.
-     * <p>
-     * Supported schemes: {@code file}, {@code classpath}. Returns {@code null}
-     * when the target does not exist. The returned schema keeps the given URI as
-     * its root retrieval URI.
-     */
-    public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
-        Asserts.notNull(uri, "uri");
-        if (!"file".equalsIgnoreCase(uri.getScheme()) &&
-                !"classpath".equalsIgnoreCase(uri.getScheme())) {
-            throw new SchemaException(formatSchemaLine(Code.SCHEMA_LOAD,
-                    "unsupported local schema uri scheme '" + uri.getScheme()
-                            + "': expected file or classpath", PathSegment.Root.INSTANCE, uri));
-        }
-        JsonSchema schema = SchemaLoader.LOCAL.load(uri);
-        if (schema == null) return null;
-        if (schema instanceof ObjectSchema) return (ObjectSchema) schema;
-        throw new SchemaException(formatSchemaLine(Code.SCHEMA_LOAD,
-                "expected object-shaped schema resource", PathSegment.Root.INSTANCE, uri));
-    }
-
 }
