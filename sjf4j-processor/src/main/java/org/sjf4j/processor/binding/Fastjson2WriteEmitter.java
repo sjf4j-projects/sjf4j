@@ -295,6 +295,9 @@ final class Fastjson2WriteEmitter {
                 case JOJO:
                     structure.emitPojo(out, value);
                     break;
+                case ARRAY:
+                    structure.emitArray(out, value);
+                    break;
                 case LIST:
                     structure.emitList(out, value);
                     break;
