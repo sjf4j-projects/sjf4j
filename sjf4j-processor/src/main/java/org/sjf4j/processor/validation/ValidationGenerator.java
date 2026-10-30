@@ -1,6 +1,7 @@
 package org.sjf4j.processor.validation;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
+import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.property.Property;
 import javax.lang.model.element.Modifier;
@@ -52,8 +53,9 @@ public final class ValidationGenerator {
         Map<String, String> bySnapshot = new LinkedHashMap<String, String>();
         List<ResolvedMethod> methods = context.methods.abstractMethods(iface);
 
+        boolean allowFallback = iface.getAnnotation(CompiledValidator.class).fallback();
         for (ResolvedMethod method : methods) {
-            generateMethod(method, generated, fields, bySnapshot);
+            generateMethod(method, generated, fields, bySnapshot, allowFallback);
         }
         if (!generated.isValid()) return;
 
@@ -99,15 +101,17 @@ public final class ValidationGenerator {
     }
 
     private void generateMethod(ResolvedMethod resolved, GeneratedClass generated,
-                                List<SchemaField> fields, Map<String, String> bySnapshot) {
+                                List<SchemaField> fields, Map<String, String> bySnapshot, boolean allowFallback) {
         ExecutableElement method = resolved.declaration();
         ExecutableType signature = resolved.type();
 
-        if (signature.getParameterTypes().size() != 1 ||
-                method.getParameters().size() != 1 ||
+        int parameterCount = signature.getParameterTypes().size();
+        if (parameterCount < 1 || parameterCount > 2 ||
+                method.getParameters().size() != parameterCount ||
+                (parameterCount == 2 && signature.getParameterTypes().get(1).getKind() != TypeKind.BOOLEAN) ||
                 !context.types.isFullyResolved(signature.getParameterTypes().get(0)) ||
                 !context.types.isFullyResolved(signature.getReturnType())) {
-            fail(generated, method, "@CompiledValidator methods require exactly one fully resolved value parameter");
+            fail(generated, method, "@CompiledValidator methods require a value and an optional primitive boolean strictFormat parameter");
             return;
         }
 
@@ -151,49 +155,90 @@ public final class ValidationGenerator {
 
         String type = parameterType.toString();
         String value = method.getParameters().get(0).getSimpleName().toString();
+        String strictParam = parameterCount == 2
+                ? method.getParameters().get(1).getSimpleName().toString() : "true";
+        String parameterDeclaration = type + " " + value + (parameterCount == 2
+                ? ", boolean " + strictParam : "");
 
-        generated.addMethod(out -> {
-            out.line("@Override");
-            out.beginBlock("public " + resultName + " " + method.getSimpleName()
-                    + "(" + type + " " + value + ")");
-            if (!parameterType.getKind().isPrimitive()) out.line("if (" + value + " == null) "
-                    + (isBoolean ? "return true;" :
-                       isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
-            if (isBoolean && bindings.size() == 1) {
-                SchemaField bound = null;
-                String selected = names.get(0).substring("Fallback.".length(),
-                        names.get(0).length() - ".ROOT".length());
-                for (SchemaField field : fields) if (field.name.equals(selected)) bound = field;
-                if (bound != null && emitBoolean(out, bound.snapshot)) {
-                    out.endBlock();
-                    return;
-                }
-                if (bound != null && emitDirect(out, parameterType, value, bound)) {
-                    if (!bound.subplans.isEmpty()) bound.usedFallback = true;
-                    out.line("return true;");
-                    out.endBlock();
-                    return;
+        // Select the fast path before source emission, so fallback=false
+        // produces an annotation-processing error rather than hidden runtime work.
+        SchemaField bound = null;
+        String booleanLiteral = null;
+        DirectCheck direct = null;
+        if (isBoolean && bindings.size() == 1) {
+            String selected = names.get(0).substring("Fallback.".length(),
+                    names.get(0).length() - ".ROOT".length());
+            for (SchemaField field : fields) {
+                if (field.name.equals(selected)) bound = field;
+            }
+            if (bound != null) {
+                booleanLiteral = compileBoolean(bound.snapshot);
+                if (booleanLiteral == null) {
+                    direct = prepareDirect(parameterType, value, bound, strictParam);
                 }
             }
+        }
+
+        boolean fallback = booleanLiteral == null &&
+                (direct == null || !direct.subplans.isEmpty());
+        if (fallback && !allowFallback) {
+            fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method");
+            return;
+        }
+        if (direct != null) {
+            for (Subplan sub : direct.subplans) {
+                boolean present = false;
+                for (Subplan existing : bound.subplans) {
+                    if (existing.fieldName.equals(sub.fieldName)) { present = true; break; }
+                }
+                if (!present) bound.subplans.add(sub);
+            }
+            if (!direct.subplans.isEmpty()) bound.usedFallback = true;
+        } else if (fallback) {
             for (SchemaField field : fields) {
                 if (names.contains("Fallback." + field.name + ".ROOT")) field.usedFallback = true;
             }
-            if (isBoolean) {
+        }
+
+        final String literal = booleanLiteral;
+        final DirectCheck checks = direct;
+        generated.addMethod(out -> {
+            out.line("@Override");
+            out.beginBlock("public " + resultName + " " + method.getSimpleName()
+                    + "(" + parameterDeclaration + ")");
+            if (!parameterType.getKind().isPrimitive()) out.line("if (" + value + " == null) "
+                    + (isBoolean ? "return true;" :
+                       isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
+            if (literal != null) {
+                out.line("return " + literal + ";");
+            } else if (checks != null) {
+                for (String statement : checks.statements) out.line(statement);
+                out.line("return true;");
+            } else if (isBoolean) {
                 for (String plan : names) {
-                    out.line("if (!" + plan + ".isValid(" + value + ", true)) return false;");
+                    out.line("if (!" + plan + ".isValid(" + value + ", " + strictParam + ")) return false;");
                 }
                 out.line("return true;");
             } else if (isVoid) {
                 for (String plan : names) {
-                    out.line(plan + ".requireValid(" + value + ", true);");
+                    out.line(plan + ".requireValid(" + value + ", " + strictParam + ");");
                 }
+            } else if (names.size() == 1) {
+                out.line("return " + names.get(0) + ".validate(" + value + ", false, " + strictParam + ");");
             } else {
+                // All annotated schemas participate; report all failures in
+                // parent-to-child order instead of stopping at the first failure.
+                out.line("java.util.List<org.sjf4j.schema.ValidationMessage> messages = new java.util.ArrayList<>();");
+                out.line("boolean valid = true;");
                 out.line("org.sjf4j.schema.ValidationResult result;");
                 for (String plan : names) {
-                    out.line("result = " + plan + ".validate(" + value + ", true, true);");
-                    out.line("if (!result.isValid()) return result;");
+                    out.line("result = " + plan + ".validate(" + value + ", false, " + strictParam + ");");
+                    out.line("if (!result.isValid()) valid = false;");
+                    out.line("messages.addAll(result.getMessages());");
                 }
-                out.line("return org.sjf4j.schema.ValidationResult.SUCCESS;");
+                out.line("return messages.isEmpty() && valid ? org.sjf4j.schema.ValidationResult.SUCCESS");
+                out.line("        : new org.sjf4j.schema.ValidationResult(valid, messages,");
+                out.line("                messages.isEmpty() ? null : messages.get(messages.size() - 1));");
             }
             out.endBlock();
         });
@@ -259,17 +304,16 @@ public final class ValidationGenerator {
      * Boolean resource schemas, including a root that refers exclusively to a
      * boolean resource, can be emitted without instantiating the fallback.
      */
-    private boolean emitBoolean(org.sjf4j.processor.code.JavaWriter out,
-                                SchemaResourceResolver.Snapshot snapshot) {
+    private String compileBoolean(SchemaResourceResolver.Snapshot snapshot) {
         String literal = snapshot.documents[0].trim();
         if (!"true".equals(literal) && !"false".equals(literal)) {
             Object parsed = org.sjf4j.Sjf4j.global().fromJson(literal);
-            if (!org.sjf4j.JsonType.of(parsed).isObject()) return false;
+            if (!org.sjf4j.JsonType.of(parsed).isObject()) return null;
             org.sjf4j.JsonObject os = org.sjf4j.Nodes.toJsonObject(parsed);
-            if (os.size() != 1 || os.getString("$ref") == null) return false;
+            if (os.size() != 1 || os.getString("$ref") == null) return null;
             java.net.URI base = java.net.URI.create(snapshot.uris[0]);
             java.net.URI target = base.resolve(os.getString("$ref"));
-            if (target.getFragment() != null) return false;
+            if (target.getFragment() != null) return null;
             for (int i = 0; i < snapshot.uris.length; i++) {
                 if (snapshot.uris[i].equals(target.toString())) {
                     literal = snapshot.documents[i].trim();
@@ -277,9 +321,8 @@ public final class ValidationGenerator {
                 }
             }
         }
-        if (!"true".equals(literal) && !"false".equals(literal)) return false;
-        out.line("return " + literal + ";");
-        return true;
+        if (!"true".equals(literal) && !"false".equals(literal)) return null;
+        return literal;
     }
 
     /**
@@ -287,36 +330,36 @@ public final class ValidationGenerator {
      * their existing SchemaPlan via JSON Pointer, but only when the root
      * consists of type + properties (no context-dependent root keywords).
      */
-    private boolean emitDirect(org.sjf4j.processor.code.JavaWriter out,
-                               TypeMirror type, String variable, SchemaField field) {
+    private DirectCheck prepareDirect(TypeMirror type, String variable,
+                                      SchemaField field, String strictFormat) {
         SchemaResourceResolver.Snapshot snapshot = field.snapshot;
         if (snapshot.documents.length != 1 ||
-                !snapshot.selectedUri.equals(snapshot.uris[0])) return false;
-        if (context.types.nodeKind(type) != NodeKind.OBJECT_POJO) return false;
+                !snapshot.selectedUri.equals(snapshot.uris[0])) return null;
+        if (context.types.nodeKind(type) != NodeKind.OBJECT_POJO) return null;
         TypeElement owner = context.types.typeElement(type);
         if (owner == null || !owner.getModifiers().contains(Modifier.FINAL) ||
                 !owner.getModifiers().contains(Modifier.PUBLIC) ||
-                owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return false;
+                owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return null;
 
         Object parsed = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
-        if (!org.sjf4j.JsonType.of(parsed).isObject()) return false;
+        if (!org.sjf4j.JsonType.of(parsed).isObject()) return null;
         org.sjf4j.JsonObject root = org.sjf4j.Nodes.toJsonObject(parsed);
         for (String key : root.keySet()) {
-            if (!key.equals("type") && !key.equals("properties")) return false;
+            if (!key.equals("type") && !key.equals("properties")) return null;
         }
-        if (!"object".equals(root.getString("type"))) return false;
+        if (!"object".equals(root.getString("type"))) return null;
         Object raw = root.getNode("properties");
-        if (raw == null) return false;
+        if (raw == null) return null;
         org.sjf4j.JsonObject propertyMap = org.sjf4j.Nodes.toJsonObject(raw);
         Map<String, Property> javaProperties = context.properties.resolve(type);
-        if (javaProperties.isEmpty() || propertyMap.size() != javaProperties.size()) return false;
+        if (javaProperties.isEmpty() || propertyMap.size() != javaProperties.size()) return null;
 
         for (Property property : javaProperties.values()) {
             if (!propertyMap.containsKey(property.name()) ||
                     property.read() == null || !property.read().isMethod() ||
                     !property.read().member().getModifiers().contains(Modifier.PUBLIC) ||
                     !((ExecutableElement) property.read().member()).getThrownTypes().isEmpty() ||
-                    !property.name().matches("[a-zA-Z0-9_]+")) return false;
+                    !property.name().matches("[a-zA-Z0-9_]+")) return null;
         }
 
         java.util.List<String> statements = new java.util.ArrayList<String>();
@@ -363,14 +406,12 @@ public final class ValidationGenerator {
                 String fragment = "#/properties/" + entry.getKey();
                 subplans.add(new Subplan(subName, snapshot.selectedUri + fragment));
                 statements.add("if (!Fallback." + field.name + "." + subName + ".isValid(" + local
-                        + ", true)) return false;");
+                        + ", " + strictFormat + ")) return false;");
             }
             index++;
         }
-        if (directCount == 0) return false;
-        field.subplans.addAll(subplans);
-        for (String line : statements) out.line(line);
-        return true;
+        if (directCount == 0) return null;
+        return new DirectCheck(statements, subplans);
     }
 
     private static String snapshotKey(SchemaResourceResolver.Snapshot snapshot) {
@@ -416,6 +457,16 @@ public final class ValidationGenerator {
     private void fail(GeneratedClass generated, Element method, String message) {
         context.error(method, message);
         generated.invalidate();
+    }
+
+    private static final class DirectCheck {
+        final List<String> statements;
+        final List<Subplan> subplans;
+
+        DirectCheck(List<String> statements, List<Subplan> subplans) {
+            this.statements = statements;
+            this.subplans = subplans;
+        }
     }
 
     private static final class Binding {

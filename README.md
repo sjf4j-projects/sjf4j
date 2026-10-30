@@ -128,7 +128,7 @@ Maven:
 For frequently executed JSON Path access and object mapping, SJF4J provides
 compile-time code generation through `sjf4j-processor`.  
 It generates direct implementations for `@CompiledNavigator`, `@CompiledMapper`,
-and `@CompiledJdbcMapper` interfaces, avoiding reflection, metadata lookup,
+`@CompiledJdbcMapper`, and `@CompiledValidator` interfaces, avoiding reflection, metadata lookup,
 and interpreted path or mapping execution at runtime.
 
 `sjf4j-processor` is needed only during compilation.  
@@ -410,7 +410,7 @@ JSON Schema can also be used in the opposite direction through the online
 
 
 
-Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
+Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating) · [CompiledValidator contract and keyword coverage](docs/compiled-validator.md)
 
 
 ### Mapping
