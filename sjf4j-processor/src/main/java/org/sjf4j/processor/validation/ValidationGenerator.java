@@ -5,7 +5,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.processor.property.Property;
- import javax.lang.model.element.Modifier;
+import javax.lang.model.element.Modifier;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -63,17 +63,17 @@ public final class ValidationGenerator {
             out.beginBlock("private static final class Fallback");
             for (SchemaField field : fields) {
                 if (!field.usedFallback) continue;
-                String registry = field.name.replace("PLAN_", "REGISTRY_");
+                out.beginBlock("private static final class " + field.name);
+                String registry = "REGISTRY";
                 out.line("private static final org.sjf4j.schema.SchemaRegistry " + registry
                         + " = new org.sjf4j.schema.SchemaRegistry();");
-                out.line("static final org.sjf4j.schema.SchemaPlan " + field.name
-                        + " = load" + field.name + "();");
+                out.line("static final org.sjf4j.schema.SchemaPlan ROOT = load();");
                 for (Subplan sub : field.subplans) {
                     out.line("static final org.sjf4j.schema.SchemaPlan " + sub.fieldName
                             + " = " + registry + ".resolve(java.net.URI.create("
                             + javaLiteral(sub.uri) + "));");
                 }
-                out.beginBlock("private static org.sjf4j.schema.SchemaPlan load" + field.name + "()");
+                out.beginBlock("private static org.sjf4j.schema.SchemaPlan load()");
                 out.beginBlock("try");
                 for (int i = 0; i < field.snapshot.uris.length; i++) {
                     String uri = "java.net.URI.create(" + javaLiteral(field.snapshot.uris[i]) + ")";
@@ -103,6 +103,7 @@ public final class ValidationGenerator {
                 out.endBlock();
                 out.beginBlock("catch (Exception e)");
                 out.line("throw new ExceptionInInitializerError(e);");
+                out.endBlock();
                 out.endBlock();
                 out.endBlock();
             }
@@ -159,7 +160,7 @@ public final class ValidationGenerator {
                 fields.add(new SchemaField(name, snapshot, binding.annotation, binding.annotationExpression));
                 bySnapshot.put(signatureKey, name);
             }
-            names.add("Fallback." + name);
+            names.add("Fallback." + name + ".ROOT");
         }
 
         String type = parameterType.toString();
@@ -174,7 +175,8 @@ public final class ValidationGenerator {
                        isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
             if (isBoolean && bindings.size() == 1) {
                 SchemaField bound = null;
-                String selected = names.get(0).substring("Fallback.".length());
+                String selected = names.get(0).substring("Fallback.".length(),
+                        names.get(0).length() - ".ROOT".length());
                 for (SchemaField field : fields) if (field.name.equals(selected)) bound = field;
                 if (bound != null && emitBoolean(out, bound.snapshot)) {
                     out.endBlock();
@@ -188,7 +190,7 @@ public final class ValidationGenerator {
                 }
             }
             for (SchemaField field : fields) {
-                if (names.contains("Fallback." + field.name)) field.usedFallback = true;
+                if (names.contains("Fallback." + field.name + ".ROOT")) field.usedFallback = true;
             }
             if (isBoolean) {
                 for (String plan : names) {
@@ -371,10 +373,10 @@ public final class ValidationGenerator {
                     if (max != null) statements.add("if (" + count + " > " + max + ") return false;");
                 }
             } else {
-                String subName = field.name + "_SUB_" + index;
+                String subName = "SUB_" + index;
                 String fragment = "#/properties/" + entry.getKey();
                 subplans.add(new Subplan(subName, snapshot.selectedUri + fragment));
-                statements.add("if (!Fallback." + subName + ".isValid(" + local
+                statements.add("if (!Fallback." + field.name + "." + subName + ".isValid(" + local
                         + ", true)) return false;");
             }
             index++;
@@ -393,15 +395,6 @@ public final class ValidationGenerator {
                     .append(snapshot.documents[i]).append('\u0000');
         }
         return key.toString();
-    }
-
-    private static String stringArray(String[] strings) {
-        StringBuilder result = new StringBuilder("new String[]{");
-        for (int i = 0; i < strings.length; i++) {
-            if (i > 0) result.append(", ");
-            result.append(javaLiteral(strings[i]));
-        }
-        return result.append('}').toString();
     }
 
     private static String javaLiteral(String value) {

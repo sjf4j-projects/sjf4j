@@ -13,8 +13,9 @@ import java.lang.annotation.Target;
  * Schema binding is resolved in this order: method-level
  * {@link ValidJsonSchema}, parameter-level annotation, then type annotations
  * (including annotated superclasses in parent-to-child order).
- * Unlike SchemaValidator's runtime lookup, schema resources are resolved and
- * validated during annotation processing and embedded in generated code.</p>
+ * Schema resources are analyzed during annotation processing; generated
+ * fallback plans load the original annotations or resources at runtime.
+ * Schema JSON is not duplicated in the generated implementation.</p>
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)

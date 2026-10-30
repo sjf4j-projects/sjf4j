@@ -25,8 +25,8 @@ import java.util.Map;
 
 /**
  * Resolves complete schema documents at annotation-processing time.
- * No runtime resource lookup is emitted: every locally referenced document
- * is captured in the generated validator's fixed schema snapshot.
+ * Schemas are analyzed for code generation, but runtime fallback loads the
+ * original sources; the parsed document text is not emitted into generated code.
  */
 final class SchemaResourceResolver {
 
