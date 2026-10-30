@@ -101,7 +101,7 @@ class Fastjson2BinderTest {
                 InternalAccess.dynamicMembers(object).getClass());
         assertEquals(ArrayList.class,
                 InternalAccess.dynamicElements(array).getClass());
-        assertEquals(7, object.get("id"));
+        assertEquals(7, object.getInt("id"));
         assertEquals(2, array.size());
     }
 
