@@ -94,6 +94,9 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 case JOJO:
                     structures.emitPojo(out, value);
                     break;
+                case ARRAY:
+                    structures.emitArray(out, value);
+                    break;
                 case LIST:
                     structures.emitList(out, value);
                     break;
