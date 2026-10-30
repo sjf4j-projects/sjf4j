@@ -3,6 +3,8 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
+import org.sjf4j.path.JsonPointer;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.type.TypeMirror;
@@ -90,21 +92,13 @@ final class SchemaCompiler {
         if (node == null) return null;
         String fragment = target.getFragment();
         if (fragment != null && !fragment.isEmpty()) {
-            if (!fragment.startsWith("/")) return null; // Named anchors need planner resolution.
-            String[] segments = fragment.substring(1).split("/", -1);
-            for (String part : segments) {
-                String name = part.replace("~1", "/").replace("~0", "~");
-                if (org.sjf4j.JsonType.of(node) == org.sjf4j.JsonType.OBJECT) {
-                    node = org.sjf4j.Nodes.getInObject(node, name);
-                } else if (org.sjf4j.JsonType.of(node) == org.sjf4j.JsonType.ARRAY) {
-                    try {
-                        node = org.sjf4j.Nodes.getInArray(node, Integer.parseInt(name));
-                    } catch (NumberFormatException ex) {
-                        return null;
-                    }
-                } else return null;
-                if (node == null) return null;
+            if (!fragment.startsWith("/")) return null;
+            try {
+                node = JsonPointer.parse(fragment).getNode(node);
+            } catch (RuntimeException ex) {
+                return null;
             }
+            if (node == null) return null;
         }
         return new RefTarget(node, target.toString());
     }
@@ -129,20 +123,15 @@ final class SchemaCompiler {
             String fragment = uri.getFragment();
             if (fragment == null || fragment.isEmpty()) return false;
             if (!fragment.startsWith("/")) return true;
-            for (String part : fragment.substring(1).split("/", -1)) {
-                String name = part.replace("~1", "/").replace("~0", "~");
-                if (JsonType.of(node) == JsonType.OBJECT) {
-                    node = Nodes.getInObject(node, name);
-                } else if (JsonType.of(node) == JsonType.ARRAY) {
-                    try {
-                        node = Nodes.getInArray(node, Integer.parseInt(name));
-                    } catch (NumberFormatException ex) {
-                        return true;
-                    }
-                } else {
-                    return true;
+            Object root = node;
+            try {
+                for (PathSegment segment : JsonPointer.parse(fragment).segments()) {
+                    if (segment == PathSegment.Root.INSTANCE) continue;
+                    node = JsonPointer.fromLast(segment).getNode(root);
+                    if (node == null || hasId(node)) return true;
                 }
-                if (node == null || hasId(node)) return true;
+            } catch (RuntimeException ex) {
+                return true;
             }
             return false;
         }
