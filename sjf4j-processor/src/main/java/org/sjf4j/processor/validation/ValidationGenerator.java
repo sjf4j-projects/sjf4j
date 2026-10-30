@@ -165,7 +165,11 @@ public final class ValidationGenerator {
                 SchemaField bound = null;
                 String selected = names.get(0).substring("Fallback.".length());
                 for (SchemaField field : fields) if (field.name.equals(selected)) bound = field;
-                if (bound != null && (emitBoolean(out, bound.snapshot) || emitDirect(out, parameterType, value, bound))) {
+                if (bound != null && emitBoolean(out, bound.snapshot)) {
+                    out.endBlock();
+                    return;
+                }
+                if (bound != null && emitDirect(out, parameterType, value, bound)) {
                     if (!bound.subplans.isEmpty()) bound.usedFallback = true;
                     out.line("return true;");
                     out.endBlock();
@@ -275,7 +279,7 @@ public final class ValidationGenerator {
             }
         }
         if (!"true".equals(literal) && !"false".equals(literal)) return false;
-        if ("false".equals(literal)) out.line("if (true) return false;");
+        out.line("return " + literal + ";");
         return true;
     }
 
