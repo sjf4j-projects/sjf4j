@@ -29,11 +29,14 @@ final class OneOfCompiler {
     private final ProcessorContext context;
     private final ObjectCompiler objects;
     private final SchemaCompiler compiler;
+    private final boolean nullAsMissing;
 
-    OneOfCompiler(ProcessorContext context, ObjectCompiler objects, SchemaCompiler compiler) {
+    OneOfCompiler(ProcessorContext context, ObjectCompiler objects, SchemaCompiler compiler,
+                  boolean nullAsMissing) {
         this.context = context;
         this.objects = objects;
         this.compiler = compiler;
+        this.nullAsMissing = nullAsMissing;
     }
 
     SchemaCheck compile(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
@@ -105,7 +108,7 @@ final class OneOfCompiler {
             TypeMirror subtype = mappedType(candidate);
             if (subtype == null || !expected.equals(publicConstant(subtype, discriminator))) return null;
             SchemaCheck.ObjectCheck check =
-                    objects.compileNested(subtype, snapshot, branch, target.uri, false, depth + 1);
+                    objects.compileNested(subtype, snapshot, branch, target.uri, nullAsMissing, depth + 1);
             // No per-property fallback is allowed on the direct path. The
             // original oneOf subplan remains the single fallback for strict
             // format assertions and unknown runtime classes.

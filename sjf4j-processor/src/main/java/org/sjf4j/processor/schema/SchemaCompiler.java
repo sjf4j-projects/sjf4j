@@ -27,7 +27,7 @@ final class SchemaCompiler {
         this.objects = new ObjectCompiler(context, this);
         this.scalars = new ScalarCompiler();
         this.arrays = new ArrayCompiler(context, this);
-        this.oneOf = new OneOfCompiler(context, objects, this);
+        this.oneOf = new OneOfCompiler(context, objects, this, nullAsMissing);
     }
 
     SchemaCheck.ObjectCheck compileObject(TypeMirror type,

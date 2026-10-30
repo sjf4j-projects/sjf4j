@@ -177,7 +177,7 @@ without violating `required`, although its property schema may reject null.
 | `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes | Phase 1 mixed |
 | `format` | Known typed-string constraints use `FormatValidator` when `strictFormat` is true; assertion vocabularies and non-standard dialects fall back | Yes; assertion vocabulary may enforce format even in non-strict mode | String optimized |
 | `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes | Partial |
-| `oneOf` | Restricted direct Java subtype dispatch when Schema discriminator values are provably disjoint and public constant properties agree; unknown subtypes and strict-format path fall back | Yes | Direct for Creek |
+| `oneOf` | General branch counting with statically compiled predicates (overlap allowed); optional optimized subtype dispatch when proven disjoint | Yes | Direct for Creek |
 | `anyOf`, `allOf`, `not` | No | Yes | Later |
 | `if`, `then`, `else` | No | Yes | Later |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes | Later |
@@ -201,9 +201,16 @@ numeric equality across Java number classes. Under a known standard
 vocabulary, typed-string `format` checks use the existing
 `FormatValidator` and the `strictFormat` flag. Explicit format-assertion
 vocabularies conservatively retain the runtime `SchemaPlan` behavior.
-General `oneOf` branch-count compilation is not yet implemented; the
-existing fast path requires statically provable discriminator-based Java
-subtypes.
+General `oneOf` branch-count compilation emits one static boolean predicate per
+branch and rejects zero or multiple matches. Branch overlap is legal; no Java
+`@OneOf` annotation or discriminator is required. Direct compilation currently
+requires all branches to be expressible with supported scalar, array, object,
+reference, or nested `oneOf` checks. Unsupported combinations fall back as an
+entire `oneOf` subtree, not a subset of branches. The specialized disjoint
+Java-subtype path remains for Creek and retains its existing runtime fallback
+for unknown subtypes and strict-format behavior. No evaluated tracking is
+generated; any `unevaluated*` keyword at the relevant schema scope retains
+full-scope runtime evaluation.
 
 The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
 `CompiledValidatorTypeDispatchTest` (typed Java paths versus dynamic Nodes
