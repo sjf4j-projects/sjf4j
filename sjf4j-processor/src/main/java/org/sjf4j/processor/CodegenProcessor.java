@@ -2,7 +2,7 @@ package org.sjf4j.processor;
 
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.schema.CompiledValidator;
-import org.sjf4j.processor.validation.ValidationGenerator;
+import org.sjf4j.processor.schema.SchemaGenerator;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.path.CompiledNavigator;
@@ -37,7 +37,7 @@ public final class CodegenProcessor extends AbstractProcessor {
     private MapperGenerator mapperGenerator;
     private JdbcMapperGenerator jdbcMapperGenerator;
     private BindingGenerator bindingGenerator;
-    private ValidationGenerator validationGenerator;
+    private SchemaGenerator schemaGenerator;
 
     /**
      * Lists both root and method-level annotations so invalid element kinds
@@ -62,7 +62,7 @@ public final class CodegenProcessor extends AbstractProcessor {
         this.mapperGenerator = new MapperGenerator(context);
         this.jdbcMapperGenerator = new JdbcMapperGenerator(context);
         this.bindingGenerator = new BindingGenerator(context);
-        this.validationGenerator = new ValidationGenerator(context);
+        this.schemaGenerator = new SchemaGenerator(context);
     }
 
     /** Processes each discovered interface; other processors may see the same annotations. */
@@ -80,7 +80,7 @@ public final class CodegenProcessor extends AbstractProcessor {
         processInterfaces(roundEnv, CompiledMapper.class, this::generateMapper);
         processInterfaces(roundEnv, CompiledJdbcMapper.class, this::generateJdbcMapper);
         processInterfaces(roundEnv, CompiledBinder.class, bindingGenerator::generate);
-        processInterfaces(roundEnv, CompiledValidator.class, validationGenerator::generate);
+        processInterfaces(roundEnv, CompiledValidator.class, schemaGenerator::generate);
 
         return false;
     }

@@ -1,4 +1,4 @@
-package org.sjf4j.processor.validation;
+package org.sjf4j.processor.schema;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;

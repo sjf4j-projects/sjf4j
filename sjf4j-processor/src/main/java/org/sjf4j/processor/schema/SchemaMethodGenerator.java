@@ -1,7 +1,6 @@
-package org.sjf4j.processor.validation;
+package org.sjf4j.processor.schema;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
-import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.property.Property;
 import javax.lang.model.element.Modifier;
@@ -23,44 +22,26 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * First-stage compiled validator generator.
+ * Compiles and emits individual methods of a compiled validator.
  *
- * Emits direct Java property checks for fully understood simple schemas.
- * Every other schema uses the original SchemaPlan, preserving all runtime semantics.
+ * <p>Phase one keeps the existing keyword compilation, direct checks and
+ * fallback emission together to preserve generated-code behavior. Interface
+ * orchestration belongs to {@link SchemaGenerator}.</p>
  */
-public final class ValidationGenerator {
+final class SchemaMethodGenerator {
 
     private final ProcessorContext context;
     private final SchemaResourceResolver resources;
+    private final List<SchemaField> fields = new ArrayList<SchemaField>();
+    private final Map<String, String> bySnapshot = new LinkedHashMap<String, String>();
 
-    public ValidationGenerator(ProcessorContext context) {
+    SchemaMethodGenerator(ProcessorContext context) {
         this.context = context;
         this.resources = new SchemaResourceResolver(context);
     }
 
-    public void generate(TypeElement iface) {
-        if (!iface.getTypeParameters().isEmpty()) {
-            context.error(iface, "@CompiledValidator cannot declare type parameters");
-            return;
-        }
-
-        GeneratedClass generated = GeneratedClass.forInterface(context, iface);
-        // CompiledInstances.create(Class) currently requests a RuntimeContext
-        // constructor for all generated implementations.
-        generated.enableRuntimeContext();
-
-        List<SchemaField> fields = new ArrayList<SchemaField>();
-        Map<String, String> bySnapshot = new LinkedHashMap<String, String>();
-        List<ResolvedMethod> methods = context.methods.abstractMethods(iface);
-
-        CompiledValidator options = iface.getAnnotation(CompiledValidator.class);
-        boolean allowFallback = options.fallback();
-        boolean nullAsMissing = options.nullAsMissing();
-        for (ResolvedMethod method : methods) {
-            generateMethod(method, generated, fields, bySnapshot, allowFallback, nullAsMissing);
-        }
-        if (!generated.isValid()) return;
-
+    /** Emits shared fallback plans after all methods have been analyzed. */
+    void emitFallbacks(GeneratedClass generated) {
         generated.addHelper(out -> {
             out.beginBlock("private static final class Fallback");
             for (SchemaField field : fields) {
@@ -99,12 +80,11 @@ public final class ValidationGenerator {
             }
             out.endBlock();
         });
-        generated.write();
     }
 
-    private void generateMethod(ResolvedMethod resolved, GeneratedClass generated,
-                                List<SchemaField> fields, Map<String, String> bySnapshot,
-                                boolean allowFallback, boolean nullAsMissing) {
+    /** Analyzes and generates one validator method, sharing plans across the interface. */
+    void generate(ResolvedMethod resolved, GeneratedClass generated,
+                  boolean allowFallback, boolean nullAsMissing) {
         ExecutableElement method = resolved.declaration();
         ExecutableType signature = resolved.type();
 
