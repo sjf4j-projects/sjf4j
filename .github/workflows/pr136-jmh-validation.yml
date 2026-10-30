@@ -1,0 +1,25 @@
+name: PR136 JMH Validation
+
+on:
+  push:
+    branches:
+      - experiment/pr136-jmh-check-v2-20261030
+
+jobs:
+  jmh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile benchmark and generated binders
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Smoke benchmark both models and all Map backends
+        run: |
+          JAR=$(find sjf4j-testbench/build/libs -name '*jmh.jar' | head -n 1)
+          java -jar "$JAR" \
+            '.*(CompiledReadBenchmark\.(jackson2_map_string_raw|jackson3_map_utf8_compiled|fastjson2_map_string_native|gson_map_utf8_native_reader|jsonp_map_string_compiled|simple_map_utf8_runtime|jackson2_pojo_string_compiled)|CompiledMapListBenchmark\.jackson2_list_string_compiled|CreatorReadBenchmark\.jackson2_pojo_string_compiled)' \
+            -f 1 -wi 1 -i 1 -w 100ms -r 100ms
