@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,35 +52,12 @@ public class SchemaValidationTest {
         assertSame(ValidationResult.SUCCESS, result);
     }
 
-    @Test
-    public void testValueBindingInferUsesDeclaredRawTypeExceptNull() {
-        InstancedNode reusedLeaf = InstancedNode.infer("reused");
-        StringValue stringValue = new StringValue();
-        MapValue mapValue = new MapValue();
-        ListValue listValue = new ListValue();
-
-        InstancedNode stringNode = InstancedNode.infer(stringValue, reusedLeaf);
-        InstancedNode mapNode = InstancedNode.infer(mapValue, reusedLeaf);
-        InstancedNode listNode = InstancedNode.infer(listValue, reusedLeaf);
-
-        assertEquals(JsonType.NULL, stringNode.jsonType());
-        assertEquals(JsonType.OBJECT, mapNode.jsonType());
-        assertEquals(JsonType.ARRAY, listNode.jsonType());
-        assertTrue(stringNode.converted());
-        assertTrue(mapNode.converted());
-        assertTrue(listNode.converted());
-        assertNull(stringNode.node());
-        assertNotSame(reusedLeaf, stringNode);
-        assertEquals(1, stringValue.encodes);
-        assertEquals(1, mapValue.encodes);
-        assertEquals(1, listValue.encodes);
-    }
 
     @Test
     public void testInferClassifiesPojoObject() {
         PlainPojo value = new PlainPojo();
 
-        InstancedNode node = InstancedNode.infer(value);
+        Instance node = Instance.infer(value);
 
         assertSame(value, node.node());
         assertEquals(JsonType.OBJECT, node.jsonType());
@@ -464,6 +442,53 @@ public class SchemaValidationTest {
         assertTrue(plan.isValid("a"));
         assertTrue(plan.isValid(1));
         assertFalse(plan.isValid(true));
+    }
+
+    @Test
+    public void testFailFastOneOfSkipsPropertiesInFailedCandidate() {
+        SchemaPlan plan = JsonSchema.fromJson("{" +
+                "\"oneOf\":[" +
+                "{\"required\":[\"missing\"],\"properties\":{\"present\":true}}," +
+                "{\"required\":[\"present\"]}" +
+                "]}").createPlan();
+        int[] entrySetCalls = {0};
+        Map<String, Object> instance = new HashMap<String, Object>() {
+            @Override
+            public Set<Map.Entry<String, Object>> entrySet() {
+                entrySetCalls[0]++;
+                return super.entrySet();
+            }
+        };
+        instance.put("present", 1);
+
+        assertTrue(plan.isValid(instance));
+        assertEquals(0, entrySetCalls[0]);
+    }
+
+    @Test
+    public void testFailFastOneOfChecksLaterMatchingCandidate() {
+        SchemaPlan plan = JsonSchema.fromJson("{" +
+                "\"oneOf\":[{\"required\":[\"a\"]},{\"required\":[\"a\"]}]" +
+                "}").createPlan();
+
+        ValidationResult result = plan.validate(Collections.singletonMap("a", 1), true, false);
+        assertFalse(result.isValid());
+        assertEquals("oneOf", result.getLastMessage().getKeyword());
+    }
+
+    @Test
+    public void testNonFailFastAggregatesErrorsAfterRequiredFailure() {
+        SchemaPlan plan = JsonSchema.fromJson("{" +
+                "\"required\":[\"missing\"]," +
+                "\"properties\":{\"present\":{\"type\":\"string\"}}" +
+                "}").createPlan();
+
+        ValidationResult result = plan.validate(Collections.singletonMap("present", 1));
+        assertFalse(result.isValid());
+        List<ValidationMessage> errors = result.getErrors();
+        assertEquals(2, errors.size());
+        assertEquals("required", errors.get(0).getKeyword());
+        assertEquals("type", errors.get(1).getKeyword());
     }
 
     @Test

@@ -4,9 +4,11 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.exception.NodeException;
 
 import java.net.URI;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -128,6 +130,78 @@ class SchemaPlanTest {
 
         assertTrue(plan.isValid(new Object[]{1}));
         assertFalse(plan.isValid(new Object[]{"a"}));
+    }
+
+    @Test
+    void failFastFailurePopsDynamicAnchorPlan() {
+        SchemaPlan plan = JsonSchema.fromJson("{" +
+                "\"$dynamicAnchor\":\"node\"," +
+                "\"required\":[\"missing\"]," +
+                "\"properties\":{\"present\":true}" +
+                "}").createPlan();
+        ValidationContext ctx = new ValidationContext(true, false, false);
+
+        assertFalse(plan.evaluate(Instance.infer(Collections.emptyMap()), null, ctx));
+        assertTrue(ctx.planStack().isEmpty());
+    }
+
+    @Test
+    void failFastFailedAnyOfAndOneOfCandidatesLeaveNoEvaluatedFrames() {
+        for (String keyword : new String[]{"anyOf", "oneOf"}) {
+            SchemaPlan plan = JsonSchema.fromJson("{\"" + keyword + "\":[" +
+                    "{\"required\":[\"missing\"],\"unevaluatedProperties\":true},true]," +
+                    "\"unevaluatedProperties\":true}").createPlan();
+            Instance instance = Instance.infer(Collections.singletonMap("present", 1));
+            ValidationContext ctx = new ValidationContext(true, false, false);
+
+            assertTrue(plan.evaluate(instance, null, ctx), keyword);
+            assertNull(instance.peekEvaluated(), keyword);
+        }
+    }
+
+    @Test
+    void unevaluatedKeywordsApplyToTheirOwnTypesInBothModes() {
+        SchemaPlan plan = JsonSchema.fromJson("{" +
+                "\"unevaluatedProperties\":false,\"unevaluatedItems\":false" +
+                "}").createPlan();
+        for (Object instance : new Object[]{Collections.singletonMap("x", 1), Collections.singletonList(1)}) {
+            assertFalse(plan.validate(instance, true, false).isValid());
+            assertFalse(plan.validate(instance).isValid());
+        }
+    }
+
+    @Test
+    void notSeesUnevaluatedPropertiesFailureOnObject() {
+        SchemaPlan plan = JsonSchema.fromJson("{" +
+                "\"not\":{\"unevaluatedProperties\":false,\"unevaluatedItems\":false}" +
+                "}").createPlan();
+        Object instance = Collections.singletonMap("a", 1);
+
+        assertTrue(plan.isValid(instance));
+        assertTrue(plan.validate(instance).isValid());
+    }
+
+    @Test
+    void inapplicableUnevaluatedPropertiesLeavesNoFrame() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"unevaluatedProperties\":false}").createPlan();
+        for (boolean failFast : new boolean[]{true, false}) {
+            Instance instance = Instance.infer(Collections.singletonList(1));
+            ValidationContext ctx = new ValidationContext(failFast, false, false);
+
+            assertTrue(plan.evaluate(instance, null, ctx));
+            assertNull(instance.peekEvaluated());
+        }
+    }
+
+    @Test
+    void oneOfDoesNotCountInapplicableUnevaluatedKeywordAsMatch() {
+        SchemaPlan plan = JsonSchema.fromJson("{" +
+                "\"oneOf\":[{\"unevaluatedProperties\":false,\"unevaluatedItems\":false},true]" +
+                "}").createPlan();
+        for (Object instance : new Object[]{Collections.singletonMap("x", 1), Collections.singletonList(1)}) {
+            assertTrue(plan.isValid(instance));
+            assertTrue(plan.validate(instance).isValid());
+        }
     }
 
     @Test

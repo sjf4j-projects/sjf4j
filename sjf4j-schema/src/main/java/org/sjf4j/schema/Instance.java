@@ -9,7 +9,6 @@ import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 
 import java.util.ArrayDeque;
-import java.util.BitSet;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,24 +23,26 @@ import java.util.Map;
  * binding before this wrapper is created, so evaluators inspect the raw OBNT
  * representation rather than the domain instance.
  */
-public final class InstancedNode {
+public final class Instance {
     private Object node;
     private JsonType jsonType;
     private boolean converted;
 
-    private Map<Object, InstancedNode> subInstanceCache;
-    private InstancedNode pathParent;
+    private Map<Object, Instance> subInstanceCache;
+    private Instance pathParent;
     private String pathKey;
     private int pathIndex;
     private boolean pathByIndex;
 
     // runtime state
-    private Deque<BitSet> evaluatedStack;
-    private int refSchemaTimes = 0;
-    private Deque<Object> refSchemaStack;
+    private Deque<EvaluationBits> evaluatedStack;
+    // Active references for this instance only; the common single-ref case
+    // needs no stack allocation.
+    private SchemaPlan firstActiveRef;
+    private Deque<SchemaPlan> nestedActiveRefs;
 
 
-    private InstancedNode(Object node, JsonType jsonType, boolean converted) {
+    private Instance(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
         this.jsonType = jsonType;
         this.converted = converted;
@@ -60,7 +61,7 @@ public final class InstancedNode {
         return converted;
     }
 
-    InstancedNode reuse(Object node, JsonType jsonType, boolean converted) {
+    Instance reuse(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
         this.jsonType = jsonType;
         this.converted = converted;
@@ -72,14 +73,14 @@ public final class InstancedNode {
      * <p>
      * Node/type metadata is preserved.
      */
-    InstancedNode reset() {
+    Instance reset() {
         this.evaluatedStack = null;
-        this.refSchemaTimes = 0;
-        this.refSchemaStack = null;
+        this.firstActiveRef = null;
+        this.nestedActiveRefs = null;
         return this;
     }
 
-    private InstancedNode clearPath() {
+    private Instance clearPath() {
         this.pathParent = null;
         this.pathKey = null;
         this.pathIndex = 0;
@@ -87,14 +88,14 @@ public final class InstancedNode {
         return this;
     }
 
-    private InstancedNode bindPathKey(InstancedNode pathParent, String pathKey) {
+    private Instance bindPathKey(Instance pathParent, String pathKey) {
         this.pathParent = pathParent;
         this.pathKey = pathKey;
         this.pathByIndex = false;
         return this;
     }
 
-    private InstancedNode bindPathIndex(InstancedNode pathParent, int pathIndex) {
+    private Instance bindPathIndex(Instance pathParent, int pathIndex) {
         this.pathParent = pathParent;
         this.pathIndex = pathIndex;
         this.pathByIndex = true;
@@ -107,7 +108,7 @@ public final class InstancedNode {
         return pathByIndex ? new PathSegment.Index(parentPs, pathIndex) : new PathSegment.Name(parentPs, pathKey);
     }
 
-    static InstancedNode infer(Object node) {
+    static Instance infer(Object node) {
         return infer(node, null);
     }
 
@@ -120,7 +121,7 @@ public final class InstancedNode {
      * later from converted values can be cached and reused within the same
      * validation traversal.
      */
-    static InstancedNode infer(Object node, InstancedNode reusedLeaf) {
+    static Instance infer(Object node, Instance reusedLeaf) {
         Class<?> clazz = node == null ? null : node.getClass();
         NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
         if (kind == NodeKind.UNKNOWN) {
@@ -132,7 +133,7 @@ public final class InstancedNode {
                     JsonType jsonType = node == null
                             ? JsonType.NULL
                             : JsonType.of(NodeKind.plainOf(vi.rawClazz));
-                    return new InstancedNode(node, jsonType, true);
+                    return new Instance(node, jsonType, true);
                 }
                 kind = NodeKind.VALUE_BINDING;
             } else if (ti.externalNode != null) {
@@ -145,7 +146,7 @@ public final class InstancedNode {
         if (jsonType.isValue() && reusedLeaf != null) {
             return reusedLeaf.reuse(node, jsonType, false);
         }
-        return new InstancedNode(node, jsonType, false);
+        return new Instance(node, jsonType, false);
     }
 
     /**
@@ -153,7 +154,7 @@ public final class InstancedNode {
      */
     void markEvaluated(int propIdx) {
         if (evaluatedStack == null) return;
-        BitSet evaluated = evaluatedStack.peek();
+        EvaluationBits evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(propIdx);
     }
@@ -163,7 +164,7 @@ public final class InstancedNode {
      */
     void markEvaluated(int fromIdx, int toIdx) {
         if (evaluatedStack == null) return;
-        BitSet evaluated = evaluatedStack.peek();
+        EvaluationBits evaluated = evaluatedStack.peek();
         if (evaluated == null) return;
         evaluated.set(fromIdx, toIdx);
     }
@@ -175,7 +176,7 @@ public final class InstancedNode {
      */
     void createEvaluated() {
         if (evaluatedStack == null) evaluatedStack = new ArrayDeque<>();
-        evaluatedStack.push(new BitSet());
+        evaluatedStack.push(new EvaluationBits());
     }
 
     /**
@@ -183,13 +184,13 @@ public final class InstancedNode {
      */
     void pushEvaluated() {
         if (evaluatedStack == null) return;
-        evaluatedStack.push(new BitSet());
+        evaluatedStack.push(new EvaluationBits());
     }
 
     /**
      * Pushes an existing evaluated frame.
      */
-    void pushEvaluated(BitSet evaluated) {
+    void pushEvaluated(EvaluationBits evaluated) {
         if (evaluatedStack == null) return;
         evaluatedStack.push(evaluated);
     }
@@ -197,7 +198,7 @@ public final class InstancedNode {
     /**
      * Pops the current evaluated frame.
      */
-    BitSet popEvaluated() {
+    EvaluationBits popEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.pop();
     }
@@ -205,18 +206,18 @@ public final class InstancedNode {
     /**
      * Returns the current evaluated frame.
      */
-    BitSet peekEvaluated() {
+    EvaluationBits peekEvaluated() {
         if (evaluatedStack == null || evaluatedStack.isEmpty()) return null;
         return evaluatedStack.peek();
     }
 
     /**
-     * Merges all evaluated frames into one BitSet snapshot.
+     * Merges all evaluated frames into one EvaluationBits snapshot.
      */
-    BitSet mergedEvaluated() {
-        BitSet merged = new BitSet();
+    EvaluationBits mergedEvaluated() {
+        EvaluationBits merged = new EvaluationBits();
         if (evaluatedStack != null) {
-            for (BitSet bs : evaluatedStack) merged.or(bs);
+            for (EvaluationBits bs : evaluatedStack) merged.or(bs);
         }
         return merged;
     }
@@ -226,15 +227,15 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by key to avoid repeated value-binding encoding.
      */
-    InstancedNode inferSubByKey(String key, Object subNode, InstancedNode reusedLeaf) {
+    Instance inferSubByKey(String key, Object subNode, Instance reusedLeaf) {
         if (jsonType != JsonType.OBJECT)
             throw new NodeException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         if (subInstanceCache != null) {
-            InstancedNode subInstance = subInstanceCache.get(key);
+            Instance subInstance = subInstanceCache.get(key);
             if (subInstance != null) return subInstance.reset();
         }
 
-        InstancedNode subInstance = InstancedNode.infer(subNode, reusedLeaf).bindPathKey(this, key);
+        Instance subInstance = Instance.infer(subNode, reusedLeaf).bindPathKey(this, key);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(key, subInstance);
@@ -247,15 +248,15 @@ public final class InstancedNode {
      * <p>
      * Encoded children are cached by index key to avoid repeated encoding.
      */
-    InstancedNode inferSubByIndex(int idx, Object subNode, InstancedNode reusedLeaf) {
+    Instance inferSubByIndex(int idx, Object subNode, Instance reusedLeaf) {
         if (jsonType != JsonType.ARRAY)
             throw new NodeException("Type mismatch: inferSubByIndex() requires ARRAY node, but was " + jsonType);
         if (subInstanceCache != null) {
-            InstancedNode subInstance = subInstanceCache.get(idx);
+            Instance subInstance = subInstanceCache.get(idx);
             if (subInstance != null) return subInstance.reset();
         }
 
-        InstancedNode subInstance = InstancedNode.infer(subNode, reusedLeaf).bindPathIndex(this, idx);
+        Instance subInstance = Instance.infer(subNode, reusedLeaf).bindPathIndex(this, idx);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(idx, subInstance);
@@ -265,21 +266,29 @@ public final class InstancedNode {
 
 
     /**
-     * Detects cyclic schema references for the current runtime instance branch.
-     * <p>
-     * The same compiled plan may be revisited across independent branches, but a
-     * recursive revisit while validating one branch indicates an unbounded
-     * schema-reference loop.
+     * Checks only the active reference chain for this instance. Sequential
+     * references to the same plan are valid; nested references to an active
+     * plan without advancing to a child instance are cyclic.
      */
-    void checkCyclicRef(SchemaPlan plan, PathSegment keywordPs) {
-        if (refSchemaTimes++ > 0) {
-            if (refSchemaStack == null) refSchemaStack = new ArrayDeque<>();
-            if (refSchemaStack.contains(plan)) {
-                throw new NodeException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                        "cyclic schema reference detected", keywordPs, plan.schemaUri));
-            } else {
-                refSchemaStack.push(plan);
-            }
+    void enterRef(SchemaPlan plan, PathSegment keywordPs) {
+        if (firstActiveRef == null) {
+            firstActiveRef = plan;
+            return;
+        }
+        if (firstActiveRef == plan || (nestedActiveRefs != null && nestedActiveRefs.contains(plan))) {
+            throw new NodeException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
+                    "cyclic schema reference detected", keywordPs, plan.schemaUri));
+        }
+        if (nestedActiveRefs == null) nestedActiveRefs = new ArrayDeque<>();
+        nestedActiveRefs.push(plan);
+    }
+
+    /** Leaves the reference entered by the matching enterRef call. */
+    void leaveRef() {
+        if (nestedActiveRefs != null && !nestedActiveRefs.isEmpty()) {
+            nestedActiveRefs.pop();
+        } else {
+            firstActiveRef = null;
         }
     }
 

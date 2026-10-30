@@ -69,23 +69,24 @@ public final class SchemaPlan {
             }
         }
 
-        InstancedNode instance = InstancedNode.infer(node);
-        ValidationContext ctx = new ValidationContext(failFast, strictFormat);
+        Instance instance = Instance.infer(node);
+        ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
         PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
-        evaluate(instance, ps, ctx);
-        return ctx.toResult();
+        boolean valid = evaluate(instance, ps, ctx);
+        return ctx.toResult(valid);
     }
 
     /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
-        ValidationResult result = validate(node, true, false);
-        return result.isValid();
+        return isValid(node, false);
     }
 
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
-        ValidationResult result = validate(node, true, strictFormat);
-        return result.isValid();
+        if (booleanSchema) return booleanValue;
+        Instance instance = Instance.infer(node);
+        ValidationContext ctx = new ValidationContext(true, strictFormat, true);
+        return evaluate(instance, null, ctx);
     }
 
     /**
@@ -114,7 +115,7 @@ public final class SchemaPlan {
     /**
      * Executes evaluator pipeline for the current instance branch.
      */
-    boolean evaluate(InstancedNode instance, PathSegment ps, ValidationContext ctx) {
+    boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
                 return true;
@@ -125,7 +126,8 @@ public final class SchemaPlan {
         }
 
         int len = evaluators.length;
-        if (len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator) {
+        boolean tracksEvaluated = len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator;
+        if (tracksEvaluated) {
             instance.createEvaluated();
         }
 
@@ -138,7 +140,10 @@ public final class SchemaPlan {
             boolean matched = evaluator.evaluate(instance, ps, ctx);
             if (!matched) {
                 result = false;
-                if (ctx.shouldAbort()) return false;
+                if (ctx.isFailFast() && !tracksEvaluated) {
+                    if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
+                    return false;
+                }
             }
         }
         if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();

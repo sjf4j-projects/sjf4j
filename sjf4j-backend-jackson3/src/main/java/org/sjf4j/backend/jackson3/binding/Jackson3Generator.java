@@ -20,13 +20,19 @@ public final class Jackson3Generator extends StreamingGenerator {
 
     private final JsonGenerator generator;
 
-    /** Creates a writer around an existing Jackson generator. */
+    /**
+     * Creates a writer around an existing Jackson generator.
+     * @param generator the Jackson 3 generator
+     */
     public Jackson3Generator(JsonGenerator generator) {
         super(Backend.JACKSON3);
         this.generator = Asserts.notNull(generator, "generator");
     }
 
-    /** Access to the native generator for compiled property writers. */
+    /**
+     * Access to the native generator for compiled property writers.
+     * @return the native generator
+     */
     public JsonGenerator nativeWriter() {
         return generator;
     }

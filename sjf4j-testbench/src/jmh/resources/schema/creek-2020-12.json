@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Test Model",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "decimal": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "anEnum": {
+      "type": "string",
+      "enum": ["THIS", "THAT", "OTHER"]
+    },
+    "list": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "name": {
+      "type": "string",
+      "minLength": 0
+    },
+    "polymorphicTypes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/poly-a"
+          },
+          {
+            "$ref": "#/definitions/poly-b"
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "decimal",
+    "list",
+    "name",
+    "polymorphicTypes"
+  ],
+  "definitions": {
+    "poly-a": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "@type": {
+          "type": "string",
+          "enum": [
+            "poly-a"
+          ],
+          "default": "poly-a"
+        },
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "title": "poly-a",
+      "required": [
+        "@type",
+        "id"
+      ]
+    },
+    "poly-b": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "@type": {
+          "type": "string",
+          "enum": [
+            "poly-b"
+          ],
+          "default": "poly-b"
+        },
+        "num": {
+          "type": "number"
+        }
+      },
+      "title": "poly-b",
+      "required": [
+        "@type",
+        "num"
+      ]
+    }
+  }
+}

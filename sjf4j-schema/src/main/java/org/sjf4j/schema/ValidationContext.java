@@ -20,22 +20,28 @@ import java.util.List;
 public class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
+    private final boolean booleanOnly;
     private final List<ValidationMessage> messages;
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
     // dedicated wrappers because they can carry branch-local runtime state.
-    private final InstancedNode reusedLeaf;
+    private final Instance reusedLeaf;
 
-    private boolean valid = true;
     private ValidationMessage lastMessage;
     private int ignoreErrorAdding = 0;
     private Deque<SchemaPlan> planStack;
 
-    ValidationContext(boolean failFast, boolean strictFormat) {
+    ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
+        this.booleanOnly = booleanOnly;
         this.messages = failFast ? null : new ArrayList<>();
-        this.reusedLeaf = InstancedNode.infer(null);
+        this.reusedLeaf = Instance.infer(null);
+    }
+
+
+    boolean needsMessage() {
+        return !booleanOnly && ignoreErrorAdding == 0;
     }
 
     /**
@@ -55,27 +61,11 @@ public class ValidationContext {
     /**
      * Builds a result snapshot from current context state.
      */
-    public ValidationResult toResult() {
+    public ValidationResult toResult(boolean valid) {
         if (valid && (messages == null || messages.isEmpty()) && lastMessage == null) {
             return ValidationResult.SUCCESS;
         }
         return new ValidationResult(valid, messages, lastMessage);
-    }
-
-    /**
-     * Returns true when no validation error was added.
-     */
-    public boolean isValid() {
-        return valid;
-    }
-
-    /**
-     * Returns true when validation should abort early.
-     * <p>
-     * This is true only in fail-fast mode after the first non-ignored error.
-     */
-    public boolean shouldAbort() {
-        return failFast && !valid;
     }
 
     // Ignore
@@ -108,7 +98,7 @@ public class ValidationContext {
         return planStack;
     }
 
-    public InstancedNode reusedLeaf() {
+    public Instance reusedLeaf() {
         return reusedLeaf;
     }
 
@@ -118,9 +108,10 @@ public class ValidationContext {
      * <p>
      * In fail-fast mode only the last error is retained.
      */
-    void addError(InstancedNode instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
+    void addError(Instance instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
                   String keyword, String message) {
         if (ignoreErrorAdding < 1) {
+            if (booleanOnly) return;
             if (instancePs == null && instance != null) {
                 instancePs = instance.materializePath();
             }
@@ -131,7 +122,6 @@ public class ValidationContext {
             } else {
                 lastMessage = msg;
             }
-            valid = false;
         }
     }
 
