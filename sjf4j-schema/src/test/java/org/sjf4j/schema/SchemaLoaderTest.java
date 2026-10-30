@@ -86,7 +86,7 @@ class SchemaLoaderTest {
 
             assertEquals(directory.toUri(), loader.baseUri());
             URI reference = URI.create("user%20schema.json#/$defs/name");
-            assertEquals(document.toUri().toString() + "#/$defs/name", loader.resolve(reference).toString());
+            assertEquals(URI.create(document.toUri().toString() + "#/$defs/name"), loader.resolve(reference));
             JsonSchema schema = loader.load(reference);
             assertTrue(schema instanceof ObjectSchema);
             assertEquals(document.toUri(), ((ObjectSchema) schema).getRetrievalUri());
