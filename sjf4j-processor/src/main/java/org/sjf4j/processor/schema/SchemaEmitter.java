@@ -104,9 +104,37 @@ final class SchemaEmitter {
                 emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, expression,
                         planName, strictFormat, depth);
                 return;
+            case LITERAL:
+                emitLiteral(lines, (SchemaCheck.LiteralCheck) check, value, expression);
+                return;
+            case ALL:
+                for (SchemaCheck child : ((SchemaCheck.AllCheck) check).checks) {
+                    emitValue(lines, plan, child, value, expression, planName, strictFormat, depth);
+                }
+                return;
             default:
                 throw new IllegalStateException("unsupported compiled value kind: " + check.kind);
         }
+    }
+
+    private void emitLiteral(List<String> lines, SchemaCheck.LiteralCheck check,
+                             SchemaValue value, String expression) {
+        if (check.values.isEmpty()) {
+            lines.add("return false;");
+            return;
+        }
+        StringBuilder disjunction = new StringBuilder();
+        for (Object literal : check.values) {
+            if (disjunction.length() > 0) disjunction.append(" || ");
+            String expected;
+            if (literal == null) expected = "null";
+            else if (literal instanceof String) expected = javaLiteral((String) literal);
+            else if (literal instanceof Boolean) expected = ((Boolean) literal) ? "Boolean.TRUE" : "Boolean.FALSE";
+            else expected = decimalConstant((Number) literal);
+            disjunction.append("org.sjf4j.Nodes.equals(").append(expected).append(", ")
+                    .append(expression).append(")");
+        }
+        lines.add("if (!(" + disjunction + ")) return false;");
     }
 
     private void emitOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
@@ -152,7 +180,8 @@ final class SchemaEmitter {
         if (value.shape == SchemaValue.Shape.STRING) {
             if (value.nullable) lines.add("if (" + expression + " == null) return false;");
             if (!"java.lang.String".equals(value.type.toString())
-                    && (check.minLength != null || check.maxLength != null || check.choices != null)) {
+                    && (check.minLength != null || check.maxLength != null
+                        || check.choices != null || check.format != null)) {
                 lines.add("String " + temp + " = "
                         + (value.enumType ? expression + ".name()" : "String.valueOf(" + expression + ")") + ";");
                 text = temp;
@@ -172,7 +201,7 @@ final class SchemaEmitter {
         }
         if (check.format != null && !"false".equals(strictFormat)) {
             lines.add("if (" + strictFormat + " && !org.sjf4j.schema.FormatValidator.of("
-                    + literal(check.format) + ").validate(" + expression + ".toString())) return false;");
+                    + literal(check.format) + ").validate(" + text + ")) return false;");
         }
         if (check.choices != null) {
             StringBuilder condition = new StringBuilder();

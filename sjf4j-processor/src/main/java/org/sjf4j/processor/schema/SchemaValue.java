@@ -15,7 +15,7 @@ import java.util.List;
  * whether a JSON shape can be handled natively; expressions are emitted later.
  */
 final class SchemaValue {
-    enum Shape { STRING, NUMBER, COLLECTION, ARRAY, DYNAMIC, OTHER }
+    enum Shape { STRING, NUMBER, BOOLEAN, COLLECTION, ARRAY, DYNAMIC, OTHER }
 
     final TypeMirror type;
     final Shape shape;
@@ -37,6 +37,7 @@ final class SchemaValue {
         }
         String name = type.toString();
         if ("java.util.UUID".equals(name)) return new SchemaValue(type, Shape.STRING, false);
+        if ("boolean".equals(name) || "java.lang.Boolean".equals(name)) return new SchemaValue(type, Shape.BOOLEAN, false);
         if ("java.lang.String".equals(name) || "java.lang.Character".equals(name)
                 || "char".equals(name)) {
             return new SchemaValue(type, Shape.STRING, false);
@@ -83,7 +84,7 @@ final class SchemaValue {
     }
 
     String localType() {
-        return shape == Shape.STRING || shape == Shape.NUMBER || isArrayLike()
+        return shape == Shape.STRING || shape == Shape.NUMBER || shape == Shape.BOOLEAN || isArrayLike()
                 ? type.toString() : "Object";
     }
 }

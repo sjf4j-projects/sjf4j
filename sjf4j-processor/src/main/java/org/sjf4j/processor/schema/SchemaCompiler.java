@@ -49,8 +49,11 @@ final class SchemaCompiler {
         if (schema.containsKey("oneOf")) {
             return oneOf.compile(snapshot, schema, value, schemaUri, depth);
         }
+        // Format is an assertion under the format-assertion vocabulary, even
+        // when strictFormat=false. Only optimize known annotation-default dialects.
+        if (schema.containsKey("format") && !canCompileFormat(snapshot)) return null;
         String kind = schema.getString("type");
-        if (kind == null) return null;
+        if (kind == null) return scalars.compileLiteralsOnly(schema, value);
         if ("string".equals(kind) || "number".equals(kind) || "integer".equals(kind)) {
             return scalars.compile(schema, value, kind);
         }
@@ -58,6 +61,23 @@ final class SchemaCompiler {
             return arrays.compile(snapshot, schema, value, schemaUri, depth);
         }
         return null;
+    }
+
+    private static boolean canCompileFormat(SchemaResourceResolver.Snapshot snapshot) {
+        for (String source : snapshot.documents) {
+            if (source.contains("\"format-assertion\"") || source.contains("\"$vocabulary\""))
+                return false;
+            Object raw = org.sjf4j.Sjf4j.global().fromJson(source);
+            if (JsonType.of(raw) != JsonType.OBJECT) continue;
+            String dialect = Nodes.toJsonObject(raw).getString("$schema");
+            if (dialect != null
+                    && !dialect.startsWith("https://json-schema.org/draft/2020-12/schema")
+                    && !dialect.startsWith("https://json-schema.org/draft/2019-09/schema")
+                    && !dialect.startsWith("http://json-schema.org/draft-07/schema")
+                    && !dialect.startsWith("https://json-schema.org/draft-07/schema"))
+                return false;
+        }
+        return true;
     }
 
     /** Only JSON Schema annotation / definition keywords may be skipped. */
