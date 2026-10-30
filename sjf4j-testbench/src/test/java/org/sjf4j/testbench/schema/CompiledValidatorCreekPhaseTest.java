@@ -53,6 +53,10 @@ class CompiledValidatorCreekPhaseTest {
         private final String name;
         private final List<Object> polymorphicTypes;
 
+        public Model() {
+            this(BigDecimal.ONE, Kind.THIS, List.of("a"), "good", List.of("A"));
+        }
+
         public Model(BigDecimal decimal, Kind anEnum, List<String> list,
                      String name, List<Object> polymorphicTypes) {
             this.decimal = decimal;
