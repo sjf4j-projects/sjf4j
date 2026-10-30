@@ -74,7 +74,7 @@ class CompiledBinderArrayWriteTest {
                 modelType.getField("names").set(model, new String[]{"Ada", null, "Bob"});
                 modelType.getField("phones").set(model, new long[]{0L, -5L, Long.MAX_VALUE});
                 modelType.getField("bytes").set(model, new byte[]{1, -3, 127});
-                modelType.getField("chars").set(model, new char[]{'A', '\\n'});
+                modelType.getField("chars").set(model, new char[]{'A', '\n'});
                 modelType.getField("flags").set(model, new boolean[]{true, false});
                 modelType.getField("matrix").set(model,
                         new String[][]{{"first", null}, null, {}, {"last"}});
@@ -99,10 +99,10 @@ class CompiledBinderArrayWriteTest {
                 assertEquals(mapper.readTree("[1,-3,127]"),
                         mapper.readTree((String) binderType.getMethod("writeBytes", byte[].class)
                                 .invoke(binder, (Object) new byte[]{1, -3, 127})), backend);
-                assertEquals(mapper.readTree("[\\"A\\",\\"\\\\n\\"]"),
+                assertEquals(mapper.readTree("[\"A\",\"\\n\"]"),
                         mapper.readTree((String) binderType.getMethod("writeChars", char[].class)
-                                .invoke(binder, (Object) new char[]{'A', '\\n'})), backend);
-                assertEquals(mapper.readTree("[\\"x\\",null]"),
+                                .invoke(binder, (Object) new char[]{'A', '\n'})), backend);
+                assertEquals(mapper.readTree("[\"x\",null]"),
                         mapper.readTree((String) binderType.getMethod("writeNames", String[].class)
                                 .invoke(binder, (Object) new String[]{"x", null})), backend);
                 byte[] clientBytes = (byte[]) binderType.getMethod("writeClients", clients.getClass())
@@ -132,7 +132,7 @@ class CompiledBinderArrayWriteTest {
             Object binder = CompiledInstances.create(binderType);
             String json = (String) binderType.getMethod("write", Object[].class)
                     .invoke(binder, (Object) new Object[]{"hello", 7, null});
-            assertEquals(new ObjectMapper().readTree("[\\"hello\\",7,null]"),
+            assertEquals(new ObjectMapper().readTree("[\"hello\",7,null]"),
                     new ObjectMapper().readTree(json));
         }
     }
