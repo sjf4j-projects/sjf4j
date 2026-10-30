@@ -72,7 +72,8 @@ class SchemaLoaderTest {
                         "{\"type\":\"object\",\"properties\":{\"name\":{\"minLength\":2}}}"
                                 .getBytes(StandardCharsets.UTF_8)));
         SchemaValidator validator = SchemaValidator.withLoader(loader, null, true);
-        assertTrue(validator.validate(new Sample("ok")).isValid());
+        assertTrue(validator.validate(new Sample("ok")).isValid(),
+                () -> validator.validate(new Sample("ok")).toString());
         assertFalse(validator.validate(new Sample("x")).isValid());
         assertNotNull(validator.load("sample.json"));
     }
@@ -80,6 +81,7 @@ class SchemaLoaderTest {
     @ValidJsonSchema(ref = "sample.json")
     public static final class Sample {
         private final String name;
+        public Sample() { this(null); }
         public Sample(String name) { this.name = name; }
         public String getName() { return name; }
     }

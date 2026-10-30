@@ -387,6 +387,13 @@ public final class SchemaUtil {
      * its root retrieval URI.
      */
     public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
+        Asserts.notNull(uri, "uri");
+        if (!"file".equalsIgnoreCase(uri.getScheme()) &&
+                !"classpath".equalsIgnoreCase(uri.getScheme())) {
+            throw new SchemaException(formatSchemaLine(Code.SCHEMA_LOAD,
+                    "unsupported local schema uri scheme '" + uri.getScheme()
+                            + "': expected file or classpath", PathSegment.Root.INSTANCE, uri));
+        }
         JsonSchema schema = new SchemaLoader().load(uri);
         if (schema == null) return null;
         if (schema instanceof ObjectSchema) return (ObjectSchema) schema;
