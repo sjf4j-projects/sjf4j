@@ -129,6 +129,12 @@ final class SchemaEmitter {
                 emitGenericOneOf(lines, plan, (SchemaCheck.GenericOneOfCheck) check,
                         value, expression, planName, strictFormat);
                 return;
+            case ALL_OF:
+            case ANY_OF:
+            case NOT:
+                emitApplicator(lines, plan, (SchemaCheck.ApplicatorCheck) check,
+                        value, expression, strictFormat);
+                return;
             case OBJECT:
                 SchemaCheck.ObjectCheck object = (SchemaCheck.ObjectCheck) check;
                 if (value.nullable) lines.add("if (" + expression + " == null) return false;");
@@ -160,28 +166,62 @@ final class SchemaEmitter {
                                   String expression, String planName, String strictFormat) {
         String matches = "_matches_" + planName + "_" + helperCount++;
         lines.add("int " + matches + " = 0;");
-        String parameterType = value.type == null ? "Object" : value.type.toString();
         for (SchemaCheck branch : check.branches) {
             if (branch.kind == SchemaCheck.Kind.REJECT) continue;
-            if (branch.kind == SchemaCheck.Kind.PASS) {
-                lines.add("if (++" + matches + " > 1) return false;");
-                continue;
-            }
-            String helper = "_schema_" + helperPrefix + "_" + helperCount++;
-            List<String> body = new ArrayList<String>();
-            emitValue(body, plan, branch, value, "_value", helper, "_strictFormat", 0);
-            boolean alwaysRejects = !body.isEmpty() && "return false;".equals(body.get(body.size() - 1));
-            generated.addHelper(out -> {
-                out.beginBlock("private static boolean " + helper + "("
-                        + parameterType + " _value, boolean _strictFormat)");
-                for (String source : body) out.line(source);
-                if (!alwaysRejects) out.line("return true;");
-                out.endBlock();
-            });
-            lines.add("if (" + helper + "(" + expression + ", " + strictFormat
-                    + ") && ++" + matches + " > 1) return false;");
+            String predicate = branchPredicate(plan, branch, value, expression, strictFormat);
+            lines.add("if (" + predicate + " && ++" + matches + " > 1) return false;");
         }
         lines.add("if (" + matches + " != 1) return false;");
+    }
+
+    /** allOf uses AND, anyOf short-circuits on the first success, not inverts. */
+    private void emitApplicator(List<String> lines, SchemaFallbackEmitter.Plan plan,
+                                SchemaCheck.ApplicatorCheck check, SchemaValue value,
+                                String expression, String strictFormat) {
+        if (check.kind == SchemaCheck.Kind.ALL_OF) {
+            for (SchemaCheck branch : check.branches) {
+                if (branch.kind == SchemaCheck.Kind.PASS) continue;
+                lines.add("if (!(" + branchPredicate(plan, branch, value, expression, strictFormat)
+                        + ")) return false;");
+            }
+        } else if (check.kind == SchemaCheck.Kind.NOT) {
+            lines.add("if (" + branchPredicate(plan, check.branches.get(0), value,
+                    expression, strictFormat) + ") return false;");
+        } else {
+            List<String> predicates = new ArrayList<String>();
+            for (SchemaCheck branch : check.branches) {
+                if (branch.kind == SchemaCheck.Kind.PASS) return;
+                if (branch.kind != SchemaCheck.Kind.REJECT) {
+                    predicates.add(branchPredicate(plan, branch, value, expression, strictFormat));
+                }
+            }
+            if (predicates.isEmpty()) {
+                lines.add("return false;");
+            } else {
+                lines.add("if (!(" + String.join(" || ", predicates) + ")) return false;");
+            }
+        }
+    }
+
+    /** Reusable, statically dispatched boolean predicate for nested applicators. */
+    private String branchPredicate(SchemaFallbackEmitter.Plan plan, SchemaCheck branch,
+                                   SchemaValue value, String expression, String strictFormat) {
+        if (branch.kind == SchemaCheck.Kind.PASS) return "true";
+        if (branch.kind == SchemaCheck.Kind.REJECT) return "false";
+        String helper = "_schema_" + helperPrefix + "_" + helperCount++;
+        List<String> body = new ArrayList<String>();
+        emitValue(body, plan, branch, value, "_value", helper, "_strictFormat", 0);
+        boolean alwaysRejects = !body.isEmpty()
+                && "return false;".equals(body.get(body.size() - 1));
+        String parameterType = value.type == null ? "Object" : value.type.toString();
+        generated.addHelper(out -> {
+            out.beginBlock("private static boolean " + helper + "("
+                    + parameterType + " _value, boolean _strictFormat)");
+            for (String source : body) out.line(source);
+            if (!alwaysRejects) out.line("return true;");
+            out.endBlock();
+        });
+        return helper + "(" + expression + ", " + strictFormat + ")";
     }
 
     private void emitLiteral(List<String> lines, SchemaCheck.LiteralCheck check,

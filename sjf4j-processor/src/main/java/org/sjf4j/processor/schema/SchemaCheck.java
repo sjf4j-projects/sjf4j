@@ -9,7 +9,7 @@ import java.util.List;
  * fallback field names appear here. Source generation belongs to SchemaEmitter.
  */
 abstract class SchemaCheck {
-    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, LITERAL, ALL, PASS, REJECT, FALLBACK }
+    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, LITERAL, ALL, PASS, REJECT, FALLBACK }
 
     final Kind kind;
 
@@ -48,6 +48,23 @@ abstract class SchemaCheck {
 
         GenericOneOfCheck(List<SchemaCheck> branches) {
             super(Kind.GENERIC_ONE_OF);
+            this.branches = Collections.unmodifiableList(new ArrayList<SchemaCheck>(branches));
+        }
+
+        @Override boolean hasFallback() {
+            for (SchemaCheck branch : branches) if (branch.hasFallback()) return true;
+            return false;
+        }
+    }
+
+    /** Logical branches, evaluated as independent boolean predicates. */
+    static final class ApplicatorCheck extends SchemaCheck {
+        final List<SchemaCheck> branches;
+
+        ApplicatorCheck(Kind kind, List<SchemaCheck> branches) {
+            super(kind);
+            if (kind != Kind.ALL_OF && kind != Kind.ANY_OF && kind != Kind.NOT)
+                throw new IllegalArgumentException("Unsupported applicator: " + kind);
             this.branches = Collections.unmodifiableList(new ArrayList<SchemaCheck>(branches));
         }
 

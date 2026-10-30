@@ -8,6 +8,8 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.type.TypeMirror;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Coordinates schema references and dispatches supported JSON value kinds.
@@ -64,8 +66,9 @@ final class SchemaCompiler {
             if (target == null) return null;
             return compileValue(snapshot, target.value, value, target.uri, depth + 1);
         }
-        if (schema.containsKey("oneOf")) {
-            return oneOf.compile(snapshot, schema, value, schemaUri, depth);
+        if (schema.containsKey("oneOf") || schema.containsKey("allOf")
+                || schema.containsKey("anyOf") || schema.containsKey("not")) {
+            return compileApplicators(snapshot, schema, value, schemaUri, depth);
         }
         // Format is an assertion under the format-assertion vocabulary, even
         // when strictFormat=false. Only optimize known annotation-default dialects.
@@ -83,6 +86,87 @@ final class SchemaCompiler {
                     nullAsMissing, depth);
         }
         return null;
+    }
+
+    /**
+     * Applicator checks share a value but must not share local variables or
+     * evaluated-location state. Unsupported branches fall back as a complete
+     * schema subtree; compiling only some branches is not equivalent.
+     */
+    private SchemaCheck compileApplicators(SchemaResourceResolver.Snapshot snapshot,
+                                           JsonObject schema, SchemaValue value,
+                                           String schemaUri, int depth) {
+        List<SchemaCheck> checks = new ArrayList<SchemaCheck>();
+        JsonObject siblings = new JsonObject();
+        for (String key : schema.keySet()) {
+            if (!isApplicator(key)) siblings.put(key, schema.getNode(key));
+        }
+        if (!siblings.isEmpty()) {
+            boolean annotationsOnly = true;
+            for (String key : siblings.keySet()) {
+                if (!isAnnotation(key)) {
+                    annotationsOnly = false;
+                    break;
+                }
+            }
+            if (!annotationsOnly) {
+                SchemaCheck sibling = compileValue(snapshot, siblings, value, schemaUri, depth + 1);
+                if (sibling == null || sibling.hasFallback()) return null;
+                checks.add(sibling);
+            }
+        }
+        if (schema.containsKey("oneOf")) {
+            JsonObject isolated = new JsonObject();
+            isolated.put("oneOf", schema.getNode("oneOf"));
+            SchemaCheck compiled = oneOf.compile(snapshot, isolated, value, schemaUri, depth);
+            if (compiled == null || compiled.hasFallback()) {
+                // Preserve the specialized subtype fast path for oneOf alone.
+                if (checks.isEmpty() && !schema.containsKey("allOf")
+                        && !schema.containsKey("anyOf") && !schema.containsKey("not")) {
+                    return compiled;
+                }
+                return null;
+            }
+            checks.add(compiled);
+        }
+        for (String keyword : new String[]{"allOf", "anyOf", "not"}) {
+            if (!schema.containsKey(keyword)) continue;
+            boolean negation = "not".equals(keyword);
+            Object raw = schema.getNode(keyword);
+            if (!negation && JsonType.of(raw) != JsonType.ARRAY) return null;
+            int count = negation ? 1 : Nodes.sizeInArray(raw);
+            if (count == 0) return null;
+            List<SchemaCheck> branches = new ArrayList<SchemaCheck>(count);
+            for (int i = 0; i < count; i++) {
+                String childUri = keywordUri(schemaUri, keyword)
+                        + (negation ? "" : "/" + i);
+                SchemaCheck child = compileValue(snapshot,
+                        negation ? raw : Nodes.getInArray(raw, i),
+                        value, childUri, depth + 1);
+                if (child == null || child.hasFallback()) return null;
+                branches.add(child);
+            }
+            SchemaCheck.Kind kind = negation ? SchemaCheck.Kind.NOT
+                    : "allOf".equals(keyword) ? SchemaCheck.Kind.ALL_OF
+                    : SchemaCheck.Kind.ANY_OF;
+            checks.add(new SchemaCheck.ApplicatorCheck(kind, branches));
+        }
+        if (checks.isEmpty()) return new SchemaCheck.Pass();
+        for (SchemaCheck check : checks) {
+            if (check.kind == SchemaCheck.Kind.REJECT) return check;
+        }
+        checks.removeIf(check -> check.kind == SchemaCheck.Kind.PASS);
+        if (checks.isEmpty()) return new SchemaCheck.Pass();
+        return checks.size() == 1 ? checks.get(0) : new SchemaCheck.AllCheck(checks);
+    }
+
+    private static boolean isApplicator(String key) {
+        return "oneOf".equals(key) || "allOf".equals(key)
+                || "anyOf".equals(key) || "not".equals(key);
+    }
+
+    static String keywordUri(String base, String keyword) {
+        return base + (base.contains("#") ? "/" : "#/") + keyword;
     }
 
     private static boolean canCompileFormat(SchemaResourceResolver.Snapshot snapshot) {
