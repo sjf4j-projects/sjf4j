@@ -73,6 +73,7 @@ public final class ValidationGenerator {
                 }
                 out.beginBlock("private static org.sjf4j.schema.SchemaPlan load()");
                 out.beginBlock("try");
+                out.line("org.sjf4j.schema.SchemaLoader loader = new org.sjf4j.schema.SchemaLoader();");
                 for (int i = 0; i < field.snapshot.uris.length; i++) {
                     String uri = "java.net.URI.create(" + javaLiteral(field.snapshot.uris[i]) + ")";
                     if (i == 0 && !field.annotation.value().isEmpty()) {
@@ -80,20 +81,7 @@ public final class ValidationGenerator {
                                 + ", org.sjf4j.schema.JsonSchema.fromJson("
                                 + field.annotationExpression + ".value()));");
                     } else {
-                        java.net.URI resourceUri = java.net.URI.create(field.snapshot.uris[i]);
-                        String resource;
-                        if ("classpath".equals(resourceUri.getScheme())) {
-                            resource = "org.sjf4j.schema.SchemaRegistry.class.getClassLoader()"
-                                    + ".getResourceAsStream(" + javaLiteral(resourceUri.getPath().replaceFirst("^/", "")) + ")";
-                        } else {
-                            resource = "java.nio.file.Files.newInputStream(java.nio.file.Paths.get(" + uri + "))";
-                        }
-                        out.beginBlock("try (java.io.InputStream input = " + resource + ")");
-                        out.line("if (input == null) throw new IllegalStateException("
-                                + javaLiteral("schema resource not found: " + resourceUri) + ");");
-                        out.line(registry + ".index(" + uri
-                                + ", org.sjf4j.Sjf4j.global().fromJson(input, org.sjf4j.schema.JsonSchema.class));");
-                        out.endBlock();
+                        out.line(registry + ".index(" + uri + ", loader.load(" + uri + "));");
                     }
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("

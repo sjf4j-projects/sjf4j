@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class SchemaValidator {
     private static final String SCHEMA_FILE_SUFFIX_2 = ".json";
 
-    private final URI baseDirUri;
+    private final SchemaLoader loader;
     private final SchemaRegistry registry;
     private final boolean strictFormat;
     private final Map<Class<?>, List<SchemaPlan>> pojoHierarchyPlansCache = new ConcurrentHashMap<>();
@@ -50,12 +50,25 @@ public final class SchemaValidator {
      * caller-owned registry state.
      */
     public SchemaValidator(String baseDir, SchemaRegistry registry, boolean strictFormat) {
-        this.baseDirUri = _resolveBaseDir(baseDir);
+        this(new SchemaLoader(resolveBaseDir(baseDir)), registry, strictFormat, true);
+    }
+
+    /**
+     * Creates a validator using a caller-supplied schema loader, including
+     * alternate sources such as a compiler resource reader or remote provider.
+     */
+    public static SchemaValidator withLoader(SchemaLoader loader, SchemaRegistry registry,
+                                             boolean strictFormat) {
+        return new SchemaValidator(loader, registry, strictFormat, true);
+    }
+
+    private SchemaValidator(SchemaLoader loader, SchemaRegistry registry, boolean strictFormat, boolean unused) {
+        this.loader = Asserts.notNull(loader, "loader");
         this.registry = SchemaRegistry.copyOf(registry);
         this.strictFormat = strictFormat;
     }
 
-    private URI _resolveBaseDir(String baseDir) {
+    private static URI resolveBaseDir(String baseDir) {
         if (baseDir == null) return SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
         if (!baseDir.endsWith("/")) baseDir += "/";
         return SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR.resolve(baseDir);
@@ -121,7 +134,7 @@ public final class SchemaValidator {
      */
     public SchemaPlan load(String ref) {
         Asserts.notNull(ref, "ref");
-        URI refUri = baseDirUri.resolve(ref);
+        URI refUri = loader.resolve(ref);
         return _registerByRef(refUri);
     }
 
@@ -179,12 +192,12 @@ public final class SchemaValidator {
         }
 
         // From convention
-        URI simpleNameUri = baseDirUri.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX_2);
+        URI simpleNameUri = loader.resolve(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX_2);
         SchemaPlan plan = _registerByRef(simpleNameUri);
         if (plan != null) return plan;
 
         String snakeName = Strings.toSnakeCase(clazz.getSimpleName());
-        URI snakeNameUri = baseDirUri.resolve(snakeName + SCHEMA_FILE_SUFFIX_2);
+        URI snakeNameUri = loader.resolve(snakeName + SCHEMA_FILE_SUFFIX_2);
         plan = _registerByRef(snakeNameUri);
         if (plan != null) return plan;
 
@@ -192,7 +205,7 @@ public final class SchemaValidator {
                 "no schema found for @ValidJsonSchema on '" + clazz.getName() +
                         "'; expected annotation value/ref or file at '" + simpleNameUri +
                         "' or '" + snakeNameUri + "'",
-                PathSegment.Root.INSTANCE, baseDirUri));
+                PathSegment.Root.INSTANCE, loader.baseUri()));
     }
 
 
@@ -200,10 +213,12 @@ public final class SchemaValidator {
         SchemaPlan plan = registry.resolve(uri);
         if (plan != null) return plan;
 
-        ObjectSchema idSchema = SchemaUtil.loadSchemaFromLocalUri(uri);
-        if (idSchema == null) return null;
-        registry.register(idSchema);
-        return registry.resolve(uri);
+        JsonSchema schema = loader.load(uri);
+        if (schema == null) return null;
+        SchemaPlan compiled = registry.register(SchemaLoader.documentUri(uri), schema);
+        SchemaPlan selected = registry.resolve(uri);
+        // Boolean documents are not URI-indexed by SchemaRegistry.
+        return selected == null ? compiled : selected;
     }
 
 

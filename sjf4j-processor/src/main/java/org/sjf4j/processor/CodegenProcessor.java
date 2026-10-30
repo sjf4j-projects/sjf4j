@@ -20,7 +20,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
 import java.util.Set;
-import java.util.Collections;
 import java.util.function.Consumer;
 
 /**
@@ -47,11 +46,6 @@ public final class CodegenProcessor extends AbstractProcessor {
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         return AnnotationValidator.supportedAnnotationTypes();
-    }
-
-    @Override
-    public Set<String> getSupportedOptions() {
-        return Collections.singleton("sjf4j.schemaDir");
     }
 
     @Override

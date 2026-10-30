@@ -84,9 +84,10 @@ tasks.withType<JavaCompile>().configureEach {
     ))
 }
 
+// Annotation processing reads schemas from the same classpath as the compiled tests.
 tasks.named<JavaCompile>("compileTestJava") {
-    options.compilerArgs.add("-Asjf4j.schemaDir=" +
-            layout.projectDirectory.dir("src/test/resources").asFile.absolutePath)
+    dependsOn(tasks.named("processTestResources"))
+    classpath += files(layout.buildDirectory.dir("resources/test"))
 }
 
 tasks.test {

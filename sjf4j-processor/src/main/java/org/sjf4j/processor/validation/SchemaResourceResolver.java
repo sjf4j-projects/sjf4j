@@ -6,6 +6,7 @@ import org.sjf4j.util.Strings;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.schema.SchemaRegistry;
+import org.sjf4j.schema.SchemaLoader;
 import org.sjf4j.schema.JsonSchema;
 
 import javax.tools.FileObject;
@@ -13,10 +14,9 @@ import javax.tools.StandardLocation;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -48,9 +48,11 @@ final class SchemaResourceResolver {
     }
 
     private final ProcessorContext context;
+    private final SchemaLoader loader;
 
     SchemaResourceResolver(ProcessorContext context) {
         this.context = context;
+        this.loader = new SchemaLoader(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, this::openResource);
     }
 
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName) {
@@ -65,7 +67,7 @@ final class SchemaResourceResolver {
             selectedUri = rootUri;
             rootDocument = inline;
         } else {
-            URI baseDir = URI.create("classpath:/json-schemas/");
+            URI baseDir = loader.baseUri();
             if (!ref.isEmpty()) {
                 selectedUri = baseDir.resolve(ref);
                 if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
@@ -85,7 +87,7 @@ final class SchemaResourceResolver {
             rootDocument = read(rootUri);
             if (rootDocument == null) {
                 throw new IllegalArgumentException("schema resource not found: " + rootUri
-                        + " (set -Asjf4j.schemaDir=<resource-root> for source resources)");
+                        + " (make the resource visible on the compilation classpath)");
             }
         }
 
@@ -174,50 +176,37 @@ final class SchemaResourceResolver {
     }
 
     private String read(URI uri) {
+        return loader.readText(uri);
+    }
+
+    /**
+     * Java annotation processing has a separate resource lookup context from
+     * application runtime class loaders. Expose that context as a loader
+     * resource reader instead of teaching SchemaLoader about javac/Filer.
+     */
+    private InputStream openResource(URI uri) throws IOException {
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             try {
-                Path path = Paths.get(uri);
-                if (Files.exists(path)) return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                throw new IllegalArgumentException("failed to read schema: " + uri, e);
+                return java.nio.file.Files.newInputStream(Paths.get(uri));
+            } catch (NoSuchFileException e) {
+                return null;
             }
-            return null;
         }
         if (!"classpath".equalsIgnoreCase(uri.getScheme())) {
-            throw new IllegalArgumentException("only file:/ and classpath:/ schema resources are supported: " + uri);
+            throw new IOException("unsupported compile-time schema URI: " + uri);
         }
 
         String path = uri.getPath();
         if (path.startsWith("/")) path = path.substring(1);
-        String sourceDir = context.options.get("sjf4j.schemaDir");
-        if (sourceDir != null && !sourceDir.isEmpty()) {
-            try {
-                Path source = Paths.get(sourceDir).resolve(path).normalize();
-                if (Files.isRegularFile(source)) {
-                    return new String(Files.readAllBytes(source), StandardCharsets.UTF_8);
-                }
-            } catch (IOException e) {
-                throw new IllegalArgumentException("failed to read schema resource: " + uri, e);
-            }
-        }
         for (StandardLocation location : new StandardLocation[]{
                 StandardLocation.CLASS_PATH, StandardLocation.CLASS_OUTPUT, StandardLocation.SOURCE_PATH}) {
             try {
                 FileObject file = context.filer.getResource(location, "", path);
-                try (InputStream in = file.openInputStream()) {
-                    return new String(readBytes(in), StandardCharsets.UTF_8);
-                }
+                return file.openInputStream();
             } catch (IOException | IllegalArgumentException ignored) {
-                // Try the next annotation-processing location.
+                // The resource may exist in another compiler location.
             }
         }
         return null;
-    }
-
-    private static byte[] readBytes(InputStream in) throws IOException {
-        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-        byte[] buffer = new byte[4096];
-        for (int n; (n = in.read(buffer)) != -1;) bytes.write(buffer, 0, n);
-        return bytes.toByteArray();
     }
 }
