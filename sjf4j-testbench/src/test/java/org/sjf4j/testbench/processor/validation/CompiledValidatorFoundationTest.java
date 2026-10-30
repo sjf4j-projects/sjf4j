@@ -52,9 +52,14 @@ class CompiledValidatorFoundationTest {
 
     @Test
     void primitiveParameterUsesRuntimeFallbackWithoutNullCheck() {
-        PersonValidator validator = CompiledInstances.create(PersonValidator.class);
-        assertTrue(validator.positive(3));
-        assertFalse(validator.positive(0));
+        try {
+            PersonValidator validator = CompiledInstances.create(PersonValidator.class);
+            assertTrue(validator.positive(3));
+            assertFalse(validator.positive(0));
+        } catch (RuntimeException | Error ex) {
+            ex.printStackTrace(); // Keep initializer failures diagnosable in CI.
+            throw ex;
+        }
     }
 
     @Test
