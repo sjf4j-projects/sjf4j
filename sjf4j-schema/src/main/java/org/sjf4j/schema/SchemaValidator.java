@@ -41,7 +41,7 @@ public final class SchemaValidator {
      * assertions, and an empty copied registry.
      */
     public SchemaValidator() {
-        this(null, null, true);
+        this((String) null, null, true);
     }
 
     /**

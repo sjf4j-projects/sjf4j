@@ -13,8 +13,9 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 
 /**
- * Loads a complete JSON Schema document by its absolute retrieval URI.
- * Resource loading does not select fragments or compile validation plans.
+ * Loads a complete JSON Schema document from a retrieval URI.
+ * Local implementations can resolve relative references against a configured
+ * base URI. Resource loading does not select fragments or compile plans.
  */
 @FunctionalInterface
 public interface SchemaLoader {
