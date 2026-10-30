@@ -37,6 +37,23 @@ class SchemaLoaderTest {
     }
 
     @Test
+    void registryExplicitLoadUsesLoaderWhileResolveRemainsPure() {
+        URI base = URI.create("memory:/schemas/");
+        SchemaLoader loader = uri -> parseUnchecked(uri,
+                "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}");
+        SchemaRegistry registry = new SchemaRegistry(loader);
+        URI reference = base.resolve("user.json#/$defs/name");
+
+        assertNull(registry.resolve(reference));
+        SchemaPlan plan = registry.load(reference);
+        assertNotNull(plan);
+        assertTrue(plan.isValid("ok"));
+        assertFalse(plan.isValid("x"));
+        assertSame(plan, registry.resolve(reference));
+        assertSame(plan, SchemaRegistry.copyOf(registry).resolve(reference));
+    }
+
+    @Test
     void supportsFileResourcesAndBooleanDocuments() throws IOException {
         Path file = Files.createTempFile("sjf4j-loader-", ".json");
         try {
