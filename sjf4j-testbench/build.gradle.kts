@@ -90,6 +90,12 @@ tasks.named<JavaCompile>("compileTestJava") {
     classpath += files(layout.buildDirectory.dir("resources/test"))
 }
 
+// CompiledValidator's annotation processor reads Creek schemas from jmh resources.
+tasks.named<JavaCompile>("compileJmhJava") {
+    dependsOn(tasks.named("processJmhResources"))
+    classpath += files(layout.buildDirectory.dir("resources/jmh"))
+}
+
 tasks.test {
     useJUnitPlatform()
     jvmArgs(

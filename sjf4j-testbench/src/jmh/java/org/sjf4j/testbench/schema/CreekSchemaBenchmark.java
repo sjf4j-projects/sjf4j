@@ -15,6 +15,9 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+import org.sjf4j.CompiledInstances;
+import org.sjf4j.annotation.schema.CompiledValidator;
+import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaPlan;
@@ -55,6 +58,7 @@ public class CreekSchemaBenchmark {
     private static final ObjectMapper JACKSON = new ObjectMapper();
 
     private SchemaPlan plan;
+    private CreekValidator compiledValidator;
     private TestModel model;
     private TestModel deserializedModel;
     private Map<String, Object> mapNode;
@@ -79,6 +83,7 @@ public class CreekSchemaBenchmark {
                     .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
         }
 
+        compiledValidator = CompiledInstances.create(CreekValidator.class);
         model = modelState.model;
         jsonBytes = JACKSON.writeValueAsBytes(model);
         deserializedModel = JACKSON.readValue(jsonBytes, TestModel.class);
@@ -105,11 +110,51 @@ public class CreekSchemaBenchmark {
         plan.requireValid(model, false);
         plan.requireValid(deserializedModel, false);
         plan.requireValid(mapNode, false);
+        // The compiled fallback uses strict format checking, so verify against
+        // the same SchemaPlan mode rather than the original non-strict baseline.
+        if (!plan.isValid(model, true) || !compiledValidator.isValid(model)
+                || !compiledValidator.isValid(deserializedModel)) {
+            throw new IllegalStateException("Compiled Creek validation disagrees with the strict schema plan");
+        }
         if (!model.equals(deserializedModel)
                 || model.getAnEnum() != deserializedModel.getAnEnum()
                 || !model.getDecimal().equals(deserializedModel.getDecimal())) {
             throw new IllegalStateException("Creek model differs after Jackson2 round trip");
         }
+    }
+
+    /**
+     * The full Creek schema contains required, additionalProperties, definitions,
+     * arrays and oneOf/$ref, so the current code generator falls back to the
+     * existing SchemaPlan. These methods measure that generated dispatch path,
+     * not a fully inlined Creek validator.
+     */
+    @CompiledValidator
+    public interface CreekValidator {
+        @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
+        boolean isValid(TestModel value);
+    }
+
+    /** Strict format control matching the generated validator's fallback path. */
+    @Benchmark
+    public boolean schema_is_valid_pojo_strict() {
+        return plan.isValid(model, true);
+    }
+
+    /** Generated entry point; full Creek schema currently uses SchemaPlan fallback. */
+    @Benchmark
+    public boolean compiled_schema_is_valid_pojo() {
+        return compiledValidator.isValid(model);
+    }
+
+    @Benchmark
+    public TestModel round_trip_is_valid_compiled() throws IOException {
+        byte[] bytes = JACKSON.writeValueAsBytes(model);
+        TestModel result = JACKSON.readValue(bytes, TestModel.class);
+        if (!compiledValidator.isValid(result)) {
+            throw new IllegalStateException("compiled round-trip schema validation failed");
+        }
+        return result;
     }
 
     /** Boolean-only path with no ValidationResult or failure diagnostics. */
