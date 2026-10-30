@@ -361,7 +361,8 @@ public final class ValidationGenerator {
         Object required = root.getNode("required");
         if (required != null) {
             if (org.sjf4j.JsonType.of(required) != org.sjf4j.JsonType.ARRAY) return null;
-            for (Object name : org.sjf4j.Nodes.toJsonArray(required)) {
+            for (int i = 0; i < org.sjf4j.Nodes.sizeInArray(required); i++) {
+                Object name = org.sjf4j.Nodes.getInArray(required, i);
                 if (!(name instanceof String) || !javaProperties.containsKey(name)) return null;
             }
         }
@@ -434,7 +435,8 @@ public final class ValidationGenerator {
 
     private static boolean isRequired(Object required, String key) {
         if (required == null) return false;
-        for (Object value : org.sjf4j.Nodes.toJsonArray(required)) {
+        for (int i = 0; i < org.sjf4j.Nodes.sizeInArray(required); i++) {
+            Object value = org.sjf4j.Nodes.getInArray(required, i);
             if (key.equals(value)) return true;
         }
         return false;
@@ -453,7 +455,7 @@ public final class ValidationGenerator {
                                  String strictFormat, int depth) {
         if (depth > 8) return false;
         if (rawSchema instanceof Boolean) {
-            if (!((Boolean) rawSchema).booleanValue()) lines.add("return false;");
+            if (!((Boolean) rawSchema).booleanValue()) return false;
             return true;
         }
         if (org.sjf4j.JsonType.of(rawSchema) != org.sjf4j.JsonType.OBJECT) return false;
@@ -477,7 +479,8 @@ public final class ValidationGenerator {
             List<String> choices = new ArrayList<String>();
             if (enumeration != null) {
                 if (org.sjf4j.JsonType.of(enumeration) != org.sjf4j.JsonType.ARRAY) return false;
-                for (Object e : org.sjf4j.Nodes.toJsonArray(enumeration)) {
+                for (int i = 0; i < org.sjf4j.Nodes.sizeInArray(enumeration); i++) {
+                    Object e = org.sjf4j.Nodes.getInArray(enumeration, i);
                     if (!(e instanceof String)) return false;
                     choices.add((String) e);
                 }
@@ -504,7 +507,7 @@ public final class ValidationGenerator {
                     condition.append("!").append(textName).append(".equals(")
                             .append(javaLiteral(choice)).append(")");
                 }
-                if (condition.length() == 0) lines.add("return false;");
+                if (condition.length() == 0) lines.add("if (" + textName + " != null) return false;");
                 else lines.add("if (" + condition + ") return false;");
             }
             return true;
