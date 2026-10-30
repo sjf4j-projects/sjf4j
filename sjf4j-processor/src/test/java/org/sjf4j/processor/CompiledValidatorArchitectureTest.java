@@ -49,7 +49,7 @@ class CompiledValidatorArchitectureTest {
         assertEquals(1, occurrences(generated, "private static final class PLAN_0 {"), generated);
         assertFalse(generated.contains("private static final class PLAN_1 {"), generated);
         java.util.regex.Matcher fragment = java.util.regex.Pattern.compile(
-                "static final org\\.sjf4j\\.schema\\.SchemaPlan (SUB_[0-9]+_ITEM) =")
+                "static final SchemaPlan (SUB_[0-9]+_ITEM) =")
                 .matcher(generated);
         assertTrue(fragment.find(), generated);
         String subplanField = fragment.group(1);

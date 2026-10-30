@@ -128,7 +128,7 @@ class CompiledValidatorContractProcessorTest {
                         + "boolean valid(Model value, boolean strictFormat); }");
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertTrue(generated.contains("getMethod(\"valid\", fixture.Model.class, boolean.class)"),
+        assertTrue(generated.contains("getMethod(\"valid\", Model.class, boolean.class)"),
                 generated);
     }
 

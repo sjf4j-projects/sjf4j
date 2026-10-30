@@ -287,6 +287,21 @@ fixtures; **no JMH throughput result is claimed** from CI alone.
   -f 3
 ```
 
+Stage E reference measurement (GitHub-hosted Ubuntu runner, Temurin JDK 17,
+2026-10-30; three forks, three 300ms warmup iterations and five 300ms measurement
+iterations per fork; non-strict format for both):
+
+| Creek validity method | Average (µs/op) | JMH error (µs/op) |
+| --- | ---: | ---: |
+| `compiled_schema_is_valid_pojo_non_strict` | 1.885 | ± 0.059 |
+| `schema_is_valid_pojo` | 2.579 | ± 0.166 |
+
+This run showed approximately 26.9% lower average latency for compiled checks,
+with the original `oneOf` still using a localized `SchemaPlan`. These are
+single-run shared-host observations, not a portable performance guarantee.
+The run details and JSON results are available in
+[Stage E Creek JMH workflow](https://github.com/sjf4j-projects/sjf4j/actions/runs/41069151560).
+
 JMH timings depend on CPU, JDK, GC and host load. Compilation and JUnit
 correctness checks alone do not establish throughput parity; compare both
 methods in the same execution environment before drawing performance
