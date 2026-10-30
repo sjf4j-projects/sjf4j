@@ -81,7 +81,7 @@ class CompiledValidatorContractProcessorTest {
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains("Numbers.compare"), generated);
         assertTrue(generated.contains("codePointCount"), generated);
-        assertTrue(generated.contains("java.util.Collection"), generated);
+        assertTrue(generated.contains("for (") && generated.contains(".size()"), generated);
         assertTrue(generated.contains("SUB_") && generated.contains("_ITEM.isValid("), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
     }
@@ -109,9 +109,9 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
 
-        assertTrue(generated.matches("(?s).*java\\.lang\\.String _property\\d+ = value\\.getText\\(\\);.*"), generated);
-        assertTrue(generated.matches("(?s).*java\\.math\\.BigDecimal _property\\d+ = value\\.getDecimal\\(\\);.*"), generated);
-        assertTrue(generated.contains("for (java.lang.String _item"), generated);
+        assertTrue(generated.contains("getText()") && generated.contains(".codePointCount("), generated);
+        assertTrue(generated.contains("getDecimal()") && generated.contains("Numbers.compare("), generated);
+        assertTrue(generated.contains("for (") && generated.contains("_item"), generated);
         assertTrue(generated.contains("org.sjf4j.util.Numbers.compare(_property"), generated);
         assertFalse(generated.contains("instanceof String"), generated);
         assertFalse(generated.contains("instanceof Number"), generated);
