@@ -175,9 +175,9 @@ without violating `required`, although its property schema may reject null.
 | `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes | Phase 1 |
 | `minItems`, `maxItems` | Direct Collection size checks | Yes | Phase 1 |
 | `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes | Phase 1 mixed |
-| `format` | No | Yes, honors `strictFormat` | Later |
+| `format` | For built-in UUID values, direct canonical string validation (strict mode calls `FormatValidator`); other formats fall back | Yes, honors `strictFormat` | UUID optimized |
 | `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes | Partial |
-| `oneOf` | No (localized item `SchemaPlan` for Creek) | Yes | Next phase |
+| `oneOf` | Restricted direct Java subtype dispatch when Schema discriminator values are provably disjoint and public constant properties agree; unknown subtypes and strict-format path fall back | Yes | Direct for Creek |
 | `anyOf`, `allOf`, `not` | No | Yes | Later |
 | `if`, `then`, `else` | No | Yes | Later |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes | Later |
@@ -218,8 +218,9 @@ without a keyword plugin framework:
 - `SchemaGenerator` handles the validator interface and generated-class lifecycle.
   `SchemaMethodGenerator` resolves method contracts and schema annotations.
 - `SchemaResourceResolver` supplies compile-time documents and fragment selections.
-  `SchemaCompiler` dispatches to `ObjectCompiler`, `ScalarCompiler`, and
-  `ArrayCompiler`, producing a recursive `SchemaCheck` for supported constraints.
+  `SchemaCompiler` dispatches to `ObjectCompiler`, `ScalarCompiler`,
+  `ArrayCompiler`, and the conservative `OneOfCompiler`, producing recursive
+  `SchemaCheck` nodes for supported constraints.
   The compiler **does not** assemble Java source statements.
 - `SchemaValue` classifies declared Java value shapes. `SchemaEmitter` generates
   fail-fast predicates from the semantic checks, using native Java operations
@@ -244,7 +245,10 @@ methods, one shared item subplan, distinct bindings, zero fallback for
 fully compiled methods, and rejection of unsupported mixed trees.
 `CompiledValidatorContractProcessorTest` checks type-specialized code emission
 and the partial Creek fallback boundary. The testbench Creek fixtures compare
-`SchemaPlan` against compiled validation for valid and invalid inputs.
+`SchemaPlan` against compiled validation for valid and invalid inputs,
+including known and unknown mapped oneOf classes. `CompiledValidatorOneOfProcessorTest`
+checks direct dispatch and verifies that private annotated fields cannot be
+used for native Java member access.
 The separate `CreekSchemaFailureBenchmark` runs negative and short-circuit
 cases, keeping `CreekSchemaBenchmark` focused on the complete, valid model.
 
@@ -254,83 +258,58 @@ To compile and test:
 ./gradlew :sjf4j-processor:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar
 ```
 
-For an actual **three-fork** Creek comparison under identical non-strict format
-settings (the published JMH method annotations provide the warmup/measurement
-defaults):
+## Creek benchmark
+
+The Draft 2020-12 Creek schema is unchanged at
+`sjf4j-testbench/src/jmh/resources/schema/creek-2020-12.json`.
+The complete valid Creek model contains numeric, enum, string and collection
+constraints, plus eight polymorphic items validated using `oneOf` and local
+`$ref` branches.
+
+The annotation processor now handles the two known final Java subclasses
+directly when it can prove all of the following:
+
+- The JSON Schema branches require the same discriminator and have distinct,
+  single-valued string `enum` constraints.
+- The Java `@OneOf` mapping agrees with the branch values. Its mapped
+  subclasses are public and final; the discriminator is a public final String
+  field initialized by a compile-time constant, carrying its canonical JSON
+  property name through `@NodeProperty`.
+- Every property constraint in the mapped subtype can be compiled. The
+  built-in `UUID` String representation and optional `format:uuid`
+  assertion are handled without a per-item SchemaPlan call.
+
+`@NodeProperty` never changes Java visibility. If the compiler cannot prove
+these conditions, it preserves the full subtree fallback. Unmapped runtime
+subtypes also retain the original `oneOf` SchemaPlan. An optional per-call
+`strictFormat=true` uses the full item plan to preserve format semantics.
+No reusable ValidationContext or thread-local state is introduced.
+
+For the complete Creek model, compare default non-strict validation under
+the same JMH fork/measurement settings:
 
 ```bash
 JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' -print -quit)
 java -cp "$JMH_JAR" org.openjdk.jmh.Main \
-  'org.sjf4j.testbench.schema.CreekSchemaBenchmark\.(schema_is_valid_pojo|compiled_schema_is_valid_pojo_non_strict)
-
-The unchanged Draft 2020-12 Creek schema is at
-`sjf4j-testbench/src/jmh/resources/schema/creek-2020-12.json`; its
-benchmark is `CreekSchemaBenchmark`. It includes `required`,
-`additionalProperties:false`, decimal comparison, an enum, lists,
-`minLength`, polymorphic `oneOf` with `$ref`, and UUID format.
-
-1. **Phase 1 (implemented):** direct root, `required`, closed
-   `additionalProperties`, native numeric/enum/string checks and recursive
-   array item traversal, including finite local `$ref` expansion.
-   The original Creek `oneOf` remains a localized cached item
-   `SchemaPlan`; this is **mixed compiled/runtime**, not full compilation.
-2. **Next:** compile the two known polymorphic branches and their local
-   references (including UUID value-codec handling).
-3. Require `@CompiledValidator(fallback=false)` to compile the **original**
-   Creek schema unchanged, and compare all three return modes against
-   `SchemaPlan` for strict and non-strict format.
-4. Benchmark the full boolean path separately from fail-fast diagnostics and
-   aggregate `ValidationResult`. Measure with JMH, same model and format mode.
-
-The original Creek benchmark is non-strict, so default compiled validation
-now uses `strictFormat=false`, matching `SchemaPlan`. The explicit `_strict`
-methods provide a strict-to-strict control. CI compiles the benchmark and runs correctness
-fixtures; **no JMH throughput result is claimed** from CI alone.
- \
-  -f 3
+  'org.sjf4j.testbench.schema.CreekSchemaBenchmark\.(compiled_schema_is_valid_pojo|schema_is_valid_pojo|schema_is_valid_map)$' \
+  -f 3 -wi 3 -i 5 -w 300ms -r 300ms -bm avgt -tu us -prof gc
 ```
 
-Stage E reference measurement (GitHub-hosted Ubuntu runner, Temurin JDK 17,
-2026-10-30; three forks, three 300ms warmup iterations and five 300ms measurement
-iterations per fork; non-strict format for both):
+GitHub-hosted Ubuntu, Temurin 17, October 30, 2026; 3 forks × 5
+measurement iterations per method. All entries below come from the same run.
 
-| Creek validity method | Average (µs/op) | JMH error (µs/op) |
+| Complete Creek valid model | Average µs/op | Allocation B/op |
 | --- | ---: | ---: |
-| `compiled_schema_is_valid_pojo_non_strict` (previous baseline) | 1.885 | ± 0.059 |
-| `schema_is_valid_pojo` | 2.579 | ± 0.166 |
+| `compiled_schema_is_valid_pojo` | **0.038 ± 0.001** | ~0 |
+| `schema_is_valid_map` | 2.088 ± 0.047 | 712 |
+| `schema_is_valid_pojo` | 4.097 ± 0.030 | 1,992 |
 
-This run showed approximately 26.9% lower average latency for compiled checks,
-with the original `oneOf` still using a localized `SchemaPlan`. These are
-single-run shared-host observations, not a portable performance guarantee.
-The run details and JSON results are available in
-[Stage E Creek JMH workflow](https://github.com/sjf4j-projects/sjf4j/actions/runs/41069151560).
+Run: https://github.com/sjf4j-projects/sjf4j/actions/runs/41091694531
 
-JMH timings depend on CPU, JDK, GC and host load. Compilation and JUnit
-correctness checks alone do not establish throughput parity; compare both
-methods in the same execution environment before drawing performance
-conclusions.
-
-## Creek benchmark milestone
-
-The unchanged Draft 2020-12 Creek schema is at
-`sjf4j-testbench/src/jmh/resources/schema/creek-2020-12.json`; its
-benchmark is `CreekSchemaBenchmark`. It includes `required`,
-`additionalProperties:false`, decimal comparison, an enum, lists,
-`minLength`, polymorphic `oneOf` with `$ref`, and UUID format.
-
-1. **Phase 1 (implemented):** direct root, `required`, closed
-   `additionalProperties`, native numeric/enum/string checks and recursive
-   array item traversal, including finite local `$ref` expansion.
-   The original Creek `oneOf` remains a localized cached item
-   `SchemaPlan`; this is **mixed compiled/runtime**, not full compilation.
-2. **Next:** compile the two known polymorphic branches and their local
-   references (including UUID value-codec handling).
-3. Require `@CompiledValidator(fallback=false)` to compile the **original**
-   Creek schema unchanged, and compare all three return modes against
-   `SchemaPlan` for strict and non-strict format.
-4. Benchmark the full boolean path separately from fail-fast diagnostics and
-   aggregate `ValidationResult`. Measure with JMH, same model and format mode.
-
-The original Creek benchmark is non-strict, so direct performance comparisons
-use `strictFormat=false`. CI compiles the benchmark and runs correctness
-fixtures; **no JMH throughput result is claimed** from CI alone.
+These results include JIT optimization of a fixed, immutable fixture.
+They demonstrate a large benefit to removing per-item SchemaPlan evaluation
+on this exact model, but should not be extrapolated to arbitrary input
+distributions, other JDKs, or machines without additional measurement.
+`CreekSchemaFailureBenchmark` covers invalid and short-circuit cases
+separately. The default format mode is non-strict in both compiled and runtime
+validators.

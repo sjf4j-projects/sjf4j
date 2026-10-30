@@ -88,13 +88,13 @@ public class CreekSchemaBenchmark {
         plan.requireValid(model, false);
         plan.requireValid(deserializedModel, false);
         plan.requireValid(mapNode, false);
-        // The generated validator directly checks ordinary Creek properties
-        // and uses a child SchemaPlan only for polymorphic oneOf items.
+        // The generated validator checks known polymorphic Java subtypes directly;
+        // unknown subtypes and strict format checks retain the SchemaPlan fallback.
         if (!plan.isValid(model, true) || !compiledValidator.isValid(model, true)
                 || !compiledValidator.isValid(model, false)
                 || !compiledValidator.isValid(deserializedModel)
                 || !compiledValidator.isValid(deserializedModel, false)) {
-            throw new IllegalStateException("Compiled Creek validation disagrees with the strict schema plan");
+            throw new IllegalStateException("Compiled Creek validation disagrees with the schema plan");
         }
         if (!model.equals(deserializedModel)
                 || model.getAnEnum() != deserializedModel.getAnEnum()
@@ -104,9 +104,9 @@ public class CreekSchemaBenchmark {
     }
 
     /**
-     * Creek phase 1: direct root required/additionalProperties, decimal, enum,
-     * String and List checks; only the oneOf array-item branch uses a cached
-     * SchemaPlan fragment. The exact original Creek schema is unchanged.
+     * Direct root and nested oneOf checks for the known Creek subtypes;
+     * unsupported runtime subtypes retain a cached SchemaPlan fallback.
+     * The original Creek schema is unchanged.
      */
     @CompiledValidator
     public interface CreekValidator {
