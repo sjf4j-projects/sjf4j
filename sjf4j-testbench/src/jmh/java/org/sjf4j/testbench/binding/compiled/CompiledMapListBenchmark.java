@@ -60,7 +60,6 @@ public class CompiledMapListBenchmark {
 //        Main.main(new String[]{CompiledMapListBenchmark.class.getName() + ".*map"});
     }
 
-
     // Reuse the JSON document fixture from the POJO benchmark.
     private static final String JSON_DATA = CompiledReadBenchmark.JSON_DATA;
     public static final byte[] JSON_UTF8 = JSON_DATA.getBytes(StandardCharsets.UTF_8);
@@ -168,7 +167,6 @@ public class CompiledMapListBenchmark {
         checkMap("fastjson2 native utf8", fastjson2_map_utf8_native());
     }
 
-
     private static void checkMap(String label, Object result) {
         if (!(result instanceof Map)
                 || !((Map<?, ?>) result).containsKey("friends")
@@ -228,7 +226,6 @@ public class CompiledMapListBenchmark {
     // ----- JACKSON2 -----
     // Exercise the same compiled name-match path with the opposite field
     // order; the existing JSON_DATA benchmark covers ordered fields.
-
 
     @Benchmark
     public Object jackson2_map_string_compiled() throws IOException {
@@ -332,7 +329,6 @@ public class CompiledMapListBenchmark {
 
     // ----- JACKSON3 -----
 
-
     @Benchmark
     public Object jackson3_map_string_compiled() throws IOException {
         return JACKSON3_COMPILED.readMap(JSON_DATA);
@@ -391,7 +387,6 @@ public class CompiledMapListBenchmark {
 
     // ----- GSON -----
 
-
     @Benchmark
     public Object gson_map_string_compiled() throws IOException {
         return GSON_COMPILED.readMap(JSON_DATA);
@@ -430,7 +425,6 @@ public class CompiledMapListBenchmark {
     }
 
     // ----- FASTJSON2 -----
-
 
     // Compare native typed Map/List binding, compiled, and runtime on the
     // same payload. SJF4J owns its raw recursion and JDK container types.
@@ -512,7 +506,6 @@ public class CompiledMapListBenchmark {
 
     // ----- JSONP -----
 
-
     @Benchmark
     public Object jsonp_map_string_compiled() throws IOException {
         return JSONP_COMPILED.readMap(JSON_DATA);
@@ -555,7 +548,6 @@ public class CompiledMapListBenchmark {
     }
 
     // ----- SIMPLE -----
-
 
     @Benchmark
     public Object simple_map_string_compiled() throws IOException {

@@ -58,7 +58,6 @@ public class CompiledReadBenchmark {
 //        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*map"});
     }
 
-
     // Reuse the User fixture in the former compiled benchmark. Includes nested
     // POJOs, arrays/lists, primitive fields, nulls and escaping.
     public static final String JSON_DATA = "{\n" +
@@ -204,7 +203,6 @@ public class CompiledReadBenchmark {
         }
     }
 
-
     // ----- JACKSON2 -----
     // Exercise the same compiled name-match path with the opposite field
     // order; the existing JSON_DATA benchmark covers ordered fields.
@@ -267,7 +265,6 @@ public class CompiledReadBenchmark {
     public Object jackson2_pojo_utf8_blackbird() throws Exception {
         return JACKSON2_BLACKBIRD.readValue(JSON_UTF8, User.class);
     }
-
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
@@ -336,7 +333,6 @@ public class CompiledReadBenchmark {
         return JACKSON3_BLACKBIRD.readValue(JSON_UTF8, User.class);
     }
 
-
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3CompiledBinder {
         @ReadFrom User readPojo(String json) throws IOException;
@@ -374,7 +370,6 @@ public class CompiledReadBenchmark {
         return GSON_NATIVE.fromJson(new InputStreamReader(
                 new ByteArrayInputStream(JSON_UTF8), StandardCharsets.UTF_8), User.class);
     }
-
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonCompiledBinder {
@@ -437,10 +432,6 @@ public class CompiledReadBenchmark {
         }
     }
 
-    // Compare native typed Map/List binding, compiled, and runtime on the
-    // same payload. SJF4J owns its raw recursion and JDK container types.
-
-
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2CompiledBinder {
         @ReadFrom User readPojo(String json) throws IOException;
@@ -468,9 +459,7 @@ public class CompiledReadBenchmark {
         return JSONP_RUNTIME.readNode(JSON_UTF8, User.class);
     }
 
-
     // A separate JSON-P tree reference only; NOT the same return type as Map.
-
 
     @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpCompiledBinder {
@@ -498,7 +487,6 @@ public class CompiledReadBenchmark {
     public Object simple_pojo_utf8_runtime() {
         return SIMPLE_RUNTIME.readNode(JSON_UTF8, User.class);
     }
-
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiledBinder {
