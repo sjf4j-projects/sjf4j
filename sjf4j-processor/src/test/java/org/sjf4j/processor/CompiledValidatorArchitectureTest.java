@@ -104,9 +104,9 @@ class CompiledValidatorArchitectureTest {
     @Test
     void separateBindingsRetainIndependentRootFallbacks() throws Exception {
         String one = "{\"type\":\"object\",\"properties\":{"
-                + "\"name\":{\"type\":\"string\",\"format\":\"email\"}}}";
+                + "\"name\":{\"type\":\"string\",\"pattern\":\"^a\"}}}";
         String two = "{\"type\":\"object\",\"properties\":{"
-                + "\"name\":{\"type\":\"string\",\"format\":\"uuid\"}}}";
+                + "\"name\":{\"type\":\"string\",\"pattern\":\"^b\"}}}";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator public interface Check { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(one) + ") "
