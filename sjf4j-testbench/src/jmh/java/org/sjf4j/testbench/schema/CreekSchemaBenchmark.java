@@ -159,6 +159,7 @@ public class CreekSchemaBenchmark {
     public interface CreekValidator {
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value);
+        @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value, boolean strictFormat);
     }
 

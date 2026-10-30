@@ -172,7 +172,8 @@ final class SchemaMethodGenerator {
 
         String methodLookup = method.getEnclosingElement().toString() + ".class.getMethod("
                 + SchemaEmitter.javaLiteral(method.getSimpleName().toString()) + ", "
-                + context.typeUtils.erasure(parameterType) + ".class)";
+                + context.typeUtils.erasure(parameterType) + ".class"
+                + (method.getParameters().size() == 2 ? ", boolean.class" : "") + ")";
         ValidJsonSchema methodSchema = method.getAnnotation(ValidJsonSchema.class);
         if (methodSchema != null) {
             String id = method.getEnclosingElement().toString() + "/" + method.getSimpleName();

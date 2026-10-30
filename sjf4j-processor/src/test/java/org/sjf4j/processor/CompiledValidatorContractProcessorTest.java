@@ -119,6 +119,19 @@ class CompiledValidatorContractProcessorTest {
         assertFalse(generated.contains(".ROOT.isValid("), generated);
     }
 
+    @Test
+    void annotatedStrictFormatMethodResolvesBothReflectionParameters() throws Exception {
+        String schema = "{\"type\":\"object\",\"properties\":{\"name\":{\"format\":\"email\"}}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value, boolean strictFormat); }");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains("getMethod(\"valid\", fixture.Model.class, boolean.class)"),
+                generated);
+    }
+
     private static NavigatorTestCompiler.Result compile(String source) throws Exception {
         return NavigatorTestCompiler.compile(Map.of(
                 "fixture/Model.java", MODEL,
