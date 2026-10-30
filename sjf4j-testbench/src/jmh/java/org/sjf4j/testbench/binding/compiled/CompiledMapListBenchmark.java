@@ -21,6 +21,7 @@ import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
+import org.sjf4j.testbench.model.User;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayInputStream;
@@ -61,8 +62,8 @@ public class CompiledMapListBenchmark {
 //        Main.main(new String[]{CompiledMapListBenchmark.class.getName() + ".*map"});
     }
 
-    // Reuse the JSON document fixture from the POJO benchmark.
-    private static final String JSON_DATA = CompiledReadBenchmark.JSON_DATA;
+    // Use the shared User JSON fixture for independent Map/List benchmarks.
+    private static final String JSON_DATA = User.JSON_DATA;
     public static final byte[] JSON_UTF8 = JSON_DATA.getBytes(StandardCharsets.UTF_8);
     public static final String JSON_LIST_DATA =
             "[" + JSON_DATA + ",{\"nested\":[1,true,null]},\"tail\"]";
