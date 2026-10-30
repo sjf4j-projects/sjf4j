@@ -178,7 +178,7 @@ without violating `required`, although its property schema may reject null.
 | `format` | Known typed-string constraints use `FormatValidator` when `strictFormat` is true; assertion vocabularies and non-standard dialects fall back | Yes; assertion vocabulary may enforce format even in non-strict mode | String optimized |
 | `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes | Partial |
 | `oneOf` | General branch counting with statically compiled predicates (overlap allowed); optional optimized subtype dispatch when proven disjoint | Yes | Direct for Creek |
-| `anyOf`, `allOf`, `not` | No | Yes | Later |
+| `allOf`, `anyOf`, `not` | Direct boolean predicates for fully compiled branches; siblings are conjoined; unsupported/stateful branches fall back as one scope | Yes | Compiled |
 | `if`, `then`, `else` | No | Yes | Later |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes | Later |
 | Root metadata (`$schema`, `title`, etc.) | Accepted when non-applicative | Yes | Phase 1 |
@@ -210,9 +210,7 @@ entire `oneOf` subtree, not a subset of branches. The specialized disjoint
 Java-subtype path remains for Creek and retains its existing runtime fallback
 for unknown subtypes and strict-format behavior. No evaluated tracking is
 generated; any `unevaluated*` keyword at the relevant schema scope retains
-full-scope runtime evaluation.
-
-The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
+full-scope runtime evaluation.\n\n`allOf`, `anyOf`, and `not` reuse static boolean branch helpers: all branches\nmust pass for `allOf`, any one may pass for `anyOf` (including overlaps), and\n`not` inverts a full subschema. Assertions alongside applicators are combined\nwith logical AND, not skipped. Unsupported or evaluated-state-dependent branches\nfall back as a complete combinator scope. The boolean direct path preserves\n`strictFormat` and `nullAsMissing`; diagnostic modes retain SchemaPlan.\n\nThe `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
 `CompiledValidatorTypeDispatchTest` (typed Java paths versus dynamic Nodes
 conversions). Processor source-level assertions reject redundant type tests
 in known `String`/`Number` paths.
