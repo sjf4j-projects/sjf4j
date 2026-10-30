@@ -14,16 +14,20 @@ import javax.lang.model.type.TypeMirror;
  * Concrete keyword compilation is delegated to type-focused compilers.
  */
 final class SchemaCompiler {
+    private final ProcessorContext context;
+    private final boolean nullAsMissing;
     private final ObjectCompiler objects;
     private final ScalarCompiler scalars;
     private final ArrayCompiler arrays;
     private final OneOfCompiler oneOf;
 
-    SchemaCompiler(ProcessorContext context) {
+    SchemaCompiler(ProcessorContext context, boolean nullAsMissing) {
+        this.context = context;
+        this.nullAsMissing = nullAsMissing;
         this.objects = new ObjectCompiler(context, this);
         this.scalars = new ScalarCompiler();
         this.arrays = new ArrayCompiler(context, this);
-        this.oneOf = new OneOfCompiler(context, objects);
+        this.oneOf = new OneOfCompiler(context, objects, this);
     }
 
     SchemaCheck.ObjectCheck compileObject(TypeMirror type,
@@ -32,12 +36,26 @@ final class SchemaCompiler {
         return objects.compile(type, snapshot, nullAsMissing);
     }
 
+    /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
+    SchemaCheck compileRoot(TypeMirror type, SchemaResourceResolver.Snapshot snapshot) {
+        Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
+        String uri = snapshot.uris[0];
+        if (!snapshot.selectedUri.equals(uri)) {
+            RefTarget selected = resolveRef(snapshot,
+                    JsonObject.of("$ref", snapshot.selectedUri), uri);
+            if (selected == null) return null;
+            root = selected.value;
+            uri = selected.uri;
+        }
+        return compileValue(snapshot, root, SchemaValue.of(context, type), uri, 0);
+    }
+
     SchemaCheck compileValue(SchemaResourceResolver.Snapshot snapshot,
                              Object rawSchema, SchemaValue value,
                              String schemaUri, int depth) {
         if (depth > 8) return null;
         if (rawSchema instanceof Boolean) {
-            return Boolean.TRUE.equals(rawSchema) ? new SchemaCheck.Pass() : null;
+            return Boolean.TRUE.equals(rawSchema) ? new SchemaCheck.Pass() : new SchemaCheck.Reject();
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
         JsonObject schema = Nodes.toJsonObject(rawSchema);
@@ -60,6 +78,10 @@ final class SchemaCompiler {
         if ("array".equals(kind)) {
             return arrays.compile(snapshot, schema, value, schemaUri, depth);
         }
+        if ("object".equals(kind) && value.type != null) {
+            return objects.compileNested(value.type, snapshot, schema, schemaUri,
+                    nullAsMissing, depth);
+        }
         return null;
     }
 
@@ -78,6 +100,10 @@ final class SchemaCompiler {
                 return false;
         }
         return true;
+    }
+
+    static String childUri(String base, String keyword, int index) {
+        return base + (base.contains("#") ? "/" : "#/") + keyword + "/" + index;
     }
 
     /** Only JSON Schema annotation / definition keywords may be skipped. */

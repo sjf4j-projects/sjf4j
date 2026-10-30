@@ -27,6 +27,7 @@ final class SchemaMethodGenerator {
     private final ProcessorContext context;
     private final SchemaResourceResolver resources;
     private final SchemaFallbackEmitter fallbacks = new SchemaFallbackEmitter();
+    private int methodSerial;
 
     SchemaMethodGenerator(ProcessorContext context) {
         this.context = context;
@@ -95,13 +96,14 @@ final class SchemaMethodGenerator {
         // root check is eligible for the native boolean path.
         SchemaFallbackEmitter.Plan bound = null;
         String booleanLiteral = null;
-        SchemaCheck.ObjectCheck direct = null;
+        SchemaCheck direct = null;
         if (isBoolean && plans.size() == 1) {
             bound = plans.get(0);
             booleanLiteral = compileBoolean(bound.snapshot);
             if (booleanLiteral == null) {
-                direct = new SchemaCompiler(context).compileObject(
-                        parameterType, bound.snapshot, nullAsMissing);
+                SchemaCompiler compiler = new SchemaCompiler(context, nullAsMissing);
+                direct = compiler.compileObject(parameterType, bound.snapshot, nullAsMissing);
+                if (direct == null) direct = compiler.compileRoot(parameterType, bound.snapshot);
             }
         }
 
@@ -112,7 +114,8 @@ final class SchemaMethodGenerator {
             return;
         }
         List<String> emitted = direct == null ? null
-                : new SchemaEmitter().emit(direct, value, bound, strictParam);
+                : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
+                        direct, SchemaValue.of(context, parameterType), value, bound, strictParam);
         if (fallback && emitted == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
         }

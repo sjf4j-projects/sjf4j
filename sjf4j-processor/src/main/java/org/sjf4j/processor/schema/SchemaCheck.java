@@ -9,7 +9,7 @@ import java.util.List;
  * fallback field names appear here. Source generation belongs to SchemaEmitter.
  */
 abstract class SchemaCheck {
-    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, LITERAL, ALL, PASS, FALLBACK }
+    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, LITERAL, ALL, PASS, REJECT, FALLBACK }
 
     final Kind kind;
 
@@ -40,6 +40,25 @@ abstract class SchemaCheck {
                 this.check = check;
             }
         }
+    }
+
+    /** General oneOf: count matching subschemas, including overlapping branches. */
+    static final class GenericOneOfCheck extends SchemaCheck {
+        final List<SchemaCheck> branches;
+
+        GenericOneOfCheck(List<SchemaCheck> branches) {
+            super(Kind.GENERIC_ONE_OF);
+            this.branches = Collections.unmodifiableList(new ArrayList<SchemaCheck>(branches));
+        }
+
+        @Override boolean hasFallback() {
+            for (SchemaCheck branch : branches) if (branch.hasFallback()) return true;
+            return false;
+        }
+    }
+
+    static final class Reject extends SchemaCheck {
+        Reject() { super(Kind.REJECT); }
     }
 
     /** A scalar JSON Schema const or enum assertion. */

@@ -1,5 +1,7 @@
 package org.sjf4j.processor.schema;
 
+import org.sjf4j.processor.code.GeneratedClass;
+
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -10,6 +12,25 @@ import java.util.List;
  * trees. Fallback references are allocated by SchemaFallbackEmitter.
  */
 final class SchemaEmitter {
+    private final GeneratedClass generated;
+    private final String helperPrefix;
+    private int helperCount;
+
+    SchemaEmitter(GeneratedClass generated, String helperPrefix) {
+        this.generated = generated;
+        this.helperPrefix = helperPrefix;
+    }
+
+    List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
+                          SchemaFallbackEmitter.Plan plan, String strictFormat) {
+        if (check.kind == SchemaCheck.Kind.OBJECT) {
+            return emit((SchemaCheck.ObjectCheck) check, variable, plan, strictFormat);
+        }
+        List<String> lines = new ArrayList<String>();
+        emitValue(lines, plan, check, value, variable, helperPrefix, strictFormat, 0);
+        return lines;
+    }
+
     List<String> emit(SchemaCheck.ObjectCheck check, String variable, SchemaFallbackEmitter.Plan plan,
                       String strictFormat) {
         return emit(check, variable, plan, strictFormat, "");
@@ -104,6 +125,22 @@ final class SchemaEmitter {
                 emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, expression,
                         planName, strictFormat, depth);
                 return;
+            case GENERIC_ONE_OF:
+                emitGenericOneOf(lines, plan, (SchemaCheck.GenericOneOfCheck) check,
+                        value, expression, planName, strictFormat);
+                return;
+            case OBJECT:
+                SchemaCheck.ObjectCheck object = (SchemaCheck.ObjectCheck) check;
+                if (value.nullable) lines.add("if (" + expression + " == null) return false;");
+                if (object.dynamic && value.shape == SchemaValue.Shape.DYNAMIC) {
+                    lines.add("if (org.sjf4j.JsonType.rawOf(" + expression
+                            + ".getClass()) != org.sjf4j.JsonType.OBJECT) return false;");
+                }
+                lines.addAll(emit(object, expression, plan, strictFormat, planName + "_"));
+                return;
+            case REJECT:
+                lines.add("return false;");
+                return;
             case LITERAL:
                 emitLiteral(lines, (SchemaCheck.LiteralCheck) check, value, expression);
                 return;
@@ -115,6 +152,30 @@ final class SchemaEmitter {
             default:
                 throw new IllegalStateException("unsupported compiled value kind: " + check.kind);
         }
+    }
+
+    /** Each branch is a normal static predicate; the caller counts successes. */
+    private void emitGenericOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
+                                  SchemaCheck.GenericOneOfCheck check, SchemaValue value,
+                                  String expression, String planName, String strictFormat) {
+        String matches = "_matches_" + planName + "_" + helperCount++;
+        lines.add("int " + matches + " = 0;");
+        String parameterType = value.type == null ? "Object" : value.type.toString();
+        for (SchemaCheck branch : check.branches) {
+            String helper = "_schema_" + helperPrefix + "_" + helperCount++;
+            List<String> body = new ArrayList<String>();
+            emitValue(body, plan, branch, value, "_value", helper, "_strictFormat", 0);
+            generated.addHelper(out -> {
+                out.beginBlock("private static boolean " + helper + "("
+                        + parameterType + " _value, boolean _strictFormat)");
+                for (String source : body) out.line(source);
+                out.line("return true;");
+                out.endBlock();
+            });
+            lines.add("if (" + helper + "(" + expression + ", " + strictFormat
+                    + ") && ++" + matches + " > 1) return false;");
+        }
+        lines.add("if (" + matches + " != 1) return false;");
     }
 
     private void emitLiteral(List<String> lines, SchemaCheck.LiteralCheck check,

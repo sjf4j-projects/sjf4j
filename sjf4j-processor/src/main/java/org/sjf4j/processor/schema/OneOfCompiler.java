@@ -28,18 +28,45 @@ import java.util.Set;
 final class OneOfCompiler {
     private final ProcessorContext context;
     private final ObjectCompiler objects;
+    private final SchemaCompiler compiler;
 
-    OneOfCompiler(ProcessorContext context, ObjectCompiler objects) {
+    OneOfCompiler(ProcessorContext context, ObjectCompiler objects, SchemaCompiler compiler) {
         this.context = context;
         this.objects = objects;
+        this.compiler = compiler;
     }
 
     SchemaCheck compile(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
                         SchemaValue value, String uri, int depth) {
-        if (value.type == null || depth >= 8) return null;
         for (String key : schema.keySet()) {
             if (!key.equals("oneOf") && !SchemaCompiler.isAnnotation(key)) return null;
         }
+        SchemaCheck specialized = compileSpecialized(snapshot, schema, value, uri, depth);
+        return specialized != null ? specialized : compileGeneric(snapshot, schema, value, uri, depth);
+    }
+
+    private SchemaCheck compileGeneric(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
+                                       SchemaValue value, String uri, int depth) {
+        Object candidates = schema.getNode("oneOf");
+        if (JsonType.of(candidates) != JsonType.ARRAY) return null;
+        int count = Nodes.sizeInArray(candidates);
+        if (count < 1 || depth >= 8) return null;
+        List<SchemaCheck> branches = new ArrayList<SchemaCheck>(count);
+        for (int i = 0; i < count; i++) {
+            String childUri = SchemaCompiler.childUri(uri, "oneOf", i);
+            SchemaCheck branch = compiler.compileValue(snapshot,
+                    Nodes.getInArray(candidates, i), value, childUri, depth + 1);
+            // Do not compose a boolean branch with a stateful fallback. A
+            // full oneOf SchemaPlan handles unsupported branches and evaluated tracking.
+            if (branch == null || branch.hasFallback()) return null;
+            branches.add(branch);
+        }
+        return new SchemaCheck.GenericOneOfCheck(branches);
+    }
+
+    private SchemaCheck compileSpecialized(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
+                        SchemaValue value, String uri, int depth) {
+        if (value.type == null || depth >= 8) return null;
         TypeElement parent = context.types.typeElement(value.type);
         if (parent == null) return null;
         OneOf mapping = parent.getAnnotation(OneOf.class);
@@ -55,7 +82,7 @@ final class OneOfCompiler {
         List<SchemaCheck.OneOfCheck.Subtype> compiled = new ArrayList<>();
         Set<String> values = new HashSet<>();
         for (int i = 0; i < count; i++) {
-            String childUri = uri + "/oneOf/" + i;
+            String childUri = SchemaCompiler.childUri(uri, "oneOf", i);
             Object raw = Nodes.getInArray(candidates, i);
             if (JsonType.of(raw) != JsonType.OBJECT) return null;
             JsonObject ref = Nodes.toJsonObject(raw);
@@ -78,7 +105,7 @@ final class OneOfCompiler {
             TypeMirror subtype = mappedType(candidate);
             if (subtype == null || !expected.equals(publicConstant(subtype, discriminator))) return null;
             SchemaCheck.ObjectCheck check =
-                    objects.compileNested(subtype, snapshot, branch, target.uri, false);
+                    objects.compileNested(subtype, snapshot, branch, target.uri, false, depth + 1);
             // No per-property fallback is allowed on the direct path. The
             // original oneOf subplan remains the single fallback for strict
             // format assertions and unknown runtime classes.
