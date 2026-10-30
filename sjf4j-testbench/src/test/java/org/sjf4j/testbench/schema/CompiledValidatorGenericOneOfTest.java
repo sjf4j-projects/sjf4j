@@ -105,8 +105,8 @@ class CompiledValidatorGenericOneOfTest {
         Direct compiled = CompiledInstances.create(Direct.class);
         SchemaPlan reference = JsonSchema.fromJson(ROOT_OBJECT).createPlan();
         for (Map<String, Object> map : Arrays.asList(
-                Map.of("x", 1), Map.of("y", 2), Map.of("x", 1, "y", 2),
-                Map.of(), Map.of("x", "wrong"), Map.of("y", 2, "x", "wrong")
+                Map.<String, Object>of("x", 1), Map.<String, Object>of("y", 2), Map.<String, Object>of("x", 1, "y", 2),
+                Map.<String, Object>of(), Map.<String, Object>of("x", "wrong"), Map.<String, Object>of("y", 2, "x", "wrong")
         )) {
             assertEquals(reference.isValid(map), compiled.rootObject(map), map.toString());
         }

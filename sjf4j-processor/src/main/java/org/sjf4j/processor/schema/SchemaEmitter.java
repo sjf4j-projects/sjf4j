@@ -162,14 +162,20 @@ final class SchemaEmitter {
         lines.add("int " + matches + " = 0;");
         String parameterType = value.type == null ? "Object" : value.type.toString();
         for (SchemaCheck branch : check.branches) {
+            if (branch.kind == SchemaCheck.Kind.REJECT) continue;
+            if (branch.kind == SchemaCheck.Kind.PASS) {
+                lines.add("if (++" + matches + " > 1) return false;");
+                continue;
+            }
             String helper = "_schema_" + helperPrefix + "_" + helperCount++;
             List<String> body = new ArrayList<String>();
             emitValue(body, plan, branch, value, "_value", helper, "_strictFormat", 0);
+            boolean alwaysRejects = !body.isEmpty() && "return false;".equals(body.get(body.size() - 1));
             generated.addHelper(out -> {
                 out.beginBlock("private static boolean " + helper + "("
                         + parameterType + " _value, boolean _strictFormat)");
                 for (String source : body) out.line(source);
-                out.line("return true;");
+                if (!alwaysRejects) out.line("return true;");
                 out.endBlock();
             });
             lines.add("if (" + helper + "(" + expression + ", " + strictFormat
