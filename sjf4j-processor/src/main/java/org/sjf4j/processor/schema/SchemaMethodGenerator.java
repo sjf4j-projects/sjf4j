@@ -81,7 +81,7 @@ final class SchemaMethodGenerator {
                 return;
             }
             plans.add(fallbacks.bind(snapshot, binding.annotation,
-                    binding.annotationExpression, parameterType));
+                    binding.annotationExpression));
         }
 
         String type = parameterType.toString();

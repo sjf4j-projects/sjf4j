@@ -63,6 +63,27 @@ class CompiledValidatorArchitectureTest {
     }
 
     @Test
+    void sharesFallbackAcrossDistinctAnnotationsAndJavaTypesForSameResource() throws Exception {
+        String ref = "@ValidJsonSchema(ref = \"classpath:/schema/compiled-validator-shared-fallback.json\") ";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator public interface Check { "
+                + ref + "boolean first(Model value); "
+                + ref + "boolean second(Model value, boolean strictFormat); "
+                + ref + "void requireValid(Model value); "
+                + ref + "boolean otherType(String value); }";
+        NavigatorTestCompiler.Result result = compile(MODEL, validator);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertEquals(1, occurrences(generated, "private static final class PLAN_0 {"), generated);
+        assertFalse(generated.contains("private static final class PLAN_1 {"), generated);
+        assertEquals(1, occurrences(generated, "new org.sjf4j.schema.SchemaRegistry()"), generated);
+        assertEquals(1, occurrences(generated, "static final org.sjf4j.schema.SchemaPlan SUB_1_ITEM ="), generated);
+        assertEquals(2, occurrences(generated, "Fallback.PLAN_0.SUB_1_ITEM.isValid("), generated);
+        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.requireValid("), generated);
+        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
+    }
+
+    @Test
     void doesNotEmitPlansForFullyCompiledMethods() throws Exception {
         String direct = "{\"type\":\"object\",\"properties\":{"
                 + "\"name\":{\"type\":\"string\",\"minLength\":2}}}";

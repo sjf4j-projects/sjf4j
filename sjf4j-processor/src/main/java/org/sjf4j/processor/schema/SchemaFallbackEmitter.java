@@ -3,7 +3,6 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.code.GeneratedClass;
 
-import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,9 +17,10 @@ final class SchemaFallbackEmitter {
     private final Map<String, Plan> bySnapshot = new LinkedHashMap<String, Plan>();
 
     Plan bind(SchemaResourceResolver.Snapshot snapshot, ValidJsonSchema annotation,
-              String annotationExpression, TypeMirror type) {
-        String key = snapshotKey(snapshot) + "\u0001" + type.toString()
-                + "\u0001" + annotationExpression;
+              String annotationExpression) {
+        // The runtime registry/plan depends on the selected schema resource, not
+        // the validating Java type or the reflection expression for its annotation.
+        String key = snapshotKey(snapshot);
         Plan plan = bySnapshot.get(key);
         if (plan == null) {
             plan = new Plan("PLAN_" + plans.size(), snapshot, annotation, annotationExpression);
