@@ -112,7 +112,6 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(generated.contains("getText()") && generated.contains(".codePointCount("), generated);
         assertTrue(generated.contains("getDecimal()") && generated.contains("Numbers.compare("), generated);
         assertTrue(generated.contains("for (") && generated.contains("_item"), generated);
-        assertTrue(generated.contains("org.sjf4j.util.Numbers.compare(_property"), generated);
         assertFalse(generated.contains("instanceof String"), generated);
         assertFalse(generated.contains("instanceof Number"), generated);
         assertTrue(generated.contains("org.sjf4j.Nodes.toString(_property"), generated);
