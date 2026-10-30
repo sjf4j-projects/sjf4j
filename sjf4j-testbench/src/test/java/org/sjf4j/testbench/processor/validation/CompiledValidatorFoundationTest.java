@@ -188,6 +188,20 @@ class CompiledValidatorFoundationTest {
         boolean test(MixedBean value);
     }
 
+    @Test
+    void generatedSourceContainsDirectGettersAndPointerFallback() throws Exception {
+        java.nio.file.Path root = java.nio.file.Paths.get(
+                "build/generated/sources/annotationProcessor/java/test/",
+                "org/sjf4j/testbench/processor/validation/");
+        String mixed = java.nio.file.Files.readString(root.resolve(
+                "CompiledValidatorFoundationTest$MixedValidator_Impl.java"));
+        assertTrue(mixed.contains("value.getName()"), "direct getter must be emitted");
+        assertTrue(mixed.contains("#/properties/tags"), "subschema pointer must be emitted");
+        assertTrue(mixed.contains("Fallback.PLAN_0.SUB_1.isValid("),
+                "unsupported keyword must use its own cached subschema");
+        assertFalse(mixed.contains("new String[]{"), "JSON Schema documents must not be duplicated");
+    }
+
     @ValidJsonSchema
     public static final class HTTPRequest {
         private String url;

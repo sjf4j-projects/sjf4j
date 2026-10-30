@@ -2,8 +2,6 @@ package org.sjf4j.processor.validation;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.NodeKind;
-import org.sjf4j.schema.JsonSchema;
-import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.processor.property.Property;
 import javax.lang.model.element.Modifier;
 import org.sjf4j.processor.ProcessorContext;
@@ -277,9 +275,9 @@ public final class ValidationGenerator {
                                 SchemaResourceResolver.Snapshot snapshot) {
         String literal = snapshot.documents[0].trim();
         if (!"true".equals(literal) && !"false".equals(literal)) {
-            JsonSchema root = JsonSchema.fromJson(literal);
-            if (!(root instanceof ObjectSchema)) return false;
-            ObjectSchema os = (ObjectSchema) root;
+            Object parsed = org.sjf4j.Sjf4j.global().fromJson(literal);
+            if (!org.sjf4j.JsonType.of(parsed).isObject()) return false;
+            org.sjf4j.JsonObject os = org.sjf4j.Nodes.toJsonObject(parsed);
             if (os.size() != 1 || os.getString("$ref") == null) return false;
             java.net.URI base = java.net.URI.create(snapshot.uris[0]);
             java.net.URI target = base.resolve(os.getString("$ref"));
@@ -312,9 +310,9 @@ public final class ValidationGenerator {
                 !owner.getModifiers().contains(Modifier.PUBLIC) ||
                 owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return false;
 
-        JsonSchema parsed = JsonSchema.fromJson(snapshot.documents[0]);
-        if (!(parsed instanceof ObjectSchema)) return false;
-        ObjectSchema root = (ObjectSchema) parsed;
+        Object parsed = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
+        if (!org.sjf4j.JsonType.of(parsed).isObject()) return false;
+        org.sjf4j.JsonObject root = org.sjf4j.Nodes.toJsonObject(parsed);
         for (String key : root.keySet()) {
             if (!key.equals("type") && !key.equals("properties")) return false;
         }
