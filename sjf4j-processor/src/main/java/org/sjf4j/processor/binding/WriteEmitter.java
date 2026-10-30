@@ -326,6 +326,7 @@ final class WriteEmitter {
                     if (containsString(property.value(), visited)) return true;
                 }
                 return false;
+            case ARRAY:
             case LIST:
             case SET:
                 return containsString(value.elementValue(), visited);

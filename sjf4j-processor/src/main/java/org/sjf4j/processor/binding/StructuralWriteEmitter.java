@@ -134,6 +134,16 @@ final class StructuralWriteEmitter {
         }
     }
 
+    /** Java arrays use statically resolved element writes, without runtime dispatch. */
+    void emitArray(JavaWriter out, BindingValue value) {
+        ops.startArray(out);
+        out.beginBlock("for (int i = 0; i < value.length; i++)");
+        if (ops.explicitArraySeparators()) ops.beforeArrayElement(out, "i");
+        ops.writeValue(out, value.elementValue(), "value[i]");
+        out.endBlock();
+        ops.endArray(out);
+    }
+
     /** Random-access and sequential lists use the same element emission. */
     void emitList(JavaWriter out, BindingValue value) {
         ops.startArray(out);

@@ -209,10 +209,15 @@ final class BindingCompiler {
         TypeKind javaKind = type.getKind();
 
         if (javaKind == TypeKind.ARRAY) {
-            // The read plan has a concrete element type; write currently uses
-            // the existing runtime array writer instead of a native helper.
-            return direction == BindingPlan.Direction.READ_FROM
-                    ? BindingValue.Kind.ARRAY : BindingValue.Kind.RUNTIME;
+            // Native JSON backends emit typed array elements directly. Keep
+            // streaming-only backends on their existing runtime array path.
+            if (direction == BindingPlan.Direction.READ_FROM
+                    || backend == Backend.JACKSON2 || backend == Backend.JACKSON3
+                    || backend == Backend.FASTJSON2 || backend == Backend.GSON
+                    || backend == Backend.JSONP) {
+                return BindingValue.Kind.ARRAY;
+            }
+            return BindingValue.Kind.RUNTIME;
         }
 
         if (javaKind.isPrimitive()) {

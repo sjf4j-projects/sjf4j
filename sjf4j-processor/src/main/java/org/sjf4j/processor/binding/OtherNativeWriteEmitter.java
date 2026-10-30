@@ -72,10 +72,14 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
                 break;
             case POJO:
             case JOJO:
+            case ARRAY:
             case LIST:
             case SET:
             case MAP:
                 switch (value.kind()) {
+                    case ARRAY:
+                        structures.emitArray(out, value);
+                        break;
                     case POJO:
                     case JOJO:
                         structures.emitPojo(out, value);
