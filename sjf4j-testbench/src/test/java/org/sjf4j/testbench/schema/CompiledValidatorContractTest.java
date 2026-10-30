@@ -5,6 +5,8 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.ValidationException;
+import org.sjf4j.schema.JsonSchema;
+import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.ValidationResult;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -16,8 +18,9 @@ class CompiledValidatorContractTest {
             + "\"email\":{\"type\":\"string\",\"format\":\"email\"},"
             + "\"code\":{\"type\":\"string\",\"minLength\":3}}}")
     public static final class Person {
-        private final String email;
-        private final String code;
+        private String email;
+        private String code;
+        public Person() { }
         public Person(String email, String code) {
             this.email = email;
             this.code = code;
@@ -57,6 +60,10 @@ class CompiledValidatorContractTest {
         assertFalse(validator.isValid(badEmail));
         assertFalse(validator.isValid(badEmail, true));
         assertTrue(validator.isValid(badEmail, false));
+        SchemaPlan reference = JsonSchema.fromJson(
+                Person.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
+        assertEquals(reference.isValid(badEmail, false), validator.isValid(badEmail, false));
+        assertEquals(reference.isValid(badEmail, true), validator.isValid(badEmail, true));
         assertTrue(validator.isValid(null));
         assertTrue(validator.isValid(null, false));
     }
@@ -77,7 +84,11 @@ class CompiledValidatorContractTest {
         Person invalid = new Person("invalid-email", "x");
         ValidationResult strict = validator.validate(invalid);
         assertFalse(strict.isValid());
-        assertTrue(strict.count() >= 2, () -> strict.toString());
+        SchemaPlan reference = JsonSchema.fromJson(
+                Person.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
+        assertEquals(reference.validate(invalid, false, true).getErrors().size(),
+                strict.getErrors().size());
+        assertTrue(strict.getErrors().size() >= 2, () -> strict.toString());
         ValidationResult lenient = validator.validate(invalid, false);
         assertFalse(lenient.isValid());
         assertEquals(1, lenient.getErrors().size(), () -> lenient.toString());
