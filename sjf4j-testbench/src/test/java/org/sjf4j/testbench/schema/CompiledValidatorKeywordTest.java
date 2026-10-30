@@ -140,6 +140,7 @@ class CompiledValidatorKeywordTest {
     @CompiledValidator(fallback = false, nullAsMissing = true)
     public interface Missing {
         @ValidJsonSchema(NULLABLE) boolean valid(Bean bean);
+        @ValidJsonSchema(ARRAYS) boolean arrayValues(Values value);
     }
 
     @CompiledValidator(fallback = true, nullAsMissing = true)
@@ -256,6 +257,11 @@ class CompiledValidatorKeywordTest {
         assertFalse(direct.valid(new Bean(null, "aa")));
         assertFalse(direct.valid(new Bean("ok", "x")));
         assertTrue(direct.valid(new Bean("ok", "abc")));
+        // Null elements belong to arrays and must not be treated as missing.
+        assertFalse(direct.arrayValues(value("aa", BigDecimal.ONE, 1,
+                List.of(Arrays.asList("aa", null)))));
+        assertTrue(direct.arrayValues(value("aa", BigDecimal.ONE, 1,
+                List.of(List.of("aa", "bb")))));
 
         MissingDiagnostics fallback = CompiledInstances.create(MissingDiagnostics.class);
         assertDoesNotThrow(() -> fallback.require(new Bean("ok", null)));
