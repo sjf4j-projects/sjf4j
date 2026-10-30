@@ -497,10 +497,7 @@ public final class Jackson2Parser extends StreamingParser {
 
     @Override
     public Object readRaw() throws IOException {
-        return readRaw(nextValue());
-    }
-
-    private Object readRaw(JsonToken current) throws IOException {
+        JsonToken current = nextValue();
         if (current == null) {
             throw expected("raw node", null);
         }
@@ -549,16 +546,15 @@ public final class Jackson2Parser extends StreamingParser {
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
         while ((name = parser.nextFieldName()) != null) {
-            value.put(name, readRaw(parser.nextToken()));
+            value.put(name, readRaw());
         }
         return value;
     }
 
     private List<Object> _readRawArray() throws IOException {
         List<Object> value = new ArrayList<>();
-        JsonToken current;
-        while ((current = parser.nextToken()) != JsonToken.END_ARRAY) {
-            value.add(readRaw(current));
+        while (!nextIfArrayEnd()) {
+            value.add(readRaw());
         }
         return value;
     }
