@@ -52,18 +52,13 @@ class CompiledValidatorFoundationTest {
 
     @Test
     void primitiveParameterUsesRuntimeFallbackWithoutNullCheck() {
-        try {
-            PersonValidator validator = CompiledInstances.create(PersonValidator.class);
-            assertTrue(validator.positive(3));
-            assertFalse(validator.positive(0));
-        } catch (RuntimeException | Error ex) {
-            ex.printStackTrace(); // Keep initializer failures diagnosable in CI.
-            throw ex;
-        }
+        PersonValidator validator = CompiledInstances.create(PersonValidator.class);
+        assertTrue(validator.positive(3));
+        assertFalse(validator.positive(0));
     }
 
     @Test
-    void referencedSchemaAndItsExternalRefsAreFrozenAtCompileTime() {
+    void referencedSchemaAndItsExternalRefsResolveFromResources() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
 
         assertTrue(validator.fromResource(new Payload("valid")));

@@ -82,9 +82,20 @@ public final class ValidationGenerator {
                                 + ", org.sjf4j.schema.JsonSchema.fromJson("
                                 + field.annotationExpression + ".value()));");
                     } else {
+                        java.net.URI resourceUri = java.net.URI.create(field.snapshot.uris[i]);
+                        String resource;
+                        if ("classpath".equals(resourceUri.getScheme())) {
+                            resource = "org.sjf4j.schema.SchemaRegistry.class.getClassLoader()"
+                                    + ".getResourceAsStream(" + javaLiteral(resourceUri.getPath().replaceFirst("^/", "")) + ")";
+                        } else {
+                            resource = "java.nio.file.Files.newInputStream(java.nio.file.Paths.get(" + uri + "))";
+                        }
+                        out.beginBlock("try (java.io.InputStream input = " + resource + ")");
+                        out.line("if (input == null) throw new IllegalStateException("
+                                + javaLiteral("schema resource not found: " + resourceUri) + ");");
                         out.line(registry + ".index(" + uri
-                                + ", org.sjf4j.schema.SchemaUtil.loadSchemaFromLocalUri("
-                                + uri + "));");
+                                + ", org.sjf4j.Sjf4j.global().fromJson(input, org.sjf4j.schema.JsonSchema.class));");
+                        out.endBlock();
                     }
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("
