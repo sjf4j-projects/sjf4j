@@ -86,6 +86,40 @@ class CompiledValidatorContractProcessorTest {
         assertFalse(generated.contains(".ROOT.isValid("), generated);
     }
 
+    @Test
+    void generatesNativeTypedOperationsAndNodesOnlyForObjectProperties() throws Exception {
+        String model = "package fixture; import java.math.BigDecimal; import java.util.List; "
+                + "public final class Model { "
+                + "public String getText() { return \"aa\"; } "
+                + "public BigDecimal getDecimal() { return BigDecimal.ONE; } "
+                + "public List<String> getWords() { return List.of(\"aa\"); } "
+                + "public Object getUnknown() { return \"aa\"; } }";
+        String schema = "{\"type\":\"object\",\"properties\":{"
+                + "\"text\":{\"type\":\"string\",\"minLength\":2},"
+                + "\"decimal\":{\"type\":\"number\",\"minimum\":1},"
+                + "\"words\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":2}},"
+                + "\"unknown\":{\"type\":\"string\",\"maxLength\":4}}}";
+        String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema)
+                + ") boolean valid(Model value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Model.java", model, "fixture/Check.java", source),
+                CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+
+        assertTrue(generated.matches("(?s).*java\\.lang\\.String _property\\d+ = value\\.getText\\(\\);.*"), generated);
+        assertTrue(generated.matches("(?s).*java\\.math\\.BigDecimal _property\\d+ = value\\.getDecimal\\(\\);.*"), generated);
+        assertTrue(generated.contains("for (java.lang.String _item"), generated);
+        assertTrue(generated.contains("org.sjf4j.util.Numbers.compare(_property"), generated);
+        assertFalse(generated.contains("instanceof String"), generated);
+        assertFalse(generated.contains("instanceof Number"), generated);
+        assertTrue(generated.contains("org.sjf4j.Nodes.toString(_property"), generated);
+        assertFalse(generated.contains("org.sjf4j.Nodes.toNumber("), generated);
+        assertFalse(generated.contains(".ROOT.isValid("), generated);
+    }
+
     private static NavigatorTestCompiler.Result compile(String source) throws Exception {
         return NavigatorTestCompiler.compile(Map.of(
                 "fixture/Model.java", MODEL,

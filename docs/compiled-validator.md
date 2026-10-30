@@ -93,6 +93,50 @@ protocol. Current validation execution does **not** read options from
 of it. This retains a compatible factory entry point without inventing
 configuration before it is needed.
 
+## JSON Schema types and Java / Nodes dispatch
+
+The generator uses the **declared Java property or collection-element type**
+whenever that type proves the JSON shape. In that case it emits ordinary Java
+operations directly, not a redundant series of `instanceof` tests. Only
+`Object`, a dynamically accessed object member, or another unresolvable value
+shape needs runtime JSON-type inspection and strict Nodes conversion.
+
+| JSON Schema `type` | Statically known Java representation | Unknown / dynamic value via Nodes | Current direct compilation |
+| --- | --- | --- | --- |
+| `string` | `String` as-is; `Character` / `char` with `String.valueOf`; `Enum` with `name()` | Check `JsonType.rawOf(value.getClass()) == STRING`, then `Nodes.toString(value)` | Yes, including `minLength`/`maxLength`/string `enum` |
+| `number` | Primitive/boxed numeric type, `BigDecimal`, `BigInteger`: direct `Numbers.compare` | Check numeric JSON type, then `Nodes.toNumber(value)` | Yes, including numeric bounds |
+| `integer` | Same numeric types, plus `Numbers.isSemanticInteger` | Strict `Nodes.toNumber` + `Numbers.isSemanticInteger`, **not** coercion with `Nodes.toInt` | Yes |
+| `boolean` | `boolean` / `Boolean` | Strict `Nodes.toBoolean(value)` | Runtime fallback for keyword compilation |
+| `null` | Java `null` or JSON null representation | JSON-null classification; no numeric/string coercion | Runtime fallback for keyword compilation |
+| `object` | POJO declared getters or Map/JsonObject/JOJO member operations | `Nodes.getInObject`, `Nodes.keySetInObject`; no container copy | Root object directly; nested objects conditional/fallback |
+| `array` | `List`/`Set`/`Collection` size + typed for-each, or Java-array length + for-each | JSON array shape, `Nodes.sizeInArray` and `Nodes.iteratorInArray` | Yes for supported `items` and bounds |
+
+`Nodes.toXxx` are **strict**, not the lenient `Nodes.asXxx` APIs: a
+JSON string containing `"42"` must not silently satisfy `type: number`.
+For unknown values, the generator checks the JSON representation type
+**before** calling `Nodes.toString` or `Nodes.toNumber`, so an incompatible
+value returns `false` rather than causing a conversion exception. Runtime
+value-codec representations can be recognized through
+`JsonType.rawOf(value.getClass())`.
+
+For example, a statically declared `String getText()` yields a direct path:
+
+```java
+String text = value.getText();
+if (text == null) return false;
+int length = text.codePointCount(0, text.length());
+if (length < 2) return false;
+```
+
+An `Object getText()` or a dynamic Map value uses a representation check
+followed by `Nodes.toString`, without materializing an intermediate
+`JsonObject` or `JsonArray`. When the compiler cannot prove the type or the
+schema is unsupported, it still emits a localized `SchemaPlan` fallback.
+
+This mapping describes the intended shape dispatch; **it does not claim**
+every combination of the JSON Schema `type` keyword has a direct compiler
+implementation yet (notably `boolean`, `null`, and nested `object`).
+
 ## Direct keyword coverage
 
 **Status meaning:** Direct = emitted Java checks without a runtime plan;
@@ -151,6 +195,11 @@ cycles, or sibling assertions that cannot be proven safe fall back.
 `fallback=false` rejects **any** required subplan at compilation time.
 Support is about the listed combinations, not arbitrary JSON Schema
 keyword combinations.
+
+The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
+`CompiledValidatorTypeDispatchTest` (typed Java paths versus dynamic Nodes
+conversions). Processor source-level assertions reject redundant type tests
+in known `String`/`Number` paths.
 
 The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest`:
 independent positive and negative cases for `minLength`, `maxLength`,

@@ -476,19 +476,26 @@ public final class ValidationGenerator {
                     ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + javaLiteral(name) + ")"
                     : variable + "." + property.read().memberName()
                       + (property.read().isMethod() ? "()" : "");
-            TypeMirror declared = property == null ? mapValueType(type) : property.read().type();
+            // Dynamic node getters return Object regardless of generic Map value type.
+            // Only a declared Java property can prove a concrete value type.
+            TypeMirror declared = property == null ? null : property.read().type();
             List<String> checks = new ArrayList<String>();
             List<Subplan> nested = new ArrayList<Subplan>();
             Object propertySchema = propertyMap.getNode(name);
             String uri = childPointer(resolvedRootUri, "properties", name);
             boolean supported = compileValue(checks, nested, snapshot, propertySchema, declared, local,
                     "Fallback." + field.name, "SUB_" + index, uri, strictFormat, 0);
-            statements.add("Object " + local + " = " + access + ";");
+            String localType = declared != null &&
+                    (isNativeString(declared) || isNativeNumber(declared) ||
+                     isNativeCollection(declared) || declared.getKind() == TypeKind.ARRAY)
+                    ? declared.toString() : "Object";
+            statements.add(localType + " " + local + " = " + access + ";");
             if (dynamic) {
                 statements.add("if (org.sjf4j.Nodes.keySetInObject(" + variable
                         + ").contains(" + javaLiteral(name) + ")) {");
             }
-            if (nullAsMissing) statements.add("if (" + local + " != null) {");
+            if (nullAsMissing && (declared == null || !declared.getKind().isPrimitive()))
+                statements.add("if (" + local + " != null) {");
             if (supported) {
                 directCount++;
                 for (String line : checks) statements.add((dynamic || nullAsMissing ? "    " : "") + line);
@@ -500,19 +507,13 @@ public final class ValidationGenerator {
                         + ".isValid(" + runtimeInput(local, nullAsMissing)
                         + ", " + strictFormat + ")) return false;");
             }
-            if (nullAsMissing) statements.add("}");
+            if (nullAsMissing && (declared == null || !declared.getKind().isPrimitive()))
+                statements.add("}");
             if (dynamic) statements.add("}");
             index++;
         }
         if (directCount == 0) return null;
         return new DirectCheck(statements, subplans);
-    }
-
-    private TypeMirror mapValueType(TypeMirror type) {
-        if (!(type instanceof DeclaredType) ||
-                context.types.nodeKind(type) != NodeKind.OBJECT_MAP) return null;
-        List<? extends TypeMirror> args = ((DeclaredType) type).getTypeArguments();
-        return args.size() == 2 ? args.get(1) : null;
     }
 
     private static String pointerEscape(String key) {
@@ -569,10 +570,13 @@ public final class ValidationGenerator {
         String kind = schema.getString("type");
         if (kind == null) return false;
 
+        boolean unknownType = declaredType == null
+                || "java.lang.Object".equals(declaredType.toString());
+        boolean nullable = declaredType == null || !declaredType.getKind().isPrimitive();
+
         if ("string".equals(kind)) {
-            // Custom value codecs may expose a different JSON shape. Do not
-            // bypass their conversion by guessing from a Java field type.
-            if (!isNativeString(declaredType)) return false;
+            boolean knownString = isNativeString(declaredType);
+            if (!knownString && !unknownType) return false;
             for (String key : schema.keySet()) {
                 if (!key.equals("type") && !key.equals("minLength") && !key.equals("maxLength")
                         && !key.equals("enum") && !isAnnotation(key)) return false;
@@ -591,18 +595,36 @@ public final class ValidationGenerator {
                     choices.add((String) e);
                 }
             }
-            // String and Enum have different native Java types but the same
-            // JSON string representation. Use the enum name, never toString().
+
+            // Type information from the declared getter/collection is enough;
+            // no instanceof checks or generic node conversions are needed.
+            String text;
+            String declaredName = declaredType == null ? "" : declaredType.toString();
             String textName = "_text" + depth + "_" + planName;
-            lines.add("if (!(" + value + " instanceof String) && !(" + value
-                    + " instanceof Enum) && !(" + value + " instanceof Character)) return false;");
-            lines.add("String " + textName + " = " + value + " instanceof String ? (String) "
-                    + value + " : " + value + " instanceof Enum ? ((Enum<?>) " + value
-                    + ").name() : " + value + ".toString();");
+            if (knownString) {
+                if (nullable) lines.add("if (" + value + " == null) return false;");
+                if ("java.lang.String".equals(declaredName)) {
+                    text = value;
+                } else {
+                    TypeElement element = context.types.typeElement(declaredType);
+                    boolean isEnum = element != null
+                            && element.getKind() == javax.lang.model.element.ElementKind.ENUM;
+                    lines.add("String " + textName + " = "
+                            + (isEnum ? value + ".name()" : "String.valueOf(" + value + ")") + ";");
+                    text = textName;
+                }
+            } else {
+                // The source is Object / a dynamic member. Check its JSON shape,
+                // then use the strict OBNT conversion (which knows value codecs).
+                lines.add("if (" + value + " == null || org.sjf4j.JsonType.rawOf("
+                        + value + ".getClass()) != org.sjf4j.JsonType.STRING) return false;");
+                lines.add("String " + textName + " = org.sjf4j.Nodes.toString(" + value + ");");
+                text = textName;
+            }
             if (min != null || max != null) {
                 String len = "_length" + depth + "_" + planName;
-                lines.add("int " + len + " = " + textName
-                        + ".codePointCount(0, " + textName + ".length());");
+                lines.add("int " + len + " = " + text
+                        + ".codePointCount(0, " + text + ".length());");
                 if (min != null) lines.add("if (" + len + " < " + min + ") return false;");
                 if (max != null) lines.add("if (" + len + " > " + max + ") return false;");
             }
@@ -610,33 +632,43 @@ public final class ValidationGenerator {
                 StringBuilder condition = new StringBuilder();
                 for (String choice : choices) {
                     if (condition.length() != 0) condition.append(" && ");
-                    condition.append("!").append(textName).append(".equals(")
+                    condition.append("!").append(text).append(".equals(")
                             .append(javaLiteral(choice)).append(")");
                 }
-                if (condition.length() == 0) lines.add("if (" + textName + " != null) return false;");
+                if (condition.length() == 0) lines.add("return false;");
                 else lines.add("if (" + condition + ") return false;");
             }
             return true;
         }
 
         if ("number".equals(kind) || "integer".equals(kind)) {
-            if (!isNativeNumber(declaredType)) return false;
+            boolean knownNumber = isNativeNumber(declaredType);
+            if (!knownNumber && !unknownType) return false;
             for (String key : schema.keySet()) {
                 if (!key.equals("type") && !key.equals("minimum") && !key.equals("maximum")
                         && !key.equals("exclusiveMinimum") && !key.equals("exclusiveMaximum")
                         && !isAnnotation(key)) return false;
             }
-            lines.add("if (!(" + value + " instanceof Number)) return false;");
+            String number = value;
+            if (knownNumber) {
+                if (nullable) lines.add("if (" + value + " == null) return false;");
+            } else {
+                lines.add("if (" + value + " == null || org.sjf4j.JsonType.rawOf("
+                        + value + ".getClass()) != org.sjf4j.JsonType.NUMBER) return false;");
+                String numeric = "_number" + depth + "_" + planName;
+                lines.add("Number " + numeric + " = org.sjf4j.Nodes.toNumber(" + value + ");");
+                number = numeric;
+            }
             if ("integer".equals(kind)) {
-                lines.add("if (!org.sjf4j.util.Numbers.isSemanticInteger((Number) "
-                        + value + ")) return false;");
+                lines.add("if (!org.sjf4j.util.Numbers.isSemanticInteger("
+                        + number + ")) return false;");
             }
             for (String key : new String[]{"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"}) {
                 Object limit = schema.getNode(key);
                 if (limit == null) continue;
                 if (!(limit instanceof Number)) return false;
                 String bound = decimalConstant((Number) limit);
-                String comparison = "org.sjf4j.util.Numbers.compare((Number) " + value + ", " + bound + ")";
+                String comparison = "org.sjf4j.util.Numbers.compare(" + number + ", " + bound + ")";
                 String operator = key.equals("minimum") ? " < 0"
                         : key.equals("maximum") ? " > 0"
                         : key.equals("exclusiveMinimum") ? " <= 0" : " >= 0";
@@ -646,10 +678,9 @@ public final class ValidationGenerator {
         }
 
         if ("array".equals(kind)) {
-            if (declaredType == null || !(declaredType instanceof DeclaredType)) return false;
-            String rawCollection = context.typeUtils.erasure(declaredType).toString();
-            if (!rawCollection.equals("java.util.List") && !rawCollection.equals("java.util.Set")
-                    && !rawCollection.equals("java.util.Collection")) return false;
+            boolean knownCollection = isNativeCollection(declaredType);
+            boolean knownArray = declaredType != null && declaredType.getKind() == TypeKind.ARRAY;
+            if (!knownCollection && !knownArray && !unknownType) return false;
             for (String key : schema.keySet()) {
                 if (!key.equals("type") && !key.equals("items") && !key.equals("minItems")
                         && !key.equals("maxItems") && !isAnnotation(key)) return false;
@@ -658,20 +689,41 @@ public final class ValidationGenerator {
             Integer max = schema.getInt("maxItems");
             if ((schema.containsKey("minItems") && (min == null || min < 0))
                     || (schema.containsKey("maxItems") && (max == null || max < 0))) return false;
-            lines.add("if (!(" + value + " instanceof java.util.Collection)) return false;");
-            String size = "((java.util.Collection<?>) " + value + ").size()";
+            if (nullable) {
+                if (unknownType) lines.add("if (" + value + " == null || org.sjf4j.JsonType.rawOf("
+                        + value + ".getClass()) != org.sjf4j.JsonType.ARRAY) return false;");
+                else lines.add("if (" + value + " == null) return false;");
+            }
+            String size = knownCollection ? value + ".size()"
+                    : knownArray ? value + ".length" : "org.sjf4j.Nodes.sizeInArray(" + value + ")";
             if (min != null) lines.add("if (" + size + " < " + min + ") return false;");
             if (max != null) lines.add("if (" + size + " > " + max + ") return false;");
             if (!schema.containsKey("items")) return true;
+
             Object itemSchema = schema.getNode("items");
             String itemVar = "_item" + depth + "_" + planName;
             List<String> itemLines = new ArrayList<String>();
             List<Subplan> itemPlans = new ArrayList<Subplan>();
-            List<? extends TypeMirror> args = ((DeclaredType) declaredType).getTypeArguments();
-            TypeMirror itemType = args.size() == 1 ? args.get(0) : null;
+            TypeMirror itemType = null;
+            if (knownArray) {
+                itemType = ((javax.lang.model.type.ArrayType) declaredType).getComponentType();
+            } else if (knownCollection) {
+                List<? extends TypeMirror> args = ((DeclaredType) declaredType).getTypeArguments();
+                if (args.size() == 1) itemType = args.get(0);
+            }
             boolean directItems = compileValue(itemLines, itemPlans, snapshot, itemSchema, itemType, itemVar,
                     planClass, planName + "_ITEM", schemaUri + "/items", strictFormat, depth + 1);
-            lines.add("for (Object " + itemVar + " : (java.util.Collection<?>) " + value + ") {");
+            if (knownCollection || knownArray) {
+                String itemJavaType = itemType == null || itemType.getKind() == TypeKind.WILDCARD
+                        ? "Object" : itemType.toString();
+                lines.add("for (" + itemJavaType + " " + itemVar + " : " + value + ") {");
+            } else {
+                String iter = "_iter" + depth + "_" + planName;
+                lines.add("java.util.Iterator<Object> " + iter
+                        + " = org.sjf4j.Nodes.iteratorInArray(" + value + ");");
+                lines.add("while (" + iter + ".hasNext()) {");
+                lines.add("    Object " + itemVar + " = " + iter + ".next();");
+            }
             if (directItems) {
                 for (String line : itemLines) lines.add("    " + line);
                 subplans.addAll(itemPlans);
@@ -685,6 +737,13 @@ public final class ValidationGenerator {
             return true;
         }
         return false;
+    }
+
+    private boolean isNativeCollection(TypeMirror type) {
+        if (!(type instanceof DeclaredType)) return false;
+        String name = context.typeUtils.erasure(type).toString();
+        return name.equals("java.util.List") || name.equals("java.util.Set")
+                || name.equals("java.util.Collection");
     }
 
     /** A compile-time resolution only; unsupported anchors or sibling keywords fall back. */
