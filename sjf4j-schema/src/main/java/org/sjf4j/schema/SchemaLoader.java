@@ -26,6 +26,14 @@ public interface SchemaLoader {
      */
     JsonSchema load(URI uri);
 
+    /**
+     * Resolves a reference to its retrieval URI. Loaders with a configured
+     * base directory should override this method to resolve relative refs.
+     */
+    default URI resolve(URI uri) {
+        return Asserts.notNull(uri, "uri");
+    }
+
     /** Discards the document fragment without changing the retrieval URI's base. */
     static URI documentUri(URI uri) {
         Asserts.notNull(uri, "uri");
@@ -61,6 +69,7 @@ public interface SchemaLoader {
         }
 
         /** Resolves a relative reference against the configured schema directory. */
+        @Override
         public URI resolve(URI uri) {
             return baseUri.resolve(Asserts.notNull(uri, "uri"));
         }

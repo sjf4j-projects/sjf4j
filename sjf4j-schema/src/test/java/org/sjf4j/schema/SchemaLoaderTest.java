@@ -102,9 +102,9 @@ class SchemaLoaderTest {
     @Test
     void schemaValidatorUsesInjectedLoaderAndRegistry() {
         URI base = URI.create("memory:/schemas/");
-        SchemaLoader loader = uri -> parseUnchecked(uri,
+        SchemaLoader loader = uri -> parseUnchecked(base.resolve(uri),
                 "{\"type\":\"object\",\"properties\":{\"name\":{\"minLength\":2}}}");
-        SchemaValidator validator = SchemaValidator.withLoader(loader, null, true);
+        SchemaValidator validator = new SchemaValidator(loader, null, true);
         assertTrue(validator.validate(new Sample("ok")).isValid(),
                 () -> validator.validate(new Sample("ok")).toString());
         assertFalse(validator.validate(new Sample("x")).isValid());
