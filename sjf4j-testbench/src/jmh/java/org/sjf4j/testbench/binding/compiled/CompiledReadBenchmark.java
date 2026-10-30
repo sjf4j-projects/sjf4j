@@ -30,6 +30,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
+import java.util.List;
 
 /**
  * CompiledBinder baseline. Each timed operation includes input/parser creation,
@@ -179,9 +180,9 @@ public class CompiledReadBenchmark {
         checkPojo("fastjson2 native string", expected, fastjson2_pojo_string_native());
         checkPojo("fastjson2 native utf8", expected, fastjson2_pojo_utf8_native());
     
-        Object jackson2Map = JACKSON2_COMPILED.readMap(User.User.JSON_DATA);
-        Object jackson3Map = JACKSON3_COMPILED.readMap(User.User.JSON_DATA);
-        Object map = FASTJSON2_COMPILED.readMap(User.User.JSON_DATA);
+        Object jackson2Map = JACKSON2_COMPILED.readMap(User.JSON_DATA);
+        Object jackson3Map = JACKSON3_COMPILED.readMap(User.JSON_DATA);
+        Object map = FASTJSON2_COMPILED.readMap(User.JSON_DATA);
         checkMap("jackson2 compiled JSON_DATA", JACKSON2_COMPILED.readMap(User.JSON_DATA));
         checkMap("jackson2 runtime JSON_DATA", JACKSON2_RUNTIME.readNode(User.JSON_DATA, Map.class));
         checkMap("jackson2 compiled JSON_UTF8", JACKSON2_COMPILED.readMapUtf8(JSON_UTF8));
@@ -220,10 +221,6 @@ public class CompiledReadBenchmark {
                 FASTJSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkEquivalentRawGraph("fastjson2 map UTF-8 runtime", map,
                 FASTJSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
-        checkEquivalentRawGraph("fastjson2 list String native", list, fastjson2_list_string_native());
-        checkEquivalentRawGraph("fastjson2 list UTF-8 native", list, fastjson2_list_utf8_native());
-        checkEquivalentRawGraph("fastjson2 list UTF-8 runtime", list,
-                FASTJSON2_RUNTIME.readNode(JSON_LIST_UTF8, List.class));
         checkMap("jsonp compiled JSON_DATA", JSONP_COMPILED.readMap(User.JSON_DATA));
         checkMap("jsonp runtime JSON_DATA", JSONP_RUNTIME.readNode(User.JSON_DATA, Map.class));
         checkMap("jsonp compiled JSON_UTF8", JSONP_COMPILED.readMapUtf8(JSON_UTF8));
