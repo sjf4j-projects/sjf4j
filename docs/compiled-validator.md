@@ -166,12 +166,16 @@ without violating `required`, although its property schema may reject null.
 | `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys; type-less object assertions supported | Yes | Phase 1 |
 | `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes | Phase 1 |
 | `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes | Phase 1 |
+| `minProperties`, `maxProperties` | Static POJO property count or runtime object-size check; null-as-missing uses runtime fallback | Yes | Direct |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes | Phase 1 |
 | `minLength`, `maxLength` | Direct string Unicode code-point length | Yes | Phase 1 |
+| `pattern` | Static precompiled ECMA-compatible regex; Java `Matcher.find()` | Yes | Direct |
 | `enum` | String enums plus scalar JSON literals (string/number/boolean/null), including type-less scalar assertions; object/array literals fall back | Yes | Compiled |
 | `const` | Scalar JSON literals with OBNT numeric equality (e.g. 1 equals 1.0); object/array constants fall back | Yes | Compiled |
 | `type:number`, `type:integer` | Native numeric Java field types | Yes | Phase 1 |
+| `type:boolean`, `type:null`, union `type` arrays | Direct shape predicates (including JSON semantic integer checks); combined scalar const/enum when supported | Yes | Direct |
 | `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct numeric comparisons | Yes | Phase 1 |
+| `multipleOf` | Static BigDecimal divisor and exact decimal remainder check for typed numbers | Yes | Direct |
 | `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes | Phase 1 |
 | `minItems`, `maxItems` | Direct Collection size checks | Yes | Phase 1 |
 | `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes | Phase 1 mixed |
