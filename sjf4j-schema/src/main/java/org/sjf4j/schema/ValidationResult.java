@@ -62,7 +62,8 @@ public class ValidationResult {
      * either input or the shared SUCCESS singleton.
      */
     public ValidationResult mergePrevious(ValidationResult previous) {
-        if (previous == null || (previous.count() == 0 && previous.getAnnotations().isEmpty())) return this;
+        if (previous == null || (previous.valid && previous.count() == 0
+                && previous.getAnnotations().isEmpty())) return this;
         List<Error> combinedErrors = new ArrayList<>(previous.getErrors());
         combinedErrors.addAll(getErrors());
         List<Annotation> combinedAnnotations = null;
