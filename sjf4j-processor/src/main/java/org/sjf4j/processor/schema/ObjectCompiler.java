@@ -97,7 +97,7 @@ final class ObjectCompiler {
                     && !SchemaCompiler.isAnnotation(key)) return null;
         }
         boolean typeRequired = root.containsKey("type");
-        if (typeRequired && !"object".equals(root.getString("type"))) return null;
+        if (typeRequired && !"object".equals(root.getNode("type"))) return null;
         if (!typeRequired && !root.containsKey("properties") && !root.containsKey("required")
                 && !root.containsKey("additionalProperties")
                 && !root.containsKey("minProperties")
