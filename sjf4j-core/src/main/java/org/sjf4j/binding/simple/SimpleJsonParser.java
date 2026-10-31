@@ -602,7 +602,17 @@ public final class SimpleJsonParser extends StreamingParser {
         _prepareValuePathUnchecked();
         try {
             _scanNumber(true);
-            Number value = Numbers.parseNumber(new String(numberBuffer, 0, numberLength));
+            Number value;
+            if (!numberFraction && !numberExponent && !numberOverflow) {
+                // _scanNumber has already decoded the entire integral literal.
+                if (numberValue >= Integer.MIN_VALUE && numberValue <= Integer.MAX_VALUE) {
+                    value = (int) numberValue;
+                } else {
+                    value = numberValue;
+                }
+            } else {
+                value = Numbers.parseNumber(new String(numberBuffer, 0, numberLength));
+            }
             _checkValueEnd();
             return value;
         } catch (IOException | BindingException e) {
@@ -771,12 +781,36 @@ public final class SimpleJsonParser extends StreamingParser {
                 || c == '-' || (c >= '0' && c <= '9');
     }
 
+    /**
+     * The common unescaped string can be copied straight from the current
+     * input buffer. Allocate a builder only for escapes or buffer boundaries.
+     */
     private String _readString() throws IOException {
-        int c = _read();
-        if (c != '"') throw _error("expected '\"'", c);
+        int quote = _read();
+        if (quote != '"') throw _error("expected '\"'", quote);
 
+        int start = inputPos;
+        while (inputPos < inputLimit) {
+            int c = _read();
+            if (c == '"') return new String(inputBuffer, start, inputPos - start - 1);
+            if (c == '\\') {
+                StringBuilder sb = new StringBuilder();
+                sb.append(inputBuffer, start, inputPos - start - 1);
+                return _readStringSlow(sb, c);
+            }
+            if (c < 0x20) throw _error("unescaped control character in string", c);
+        }
+
+        // The closing quote or a later escape may be in the next input chunk.
         StringBuilder sb = new StringBuilder();
-        while ((c = _read()) != -1) {
+        sb.append(inputBuffer, start, inputPos - start);
+        return _readStringSlow(sb, -1);
+    }
+
+    private String _readStringSlow(StringBuilder sb, int c) throws IOException {
+        while (true) {
+            if (c == -1) c = _read();
+            if (c == -1) break;
             if (c == '"') return sb.toString();
             if (c == '\\') {
                 int e = _read();
@@ -829,6 +863,7 @@ public final class SimpleJsonParser extends StreamingParser {
                 if (c < 0x20) throw _error("unescaped control character in string", c);
                 sb.append((char) c);
             }
+            c = -1;
         }
         throw _error("unexpected EOF in string", -1);
     }

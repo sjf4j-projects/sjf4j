@@ -24,6 +24,62 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class SimpleJsonParserTest {
 
     @Test
+    void readsUnescapedAndEscapedStringsAcrossInputBuffers() throws Exception {
+        StringBuilder repeated = new StringBuilder();
+        for (int i = 0; i < 8200; i++) repeated.append('x');
+        String large = repeated.toString();
+        String json = "[\"plain\",\"\",\"line\\nend\",\"" + large + "\",\"" + large + "\\tend\"]";
+        for (boolean direct : new boolean[]{false, true}) {
+            SimpleJsonParser parser = direct
+                    ? new SimpleJsonParser(json)
+                    : new SimpleJsonParser(new StringReader(json));
+            try {
+                parser.readArrayStart();
+                assertEquals("plain", parser.readString());
+                assertEquals("", parser.readString());
+                assertEquals("line\nend", parser.readString());
+                assertEquals(large, parser.readString());
+                assertEquals(large + "\tend", parser.readString());
+                parser.readArrayEnd();
+                parser.end();
+            } finally {
+                parser.close();
+            }
+        }
+
+        assertThrows(BindingException.class,
+                () -> new SimpleJsonParser(new StringReader("\"bad\ntext\"")).readString());
+        assertThrows(BindingException.class,
+                () -> new SimpleJsonParser(new StringReader("\"unterminated")).readString());
+    }
+
+    @Test
+    void genericNumbersReuseDecodedIntegersAndPreserveOtherNumberKinds() throws Exception {
+        SimpleJsonParser parser = new SimpleJsonParser(new StringReader(
+                "[0,-0,2147483647,2147483648,-2147483648,-2147483649,"
+                + "9223372036854775807,-9223372036854775808,"
+                + "9223372036854775808,1.25e2,1.20e-3]"));
+        try {
+            parser.readArrayStart();
+            assertEquals(Integer.valueOf(0), parser.readNumber());
+            assertEquals(Integer.valueOf(0), parser.readNumber());
+            assertEquals(Integer.valueOf(Integer.MAX_VALUE), parser.readNumber());
+            assertEquals(Long.valueOf(2147483648L), parser.readNumber());
+            assertEquals(Integer.valueOf(Integer.MIN_VALUE), parser.readNumber());
+            assertEquals(Long.valueOf(-2147483649L), parser.readNumber());
+            assertEquals(Long.valueOf(Long.MAX_VALUE), parser.readNumber());
+            assertEquals(Long.valueOf(Long.MIN_VALUE), parser.readNumber());
+            assertEquals(new BigInteger("9223372036854775808"), parser.readNumber());
+            assertEquals(Double.valueOf(125d), parser.readNumber());
+            assertEquals(Double.valueOf(0.0012d), parser.readNumber());
+            parser.readArrayEnd();
+            parser.end();
+        } finally {
+            parser.close();
+        }
+    }
+
+    @Test
     void readsPrimitiveValues() throws Exception {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[1,2,3,4,5.5,6.5,true]"));
