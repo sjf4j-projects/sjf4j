@@ -16,9 +16,9 @@ class CompiledValidatorClasspathResourceTest {
         sources.put("fixture/Validator.java",
                 "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=false) public interface Validator { "
-                + "@ValidJsonSchema(ref=\\"classpath:/compiled-validator-classpath-test.json\\") "
+                + "@ValidJsonSchema(ref=\"classpath:/compiled-validator-classpath-test.json\") "
                 + "boolean validSingle(String value); "
-                + "@ValidJsonSchema(ref=\\"classpath:///compiled-validator-classpath-test.json\\") "
+                + "@ValidJsonSchema(ref=\"classpath:///compiled-validator-classpath-test.json\") "
                 + "boolean validTriple(String value); }");
 
         NavigatorTestCompiler.Result result =
