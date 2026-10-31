@@ -57,7 +57,10 @@ public class ValidationContext {
         reusedLeaf.clear();
     }
 
-    /** Removes accumulated diagnostics before starting another batch. */
+    /**
+     * Removes accumulated diagnostics before starting another batch. Previously
+     * created ValidationResults backed by this context observe the cleared list.
+     */
     public void clearMessages() {
         if (messages != null) messages.clear();
     }
@@ -136,7 +139,8 @@ public class ValidationContext {
     /**
      * Adds a validation error message.
      * <p>
-     * In fail-fast mode only the last error is retained.
+     * Fail-fast applies to each evaluation; messages from earlier evaluations
+     * remain in the same list until clearMessages() is called.
      */
     void addError(Instance instance, PathSegment instancePs, PathSegment keywordPs, URI schemaUri,
                   String keyword, String message) {
@@ -154,7 +158,8 @@ public class ValidationContext {
     /**
      * Adds a validation warning message.
      * <p>
-     * Warnings are collected only when message list is enabled (non fail-fast).
+     * Warnings are collected whenever diagnostics are enabled, regardless of
+     * the fail-fast setting.
      */
     void addWarn(PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword, String message) {
         if (messages != null) {
