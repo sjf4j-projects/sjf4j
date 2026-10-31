@@ -38,7 +38,7 @@ public final class SchemaGenerator {
         // that interface without leaking metadata across generated classes.
         SchemaMethodGenerator methods = new SchemaMethodGenerator(context);
         for (ResolvedMethod method : context.methods.abstractMethods(iface)) {
-            methods.generate(method, generated, options.fallback(), options.nullAsMissing());
+            methods.generate(method, generated, options.fallback());
         }
 
         if (!generated.isValid()) return;
