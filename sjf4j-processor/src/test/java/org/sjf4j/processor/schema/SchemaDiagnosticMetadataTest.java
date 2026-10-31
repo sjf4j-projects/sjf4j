@@ -49,6 +49,27 @@ class SchemaDiagnosticMetadataTest {
     }
 
     @Test
+    void nestedIdStartsANewDiagnosticResourceAndResetsItsPointer() {
+        String effective = SchemaCompiler.effectiveSchemaUri(
+                "classpath:/schemas/root.json#/properties/child",
+                org.sjf4j.JsonObject.of("$id", "child.json"));
+
+        assertEquals("classpath:/schemas/child.json", effective);
+        SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(effective, "minimum");
+        assertEquals("classpath:/schemas/child.json", diagnostic.schemaUri);
+        assertEquals("/minimum", diagnostic.keywordPointer);
+    }
+
+    @Test
+    void unchangedIdKeepsTheCurrentNestedPointer() {
+        String effective = SchemaCompiler.effectiveSchemaUri(
+                "classpath:/schemas/root.json#/properties/child",
+                org.sjf4j.JsonObject.of("$id", "root.json"));
+
+        assertEquals("classpath:/schemas/root.json#/properties/child", effective);
+    }
+
+    @Test
     void unsupportedAnchorLocationDoesNotProduceAnInvalidJsonPointer() {
         assertNull(SchemaCompiler.diagnostic("classpath:/schemas/model.json#person", "type"));
     }
