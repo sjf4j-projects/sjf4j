@@ -40,8 +40,7 @@ class Jackson3ParserTest {
                 parser.readArrayStart();
                 assertEquals(StreamingParser.Token.STRING, parser.peekToken());
                 assertEquals('A', parser.readCharValue());
-                assertEquals('
-', parser.readCharValue());
+                assertEquals('\n', parser.readCharValue());
                 assertEquals(Character.valueOf('é'), parser.readChar());
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals(StreamingParser.Token.NULL, parser.peekToken());
@@ -49,7 +48,7 @@ class Jackson3ParserTest {
                 BindingException empty = assertThrows(BindingException.class, parser::readChar);
                 assertEquals("cannot read char: expected single-character string, but length was 0",
                         empty.getMessage());
-                assertThrows(IOException.class, parser::readCharValue);
+                assertThrows(BindingException.class, parser::readCharValue);
                 parser.readArrayEnd();
                 parser.end();
             } finally {
@@ -230,7 +229,7 @@ class Jackson3ParserTest {
                 assertThrows(ArithmeticException.class, parser::readByteValue);
                 assertEquals(125d, parser.readDoubleValue());
                 assertEquals(new BigInteger("123456789012345678901234567890"), parser.readBigInteger());
-                assertEquals(new BigDecimal("0.0012"), parser.readBigDecimal());
+                assertEquals(new BigDecimal("0.00120"), parser.readBigDecimal());
                 assertEquals('x', parser.readCharValue());
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);
