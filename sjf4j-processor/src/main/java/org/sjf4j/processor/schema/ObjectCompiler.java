@@ -144,7 +144,8 @@ final class ObjectCompiler {
         }
 
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
-        int directCount = (typeRequired ? 1 : 0) + (required != null ? 1 : 0)
+        int directCount = (typeRequired && propertyMap.isEmpty() ? 1 : 0)
+                + (required != null ? 1 : 0)
                 + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0);
         for (String name : propertyMap.keySet()) {
             Property property = dynamic ? null : javaProperties.get(name);
