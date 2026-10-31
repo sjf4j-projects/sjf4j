@@ -16,7 +16,8 @@ class FastLocalTimeTest {
                 "12:34:56.1", "12:34:56.12", "12:34:56.123",
                 "12:34:56.1234", "12:34:56.12345", "12:34:56.123456",
                 "12:34:56.1234567", "12:34:56.12345678",
-                "12:34:56.123456789", "12:34:56.000000001"}) {
+                "12:34:56.123456789", "12:34:56.000000001",
+                "12:34:56."}) {
             LocalTime expected = LocalTime.parse(time);
             assertEquals(expected, FastLocalTime.parse(time), time);
             char[] chars = ("ab" + time + "xy").toCharArray();
@@ -28,7 +29,7 @@ class FastLocalTimeTest {
     void invalidInputsKeepJdkExceptionBehavior() {
         for (String time : new String[]{
                 "", "1:23", "12:3", "24:00", "23:60", "12:34:60",
-                "12:34:56.", "12:34:56.1234567890", "12:34:56,123",
+                "12:34:56.1234567890", "12:34:56,123",
                 "12:34:56.X", "12:34:5A", "12-34-56",
                 "12:34:56Z", "12:34:56+01:00"}) {
             assertThrows(DateTimeParseException.class, () -> LocalTime.parse(time), time);
