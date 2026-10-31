@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -87,6 +86,10 @@ class ValidationResultTest {
         assertEquals(1, successWithParent.getAnnotations().size());
         assertTrue(ValidationResult.SUCCESS.getAnnotations().isEmpty());
         assertTrue(ValidationResult.SUCCESS.getErrors().isEmpty());
+
+        // Invalid flag-only results must not be silently treated as success.
+        ValidationResult emptyFailure = new ValidationResult(false, null);
+        assertFalse(ValidationResult.SUCCESS.mergePrevious(emptyFailure).isValid());
     }
 
     @Test
