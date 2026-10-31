@@ -67,21 +67,42 @@ final class SchemaCompiler {
             return compileValue(snapshot, target.value, value, target.uri, depth + 1);
         }
         if (schema.containsKey("oneOf") || schema.containsKey("allOf")
-                || schema.containsKey("anyOf") || schema.containsKey("not")) {
+                || schema.containsKey("anyOf") || schema.containsKey("not")
+                || schema.containsKey("if") || schema.containsKey("then")
+                || schema.containsKey("else")) {
             return compileApplicators(snapshot, schema, value, schemaUri, depth);
         }
         // Format is an assertion under the format-assertion vocabulary, even
         // when strictFormat=false. Only optimize known annotation-default dialects.
         if (schema.containsKey("format") && !canCompileFormat(snapshot)) return null;
         String kind = schema.getString("type");
-        if (kind == null) return scalars.compileLiteralsOnly(schema, value);
+        if (kind == null) {
+            if (schema.containsKey("properties") || schema.containsKey("required")
+                    || schema.containsKey("additionalProperties")) {
+                if (value.shape == SchemaValue.Shape.STRING
+                        || value.shape == SchemaValue.Shape.NUMBER
+                        || value.shape == SchemaValue.Shape.BOOLEAN
+                        || value.isArrayLike()) {
+                    // Object-specific keywords are ignored on non-objects.
+                    for (String key : schema.keySet()) {
+                        if (!key.equals("properties") && !key.equals("required")
+                                && !key.equals("additionalProperties") && !isAnnotation(key))
+                            return null;
+                    }
+                    return new SchemaCheck.Pass();
+                }
+                return objects.compileNested(value.type, snapshot, schema, schemaUri,
+                        nullAsMissing, depth);
+            }
+            return scalars.compileLiteralsOnly(schema, value);
+        }
         if ("string".equals(kind) || "number".equals(kind) || "integer".equals(kind)) {
             return scalars.compile(schema, value, kind);
         }
         if ("array".equals(kind)) {
             return arrays.compile(snapshot, schema, value, schemaUri, depth);
         }
-        if ("object".equals(kind) && value.type != null) {
+        if ("object".equals(kind)) {
             return objects.compileNested(value.type, snapshot, schema, schemaUri,
                     nullAsMissing, depth);
         }
@@ -129,6 +150,40 @@ final class SchemaCompiler {
             }
             checks.add(compiled);
         }
+        if (schema.containsKey("if")
+                && (schema.containsKey("then") || schema.containsKey("else"))) {
+            SchemaCheck condition = compileValue(snapshot, schema.getNode("if"), value,
+                    keywordUri(schemaUri, "if"), depth + 1);
+            if (condition == null || condition.hasFallback()) return null;
+            // Constant conditions select only one branch, even when the other
+            // branch has unsupported keywords.
+            String selected = condition.kind == SchemaCheck.Kind.PASS ? "then"
+                    : condition.kind == SchemaCheck.Kind.REJECT ? "else" : null;
+            if (selected != null) {
+                if (schema.containsKey(selected)) {
+                    SchemaCheck chosen = compileValue(snapshot, schema.getNode(selected), value,
+                            keywordUri(schemaUri, selected), depth + 1);
+                    if (chosen == null || chosen.hasFallback()) return null;
+                    checks.add(chosen);
+                }
+            } else {
+                SchemaCheck thenCheck = null;
+                SchemaCheck elseCheck = null;
+                if (schema.containsKey("then")) {
+                    thenCheck = compileValue(snapshot, schema.getNode("then"), value,
+                            keywordUri(schemaUri, "then"), depth + 1);
+                    if (thenCheck == null || thenCheck.hasFallback()) return null;
+                }
+                if (schema.containsKey("else")) {
+                    elseCheck = compileValue(snapshot, schema.getNode("else"), value,
+                            keywordUri(schemaUri, "else"), depth + 1);
+                    if (elseCheck == null || elseCheck.hasFallback()) return null;
+                }
+                checks.add(new SchemaCheck.ConditionalCheck(condition, thenCheck, elseCheck));
+            }
+        }
+        // Missing if means then/else have no effect. A lone if also has
+        // no validation effect and does not need to be compiled.
         for (String keyword : new String[]{"allOf", "anyOf", "not"}) {
             if (!schema.containsKey(keyword)) continue;
             boolean negation = "not".equals(keyword);
@@ -189,7 +244,8 @@ final class SchemaCompiler {
 
     private static boolean isApplicator(String key) {
         return "oneOf".equals(key) || "allOf".equals(key)
-                || "anyOf".equals(key) || "not".equals(key);
+                || "anyOf".equals(key) || "not".equals(key)
+                || "if".equals(key) || "then".equals(key) || "else".equals(key);
     }
 
     static String keywordUri(String base, String keyword) {
