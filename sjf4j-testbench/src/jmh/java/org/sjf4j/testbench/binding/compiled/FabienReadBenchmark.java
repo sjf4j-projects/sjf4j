@@ -2,11 +2,16 @@ package org.sjf4j.testbench.binding.compiled;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -29,16 +34,19 @@ import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.testbench.model.fabien.Clients;
 import org.sjf4j.testbench.model.fabien.FabienDataGenerator;
 import org.sjf4j.testbench.model.fabien.Users;
+import org.sjf4j.util.FastLocalDate;
+import org.sjf4j.util.FastOffsetDateTime;
+import org.sjf4j.util.FastUuid;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Parses Fabien Users and Clients JSON with the same byte[] input shape as
- * java-json-benchmark, using generated ~1 KB payloads by default.
- *
- * <p>Timing includes complete UTF-8 byte[] parsing and POJO creation, but not
- * fixture construction, serialization, or correctness checks.
+ * Compares Jackson Blackbird with SJF4J's zero-copy scalar decoders.
+ * The diagnostic variants replace one Jackson scalar deserializer at a time.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -57,11 +65,75 @@ public class FabienReadBenchmark {
             .registerModule(new JavaTimeModule())
             .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    private static final ObjectMapper BLACKBIRD = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .registerModule(new BlackbirdModule())
-            .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    private static final ObjectMapper BLACKBIRD = blackbirdWithFastDeserializers(false, false, false);
+    private static final ObjectMapper BLACKBIRD_FAST_UUID = blackbirdWithFastDeserializers(true, false, false);
+    private static final ObjectMapper BLACKBIRD_FAST_LOCAL_DATE = blackbirdWithFastDeserializers(false, true, false);
+    private static final ObjectMapper BLACKBIRD_FAST_OFFSET_DATE_TIME = blackbirdWithFastDeserializers(false, false, true);
+    private static final ObjectMapper BLACKBIRD_FAST_TEMPORAL = blackbirdWithFastDeserializers(true, true, true);
+
+    private static ObjectMapper blackbirdWithFastDeserializers(
+            boolean fastUuid, boolean fastLocalDate, boolean fastOffsetDateTime) {
+        ObjectMapper mapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule());
+        if (fastUuid || fastLocalDate || fastOffsetDateTime) {
+            SimpleModule module = new SimpleModule("SJF4JFastScalarDecoders");
+            if (fastUuid) module.addDeserializer(UUID.class, new FastUuidDeserializer());
+            if (fastLocalDate) module.addDeserializer(LocalDate.class, new FastLocalDateDeserializer());
+            if (fastOffsetDateTime) {
+                module.addDeserializer(OffsetDateTime.class, new FastOffsetDateTimeDeserializer());
+            }
+            mapper.registerModule(module);
+        }
+        return mapper.registerModule(new BlackbirdModule())
+                .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
+
+    private static final class FastUuidDeserializer extends StdScalarDeserializer<UUID> {
+        FastUuidDeserializer() {
+            super(UUID.class);
+        }
+
+        @Override
+        public UUID deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+            if (parser.hasToken(JsonToken.VALUE_STRING)) {
+                return FastUuid.parseUUID(
+                        parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
+            }
+            return (UUID) context.handleUnexpectedToken(UUID.class, parser);
+        }
+    }
+
+    private static final class FastLocalDateDeserializer extends StdScalarDeserializer<LocalDate> {
+        FastLocalDateDeserializer() {
+            super(LocalDate.class);
+        }
+
+        @Override
+        public LocalDate deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+            if (parser.hasToken(JsonToken.VALUE_STRING)) {
+                return FastLocalDate.parse(
+                        parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
+            }
+            return (LocalDate) context.handleUnexpectedToken(LocalDate.class, parser);
+        }
+    }
+
+    private static final class FastOffsetDateTimeDeserializer extends StdScalarDeserializer<OffsetDateTime> {
+        FastOffsetDateTimeDeserializer() {
+            super(OffsetDateTime.class);
+        }
+
+        @Override
+        public OffsetDateTime deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+            if (parser.hasToken(JsonToken.VALUE_STRING)) {
+                return FastOffsetDateTime.parse(
+                        parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
+            }
+            return (OffsetDateTime) context.handleUnexpectedToken(OffsetDateTime.class, parser);
+        }
+    }
+
     // Pre-bound readers remove ObjectMapper's per-call type construction.
     private static final ObjectReader NATIVE_USERS_READER_STRICT =
             NATIVE.readerFor(Users.class).with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
@@ -75,6 +147,7 @@ public class FabienReadBenchmark {
             BLACKBIRD.readerFor(Clients.class);
     private static final ObjectReader BLACKBIRD_CLIENTS_READER_STRICT =
             BLACKBIRD_CLIENTS_READER.with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+
     // Match Jackson2Binder's parser factory settings for the handwritten baseline.
     @SuppressWarnings("deprecation")
     private static final JsonFactory HAND_FACTORY = new JsonFactory()
@@ -83,11 +156,9 @@ public class FabienReadBenchmark {
     private static final Jackson2Binder RUNTIME = new Jackson2Binder();
     private static final FabienCompiled COMPILED = CompiledInstances.create(FabienCompiled.class);
 
-    // Matches java-json-benchmark's default --size 1 (1,000 target bytes).
     @Param({"1"})
     public int sizeKb;
 
-    // Deterministic counterpart to java-json-benchmark's SEED environment variable.
     @Param({"12345"})
     public long seed;
 
@@ -102,10 +173,14 @@ public class FabienReadBenchmark {
 
         usersJson = NATIVE.writeValueAsBytes(users);
         clientsJson = NATIVE.writeValueAsBytes(clients);
+        int partnerCount = 0;
+        for (Clients.Client client : clients.getClients()) {
+            if (client.getPartners() != null) partnerCount += client.getPartners().size();
+        }
         System.out.printf("Fabien sizeKb=%d seed=%d users=%d bytes/%d objects "
-                        + "clients=%d bytes/%d objects%n",
+                        + "clients=%d bytes/%d objects/%d partners%n",
                 sizeKb, seed, usersJson.length, users.getUsers().size(),
-                clientsJson.length, clients.getClients().size());
+                clientsJson.length, clients.getClients().size(), partnerCount);
 
         Users expectedUsers = NATIVE.readValue(usersJson, Users.class);
         Clients expectedClients = NATIVE.readValue(clientsJson, Clients.class);
@@ -113,6 +188,7 @@ public class FabienReadBenchmark {
         checkClients("generated/native", clients, expectedClients);
         checkUsers("native", expectedUsers, users_jackson2_native());
         checkUsers("blackbird", expectedUsers, users_jackson2_blackbird());
+        checkUsers("blackbird fast temporal", expectedUsers, users_jackson2_blackbird_fast_temporal());
         checkUsers("blackbird reader", expectedUsers, users_jackson2_blackbird_reader());
         checkUsers("blackbird reader strict", expectedUsers, users_jackson2_blackbird_reader_strict());
         checkUsers("native reader strict", expectedUsers, users_jackson2_native_reader_strict());
@@ -120,6 +196,13 @@ public class FabienReadBenchmark {
         checkUsers("compiled", expectedUsers, users_jackson2_compiled());
         checkClients("native", expectedClients, clients_jackson2_native());
         checkClients("blackbird", expectedClients, clients_jackson2_blackbird());
+        checkClients("blackbird fast UUID", expectedClients, clients_jackson2_blackbird_fast_uuid());
+        checkClients("blackbird fast LocalDate", expectedClients,
+                clients_jackson2_blackbird_fast_local_date());
+        checkClients("blackbird fast OffsetDateTime", expectedClients,
+                clients_jackson2_blackbird_fast_offset_date_time());
+        checkClients("blackbird fast temporal", expectedClients,
+                clients_jackson2_blackbird_fast_temporal());
         checkClients("blackbird reader", expectedClients, clients_jackson2_blackbird_reader());
         checkClients("blackbird reader strict", expectedClients, clients_jackson2_blackbird_reader_strict());
         checkClients("native reader strict", expectedClients, clients_jackson2_native_reader_strict());
@@ -131,6 +214,7 @@ public class FabienReadBenchmark {
                 clients_jackson2_handwritten_wrapped_scalars());
         checkClients("handwritten wrapped arrays", expectedClients,
                 clients_jackson2_handwritten_wrapped_arrays());
+
         Clients sample = Clients.sample();
         byte[] sampleJson = NATIVE.writeValueAsBytes(sample);
         checkClients("handwritten sample", sample,
@@ -170,6 +254,11 @@ public class FabienReadBenchmark {
     }
 
     @Benchmark
+    public Users users_jackson2_blackbird_fast_temporal() throws IOException {
+        return BLACKBIRD_FAST_TEMPORAL.readValue(usersJson, Users.class);
+    }
+
+    @Benchmark
     public Users users_jackson2_blackbird_reader() throws IOException {
         return BLACKBIRD_USERS_READER.readValue(usersJson);
     }
@@ -202,6 +291,26 @@ public class FabienReadBenchmark {
     @Benchmark
     public Clients clients_jackson2_blackbird() throws IOException {
         return BLACKBIRD.readValue(clientsJson, Clients.class);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_blackbird_fast_uuid() throws IOException {
+        return BLACKBIRD_FAST_UUID.readValue(clientsJson, Clients.class);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_blackbird_fast_local_date() throws IOException {
+        return BLACKBIRD_FAST_LOCAL_DATE.readValue(clientsJson, Clients.class);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_blackbird_fast_offset_date_time() throws IOException {
+        return BLACKBIRD_FAST_OFFSET_DATE_TIME.readValue(clientsJson, Clients.class);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_blackbird_fast_temporal() throws IOException {
+        return BLACKBIRD_FAST_TEMPORAL.readValue(clientsJson, Clients.class);
     }
 
     @Benchmark
