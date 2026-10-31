@@ -6,12 +6,15 @@ import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
+import org.sjf4j.util.FastLocalDate;
 import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -265,6 +268,38 @@ public final class SimpleJsonParser extends StreamingParser {
     public String readString() throws IOException {
         if (nextIfNull()) return null;
         return _readStringValue();
+    }
+
+    @Override
+    public LocalDate readLocalDate() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Common dates can be read from the current contiguous input buffer.
+            // Escaped text, non-canonical dates and buffer boundaries use the
+            // normal JSON string decoder so their semantics stay unchanged.
+            if (inputLimit - inputPos >= 12
+                    && inputBuffer[inputPos] == '"'
+                    && inputBuffer[inputPos + 11] == '"') {
+                try {
+                    LocalDate value = FastLocalDate.parse(inputBuffer, inputPos + 1, 10);
+                    inputPos += 12;
+                    pos += 12;
+                    _checkValueEnd();
+                    return value;
+                } catch (DateTimeParseException ignored) {
+                    // Invalid/escaped/non-canonical: let the JSON decoder handle it.
+                }
+            }
+            LocalDate value = FastLocalDate.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
     }
 
     /**
