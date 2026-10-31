@@ -1,0 +1,49 @@
+name: Jackson2 BigDecimal direct A/B
+
+on:
+  push:
+    branches: [exp/jackson2-bigdecimal-direct-20261031]
+    paths: [.github/workflows/jackson2-bigdecimal-exp.yml]
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Baseline JMH
+        shell: bash
+        run: |
+          git checkout origin/bench/fabien-generated-fixtures-20261031
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+          JAR=$(find sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)
+          java -jar "$JAR" '.*FabienReadBenchmark.*jackson2_(compiled|runtime|blackbird)'             -p seed=12345 -p sizeKb=1 -f 2 -t 1 -wi 5 -i 5 -w 400ms -r 400ms -prof gc             -rf json -rff /tmp/fabien-baseline.json
+      - name: Direct BigDecimal JMH
+        shell: bash
+        run: |
+          git checkout "$GITHUB_SHA"
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+          JAR=$(find sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)
+          java -jar "$JAR" '.*FabienReadBenchmark.*jackson2_(compiled|runtime|blackbird)'             -p seed=12345 -p sizeKb=1 -f 2 -t 1 -wi 5 -i 5 -w 400ms -r 400ms -prof gc             -rf json -rff /tmp/fabien-optimized.json
+      - name: Compare
+        run: |
+          python3 - <<'PY'
+          import json
+          for label in ('baseline', 'optimized'):
+              print(label)
+              for b in json.load(open('/tmp/fabien-' + label + '.json')):
+                  if ':' in b['benchmark']: continue
+                  print(b['benchmark'], b['primaryMetric']['score'], b['primaryMetric']['scoreError'])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jackson2-bigdecimal-ab
+          path: /tmp/fabien-*.json
