@@ -178,7 +178,7 @@ public interface Evaluator {
             if (jsonType != null) {
                 if (!_matches(jsonType, instance)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "type",
-                            ctx.needsMessage() ? ("expected type " + type + ", found " + instance.jsonType()) : null);
+                            ctx.needsErrorDetail() ? ("expected type " + type + ", found " + instance.jsonType()) : null);
                     return false;
                 }
                 return true;
@@ -190,7 +190,7 @@ public interface Evaluator {
                     }
                 }
                 ctx.addError(instance, ps, keywordPs, schemaUri, "type",
-                        ctx.needsMessage() ? ("expected one of " + Arrays.toString(types) + ", found " + instance.jsonType()) : null);
+                        ctx.needsErrorDetail() ? ("expected one of " + Arrays.toString(types) + ", found " + instance.jsonType()) : null);
                 return false;
             }
             return true;
@@ -233,7 +233,7 @@ public interface Evaluator {
             Object node = instance.node();
             if (!Nodes.equals(constValue, node)) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "const",
-                        ctx.needsMessage() ? ("expected constant " + Nodes.inspect(constValue) + ", found " + Nodes.inspect(node)) : null);
+                        ctx.needsErrorDetail() ? ("expected constant " + Nodes.inspect(constValue) + ", found " + Nodes.inspect(node)) : null);
                 return false;
             }
             return true;
@@ -263,7 +263,7 @@ public interface Evaluator {
                 if (Nodes.equals(allowed, node)) return true;
             }
             ctx.addError(instance, ps, keywordPs, schemaUri, "enum",
-                    ctx.needsMessage() ? ("expected one of " + Nodes.inspect(enumValues) + ", found " + Nodes.inspect(node)) : null);
+                    ctx.needsErrorDetail() ? ("expected one of " + Nodes.inspect(enumValues) + ", found " + Nodes.inspect(node)) : null);
             return false;
         }
     }
@@ -316,19 +316,19 @@ public interface Evaluator {
             double nodeDouble = node.doubleValue();
             if (hasMinimum && nodeDouble < minimum) {
                 ctx.addError(instance, ps, minimumKeywordPs, schemaUri, "minimum",
-                        ctx.needsMessage() ? ("expected number >= " + minimum + ", found " + node) : null);
+                        ctx.needsErrorDetail() ? ("expected number >= " + minimum + ", found " + node) : null);
                 return false;
             } else if (hasMaximum && nodeDouble > maximum) {
                 ctx.addError(instance, ps, maximumKeywordPs, schemaUri, "maximum",
-                        ctx.needsMessage() ? ("expected number <= " + maximum + ", found " + node) : null);
+                        ctx.needsErrorDetail() ? ("expected number <= " + maximum + ", found " + node) : null);
                 return false;
             } else if (hasExclusiveMinimum && nodeDouble <= exclusiveMinimum) {
                 ctx.addError(instance, ps, exclusiveMinimumKeywordPs, schemaUri, "exclusiveMinimum",
-                        ctx.needsMessage() ? ("expected number > " + exclusiveMinimum + ", found " + node) : null);
+                        ctx.needsErrorDetail() ? ("expected number > " + exclusiveMinimum + ", found " + node) : null);
                 return false;
             } else if (hasExclusiveMaximum && nodeDouble >= exclusiveMaximum) {
                 ctx.addError(instance, ps, exclusiveMaximumKeywordPs, schemaUri, "exclusiveMaximum",
-                        ctx.needsMessage() ? ("expected number < " + exclusiveMaximum + ", found " + node) : null);
+                        ctx.needsErrorDetail() ? ("expected number < " + exclusiveMaximum + ", found " + node) : null);
                 return false;
             }
             return true;
@@ -382,7 +382,7 @@ public interface Evaluator {
                 long v = node.longValue();
                 if (v % divisorLong != 0) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
-                            ctx.needsMessage() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
+                            ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
                     return false;
                 }
             } else if (isIntegerDivisor && (node instanceof Double || node instanceof Float)) {
@@ -390,7 +390,7 @@ public interface Evaluator {
                 double q = dv / divisorDouble;
                 if (q != Math.rint(q)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
-                            ctx.needsMessage() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
+                            ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
                     return false;
                 }
             } else {
@@ -398,7 +398,7 @@ public interface Evaluator {
                 BigDecimal[] dr = v.divideAndRemainder(divisor);
                 if (dr[1].signum() != 0) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
-                            ctx.needsMessage() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
+                            ctx.needsErrorDetail() ? ("expected a multiple of " + multipleOf + ", found " + node) : null);
                     return false;
                 }
             }
@@ -451,12 +451,12 @@ public interface Evaluator {
             int length = SchemaUtil.stringIcuLength(node);
             if (minLength >= 0 && length < minLength) {
                 ctx.addError(instance, ps, minLengthKeywordPs, schemaUri, "minLength",
-                        ctx.needsMessage() ? ("expected string length >= " + minLength + ", found " + length) : null);
+                        ctx.needsErrorDetail() ? ("expected string length >= " + minLength + ", found " + length) : null);
                 return false;
             }
             if (maxLength >= 0 && length > maxLength) {
                 ctx.addError(instance, ps, maxLengthKeywordPs, schemaUri, "maxLength",
-                        ctx.needsMessage() ? ("expected string length <= " + maxLength + ", found " + length) : null);
+                        ctx.needsErrorDetail() ? ("expected string length <= " + maxLength + ", found " + length) : null);
                 return false;
             }
             return true;
@@ -489,7 +489,7 @@ public interface Evaluator {
             String node = Nodes.toString(instance.node());
             if (!pn.matcher(node).find()) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "pattern",
-                        ctx.needsMessage() ? ("expected string matching pattern '" + pattern + "'") : null);
+                        ctx.needsErrorDetail() ? ("expected string matching pattern '" + pattern + "'") : null);
                 return false;
             }
             return true;
@@ -523,7 +523,7 @@ public interface Evaluator {
             if (assertion || ctx.isStrictFormat()) {
                 if (!formatValidator.validate(node)) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "format",
-                            ctx.needsMessage() ? ("expected format " + format + ", found '" + node + "'") : null);
+                            ctx.needsErrorDetail() ? ("expected format " + format + ", found '" + node + "'") : null);
                     return false;
                 }
             }
@@ -560,7 +560,7 @@ public interface Evaluator {
                     decoded = Base64.getDecoder().decode(content);
                 } catch (IllegalArgumentException e) {
                     ctx.addError(instance, ps, contentEncodingKeywordPs, schemaUri, "contentEncoding",
-                            ctx.needsMessage() ? ("expected base64-encoded content") : null);
+                            ctx.needsErrorDetail() ? ("expected base64-encoded content") : null);
                     return false;
                 }
             }
@@ -580,7 +580,7 @@ public interface Evaluator {
                     parser.end();
                 } catch (Exception e) {
                     ctx.addError(instance, ps, contentMediaTypeKeywordPs, schemaUri, "contentMediaType",
-                            ctx.needsMessage() ? ("expected valid JSON content") : null);
+                            ctx.needsErrorDetail() ? ("expected valid JSON content") : null);
                     return false;
                 }
             }
@@ -636,12 +636,12 @@ public interface Evaluator {
             int size = NodeWalker.sizeInObject(node);
             if (minProperties >= 0 && size < minProperties) {
                 ctx.addError(instance, ps, minPropertiesKeywordPs, schemaUri, "minProperties",
-                        ctx.needsMessage() ? ("expected at least " + minProperties + " properties, found " + size) : null);
+                        ctx.needsErrorDetail() ? ("expected at least " + minProperties + " properties, found " + size) : null);
                 return false;
             }
             if (maxProperties >= 0 && size > maxProperties) {
                 ctx.addError(instance, ps, maxPropertiesKeywordPs, schemaUri, "maxProperties",
-                        ctx.needsMessage() ? ("expected at most " + maxProperties + " properties, found " + size) : null);
+                        ctx.needsErrorDetail() ? ("expected at most " + maxProperties + " properties, found " + size) : null);
                 return false;
             }
             return true;
@@ -768,7 +768,7 @@ public interface Evaluator {
                 for (String key : required) {
                     if (!NodeWalker.containsInObject(node, key)) {
                         ctx.addError(instance, ps, requiredKeywordPs, schemaUri, "required",
-                                ctx.needsMessage() ? ("missing required property '" + key + "'") : null);
+                                ctx.needsErrorDetail() ? ("missing required property '" + key + "'") : null);
                         result = false;
                     }
                 }
@@ -783,7 +783,7 @@ public interface Evaluator {
                         for (String property : required) {
                             if (!NodeWalker.containsInObject(node, property)) {
                                 ctx.addError(instance, ps, dependentRequiredKeywordPs, schemaUri, "dependentRequired",
-                                        ctx.needsMessage() ? ("missing property '" + property + "' required when '" + key + "' is present") : null);
+                                        ctx.needsErrorDetail() ? ("missing property '" + property + "' required when '" + key + "' is present") : null);
                                 result = false;
                             }
                         }
@@ -828,7 +828,7 @@ public interface Evaluator {
                         for (String property : entry.getValue()) {
                             if (!NodeWalker.containsInObject(node, property)) {
                                 ctx.addError(instance, ps, keywordPs, schemaUri, "dependencies",
-                                        ctx.needsMessage() ? ("missing property '" + property + "' required when '" + key + "' is present") : null);
+                                        ctx.needsErrorDetail() ? ("missing property '" + property + "' required when '" + key + "' is present") : null);
                                 result = false;
                             }
                         }
@@ -916,7 +916,7 @@ public interface Evaluator {
                             ? new PathSegment.Name(instance.materializePath(), key)
                             : new PathSegment.Name(ps, key);
                     ctx.addError(instance, instanceKeywordPs, keywordPs, schemaUri, "propertyNames",
-                            ctx.needsMessage() ? ("invalid property name '" + key + "'") : null);
+                            ctx.needsErrorDetail() ? ("invalid property name '" + key + "'") : null);
                     result = false;
                     if (!result && ctx.isFailFast()) return false;
                 }
@@ -982,19 +982,19 @@ public interface Evaluator {
             int size = NodeWalker.sizeInArray(node);
             if (minItems >= 0 && size < minItems) {
                 ctx.addError(instance, ps, minItemsKeywordPs, schemaUri, "minItems",
-                        ctx.needsMessage() ? ("expected at least " + minItems + " items, found " + size) : null);
+                        ctx.needsErrorDetail() ? ("expected at least " + minItems + " items, found " + size) : null);
                 result = false;
             }
             if (maxItems >= 0 && size > maxItems) {
                 ctx.addError(instance, ps, maxItemsKeywordPs, schemaUri, "maxItems",
-                        ctx.needsMessage() ? ("expected at most " + maxItems + " items, found " + size) : null);
+                        ctx.needsErrorDetail() ? ("expected at most " + maxItems + " items, found " + size) : null);
                 result = false;
             }
             if (!result && ctx.isFailFast()) return false;
             if (uniqueItems && size > 1) {
                 if (hasDuplicate(node, size)) {
                     ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
-                            ctx.needsMessage() ? ("expected unique array items") : null);
+                            ctx.needsErrorDetail() ? ("expected unique array items") : null);
                     result = false;
                 }
             }
@@ -1200,7 +1200,7 @@ public interface Evaluator {
                     // and no unevaluated tracking is active, further scanning is
                     // unnecessary for contains semantics.
                     if (matches >= minContains && maxContains == -1
-                            && instance.peekEvaluated() == null && ctx.isBooleanOnly()) {
+                            && instance.peekEvaluated() == null) {
                         return true;
                     }
                 }
@@ -1208,12 +1208,12 @@ public interface Evaluator {
 
             if (matches < minContains) {
                 ctx.addError(instance, ps, minContainsKeywordPs, schemaUri, "minContains",
-                        ctx.needsMessage() ? ("expected at least " + minContains + " matching items, found " + matches) : null);
+                        ctx.needsErrorDetail() ? ("expected at least " + minContains + " matching items, found " + matches) : null);
                 return false;
             }
             if (maxContains >= 0 && matches > maxContains) {
                 ctx.addError(instance, ps, maxContainsKeywordPs, schemaUri, "maxContains",
-                        ctx.needsMessage() ? ("expected at most " + maxContains + " matching items, found " + matches) : null);
+                        ctx.needsErrorDetail() ? ("expected at most " + maxContains + " matching items, found " + matches) : null);
                 return false;
             }
             return true;
@@ -1361,9 +1361,8 @@ public interface Evaluator {
                 }
                 if (subResult) {
                     result = true;
-                    // Boolean-only evaluation can stop at the first match.
-                    // Annotation collection must inspect all successful branches.
-                    if (cousinEvaluated == null && ctx.isBooleanOnly()) break;
+                    // Without evaluated tracking, one successful branch is enough.
+                    if (cousinEvaluated == null) break;
                 }
             }
             if (cousinEvaluated != null)
@@ -1375,7 +1374,7 @@ public interface Evaluator {
             }
             if (!result) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "anyOf",
-                        ctx.needsMessage() ? ("expected at least one matching schema") : null);
+                        ctx.needsErrorDetail() ? ("expected at least one matching schema") : null);
             }
             return result;
         }
@@ -1434,11 +1433,11 @@ public interface Evaluator {
             }
             if (matches == 0) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "oneOf",
-                        ctx.needsMessage() ? ("expected exactly 1 matching schema, found 0") : null);
+                        ctx.needsErrorDetail() ? ("expected exactly 1 matching schema, found 0") : null);
                 return false;
             } else if (matches > 1) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "oneOf",
-                        ctx.needsMessage() ? ("expected exactly 1 matching schema, found at least " + matches) : null);
+                        ctx.needsErrorDetail() ? ("expected exactly 1 matching schema, found at least " + matches) : null);
                 return false;
             }
             return true;
@@ -1475,7 +1474,7 @@ public interface Evaluator {
 
             if (result) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "not",
-                        ctx.needsMessage() ? ("schema in 'not' matched") : null);
+                        ctx.needsErrorDetail() ? ("schema in 'not' matched") : null);
                 return false;
             }
             return true;
