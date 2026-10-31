@@ -80,6 +80,12 @@ public final class Instance {
         return this;
     }
 
+    /** Release references retained by the scratch leaf between validations. */
+    void resetForValidation() {
+        reuse(null, JsonType.NULL, false);
+        clearPath();
+    }
+
     private Instance clearPath() {
         this.pathParent = null;
         this.pathKey = null;
