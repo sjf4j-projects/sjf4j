@@ -61,40 +61,24 @@ class ValidationResultTest {
     }
 
     @Test
-    void mergeIsNonMutatingAndKeepsParentFirst() {
-        ValidationResult.Message parentError = new ValidationResult.Message(
+    void sharedMessageTypeKeepsErrorsAndAnnotationsSeparate() {
+        ValidationResult.Message error = new ValidationResult.Message(
                 "required", "missing property", null, ROOT, ROOT, null);
-        ValidationResult.Message childError = new ValidationResult.Message(
-                "type", "wrong type", null, ROOT, ROOT, null);
-        ValidationResult.Message parentAnnotation = new ValidationResult.Message(
-                "title", "Parent title", "Parent", ROOT, ROOT, null);
-        ValidationResult.Message childAnnotation = new ValidationResult.Message(
-                "title", "Child title", "Child", ROOT, ROOT, null);
+        Object rawValue = Map.of("sample", 42);
+        ValidationResult.Message annotation = new ValidationResult.Message(
+                "examples", "sample value", rawValue, ROOT, ROOT, null);
+        ValidationResult result = new ValidationResult(
+                false, List.of(error), List.of(annotation));
 
-        ValidationResult parent = new ValidationResult(true, null, List.of(parentAnnotation));
-        ValidationResult child = new ValidationResult(false, List.of(childError), List.of(childAnnotation));
-        ValidationResult combined = child.mergePrevious(parent);
-        assertFalse(combined.isValid());
-        assertEquals(List.of(parentAnnotation, childAnnotation), combined.getAnnotations());
-        assertEquals(List.of(childError), combined.getErrors());
-        assertEquals(1, combined.count());
-        assertEquals(1, parent.getAnnotations().size());
-        assertEquals(1, child.getAnnotations().size());
-
-        ValidationResult invalidParent = new ValidationResult(false, List.of(parentError));
-        ValidationResult mergedErrors = child.mergePrevious(invalidParent);
-        assertEquals(List.of(parentError, childError), mergedErrors.getErrors());
-        assertEquals(List.of(childError), child.getErrors());
-
-        assertSame(ValidationResult.SUCCESS, ValidationResult.SUCCESS.mergePrevious(null));
-        ValidationResult successWithParent = ValidationResult.SUCCESS.mergePrevious(parent);
-        assertEquals(1, successWithParent.getAnnotations().size());
-        assertTrue(ValidationResult.SUCCESS.getAnnotations().isEmpty());
+        assertFalse(result.isValid());
+        assertEquals(1, result.count());
+        assertSame(error, result.getLastError());
+        assertEquals(List.of(error), result.getErrors());
+        assertEquals(List.of(annotation), result.getAnnotations());
+        assertNull(error.getValue());
+        assertSame(rawValue, annotation.getValue());
         assertTrue(ValidationResult.SUCCESS.getErrors().isEmpty());
-
-        // Invalid flag-only results must not be silently treated as success.
-        ValidationResult emptyFailure = new ValidationResult(false, null);
-        assertFalse(ValidationResult.SUCCESS.mergePrevious(emptyFailure).isValid());
+        assertTrue(ValidationResult.SUCCESS.getAnnotations().isEmpty());
     }
 
     @Test

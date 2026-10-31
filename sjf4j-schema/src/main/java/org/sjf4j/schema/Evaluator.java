@@ -1502,40 +1502,43 @@ public interface Evaluator {
             Object node = instance.node();
             boolean result = true;
 
-            if (unevaluatedPropertiesPlan != null && instance.jsonType() == JsonType.OBJECT) {
-                int propIdx = 0;
-                for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(node)) {
-                    String key = entry.getKey();
-                    if (!merged.get(propIdx)) {
-                        Instance subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                        boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(propIdx);
-                        result = result && subResult;
-                        if (!subResult && ctx.isFailFast()) return false;
+            try {
+                if (unevaluatedPropertiesPlan != null && instance.jsonType() == JsonType.OBJECT) {
+                    int propIdx = 0;
+                    for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(node)) {
+                        String key = entry.getKey();
+                        if (!merged.get(propIdx)) {
+                            Instance subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
+                            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                            boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
+                            if (subResult) instance.markEvaluated(propIdx);
+                            result = result && subResult;
+                            if (!subResult && ctx.isFailFast()) return false;
+                        }
+                        propIdx++;
                     }
-                    propIdx++;
                 }
-            }
 
-            if (unevaluatedItemsPlan != null && instance.jsonType() == JsonType.ARRAY) {
-                Iterator<Object> it = NodeWalker.iteratorInArray(node);
-                for (int i = 0; it.hasNext(); i++) {
-                    Object subActual = it.next();
-                    if (!merged.get(i)) {
-                        Instance subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
-                        PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                        boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(i);
-                        result = result && subResult;
-                        if (!subResult && ctx.isFailFast()) return false;
+                if (unevaluatedItemsPlan != null && instance.jsonType() == JsonType.ARRAY) {
+                    Iterator<Object> it = NodeWalker.iteratorInArray(node);
+                    for (int i = 0; it.hasNext(); i++) {
+                        Object subActual = it.next();
+                        if (!merged.get(i)) {
+                            Instance subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                            PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
+                            boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
+                            if (subResult) instance.markEvaluated(i);
+                            result = result && subResult;
+                            if (!subResult && ctx.isFailFast()) return false;
+                        }
                     }
                 }
+                return result;
+            } finally {
+                EvaluationBits curEvaluated = instance.popEvaluated();
+                EvaluationBits parentEvaluated = instance.peekEvaluated();
+                if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
             }
-            EvaluationBits curEvaluated = instance.popEvaluated();
-            EvaluationBits parentEvaluated = instance.peekEvaluated();
-            if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
-            return result;
         }
     }
 

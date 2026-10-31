@@ -77,7 +77,7 @@ public class ValidationContext {
     }
 
     boolean needsErrorDetail() {
-        return !booleanOnly && ignoreErrorAdding == 0;
+        return !booleanOnly && ignoreErrorAdding == 0 && (!failFast || !failFastErrorAdded);
     }
 
     public boolean isBooleanOnly() {

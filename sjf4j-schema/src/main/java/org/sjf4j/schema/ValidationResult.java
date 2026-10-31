@@ -4,7 +4,6 @@ import org.sjf4j.Nodes;
 import org.sjf4j.path.PathSegment;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -54,23 +53,6 @@ public class ValidationResult {
 
     public List<Message> getAnnotations() {
         return annotations == null ? Collections.emptyList() : annotations;
-    }
-
-    /**
-     * Returns a combined result in parent-to-child order without mutating
-     * either input or the shared SUCCESS singleton.
-     */
-    public ValidationResult mergePrevious(ValidationResult previous) {
-        if (previous == null || (previous.valid && previous.count() == 0
-                && previous.getAnnotations().isEmpty())) return this;
-        List<Message> combinedErrors = new ArrayList<>(previous.getErrors());
-        combinedErrors.addAll(getErrors());
-        List<Message> combinedAnnotations = null;
-        if (!previous.getAnnotations().isEmpty() || !getAnnotations().isEmpty()) {
-            combinedAnnotations = new ArrayList<>(previous.getAnnotations());
-            combinedAnnotations.addAll(getAnnotations());
-        }
-        return new ValidationResult(valid && previous.valid, combinedErrors, combinedAnnotations);
     }
 
     @Override

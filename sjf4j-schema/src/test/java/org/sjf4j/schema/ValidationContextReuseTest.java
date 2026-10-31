@@ -89,6 +89,46 @@ class ValidationContextReuseTest {
     }
 
     @Test
+    void failFastSkipsSubsequentErrorDetailsAndResetsBetweenCalls() {
+        ValidationContext ctx = new ValidationContext(true, false, false);
+        org.sjf4j.path.PathSegment root = org.sjf4j.path.PathSegment.Root.INSTANCE;
+        assertTrue(ctx.needsErrorDetail());
+
+        ctx.addError(null, root, root, null, "required", "missing property");
+        assertFalse(ctx.needsErrorDetail());
+        ctx.addError(null, root, root, null, "type", "ignored");
+        assertEquals(1, ctx.toResult(false).count());
+
+        SchemaPlan validPlan = JsonSchema.fromJson("true").createPlan();
+        assertTrue(validPlan.evaluate(Map.of(), ctx));
+        assertTrue(ctx.needsErrorDetail());
+        assertEquals(1, ctx.toResult(false).count());
+    }
+
+    @Test
+    void unevaluatedFailFastRestoresEnclosingEvaluatedFrame() {
+        String[] schemas = {
+                "{\"unevaluatedProperties\":false}",
+                "{\"unevaluatedItems\":false}"
+        };
+        Object[] nodes = {Map.of("extra", 1), List.of(1)};
+        for (int i = 0; i < schemas.length; i++) {
+            SchemaPlan plan = JsonSchema.fromJson(schemas[i]).createPlan();
+            Instance instance = Instance.infer(nodes[i]);
+            instance.createEvaluated();
+            EvaluationBits enclosing = instance.peekEvaluated();
+            ValidationContext ctx = new ValidationContext(true, false, false);
+
+            assertFalse(plan.evaluate(instance, org.sjf4j.path.PathSegment.Root.INSTANCE, ctx));
+            assertSame(enclosing, instance.peekEvaluated(),
+                    "the failing unevaluated keyword must release its own frame");
+            assertSame(enclosing, instance.popEvaluated());
+            assertNull(instance.peekEvaluated());
+            assertEquals(1, ctx.toResult(false).count());
+        }
+    }
+
+    @Test
     void aggregateModeCollectsErrorsAcrossCalls() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"required\":[\"x\",\"y\"],\"properties\":{\"x\":{\"type\":\"integer\"}}}")
