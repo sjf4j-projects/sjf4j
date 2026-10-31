@@ -828,7 +828,6 @@ public final class SimpleJsonParser extends StreamingParser {
                 if (c < 0x20) throw _error("unescaped control character in string", c);
                 sb.append((char) c);
             }
-        }
             c = -1;
         }
         throw _error("unexpected EOF in string", -1);
