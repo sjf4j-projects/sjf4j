@@ -61,7 +61,8 @@ final class OneOfCompiler {
             if (branch == null || branch.hasFallback()) return null;
             branches.add(branch);
         }
-        return new SchemaCheck.GenericOneOfCheck(branches);
+        return new SchemaCheck.GenericOneOfCheck(
+                SchemaCompiler.diagnostic(uri, "oneOf"), branches);
     }
 
     private SchemaCheck compileSpecialized(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
@@ -112,7 +113,8 @@ final class OneOfCompiler {
             if (check == null || check.hasFallback()) return null;
             compiled.add(new SchemaCheck.OneOfCheck.Subtype(subtype.toString(), check));
         }
-        return new SchemaCheck.OneOfCheck(uri, compiled);
+        return new SchemaCheck.OneOfCheck(uri,
+                SchemaCompiler.diagnostic(uri, "oneOf"), compiled);
     }
 
     private TypeMirror mappedType(OneOfMapping mapping) {
