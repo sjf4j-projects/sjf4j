@@ -45,6 +45,11 @@ class InstantBackendTest {
                         binder.getClass().getSimpleName() + ": " + value);
             }
             assertNull(binder.readNode("null", Instant.class), binder.getClass().getSimpleName());
+            // Instant also has a numeric codec; the value shape chooses epochMillis.
+            assertEquals(Instant.EPOCH, binder.readNode("0", Instant.class),
+                    binder.getClass().getSimpleName() + ": numeric epochMillis");
+            assertEquals(Instant.ofEpochMilli(-1), binder.readNode("-1", Instant.class),
+                    binder.getClass().getSimpleName() + ": negative epochMillis");
         }
     }
 
