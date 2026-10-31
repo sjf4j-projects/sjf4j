@@ -309,6 +309,10 @@ final class ReadEmitter {
 
         if (fastjson2 != null && !value.properties().isEmpty()) {
             fastjson2.emitProperties(out, value, this, false);
+        } else if (backend.backend() == Backend.JACKSON2
+                && value.kind() == BindingValue.Kind.POJO
+                && consumedDiscriminator == null && !value.properties().isEmpty()) {
+            emitJackson2SequentialPrefix(out, value);
         } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) {
@@ -331,6 +335,34 @@ final class ReadEmitter {
             out.endBlock();
         }
         out.line("return value;");
+    }
+
+    /**
+     * Experimental Jackson2 ordered prefix. Common in-order properties avoid
+     * the per-field switch, while the first mismatch enters the original
+     * fully general name-index dispatch (unknown, omitted and reordered keys).
+     */
+    private void emitJackson2SequentialPrefix(JavaWriter out, BindingValue value) {
+        String matcher = matcherFieldName(value);
+        out.line("int expectedNameIndex = 0;");
+        out.line("int nameIndex = parser.nextNameMatch(" + matcher + ", 0);");
+
+        int prefix = Math.min(8, value.properties().size());
+        for (int i = 0; i < prefix; i++) {
+            out.beginBlock("if (nameIndex == " + i + ")");
+            out.line("expectedNameIndex = " + (i + 1) + ";");
+            emitPropertyRead(out, value.properties().get(i), "value", "parser");
+            out.line("nameIndex = parser.nextNameMatch(" + matcher
+                    + ", expectedNameIndex);");
+        }
+        for (int i = 0; i < prefix; i++) {
+            out.endBlock();
+        }
+
+        out.beginBlock("while (nameIndex != " + NAME_MATCHER + ".OBJECT_END)");
+        emitMatchedPojoProperty(out, value, true, null);
+        out.line("nameIndex = parser.nextNameMatch(" + matcher
+                + ", expectedNameIndex);");
     }
 
     /** Compiled creator binding: typed arguments and deferred writable fields. */
