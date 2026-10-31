@@ -76,6 +76,38 @@ public final class SchemaPlan {
         return ctx.toResult(valid);
     }
 
+    /**
+     * Validates with a caller-owned reusable context. Each call resets the
+     * context's execution state; previously returned results remain independent.
+     * Do not use the same context concurrently or recursively.
+     */
+    public ValidationResult validate(Object node, ValidationContext context) {
+        java.util.Objects.requireNonNull(context, "context");
+        context.begin(true);
+        if (booleanSchema) {
+            if (booleanValue) return ValidationResult.SUCCESS;
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                    PathSegment.Root.INSTANCE, keywordPs,
+                    schemaUri, "false", "schema 'false' always fails");
+            return new ValidationResult(false, null, msg);
+        }
+        Instance instance = Instance.infer(node);
+        PathSegment ps = context.isFailFast() ? null : PathSegment.Root.INSTANCE;
+        boolean valid = evaluate(instance, ps, context);
+        return context.toResult(valid);
+    }
+
+    /**
+     * Fast fail-first validation using a caller-owned reusable context.
+     * Prefer ValidationContext.forIsValid(strictFormat) to avoid diagnostics.
+     */
+    public boolean isValid(Object node, ValidationContext context) {
+        java.util.Objects.requireNonNull(context, "context");
+        context.begin(false);
+        if (booleanSchema) return booleanValue;
+        return evaluate(Instance.infer(node), null, context);
+    }
+
     /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
         return isValid(node, false);
@@ -102,6 +134,13 @@ public final class SchemaPlan {
      */
     public void requireValid(Object node, boolean strictFormat) {
         ValidationResult result = validate(node, true, strictFormat);
+        if (!result.isValid()) throw new ValidationException(result);
+    }
+
+
+    /** Throws on invalid input, reusing the caller's diagnostic context. */
+    public void requireValid(Object node, ValidationContext context) {
+        ValidationResult result = validate(node, context);
         if (!result.isValid()) throw new ValidationException(result);
     }
 
