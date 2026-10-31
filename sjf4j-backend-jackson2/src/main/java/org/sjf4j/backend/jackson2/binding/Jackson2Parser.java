@@ -10,12 +10,14 @@ import org.sjf4j.util.Asserts;
 import org.sjf4j.util.FastUuid;
 import org.sjf4j.util.FastLocalTime;
 import java.time.LocalTime;
+import org.sjf4j.util.FastLocalDate;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -244,6 +246,16 @@ public final class Jackson2Parser extends StreamingParser {
         if (token == JsonToken.VALUE_NULL) return null;
         if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
         return FastLocalTime.parse(parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
+    }
+  
+    @Override
+    public LocalDate readLocalDate() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) {
+            throw expected("string or null", token);
+        }
+        return FastLocalDate.parse(parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
     }
 
     @Override
