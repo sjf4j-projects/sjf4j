@@ -4,6 +4,7 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.FastUuid;
+import org.sjf4j.util.FastLocalDate;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -512,7 +513,7 @@ public abstract class StreamingParser implements Closeable {
     /** Reads an ISO date; backends may override with direct decoding. */
     public LocalDate readLocalDate() throws IOException {
         String value = readString();
-        return value == null ? null : LocalDate.parse(value);
+        return value == null ? null : FastLocalDate.parse(value);
     }
 
     /** Reads an ISO time; backends may override with direct decoding. */
