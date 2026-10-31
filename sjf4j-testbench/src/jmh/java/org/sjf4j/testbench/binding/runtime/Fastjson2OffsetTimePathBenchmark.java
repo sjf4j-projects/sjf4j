@@ -14,6 +14,9 @@ import java.util.concurrent.TimeUnit;
  * Same Fastjson2 native parser and SJF4J parser lifecycle, comparing
  * the adapter's shared FastOffsetTime path with native readOffsetTime().
  * Both paths use the same JSONReader.Context.
+ * Native Fastjson2 v2.0.59 rejects HH:mmZ; this benchmark only uses input
+ * shapes accepted by both implementations. HH:mmZ is tested by the general
+ * OffsetTimeBackendBenchmark and OffsetTimeBackendTest.
  */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.AverageTime)
@@ -23,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(2)
 public class Fastjson2OffsetTimePathBenchmark {
 
-    @Param({"minutesZ", "secondsOffset", "millisOffset", "nanosOffset"})
+    @Param({"secondsOffset", "millisOffset", "nanosOffset"})
     public String shape;
 
     private JSONReader.Context readerContext;
@@ -35,7 +38,6 @@ public class Fastjson2OffsetTimePathBenchmark {
         readerContext = JSONFactory.createReadContext();
         binder = new Fastjson2Binder(readerContext, JSONFactory.createWriteContext());
         switch (shape) {
-            case "minutesZ": json = "\"12:34Z\""; break;
             case "secondsOffset": json = "\"12:34:56+05:30\""; break;
             case "millisOffset": json = "\"12:34:56.123-07:00\""; break;
             case "nanosOffset": json = "\"12:34:56.123456789+05:30\""; break;
