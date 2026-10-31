@@ -82,7 +82,7 @@ class ValidationContextReuseTest {
         ValidationResult failure = required.validate(Map.of(), ctx);
         assertEquals(1, failure.getErrors().size());
         assertThrows(ValidationException.class, () -> required.requireValid(Map.of(), ctx));
-        assertTrue(required.validate(Map.of("name", null), ctx).isValid());
+        assertTrue(required.validate(java.util.Collections.singletonMap("name", null), ctx).isValid());
         assertTrue(alwaysTrue.validate(Map.of(), ctx).isValid());
         assertFalse(alwaysFalse.validate(Map.of(), ctx).isValid());
         assertEquals(1, failure.count());
