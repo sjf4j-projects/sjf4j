@@ -257,19 +257,12 @@ final class SchemaCompiler {
                         : child.kind == SchemaCheck.Kind.REJECT ? new SchemaCheck.Pass()
                         : new SchemaCheck.ApplicatorCheck(kind, diagnostic(schemaUri, "not"), branches));
             } else if (kind == SchemaCheck.Kind.ALL_OF) {
-                SchemaCheck rejecting = null;
-                for (SchemaCheck branch : branches) {
-                    if (branch.kind == SchemaCheck.Kind.REJECT) {
-                        rejecting = branch;
-                        break;
-                    }
-                }
-                if (rejecting != null) checks.add(rejecting);
-                else {
-                    branches.removeIf(branch -> branch.kind == SchemaCheck.Kind.PASS);
-                    checks.add(branches.isEmpty() ? new SchemaCheck.Pass()
-                            : new SchemaCheck.ApplicatorCheck(kind, diagnostic(schemaUri, keyword), branches));
-                }
+                // Keep every assertion, including constant-false branches. The
+                // boolean emitter still short-circuits at runtime, while the
+                // diagnostic emitter must retain all failing allOf branches.
+                branches.removeIf(branch -> branch.kind == SchemaCheck.Kind.PASS);
+                checks.add(branches.isEmpty() ? new SchemaCheck.Pass()
+                        : new SchemaCheck.ApplicatorCheck(kind, diagnostic(schemaUri, keyword), branches));
             } else {
                 boolean passes = false;
                 for (SchemaCheck branch : branches) {
@@ -285,9 +278,6 @@ final class SchemaCompiler {
             }
         }
         if (checks.isEmpty()) return new SchemaCheck.Pass();
-        for (SchemaCheck check : checks) {
-            if (check.kind == SchemaCheck.Kind.REJECT) return check;
-        }
         checks.removeIf(check -> check.kind == SchemaCheck.Kind.PASS);
         if (checks.isEmpty()) return new SchemaCheck.Pass();
         return checks.size() == 1 ? checks.get(0) : new SchemaCheck.AllCheck(checks);
