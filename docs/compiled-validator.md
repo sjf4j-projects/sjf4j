@@ -8,7 +8,7 @@ the runtime `SchemaPlan`.
 ## Usage
 
 ```java
-@CompiledValidator(nullAsMissing = false)
+@CompiledValidator
 public interface UserValidator {
     @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     boolean isValid(User user);
@@ -55,20 +55,10 @@ produce equivalent validation results for supported input representations.
 
 ## Null-valued object properties
 
-By default (`@CompiledValidator(nullAsMissing = false)`), the compiled
-validator follows JSON Schema: an object property with value `null` is
-**present**, so `required` succeeds, while its property schema can reject
-the JSON null value.
-
-For Java typed objects that cannot distinguish unset from explicitly null,
-opt in to `@CompiledValidator(nullAsMissing = true)`:
-- a null object member is treated as missing; `required` then fails for
-  that member, and a non-required property schema is skipped;
-- null elements **inside arrays remain present** and are validated as JSON null;
-- the rule also applies to nested object members, including validation through
-  a runtime SchemaPlan fallback, using an explicit object projection on that
-  non-default path;
-- this is a Java object convention, **not** a change to JSON Schema semantics.
+Compiled and runtime validation follow JSON Schema semantics: a property
+with value `null` is **present**. The `required` keyword succeeds for it,
+while its property schema may reject the null value. Missing members must be
+represented as absent properties.
 
 ## Compilation and fallback
 
@@ -221,7 +211,7 @@ must pass for `allOf`, any one may pass for `anyOf` (including overlaps), and
 `not` inverts a full subschema. Assertions alongside applicators are combined
 with logical AND, not skipped. Unsupported or evaluated-state-dependent branches
 fall back as a complete combinator scope. The boolean direct path preserves
-`strictFormat` and `nullAsMissing`; diagnostic modes retain SchemaPlan.
+`strictFormat`; diagnostic modes retain SchemaPlan.
 
 Conditional `if/then/else` compiles to one boolean predicate for `if` and
 exactly one selected branch. If `if` is absent, `then` and `else` have no
