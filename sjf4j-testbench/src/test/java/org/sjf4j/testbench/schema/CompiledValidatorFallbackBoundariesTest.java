@@ -87,6 +87,7 @@ class CompiledValidatorFallbackBoundariesTest {
         ValidationResult first = plan.validate(Map.of("x", "wrong"), diagnostics);
         assertFalse(first.isValid());
         assertEquals(1, first.getErrors().size());
+        Object firstMessage = first.getErrors().get(0);
         for (int i = 0; i < 10; i++) {
             assertTrue(plan.isValid(Map.of("x", i), fast));
             assertFalse(plan.isValid(Map.of(), fast));
@@ -94,7 +95,7 @@ class CompiledValidatorFallbackBoundariesTest {
             assertFalse(plan.validate(Map.of(), diagnostics).isValid());
         }
         assertEquals(1, first.getErrors().size());
-        assertTrue(first.getErrors().get(0).toString().contains("x"));
+        assertSame(firstMessage, first.getErrors().get(0));
     }
 
     @Test
