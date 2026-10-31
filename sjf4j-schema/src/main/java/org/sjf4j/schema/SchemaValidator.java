@@ -92,8 +92,7 @@ public final class SchemaValidator {
 
         ValidationResult previous = null;
         for (SchemaPlan plan : plans) {
-            ValidationResult result = plan.validate(pojo, true, strictFormat);
-            result.mergePrevious(previous);
+            ValidationResult result = plan.validate(pojo, true, strictFormat).mergePrevious(previous);
             if (!result.isValid()) return result;
             previous = result;
         }
