@@ -1,0 +1,41 @@
+name: Fabien JMH validation (temporary)
+
+on:
+  push:
+    branches:
+      - bench/fabien-generated-fixtures-20261031
+    paths:
+      - .github/workflows/bench-fabien-temp.yml
+  workflow_dispatch:
+
+jobs:
+  fabien-jmh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile JMH benchmarks
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Compare generated and sample Fabien workloads
+        shell: bash
+        run: |
+          java -version
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -n "$JAR"
+          java -jar "$JAR" '.*FabienReadBenchmark.*jackson2.*' \
+            -p fixture=generated,sample -p sizeKb=1 -p seed=12345 \
+            -f 1 -t 1 -wi 7 -i 5 -w 400ms -r 400ms -prof gc \
+            -rf json -rff fabien-jmh-results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fabien-jmh-results
+          path: fabien-jmh-results.json
+          if-no-files-found: ignore
