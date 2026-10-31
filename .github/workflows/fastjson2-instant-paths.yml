@@ -1,0 +1,32 @@
+name: Fastjson2 Instant path comparison
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/Fastjson2InstantPathBenchmark.java'
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Compare native, FastInstant string, and JDK string
+        run: |
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.runtime.Fastjson2InstantPathBenchmark.*' -wi 2 -i 3 -f 2 -w 1s -r 1s -prof gc -rf text -rff fastjson2-instant-results.txt
+          cat fastjson2-instant-results.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-instant-paths-jdk17
+          path: fastjson2-instant-results.txt
