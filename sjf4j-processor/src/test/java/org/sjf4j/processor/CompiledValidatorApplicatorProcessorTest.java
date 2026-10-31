@@ -44,7 +44,7 @@ class CompiledValidatorApplicatorProcessorTest {
                 "{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"integer\",\"unevaluatedItems\":false}]}",
                 "{\"not\":{\"type\":\"integer\",\"unevaluatedItems\":false}}",
                 "{\"allOf\":[{\"type\":\"integer\"}],\"unevaluatedItems\":false}"
-        }) {  }) {
+        }) {
             NavigatorTestCompiler.Result result = compile(schema, false);
             assertFalse(result.success, schema + "\n" + result.diagnostics());
             assertTrue(result.diagnostics().contains("cannot fully compile"),
