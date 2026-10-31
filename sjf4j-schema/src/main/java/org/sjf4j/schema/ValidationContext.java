@@ -35,7 +35,7 @@ public class ValidationContext {
     /**
      * Creates a reusable context with immutable execution options.
      *
-     * @param failFast stop each evaluation after its first failure
+     * @param failFast stop evaluating further keywords on failure when possible
      * @param strictFormat enforce format assertions
      * @param booleanOnly omit diagnostic messages and related work
      */
