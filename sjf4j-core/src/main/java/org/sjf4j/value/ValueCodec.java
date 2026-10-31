@@ -294,7 +294,7 @@ public interface ValueCodec<V, R> {
 
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Date, String> DATE = new StreamingValueCodec<>(Date.class, String.class,
-            v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)),
+            v -> v.toInstant().toString(), raw -> Date.from(FastInstant.parse(raw)),
             parser -> {
                 Instant instant = parser.readInstant();
                 return instant == null ? null : Date.from(instant);
