@@ -174,8 +174,8 @@ without violating `required`, although its property schema may reject null.
 | `const` | Scalar JSON literals with OBNT numeric equality (e.g. 1 equals 1.0); object/array constants fall back | Yes | Compiled |
 | `type:number`, `type:integer` | Native numeric Java field types | Yes | Phase 1 |
 | `type:boolean`, `type:null`, union `type` arrays | Direct shape predicates (including JSON semantic integer checks); combined scalar const/enum when supported | Yes | Direct |
-| `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct numeric comparisons | Yes | Phase 1 |
-| `multipleOf` | Static BigDecimal divisor and exact decimal remainder check for typed numbers | Yes | Direct |
+| `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct native integral comparisons for 64-bit integer bounds; cached BigDecimal constants otherwise | Yes | Phase 1 |
+| `multipleOf` | Native `%` for integral primitives/wrappers with a positive 64-bit integer divisor; otherwise cached BigDecimal and exact remainder | Yes | Direct |
 | `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes | Phase 1 |
 | `minItems`, `maxItems` | Direct Collection size checks | Yes | Phase 1 |
 | `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes | Phase 1 mixed |
