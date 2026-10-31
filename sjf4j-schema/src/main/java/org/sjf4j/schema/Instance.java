@@ -80,12 +80,6 @@ public final class Instance {
         return this;
     }
 
-    /** Clear a reusable leaf's value and path references. */
-    void clear() {
-        reuse(null, JsonType.NULL, false);
-        clearPath();
-    }
-
     private Instance clearPath() {
         this.pathParent = null;
         this.pathKey = null;
