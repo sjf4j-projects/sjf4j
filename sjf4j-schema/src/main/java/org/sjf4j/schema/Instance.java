@@ -80,8 +80,8 @@ public final class Instance {
         return this;
     }
 
-    /** Release references retained by the scratch leaf between validations. */
-    void resetForValidation() {
+    /** Clear a reusable leaf's value and path references. */
+    void clear() {
         reuse(null, JsonType.NULL, false);
         clearPath();
     }
