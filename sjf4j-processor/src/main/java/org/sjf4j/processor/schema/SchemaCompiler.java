@@ -300,8 +300,7 @@ final class SchemaCompiler {
         if (!(rawId instanceof String)) return schemaUri;
         String id = org.sjf4j.schema.SchemaUtil.stripFragment((String) rawId);
         if (id.isEmpty()) return schemaUri;
-        java.net.URI base = org.sjf4j.schema.SchemaLoader.documentUri(
-                java.net.URI.create(schemaUri));
+        java.net.URI base = resourceUri(schemaUri);
         java.net.URI resolved = org.sjf4j.schema.SchemaUtil.resolveUri(
                 base, java.net.URI.create(id));
         return resolved.equals(base) ? schemaUri : resolved.toString();
@@ -322,15 +321,45 @@ final class SchemaCompiler {
 
     private static SchemaCheck.Diagnostic createDiagnostic(String schemaUri, String keyword,
                                                             boolean appendKeyword) {
-        java.net.URI uri = java.net.URI.create(schemaUri);
-        String fragment = uri.getFragment();
-        String pointer = fragment == null || fragment.isEmpty() ? "" : fragment;
+        int hash = schemaUri.indexOf('#');
+        String fragment = hash < 0 ? null : schemaUri.substring(hash + 1);
+        String pointer = fragment == null || fragment.isEmpty()
+                ? "" : decodeUriFragment(fragment);
         if (!pointer.isEmpty() && !pointer.startsWith("/")) return null;
         if (appendKeyword) {
             pointer += "/" + keyword.replace("~", "~0").replace("/", "~1");
         }
-        return new SchemaCheck.Diagnostic(keyword,
-                org.sjf4j.schema.SchemaLoader.documentUri(uri).toString(), pointer);
+        return new SchemaCheck.Diagnostic(keyword, resourceUri(schemaUri).toString(), pointer);
+    }
+
+    /** Returns the resource part without asking URI to parse a possibly raw JSON Pointer fragment. */
+    private static java.net.URI resourceUri(String schemaUri) {
+        int hash = schemaUri.indexOf('#');
+        return java.net.URI.create(hash < 0 ? schemaUri : schemaUri.substring(0, hash));
+    }
+
+    /** Decodes percent-encoded UTF-8 bytes without treating '+' as a space. */
+    private static String decodeUriFragment(String fragment) {
+        StringBuilder decoded = new StringBuilder(fragment.length());
+        for (int i = 0; i < fragment.length();) {
+            if (fragment.charAt(i) != '%' || i + 2 >= fragment.length()
+                    || Character.digit(fragment.charAt(i + 1), 16) < 0
+                    || Character.digit(fragment.charAt(i + 2), 16) < 0) {
+                decoded.append(fragment.charAt(i++));
+                continue;
+            }
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            while (i + 2 < fragment.length() && fragment.charAt(i) == '%'
+                    && Character.digit(fragment.charAt(i + 1), 16) >= 0
+                    && Character.digit(fragment.charAt(i + 2), 16) >= 0) {
+                int value = Character.digit(fragment.charAt(i + 1), 16) * 16
+                        + Character.digit(fragment.charAt(i + 2), 16);
+                bytes.write(value);
+                i += 3;
+            }
+            decoded.append(new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return decoded.toString();
     }
 
     static String keywordUri(String base, String keyword) {
