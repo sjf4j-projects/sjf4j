@@ -1095,6 +1095,7 @@ public final class ReflectUtil {
         }
         boolean hasDiscriminator = !ann.discriminatorKey().isEmpty() || !ann.discriminatorPath().isEmpty();
         EnumSet<JsonType> enumSet = hasDiscriminator ? null : EnumSet.noneOf(JsonType.class);
+        Map<String, Class<?>> whenTypes = hasDiscriminator ? new HashMap<>() : null;
         for (OneOfMapping mapping : mappings) {
             Class<?> subClazz = mapping.type();
             if (subClazz == clazz) {
@@ -1114,6 +1115,14 @@ public final class ReflectUtil {
                 if (mapping.when().length == 0) {
                     throw new BindingException("given a discriminator but has empty 'when' in mapping " +
                             subClazz.getName() + " in @" + OneOf.class.getName() + " of class " + clazz.getName());
+                }
+                for (String when : mapping.when()) {
+                    Class<?> previous = whenTypes.putIfAbsent(when, subClazz);
+                    if (previous != null) {
+                        throw new BindingException("mapping duplicated discriminator value '" + when
+                                + "' in @OneOf of " + clazz.getName() + ": "
+                                + previous.getName() + " and " + subClazz.getName());
+                    }
                 }
             } else {
                 JsonType jt = JsonType.rawOf(mapping.type());

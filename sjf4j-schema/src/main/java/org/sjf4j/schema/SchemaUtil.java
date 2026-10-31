@@ -1,16 +1,11 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.Sjf4j;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 import org.sjf4j.util.Asserts;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -377,69 +372,5 @@ public final class SchemaUtil {
         return uri.toString();
     }
 
-
-    /*
-     * --------------------------------------------------------------
-     * Load
-     * --------------------------------------------------------------
-     */
-
-    /**
-     * Loads a schema from local URI.
-     * <p>
-     * Supported schemes: {@code file}, {@code classpath}. Returns {@code null}
-     * when the target does not exist. The returned schema keeps the given URI as
-     * its root retrieval URI.
-     */
-    public static ObjectSchema loadSchemaFromLocalUri(URI uri) {
-        Asserts.notNull(uri, "uri");
-        ObjectSchema schema;
-        if ("file".equalsIgnoreCase(uri.getScheme())) {
-            schema = _loadSchemaFromFile(uri);
-        } else if ("classpath".equalsIgnoreCase(uri.getScheme())) {
-            String path = uri.getPath();
-            if (path == null || path.isEmpty()) {
-                path = uri.getSchemeSpecificPart();
-            }
-            schema = _loadSchemaFromResource(uri, path);
-        } else {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
-                    "unsupported local schema uri scheme '" + uri.getScheme() + "': expected file or classpath",
-                    PathSegment.Root.INSTANCE, uri));
-        }
-        if (schema == null) return null;
-        schema.setRetrievalUri(uri);
-        return schema;
-    }
-
-    /**
-     * Loads a schema from a file path. Returns {@code null} when the file does
-     * not exist.
-     */
-    private static ObjectSchema _loadSchemaFromFile(URI uri) {
-        try (InputStream in = Files.newInputStream(Paths.get(uri.getPath()))) {
-            return Sjf4j.global().fromJson(in, ObjectSchema.class);
-        } catch (NoSuchFileException e) {
-            return null;
-        } catch (Throwable e) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
-                    "failed to load schema from file", PathSegment.Root.INSTANCE, uri), e);
-        }
-    }
-
-    /**
-     * Loads a schema from a classpath resource path. Returns {@code null} when
-     * the resource does not exist.
-     */
-    private static ObjectSchema _loadSchemaFromResource(URI uri, String path) {
-        if (path.startsWith("/")) path = path.substring(1);
-        try (InputStream in = SchemaRegistry.class.getClassLoader().getResourceAsStream(path)) {
-            if (in == null) return null;
-            return Sjf4j.global().fromJson(in, ObjectSchema.class);
-        } catch (Exception e) {
-            throw new SchemaException(SchemaUtil.formatSchemaLine(Code.SCHEMA_LOAD,
-                    "failed to load schema from resource", PathSegment.Root.INSTANCE, uri), e);
-        }
-    }
 
 }

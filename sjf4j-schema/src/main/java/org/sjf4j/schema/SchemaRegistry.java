@@ -427,6 +427,10 @@ public class SchemaRegistry {
     /** Default classpath directory for annotation-based schema discovery. */
     public static final URI DEFAULT_JSON_SCHEMA_DIR = URI.create("classpath:/json-schemas/");
 
+    /** Fixed local resource loader for the built-in meta-schema catalog. */
+    private static final SchemaLoader.Local BUILTIN_SCHEMA_LOADER =
+            new SchemaLoader.Local(DEFAULT_JSON_SCHEMA_DIR);
+
     /**
      * Resolves a schema from the global built-in registry.
      * <p>
@@ -466,9 +470,13 @@ public class SchemaRegistry {
 
     private static void _indexGlobalSchemaByPath(String filePath, String alias) {
         URI uri = DEFAULT_JSON_SCHEMA_DIR.resolve(filePath);
-        ObjectSchema schema = SchemaUtil.loadSchemaFromLocalUri(uri);
-        if (schema == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+        JsonSchema loaded = BUILTIN_SCHEMA_LOADER.load(URI.create(filePath));
+        if (loaded == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                 "global schema not found", PathSegment.Root.INSTANCE, uri));
+        if (!(loaded instanceof ObjectSchema)) throw new SchemaException(SchemaUtil.formatSchemaLine(
+                SchemaUtil.Code.SCHEMA_LOAD, "global schema must be object-shaped",
+                PathSegment.Root.INSTANCE, uri));
+        ObjectSchema schema = (ObjectSchema) loaded;
         GLOBAL_SCHEMA_REGISTRY.index(schema);
         if (alias != null && !alias.isEmpty()) {
             GLOBAL_SCHEMA_REGISTRY._putSchema(URI.create(alias), schema);

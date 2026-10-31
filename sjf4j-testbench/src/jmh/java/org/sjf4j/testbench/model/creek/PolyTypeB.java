@@ -26,8 +26,9 @@ import java.util.Objects;
 @JsonTypeName("poly-b")
 @SuppressWarnings("unused")
 public final class PolyTypeB implements PolyBase {
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @NodeProperty("@type")
-    private final String type = "poly-b";
+    public final String type = "poly-b";
 
     private final double num;
 

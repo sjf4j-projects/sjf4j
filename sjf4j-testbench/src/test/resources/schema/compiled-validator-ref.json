@@ -1,0 +1,9 @@
+{
+  "$defs": {
+    "word": { "type": "string", "minLength": 2 },
+    "model": {
+      "type": "object",
+      "properties": { "text": { "$ref": "#/$defs/word" } }
+    }
+  }
+}

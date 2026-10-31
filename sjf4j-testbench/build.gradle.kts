@@ -84,6 +84,18 @@ tasks.withType<JavaCompile>().configureEach {
     ))
 }
 
+// Annotation processing reads schemas from the same classpath as the compiled tests.
+tasks.named<JavaCompile>("compileTestJava") {
+    dependsOn(tasks.named("processTestResources"))
+    classpath += files(layout.buildDirectory.dir("resources/test"))
+}
+
+// CompiledValidator's annotation processor reads Creek schemas from jmh resources.
+tasks.named<JavaCompile>("compileJmhJava") {
+    dependsOn(tasks.named("processJmhResources"))
+    classpath += files(layout.buildDirectory.dir("resources/jmh"))
+}
+
 tasks.test {
     useJUnitPlatform()
     jvmArgs(

@@ -27,8 +27,9 @@ import java.util.UUID;
 @JsonTypeName("poly-a")
 @SuppressWarnings("unused")
 public final class PolyTypeA implements PolyBase {
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @NodeProperty("@type")
-    private final String type = "poly-a";
+    public final String type = "poly-a";
 
     private final UUID id;
 

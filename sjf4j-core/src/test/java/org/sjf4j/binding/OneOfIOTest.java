@@ -42,6 +42,46 @@ class OneOfIOTest {
     static class Dog extends Animal { public boolean barks; }
     static class Cat extends Animal { public int lives; }
 
+    @OneOf(discriminatorKey = "kind", mappings = {
+            @OneOfMapping(type = AmbiguousA.class, when = {"a", "shared"}),
+            @OneOfMapping(type = AmbiguousB.class, when = {"b", "shared"})
+    })
+    interface AmbiguousKey {}
+
+    @OneOf(discriminatorPath = "$.meta.kind", mappings = {
+            @OneOfMapping(type = AmbiguousA.class, when = "shared"),
+            @OneOfMapping(type = AmbiguousB.class, when = "shared")
+    })
+    interface AmbiguousPath {}
+
+    @OneOf(discriminatorKey = "kind", mappings = {
+            @OneOfMapping(type = AmbiguousA.class, when = {"a", "a"})
+    })
+    interface RepeatedAlias {}
+
+    static class AmbiguousA implements AmbiguousKey, AmbiguousPath, RepeatedAlias {}
+    static class AmbiguousB implements AmbiguousKey, AmbiguousPath {}
+
+    @Test
+    void rejectsOverlappingDiscriminatorValuesAcrossMappings() {
+        BindingException key = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(AmbiguousKey.class));
+        assertTrue(key.getMessage().contains("duplicated discriminator value 'shared'"));
+        assertTrue(key.getMessage().contains(AmbiguousA.class.getName()));
+        assertTrue(key.getMessage().contains(AmbiguousB.class.getName()));
+
+        BindingException path = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(AmbiguousPath.class));
+        assertTrue(path.getMessage().contains("duplicated discriminator value 'shared'"));
+    }
+
+    @Test
+    void rejectsRepeatedWhenAliasWithinSingleMapping() {
+        BindingException error = assertThrows(BindingException.class,
+                () -> TypeRegistry.registerTypeInfo(RepeatedAlias.class));
+        assertTrue(error.getMessage().contains("duplicated discriminator value 'a'"));
+    }
+
     @Test
     void mapsCurrentKeyDiscriminatorToMatchingSubtype() {
         Container container = (Container) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
