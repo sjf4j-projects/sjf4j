@@ -53,6 +53,42 @@ class ValidationContextReuseTest {
     }
 
     @Test
+    void failFastKeepsOneErrorWhenUnevaluatedKeywordsContinueEvaluation() {
+        SchemaPlan objectPlan = JsonSchema.fromJson(
+                "{\"required\":[\"x\"],\"unevaluatedProperties\":false}").createPlan();
+        Map<String, Object> invalidObject = Map.of("extra", 1);
+
+        ValidationResult failFastResult = objectPlan.validate(invalidObject, true, false);
+        assertFalse(failFastResult.isValid());
+        assertEquals(1, failFastResult.count());
+        assertEquals("required", failFastResult.getLastError().getKeyword());
+
+        ValidationResult aggregateResult = objectPlan.validate(invalidObject);
+        assertFalse(aggregateResult.isValid());
+        assertEquals(2, aggregateResult.count());
+
+        SchemaPlan arrayPlan = JsonSchema.fromJson(
+                "{\"minItems\":2,\"unevaluatedItems\":false}").createPlan();
+        ValidationResult failFastArray = arrayPlan.validate(Collections.singletonList(1), true, false);
+        assertFalse(failFastArray.isValid());
+        assertEquals(1, failFastArray.count());
+        assertEquals("minItems", failFastArray.getLastError().getKeyword());
+        assertEquals(2, arrayPlan.validate(Collections.singletonList(1)).count());
+
+        // Reusing a context accumulates one error from each independent evaluation.
+        ValidationContext ctx = new ValidationContext(true, false, false);
+        assertFalse(objectPlan.evaluate(invalidObject, ctx));
+        assertFalse(arrayPlan.evaluate(Collections.singletonList(1), ctx));
+        assertEquals(2, ctx.toResult(false).count());
+        assertEquals("required", ctx.toResult(false).getErrors().get(0).getKeyword());
+        assertEquals("minItems", ctx.toResult(false).getLastError().getKeyword());
+
+        ctx.clearErrors();
+        assertFalse(objectPlan.evaluate(invalidObject, ctx));
+        assertEquals(1, ctx.toResult(false).count());
+    }
+
+    @Test
     void aggregateModeCollectsErrorsAcrossCalls() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"required\":[\"x\",\"y\"],\"properties\":{\"x\":{\"type\":\"integer\"}}}")

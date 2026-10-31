@@ -40,7 +40,7 @@ class ValidationResultTest {
         PathSegment keyword = new PathSegment.Name(ROOT, "examples");
         Object values = List.of(Map.of("x", 1), Map.of("x", 2));
         ValidationResult.Annotation annotation = new ValidationResult.Annotation(
-                "examples", values, ROOT, keyword, null);
+                "examples", "Example values", values, ROOT, keyword, null);
         ValidationResult result = new ValidationResult(true, null, List.of(annotation));
 
         assertTrue(result.isValid());
@@ -49,6 +49,7 @@ class ValidationResultTest {
         assertNull(result.getLastError());
         assertSame(values, annotation.getValue());
         assertEquals("examples", annotation.getKeyword());
+        assertEquals("Example values", annotation.getMessage());
         assertSame(ROOT, annotation.getInstancePs());
         assertSame(keyword, annotation.getKeywordPs());
         assertNull(annotation.getSchemaUri());
@@ -62,9 +63,9 @@ class ValidationResultTest {
         ValidationResult.Error childError = new ValidationResult.Error(
                 "type", "wrong type", ROOT, ROOT, null);
         ValidationResult.Annotation parentAnnotation = new ValidationResult.Annotation(
-                "title", "Parent", ROOT, ROOT, null);
+                "title", "Parent title", "Parent", ROOT, ROOT, null);
         ValidationResult.Annotation childAnnotation = new ValidationResult.Annotation(
-                "title", "Child", ROOT, ROOT, null);
+                "title", "Child title", "Child", ROOT, ROOT, null);
 
         ValidationResult parent = new ValidationResult(true, null, List.of(parentAnnotation));
         ValidationResult child = new ValidationResult(false, List.of(childError), List.of(childAnnotation));

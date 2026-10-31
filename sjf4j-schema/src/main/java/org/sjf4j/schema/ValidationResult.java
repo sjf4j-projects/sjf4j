@@ -112,14 +112,16 @@ public class ValidationResult {
     /** An annotation value and its locations in the instance and schema. */
     public static final class Annotation {
         private final String keyword;
+        private final String message;
         private final Object value;
         private final PathSegment instancePs;
         private final PathSegment keywordPs;
         private final URI schemaUri;
 
-        public Annotation(String keyword, Object value, PathSegment instancePs,
+        public Annotation(String keyword, String message, Object value, PathSegment instancePs,
                           PathSegment keywordPs, URI schemaUri) {
             this.keyword = Asserts.notNull(keyword, "keyword");
+            this.message = message;
             this.value = value;
             this.instancePs = Asserts.notNull(instancePs, "instancePs");
             this.keywordPs = Asserts.notNull(keywordPs, "keywordPs");
@@ -127,6 +129,7 @@ public class ValidationResult {
         }
 
         public String getKeyword() { return keyword; }
+        public String getMessage() { return message; }
         public Object getValue() { return value; }
         public PathSegment getInstancePs() { return instancePs; }
         public PathSegment getKeywordPs() { return keywordPs; }

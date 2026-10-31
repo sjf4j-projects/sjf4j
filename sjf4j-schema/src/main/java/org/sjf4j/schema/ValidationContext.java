@@ -26,6 +26,7 @@ public class ValidationContext {
     private final Instance reusedLeaf;
 
     private int ignoreErrorAdding;
+    private boolean failFastErrorAdded;
     private Deque<SchemaPlan> planStack;
 
     /**
@@ -43,6 +44,7 @@ public class ValidationContext {
     /** Releases per-evaluation state, preserving configuration and output. */
     void reset() {
         ignoreErrorAdding = 0;
+        failFastErrorAdded = false;
         if (planStack != null) planStack.clear();
         reusedLeaf.clear();
     }
@@ -67,11 +69,11 @@ public class ValidationContext {
      * schema pipeline does not yet emit annotations.
      */
     void addAnnotation(Instance instance, PathSegment instancePs,
-                       PathSegment keywordPs, URI schemaUri, String keyword, Object value) {
+                       PathSegment keywordPs, URI schemaUri, String keyword, String message, Object value) {
         if (booleanOnly) return;
         if (instancePs == null) instancePs = instance.materializePath();
         if (annotations == null) annotations = new ArrayList<>();
-        annotations.add(new ValidationResult.Annotation(keyword, value, instancePs, keywordPs, schemaUri));
+        annotations.add(new ValidationResult.Annotation(keyword, message, value, instancePs, keywordPs, schemaUri));
     }
 
     boolean needsErrorDetail() {
@@ -132,9 +134,10 @@ public class ValidationContext {
     /** Accumulates an assertion error, unless errors are being suppressed. */
     void addError(Instance instance, PathSegment instancePs, PathSegment keywordPs,
                   URI schemaUri, String keyword, String message) {
-        if (ignoreErrorAdding != 0 || booleanOnly) return;
+        if (ignoreErrorAdding != 0 || booleanOnly || (failFast && failFastErrorAdded)) return;
         if (instancePs == null && instance != null) instancePs = instance.materializePath();
         if (errors == null) errors = new ArrayList<>();
         errors.add(new ValidationResult.Error(keyword, message, instancePs, keywordPs, schemaUri));
+        if (failFast) failFastErrorAdded = true;
     }
 }
