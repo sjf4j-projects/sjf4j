@@ -205,8 +205,11 @@ class CompiledValidatorConditionalTest {
         NullableMember compiled = CompiledInstances.create(NullableMember.class);
         Map<String,Object> map = new LinkedHashMap<>();
         map.put("country","US");
+        SchemaPlan address = JsonSchema.fromJson(ADDRESS).createPlan();
+        assertFalse(compiled.address(map)); // Missing state fails required.
         map.put("state",null);
-        assertFalse(compiled.address(map));
+        assertTrue(compiled.address(map)); // Present null satisfies required.
+        assertEquals(address.isValid(map), compiled.address(map));
         map.put("state","CA");
         assertTrue(compiled.address(map));
         Runtime fallback = CompiledInstances.create(Runtime.class);
