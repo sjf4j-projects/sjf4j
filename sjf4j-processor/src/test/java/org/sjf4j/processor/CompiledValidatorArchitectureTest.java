@@ -114,7 +114,7 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertEquals(2, occurrences(generated, "private static final java.util.regex.Pattern"), generated);
+        assertEquals(2, occurrences(generated, "private static final Pattern"), generated);
         assertEquals(2, occurrences(generated, ".matcher("), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
     }
