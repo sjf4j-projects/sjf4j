@@ -23,7 +23,11 @@ final class SchemaEmitter {
 
     List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
                           SchemaFallbackEmitter.Plan plan, String strictFormat) {
-        if (check.kind == SchemaCheck.Kind.OBJECT) {
+        // A dynamic root can contain a non-object even when its schema has
+        // object-only keywords. Keep the fast path for known object types, but
+        // emit the shape/applicability guard for Object-typed roots.
+        if (check.kind == SchemaCheck.Kind.OBJECT
+                && value.shape != SchemaValue.Shape.DYNAMIC) {
             return emit((SchemaCheck.ObjectCheck) check, variable, plan, strictFormat);
         }
         List<String> lines = new ArrayList<String>();
