@@ -1,0 +1,25 @@
+name: Fastjson2 OffsetTime native benchmark
+
+on:
+  push:
+    branches: [exp/fastjson2-offset-time-native-20261031]
+    paths: [.github/workflows/fastjson-offsettime-exp.yml]
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test and build JMH
+        run: ./gradlew :sjf4j-backend-fastjson2:test :sjf4j-testbench:jmhJar --no-daemon
+      - name: JMH native vs string OffsetTime
+        shell: bash
+        run: |
+          JAR=$(find sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)
+          java -jar "$JAR" '.*FastjsonOffsetTimeBenchmark.*' -f 2 -wi 5 -i 5 -w 400ms -r 400ms -prof gc
