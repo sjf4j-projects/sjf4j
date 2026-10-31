@@ -163,7 +163,7 @@ without violating `required`, although its property schema may reject null.
 | Keyword / feature | Direct code generation | Runtime SchemaPlan | Creek status |
 | --- | --- | --- | --- |
 | Boolean root schemas (`true`, `false`) | Yes | Yes | Supported |
-| `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys | Yes | Phase 1 |
+| `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys; type-less object assertions supported | Yes | Phase 1 |
 | `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes | Phase 1 |
 | `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes | Phase 1 |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes | Phase 1 |
@@ -179,7 +179,7 @@ without violating `required`, although its property schema may reject null.
 | `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes | Partial |
 | `oneOf` | General branch counting with statically compiled predicates (overlap allowed); optional optimized subtype dispatch when proven disjoint | Yes | Direct for Creek |
 | `allOf`, `anyOf`, `not` | Direct boolean predicates for fully compiled branches; siblings are conjoined; unsupported/stateful branches fall back as one scope | Yes | Compiled |
-| `if`, `then`, `else` | No | Yes | Later |
+| `if`, `then`, `else` | Static conditional dispatch with constant folding; missing `if` or unused branches ignored | Yes | Compiled |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes | Later |
 | Root metadata (`$schema`, `title`, etc.) | Accepted when non-applicative | Yes | Phase 1 |
 
@@ -218,6 +218,17 @@ must pass for `allOf`, any one may pass for `anyOf` (including overlaps), and
 with logical AND, not skipped. Unsupported or evaluated-state-dependent branches
 fall back as a complete combinator scope. The boolean direct path preserves
 `strictFormat` and `nullAsMissing`; diagnostic modes retain SchemaPlan.
+
+Conditional `if/then/else` compiles to one boolean predicate for `if` and
+exactly one selected branch. If `if` is absent, `then` and `else` have no
+validation effect; a lone `if` has no effect either. Compile-time `true` or
+`false` conditions select a branch without compiling the unused branch.
+Object assertions such as `properties`, `required`, and
+`additionalProperties` can omit `type:object`, including schemas with
+`required` but no `properties`. Their checks are skipped for dynamic
+non-object values, consistent with JSON Schema applicability. Conditional
+subschemas involving stateful evaluated-location tracking retain full-scope
+runtime validation.
 
 The `sjf4j-testbench` module contains `CompiledValidatorKeywordTest` and
 `CompiledValidatorTypeDispatchTest` (typed Java paths versus dynamic Nodes
