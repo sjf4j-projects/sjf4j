@@ -22,7 +22,8 @@ public class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
     private final boolean booleanOnly;
-    private final List<ValidationMessage> messages;
+    // Created on the first diagnostic, then retained across evaluations.
+    private List<ValidationMessage> messages;
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
     // dedicated wrappers because they can carry branch-local runtime state.
@@ -42,7 +43,6 @@ public class ValidationContext {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
-        this.messages = booleanOnly ? null : new ArrayList<>();
         this.reusedLeaf = Instance.infer(null);
     }
 
@@ -151,6 +151,7 @@ public class ValidationContext {
             }
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
                         instancePs, keywordPs, schemaUri, keyword, message);
+            if (messages == null) messages = new ArrayList<>();
             messages.add(msg);
         }
     }
@@ -162,7 +163,8 @@ public class ValidationContext {
      * the fail-fast setting.
      */
     void addWarn(PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword, String message) {
-        if (messages != null) {
+        if (!booleanOnly) {
+            if (messages == null) messages = new ArrayList<>();
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN,
                     instancePs, keywordPs, schemaUri, keyword, message);
             messages.add(msg);
