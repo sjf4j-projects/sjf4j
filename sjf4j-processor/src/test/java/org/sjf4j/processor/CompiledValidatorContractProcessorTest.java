@@ -14,10 +14,23 @@ class CompiledValidatorContractProcessorTest {
                     + "public String getName() { return \"ok\"; } }";
 
     @Test
+    void compilesRequiredOnlyObjectWithoutProperties() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
+                                "{\"type\":\"object\",\"required\":[\"name\"]}") + ") "
+                        + "boolean valid(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
+    }
+
+    @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
-                        + "@ValidJsonSchema(\"{\\\"type\\\":\\\"object\\\",\\\"required\\\":[\\\"name\\\"]}\") "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
+                                "{\"type\":\"object\",\"required\":[\"name\"],"
+                                + "\"patternProperties\":{\"^x\":true}}") + ") "
                         + "boolean valid(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
