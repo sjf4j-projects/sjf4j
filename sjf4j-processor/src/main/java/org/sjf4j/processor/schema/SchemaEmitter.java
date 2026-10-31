@@ -129,6 +129,10 @@ final class SchemaEmitter {
                 emitGenericOneOf(lines, plan, (SchemaCheck.GenericOneOfCheck) check,
                         value, expression, planName, strictFormat);
                 return;
+            case IF_THEN_ELSE:
+                emitConditional(lines, plan, (SchemaCheck.ConditionalCheck) check,
+                        value, expression, strictFormat);
+                return;
             case ALL_OF:
             case ANY_OF:
             case NOT:
@@ -137,12 +141,26 @@ final class SchemaEmitter {
                 return;
             case OBJECT:
                 SchemaCheck.ObjectCheck object = (SchemaCheck.ObjectCheck) check;
-                if (value.nullable) lines.add("if (" + expression + " == null) return false;");
-                if (object.dynamic && value.shape == SchemaValue.Shape.DYNAMIC) {
-                    lines.add("if (org.sjf4j.JsonType.rawOf(" + expression
-                            + ".getClass()) != org.sjf4j.JsonType.OBJECT) return false;");
+                boolean unknownShape = object.dynamic && value.shape == SchemaValue.Shape.DYNAMIC;
+                if (object.typeRequired) {
+                    if (value.nullable) lines.add("if (" + expression + " == null) return false;");
+                    if (unknownShape) {
+                        lines.add("if (org.sjf4j.JsonType.rawOf(" + expression
+                                + ".getClass()) != org.sjf4j.JsonType.OBJECT) return false;");
+                    }
+                    lines.addAll(emit(object, expression, plan, strictFormat, planName + "_"));
+                } else if (unknownShape || value.nullable) {
+                    String applies = unknownShape
+                            ? expression + " != null && org.sjf4j.JsonType.rawOf("
+                                    + expression + ".getClass()) == org.sjf4j.JsonType.OBJECT"
+                            : expression + " != null";
+                    lines.add("if (" + applies + ") {");
+                    for (String statement : emit(object, expression, plan, strictFormat,
+                            planName + "_")) lines.add("    " + statement);
+                    lines.add("}");
+                } else {
+                    lines.addAll(emit(object, expression, plan, strictFormat, planName + "_"));
                 }
-                lines.addAll(emit(object, expression, plan, strictFormat, planName + "_"));
                 return;
             case REJECT:
                 // Keep following checks reachable in Java source; JIT folds this branch.
@@ -173,6 +191,24 @@ final class SchemaEmitter {
             lines.add("if (" + predicate + " && ++" + matches + " > 1) return false;");
         }
         lines.add("if (" + matches + " != 1) return false;");
+    }
+
+    /** Evaluate the if predicate once; only the selected branch is an assertion. */
+    private void emitConditional(List<String> lines, SchemaFallbackEmitter.Plan plan,
+                                 SchemaCheck.ConditionalCheck check, SchemaValue value,
+                                 String expression, String strictFormat) {
+        String condition = branchPredicate(plan, check.condition, value, expression, strictFormat);
+        lines.add("if (" + condition + ") {");
+        if (check.thenCheck != null && check.thenCheck.kind != SchemaCheck.Kind.PASS) {
+            lines.add("    if (!(" + branchPredicate(plan, check.thenCheck, value, expression,
+                    strictFormat) + ")) return false;");
+        }
+        lines.add("} else {");
+        if (check.elseCheck != null && check.elseCheck.kind != SchemaCheck.Kind.PASS) {
+            lines.add("    if (!(" + branchPredicate(plan, check.elseCheck, value, expression,
+                    strictFormat) + ")) return false;");
+        }
+        lines.add("}");
     }
 
     /** allOf uses AND, anyOf short-circuits on the first success, not inverts. */
