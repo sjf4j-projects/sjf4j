@@ -8,7 +8,15 @@ import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.FastUuid;
+import java.time.OffsetDateTime;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import org.sjf4j.util.FastOffsetDateTime;
+import org.sjf4j.util.FastInstant;
+import org.sjf4j.util.FastLocalDateTime;
 import org.sjf4j.util.FastLocalTime;
+import org.sjf4j.util.FastOffsetTime;
+import java.time.OffsetTime;
 import org.sjf4j.util.FastLocalDate;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
@@ -255,6 +263,38 @@ public final class Jackson3Parser extends StreamingParser {
         return FastLocalTime.parse(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
     }
   
+    @Override
+    public LocalDateTime readLocalDateTime() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
+        return FastLocalDateTime.parse(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
+    }
+
+    @Override
+    public Instant readInstant() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
+        return FastInstant.parse(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
+    }
+
+    @Override
+    public OffsetDateTime readOffsetDateTime() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
+        return FastOffsetDateTime.parse(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
+    }
+
+    @Override
+    public OffsetTime readOffsetTime() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
+        return FastOffsetTime.parse(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
+    }
+
     @Override
     public LocalDate readLocalDate() throws IOException {
         JsonToken token = nextValue();
