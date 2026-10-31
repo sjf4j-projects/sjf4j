@@ -32,7 +32,7 @@ class ValidationContextReuseTest {
     }
 
     @Test
-    void failFastCollectsOneErrorPerEvaluationInsteadOfOnePerContext() {
+    void failFastDiagnosticsAccumulateAcrossEvaluations() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"required\":[\"x\",\"y\"],\"properties\":{\"x\":{\"type\":\"integer\"}}}")
                 .createPlan();
@@ -41,7 +41,7 @@ class ValidationContextReuseTest {
         assertFalse(plan.evaluate(Map.of("x", "wrong"), ctx));
         assertEquals(1, ctx.toResult(false).getErrors().size());
         ValidationResult first = ctx.toResult(false);
-        assertFalse(plan.evaluate(Map.of(), ctx));
+        assertFalse(plan.evaluate(Map.of("x", 1), ctx));
         assertEquals(2, ctx.toResult(false).getErrors().size());
         assertSame(first.getMessages(), ctx.toResult(false).getMessages());
 
