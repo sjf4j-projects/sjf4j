@@ -66,6 +66,28 @@ class ValidationAnnotationTest {
     }
 
     @Test
+    void anyOfCollectsAllSuccessfulBranchesWhenAnnotationsAreEnabled() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"anyOf\":["
+                + "{\"title\":\"first\",\"type\":\"integer\"},"
+                + "{\"title\":\"second\",\"minimum\":0}]}"
+        ).createPlan();
+        ValidationResult result = plan.validate(5);
+        assertTrue(result.isValid());
+        assertEquals(2, result.getAnnotations().size());
+    }
+
+    @Test
+    void containsCollectsAnnotationsForAllMatchingItems() {
+        SchemaPlan plan = JsonSchema.fromJson("{\"contains\":{"
+                + "\"description\":\"number\",\"type\":\"integer\"}}").createPlan();
+        ValidationResult result = plan.validate(List.of(1, "wrong", 2));
+        assertTrue(result.isValid());
+        assertEquals(2, result.getAnnotations().size());
+        assertEquals("/0", result.getAnnotations().get(0).getInstancePs().rootedPointerExpr());
+        assertEquals("/2", result.getAnnotations().get(1).getInstancePs().rootedPointerExpr());
+    }
+
+    @Test
     void failedOneOfAndNotBranchesDoNotExposeTentativeAnnotations() {
         SchemaPlan overlapping = JsonSchema.fromJson("{\"oneOf\":["
                 + "{\"description\":\"first\",\"type\":\"number\"},"
