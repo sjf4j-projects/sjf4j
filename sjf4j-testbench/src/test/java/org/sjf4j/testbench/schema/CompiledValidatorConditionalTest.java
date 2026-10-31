@@ -102,8 +102,8 @@ class CompiledValidatorConditionalTest {
         @ValidJsonSchema(FORMAT) boolean format(String value, boolean strictFormat);
     }
 
-    @CompiledValidator(fallback = false, nullAsMissing = true)
-    public interface Missing {
+    @CompiledValidator(fallback = false)
+    public interface NullableMember {
         @ValidJsonSchema(ADDRESS) boolean address(Map<String, Object> value);
     }
 
@@ -201,8 +201,8 @@ class CompiledValidatorConditionalTest {
     }
 
     @Test
-    void nullAsMissingAndStatefulFallbackRemainCorrect() {
-        Missing compiled = CompiledInstances.create(Missing.class);
+    void nullMemberAndStatefulFallbackRemainCorrect() {
+        NullableMember compiled = CompiledInstances.create(NullableMember.class);
         Map<String,Object> map = new LinkedHashMap<>();
         map.put("country","US");
         map.put("state",null);
