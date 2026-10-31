@@ -7,6 +7,8 @@ import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.FastLocalTime;
+import org.sjf4j.util.FastOffsetTime;
+import java.time.OffsetTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import org.sjf4j.util.FastLocalDate;
@@ -347,6 +349,42 @@ public final class SimpleJsonParser extends StreamingParser {
                 }
             }
             LocalTime value = FastLocalTime.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
+
+    @Override
+    public OffsetTime readOffsetTime() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Canonical, unescaped text can be parsed directly from this buffer.
+            // Escaped and split strings are decoded using the normal JSON path.
+            int available = inputLimit - inputPos;
+            if (available >= 8 && inputBuffer[inputPos] == '"') {
+                int maxLength = Math.min(24, available - 2);
+                for (int length = 6; length <= maxLength; length++) {
+                    if (inputBuffer[inputPos + length + 1] == '"') {
+                        try {
+                            OffsetTime value = FastOffsetTime.parse(inputBuffer, inputPos + 1, length);
+                            inputPos += length + 2;
+                            pos += length + 2;
+                            _checkValueEnd();
+                            return value;
+                        } catch (DateTimeParseException ignored) {
+                            // Fall back to JSON decoding and JDK syntax handling.
+                        }
+                        break;
+                    }
+                }
+            }
+            OffsetTime value = FastOffsetTime.parse(_readString());
             _checkValueEnd();
             return value;
         } finally {

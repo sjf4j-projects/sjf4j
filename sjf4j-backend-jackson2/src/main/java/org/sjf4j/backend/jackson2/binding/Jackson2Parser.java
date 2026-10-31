@@ -9,6 +9,8 @@ import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.FastUuid;
 import org.sjf4j.util.FastLocalTime;
+import org.sjf4j.util.FastOffsetTime;
+import java.time.OffsetTime;
 import java.time.LocalTime;
 import org.sjf4j.util.FastLocalDate;
 import com.fasterxml.jackson.core.JsonParser;
@@ -248,6 +250,14 @@ public final class Jackson2Parser extends StreamingParser {
         return FastLocalTime.parse(parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
     }
   
+    @Override
+    public OffsetTime readOffsetTime() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
+        return FastOffsetTime.parse(parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
+    }
+
     @Override
     public LocalDate readLocalDate() throws IOException {
         JsonToken token = nextValue();

@@ -3,6 +3,7 @@ package org.sjf4j.value;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.FastLocalTime;
+import org.sjf4j.util.FastOffsetTime;
 import org.sjf4j.util.FastLocalDate;
 
 import java.time.LocalDate;
@@ -134,7 +135,7 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
 
     PatternedValueCodec<OffsetTime, String> OFFSET_TIME = new TemporalValueCodec<>(OffsetTime.class,
             null, OffsetTime::toString, OffsetTime::format,
-            OffsetTime::parse, OffsetTime::parse,
+            FastOffsetTime::parse, OffsetTime::parse,
             StreamingParser::readOffsetTime, StreamingGenerator::writeOffsetTime);
 
 }
