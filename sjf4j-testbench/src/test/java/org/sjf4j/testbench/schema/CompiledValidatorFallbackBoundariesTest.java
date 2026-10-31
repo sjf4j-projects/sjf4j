@@ -79,10 +79,9 @@ class CompiledValidatorFallbackBoundariesTest {
 
     @Test
     void callerOwnedContextIsReusableAndDiagnosticsRemainStable() {
-        SchemaPlan plan = JsonSchema.fromJson(
-                "{\\"type\\":\\"object\\",\\"required\\":[\\"x\\"],"
-                        + "\\"properties\\":{\\"x\\":{\\"type\\":\\"integer\\"}}}")
-                .createPlan();
+        SchemaPlan plan = JsonSchema.fromJson("""
+                {"type":"object","required":["x"],"properties":{"x":{"type":"integer"}}}
+                """).createPlan();
         ValidationContext fast = ValidationContext.forIsValid(false);
         ValidationContext diagnostics = ValidationContext.forValidation(false, false);
         ValidationResult first = plan.validate(Map.of("x", "wrong"), diagnostics);
