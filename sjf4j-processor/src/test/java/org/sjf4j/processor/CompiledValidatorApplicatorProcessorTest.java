@@ -39,7 +39,7 @@ class CompiledValidatorApplicatorProcessorTest {
 
     @Test
     void allOfRetainsConstantFalseAndFollowingAssertions() throws Exception {
-        String schema = "{\\"allOf\\":[false,{\\"type\\":\\"integer\\",\\"minimum\\":1}]}";
+        String schema = "{\"allOf\":[false,{\"type\":\"integer\",\"minimum\":1}]}";
         NavigatorTestCompiler.Result result = compile(schema, false);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
