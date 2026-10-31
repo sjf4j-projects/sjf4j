@@ -194,42 +194,32 @@ public final class Jackson2Parser extends StreamingParser {
 
     @Override
     public int nextNameMatch(NameMatcher matcher, int expectedIndex) throws IOException {
-        Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
         if (prefetched) {
-            JsonToken current = parser.currentToken();
             prefetched = false;
-            if (current == JsonToken.END_OBJECT) {
-                return NameMatcher.OBJECT_END;
-            }
-            if (current != JsonToken.FIELD_NAME) {
-                throw expected(JsonToken.FIELD_NAME.name(), current);
-            }
-            return matcher.fallback(parser.currentName());
+            return matchCurrentName(matcher);
         }
 
+        Jackson2NameMatcher jacksonMatcher = (Jackson2NameMatcher) matcher;
         if (expectedIndex >= 0 && expectedIndex < jacksonMatcher.serializedNames.length) {
             if (parser.nextFieldName(jacksonMatcher.serializedNames[expectedIndex])) {
                 return expectedIndex;
             }
-            // On mismatch, nextFieldName already advanced to the actual name/end.
-            JsonToken current = parser.currentToken();
-            if (current == JsonToken.FIELD_NAME) {
-                return matcher.fallback(parser.currentName());
-            }
-            if (current == JsonToken.END_OBJECT) {
-                return NameMatcher.OBJECT_END;
-            }
-            throw expected(JsonToken.FIELD_NAME.name(), current);
+        } else {
+            parser.nextFieldName();
         }
+        return matchCurrentName(matcher);
+    }
 
-        String name = parser.nextFieldName();
-        if (name != null) {
-            return matcher.fallback(name);
+    /** Keep exception handling and uncommon name lookup out of the ordered hot path. */
+    private int matchCurrentName(NameMatcher matcher) throws IOException {
+        JsonToken current = parser.currentToken();
+        if (current == JsonToken.FIELD_NAME) {
+            return matcher.fallback(parser.currentName());
         }
-        if (parser.currentToken() == JsonToken.END_OBJECT) {
+        if (current == JsonToken.END_OBJECT) {
             return NameMatcher.OBJECT_END;
         }
-        throw expected(JsonToken.FIELD_NAME.name(), parser.currentToken());
+        throw expected(JsonToken.FIELD_NAME.name(), current);
     }
 
     /* --------------------------------------------------------------
