@@ -5,7 +5,9 @@ import org.sjf4j.processor.code.GeneratedClass;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Emits the existing native fail-fast predicates from structured SchemaCheck
@@ -15,6 +17,7 @@ final class SchemaEmitter {
     private final GeneratedClass generated;
     private final String helperPrefix;
     private final boolean nullAsMissing;
+    private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
 
     SchemaEmitter(GeneratedClass generated, String helperPrefix, boolean nullAsMissing) {
@@ -339,7 +342,7 @@ final class SchemaEmitter {
             if (literal == null) expected = "null";
             else if (literal instanceof String) expected = javaLiteral((String) literal);
             else if (literal instanceof Boolean) expected = ((Boolean) literal) ? "Boolean.TRUE" : "Boolean.FALSE";
-            else expected = decimalConstant((Number) literal);
+            else expected = decimalConstantRef((Number) literal);
             disjunction.append("org.sjf4j.Nodes.equals(").append(expected).append(", ")
                     .append(expression).append(")");
         }
@@ -443,24 +446,73 @@ final class SchemaEmitter {
             number = "_number" + depth + "_" + planName;
             lines.add("Number " + number + " = org.sjf4j.Nodes.toNumber(" + expression + ");");
         }
-        if (check.integer) {
+        boolean nativeInteger = isNativeInteger(value);
+        if (check.integer && !nativeInteger) {
             lines.add("if (!org.sjf4j.util.Numbers.isSemanticInteger(" + number + ")) return false;");
         }
         for (SchemaCheck.NumericBound bound : check.bounds) {
-            String comparison = "org.sjf4j.util.Numbers.compare(" + number + ", "
-                    + decimalConstant(bound.limit) + ")";
-            String operator = bound.keyword.equals("minimum") ? " < 0"
-                    : bound.keyword.equals("maximum") ? " > 0"
-                    : bound.keyword.equals("exclusiveMinimum") ? " <= 0" : " >= 0";
-            lines.add("if (" + comparison + operator + ") return false;");
+            String operator = bound.keyword.equals("minimum") ? " <"
+                    : bound.keyword.equals("maximum") ? " >"
+                    : bound.keyword.equals("exclusiveMinimum") ? " <=" : " >=";
+            Long exactLimit = nativeInteger ? exactLong(bound.limit) : null;
+            if (exactLimit != null) {
+                // int/long/byte/short and their wrappers compare without boxing.
+                lines.add("if (" + number + operator + " " + exactLimit + "L) return false;");
+            } else {
+                String comparison = "org.sjf4j.util.Numbers.compare(" + number + ", "
+                        + decimalConstantRef(bound.limit) + ")";
+                lines.add("if (" + comparison + operator + " 0) return false;");
+            }
         }
         if (check.multipleOf != null) {
-            String divisor = "_multipleOf_" + helperPrefix + "_" + helperCount++;
-            generated.addHelper(out -> out.line("private static final java.math.BigDecimal "
-                    + divisor + " = " + decimalConstant(check.multipleOf) + ";"));
-            lines.add("if (org.sjf4j.util.Numbers.normalizeDecimal(" + number
-                    + ").remainder(" + divisor + ").signum() != 0) return false;");
+            Long exactDivisor = nativeInteger ? exactLong(check.multipleOf) : null;
+            if (exactDivisor != null && exactDivisor > 0L) {
+                if (exactDivisor > 1L) {
+                    lines.add("if (" + number + " % " + exactDivisor + "L != 0) return false;");
+                }
+            } else {
+                lines.add("if (org.sjf4j.util.Numbers.normalizeDecimal(" + number
+                        + ").remainder(" + decimalConstantRef(check.multipleOf)
+                        + ").signum() != 0) return false;");
+            }
         }
+    }
+
+    /** Only Java integral primitives and wrappers are safe for direct long arithmetic. */
+    private static boolean isNativeInteger(SchemaValue value) {
+        if (value.shape != SchemaValue.Shape.NUMBER || value.type == null) return false;
+        switch (value.type.toString()) {
+            case "byte": case "short": case "int": case "long":
+            case "java.lang.Byte": case "java.lang.Short":
+            case "java.lang.Integer": case "java.lang.Long":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /** Return null when a fractional or out-of-range constant needs decimal arithmetic. */
+    private static Long exactLong(Number number) {
+        try {
+            return org.sjf4j.util.Numbers.normalizeDecimal(number).longValueExact();
+        } catch (ArithmeticException ex) {
+            return null;
+        }
+    }
+
+    /** Reuse decimal constants across checks in one generated validator method. */
+    private String decimalConstantRef(Number number) {
+        String expression = decimalConstant(number);
+        if (expression.equals("java.math.BigDecimal.ZERO")
+                || expression.equals("java.math.BigDecimal.ONE")) return expression;
+        String key = number.toString();
+        String cached = decimalConstants.get(key);
+        if (cached != null) return cached;
+        String field = "_decimal_" + helperPrefix + "_" + helperCount++;
+        decimalConstants.put(key, field);
+        generated.addHelper(out -> out.line("private static final java.math.BigDecimal "
+                + field + " = " + expression + ";"));
+        return field;
     }
 
     private void emitArray(List<String> lines, SchemaFallbackEmitter.Plan plan,
