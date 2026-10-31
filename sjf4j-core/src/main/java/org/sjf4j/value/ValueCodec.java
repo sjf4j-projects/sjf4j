@@ -265,10 +265,7 @@ public interface ValueCodec<V, R> {
     ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new StreamingValueCodec<>(Instant.class, Long.class,
             Instant::toEpochMilli, Instant::ofEpochMilli,
             parser -> parser.nextIfNull() ? null : Instant.ofEpochMilli(parser.readLongValue()),
-            (generator, instant) -> {
-                if (instant == null) generator.writeNull();
-                else generator.writeLongValue(instant.toEpochMilli());
-            });
+            null);
 
     @NodeValue
     ValueCodec<Duration, String> DURATION = new SimpleValueCodec<>(Duration.class, String.class,

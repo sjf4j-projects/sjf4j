@@ -19,8 +19,9 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Compares the old boxed Long codec path and the new primitive streaming path
- * for Instant epochMillis, including parser/generator lifecycle.
+ * Compares boxed Long and primitive streaming reads for Instant epochMillis;
+ * the write benchmarks evaluate the existing boxed path versus an experimental
+ * primitive candidate (not used in production), including generator lifecycle.
  *
  * The old path uses the exact same registered codec's rawToValue/valueToRaw
  * methods; no control changes the codec's representation or accepted values.
@@ -66,7 +67,12 @@ public class InstantEpochMillisBenchmark {
         ValueCodec.StreamingValueCodec<Instant, Long> streaming =
                 (ValueCodec.StreamingValueCodec<Instant, Long>) codec;
         directReader = streaming.streamParser();
-        directWriter = streaming.streamGenerator();
+        // Experimental writer candidate: measured independently from the codec.
+        // The production codec retains the established boxed Long writer.
+        directWriter = (generator, value) -> {
+            if (value == null) generator.writeNull();
+            else generator.writeLongValue(value.toEpochMilli());
+        };
     }
 
     @Benchmark
@@ -101,7 +107,7 @@ public class InstantEpochMillisBenchmark {
     }
 
     @Benchmark
-    public String writeStreaming() throws IOException {
+    public String writePrimitiveCandidate() throws IOException {
         StringWriter output = new StringWriter();
         try (StreamingGenerator generator = binder.createGenerator(output)) {
             generator.start();
