@@ -147,7 +147,7 @@ class ValidationContextReuseTest {
         assertThrows(IllegalStateException.class,
                 () -> plan.evaluate(Instance.infer(broken),
                         org.sjf4j.path.PathSegment.Root.INSTANCE, ctx));
-        assertTrue(ctx.needsMessage());
+        assertTrue(ctx.needsErrorDetail());
         assertNotNull(ctx.planStack());
         assertTrue(ctx.planStack().isEmpty());
     }
@@ -169,7 +169,7 @@ class ValidationContextReuseTest {
         assertTrue(plan.evaluate(Map.of("x", 1), ctx));
         assertTrue(ctx.planStack().isEmpty());
         assertNull(ctx.reusedLeaf().node());
-        assertTrue(ctx.needsMessage());
+        assertTrue(ctx.needsErrorDetail());
         assertEquals(1, ctx.toResult(false).getErrors().size());
     }
 }
