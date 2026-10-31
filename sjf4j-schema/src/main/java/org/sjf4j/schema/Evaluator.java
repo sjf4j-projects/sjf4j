@@ -905,8 +905,12 @@ public interface Evaluator {
             boolean result = true;
             for (String key : NodeWalker.keySetInObject(node)) {
                 ctx.pushIgnoreError();
-                boolean probed = propertyNamesPlan.evaluate(Instance.infer(key, ctx.reusedLeaf()), ps, ctx);
-                ctx.popIgnoreError();
+                boolean probed;
+                try {
+                    probed = propertyNamesPlan.evaluate(Instance.infer(key, ctx.reusedLeaf()), ps, ctx);
+                } finally {
+                    ctx.popIgnoreError();
+                }
                 if (!probed) {
                     PathSegment instanceKeywordPs = ps == null
                             ? new PathSegment.Name(instance.materializePath(), key)
@@ -1181,10 +1185,14 @@ public interface Evaluator {
             for (int i = 0; it.hasNext(); i++) {
                 Object subActual = it.next();
                 ctx.pushIgnoreError();
-                Instance subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
-                PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
-                boolean result = containsPlan.evaluate(subInstance, cps, ctx);
-                ctx.popIgnoreError();
+                boolean result;
+                try {
+                    Instance subInstance = instance.inferSubByIndex(i, subActual, ctx.reusedLeaf());
+                    PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
+                    result = containsPlan.evaluate(subInstance, cps, ctx);
+                } finally {
+                    ctx.popIgnoreError();
+                }
                 if (result) {
                     instance.markEvaluated(i);
                     matches++;
@@ -1237,8 +1245,12 @@ public interface Evaluator {
             EvaluationBits cousinEvaluated = instance.popEvaluated();
             instance.pushEvaluated();
             ctx.pushIgnoreError();
-            boolean tested = ifPlan.evaluate(instance, ps, ctx);
-            ctx.popIgnoreError();
+            boolean tested;
+            try {
+                tested = ifPlan.evaluate(instance, ps, ctx);
+            } finally {
+                ctx.popIgnoreError();
+            }
             if (tested) {
                 if (thenPlan != null) {
                     result = thenPlan.evaluate(instance, ps, ctx);
@@ -1337,8 +1349,12 @@ public interface Evaluator {
                 SchemaPlan plan = anyOfPlans[i];
                 instance.pushEvaluated();
                 ctx.pushIgnoreError();
-                boolean subResult = plan.evaluate(instance, ps, ctx);
-                ctx.popIgnoreError();
+                boolean subResult;
+                try {
+                    subResult = plan.evaluate(instance, ps, ctx);
+                } finally {
+                    ctx.popIgnoreError();
+                }
                 EvaluationBits childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) {
                     evaluatedArr[i] = childEvaluated;
@@ -1396,8 +1412,12 @@ public interface Evaluator {
                 SchemaPlan plan = oneOfPlans[i];
                 instance.pushEvaluated();
                 ctx.pushIgnoreError();
-                boolean subResult = plan.evaluate(instance, ps, ctx);
-                ctx.popIgnoreError();
+                boolean subResult;
+                try {
+                    subResult = plan.evaluate(instance, ps, ctx);
+                } finally {
+                    ctx.popIgnoreError();
+                }
                 EvaluationBits childEvaluated = instance.popEvaluated();
                 if (subResult && evaluatedArr != null && childEvaluated != null) evaluatedArr[i] = childEvaluated;
                 if (subResult) {
@@ -1445,8 +1465,12 @@ public interface Evaluator {
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             instance.pushEvaluated();
             ctx.pushIgnoreError();
-            boolean result = notPlan.evaluate(instance, ps, ctx);
-            ctx.popIgnoreError();
+            boolean result;
+            try {
+                result = notPlan.evaluate(instance, ps, ctx);
+            } finally {
+                ctx.popIgnoreError();
+            }
             instance.popEvaluated();
 
             if (result) {
