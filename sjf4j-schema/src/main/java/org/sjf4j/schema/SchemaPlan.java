@@ -1,7 +1,6 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.List;
@@ -27,107 +26,83 @@ public final class SchemaPlan {
      * --------------------------------------------------------------
      */
 
-    /** Validates with aggregated messages and non-strict format assertions. */
+    /**
+     * Validates one instance with aggregated messages and non-strict format checks.
+     * <p>
+     * The framework does not write the instance graph. {@code @NodeValue}
+     * instances are validated as raw representations encoded by their configured
+     * value binding; invoked getters and user extensions can have side effects.
+     */
     public ValidationResult validate(Object node) {
         return validate(node, false, false);
     }
 
-    /** Validates with aggregated messages and the selected format behavior. */
+    /**
+     * Validates one instance with aggregated messages.
+     * <p>
+     * {@code strictFormat} controls format assertions; it does not change value
+     * binding or framework input-write behavior.
+     */
     public ValidationResult validate(Object node, boolean strictFormat) {
         return validate(node, false, strictFormat);
     }
 
     /**
-     * Validates an OBNT instance. Null is an explicit value, never a missing
-     * object member. Input nodes are not modified, but custom getters or value
-     * bindings may have side effects.
+     * Validates one instance against this compiled schema plan.
+     * <p>
+     * In fail-fast mode only the latest error is retained; otherwise all
+     * collected messages are available in the returned result. The framework does
+     * not write the input graph, but invoked getters, value bindings, and user
+     * extensions can have side effects. Null is an explicit null instance, not a
+     * missing property; missing-property handling belongs to object keywords such
+     * as {@code required}.
      */
     public ValidationResult validate(Object node, boolean failFast, boolean strictFormat) {
-        if (booleanSchema) return booleanResult();
-        return validate(node, failFast, strictFormat, new ValidationContext());
-    }
-
-    /** Validates using a caller-owned context with default aggregate settings. */
-    public ValidationResult validate(Object node, ValidationContext context) {
-        return validate(node, false, false, context);
-    }
-
-    /**
-     * Validates using a caller-owned context, reusable across sequential calls.
-     * Execution options belong to this call, not to the context. Returned
-     * results retain their own messages; concurrent context use is unsupported.
-     */
-    public ValidationResult validate(Object node, boolean failFast, boolean strictFormat,
-                                     ValidationContext context) {
-        Asserts.notNull(context, "context");
-        if (booleanSchema) return booleanResult();
-        context.reset(failFast, strictFormat, false);
-        try {
-            Instance instance = Instance.infer(node);
-            PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
-            boolean valid = evaluate(instance, ps, context);
-            return context.toResult(valid);
-        } finally {
-            context.clear();
+        if (booleanSchema) {
+            if (booleanValue) {
+                return ValidationResult.SUCCESS;
+            } else {
+                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                        PathSegment.Root.INSTANCE, keywordPs,
+                        schemaUri, "false", "schema 'false' always fails");
+                return new ValidationResult(false, null, msg);
+            }
         }
+
+        Instance instance = Instance.infer(node);
+        ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
+        PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
+        boolean valid = evaluate(instance, ps, ctx);
+        return ctx.toResult(valid);
     }
 
-    /** Returns whether an instance passes fail-fast validation. */
+    /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
         return isValid(node, false);
     }
 
-    /** Returns whether an instance passes fail-fast validation in the selected format mode. */
+    /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
         if (booleanSchema) return booleanValue;
-        return isValid(node, strictFormat, new ValidationContext());
+        Instance instance = Instance.infer(node);
+        ValidationContext ctx = new ValidationContext(true, strictFormat, true);
+        return evaluate(instance, null, ctx);
     }
 
-    /** Fail-fast boolean validation using a caller-owned context. */
-    public boolean isValid(Object node, ValidationContext context) {
-        return isValid(node, false, context);
-    }
-
-    /** Fast fail-first validation, reusing a caller-owned context without diagnostics. */
-    public boolean isValid(Object node, boolean strictFormat, ValidationContext context) {
-        Asserts.notNull(context, "context");
-        if (booleanSchema) return booleanValue;
-        context.reset(true, strictFormat, true);
-        try {
-            return evaluate(Instance.infer(node), null, context);
-        } finally {
-            context.clear();
-        }
-    }
-
-    /** Validates in fail-fast mode and throws on the first error. */
+    /**
+     * Validates in fail-fast mode and throws on the first error.
+     */
     public void requireValid(Object node) {
         requireValid(node, false);
     }
 
-    /** Validates in fail-fast mode with the selected format behavior. */
+    /**
+     * Validates in fail-fast mode with the selected format behavior and throws on
+     * the first error.
+     */
     public void requireValid(Object node, boolean strictFormat) {
         ValidationResult result = validate(node, true, strictFormat);
         if (!result.isValid()) throw new ValidationException(result);
-    }
-
-    /** Validates in fail-fast mode, reusing a caller-owned context. */
-    public void requireValid(Object node, ValidationContext context) {
-        requireValid(node, false, context);
-    }
-
-    /** Validates in fail-fast mode, reusing a caller-owned context. */
-    public void requireValid(Object node, boolean strictFormat, ValidationContext context) {
-        ValidationResult result = validate(node, true, strictFormat, context);
-        if (!result.isValid()) throw new ValidationException(result);
-    }
-
-    private ValidationResult booleanResult() {
-        if (booleanValue) return ValidationResult.SUCCESS;
-        ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                PathSegment.Root.INSTANCE, keywordPs,
-                schemaUri, "false", "schema 'false' always fails");
-        return new ValidationResult(false, null, msg);
     }
 
 
