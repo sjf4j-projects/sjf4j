@@ -113,6 +113,9 @@ final class ObjectCompiler {
         if ((root.containsKey("minProperties") && (minProperties == null || minProperties < 0))
                 || (root.containsKey("maxProperties") && (maxProperties == null || maxProperties < 0)))
             return null;
+        // The runtime null-as-missing projection removes null members before
+        // measuring object size; leave this combination to SchemaPlan.
+        if (nullAsMissing && (minProperties != null || maxProperties != null)) return null;
         Object required = root.getNode("required");
         if (required != null) {
             if (JsonType.of(required) != JsonType.ARRAY) return null;
