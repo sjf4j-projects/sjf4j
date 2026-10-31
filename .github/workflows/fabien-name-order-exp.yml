@@ -1,0 +1,24 @@
+name: Fabien name-order diagnostic
+
+on:
+  push:
+    branches: [exp/fabien-jackson2-name-order-20261031]
+    paths: [.github/workflows/fabien-name-order-exp.yml]
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Report matchers
+        run: |
+          JAR=$(find sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)
+          java -Dsjf4j.fabien.diagnose=true -jar "$JAR"             '.*FabienReadBenchmark.users_jackson2_compiled'             -p seed=12345 -p sizeKb=1 -f 1 -t 1 -wi 0 -i 1 -r 200ms
