@@ -6,6 +6,9 @@ import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
+import org.sjf4j.util.FastLocalTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import org.sjf4j.util.FastLocalDate;
 import org.sjf4j.path.PathSegment;
 
@@ -305,6 +308,52 @@ public final class SimpleJsonParser extends StreamingParser {
     /**
      * Reads scalar as number.
      */
+
+    @Override
+    public LocalTime readLocalTime() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Only canonical, unescaped ISO time strings use the raw buffer.
+            // Escapes, noncanonical inputs and buffer boundaries use JSON decoding.
+            int available = inputLimit - inputPos;
+            if (available >= 7 && inputBuffer[inputPos] == '"') {
+                int length = -1;
+                if (available >= 10 && inputBuffer[inputPos + 9] == '"') {
+                    length = 8;
+                } else if (inputBuffer[inputPos + 6] == '"') {
+                    length = 5;
+                } else if (available >= 12) {
+                    int maxLength = Math.min(18, available - 2);
+                    for (int i = 10; i <= maxLength; i++) {
+                        if (inputBuffer[inputPos + i + 1] == '"') {
+                            length = i;
+                            break;
+                        }
+                    }
+                }
+                if (length > 0) {
+                    try {
+                        LocalTime value = FastLocalTime.parse(inputBuffer, inputPos + 1, length);
+                        inputPos += length + 2;
+                        pos += length + 2;
+                        _checkValueEnd();
+                        return value;
+                    } catch (DateTimeParseException ignored) {
+                        // Fall back to the JSON decoder for invalid or escaped text.
+                    }
+                }
+            }
+            LocalTime value = FastLocalTime.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
 
     @Override
     public Number readNumber() throws IOException {

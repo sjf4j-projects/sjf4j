@@ -8,6 +8,7 @@ import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.FastUuid;
+import org.sjf4j.util.FastLocalTime;
 import org.sjf4j.util.FastLocalDate;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
@@ -18,6 +19,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -245,6 +247,14 @@ public final class Jackson3Parser extends StreamingParser {
      * String / generic number
      * -------------------------------------------------------------- */
 
+    @Override
+    public LocalTime readLocalTime() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
+        return FastLocalTime.parse(parser.getStringCharacters(), parser.getStringOffset(), parser.getStringLength());
+    }
+  
     @Override
     public LocalDate readLocalDate() throws IOException {
         JsonToken token = nextValue();
