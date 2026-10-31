@@ -294,7 +294,7 @@ class Jackson2ParserTest {
             }
         }
 
-        try (Jackson2Parser parser = parser("[\\\"2023-02-29\\\",7]")) {
+        try (Jackson2Parser parser = parser("[\"2023-02-29\",7]")) {
             parser.readArrayStart();
             assertThrows(DateTimeParseException.class, parser::readLocalDate);
             assertThrows(IOException.class, parser::readLocalDate);
