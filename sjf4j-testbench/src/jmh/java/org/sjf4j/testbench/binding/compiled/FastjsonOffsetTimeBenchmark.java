@@ -35,7 +35,7 @@ public class FastjsonOffsetTimeBenchmark {
 
     @Setup
     public void setup() throws IOException {
-        json = ("\\"" + time + "\\"").getBytes(StandardCharsets.UTF_8);
+        json = ("\"" + time + "\"").getBytes(StandardCharsets.UTF_8);
         OffsetTime expected = OffsetTime.parse(time);
         OffsetTime actual = nativeOffsetTime();
         if (!expected.equals(actual)) {
