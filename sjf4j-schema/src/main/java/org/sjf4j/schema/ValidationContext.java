@@ -12,17 +12,16 @@ import java.util.List;
  * Mutable validation state shared across evaluator invocations.
  * <p>
  * Holds message aggregation, fail-fast control, temporary ignore-error scopes,
- * and dynamic-anchor resolution stack for nested schema evaluation. A context
- * can be reused sequentially across SchemaPlan calls; it is not thread-safe
- * and cannot be used by concurrent or nested calls. It records
+ * and dynamic-anchor resolution stack for nested schema evaluation. One context
+ * instance is created per validation call and is not thread-safe. It records
  * validation failures; it does not itself write the supplied instance. Evaluator
  * reads can invoke getters, value bindings, and user extensions with side effects.
  */
 public class ValidationContext {
-    private boolean failFast;
-    private boolean strictFormat;
-    private boolean booleanOnly;
-    private List<ValidationMessage> messages;
+    private final boolean failFast;
+    private final boolean strictFormat;
+    private final boolean booleanOnly;
+    private final List<ValidationMessage> messages;
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
     // dedicated wrappers because they can carry branch-local runtime state.
@@ -32,28 +31,14 @@ public class ValidationContext {
     private int ignoreErrorAdding = 0;
     private Deque<SchemaPlan> planStack;
 
-    /** Creates an execution context that can be reused sequentially. */
-    public ValidationContext() {
-        this.reusedLeaf = Instance.infer(null);
-    }
-
-    /** Prepares one call, including its fail-fast and format behavior. */
-    void reset(boolean failFast, boolean strictFormat, boolean booleanOnly) {
+    ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
-        // Ownership of an earlier list has already passed to ValidationResult.
         this.messages = failFast ? null : new ArrayList<>();
+        this.reusedLeaf = Instance.infer(null);
     }
 
-    /** Releases references after evaluation, including on exceptional exits. */
-    void clear() {
-        reusedLeaf.clear();
-        if (planStack != null) planStack.clear();
-        messages = null;
-        lastMessage = null;
-        ignoreErrorAdding = 0;
-    }
 
     boolean needsMessage() {
         return !booleanOnly && ignoreErrorAdding == 0;
