@@ -40,11 +40,11 @@ class CompiledValidatorApplicatorProcessorTest {
     @Test
     void unknownBranchIsRejectedWhenFallbackDisabled() throws Exception {
         for (String schema : new String[]{
-                "{\"allOf\":[{\"type\":\"integer\",\"multipleOf\":2}]}",
-                "{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"integer\",\"multipleOf\":2}]}",
-                "{\"not\":{\"type\":\"integer\",\"multipleOf\":2}}",
+                "{\"allOf\":[{\"type\":\"integer\",\"unevaluatedItems\":false}]}",
+                "{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"integer\",\"unevaluatedItems\":false}]}",
+                "{\"not\":{\"type\":\"integer\",\"unevaluatedItems\":false}}",
                 "{\"allOf\":[{\"type\":\"integer\"}],\"unevaluatedItems\":false}"
-        }) {
+        }) {  }) {
             NavigatorTestCompiler.Result result = compile(schema, false);
             assertFalse(result.success, schema + "\n" + result.diagnostics());
             assertTrue(result.diagnostics().contains("cannot fully compile"),
