@@ -577,40 +577,85 @@ final class ReadEmitter {
     private void emitArray(JavaWriter out, BindingValue value) {
         emitArrayStart(out);
 
-        String allocation = value.type().toString().replaceFirst("\\[\\]", "[8]");
-        out.line(value.type() + " value = new " + allocation + ";");
-        out.line("int size = 0;");
+        String type = value.type().toString();
+        String elementType = value.elementValue().type().toString();
+        String read = readExpression(value.elementValue(), "parser");
 
-        out.beginBlock("while (!parser.nextIfArrayEnd())");
+        out.beginBlock("if (parser.nextIfArrayEnd())");
+        out.line("return new " + type + "{};");
+        out.endBlock();
+
+        for (int i = 0; i < 3; i++) {
+            out.line(elementType + " item" + i + " = " + read + ";");
+            out.beginBlock("if (parser.nextIfArrayEnd())");
+            out.line("return new " + type + "{" + smallItems(i + 1) + "};");
+            out.endBlock();
+        }
+
+        // Only allocate the growing buffer when a fourth element exists.
+        String allocation = type.replaceFirst("\\[\\]", "[8]");
+        out.line(type + " value = new " + allocation + ";");
+        for (int i = 0; i < 3; i++) {
+            out.line("value[" + i + "] = item" + i + ";");
+        }
+        out.line("int size = 3;");
+
+        out.beginBlock("do");
         out.beginBlock("if (size == value.length)");
         out.line("value = java.util.Arrays.copyOf(value, size << 1);");
         out.endBlock();
-        out.line("value[size++] = " + readExpression(value.elementValue(), "parser") + ";");
-        out.endBlock();
+        out.line("value[size++] = " + read + ";");
+        out.endBlock(" while (!parser.nextIfArrayEnd());");
 
         out.line("return size == value.length ? value : java.util.Arrays.copyOf(value, size);");
     }
 
     private void emitList(JavaWriter out, BindingValue value) {
-        emitArrayStart(out);
-
-        out.line(value.type() + " value = new java.util.ArrayList<>();");
-        out.beginBlock("while (!parser.nextIfArrayEnd())");
-        out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
-
-        out.endBlock();
-        out.line("return value;");
+        emitCollection(out, value, "java.util.ArrayList");
     }
 
     private void emitSet(JavaWriter out, BindingValue value) {
+        emitCollection(out, value, "java.util.LinkedHashSet");
+    }
+
+    private void emitCollection(JavaWriter out, BindingValue value, String implementation) {
         emitArrayStart(out);
 
-        out.line(value.type() + " value = new java.util.LinkedHashSet<>();");
-        out.beginBlock("while (!parser.nextIfArrayEnd())");
-        out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
+        String elementType = value.elementValue().type().toString();
+        String read = readExpression(value.elementValue(), "parser");
 
-        out.endBlock();
+        for (int size = 0; size <= 3; size++) {
+            out.beginBlock("if (parser.nextIfArrayEnd())");
+            out.line(value.type() + " value = new " + implementation + "<>(" + size + ");");
+            for (int i = 0; i < size; i++) {
+                out.line("value.add(item" + i + ");");
+            }
+            out.line("return value;");
+            out.endBlock();
+
+            if (size < 3) {
+                out.line(elementType + " item" + size + " = " + read + ";");
+            }
+        }
+
+        // Preserve the existing default-capacity path for larger containers.
+        out.line(value.type() + " value = new " + implementation + "<>();");
+        for (int i = 0; i < 3; i++) {
+            out.line("value.add(item" + i + ");");
+        }
+        out.beginBlock("do");
+        out.line("value.add(" + read + ");");
+        out.endBlock(" while (!parser.nextIfArrayEnd());");
         out.line("return value;");
+    }
+
+    private static String smallItems(int count) {
+        StringBuilder items = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            if (i > 0) items.append(", ");
+            items.append("item").append(i);
+        }
+        return items.toString();
     }
 
     private void emitMap(JavaWriter out, BindingValue value) {
