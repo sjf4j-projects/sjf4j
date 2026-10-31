@@ -47,3 +47,5 @@ jobs:
         with:
           name: jackson2-localdate-ab
           path: /tmp/fabien-*.json
+
+# Retry after fixing the LocalDate fixture escaping.
