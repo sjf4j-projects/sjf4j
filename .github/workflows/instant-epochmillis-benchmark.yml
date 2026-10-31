@@ -1,0 +1,33 @@
+name: Instant epochMillis streaming JMH
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-core/src/main/java/org/sjf4j/value/ValueCodec.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/InstantEpochMillisBenchmark.java'
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Benchmark boxed vs primitive epochMillis streaming
+        run: |
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.runtime.InstantEpochMillisBenchmark.*' -wi 2 -i 3 -f 2 -w 1s -r 1s -prof gc -rf text -rff instant-epochmillis-results.txt
+          cat instant-epochmillis-results.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instant-epochmillis-jmh-jdk17
+          path: instant-epochmillis-results.txt
