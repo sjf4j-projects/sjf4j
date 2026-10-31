@@ -147,7 +147,7 @@ public class ValidationContext {
             }
             ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
                         instancePs, keywordPs, schemaUri, keyword, message);
-            if (messages != null) messages.add(msg);
+            messages.add(msg);
         }
     }
 
