@@ -47,9 +47,9 @@ class SimpleJsonParserTest {
             }
         }
 
-        assertThrows(IOException.class,
+        assertThrows(BindingException.class,
                 () -> new SimpleJsonParser(new StringReader("\"bad\ntext\"")).readString());
-        assertThrows(IOException.class,
+        assertThrows(BindingException.class,
                 () -> new SimpleJsonParser(new StringReader("\"unterminated")).readString());
     }
 
