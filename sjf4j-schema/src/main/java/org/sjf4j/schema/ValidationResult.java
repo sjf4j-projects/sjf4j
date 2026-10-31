@@ -1,139 +1,135 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.Nodes;
+import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * Result of schema validation.
- * <p>
- * Exposes validation errors and JSON Schema annotations independently.
- * Each output entry carries instance and keyword locations. Aggregated lists
- * are held by reference and may be modified by context reuse or result merging.
+ * Validation outcome with separate assertion errors and schema annotations.
+ *
+ * <p>The two lists are independent. Results built from a reusable
+ * {@link ValidationContext} refer to its live lists until the next explicit
+ * clear; other results may own their lists.
  */
 public class ValidationResult {
     private final boolean valid;
-    private final List<ValidationMessage> messages;
-    private final ValidationMessage lastMessage;
-    private List<ValidationAnnotation> annotations;
+    private final List<Error> errors;
+    private final List<Annotation> annotations;
 
-    /**
-     * Shared successful validation result.
-     */
+    /** Shared success result without errors or annotations. */
     public static final ValidationResult SUCCESS = new ValidationResult(true, null, null);
 
-    /**
-     * Creates validation result with messages.
-     */
-    public ValidationResult(boolean valid, List<ValidationMessage> messages, ValidationMessage lastMessage) {
-        this(valid, messages, lastMessage, null);
-    }
-
-    /**
-     * Creates validation output with separate error messages and annotations.
-     * Lists are retained by reference; a reusable context may continue changing them.
-     */
-    public ValidationResult(boolean valid, List<ValidationMessage> messages,
-                            ValidationMessage lastMessage, List<ValidationAnnotation> annotations) {
+    /** Creates a result containing assertion errors and optional annotations. */
+    public ValidationResult(boolean valid, List<Error> errors, List<Annotation> annotations) {
         this.valid = valid;
-        this.messages = messages;
-        this.lastMessage = lastMessage;
+        this.errors = errors;
         this.annotations = annotations;
     }
 
-    /**
-     * Returns whether validation passed.
-     */
+    /** Creates a result without annotations. */
+    public ValidationResult(boolean valid, List<Error> errors) {
+        this(valid, errors, null);
+    }
+
     public boolean isValid() {
         return valid;
     }
 
-    /**
-     * Returns the number of messages in this result.
-     */
+    /** Number of assertion errors, excluding annotations. */
     public int count() {
-        if (messages != null) return messages.size();
-        if (lastMessage != null) return 1;
-        return 0;
+        return errors == null ? 0 : errors.size();
     }
 
-    /**
-     * Returns all validation messages.
-     * <p>
-     * Returned list can be synthesized from fail-fast last message. Consumers
-     * should prefer message-level instance/keyword path accessors over parsing
-     * the exception text. In aggregation mode the internal list is returned
-     * directly; modifying it changes this result.
-     */
-    public List<ValidationMessage> getMessages() {
-        if (messages == null) {
-            return lastMessage == null ? Collections.emptyList() : Collections.singletonList(lastMessage);
-        }
-        return messages;
+    public List<Error> getErrors() {
+        return errors == null ? Collections.emptyList() : errors;
     }
 
-    /**
-     * Returns JSON Schema annotations with their keyword values and locations.
-     * Annotations are distinct from error/warning messages. A result obtained
-     * from a reusable context shares its annotation list until the caller
-     * chooses to clear it.
-     */
-    public List<ValidationAnnotation> getAnnotations() {
+    public Error getLastError() {
+        return errors == null || errors.isEmpty() ? null : errors.get(errors.size() - 1);
+    }
+
+    public List<Annotation> getAnnotations() {
         return annotations == null ? Collections.emptyList() : annotations;
     }
 
     /**
-     * Returns a new list containing only ERROR-severity messages.
-     */
-    public List<ValidationMessage> getErrors() {
-        return getMessages().stream()
-                .filter(m -> m.getSeverity() == ValidationMessage.Severity.ERROR)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Returns the latest message if present.
-     * <p>
-     * In non fail-fast mode this is the tail of collected messages.
-     */
-    public ValidationMessage getLastMessage() {
-        if (lastMessage == null) {
-            if (messages == null || messages.isEmpty()) {
-                return null;
-            } else {
-                return messages.get(messages.size() - 1);
-            }
-        }
-        return lastMessage;
-    }
-
-    /**
-     * Prepends messages from an earlier validation result.
-     * <p>
-     * This is used by {@link SchemaValidator} when superclass plans are applied
-     * before subclass plans so message order matches validation order. In
-     * fail-fast mode there is no aggregate list to prepend to.
+     * Returns a combined result in parent-to-child order without mutating
+     * either input or the shared SUCCESS singleton.
      */
     public ValidationResult mergePrevious(ValidationResult previous) {
-        if (previous != null) {
-            if (messages != null) messages.addAll(0, previous.getMessages());
-            if (!previous.getAnnotations().isEmpty()) {
-                if (annotations == null) annotations = new ArrayList<>();
-                annotations.addAll(0, previous.getAnnotations());
-            }
+        if (previous == null || (previous.count() == 0 && previous.getAnnotations().isEmpty())) return this;
+        List<Error> combinedErrors = new ArrayList<>(previous.getErrors());
+        combinedErrors.addAll(getErrors());
+        List<Annotation> combinedAnnotations = null;
+        if (!previous.getAnnotations().isEmpty() || !getAnnotations().isEmpty()) {
+            combinedAnnotations = new ArrayList<>(previous.getAnnotations());
+            combinedAnnotations.addAll(getAnnotations());
         }
-        return this;
+        return new ValidationResult(valid && previous.valid, combinedErrors, combinedAnnotations);
     }
 
-    /**
-     * Returns messages as debug string.
-     */
     @Override
     public String toString() {
-        return Nodes.inspect(getMessages());
+        return Nodes.inspect(getErrors());
     }
 
+    /** An assertion failure and its locations in the instance and schema. */
+    public static final class Error {
+        private final String keyword;
+        private final String message;
+        private final PathSegment instancePs;
+        private final PathSegment keywordPs;
+        private final URI schemaUri;
+
+        public Error(String keyword, String message, PathSegment instancePs,
+                     PathSegment keywordPs, URI schemaUri) {
+            this.keyword = keyword;
+            this.message = message;
+            this.instancePs = instancePs;
+            this.keywordPs = keywordPs;
+            this.schemaUri = schemaUri;
+        }
+
+        public String getKeyword() { return keyword; }
+        public String getMessage() { return message; }
+        public PathSegment getInstancePs() { return instancePs; }
+        public PathSegment getKeywordPs() { return keywordPs; }
+        public URI getSchemaUri() { return schemaUri; }
+        public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
+
+        @Override
+        public String toString() {
+            return SchemaUtil.formatValidationError(message, instancePs, keywordPs, schemaUri, keyword);
+        }
+    }
+
+    /** An annotation value and its locations in the instance and schema. */
+    public static final class Annotation {
+        private final String keyword;
+        private final Object value;
+        private final PathSegment instancePs;
+        private final PathSegment keywordPs;
+        private final URI schemaUri;
+
+        public Annotation(String keyword, Object value, PathSegment instancePs,
+                          PathSegment keywordPs, URI schemaUri) {
+            this.keyword = Asserts.notNull(keyword, "keyword");
+            this.value = value;
+            this.instancePs = Asserts.notNull(instancePs, "instancePs");
+            this.keywordPs = Asserts.notNull(keywordPs, "keywordPs");
+            this.schemaUri = schemaUri;
+        }
+
+        public String getKeyword() { return keyword; }
+        public Object getValue() { return value; }
+        public PathSegment getInstancePs() { return instancePs; }
+        public PathSegment getKeywordPs() { return keywordPs; }
+        public URI getSchemaUri() { return schemaUri; }
+        public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
+    }
 }
