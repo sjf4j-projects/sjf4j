@@ -139,18 +139,18 @@ class CompiledBinderArrayTest {
 
                 assertEquals(new java.util.LinkedHashSet<>(java.util.Arrays.asList("a", null, "b")),
                         binderType.getMethod("unique", String.class).invoke(
-                                binder, "[\\"a\\",\\"a\\",null,\\"b\\",null]"), backend);
+                                binder, "[\"a\",\"a\",null,\"b\",null]"), backend);
                 assertEquals(java.util.Arrays.asList("a", null, "b"),
                         binderType.getMethod("tags", String.class).invoke(
-                                binder, "[\\"a\\",null,\\"b\\"]"), backend);
+                                binder, "[\"a\",null,\"b\"]"), backend);
                 assertArrayEquals(new String[]{null, "b", null},
                         (String[]) binderType.getMethod("names", String.class).invoke(
-                                binder, "[null,\\"b\\",null]"), backend);
+                                binder, "[null,\"b\",null]"), backend);
                 assertNull(binderType.getMethod("unique", String.class).invoke(binder, "null"), backend);
                 assertNull(binderType.getMethod("phones", String.class).invoke(binder, "null"), backend);
 
                 String[][] matrix = (String[][]) binderType.getMethod("matrix", String.class)
-                        .invoke(binder, "[[],[\\"a\\"],null,[\\"b\\",\\"c\\"]]");
+                        .invoke(binder, "[[],[\"a\"],null,[\"b\",\"c\"]]");
                 assertEquals(4, matrix.length, backend);
                 assertArrayEquals(new String[0], matrix[0], backend);
                 assertArrayEquals(new String[]{"a"}, matrix[1], backend);
@@ -161,7 +161,7 @@ class CompiledBinderArrayTest {
                     StringBuilder clientsJson = new StringBuilder("[");
                     for (int i = 0; i < length; i++) {
                         if (i > 0) clientsJson.append(',');
-                        clientsJson.append("{\\"name\\":\\"c").append(i).append("\\"}");
+                        clientsJson.append("{\"name\":\"c").append(i).append("\"}");
                     }
                     clientsJson.append(']');
                     Object[] parsed = (Object[]) binderType.getMethod("clients", String.class)
