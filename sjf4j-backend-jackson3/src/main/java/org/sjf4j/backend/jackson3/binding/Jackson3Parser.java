@@ -460,12 +460,8 @@ public final class Jackson3Parser extends StreamingParser {
 
     @Override
     public char readCharValue() throws IOException {
-        JsonToken token = nextValue();
-        if (token != JsonToken.VALUE_STRING) {
-            if (token == JsonToken.VALUE_NULL) {
-                throw new BindingException("cannot read null as char");
-            }
-            throw expected("string or null", token);
+        if (nextValue() != JsonToken.VALUE_STRING) {
+            throw new BindingException("expected string for char");
         }
         return currentChar();
     }
