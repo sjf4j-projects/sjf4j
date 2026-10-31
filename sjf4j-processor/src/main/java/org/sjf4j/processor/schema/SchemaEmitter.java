@@ -115,6 +115,9 @@ final class SchemaEmitter {
         switch (check.kind) {
             case PASS:
                 return;
+            case TYPE:
+                emitType(lines, (SchemaCheck.TypeCheck) check, value, expression);
+                return;
             case FALLBACK:
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
                         ((SchemaCheck.Fallback) check).uri, planName);
@@ -270,6 +273,44 @@ final class SchemaEmitter {
             out.endBlock();
         });
         return helper + "(" + expression + ", " + strictFormat + ")";
+    }
+
+    /** Avoid runtime shape detection when the Java type already fixes the JSON kind. */
+    private void emitType(List<String> lines, SchemaCheck.TypeCheck check,
+                          SchemaValue value, String expression) {
+        StringBuilder matches = new StringBuilder();
+        for (String type : check.types) {
+            String branch;
+            if ("null".equals(type)) {
+                branch = value.nullable ? expression + " == null" : "false";
+                if (value.shape == SchemaValue.Shape.DYNAMIC || value.shape == SchemaValue.Shape.OTHER) {
+                    branch += " || (" + expression + " != null && org.sjf4j.JsonType.rawOf("
+                            + expression + ".getClass()) == org.sjf4j.JsonType.NULL)";
+                }
+            } else {
+                String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(java.util.Locale.ROOT);
+                String known = value.shape == SchemaValue.Shape.STRING ? "STRING"
+                        : value.shape == SchemaValue.Shape.NUMBER ? "NUMBER"
+                        : value.shape == SchemaValue.Shape.BOOLEAN ? "BOOLEAN"
+                        : value.isArrayLike() ? "ARRAY" : null;
+                String shape;
+                if (known != null) {
+                    shape = known.equals(name) ? "true" : "false";
+                } else {
+                    shape = "org.sjf4j.JsonType.rawOf(" + expression
+                            + ".getClass()) == org.sjf4j.JsonType." + name;
+                }
+                if ("integer".equals(type) && !"false".equals(shape)) {
+                    shape = "(" + shape + " && org.sjf4j.util.Numbers.isSemanticInteger("
+                            + (value.shape == SchemaValue.Shape.NUMBER ? expression
+                               : "org.sjf4j.Nodes.toNumber(" + expression + ")") + "))";
+                }
+                branch = value.nullable ? "(" + expression + " != null && " + shape + ")" : shape;
+            }
+            if (matches.length() > 0) matches.append(" || ");
+            matches.append("(").append(branch).append(")");
+        }
+        lines.add("if (!(" + matches + ")) return false;");
     }
 
     private void emitLiteral(List<String> lines, SchemaCheck.LiteralCheck check,

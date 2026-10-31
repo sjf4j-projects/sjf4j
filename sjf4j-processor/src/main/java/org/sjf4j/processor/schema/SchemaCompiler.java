@@ -75,7 +75,14 @@ final class SchemaCompiler {
         // Format is an assertion under the format-assertion vocabulary, even
         // when strictFormat=false. Only optimize known annotation-default dialects.
         if (schema.containsKey("format") && !canCompileFormat(snapshot)) return null;
+        Object typeKeyword = schema.getNode("type");
+        if (typeKeyword != null && JsonType.of(typeKeyword) == JsonType.ARRAY) {
+            return compileUnionType(schema, value);
+        }
         String kind = schema.getString("type");
+        if ("boolean".equals(kind) || "null".equals(kind)) {
+            return compileUnionType(schema, value);
+        }
         if (kind == null) {
             if (schema.containsKey("properties") || schema.containsKey("required")
                     || schema.containsKey("additionalProperties")) {
@@ -107,6 +114,44 @@ final class SchemaCompiler {
                     nullAsMissing, depth);
         }
         return null;
+    }
+
+    /** Single boolean/null types and type unions with optional scalar literals. */
+    private SchemaCheck compileUnionType(JsonObject schema, SchemaValue value) {
+        for (String key : schema.keySet()) {
+            if (!key.equals("type") && !key.equals("const") && !key.equals("enum")
+                    && !isAnnotation(key)) return null;
+        }
+        Object raw = schema.getNode("type");
+        List<String> types = new ArrayList<String>();
+        if (raw instanceof String) {
+            types.add((String) raw);
+        } else if (JsonType.of(raw) == JsonType.ARRAY) {
+            for (int i = 0; i < Nodes.sizeInArray(raw); i++) {
+                Object item = Nodes.getInArray(raw, i);
+                if (!(item instanceof String)) return null;
+                types.add((String) item);
+            }
+        } else return null;
+        if (types.isEmpty()) return null;
+        for (String type : types) {
+            try {
+                JsonType.ofSchema(type);
+            } catch (RuntimeException invalidType) {
+                return null;
+            }
+        }
+        SchemaCheck check = new SchemaCheck.TypeCheck(types);
+        if (!schema.containsKey("const") && !schema.containsKey("enum")) return check;
+        JsonObject literals = new JsonObject();
+        if (schema.containsKey("const")) literals.put("const", schema.getNode("const"));
+        if (schema.containsKey("enum")) literals.put("enum", schema.getNode("enum"));
+        SchemaCheck literal = scalars.compileLiteralsOnly(literals, value);
+        if (literal == null) return null;
+        List<SchemaCheck> all = new ArrayList<SchemaCheck>();
+        all.add(check);
+        all.add(literal);
+        return new SchemaCheck.AllCheck(all);
     }
 
     /**

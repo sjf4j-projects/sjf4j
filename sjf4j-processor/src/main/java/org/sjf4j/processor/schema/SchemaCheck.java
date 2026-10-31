@@ -9,7 +9,7 @@ import java.util.List;
  * fallback field names appear here. Source generation belongs to SchemaEmitter.
  */
 abstract class SchemaCheck {
-    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, IF_THEN_ELSE, LITERAL, ALL, PASS, REJECT, FALLBACK }
+    enum Kind { TYPE, OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, IF_THEN_ELSE, LITERAL, ALL, PASS, REJECT, FALLBACK }
 
     final Kind kind;
 
@@ -91,6 +91,16 @@ abstract class SchemaCheck {
             return condition.hasFallback()
                     || (thenCheck != null && thenCheck.hasFallback())
                     || (elseCheck != null && elseCheck.hasFallback());
+        }
+    }
+
+    /** A JSON Schema single or union type assertion, independent of extra keywords. */
+    static final class TypeCheck extends SchemaCheck {
+        final List<String> types;
+
+        TypeCheck(List<String> types) {
+            super(Kind.TYPE);
+            this.types = Collections.unmodifiableList(new ArrayList<String>(types));
         }
     }
 
