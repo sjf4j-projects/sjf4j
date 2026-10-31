@@ -9,7 +9,7 @@ import java.util.List;
  * fallback field names appear here. Source generation belongs to SchemaEmitter.
  */
 abstract class SchemaCheck {
-    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, LITERAL, ALL, PASS, REJECT, FALLBACK }
+    enum Kind { OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, IF_THEN_ELSE, LITERAL, ALL, PASS, REJECT, FALLBACK }
 
     final Kind kind;
 
@@ -74,6 +74,26 @@ abstract class SchemaCheck {
         }
     }
 
+    /** The if predicate selects then or else; it is not itself an assertion. */
+    static final class ConditionalCheck extends SchemaCheck {
+        final SchemaCheck condition;
+        final SchemaCheck thenCheck;
+        final SchemaCheck elseCheck;
+
+        ConditionalCheck(SchemaCheck condition, SchemaCheck thenCheck, SchemaCheck elseCheck) {
+            super(Kind.IF_THEN_ELSE);
+            this.condition = condition;
+            this.thenCheck = thenCheck;
+            this.elseCheck = elseCheck;
+        }
+
+        @Override boolean hasFallback() {
+            return condition.hasFallback()
+                    || (thenCheck != null && thenCheck.hasFallback())
+                    || (elseCheck != null && elseCheck.hasFallback());
+        }
+    }
+
     static final class Reject extends SchemaCheck {
         Reject() { super(Kind.REJECT); }
     }
@@ -115,17 +135,19 @@ abstract class SchemaCheck {
 
     static final class ObjectCheck extends SchemaCheck {
         final boolean dynamic;
+        final boolean typeRequired;
         final boolean nullAsMissing;
         final boolean additionalPropertiesFalse;
         final List<String> allowedNames;
         final List<Required> required;
         final List<PropertyCheck> properties;
 
-        ObjectCheck(boolean dynamic, boolean nullAsMissing, boolean additionalPropertiesFalse,
-                    List<String> allowedNames, List<Required> required,
-                    List<PropertyCheck> properties) {
+        ObjectCheck(boolean dynamic, boolean typeRequired, boolean nullAsMissing,
+                    boolean additionalPropertiesFalse, List<String> allowedNames,
+                    List<Required> required, List<PropertyCheck> properties) {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
+            this.typeRequired = typeRequired;
             this.nullAsMissing = nullAsMissing;
             this.additionalPropertiesFalse = additionalPropertiesFalse;
             this.allowedNames = Collections.unmodifiableList(new ArrayList<String>(allowedNames));
