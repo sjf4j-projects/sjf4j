@@ -154,7 +154,7 @@ class SchemaPlanTest {
                     "\"unevaluatedProperties\":true}").createPlan();
             Instance instance = Instance.infer(Collections.singletonMap("present", 1));
             ValidationContext ctx = new ValidationContext();
-        ctx.reset(true, false, false);
+            ctx.reset(true, false, false);
 
             assertTrue(plan.evaluate(instance, null, ctx), keyword);
             assertNull(instance.peekEvaluated(), keyword);
