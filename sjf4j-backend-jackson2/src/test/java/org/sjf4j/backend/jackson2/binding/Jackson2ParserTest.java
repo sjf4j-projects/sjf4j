@@ -279,7 +279,7 @@ class Jackson2ParserTest {
         };
         for (boolean utf8 : new boolean[]{false, true}) {
             for (String date : dates) {
-                String json = "[\\\"" + date + "\\",null]";
+                String json = "[\"" + date + "\",null]";
                 try (Jackson2Parser parser = utf8
                         ? new Jackson2Parser(new JsonFactory().createParser(
                                 json.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
