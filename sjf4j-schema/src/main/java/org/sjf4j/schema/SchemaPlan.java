@@ -230,15 +230,31 @@ public final class SchemaPlan {
     }
 
     private static AnnotationSpec[] annotationSpecs(ObjectSchema schema, PathSegment ps,
-                                                    SchemaDialect dialect) {
+                                                    SchemaDialect dialect, Map<String, Boolean> vocabulary) {
         if (schema == null || (dialect == SchemaDialect.DRAFT_07 && schema.getString("$ref") != null))
             return null;
         List<AnnotationSpec> specs = null;
         for (String key : ANNOTATION_KEYWORDS) {
-            if (schema.containsKey(key)) {
-                if (specs == null) specs = new ArrayList<>();
-                specs.add(new AnnotationSpec(key, new PathSegment.Name(ps, key), schema.getNode(key)));
+            if (!schema.containsKey(key) || !dialect.supportsKeyword(key)) continue;
+            if (vocabulary != null) {
+                String[] vocabUris = VocabularyRegistry.getVocabUris(key);
+                boolean allowed = vocabUris == null;
+                if (vocabUris != null) {
+                    for (String uri : vocabUris) {
+                        if (vocabulary.containsKey(uri)) {
+                            allowed = true;
+                            break;
+                        }
+                    }
+                }
+                if ("format".equals(key) &&
+                        vocabulary.containsKey(VocabularyRegistry.DRAFT_2020_12_VOCAB_FORMAT_ASSERTION)) {
+                    allowed = true;
+                }
+                if (!allowed) continue;
             }
+            if (specs == null) specs = new ArrayList<>();
+            specs.add(new AnnotationSpec(key, new PathSegment.Name(ps, key), schema.getNode(key)));
         }
         return specs == null ? null : specs.toArray(new AnnotationSpec[0]);
     }
@@ -263,7 +279,7 @@ public final class SchemaPlan {
         this.schema = schema;
         this.dialect = dialect;
         this.vocabulary = vocabulary;
-        this.annotationSpecs = annotationSpecs(schema, keywordPs, dialect);
+        this.annotationSpecs = annotationSpecs(schema, keywordPs, dialect, vocabulary);
     }
 
     static SchemaPlan of(URI schemaUri, PathSegment keywordPs, BooleanSchema booleanSchema) {
