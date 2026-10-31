@@ -1,6 +1,7 @@
 package org.sjf4j.testbench.binding.runtime;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -16,6 +17,39 @@ import java.time.LocalDate;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LocalDateBackendTest {
+
+    public static class PatternDates {
+        public LocalDate iso;
+
+        @NodeProperty(codecPattern = "dd/MM/yyyy")
+        public LocalDate custom;
+
+        // Explicit patterns override explicitly named ISO codecs.
+        @NodeProperty(codecName = "iso", codecPattern = "yyyy/MM/dd")
+        public LocalDate patternOverridesFormat;
+    }
+
+    @Test
+    void explicitPatternsBypassIsoFastPathForAllBackends() {
+        String json = "{\"iso\":\"2026-10-31\",\"custom\":\"31/10/2026\","
+                + "\"patternOverridesFormat\":\"2026/10/31\"}";
+        String invalidCustom = "{\"custom\":\"2026-10-31\"}";
+        Binder<?, ?>[] backends = {
+                new Jackson2Binder(), new Jackson3Binder(), new SimpleJsonBinder(),
+                new GsonBinder(), new JsonpBinder(), new SnakeBinder(), new Fastjson2Binder()
+        };
+        for (Binder<?, ?> backend : backends) {
+            String name = backend.getClass().getSimpleName();
+            PatternDates dates = (PatternDates) backend.readNode(json, PatternDates.class);
+            assertEquals(LocalDate.of(2026, 10, 31), dates.iso, name);
+            assertEquals(LocalDate.of(2026, 10, 31), dates.custom, name);
+            assertEquals(LocalDate.of(2026, 10, 31), dates.patternOverridesFormat, name);
+            assertThrows(RuntimeException.class,
+                    () -> backend.readNode(invalidCustom, PatternDates.class),
+                    name + ": an explicit custom pattern must not silently accept ISO");
+        }
+    }
+
 
     @Test
     void allBackendsDecodeCanonicalAndExtendedDates() {
