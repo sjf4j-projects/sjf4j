@@ -483,11 +483,8 @@ public final class Jackson3Parser extends StreamingParser {
 
     @Override
     public BigDecimal readBigDecimal() throws IOException {
-        // Preserve the existing Jackson3Parser's numeric conversion semantics:
-        // a floating literal read as Double is converted using BigDecimal.valueOf.
-        // Switching to getDecimalValue() changes scale (e.g. 1.20e-3).
-        Number number = readNumber();
-        return number == null ? null : Numbers.toBigDecimal(number);
+        JsonToken current = nextValue();
+        return current == JsonToken.VALUE_NULL ? null : parser.getDecimalValue();
     }
 
     /* --------------------------------------------------------------
