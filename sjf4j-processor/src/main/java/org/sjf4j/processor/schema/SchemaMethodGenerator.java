@@ -118,7 +118,7 @@ final class SchemaMethodGenerator {
             return;
         }
         List<String> emitted = direct == null ? null
-                : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
+                : new SchemaEmitter(generated, "M" + methodSerial++, nullAsMissing).emitRoot(
                         direct, SchemaValue.of(context, parameterType), value, bound, strictParam);
         if (fallback && emitted == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
