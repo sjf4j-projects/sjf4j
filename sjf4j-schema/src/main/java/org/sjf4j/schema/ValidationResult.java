@@ -2,6 +2,7 @@ package org.sjf4j.schema;
 
 import org.sjf4j.Nodes;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,7 +18,7 @@ public class ValidationResult {
     private final boolean valid;
     private final List<ValidationMessage> messages;
     private final ValidationMessage lastMessage;
-    private final List<ValidationAnnotation> annotations;
+    private List<ValidationAnnotation> annotations;
 
     /**
      * Shared successful validation result.
@@ -117,8 +118,12 @@ public class ValidationResult {
      * fail-fast mode there is no aggregate list to prepend to.
      */
     public ValidationResult mergePrevious(ValidationResult previous) {
-        if (messages != null && previous != null) {
-            messages.addAll(0, previous.getMessages());
+        if (previous != null) {
+            if (messages != null) messages.addAll(0, previous.getMessages());
+            if (!previous.getAnnotations().isEmpty()) {
+                if (annotations == null) annotations = new ArrayList<>();
+                annotations.addAll(0, previous.getAnnotations());
+            }
         }
         return this;
     }
