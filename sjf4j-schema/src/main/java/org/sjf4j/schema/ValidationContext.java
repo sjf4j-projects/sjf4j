@@ -42,11 +42,8 @@ public class ValidationContext {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
-        // Give each result its own list; never copy or mutate an earlier result.
+        // Ownership of an earlier list has already passed to ValidationResult.
         this.messages = failFast ? null : new ArrayList<>();
-        this.lastMessage = null;
-        this.ignoreErrorAdding = 0;
-        if (planStack != null) planStack.clear();
     }
 
     /** Releases references after evaluation, including on exceptional exits. */
