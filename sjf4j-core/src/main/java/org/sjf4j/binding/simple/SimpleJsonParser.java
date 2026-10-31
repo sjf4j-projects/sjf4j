@@ -7,6 +7,8 @@ import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.FastLocalDate;
+import org.sjf4j.util.FastOffsetDateTime;
+import java.time.OffsetDateTime;
 import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
@@ -305,6 +307,42 @@ public final class SimpleJsonParser extends StreamingParser {
     /**
      * Reads scalar as number.
      */
+
+    @Override
+    public OffsetDateTime readOffsetDateTime() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Fast path for a complete, unescaped ISO value in the input buffer.
+            // Escapes, unsupported spellings and split buffers use normal decoding.
+            int available = inputLimit - inputPos;
+            if (available >= 19 && inputBuffer[inputPos] == '"') {
+                int maxLength = Math.min(35, available - 2);
+                for (int length = 17; length <= maxLength; length++) {
+                    if (inputBuffer[inputPos + length + 1] == '"') {
+                        try {
+                            OffsetDateTime value = FastOffsetDateTime.parse(inputBuffer, inputPos + 1, length);
+                            inputPos += length + 2;
+                            pos += length + 2;
+                            _checkValueEnd();
+                            return value;
+                        } catch (java.time.format.DateTimeParseException ignored) {
+                            // Retry through JSON string decoding.
+                        }
+                        break;
+                    }
+                }
+            }
+            OffsetDateTime value = FastOffsetDateTime.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
 
     @Override
     public Number readNumber() throws IOException {

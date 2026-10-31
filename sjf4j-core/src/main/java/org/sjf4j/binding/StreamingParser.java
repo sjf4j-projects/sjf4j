@@ -5,6 +5,7 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.FastUuid;
 import org.sjf4j.util.FastLocalDate;
+import org.sjf4j.util.FastOffsetDateTime;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -537,7 +538,7 @@ public abstract class StreamingParser implements Closeable {
     /** Reads an ISO offset date-time. */
     public OffsetDateTime readOffsetDateTime() throws IOException {
         String value = readString();
-        return value == null ? null : OffsetDateTime.parse(value);
+        return value == null ? null : FastOffsetDateTime.parse(value);
     }
 
     /** Reads an ISO zoned date-time. */
