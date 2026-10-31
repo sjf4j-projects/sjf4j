@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.List;
@@ -69,10 +70,8 @@ public final class SchemaPlan {
             }
         }
 
-        Instance instance = Instance.infer(node);
         ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
-        PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
-        boolean valid = evaluate(instance, ps, ctx);
+        boolean valid = evaluate(node, ctx);
         return ctx.toResult(valid);
     }
 
@@ -84,9 +83,8 @@ public final class SchemaPlan {
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
         if (booleanSchema) return booleanValue;
-        Instance instance = Instance.infer(node);
         ValidationContext ctx = new ValidationContext(true, strictFormat, true);
-        return evaluate(instance, null, ctx);
+        return evaluate(node, ctx);
     }
 
     /**
@@ -111,6 +109,30 @@ public final class SchemaPlan {
      * Evaluate
      * --------------------------------------------------------------
      */
+
+    /**
+     * Validates one value with a caller-owned context. Returns only this call's
+     * validity; diagnostic messages accumulate in the context across calls.
+     * Options are fixed when the context is constructed, and it must not be
+     * accessed concurrently or recursively.
+     */
+    public boolean evaluate(Object node, ValidationContext ctx) {
+        Asserts.notNull(ctx, "ctx");
+        try {
+            if (booleanSchema) {
+                if (!booleanValue) {
+                    ctx.addError(null, PathSegment.Root.INSTANCE, keywordPs,
+                            schemaUri, "false", "schema 'false' always fails");
+                }
+                return booleanValue;
+            }
+            Instance instance = Instance.infer(node);
+            PathSegment ps = ctx.isFailFast() ? null : PathSegment.Root.INSTANCE;
+            return evaluate(instance, ps, ctx);
+        } finally {
+            ctx.reset();
+        }
+    }
 
     /**
      * Executes evaluator pipeline for the current instance branch.
