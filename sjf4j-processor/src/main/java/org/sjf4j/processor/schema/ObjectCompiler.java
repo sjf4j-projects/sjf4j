@@ -65,9 +65,10 @@ final class ObjectCompiler {
     SchemaCheck.ObjectCheck compileNested(TypeMirror type, SchemaResourceResolver.Snapshot snapshot,
                                            JsonObject schema, String schemaUri, boolean nullAsMissing,
                                            int depth) {
-        NodeKind kind = context.types.nodeKind(type);
-        boolean dynamic = kind == NodeKind.OBJECT_MAP ||
-                kind == NodeKind.OBJECT_JSON_OBJECT || kind == NodeKind.OBJECT_JOJO;
+        NodeKind kind = type == null ? NodeKind.COMPILE_TIME_UNKNOWN : context.types.nodeKind(type);
+        boolean dynamic = type == null || "java.lang.Object".equals(type.toString())
+                || kind == NodeKind.OBJECT_MAP || kind == NodeKind.OBJECT_JSON_OBJECT
+                || kind == NodeKind.OBJECT_JOJO;
         if (!dynamic && kind != NodeKind.OBJECT_POJO) return null;
         if (!dynamic) {
             TypeElement owner = context.types.typeElement(type);
@@ -81,9 +82,10 @@ final class ObjectCompiler {
     private SchemaCheck.ObjectCheck compileResolved(TypeMirror type,
                     SchemaResourceResolver.Snapshot snapshot, JsonObject root,
                     String rootUri, boolean nullAsMissing, int depth) {
-        NodeKind nodeKind = context.types.nodeKind(type);
-        boolean dynamic = nodeKind == NodeKind.OBJECT_MAP ||
-                nodeKind == NodeKind.OBJECT_JSON_OBJECT || nodeKind == NodeKind.OBJECT_JOJO;
+        NodeKind nodeKind = type == null ? NodeKind.COMPILE_TIME_UNKNOWN : context.types.nodeKind(type);
+        boolean dynamic = type == null || "java.lang.Object".equals(type.toString())
+                || nodeKind == NodeKind.OBJECT_MAP || nodeKind == NodeKind.OBJECT_JSON_OBJECT
+                || nodeKind == NodeKind.OBJECT_JOJO;
         // The direct POJO path only understands the public structural projection.
         // Non-public annotated members may be visible to runtime reflection and
         // must not silently disappear from additionalProperties/required checks.
@@ -92,11 +94,15 @@ final class ObjectCompiler {
             if (!key.equals("type") && !key.equals("properties") && !key.equals("required")
                     && !key.equals("additionalProperties") && !SchemaCompiler.isAnnotation(key)) return null;
         }
-        if (!"object".equals(root.getString("type"))) return null;
+        boolean typeRequired = root.containsKey("type");
+        if (typeRequired && !"object".equals(root.getString("type"))) return null;
+        if (!typeRequired && !root.containsKey("properties") && !root.containsKey("required")
+                && !root.containsKey("additionalProperties")) return null;
         Object raw = root.getNode("properties");
-        if (JsonType.of(raw) != JsonType.OBJECT) return null;
-        JsonObject propertyMap = Nodes.toJsonObject(raw);
-        Map<String, Property> javaProperties = context.properties.resolve(type);
+        if (raw != null && JsonType.of(raw) != JsonType.OBJECT) return null;
+        JsonObject propertyMap = raw == null ? new JsonObject() : Nodes.toJsonObject(raw);
+        Map<String, Property> javaProperties = dynamic ? java.util.Collections.emptyMap()
+                : context.properties.resolve(type);
 
         Object required = root.getNode("required");
         if (required != null) {
@@ -138,7 +144,8 @@ final class ObjectCompiler {
         }
 
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
-        int directCount = (required != null ? 1 : 0) + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0);
+        int directCount = (typeRequired ? 1 : 0) + (required != null ? 1 : 0)
+                + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0);
         for (String name : propertyMap.keySet()) {
             Property property = dynamic ? null : javaProperties.get(name);
             if (!dynamic && property == null) continue;
@@ -153,7 +160,7 @@ final class ObjectCompiler {
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
         }
         if (directCount == 0) return null;
-        return new SchemaCheck.ObjectCheck(dynamic, nullAsMissing,
+        return new SchemaCheck.ObjectCheck(dynamic, typeRequired, nullAsMissing,
                 Boolean.FALSE.equals(additional), new ArrayList<String>(propertyMap.keySet()),
                 requiredChecks, properties);
     }
