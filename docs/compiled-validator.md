@@ -150,32 +150,32 @@ the schema's declared property set; otherwise the complete root falls back.
 Required keys refer to readable POJO properties: **the value may be null**
 without violating `required`, although its property schema may reject null.
 
-| Keyword / feature | Direct code generation | Runtime SchemaPlan | Creek status |
-| --- | --- | --- | --- |
-| Boolean root schemas (`true`, `false`) | Yes | Yes | Supported |
-| `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys; type-less object assertions supported | Yes | Phase 1 |
-| `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes | Phase 1 |
-| `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes | Phase 1 |
-| `minProperties`, `maxProperties` | Static POJO property count or runtime object-size check; null-as-missing uses runtime fallback | Yes | Direct |
-| `type:string` | Native `String`, `Character`, and enum fields/items | Yes | Phase 1 |
-| `minLength`, `maxLength` | Direct string Unicode code-point length | Yes | Phase 1 |
-| `pattern` | Static precompiled ECMA-compatible regex; Java `Matcher.find()` | Yes | Direct |
-| `enum` | String enums plus scalar JSON literals (string/number/boolean/null), including type-less scalar assertions; object/array literals fall back | Yes | Compiled |
-| `const` | Scalar JSON literals with OBNT numeric equality (e.g. 1 equals 1.0); object/array constants fall back | Yes | Compiled |
-| `type:number`, `type:integer` | Native numeric Java field types | Yes | Phase 1 |
-| `type:boolean`, `type:null`, union `type` arrays | Direct shape predicates (including JSON semantic integer checks); combined scalar const/enum when supported | Yes | Direct |
-| `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct native integral comparisons for 64-bit integer bounds; cached BigDecimal constants otherwise | Yes | Phase 1 |
-| `multipleOf` | Native `%` for integral primitives/wrappers with a positive 64-bit integer divisor; otherwise cached BigDecimal and exact remainder | Yes | Direct |
-| `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes | Phase 1 |
-| `minItems`, `maxItems` | Direct Collection size checks | Yes | Phase 1 |
-| `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes | Phase 1 mixed |
-| `format` | Known typed-string constraints use `FormatValidator` when `strictFormat` is true; assertion vocabularies and non-standard dialects fall back | Yes; assertion vocabulary may enforce format even in non-strict mode | String optimized |
-| `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes | Partial |
-| `oneOf` | General branch counting with statically compiled predicates (overlap allowed); optional optimized subtype dispatch when proven disjoint | Yes | Direct for Creek |
-| `allOf`, `anyOf`, `not` | Direct boolean predicates for fully compiled branches; siblings are conjoined; unsupported/stateful branches fall back as one scope | Yes | Compiled |
-| `if`, `then`, `else` | Static conditional dispatch with constant folding; missing `if` or unused branches ignored | Yes | Compiled |
-| `unevaluatedProperties`, `unevaluatedItems` | No | Yes | Later |
-| Root metadata (`$schema`, `title`, etc.) | Accepted when non-applicative | Yes | Phase 1 |
+| Keyword / feature | Direct code generation | Runtime SchemaPlan |
+| --- | --- | --- |
+| Boolean root schemas (`true`, `false`) | Yes | Yes |
+| `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys; type-less object assertions supported | Yes |
+| `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes |
+| `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes |
+| `minProperties`, `maxProperties` | Static POJO property count or runtime object-size check; null-as-missing uses runtime fallback | Yes |
+| `type:string` | Native `String`, `Character`, and enum fields/items | Yes |
+| `minLength`, `maxLength` | Direct string Unicode code-point length | Yes |
+| `pattern` | Static precompiled ECMA-compatible regex; Java `Matcher.find()` | Yes |
+| `enum` | String enums plus scalar JSON literals (string/number/boolean/null), including type-less scalar assertions; object/array literals fall back | Yes |
+| `const` | Scalar JSON literals with OBNT numeric equality (e.g. 1 equals 1.0); object/array constants fall back | Yes |
+| `type:number`, `type:integer` | Native numeric Java field types | Yes |
+| `type:boolean`, `type:null`, union `type` arrays | Direct shape predicates (including JSON semantic integer checks); combined scalar const/enum when supported | Yes |
+| `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` | Direct native integral comparisons for 64-bit integer bounds; cached BigDecimal constants otherwise | Yes |
+| `multipleOf` | Native `%` for integral primitives/wrappers with a positive 64-bit integer divisor; otherwise cached BigDecimal and exact remainder | Yes |
+| `type:array` | Direct for declared `List`/`Set`/`Collection` | Yes |
+| `minItems`, `maxItems` | Direct Collection size checks | Yes |
+| `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes |
+| `format` | Known typed-string constraints use `FormatValidator` when `strictFormat` is true; assertion vocabularies and non-standard dialects fall back | Yes; assertion vocabulary may enforce format even in non-strict mode |
+| `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes |
+| `oneOf` | General branch counting with statically compiled predicates (overlap allowed); optional optimized subtype dispatch when proven disjoint | Yes |
+| `allOf`, `anyOf`, `not` | Direct boolean predicates for fully compiled branches; siblings are conjoined; unsupported/stateful branches fall back as one scope | Yes |
+| `if`, `then`, `else` | Static conditional dispatch with constant folding; missing `if` or unused branches ignored | Yes |
+| `unevaluatedProperties`, `unevaluatedItems` | No | Yes |
+| Root metadata (`$schema`, `title`, etc.) | Accepted when non-applicative | Yes |
 
 **Conformance boundary:** direct value checks are selected only for known
 native Java value shapes; custom `@NodeValue`/codec types remain on the full
@@ -200,11 +200,10 @@ branch and rejects zero or multiple matches. Branch overlap is legal; no Java
 `@OneOf` annotation or discriminator is required. Direct compilation currently
 requires all branches to be expressible with supported scalar, array, object,
 reference, or nested `oneOf` checks. Unsupported combinations fall back as an
-entire `oneOf` subtree, not a subset of branches. The specialized disjoint
-Java-subtype path remains for Creek and retains its existing runtime fallback
-for unknown subtypes and strict-format behavior. No evaluated tracking is
-generated; any `unevaluated*` keyword at the relevant schema scope retains
-full-scope runtime evaluation.
+entire `oneOf` subtree, not a subset of branches. The specialized disjoint Java-subtype path remains available when its
+preconditions are met. Unknown subtypes and strict-format cases retain runtime
+fallback behavior. No evaluated tracking is generated; any `unevaluated*`
+keyword at the relevant schema scope retains full-scope runtime evaluation.
 
 `allOf`, `anyOf`, and `not` reuse static boolean branch helpers: all branches
 must pass for `allOf`, any one may pass for `anyOf` (including overlaps), and
@@ -271,72 +270,12 @@ javac to inspect emitted source for a single shared fallback plan across
 methods, one shared item subplan, distinct bindings, zero fallback for
 fully compiled methods, and rejection of unsupported mixed trees.
 `CompiledValidatorContractProcessorTest` checks type-specialized code emission
-and the partial Creek fallback boundary. The testbench Creek fixtures compare
-`SchemaPlan` against compiled validation for valid and invalid inputs,
-including known and unknown mapped oneOf classes. `CompiledValidatorOneOfProcessorTest`
-checks direct dispatch and verifies that private annotated fields cannot be
-used for native Java member access.
-The separate `CreekSchemaFailureBenchmark` runs negative and short-circuit
-cases, keeping `CreekSchemaBenchmark` focused on the complete, valid model.
+and fallback boundaries. `CompiledValidatorOneOfProcessorTest` checks
+direct dispatch and verifies that private annotated fields cannot be used
+for native Java member access.
 
 To compile and test:
 
 ```bash
 ./gradlew :sjf4j-processor:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar
 ```
-
-## Creek benchmark
-
-The Draft 2020-12 Creek schema is unchanged at
-`sjf4j-testbench/src/jmh/resources/schema/creek-2020-12.json`.
-The complete valid Creek model contains numeric, enum, string and collection
-constraints, plus eight polymorphic items validated using `oneOf` and local
-`$ref` branches.
-
-The annotation processor now handles the two known final Java subclasses
-directly when it can prove all of the following:
-
-- The JSON Schema branches require the same discriminator and have distinct,
-  single-valued string `enum` constraints.
-- The Java `@OneOf` mapping agrees with the branch values. Its mapped
-  subclasses are public and final; the discriminator is a public final String
-  field initialized by a compile-time constant, carrying its canonical JSON
-  property name through `@NodeProperty`.
-- Every property constraint in the mapped subtype can be compiled. The
-  built-in `UUID` String representation and optional `format:uuid`
-  assertion are handled without a per-item SchemaPlan call.
-
-`@NodeProperty` never changes Java visibility. If the compiler cannot prove
-these conditions, it preserves the full subtree fallback. Unmapped runtime
-subtypes also retain the original `oneOf` SchemaPlan. An optional per-call
-`strictFormat=true` uses the full item plan to preserve format semantics.
-No reusable ValidationContext or thread-local state is introduced.
-
-For the complete Creek model, compare default non-strict validation under
-the same JMH fork/measurement settings:
-
-```bash
-JMH_JAR=$(find sjf4j-testbench/build/libs -name '*jmh*.jar' -print -quit)
-java -cp "$JMH_JAR" org.openjdk.jmh.Main \
-  'org.sjf4j.testbench.schema.CreekSchemaBenchmark\.(compiled_schema_is_valid_pojo|schema_is_valid_pojo|schema_is_valid_map)$' \
-  -f 3 -wi 3 -i 5 -w 300ms -r 300ms -bm avgt -tu us -prof gc
-```
-
-GitHub-hosted Ubuntu, Temurin 17, October 30, 2026; 3 forks × 5
-measurement iterations per method. All entries below come from the same run.
-
-| Complete Creek valid model | Average µs/op | Allocation B/op |
-| --- | ---: | ---: |
-| `compiled_schema_is_valid_pojo` | **0.038 ± 0.001** | ~0 |
-| `schema_is_valid_map` | 2.088 ± 0.047 | 712 |
-| `schema_is_valid_pojo` | 4.097 ± 0.030 | 1,992 |
-
-Run: https://github.com/sjf4j-projects/sjf4j/actions/runs/41091694531
-
-These results include JIT optimization of a fixed, immutable fixture.
-They demonstrate a large benefit to removing per-item SchemaPlan evaluation
-on this exact model, but should not be extrapolated to arbitrary input
-distributions, other JDKs, or machines without additional measurement.
-`CreekSchemaFailureBenchmark` covers invalid and short-circuit cases
-separately. The default format mode is non-strict in both compiled and runtime
-validators.

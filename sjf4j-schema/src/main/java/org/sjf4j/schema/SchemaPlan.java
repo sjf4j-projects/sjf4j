@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.Map;
  * different set of fragment maps. Additional JSON Pointer fragment targets may
  * be compiled lazily on first resolution and cached back into the same resource
  * lookup maps for reuse.
- * Call {@link #validate(Object)} to collect messages, {@link #isValid(Object)}
+ * Call {@link #validate(Object)} to collect validation errors, {@link #isValid(Object)}
  * for a fail-fast boolean, or {@link #requireValid(Object)} to throw on failure.
  */
 public final class SchemaPlan {
@@ -27,7 +28,7 @@ public final class SchemaPlan {
      */
 
     /**
-     * Validates one instance with aggregated messages and non-strict format checks.
+     * Validates one instance with aggregated errors and non-strict format checks.
      * <p>
      * The framework does not write the instance graph. {@code @NodeValue}
      * instances are validated as raw representations encoded by their configured
@@ -38,7 +39,7 @@ public final class SchemaPlan {
     }
 
     /**
-     * Validates one instance with aggregated messages.
+     * Validates one instance with aggregated errors.
      * <p>
      * {@code strictFormat} controls format assertions; it does not change value
      * binding or framework input-write behavior.
@@ -50,8 +51,8 @@ public final class SchemaPlan {
     /**
      * Validates one instance against this compiled schema plan.
      * <p>
-     * In fail-fast mode only the latest error is retained; otherwise all
-     * collected messages are available in the returned result. The framework does
+     * In fail-fast mode only the first error is retained; otherwise all
+     * collected errors are available in the returned result. The framework does
      * not write the input graph, but invoked getters, value bindings, and user
      * extensions can have side effects. Null is an explicit null instance, not a
      * missing property; missing-property handling belongs to object keywords such
@@ -62,17 +63,15 @@ public final class SchemaPlan {
             if (booleanValue) {
                 return ValidationResult.SUCCESS;
             } else {
-                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                        PathSegment.Root.INSTANCE, keywordPs,
-                        schemaUri, "false", "schema 'false' always fails");
-                return new ValidationResult(false, null, msg);
+                ValidationResult.Message error = new ValidationResult.Message(
+                        "false", "schema 'false' always fails", null,
+                        PathSegment.Root.INSTANCE, keywordPs, schemaUri);
+                return new ValidationResult(false, java.util.Collections.singletonList(error));
             }
         }
 
-        Instance instance = Instance.infer(node);
         ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
-        PathSegment ps = failFast ? null : PathSegment.Root.INSTANCE;
-        boolean valid = evaluate(instance, ps, ctx);
+        boolean valid = evaluate(node, ctx);
         return ctx.toResult(valid);
     }
 
@@ -84,9 +83,8 @@ public final class SchemaPlan {
     /** Returns whether the instance passes fail-fast validation with the selected format behavior. */
     public boolean isValid(Object node, boolean strictFormat) {
         if (booleanSchema) return booleanValue;
-        Instance instance = Instance.infer(node);
         ValidationContext ctx = new ValidationContext(true, strictFormat, true);
-        return evaluate(instance, null, ctx);
+        return evaluate(node, ctx);
     }
 
     /**
@@ -113,6 +111,30 @@ public final class SchemaPlan {
      */
 
     /**
+     * Validates one value with a caller-owned context. Returns only this call's
+     * validity; diagnostic errors accumulate in the context across calls.
+     * Options are fixed when the context is constructed, and it must not be
+     * accessed concurrently or recursively.
+     */
+    public boolean evaluate(Object node, ValidationContext ctx) {
+        Asserts.notNull(ctx, "ctx");
+        try {
+            if (booleanSchema) {
+                if (!booleanValue) {
+                    ctx.addError(null, PathSegment.Root.INSTANCE, keywordPs,
+                            schemaUri, "false", "schema 'false' always fails");
+                }
+                return booleanValue;
+            }
+            Instance instance = Instance.infer(node);
+            PathSegment ps = ctx.isFailFast() ? null : PathSegment.Root.INSTANCE;
+            return evaluate(instance, ps, ctx);
+        } finally {
+            ctx.reset();
+        }
+    }
+
+    /**
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
@@ -135,18 +157,21 @@ public final class SchemaPlan {
         // Only resources that declare dynamic anchors participate in runtime
         // dynamicRef rebinding. Other resources do not need to live on the
         // validation scope stack.
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.pushPlan(this);
-        for (Evaluator evaluator : evaluators) {
-            boolean matched = evaluator.evaluate(instance, ps, ctx);
-            if (!matched) {
-                result = false;
-                if (ctx.isFailFast() && !tracksEvaluated) {
-                    if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
-                    return false;
+        boolean hasDynamicAnchors = !byDynamicAnchorPlans.isEmpty();
+        if (hasDynamicAnchors) ctx.pushPlan(this);
+        try {
+            for (Evaluator evaluator : evaluators) {
+                boolean matched = evaluator.evaluate(instance, ps, ctx);
+                if (!matched) {
+                    result = false;
+                    if (ctx.isFailFast() && !tracksEvaluated) {
+                        return false;
+                    }
                 }
             }
+        } finally {
+            if (hasDynamicAnchors) ctx.popPlan();
         }
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
         return result;
     }
 
@@ -171,7 +196,6 @@ public final class SchemaPlan {
     final ObjectSchema schema;
     final SchemaDialect dialect;
     final Map<String, Boolean> vocabulary;
-
     SchemaPlan(URI schemaUri, PathSegment keywordPs, Evaluator[] evaluators,
                boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
                Map<String, SchemaPlan> byAnchorPlans,
