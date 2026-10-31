@@ -98,7 +98,7 @@ public final class ExperimentalTemporalParsers {
                         return null;
                     }
                     fraction = parseFraction(text, fractionStart, fractionEnd,
-                            value < 0);
+                            text.charAt(start) == '-');
                     suffixIndex = fractionEnd;
                     suffix = 'S';
                 } else {
@@ -250,6 +250,7 @@ public final class ExperimentalTemporalParsers {
     }
 
     private static int parseFraction(String text, int start, int end, boolean negative) {
+        if (start == end) return 0;
         int fraction = 0;
         for (int i = start; i < end; i++) {
             fraction = fraction * 10 + text.charAt(i) - '0';
