@@ -1,5 +1,7 @@
 package org.sjf4j.testbench.binding.compiled;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -59,6 +61,11 @@ public class FabienReadBenchmark {
             .registerModule(new BlackbirdModule())
             .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    // Match Jackson2Binder's parser factory settings for the handwritten baseline.
+    @SuppressWarnings("deprecation")
+    private static final JsonFactory HAND_FACTORY = new JsonFactory()
+            .disable(JsonFactory.Feature.CHARSET_DETECTION)
+            .disable(JsonParser.Feature.AUTO_CLOSE_SOURCE);
     private static final Jackson2Binder RUNTIME = new Jackson2Binder();
     private static final FabienCompiled COMPILED = CompiledInstances.create(FabienCompiled.class);
 
@@ -98,6 +105,22 @@ public class FabienReadBenchmark {
         checkClients("blackbird", expectedClients, clients_jackson2_blackbird());
         checkClients("runtime", expectedClients, clients_jackson2_runtime());
         checkClients("compiled", expectedClients, clients_jackson2_compiled());
+        checkClients("handwritten", expectedClients, clients_jackson2_handwritten());
+        checkClients("handwritten jdk UUID", expectedClients, clients_jackson2_handwritten_jdk_uuid());
+        checkClients("handwritten wrapped scalars", expectedClients,
+                clients_jackson2_handwritten_wrapped_scalars());
+        checkClients("handwritten wrapped arrays", expectedClients,
+                clients_jackson2_handwritten_wrapped_arrays());
+        Clients sample = Clients.sample();
+        byte[] sampleJson = NATIVE.writeValueAsBytes(sample);
+        checkClients("handwritten sample", sample,
+                Jackson2HandRead.readClients(HAND_FACTORY, sampleJson));
+        checkClients("handwritten jdk UUID sample", sample,
+                Jackson2HandRead.readClientsWithJdkUuid(HAND_FACTORY, sampleJson));
+        checkClients("handwritten wrapped scalars sample", sample,
+                Jackson2HandRead.readClientsWithWrappedScalars(HAND_FACTORY, sampleJson));
+        checkClients("handwritten wrapped arrays sample", sample,
+                Jackson2HandRead.readClientsWithWrappedArrays(HAND_FACTORY, sampleJson));
     }
 
     private static void checkUsers(String label, Users expected, Users actual) {
@@ -154,6 +177,26 @@ public class FabienReadBenchmark {
     @Benchmark
     public Clients clients_jackson2_compiled() throws IOException {
         return COMPILED.readClients(clientsJson);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_handwritten() throws IOException {
+        return Jackson2HandRead.readClients(HAND_FACTORY, clientsJson);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_handwritten_jdk_uuid() throws IOException {
+        return Jackson2HandRead.readClientsWithJdkUuid(HAND_FACTORY, clientsJson);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_handwritten_wrapped_scalars() throws IOException {
+        return Jackson2HandRead.readClientsWithWrappedScalars(HAND_FACTORY, clientsJson);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_handwritten_wrapped_arrays() throws IOException {
+        return Jackson2HandRead.readClientsWithWrappedArrays(HAND_FACTORY, clientsJson);
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
