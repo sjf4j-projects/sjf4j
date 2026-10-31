@@ -57,6 +57,7 @@ final class ObjectCompiler {
             root = Nodes.toJsonObject(target.value);
             rootUri = target.uri;
         }
+        rootUri = SchemaCompiler.effectiveSchemaUri(rootUri, root);
         return compileResolved(type, snapshot, root, rootUri, 0);
     }
 
