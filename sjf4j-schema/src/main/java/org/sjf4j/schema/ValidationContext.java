@@ -70,6 +70,13 @@ public class ValidationContext {
     }
 
 
+    /** Do not retain the previous input graph through the reusable leaf. */
+    void end() {
+        reusedLeaf.resetForValidation();
+        if (planStack != null) planStack.clear();
+        ignoreErrorAdding = 0;
+    }
+
     boolean needsMessage() {
         return !booleanOnly && ignoreErrorAdding == 0;
     }
