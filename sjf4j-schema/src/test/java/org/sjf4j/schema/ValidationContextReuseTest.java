@@ -2,7 +2,9 @@ package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.AbstractMap;
 import java.util.Collections;
+import java.util.Set;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -104,6 +106,25 @@ class ValidationContextReuseTest {
         assertFalse(alwaysFalse.evaluate(null, strict));
         assertEquals(3, strict.toResult(false).getErrors().size());
         assertEquals("false", strict.toResult(false).getLastMessage().getKeyword());
+    }
+
+    @Test
+    void exceptionsDoNotRetainExecutionState() {
+        SchemaPlan plan = JsonSchema.fromJson(
+                "{\"properties\":{\"x\":{\"type\":\"integer\"}}}").createPlan();
+        ValidationContext ctx = new ValidationContext(false, false, false);
+        Map<String, Object> broken = new AbstractMap<String, Object>() {
+            @Override
+            public Set<Map.Entry<String, Object>> entrySet() {
+                throw new IllegalStateException("bad input");
+            }
+        };
+
+        assertThrows(IllegalStateException.class, () -> plan.evaluate(broken, ctx));
+        assertTrue(ctx.planStack() == null || ctx.planStack().isEmpty());
+        assertNull(ctx.reusedLeaf().node());
+        assertTrue(plan.evaluate(Map.of("x", 1), ctx));
+        assertSame(ValidationResult.SUCCESS, ctx.toResult(true));
     }
 
     @Test
