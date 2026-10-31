@@ -1,4 +1,4 @@
-name: Fabien Read Blackbird Diagnosis
+name: Fabien Read Blackbird Strict Comparison
 on:
   push:
     branches:
@@ -37,25 +37,28 @@ jobs:
                 cp "$file" diagnostics/generated/
               fi
             done
-          find sjf4j-testbench/build/classes/java/jmh -type f -name '*Fabien*' -print             > diagnostics/fabien-classes.txt || true
-      - name: List benchmark cases
-        run: |
-          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
-          test -n "$JAR"
-          java -jar "$JAR" -l | tee diagnostics/benchmark-list.txt
-      - name: Run paired JMH comparison with allocation profiling
+      - name: Run strict and pre-bound reader comparison
         shell: bash
         run: |
           set -o pipefail
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           test -n "$JAR"
-          java -jar "$JAR"             '.*FabienReadBenchmark\.(users|clients)_jackson2_(native|blackbird|runtime|compiled)|.*FabienReadBenchmark\.clients_jackson2_handwritten.*'             -p sizeKb=1 -p seed=12345             -f 3 -t 1 -wi 7 -i 10 -w 500ms -r 500ms             -prof gc -rf json -rff fabien-results.json             2>&1 | tee fabien-jmh.log
+          java -jar "$JAR" \
+            '.*FabienReadBenchmark\.(users|clients)_jackson2_(compiled|blackbird|blackbird_reader|blackbird_reader_strict|native_reader_strict)' \
+            -p sizeKb=1 -p seed=12345 \
+            -f 3 -t 1 -wi 7 -i 10 -w 500ms -r 500ms \
+            -prof gc -rf json -rff fabien-results.json \
+            2>&1 | tee fabien-jmh.log
       - name: Capture CPU stack samples
         shell: bash
         run: |
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           set +e
-          java -jar "$JAR"             '.*FabienReadBenchmark\.(users|clients)_jackson2_(blackbird|compiled)'             -p sizeKb=1 -p seed=12345             -f 1 -t 1 -wi 5 -i 5 -w 300ms -r 300ms             -prof stack > fabien-stack.log 2>&1
+          java -jar "$JAR" \
+            '.*FabienReadBenchmark\.(users|clients)_jackson2_(blackbird_reader|blackbird_reader_strict|compiled)' \
+            -p sizeKb=1 -p seed=12345 \
+            -f 1 -t 1 -wi 5 -i 5 -w 300ms -r 300ms \
+            -prof stack > fabien-stack.log 2>&1
           echo "$?" > diagnostics/stack-profiler-exit-code.txt
           set -e
       - name: Capture JIT inlining decisions
@@ -63,14 +66,20 @@ jobs:
         run: |
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           set +e
-          java -jar "$JAR"             '.*FabienReadBenchmark\.(users|clients)_jackson2_(blackbird|compiled)'             -p sizeKb=1 -p seed=12345             -f 1 -t 1 -wi 4 -i 2 -w 250ms -r 250ms             -jvmArgsAppend '-XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining'             > fabien-inlining.log 2>&1
+          java -jar "$JAR" \
+            '.*FabienReadBenchmark\.(users|clients)_jackson2_(blackbird_reader|blackbird_reader_strict|compiled)' \
+            -p sizeKb=1 -p seed=12345 \
+            -f 1 -t 1 -wi 4 -i 2 -w 250ms -r 250ms \
+            -jvmArgsAppend '-XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining' \
+            > fabien-inlining.log 2>&1
           echo "$?" > diagnostics/inlining-exit-code.txt
-          grep -E 'FabienCompiled|Jackson2Parser|Blackbird|BeanDeserializer|BeanPropertyMap|StringDeserializer|NumberDeserializers|EnumDeserializer|CollectionDeserializer|ObjectArrayDeserializer|FastLocalDate|FastUuid|FastOffsetDateTime'             fabien-inlining.log > fabien-inlining-focus.txt || true
+          grep -E 'FabienCompiled|Jackson2Parser|Blackbird|BeanDeserializer|BeanPropertyMap|StringDeserializer|NumberDeserializers|EnumDeserializer|CollectionDeserializer|ObjectArrayDeserializer' \
+            fabien-inlining.log > fabien-inlining-focus.txt || true
           set -e
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fabien-read-blackbird-diagnosis
+          name: fabien-read-blackbird-strict-jdk25
           path: |
             fabien-results.json
             fabien-jmh.log

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
@@ -61,6 +62,19 @@ public class FabienReadBenchmark {
             .registerModule(new BlackbirdModule())
             .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    // Pre-bound readers remove ObjectMapper's per-call type construction.
+    private static final ObjectReader NATIVE_USERS_READER_STRICT =
+            NATIVE.readerFor(Users.class).with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+    private static final ObjectReader BLACKBIRD_USERS_READER =
+            BLACKBIRD.readerFor(Users.class);
+    private static final ObjectReader BLACKBIRD_USERS_READER_STRICT =
+            BLACKBIRD_USERS_READER.with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+    private static final ObjectReader NATIVE_CLIENTS_READER_STRICT =
+            NATIVE.readerFor(Clients.class).with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
+    private static final ObjectReader BLACKBIRD_CLIENTS_READER =
+            BLACKBIRD.readerFor(Clients.class);
+    private static final ObjectReader BLACKBIRD_CLIENTS_READER_STRICT =
+            BLACKBIRD_CLIENTS_READER.with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     // Match Jackson2Binder's parser factory settings for the handwritten baseline.
     @SuppressWarnings("deprecation")
     private static final JsonFactory HAND_FACTORY = new JsonFactory()
@@ -99,10 +113,16 @@ public class FabienReadBenchmark {
         checkClients("generated/native", clients, expectedClients);
         checkUsers("native", expectedUsers, users_jackson2_native());
         checkUsers("blackbird", expectedUsers, users_jackson2_blackbird());
+        checkUsers("blackbird reader", expectedUsers, users_jackson2_blackbird_reader());
+        checkUsers("blackbird reader strict", expectedUsers, users_jackson2_blackbird_reader_strict());
+        checkUsers("native reader strict", expectedUsers, users_jackson2_native_reader_strict());
         checkUsers("runtime", expectedUsers, users_jackson2_runtime());
         checkUsers("compiled", expectedUsers, users_jackson2_compiled());
         checkClients("native", expectedClients, clients_jackson2_native());
         checkClients("blackbird", expectedClients, clients_jackson2_blackbird());
+        checkClients("blackbird reader", expectedClients, clients_jackson2_blackbird_reader());
+        checkClients("blackbird reader strict", expectedClients, clients_jackson2_blackbird_reader_strict());
+        checkClients("native reader strict", expectedClients, clients_jackson2_native_reader_strict());
         checkClients("runtime", expectedClients, clients_jackson2_runtime());
         checkClients("compiled", expectedClients, clients_jackson2_compiled());
         checkClients("handwritten", expectedClients, clients_jackson2_handwritten());
@@ -150,6 +170,21 @@ public class FabienReadBenchmark {
     }
 
     @Benchmark
+    public Users users_jackson2_blackbird_reader() throws IOException {
+        return BLACKBIRD_USERS_READER.readValue(usersJson);
+    }
+
+    @Benchmark
+    public Users users_jackson2_blackbird_reader_strict() throws IOException {
+        return BLACKBIRD_USERS_READER_STRICT.readValue(usersJson);
+    }
+
+    @Benchmark
+    public Users users_jackson2_native_reader_strict() throws IOException {
+        return NATIVE_USERS_READER_STRICT.readValue(usersJson);
+    }
+
+    @Benchmark
     public Users users_jackson2_runtime() {
         return (Users) RUNTIME.readNode(usersJson, Users.class);
     }
@@ -167,6 +202,21 @@ public class FabienReadBenchmark {
     @Benchmark
     public Clients clients_jackson2_blackbird() throws IOException {
         return BLACKBIRD.readValue(clientsJson, Clients.class);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_blackbird_reader() throws IOException {
+        return BLACKBIRD_CLIENTS_READER.readValue(clientsJson);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_blackbird_reader_strict() throws IOException {
+        return BLACKBIRD_CLIENTS_READER_STRICT.readValue(clientsJson);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_native_reader_strict() throws IOException {
+        return NATIVE_CLIENTS_READER_STRICT.readValue(clientsJson);
     }
 
     @Benchmark
