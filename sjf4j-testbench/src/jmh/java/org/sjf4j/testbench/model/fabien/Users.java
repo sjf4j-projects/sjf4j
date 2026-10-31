@@ -1,5 +1,6 @@
 package org.sjf4j.testbench.model.fabien;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -37,6 +38,49 @@ public class Users {
 
     public void setUsers(List<User> users) {
         this.users = users;
+    }
+
+    public static Users sample() {
+        User first = new User();
+        first.setId("user-001");
+        first.setIndex(1);
+        first.setGuid("b4c1-001");
+        first.setIsActive(true);
+        first.setBalance("$1,234.50");
+        first.setPicture("https://example.test/avatar/1");
+        first.setAge(29);
+        first.setEyeColor("blue");
+        first.setName("Zoë \"Z\" 李");
+        first.setGender("female");
+        first.setCompany("Acme & Co.");
+        first.setEmail("zoe@example.test");
+        first.setPhone("+1-555-0101");
+        first.setAddress("42 Main St\nApt 2");
+        first.setAbout("Hello\\world\tこんにちは");
+        first.setRegistered("2024-02-03T10:20:30Z");
+        first.setLatitude(37.7749);
+        first.setLongitude(-122.4194);
+        first.setTags(Arrays.asList("coffee", "雪", null));
+        first.setFriends(Arrays.asList(
+                Friend.create("friend-1", "Renée"),
+                Friend.create("friend-2", "Sam \"S\"")));
+        first.setGreeting("Hi, Zoë!\n");
+        first.setFavoriteFruit(null);
+
+        User second = new User();
+        second.setId("user-002");
+        second.setIndex(2);
+        second.setIsActive(false);
+        second.setName("Miyuki 美雪");
+        second.setAge(34);
+        second.setEmail(null);
+        second.setTags(Arrays.asList("music", "hiking"));
+        second.setFriends(Arrays.asList(Friend.create("friend-3", "Zoë")));
+        second.setGreeting("Welcome 🌿");
+
+        Users users = new Users();
+        users.setUsers(Arrays.asList(first, second));
+        return users;
     }
 
     public static final class User {

@@ -58,7 +58,7 @@ public class CompiledReadBenchmark {
 
     public static void main(String[] args) throws Exception {
 //        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
-        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*map"});
+        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*jackson2_pojo"});
     }
 
     public static final byte[] JSON_UTF8 = User.JSON_DATA.getBytes(StandardCharsets.UTF_8);
