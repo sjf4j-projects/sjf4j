@@ -24,6 +24,7 @@ public class ValidationContext {
     private final boolean booleanOnly;
     // Created on the first diagnostic, then retained across evaluations.
     private List<ValidationMessage> messages;
+    private List<ValidationAnnotation> annotations;
     // Validation-scoped scratch wrapper reused only for non-converted scalar/null
     // child instances. Container nodes and converted value nodes must allocate
     // dedicated wrappers because they can carry branch-local runtime state.
@@ -65,6 +66,41 @@ public class ValidationContext {
         if (messages != null) messages.clear();
     }
 
+    /** Clears accumulated annotations without affecting validation errors. */
+    public void clearAnnotations() {
+        if (annotations != null) annotations.clear();
+    }
+
+    /** Marks a schema branch's annotation boundary for failure rollback. */
+    int annotationMark() {
+        return annotations == null ? 0 : annotations.size();
+    }
+
+    /** Discards annotations produced by an invalid schema branch. */
+    void rollbackAnnotations(int mark) {
+        if (annotations != null && annotations.size() > mark) {
+            annotations.subList(mark, annotations.size()).clear();
+        }
+    }
+
+    /**
+     * Records an annotation without treating it as a warning or validation error.
+     * The caller must ensure the schema branch ultimately succeeds, otherwise
+     * the enclosing SchemaPlan discards its tentative annotations.
+     */
+    void addAnnotation(Instance instance, PathSegment instancePs,
+                       PathSegment keywordPs, URI schemaUri, String keyword, Object value) {
+        if (booleanOnly) return;
+        if (instancePs == null) instancePs = instance.materializePath();
+        if (annotations == null) annotations = new ArrayList<>();
+        annotations.add(new ValidationAnnotation(keyword, value, instancePs, keywordPs, schemaUri));
+    }
+
+    /** Returns the currently collected annotations (live context-owned list). */
+    public List<ValidationAnnotation> getAnnotations() {
+        return annotations == null ? java.util.Collections.emptyList() : annotations;
+    }
+
     boolean needsMessage() {
         return !booleanOnly && ignoreErrorAdding == 0;
     }
@@ -95,10 +131,11 @@ public class ValidationContext {
      * its diagnostics. Create a fresh context for an independent result.
      */
     public ValidationResult toResult(boolean valid) {
-        if (valid && (messages == null || messages.isEmpty())) {
+        if (valid && (messages == null || messages.isEmpty())
+                && (annotations == null || annotations.isEmpty())) {
             return ValidationResult.SUCCESS;
         }
-        return new ValidationResult(valid, messages, null);
+        return new ValidationResult(valid, messages, null, annotations);
     }
 
     // Ignore
@@ -156,19 +193,5 @@ public class ValidationContext {
         }
     }
 
-    /**
-     * Adds a validation warning message.
-     * <p>
-     * Warnings are collected whenever diagnostics are enabled, regardless of
-     * the fail-fast setting.
-     */
-    void addWarn(PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword, String message) {
-        if (!booleanOnly) {
-            if (messages == null) messages = new ArrayList<>();
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.WARN,
-                    instancePs, keywordPs, schemaUri, keyword, message);
-            messages.add(msg);
-        }
-    }
 
 }
