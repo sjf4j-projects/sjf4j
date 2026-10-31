@@ -97,7 +97,10 @@ class ValidationContextReuseTest {
         assertFalse(email.evaluate("not-an-email", strict));
         assertTrue(email.evaluate("not-an-email", permissive));
         assertEquals(1, strict.toResult(false).getErrors().size());
-        assertSame(ValidationResult.SUCCESS, permissive.toResult(true));
+        // Non-strict format is a successful annotation, not an assertion.
+        assertTrue(permissive.toResult(true).isValid());
+        assertEquals(1, permissive.toResult(true).getAnnotations().size());
+        assertEquals("format", permissive.toResult(true).getAnnotations().get(0).getKeyword());
 
         SchemaPlan alwaysFalse = JsonSchema.fromJson("false").createPlan();
         SchemaPlan alwaysTrue = JsonSchema.fromJson("true").createPlan();
