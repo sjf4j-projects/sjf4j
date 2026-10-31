@@ -16,7 +16,7 @@ import java.util.Map;
  * different set of fragment maps. Additional JSON Pointer fragment targets may
  * be compiled lazily on first resolution and cached back into the same resource
  * lookup maps for reuse.
- * Call {@link #validate(Object)} to collect messages, {@link #isValid(Object)}
+ * Call {@link #validate(Object)} to collect validation errors, {@link #isValid(Object)}
  * for a fail-fast boolean, or {@link #requireValid(Object)} to throw on failure.
  */
 public final class SchemaPlan {
@@ -28,7 +28,7 @@ public final class SchemaPlan {
      */
 
     /**
-     * Validates one instance with aggregated messages and non-strict format checks.
+     * Validates one instance with aggregated errors and non-strict format checks.
      * <p>
      * The framework does not write the instance graph. {@code @NodeValue}
      * instances are validated as raw representations encoded by their configured
@@ -39,7 +39,7 @@ public final class SchemaPlan {
     }
 
     /**
-     * Validates one instance with aggregated messages.
+     * Validates one instance with aggregated errors.
      * <p>
      * {@code strictFormat} controls format assertions; it does not change value
      * binding or framework input-write behavior.
@@ -51,8 +51,8 @@ public final class SchemaPlan {
     /**
      * Validates one instance against this compiled schema plan.
      * <p>
-     * In fail-fast mode only the latest error is retained; otherwise all
-     * collected messages are available in the returned result. The framework does
+     * In fail-fast mode only the first error is retained; otherwise all
+     * collected errors are available in the returned result. The framework does
      * not write the input graph, but invoked getters, value bindings, and user
      * extensions can have side effects. Null is an explicit null instance, not a
      * missing property; missing-property handling belongs to object keywords such
@@ -112,7 +112,7 @@ public final class SchemaPlan {
 
     /**
      * Validates one value with a caller-owned context. Returns only this call's
-     * validity; diagnostic messages accumulate in the context across calls.
+     * validity; diagnostic errors accumulate in the context across calls.
      * Options are fixed when the context is constructed, and it must not be
      * accessed concurrently or recursively.
      */
