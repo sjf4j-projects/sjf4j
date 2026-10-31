@@ -131,6 +131,29 @@ class ValidationContextReuseTest {
     }
 
     @Test
+    void probeAndDynamicScopeRestoreTheirFramesOnThrownException() {
+        SchemaPlan plan = JsonSchema.fromJson(
+                "{\"$dynamicAnchor\":\"active\",\"anyOf\":[{\"required\":[\"x\"]},false]}"
+        ).createPlan();
+        ValidationContext ctx = new ValidationContext(false, false, false);
+        Map<String, Object> broken = new AbstractMap<String, Object>() {
+            @Override
+            public Set<Map.Entry<String, Object>> entrySet() {
+                throw new IllegalStateException("entrySet");
+            }
+        };
+
+        // Calls the internal evaluator deliberately to test that the nested
+        // frames restore themselves, independently of the public reset().
+        assertThrows(IllegalStateException.class,
+                () -> plan.evaluate(Instance.infer(broken),
+                        org.sjf4j.path.PathSegment.Root.INSTANCE, ctx));
+        assertTrue(ctx.needsMessage());
+        assertNotNull(ctx.planStack());
+        assertTrue(ctx.planStack().isEmpty());
+    }
+
+    @Test
     void evaluationReleasesTemporaryStateWithoutClearingDiagnostics() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"$dynamicAnchor\":\"root\",\"required\":[\"x\"]}").createPlan();
