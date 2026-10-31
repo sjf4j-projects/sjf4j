@@ -4,6 +4,7 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.FastUuid;
+import org.sjf4j.util.FastInstant;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -530,7 +531,7 @@ public abstract class StreamingParser implements Closeable {
     /** Reads an ISO-8601 instant; supported backends may decode directly. */
     public Instant readInstant() throws IOException {
         String value = readString();
-        return value == null ? null : Instant.parse(value);
+        return value == null ? null : FastInstant.parse(value);
     }
 
     /** Reads an ISO offset date-time. */

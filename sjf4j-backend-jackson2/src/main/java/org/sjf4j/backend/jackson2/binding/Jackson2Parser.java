@@ -8,6 +8,8 @@ import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.FastUuid;
+import org.sjf4j.util.FastInstant;
+import java.time.Instant;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 
@@ -235,6 +237,14 @@ public final class Jackson2Parser extends StreamingParser {
     /* --------------------------------------------------------------
      * String / generic number
      * -------------------------------------------------------------- */
+
+    @Override
+    public Instant readInstant() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) throw expected("string or null", token);
+        return FastInstant.parse(parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
+    }
 
     @Override
     public UUID readUuid() throws IOException {

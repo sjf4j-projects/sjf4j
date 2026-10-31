@@ -6,6 +6,9 @@ import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
+import org.sjf4j.util.FastInstant;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
@@ -270,6 +273,44 @@ public final class SimpleJsonParser extends StreamingParser {
     /**
      * Reads scalar as number.
      */
+
+    @Override
+    public Instant readInstant() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Decode directly only if a complete unescaped UTC timestamp is
+            // present in the current buffer. Other forms use JSON decoding.
+            int available = inputLimit - inputPos;
+            if (available >= 22 && inputBuffer[inputPos] == '"') {
+                int maxLength = Math.min(30, available - 2);
+                for (int length = 20; length <= maxLength; length++) {
+                    if (inputBuffer[inputPos + length + 1] == '"') {
+                        if (length == 20 || length >= 22) {
+                            try {
+                                Instant value = FastInstant.parse(inputBuffer, inputPos + 1, length);
+                                inputPos += length + 2;
+                                pos += length + 2;
+                                _checkValueEnd();
+                                return value;
+                            } catch (DateTimeParseException ignored) {
+                                // Escapes, offsets and invalid data use JSON decoding.
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            Instant value = FastInstant.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
 
     @Override
     public Number readNumber() throws IOException {

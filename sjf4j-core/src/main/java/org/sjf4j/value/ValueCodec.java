@@ -5,6 +5,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.binding.StreamingGenerator;
 import org.sjf4j.util.FastUuid;
+import org.sjf4j.util.FastInstant;
 
 import java.io.File;
 import java.io.IOException;
@@ -258,7 +259,7 @@ public interface ValueCodec<V, R> {
 
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Instant, String> INSTANT_STR = new StreamingValueCodec<>(Instant.class, String.class,
-            Instant::toString, Instant::parse, StreamingParser::readInstant, StreamingGenerator::writeInstant);
+            Instant::toString, FastInstant::parse, StreamingParser::readInstant, StreamingGenerator::writeInstant);
 
     @NodeValue(format = "epochMillis")
     ValueCodec<Instant, Long> INSTANT_EPOCH_MILLIS = new SimpleValueCodec<>(Instant.class, Long.class,
@@ -293,7 +294,7 @@ public interface ValueCodec<V, R> {
 
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<Date, String> DATE = new StreamingValueCodec<>(Date.class, String.class,
-            v -> v.toInstant().toString(), raw -> Date.from(Instant.parse(raw)),
+            v -> v.toInstant().toString(), raw -> Date.from(FastInstant.parse(raw)),
             parser -> {
                 Instant instant = parser.readInstant();
                 return instant == null ? null : Date.from(instant);
