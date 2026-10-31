@@ -64,6 +64,7 @@ final class SchemaCompiler {
             if (target == null) return null;
             return compileValue(snapshot, target.value, value, target.uri, depth + 1);
         }
+        schemaUri = effectiveSchemaUri(schemaUri, schema);
         if (schema.containsKey("oneOf") || schema.containsKey("allOf")
                 || schema.containsKey("anyOf") || schema.containsKey("not")
                 || schema.containsKey("if") || schema.containsKey("then")
@@ -287,6 +288,23 @@ final class SchemaCompiler {
         return "oneOf".equals(key) || "allOf".equals(key)
                 || "anyOf".equals(key) || "not".equals(key)
                 || "if".equals(key) || "then".equals(key) || "else".equals(key);
+    }
+
+    /**
+     * Applies a nested resource identifier before deriving keyword locations.
+     * A changed $id starts a new schema resource, so its keyword pointer resets
+     * to that resource's root just as it does in SchemaPlanner.
+     */
+    static String effectiveSchemaUri(String schemaUri, JsonObject schema) {
+        Object rawId = schema.getNode("$id");
+        if (!(rawId instanceof String)) return schemaUri;
+        String id = org.sjf4j.schema.SchemaUtil.stripFragment((String) rawId);
+        if (id.isEmpty()) return schemaUri;
+        java.net.URI base = org.sjf4j.schema.SchemaLoader.documentUri(
+                java.net.URI.create(schemaUri));
+        java.net.URI resolved = org.sjf4j.schema.SchemaUtil.resolveUri(
+                base, java.net.URI.create(id));
+        return resolved.equals(base) ? schemaUri : resolved.toString();
     }
 
     /**
