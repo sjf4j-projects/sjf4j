@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.annotation.schema.ValidJsonSchema;
 
 import java.util.List;
 import java.util.Map;
@@ -133,6 +134,24 @@ class ValidationAnnotationTest {
         assertFalse(plan.evaluate("wrong", ctx));
         assertTrue(ctx.getAnnotations().isEmpty());
         assertTrue(ctx.toResult(false).getAnnotations().isEmpty());
+    }
+
+    @ValidJsonSchema("{\"title\":\"Parent\"}")
+    public static class AnnotatedParent {
+    }
+
+    @ValidJsonSchema("{\"description\":\"Child\"}")
+    public static class AnnotatedChild extends AnnotatedParent {
+    }
+
+    @Test
+    void schemaValidatorRetainsSuccessfulAnnotationsAcrossClassHierarchy() {
+        ValidationResult result = new SchemaValidator().validate(new AnnotatedChild());
+        assertTrue(result.isValid());
+        assertEquals(2, result.getAnnotations().size());
+        assertEquals("Parent", result.getAnnotations().get(0).getValue());
+        assertEquals("Child", result.getAnnotations().get(1).getValue());
+        assertTrue(result.getErrors().isEmpty());
     }
 
     @Test
