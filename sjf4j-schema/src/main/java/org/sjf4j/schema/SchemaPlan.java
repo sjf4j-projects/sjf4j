@@ -4,6 +4,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -118,6 +119,7 @@ public final class SchemaPlan {
      */
     public boolean evaluate(Object node, ValidationContext ctx) {
         Asserts.notNull(ctx, "ctx");
+        int annotationMark = ctx.annotationMark();
         try {
             if (booleanSchema) {
                 if (!booleanValue) {
@@ -129,6 +131,9 @@ public final class SchemaPlan {
             Instance instance = Instance.infer(node);
             PathSegment ps = ctx.isFailFast() ? null : PathSegment.Root.INSTANCE;
             return evaluate(instance, ps, ctx);
+        } catch (RuntimeException | Error ex) {
+            ctx.rollbackAnnotations(annotationMark);
+            throw ex;
         } finally {
             ctx.reset();
         }
@@ -147,6 +152,7 @@ public final class SchemaPlan {
             }
         }
 
+        int annotationMark = ctx.annotationMark();
         int len = evaluators.length;
         boolean tracksEvaluated = len > 0 && evaluators[len - 1] instanceof Evaluator.UnevaluatedEvaluator;
         if (tracksEvaluated) {
@@ -164,11 +170,19 @@ public final class SchemaPlan {
                 result = false;
                 if (ctx.isFailFast() && !tracksEvaluated) {
                     if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
+                    ctx.rollbackAnnotations(annotationMark);
                     return false;
                 }
             }
         }
         if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
+        if (!result) {
+            ctx.rollbackAnnotations(annotationMark);
+        } else if (annotationSpecs != null && !ctx.isBooleanOnly()) {
+            for (AnnotationSpec spec : annotationSpecs) {
+                ctx.addAnnotation(instance, ps, spec.keywordPs, schemaUri, spec.keyword, spec.value);
+            }
+        }
         return result;
     }
 
@@ -193,6 +207,41 @@ public final class SchemaPlan {
     final ObjectSchema schema;
     final SchemaDialect dialect;
     final Map<String, Boolean> vocabulary;
+    private final AnnotationSpec[] annotationSpecs;
+
+    // Metadata keywords producing original-value annotations. Additional
+    // keyword families (such as unevaluated and content vocabularies) may have
+    // computed annotation values and are not represented by this fixed list.
+    private static final String[] ANNOTATION_KEYWORDS = {
+            "title", "description", "default", "examples",
+            "deprecated", "readOnly", "writeOnly", "format"
+    };
+
+    private static final class AnnotationSpec {
+        final String keyword;
+        final PathSegment keywordPs;
+        final Object value;
+
+        AnnotationSpec(String keyword, PathSegment keywordPs, Object value) {
+            this.keyword = keyword;
+            this.keywordPs = keywordPs;
+            this.value = value;
+        }
+    }
+
+    private static AnnotationSpec[] annotationSpecs(ObjectSchema schema, PathSegment ps,
+                                                    SchemaDialect dialect) {
+        if (schema == null || (dialect == SchemaDialect.DRAFT_07 && schema.getString("$ref") != null))
+            return null;
+        List<AnnotationSpec> specs = null;
+        for (String key : ANNOTATION_KEYWORDS) {
+            if (schema.containsKey(key)) {
+                if (specs == null) specs = new ArrayList<>();
+                specs.add(new AnnotationSpec(key, new PathSegment.Name(ps, key), schema.getNode(key)));
+            }
+        }
+        return specs == null ? null : specs.toArray(new AnnotationSpec[0]);
+    }
 
     SchemaPlan(URI schemaUri, PathSegment keywordPs, Evaluator[] evaluators,
                boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
@@ -214,6 +263,7 @@ public final class SchemaPlan {
         this.schema = schema;
         this.dialect = dialect;
         this.vocabulary = vocabulary;
+        this.annotationSpecs = annotationSpecs(schema, keywordPs, dialect);
     }
 
     static SchemaPlan of(URI schemaUri, PathSegment keywordPs, BooleanSchema booleanSchema) {
