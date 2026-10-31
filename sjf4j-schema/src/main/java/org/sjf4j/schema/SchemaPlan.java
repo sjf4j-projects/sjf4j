@@ -163,19 +163,22 @@ public final class SchemaPlan {
         // Only resources that declare dynamic anchors participate in runtime
         // dynamicRef rebinding. Other resources do not need to live on the
         // validation scope stack.
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.pushPlan(this);
-        for (Evaluator evaluator : evaluators) {
-            boolean matched = evaluator.evaluate(instance, ps, ctx);
-            if (!matched) {
-                result = false;
-                if (ctx.isFailFast() && !tracksEvaluated) {
-                    if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
-                    ctx.rollbackAnnotations(annotationMark);
-                    return false;
+        boolean hasDynamicAnchors = !byDynamicAnchorPlans.isEmpty();
+        if (hasDynamicAnchors) ctx.pushPlan(this);
+        try {
+            for (Evaluator evaluator : evaluators) {
+                boolean matched = evaluator.evaluate(instance, ps, ctx);
+                if (!matched) {
+                    result = false;
+                    if (ctx.isFailFast() && !tracksEvaluated) {
+                        ctx.rollbackAnnotations(annotationMark);
+                        return false;
+                    }
                 }
             }
+        } finally {
+            if (hasDynamicAnchors) ctx.popPlan();
         }
-        if (!byDynamicAnchorPlans.isEmpty()) ctx.popPlan();
         if (!result) {
             ctx.rollbackAnnotations(annotationMark);
         } else if (annotationSpecs != null && !ctx.isBooleanOnly()) {
