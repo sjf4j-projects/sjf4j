@@ -214,7 +214,8 @@ public final class SchemaPlan {
     // computed annotation values and are not represented by this fixed list.
     private static final String[] ANNOTATION_KEYWORDS = {
             "title", "description", "default", "examples",
-            "deprecated", "readOnly", "writeOnly", "format"
+            "deprecated", "readOnly", "writeOnly", "format",
+            "contentEncoding", "contentMediaType", "contentSchema"
     };
 
     private static final class AnnotationSpec {
