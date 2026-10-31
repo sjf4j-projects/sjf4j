@@ -119,7 +119,8 @@ public interface SchemaLoader {
             if ("classpath".equalsIgnoreCase(scheme)) {
                 String path = uri.getPath();
                 if (path == null || path.isEmpty()) path = uri.getSchemeSpecificPart();
-                if (path.startsWith("/")) path = path.substring(1);
+                // Treat classpath:/name and classpath:///name as the same resource.
+                while (path.startsWith("/")) path = path.substring(1);
                 java.io.InputStream stream = SchemaLoader.class.getClassLoader().getResourceAsStream(path);
                 return stream == null ? null : new InputStreamReader(stream, StandardCharsets.UTF_8);
             }

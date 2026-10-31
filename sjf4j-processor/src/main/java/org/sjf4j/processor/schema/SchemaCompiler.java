@@ -54,7 +54,8 @@ final class SchemaCompiler {
                              String schemaUri, int depth) {
         if (depth > 8) return null;
         if (rawSchema instanceof Boolean) {
-            return Boolean.TRUE.equals(rawSchema) ? new SchemaCheck.Pass() : new SchemaCheck.Reject();
+            return Boolean.TRUE.equals(rawSchema) ? new SchemaCheck.Pass()
+                    : new SchemaCheck.Reject(schemaDiagnostic(schemaUri, "false"));
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
         JsonObject schema = Nodes.toJsonObject(rawSchema);
@@ -63,6 +64,7 @@ final class SchemaCompiler {
             if (target == null) return null;
             return compileValue(snapshot, target.value, value, target.uri, depth + 1);
         }
+        schemaUri = effectiveSchemaUri(schemaUri, schema);
         if (schema.containsKey("oneOf") || schema.containsKey("allOf")
                 || schema.containsKey("anyOf") || schema.containsKey("not")
                 || schema.containsKey("if") || schema.containsKey("then")
@@ -74,11 +76,11 @@ final class SchemaCompiler {
         if (schema.containsKey("format") && !canCompileFormat(snapshot)) return null;
         Object typeKeyword = schema.getNode("type");
         if (typeKeyword != null && JsonType.of(typeKeyword) == JsonType.ARRAY) {
-            return compileUnionType(schema, value);
+            return compileUnionType(schema, value, schemaUri);
         }
         String kind = schema.getString("type");
         if ("boolean".equals(kind) || "null".equals(kind)) {
-            return compileUnionType(schema, value);
+            return compileUnionType(schema, value, schemaUri);
         }
         if (kind == null) {
             if (schema.containsKey("properties") || schema.containsKey("required")
@@ -100,10 +102,10 @@ final class SchemaCompiler {
                 }
                 return objects.compileNested(value.type, snapshot, schema, schemaUri, depth);
             }
-            return scalars.compileLiteralsOnly(schema, value);
+            return scalars.compileLiteralsOnly(schema, value, schemaUri);
         }
         if ("string".equals(kind) || "number".equals(kind) || "integer".equals(kind)) {
-            return scalars.compile(schema, value, kind);
+            return scalars.compile(schema, value, kind, schemaUri);
         }
         if ("array".equals(kind)) {
             return arrays.compile(snapshot, schema, value, schemaUri, depth);
@@ -115,7 +117,7 @@ final class SchemaCompiler {
     }
 
     /** Single boolean/null types and type unions with optional scalar literals. */
-    private SchemaCheck compileUnionType(JsonObject schema, SchemaValue value) {
+    private SchemaCheck compileUnionType(JsonObject schema, SchemaValue value, String schemaUri) {
         for (String key : schema.keySet()) {
             if (!key.equals("type") && !key.equals("const") && !key.equals("enum")
                     && !isAnnotation(key)) return null;
@@ -139,12 +141,12 @@ final class SchemaCompiler {
                 return null;
             }
         }
-        SchemaCheck check = new SchemaCheck.TypeCheck(types);
+        SchemaCheck check = new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
         if (!schema.containsKey("const") && !schema.containsKey("enum")) return check;
         JsonObject literals = new JsonObject();
         if (schema.containsKey("const")) literals.put("const", schema.getNode("const"));
         if (schema.containsKey("enum")) literals.put("enum", schema.getNode("enum"));
-        SchemaCheck literal = scalars.compileLiteralsOnly(literals, value);
+        SchemaCheck literal = scalars.compileLiteralsOnly(literals, value, schemaUri);
         if (literal == null) return null;
         List<SchemaCheck> all = new ArrayList<SchemaCheck>();
         all.add(check);
@@ -251,20 +253,17 @@ final class SchemaCompiler {
                     : SchemaCheck.Kind.ANY_OF;
             if (kind == SchemaCheck.Kind.NOT) {
                 SchemaCheck child = branches.get(0);
-                checks.add(child.kind == SchemaCheck.Kind.PASS ? new SchemaCheck.Reject()
+                checks.add(child.kind == SchemaCheck.Kind.PASS
+                        ? new SchemaCheck.Reject(diagnostic(schemaUri, "not"))
                         : child.kind == SchemaCheck.Kind.REJECT ? new SchemaCheck.Pass()
-                        : new SchemaCheck.ApplicatorCheck(kind, branches));
+                        : new SchemaCheck.ApplicatorCheck(kind, diagnostic(schemaUri, "not"), branches));
             } else if (kind == SchemaCheck.Kind.ALL_OF) {
-                boolean rejects = false;
-                for (SchemaCheck branch : branches) {
-                    if (branch.kind == SchemaCheck.Kind.REJECT) rejects = true;
-                }
-                if (rejects) checks.add(new SchemaCheck.Reject());
-                else {
-                    branches.removeIf(branch -> branch.kind == SchemaCheck.Kind.PASS);
-                    checks.add(branches.isEmpty() ? new SchemaCheck.Pass()
-                            : new SchemaCheck.ApplicatorCheck(kind, branches));
-                }
+                // Keep every assertion, including constant-false branches. The
+                // boolean emitter still short-circuits at runtime, while the
+                // diagnostic emitter must retain all failing allOf branches.
+                branches.removeIf(branch -> branch.kind == SchemaCheck.Kind.PASS);
+                checks.add(branches.isEmpty() ? new SchemaCheck.Pass()
+                        : new SchemaCheck.ApplicatorCheck(kind, diagnostic(schemaUri, keyword), branches));
             } else {
                 boolean passes = false;
                 for (SchemaCheck branch : branches) {
@@ -273,15 +272,13 @@ final class SchemaCompiler {
                 if (passes) checks.add(new SchemaCheck.Pass());
                 else {
                     branches.removeIf(branch -> branch.kind == SchemaCheck.Kind.REJECT);
-                    checks.add(branches.isEmpty() ? new SchemaCheck.Reject()
-                            : new SchemaCheck.ApplicatorCheck(kind, branches));
+                    checks.add(branches.isEmpty()
+                            ? new SchemaCheck.Reject(diagnostic(schemaUri, keyword))
+                            : new SchemaCheck.ApplicatorCheck(kind, diagnostic(schemaUri, keyword), branches));
                 }
             }
         }
         if (checks.isEmpty()) return new SchemaCheck.Pass();
-        for (SchemaCheck check : checks) {
-            if (check.kind == SchemaCheck.Kind.REJECT) return check;
-        }
         checks.removeIf(check -> check.kind == SchemaCheck.Kind.PASS);
         if (checks.isEmpty()) return new SchemaCheck.Pass();
         return checks.size() == 1 ? checks.get(0) : new SchemaCheck.AllCheck(checks);
@@ -291,6 +288,78 @@ final class SchemaCompiler {
         return "oneOf".equals(key) || "allOf".equals(key)
                 || "anyOf".equals(key) || "not".equals(key)
                 || "if".equals(key) || "then".equals(key) || "else".equals(key);
+    }
+
+    /**
+     * Applies a nested resource identifier before deriving keyword locations.
+     * A changed $id starts a new schema resource, so its keyword pointer resets
+     * to that resource's root just as it does in SchemaPlanner.
+     */
+    static String effectiveSchemaUri(String schemaUri, JsonObject schema) {
+        Object rawId = schema.getNode("$id");
+        if (!(rawId instanceof String)) return schemaUri;
+        String id = org.sjf4j.schema.SchemaUtil.stripFragment((String) rawId);
+        if (id.isEmpty()) return schemaUri;
+        java.net.URI base = resourceUri(schemaUri);
+        java.net.URI resolved = org.sjf4j.schema.SchemaUtil.resolveUri(
+                base, java.net.URI.create(id));
+        return resolved.equals(base) ? schemaUri : resolved.toString();
+    }
+
+    /**
+     * Creates source metadata for a JSON Schema keyword at the current schema URI.
+     * The URI may include a JSON Pointer fragment identifying a nested schema.
+     */
+    static SchemaCheck.Diagnostic diagnostic(String schemaUri, String keyword) {
+        return createDiagnostic(schemaUri, keyword, true);
+    }
+
+    /** Creates source metadata for a boolean false schema, which has no keyword token. */
+    static SchemaCheck.Diagnostic schemaDiagnostic(String schemaUri, String keyword) {
+        return createDiagnostic(schemaUri, keyword, false);
+    }
+
+    private static SchemaCheck.Diagnostic createDiagnostic(String schemaUri, String keyword,
+                                                            boolean appendKeyword) {
+        int hash = schemaUri.indexOf('#');
+        String fragment = hash < 0 ? null : schemaUri.substring(hash + 1);
+        String pointer = fragment == null || fragment.isEmpty()
+                ? "" : decodeUriFragment(fragment);
+        if (!pointer.isEmpty() && !pointer.startsWith("/")) return null;
+        if (appendKeyword) {
+            pointer += "/" + keyword.replace("~", "~0").replace("/", "~1");
+        }
+        return new SchemaCheck.Diagnostic(keyword, resourceUri(schemaUri).toString(), pointer);
+    }
+
+    /** Returns the resource part without asking URI to parse a possibly raw JSON Pointer fragment. */
+    private static java.net.URI resourceUri(String schemaUri) {
+        int hash = schemaUri.indexOf('#');
+        return java.net.URI.create(hash < 0 ? schemaUri : schemaUri.substring(0, hash));
+    }
+
+    /** Decodes percent-encoded UTF-8 bytes without treating '+' as a space. */
+    private static String decodeUriFragment(String fragment) {
+        StringBuilder decoded = new StringBuilder(fragment.length());
+        for (int i = 0; i < fragment.length();) {
+            if (fragment.charAt(i) != '%' || i + 2 >= fragment.length()
+                    || Character.digit(fragment.charAt(i + 1), 16) < 0
+                    || Character.digit(fragment.charAt(i + 2), 16) < 0) {
+                decoded.append(fragment.charAt(i++));
+                continue;
+            }
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            while (i + 2 < fragment.length() && fragment.charAt(i) == '%'
+                    && Character.digit(fragment.charAt(i + 1), 16) >= 0
+                    && Character.digit(fragment.charAt(i + 2), 16) >= 0) {
+                int value = Character.digit(fragment.charAt(i + 1), 16) * 16
+                        + Character.digit(fragment.charAt(i + 2), 16);
+                bytes.write(value);
+                i += 3;
+            }
+            decoded.append(new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return decoded.toString();
     }
 
     static String keywordUri(String base, String keyword) {

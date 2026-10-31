@@ -198,7 +198,9 @@ final class SchemaResourceResolver {
             throw new IOException("unsupported compile-time schema URI: " + uri);
         }
         String path = uri.getPath();
-        if (path.startsWith("/")) path = path.substring(1);
+        // classpath:/name and classpath:///name are both absolute classpath
+        // resource references; classpath resources themselves have no leading slash.
+        while (path.startsWith("/")) path = path.substring(1);
         for (StandardLocation location : new StandardLocation[]{
                 StandardLocation.CLASS_PATH, StandardLocation.CLASS_OUTPUT, StandardLocation.SOURCE_PATH}) {
             try {

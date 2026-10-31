@@ -3,6 +3,7 @@ package org.sjf4j.processor;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.processor.code.JavaWriter;
 
+import java.net.URLClassLoader;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -35,6 +36,24 @@ class CompiledValidatorApplicatorProcessorTest {
         assertTrue(generated.contains("return false;"), generated);
         assertFalse(generated.contains(".isValid("), generated);
         assertFalse(generated.contains("SchemaPlan"), generated);
+    }
+
+    @Test
+    void allOfRetainsConstantFalseAndFollowingAssertions() throws Exception {
+        String schema = "{\"allOf\":[false,{\"type\":\"integer\",\"minimum\":1}]}";
+        NavigatorTestCompiler.Result result = compile(schema, false);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        // The assertion after the constant-false branch must remain in the
+        // semantic tree for the diagnostic emitter.
+        assertTrue(generated.contains("_value < 1L"), generated);
+        assertFalse(generated.contains("SchemaPlan"), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> implementation = loader.loadClass("fixture.Validator_Impl");
+            Object validator = implementation.getDeclaredConstructor().newInstance();
+            assertFalse((Boolean) implementation.getMethod("valid", Integer.class)
+                    .invoke(validator, Integer.valueOf(2)));
+        }
     }
 
     @Test

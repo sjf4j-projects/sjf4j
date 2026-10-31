@@ -221,8 +221,14 @@ final class SchemaEmitter {
         if (check.kind == SchemaCheck.Kind.ALL_OF) {
             for (SchemaCheck branch : check.branches) {
                 if (branch.kind == SchemaCheck.Kind.PASS) continue;
-                lines.add("if (!(" + branchPredicate(plan, branch, value, expression, strictFormat)
-                        + ")) return false;");
+                if (branch.kind == SchemaCheck.Kind.REJECT) {
+                    // Keep the return non-constant so following generated checks
+                    // remain reachable to javac; the JIT folds this fail-fast path.
+                    lines.add("if (java.lang.Boolean.TRUE) return false;");
+                } else {
+                    lines.add("if (!(" + branchPredicate(plan, branch, value, expression, strictFormat)
+                            + ")) return false;");
+                }
             }
         } else if (check.kind == SchemaCheck.Kind.NOT) {
             lines.add("if (" + branchPredicate(plan, check.branches.get(0), value,
