@@ -26,10 +26,4 @@ public @interface CompiledValidator {
     /** Whether unsupported checks may be delegated to SchemaPlan at runtime. */
     boolean fallback() default true;
 
-    /**
-     * Treat null-valued object members as absent, including for required and
-     * property-schema evaluation. Array null elements remain present.
-     * This is an opt-in Java object convention, not JSON Schema semantics.
-     */
-    boolean nullAsMissing() default false;
 }

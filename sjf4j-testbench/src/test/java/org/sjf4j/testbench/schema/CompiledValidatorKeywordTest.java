@@ -138,31 +138,6 @@ class CompiledValidatorKeywordTest {
         public Open() { super(); }
     }
 
-    public static final class Bean {
-        private final String required;
-        private final String optional;
-        public Bean() { this("ok", null); }
-        public Bean(String required, String optional) {
-            this.required = required;
-            this.optional = optional;
-        }
-        public String getRequired() { return required; }
-        public String getOptional() { return optional; }
-    }
-
-    @CompiledValidator(fallback = false, nullAsMissing = true)
-    public interface Missing {
-        @ValidJsonSchema(NULLABLE) boolean valid(Bean bean);
-        @ValidJsonSchema(ARRAYS) boolean arrayValues(Values value);
-    }
-
-    @CompiledValidator(fallback = true, nullAsMissing = true)
-    public interface MissingDiagnostics {
-        @ValidJsonSchema(NULLABLE) void require(Bean bean);
-        @ValidJsonSchema(NULLABLE) ValidationResult validate(Bean bean);
-        @ValidJsonSchema(DYNAMIC) boolean map(Map<String, Object> map);
-    }
-
     public static final class PrimitiveModel {
         private final int age;
         private final boolean active;
@@ -175,7 +150,7 @@ class CompiledValidatorKeywordTest {
         public boolean isActive() { return active; }
     }
 
-    @CompiledValidator(fallback = false, nullAsMissing = true)
+    @CompiledValidator(fallback = false)
     public interface PrimitiveRequired {
         @ValidJsonSchema(PRIMITIVE_REQUIRED) boolean valid(PrimitiveModel model);
     }
@@ -285,35 +260,6 @@ class CompiledValidatorKeywordTest {
         assertFalse(v.map(data));
     }
 
-    @Test
-    void optionalNullAsMissingForTypedAndDynamicValues() {
-        Missing direct = CompiledInstances.create(Missing.class);
-        assertTrue(direct.valid(new Bean("ok", null)));
-        assertFalse(direct.valid(new Bean(null, "aa")));
-        assertFalse(direct.valid(new Bean("ok", "x")));
-        assertTrue(direct.valid(new Bean("ok", "abc")));
-        // Null elements belong to arrays and must not be treated as missing.
-        assertFalse(direct.arrayValues(value("aa", BigDecimal.ONE, 1,
-                List.of(Arrays.asList("aa", null)))));
-        assertTrue(direct.arrayValues(value("aa", BigDecimal.ONE, 1,
-                List.of(List.of("aa", "bb")))));
-
-        MissingDiagnostics fallback = CompiledInstances.create(MissingDiagnostics.class);
-        assertDoesNotThrow(() -> fallback.require(new Bean("ok", null)));
-        assertThrows(ValidationException.class,
-                () -> fallback.require(new Bean(null, null)));
-        assertTrue(fallback.validate(new Bean("ok", null)).isValid());
-        assertFalse(fallback.validate(new Bean(null, "aa")).isValid());
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("text", null);
-        assertFalse(fallback.map(data)); // Required null is treated as absent.
-        data.put("text", "ok");
-        data.put("extra", null);
-        assertTrue(fallback.map(data)); // Null extra member is absent.
-        data.put("extra", 3);
-        assertFalse(fallback.map(data));
-    }
     @Test
     void requiredPrimitivePropertiesNeverNeedNullChecks() {
         PrimitiveRequired compiled = CompiledInstances.create(PrimitiveRequired.class);

@@ -30,8 +30,7 @@ final class ObjectCompiler {
     }
 
     SchemaCheck.ObjectCheck compile(TypeMirror type,
-                                           SchemaResourceResolver.Snapshot snapshot,
-                                           boolean nullAsMissing) {
+                                           SchemaResourceResolver.Snapshot snapshot) {
         NodeKind nodeKind = context.types.nodeKind(type);
         boolean dynamic = nodeKind == NodeKind.OBJECT_MAP ||
                 nodeKind == NodeKind.OBJECT_JSON_OBJECT || nodeKind == NodeKind.OBJECT_JOJO;
@@ -58,12 +57,12 @@ final class ObjectCompiler {
             root = Nodes.toJsonObject(target.value);
             rootUri = target.uri;
         }
-        return compileResolved(type, snapshot, root, rootUri, nullAsMissing, 0);
+        return compileResolved(type, snapshot, root, rootUri, 0);
     }
 
     /** Compiles a concrete nested object without changing root schema selection. */
     SchemaCheck.ObjectCheck compileNested(TypeMirror type, SchemaResourceResolver.Snapshot snapshot,
-                                           JsonObject schema, String schemaUri, boolean nullAsMissing,
+                                           JsonObject schema, String schemaUri,
                                            int depth) {
         NodeKind kind = type == null ? NodeKind.COMPILE_TIME_UNKNOWN : context.types.nodeKind(type);
         boolean dynamic = type == null || "java.lang.Object".equals(type.toString())
@@ -76,12 +75,12 @@ final class ObjectCompiler {
                     || !owner.getModifiers().contains(Modifier.FINAL)
                     || owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return null;
         }
-        return compileResolved(type, snapshot, schema, schemaUri, nullAsMissing, depth);
+        return compileResolved(type, snapshot, schema, schemaUri, depth);
     }
 
     private SchemaCheck.ObjectCheck compileResolved(TypeMirror type,
                     SchemaResourceResolver.Snapshot snapshot, JsonObject root,
-                    String rootUri, boolean nullAsMissing, int depth) {
+                    String rootUri, int depth) {
         NodeKind nodeKind = type == null ? NodeKind.COMPILE_TIME_UNKNOWN : context.types.nodeKind(type);
         boolean dynamic = type == null || "java.lang.Object".equals(type.toString())
                 || nodeKind == NodeKind.OBJECT_MAP || nodeKind == NodeKind.OBJECT_JSON_OBJECT
@@ -113,9 +112,6 @@ final class ObjectCompiler {
         if ((root.containsKey("minProperties") && (minProperties == null || minProperties < 0))
                 || (root.containsKey("maxProperties") && (maxProperties == null || maxProperties < 0)))
             return null;
-        // The runtime null-as-missing projection removes null members before
-        // measuring object size; leave this combination to SchemaPlan.
-        if (nullAsMissing && (minProperties != null || maxProperties != null)) return null;
         Object required = root.getNode("required");
         if (required != null) {
             if (JsonType.of(required) != JsonType.ARRAY) return null;
@@ -174,7 +170,7 @@ final class ObjectCompiler {
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
         }
         if (directCount == 0) return null;
-        return new SchemaCheck.ObjectCheck(dynamic, typeRequired, nullAsMissing,
+        return new SchemaCheck.ObjectCheck(dynamic, typeRequired,
                 Boolean.FALSE.equals(additional),
                 minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
                 new ArrayList<String>(propertyMap.keySet()), requiredChecks, properties);
