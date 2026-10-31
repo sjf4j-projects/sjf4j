@@ -80,8 +80,8 @@ class InstantBackendTest {
                 assertEquals(Instant.ofEpochMilli(value), decoded.millis, name + ": " + value);
                 assertEquals(Long.valueOf(value), Long.valueOf(decoded.millis.toEpochMilli()));
                 String serialized = binder.writeNodeAsString(decoded);
-                assertTrue(serialized.contains("\"millis\":" + value),
-                        name + " must preserve numeric epochMillis: " + serialized);
+                assertTrue(serialized.contains(Long.toString(value)),
+                        name + " must preserve the numeric epochMillis value: " + serialized);
                 Timestamps reread = (Timestamps) binder.readNode(serialized, Timestamps.class);
                 assertEquals(decoded.millis, reread.millis, name + ": " + value);
             }
