@@ -98,8 +98,8 @@ class CompiledValidatorApplicatorTest {
         @ValidJsonSchema(REF) boolean refs(Integer input);
     }
 
-    @CompiledValidator(fallback = false, nullAsMissing = true)
-    public interface NullAsMissing {
+    @CompiledValidator(fallback = false)
+    public interface NullMemberApplicator {
         @ValidJsonSchema(NULL_MISSING) boolean notRequired(Map<String, Object> input);
     }
 
@@ -189,12 +189,12 @@ class CompiledValidatorApplicatorTest {
     }
 
     @Test
-    void nullAsMissingAppliesInsideApplicatorBranches() {
-        NullAsMissing compiled = CompiledInstances.create(NullAsMissing.class);
+    void nullMemberPresenceAppliesInsideApplicatorBranches() {
+        NullMemberApplicator compiled = CompiledInstances.create(NullMemberApplicator.class);
         Map<String, Object> data = new LinkedHashMap<>();
         assertTrue(compiled.notRequired(data));
         data.put("x", null);
-        assertTrue(compiled.notRequired(data));
+        assertFalse(compiled.notRequired(data)); // A null-valued member is present.
         data.put("x", 1);
         assertFalse(compiled.notRequired(data));
     }
