@@ -12,10 +12,11 @@ import java.util.List;
  * Mutable validation state shared across evaluator invocations.
  * <p>
  * Holds message aggregation, fail-fast control, temporary ignore-error scopes,
- * and dynamic-anchor resolution stack for nested schema evaluation. One context
- * instance is created per validation call and is not thread-safe. It records
- * validation failures; it does not itself write the supplied instance. Evaluator
- * reads can invoke getters, value bindings, and user extensions with side effects.
+ * and dynamic-anchor resolution stack for nested schema evaluation. Configuration
+ * is fixed at construction; diagnostics accumulate across sequential calls to
+ * {@link SchemaPlan#evaluate(Object, ValidationContext)}. It is not thread-safe
+ * or reentrant. Evaluator reads can invoke getters, value bindings, and user
+ * extensions with side effects.
  */
 public class ValidationContext {
     private final boolean failFast;
@@ -27,21 +28,47 @@ public class ValidationContext {
     // dedicated wrappers because they can carry branch-local runtime state.
     private final Instance reusedLeaf;
 
-    private ValidationMessage lastMessage;
     private int ignoreErrorAdding = 0;
     private Deque<SchemaPlan> planStack;
 
-    ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
+    /**
+     * Creates a reusable context with immutable execution options.
+     *
+     * @param failFast stop each evaluation after its first failure
+     * @param strictFormat enforce format assertions
+     * @param booleanOnly omit diagnostic messages and related work
+     */
+    public ValidationContext(boolean failFast, boolean strictFormat, boolean booleanOnly) {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
-        this.messages = failFast ? null : new ArrayList<>();
+        this.messages = booleanOnly ? null : new ArrayList<>();
         this.reusedLeaf = Instance.infer(null);
     }
 
 
+    /**
+     * Releases execution-scoped references after each evaluation. Diagnostics
+     * deliberately survive until the caller clears them.
+     */
+    void reset() {
+        ignoreErrorAdding = 0;
+        if (planStack != null) planStack.clear();
+        reusedLeaf.clear();
+    }
+
+    /** Removes accumulated diagnostics before starting another batch. */
+    public void clearMessages() {
+        if (messages != null) messages.clear();
+    }
+
     boolean needsMessage() {
         return !booleanOnly && ignoreErrorAdding == 0;
+    }
+
+    /** Returns whether this context skips diagnostic collection entirely. */
+    public boolean isBooleanOnly() {
+        return booleanOnly;
     }
 
     /**
@@ -59,13 +86,16 @@ public class ValidationContext {
     }
 
     /**
-     * Builds a result snapshot from current context state.
+     * Builds a result for the entire evaluated batch. Pass the conjunction of
+     * each evaluate() return value as {@code valid}. The returned result shares
+     * this context's message list; later evaluations and clearMessages() affect
+     * its diagnostics. Create a fresh context for an independent result.
      */
     public ValidationResult toResult(boolean valid) {
-        if (valid && (messages == null || messages.isEmpty()) && lastMessage == null) {
+        if (valid && (messages == null || messages.isEmpty())) {
             return ValidationResult.SUCCESS;
         }
-        return new ValidationResult(valid, messages, lastMessage);
+        return new ValidationResult(valid, messages, null);
     }
 
     // Ignore
@@ -115,13 +145,9 @@ public class ValidationContext {
             if (instancePs == null && instance != null) {
                 instancePs = instance.materializePath();
             }
-                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
                         instancePs, keywordPs, schemaUri, keyword, message);
-            if (messages != null) {
-                messages.add(msg);
-            } else {
-                lastMessage = msg;
-            }
+            if (messages != null) messages.add(msg);
         }
     }
 
