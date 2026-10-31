@@ -40,7 +40,7 @@ final class SchemaMethodGenerator {
 
     /** Analyzes and generates one validator method, sharing plans across the interface. */
     void generate(ResolvedMethod resolved, GeneratedClass generated,
-                  boolean allowFallback, boolean nullAsMissing) {
+                  boolean allowFallback) {
         ExecutableElement method = resolved.declaration();
         ExecutableType signature = resolved.type();
 
@@ -101,8 +101,8 @@ final class SchemaMethodGenerator {
             bound = plans.get(0);
             booleanLiteral = compileBoolean(bound.snapshot);
             if (booleanLiteral == null) {
-                SchemaCompiler compiler = new SchemaCompiler(context, nullAsMissing);
-                direct = compiler.compileObject(parameterType, bound.snapshot, nullAsMissing);
+                SchemaCompiler compiler = new SchemaCompiler(context);
+                direct = compiler.compileObject(parameterType, bound.snapshot);
                 if (direct == null) direct = compiler.compileRoot(parameterType, bound.snapshot);
                 if (direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
                     booleanLiteral = "false";
@@ -118,7 +118,7 @@ final class SchemaMethodGenerator {
             return;
         }
         List<String> emitted = direct == null ? null
-                : new SchemaEmitter(generated, "M" + methodSerial++, nullAsMissing).emitRoot(
+                : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
                         direct, SchemaValue.of(context, parameterType), value, bound, strictParam);
         if (fallback && emitted == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
@@ -140,15 +140,15 @@ final class SchemaMethodGenerator {
                 out.line("return true;");
             } else if (isBoolean) {
                 for (SchemaFallbackEmitter.Plan plan : plans) {
-                    out.line("if (!" + plan.rootReference() + ".isValid(" + runtimeInput(value, nullAsMissing) + ", " + strictParam + ")) return false;");
+                    out.line("if (!" + plan.rootReference() + ".isValid(" + value + ", " + strictParam + ")) return false;");
                 }
                 out.line("return true;");
             } else if (isVoid) {
                 for (SchemaFallbackEmitter.Plan plan : plans) {
-                    out.line(plan.rootReference() + ".requireValid(" + runtimeInput(value, nullAsMissing) + ", " + strictParam + ");");
+                    out.line(plan.rootReference() + ".requireValid(" + value + ", " + strictParam + ");");
                 }
             } else if (plans.size() == 1) {
-                out.line("return " + plans.get(0).rootReference() + ".validate(" + runtimeInput(value, nullAsMissing) + ", false, " + strictParam + ");");
+                out.line("return " + plans.get(0).rootReference() + ".validate(" + value + ", false, " + strictParam + ");");
             } else {
                 // All annotated schemas participate; report all failures in
                 // parent-to-child order instead of stopping at the first failure.
@@ -156,7 +156,7 @@ final class SchemaMethodGenerator {
                 out.line("boolean valid = true;");
                 out.line("org.sjf4j.schema.ValidationResult result;");
                 for (SchemaFallbackEmitter.Plan plan : plans) {
-                    out.line("result = " + plan.rootReference() + ".validate(" + runtimeInput(value, nullAsMissing) + ", false, " + strictParam + ");");
+                    out.line("result = " + plan.rootReference() + ".validate(" + value + ", false, " + strictParam + ");");
                     out.line("if (!result.isValid()) valid = false;");
                     out.line("messages.addAll(result.getMessages());");
                 }
@@ -166,12 +166,6 @@ final class SchemaMethodGenerator {
             }
             out.endBlock();
         });
-    }
-
-    private static String runtimeInput(String value, boolean nullAsMissing) {
-        return nullAsMissing
-                ? "org.sjf4j.schema.SchemaValidationInput.omitNullMembers(" + value + ")"
-                : value;
     }
 
     private List<Binding> resolveBindings(ExecutableElement method, TypeMirror parameterType) {
