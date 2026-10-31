@@ -152,17 +152,16 @@ final class SchemaMethodGenerator {
             } else {
                 // All annotated schemas participate; report all failures in
                 // parent-to-child order instead of stopping at the first failure.
-                out.line("java.util.List<org.sjf4j.schema.ValidationMessage> messages = new java.util.ArrayList<>();");
+                out.line("java.util.List<org.sjf4j.schema.ValidationResult.Error> errors = new java.util.ArrayList<>();");
                 out.line("boolean valid = true;");
                 out.line("org.sjf4j.schema.ValidationResult result;");
                 for (SchemaFallbackEmitter.Plan plan : plans) {
                     out.line("result = " + plan.rootReference() + ".validate(" + value + ", false, " + strictParam + ");");
                     out.line("if (!result.isValid()) valid = false;");
-                    out.line("messages.addAll(result.getMessages());");
+                    out.line("errors.addAll(result.getErrors());");
                 }
-                out.line("return messages.isEmpty() && valid ? org.sjf4j.schema.ValidationResult.SUCCESS");
-                out.line("        : new org.sjf4j.schema.ValidationResult(valid, messages,");
-                out.line("                messages.isEmpty() ? null : messages.get(messages.size() - 1));");
+                out.line("return errors.isEmpty() && valid ? org.sjf4j.schema.ValidationResult.SUCCESS");
+                out.line("        : new org.sjf4j.schema.ValidationResult(valid, errors);");
             }
             out.endBlock();
         });
