@@ -54,6 +54,10 @@ public final class SnakeParser extends StreamingParser {
     private byte[] scopes = new byte[16];
     private int depth;
     private byte[] skipScopes;
+    // SnakeYAML returns the same event until it is consumed. Avoid resolving
+    // its scalar tag repeatedly across peekToken(), nextIf...() and read...().
+    private ScalarEvent classifiedScalar;
+    private Token classifiedToken;
     /**
      * Creates a reader over a SnakeYAML event parser.
      * @param parser the SnakeYAML parser
@@ -346,6 +350,8 @@ public final class SnakeParser extends StreamingParser {
     }
 
     private static boolean parseBoolean(String text) throws IOException {
+        if ("true".equals(text) || "yes".equals(text) || "on".equals(text)) return true;
+        if ("false".equals(text) || "no".equals(text) || "off".equals(text)) return false;
         String value = text.toLowerCase(Locale.ROOT);
         if ("true".equals(value) || "yes".equals(value) || "on".equals(value)) {
             return true;
@@ -564,6 +570,10 @@ public final class SnakeParser extends StreamingParser {
         try {
             Event event = peek();
             if (event != null) parser.getEvent();
+            if (event == classifiedScalar) {
+                classifiedScalar = null;
+                classifiedToken = null;
+            }
             if (event == null) {
                 throw new IOException("unexpected end of YAML stream");
             }
@@ -581,14 +591,19 @@ public final class SnakeParser extends StreamingParser {
         return new IOException("expected " + expected + ", but was " + actual);
     }
 
-    private static Token scalarToken(ScalarEvent scalar) throws IOException {
+    private Token scalarToken(ScalarEvent scalar) throws IOException {
+        if (scalar == classifiedScalar) return classifiedToken;
         rejectAnchor(scalar.getAnchor());
         String tag = resolveTag(scalar);
-        if (TAG_STRING.equals(tag)) return Token.STRING;
-        if (TAG_NULL.equals(tag)) return Token.NULL;
-        if (TAG_BOOLEAN.equals(tag)) return Token.BOOLEAN;
-        if (TAG_INTEGER.equals(tag) || TAG_FLOAT.equals(tag)) return Token.NUMBER;
-        throw new IOException("YAML tag is not JSON-compatible: " + tag);
+        Token token;
+        if (TAG_STRING.equals(tag)) token = Token.STRING;
+        else if (TAG_NULL.equals(tag)) token = Token.NULL;
+        else if (TAG_BOOLEAN.equals(tag)) token = Token.BOOLEAN;
+        else if (TAG_INTEGER.equals(tag) || TAG_FLOAT.equals(tag)) token = Token.NUMBER;
+        else throw new IOException("YAML tag is not JSON-compatible: " + tag);
+        classifiedScalar = scalar;
+        classifiedToken = token;
+        return token;
     }
 
     private static String resolveTag(ScalarEvent scalar) {
@@ -632,7 +647,7 @@ public final class SnakeParser extends StreamingParser {
         }
     }
 
-    private static void skipScalar(ScalarEvent scalar) throws IOException {
+    private void skipScalar(ScalarEvent scalar) throws IOException {
         switch (scalarToken(scalar)) {
             case NUMBER:
                 parseNumber(scalar.getValue());
