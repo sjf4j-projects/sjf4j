@@ -138,18 +138,26 @@ abstract class SchemaCheck {
         final boolean typeRequired;
         final boolean nullAsMissing;
         final boolean additionalPropertiesFalse;
+        final Integer minProperties;
+        final Integer maxProperties;
+        final int staticPropertyCount;
         final List<String> allowedNames;
         final List<Required> required;
         final List<PropertyCheck> properties;
 
         ObjectCheck(boolean dynamic, boolean typeRequired, boolean nullAsMissing,
-                    boolean additionalPropertiesFalse, List<String> allowedNames,
-                    List<Required> required, List<PropertyCheck> properties) {
+                    boolean additionalPropertiesFalse,
+                    Integer minProperties, Integer maxProperties, int staticPropertyCount,
+                    List<String> allowedNames, List<Required> required,
+                    List<PropertyCheck> properties) {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
             this.typeRequired = typeRequired;
             this.nullAsMissing = nullAsMissing;
             this.additionalPropertiesFalse = additionalPropertiesFalse;
+            this.minProperties = minProperties;
+            this.maxProperties = maxProperties;
+            this.staticPropertyCount = staticPropertyCount;
             this.allowedNames = Collections.unmodifiableList(new ArrayList<String>(allowedNames));
             this.required = Collections.unmodifiableList(new ArrayList<Required>(required));
             this.properties = Collections.unmodifiableList(new ArrayList<PropertyCheck>(properties));
@@ -193,12 +201,15 @@ abstract class SchemaCheck {
         final Integer maxLength;
         final List<String> choices;
         final String format;
+        final String pattern;
 
-        StringCheck(Integer minLength, Integer maxLength, List<String> choices, String format) {
+        StringCheck(Integer minLength, Integer maxLength, List<String> choices, String format,
+                    String pattern) {
             super(Kind.STRING);
             this.minLength = minLength;
             this.maxLength = maxLength;
             this.format = format;
+            this.pattern = pattern;
             this.choices = choices == null ? null
                     : Collections.unmodifiableList(new ArrayList<String>(choices));
         }
@@ -217,10 +228,12 @@ abstract class SchemaCheck {
     static final class NumberCheck extends SchemaCheck {
         final boolean integer;
         final List<NumericBound> bounds;
+        final Number multipleOf;
 
-        NumberCheck(boolean integer, List<NumericBound> bounds) {
+        NumberCheck(boolean integer, List<NumericBound> bounds, Number multipleOf) {
             super(Kind.NUMBER);
             this.integer = integer;
+            this.multipleOf = multipleOf;
             this.bounds = Collections.unmodifiableList(new ArrayList<NumericBound>(bounds));
         }
     }

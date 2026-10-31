@@ -39,6 +39,17 @@ final class SchemaEmitter {
     private List<String> emit(SchemaCheck.ObjectCheck check, String variable,
                               SchemaFallbackEmitter.Plan plan, String strictFormat, String prefix) {
         List<String> statements = new ArrayList<String>();
+        if (check.minProperties != null || check.maxProperties != null) {
+            String count = check.dynamic
+                    ? "org.sjf4j.node.NodeWalker.sizeInObject(" + variable + ")"
+                    : Integer.toString(check.staticPropertyCount);
+            if (check.minProperties != null) {
+                statements.add("if (" + count + " < " + check.minProperties + ") return false;");
+            }
+            if (check.maxProperties != null) {
+                statements.add("if (" + count + " > " + check.maxProperties + ") return false;");
+            }
+        }
         if (check.dynamic) {
             for (SchemaCheck.Required required : check.required) {
                 if (check.nullAsMissing) {
@@ -325,7 +336,8 @@ final class SchemaEmitter {
             if (value.nullable) lines.add("if (" + expression + " == null) return false;");
             if (!"java.lang.String".equals(value.type.toString())
                     && (check.minLength != null || check.maxLength != null
-                        || check.choices != null || check.format != null)) {
+                        || check.choices != null || check.format != null
+                        || check.pattern != null)) {
                 lines.add("String " + temp + " = "
                         + (value.enumType ? expression + ".name()" : "String.valueOf(" + expression + ")") + ";");
                 text = temp;
@@ -342,6 +354,13 @@ final class SchemaEmitter {
                     + ".codePointCount(0, " + text + ".length());");
             if (check.minLength != null) lines.add("if (" + length + " < " + check.minLength + ") return false;");
             if (check.maxLength != null) lines.add("if (" + length + " > " + check.maxLength + ") return false;");
+        }
+        if (check.pattern != null) {
+            String holder = "_pattern_" + helperPrefix + "_" + helperCount++;
+            generated.addHelper(out -> out.line("private static final java.util.regex.Pattern "
+                    + holder + " = org.sjf4j.schema.SchemaUtil.compileRegexPattern("
+                    + literal(check.pattern) + ", \"pattern\", null, null);"));
+            lines.add("if (!" + holder + ".matcher(" + text + ").find()) return false;");
         }
         if (check.format != null && !"false".equals(strictFormat)) {
             lines.add("if (" + strictFormat + " && !org.sjf4j.schema.FormatValidator.of("
@@ -380,6 +399,13 @@ final class SchemaEmitter {
                     : bound.keyword.equals("maximum") ? " > 0"
                     : bound.keyword.equals("exclusiveMinimum") ? " <= 0" : " >= 0";
             lines.add("if (" + comparison + operator + ") return false;");
+        }
+        if (check.multipleOf != null) {
+            String divisor = "_multipleOf_" + helperPrefix + "_" + helperCount++;
+            generated.addHelper(out -> out.line("private static final java.math.BigDecimal "
+                    + divisor + " = " + decimalConstant(check.multipleOf) + ";"));
+            lines.add("if (org.sjf4j.util.Numbers.normalizeDecimal(" + number
+                    + ").remainder(" + divisor + ").signum() != 0) return false;");
         }
     }
 

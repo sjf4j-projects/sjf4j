@@ -92,18 +92,27 @@ final class ObjectCompiler {
         if (!dynamic && hasHiddenNodeMembers(type)) return null;
         for (String key : root.keySet()) {
             if (!key.equals("type") && !key.equals("properties") && !key.equals("required")
-                    && !key.equals("additionalProperties") && !SchemaCompiler.isAnnotation(key)) return null;
+                    && !key.equals("additionalProperties")
+                    && !key.equals("minProperties") && !key.equals("maxProperties")
+                    && !SchemaCompiler.isAnnotation(key)) return null;
         }
         boolean typeRequired = root.containsKey("type");
         if (typeRequired && !"object".equals(root.getString("type"))) return null;
         if (!typeRequired && !root.containsKey("properties") && !root.containsKey("required")
-                && !root.containsKey("additionalProperties")) return null;
+                && !root.containsKey("additionalProperties")
+                && !root.containsKey("minProperties")
+                && !root.containsKey("maxProperties")) return null;
         Object raw = root.getNode("properties");
         if (raw != null && JsonType.of(raw) != JsonType.OBJECT) return null;
         JsonObject propertyMap = raw == null ? new JsonObject() : Nodes.toJsonObject(raw);
         Map<String, Property> javaProperties = dynamic ? java.util.Collections.emptyMap()
                 : context.properties.resolve(type);
 
+        Integer minProperties = root.getInt("minProperties");
+        Integer maxProperties = root.getInt("maxProperties");
+        if ((root.containsKey("minProperties") && (minProperties == null || minProperties < 0))
+                || (root.containsKey("maxProperties") && (maxProperties == null || maxProperties < 0)))
+            return null;
         Object required = root.getNode("required");
         if (required != null) {
             if (JsonType.of(required) != JsonType.ARRAY) return null;
@@ -146,7 +155,8 @@ final class ObjectCompiler {
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
         int directCount = (typeRequired && propertyMap.isEmpty() ? 1 : 0)
                 + (required != null ? 1 : 0)
-                + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0);
+                + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0)
+                + (minProperties != null || maxProperties != null ? 1 : 0);
         for (String name : propertyMap.keySet()) {
             Property property = dynamic ? null : javaProperties.get(name);
             if (!dynamic && property == null) continue;
@@ -162,8 +172,9 @@ final class ObjectCompiler {
         }
         if (directCount == 0) return null;
         return new SchemaCheck.ObjectCheck(dynamic, typeRequired, nullAsMissing,
-                Boolean.FALSE.equals(additional), new ArrayList<String>(propertyMap.keySet()),
-                requiredChecks, properties);
+                Boolean.FALSE.equals(additional),
+                minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
+                new ArrayList<String>(propertyMap.keySet()), requiredChecks, properties);
     }
 
     private boolean hasHiddenNodeMembers(TypeMirror type) {

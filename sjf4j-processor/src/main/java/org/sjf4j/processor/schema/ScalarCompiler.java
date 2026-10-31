@@ -68,7 +68,8 @@ final class ScalarCompiler {
             for (String key : schema.keySet()) {
                 if (!key.equals("type") && !key.equals("minLength") && !key.equals("maxLength")
                         && !key.equals("enum") && !key.equals("const")
-                        && !key.equals("format") && !SchemaCompiler.isAnnotation(key)) return null;
+                        && !key.equals("format") && !key.equals("pattern")
+                        && !SchemaCompiler.isAnnotation(key)) return null;
             }
             Integer min = schema.getInt("minLength");
             Integer max = schema.getInt("maxLength");
@@ -85,8 +86,18 @@ final class ScalarCompiler {
                     choices.add((String) item);
                 }
             }
+            Object rawPattern = schema.getNode("pattern");
+            if (rawPattern != null && !(rawPattern instanceof String)) return null;
+            String pattern = (String) rawPattern;
+            if (pattern != null) {
+                try {
+                    org.sjf4j.schema.SchemaUtil.compileRegexPattern(pattern, "pattern", null, null);
+                } catch (RuntimeException invalid) {
+                    return null;
+                }
+            }
             SchemaCheck.StringCheck string = new SchemaCheck.StringCheck(min, max, choices,
-                    schema.getString("format"));
+                    schema.getString("format"), pattern);
             if (!schema.containsKey("const")) return string;
             SchemaCheck.LiteralCheck constant = literals(schema.getNode("const"), false);
             return constant == null ? null : combine(string, Arrays.<SchemaCheck>asList(constant));
@@ -98,6 +109,7 @@ final class ScalarCompiler {
                 if (!key.equals("type") && !key.equals("minimum") && !key.equals("maximum")
                         && !key.equals("exclusiveMinimum") && !key.equals("exclusiveMaximum")
                         && !key.equals("const") && !key.equals("enum")
+                        && !key.equals("multipleOf")
                         && !SchemaCompiler.isAnnotation(key)) return null;
             }
             List<SchemaCheck.NumericBound> bounds = new ArrayList<SchemaCheck.NumericBound>();
@@ -107,7 +119,12 @@ final class ScalarCompiler {
                 if (!(limit instanceof Number)) return null;
                 bounds.add(new SchemaCheck.NumericBound(key, (Number) limit));
             }
-            SchemaCheck.NumberCheck number = new SchemaCheck.NumberCheck("integer".equals(kind), bounds);
+            Object rawMultiple = schema.getNode("multipleOf");
+            if (rawMultiple != null && !(rawMultiple instanceof Number)) return null;
+            if (rawMultiple != null && org.sjf4j.util.Numbers.normalizeDecimal(
+                    (Number) rawMultiple).signum() <= 0) return null;
+            SchemaCheck.NumberCheck number = new SchemaCheck.NumberCheck(
+                    "integer".equals(kind), bounds, (Number) rawMultiple);
             return literalChecks(schema, number);
         }
 
