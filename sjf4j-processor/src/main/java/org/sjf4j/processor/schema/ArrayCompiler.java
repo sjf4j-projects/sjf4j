@@ -27,7 +27,7 @@ final class ArrayCompiler {
         SchemaCheck itemCheck = null;
         SchemaValue itemValue = null;
         if (schema.containsKey("items")) {
-            String itemUri = schemaUri + "/items";
+            String itemUri = SchemaCompiler.keywordUri(schemaUri, "items");
             itemValue = SchemaValue.of(context, value.itemType());
             itemCheck = schemaCompiler.compileValue(snapshot, schema.getNode("items"), itemValue, itemUri, depth + 1);
             if (itemCheck == null) itemCheck = new SchemaCheck.Fallback(itemUri);
