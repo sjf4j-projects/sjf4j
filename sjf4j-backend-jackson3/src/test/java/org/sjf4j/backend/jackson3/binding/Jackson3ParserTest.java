@@ -29,6 +29,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson3ParserTest {
 
     @Test
+    void readsCharsDirectlyWithUtf8AndPrefetchedTokens() throws Exception {
+        String json = "[\"A\",\"\\n\",\"é\",\"😀\",null,\"\",12]";
+        for (boolean utf8 : new boolean[]{false, true}) {
+            Jackson3Parser parser = utf8
+                ? new Jackson3Binder().createParser(
+                        json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                : parser(json);
+            try {
+                parser.readArrayStart();
+                assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+                assertEquals('A', parser.readCharValue());
+                assertEquals('\n', parser.readCharValue());
+                assertEquals(Character.valueOf('é'), parser.readChar());
+                assertThrows(BindingException.class, parser::readCharValue);
+                assertEquals(StreamingParser.Token.NULL, parser.peekToken());
+                assertNull(parser.readChar());
+                BindingException empty = assertThrows(BindingException.class, parser::readChar);
+                assertEquals("cannot read char: expected single-character string, but length was 0",
+                        empty.getMessage());
+                assertThrows(BindingException.class, parser::readCharValue);
+                parser.readArrayEnd();
+                parser.end();
+            } finally {
+                parser.close();
+            }
+        }
+    }
+
+    @Test
     void matchesPrefetchedFieldNamesWithoutLosingThePendingValue() throws Exception {
         NameMatcher matcher = new Jackson3NameMatcher("id", "name");
 
@@ -200,7 +229,7 @@ class Jackson3ParserTest {
                 assertThrows(ArithmeticException.class, parser::readByteValue);
                 assertEquals(125d, parser.readDoubleValue());
                 assertEquals(new BigInteger("123456789012345678901234567890"), parser.readBigInteger());
-                assertEquals(new BigDecimal("0.0012"), parser.readBigDecimal());
+                assertEquals(new BigDecimal("0.00120"), parser.readBigDecimal());
                 assertEquals('x', parser.readCharValue());
                 assertThrows(BindingException.class, parser::readCharValue);
                 assertThrows(BindingException.class, parser::readCharValue);

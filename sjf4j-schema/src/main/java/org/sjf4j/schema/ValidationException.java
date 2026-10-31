@@ -28,15 +28,11 @@ public class ValidationException extends SchemaException {
      * Builds concise exception message from result state.
      */
     private static String buildMessage(ValidationResult result) {
-        ValidationMessage first = null;
-        int errors = 0;
-        for (ValidationMessage message : result.getMessages()) {
-            if (message.getSeverity() != ValidationMessage.Severity.ERROR) continue;
-            if (first == null) first = message;
-            errors++;
-        }
+        ValidationResult.Message first = result.getErrors().isEmpty() ? null : result.getErrors().get(0);
         if (first == null) return "Validation failed with 0 error(s)";
-        return "Validation failed with " + errors + " error(s); first: " + first;
+        return "Validation failed with " + result.count() + " error(s); first: "
+                + SchemaUtil.formatValidationError(first.getMessage(), first.getInstancePs(),
+                first.getKeywordPs(), first.getSchemaUri(), first.getKeyword());
     }
 
     /**

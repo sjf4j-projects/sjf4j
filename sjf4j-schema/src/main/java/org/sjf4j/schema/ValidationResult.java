@@ -1,115 +1,100 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.Nodes;
+import org.sjf4j.path.PathSegment;
 
+import java.net.URI;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * Result of schema validation.
- * <p>
- * Supports both aggregated-message mode and fail-fast mode where only the last
- * message may be retained. Each message may expose both instance and keyword
- * JSON Pointer paths for diagnostics. Aggregated messages are held by
- * reference and may be prepended by {@link #mergePrevious(ValidationResult)};
- * callers should treat the returned messages as read-only.
+ * Validation outcome with separate assertion errors and schema annotations.
+ *
+ * <p>The two lists are independent. Results built from a reusable
+ * {@link ValidationContext} refer to its live lists until the next explicit
+ * clear; other results may own their lists.
  */
 public class ValidationResult {
     private final boolean valid;
-    private final List<ValidationMessage> messages;
-    private final ValidationMessage lastMessage;
+    private final List<Message> errors;
+    private final List<Message> annotations;
 
-    /**
-     * Shared successful validation result.
-     */
+    /** Shared success result without errors or annotations. */
     public static final ValidationResult SUCCESS = new ValidationResult(true, null, null);
 
-    /**
-     * Creates validation result with messages.
-     */
-    public ValidationResult(boolean valid, List<ValidationMessage> messages, ValidationMessage lastMessage) {
+    /** Creates a result containing assertion errors and optional annotations. */
+    public ValidationResult(boolean valid, List<Message> errors, List<Message> annotations) {
         this.valid = valid;
-        this.messages = messages;
-        this.lastMessage = lastMessage;
+        this.errors = errors;
+        this.annotations = annotations;
     }
 
-    /**
-     * Returns whether validation passed.
-     */
+    /** Creates a result without annotations. */
+    public ValidationResult(boolean valid, List<Message> errors) {
+        this(valid, errors, null);
+    }
+
     public boolean isValid() {
         return valid;
     }
 
-    /**
-     * Returns the number of messages in this result.
-     */
+    /** Number of assertion errors, excluding annotations. */
     public int count() {
-        if (messages != null) return messages.size();
-        if (lastMessage != null) return 1;
-        return 0;
+        return errors == null ? 0 : errors.size();
     }
 
-    /**
-     * Returns all validation messages.
-     * <p>
-     * Returned list can be synthesized from fail-fast last message. Consumers
-     * should prefer message-level instance/keyword path accessors over parsing
-     * the exception text. In aggregation mode the internal list is returned
-     * directly; modifying it changes this result.
-     */
-    public List<ValidationMessage> getMessages() {
-        if (messages == null) {
-            return lastMessage == null ? Collections.emptyList() : Collections.singletonList(lastMessage);
-        }
-        return messages;
+    public List<Message> getErrors() {
+        return errors == null ? Collections.emptyList() : errors;
     }
 
-    /**
-     * Returns a new list containing only ERROR-severity messages.
-     */
-    public List<ValidationMessage> getErrors() {
-        return getMessages().stream()
-                .filter(m -> m.getSeverity() == ValidationMessage.Severity.ERROR)
-                .collect(Collectors.toList());
+    public Message getLastError() {
+        return errors == null || errors.isEmpty() ? null : errors.get(errors.size() - 1);
     }
 
-    /**
-     * Returns the latest message if present.
-     * <p>
-     * In non fail-fast mode this is the tail of collected messages.
-     */
-    public ValidationMessage getLastMessage() {
-        if (lastMessage == null) {
-            if (messages == null || messages.isEmpty()) {
-                return null;
-            } else {
-                return messages.get(messages.size() - 1);
-            }
-        }
-        return lastMessage;
+    public List<Message> getAnnotations() {
+        return annotations == null ? Collections.emptyList() : annotations;
     }
 
-    /**
-     * Prepends messages from an earlier validation result.
-     * <p>
-     * This is used by {@link SchemaValidator} when superclass plans are applied
-     * before subclass plans so message order matches validation order. In
-     * fail-fast mode there is no aggregate list to prepend to.
-     */
-    public ValidationResult mergePrevious(ValidationResult previous) {
-        if (messages != null && previous != null) {
-            messages.addAll(0, previous.getMessages());
-        }
-        return this;
-    }
-
-    /**
-     * Returns messages as debug string.
-     */
     @Override
     public String toString() {
-        return Nodes.inspect(getMessages());
+        return Nodes.inspect(getErrors());
     }
 
+    /**
+     * One validation error or annotation with its associated locations.
+     * Membership in the errors or annotations list determines its meaning.
+     */
+    public static final class Message {
+        private final String keyword;
+        private final String message;
+        private final Object value;
+        private final PathSegment instancePs;
+        private final PathSegment keywordPs;
+        private final URI schemaUri;
+
+        public Message(String keyword, String message, Object value, PathSegment instancePs,
+                       PathSegment keywordPs, URI schemaUri) {
+            this.keyword = keyword;
+            this.message = message;
+            this.value = value;
+            this.instancePs = instancePs;
+            this.keywordPs = keywordPs;
+            this.schemaUri = schemaUri;
+        }
+
+        public String getKeyword() { return keyword; }
+        public String getMessage() { return message; }
+        public Object getValue() { return value; }
+        public PathSegment getInstancePs() { return instancePs; }
+        public PathSegment getKeywordPs() { return keywordPs; }
+        public URI getSchemaUri() { return schemaUri; }
+        public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
+
+        @Override
+        public String toString() {
+            return SchemaUtil.formatValidationMessage(
+                    message != null ? message : String.valueOf(value),
+                    instancePs, keywordPs, schemaUri, keyword);
+        }
+    }
 }

@@ -88,14 +88,9 @@ public final class SchemaValidator {
         Class<?> pojoClazz = pojo.getClass();
 
         List<SchemaPlan> plans = _resolvePlans(pojoClazz);
-        if (plans.isEmpty()) return ValidationResult.SUCCESS;
-
-        ValidationResult previous = null;
         for (SchemaPlan plan : plans) {
             ValidationResult result = plan.validate(pojo, true, strictFormat);
-            result.mergePrevious(previous);
             if (!result.isValid()) return result;
-            previous = result;
         }
         return ValidationResult.SUCCESS;
     }

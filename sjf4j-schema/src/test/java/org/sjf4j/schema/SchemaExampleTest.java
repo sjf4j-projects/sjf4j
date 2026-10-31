@@ -17,7 +17,7 @@ public class SchemaExampleTest {
 
         ValidationResult result = plan.validate("a");
         assertFalse(result.isValid());                                  // Fails validation
-        assertEquals("type", result.getLastMessage().getKeyword()); // Fails validation
+        assertEquals("type", result.getLastError().getKeyword()); // Fails validation
 
     }
 }

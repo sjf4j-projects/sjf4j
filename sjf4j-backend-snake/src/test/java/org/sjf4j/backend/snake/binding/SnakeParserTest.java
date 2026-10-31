@@ -28,6 +28,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SnakeParserTest {
 
     @Test
+    void repeatedScalarPeeksAndFailedProbesPreserveYamlTagResolution() throws Exception {
+        SnakeParser parser = parser("[true, TRUE, yes, off, 42, 'true', !!str null, null]");
+        try {
+            parser.readArrayStart();
+            assertEquals(StreamingParser.Token.BOOLEAN, parser.peekToken());
+            assertEquals(StreamingParser.Token.BOOLEAN, parser.peekToken());
+            assertFalse(parser.nextIfNull());
+            assertTrue(parser.readBooleanValue());
+            assertEquals(StreamingParser.Token.BOOLEAN, parser.peekToken());
+            assertTrue(parser.readBooleanValue());
+            assertTrue(parser.readBooleanValue());
+            assertFalse(parser.readBooleanValue());
+            assertEquals(StreamingParser.Token.NUMBER, parser.peekToken());
+            assertEquals(StreamingParser.Token.NUMBER, parser.peekToken());
+            assertEquals(42, parser.readIntValue());
+            assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+            assertEquals("true", parser.readString());
+            assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+            assertEquals("null", parser.readString());
+            assertEquals(StreamingParser.Token.NULL, parser.peekToken());
+            assertTrue(parser.nextIfNull());
+            parser.readArrayEnd();
+            parser.end();
+        } finally {
+            parser.close();
+        }
+    }
+
+    @Test
     void exposesLogicalTokensAndConditionalConsumption() throws Exception {
         {
             SnakeParser parser = parser("id: null\n");
