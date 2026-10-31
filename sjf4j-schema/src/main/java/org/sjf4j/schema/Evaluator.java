@@ -355,7 +355,10 @@ public interface Evaluator {
             if (divisor.signum() <= 0)
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                         "invalid 'multipleOf' keyword: value must be > 0", keywordPs, schemaUri));
-            this.isIntegerDivisor = divisor.scale() <= 0;
+            // Only use long arithmetic when the divisor fits exactly.
+            // Larger integer divisors must keep the BigDecimal path.
+            this.isIntegerDivisor = divisor.scale() <= 0
+                    && divisor.compareTo(BigDecimal.valueOf(Long.MAX_VALUE)) <= 0;
             this.divisorLong = isIntegerDivisor ? divisor.longValueExact() : 0L;
             this.divisorDouble = divisor.doubleValue();
         }
@@ -370,7 +373,12 @@ public interface Evaluator {
                 return true;
             }
             Number node = Nodes.toNumber(instance.node());
-            if (isIntegerDivisor && Numbers.isSemanticInteger(node)) {
+            // A semantic integer is not necessarily representable as long:
+            // BigInteger, BigDecimal and even a large integral double may exceed
+            // 64 bits. Restrict the remainder fast path to lossless integers.
+            if (isIntegerDivisor && Numbers.isIntegralType(node)
+                    && (!(node instanceof java.math.BigInteger)
+                        || ((java.math.BigInteger) node).bitLength() <= 63)) {
                 long v = node.longValue();
                 if (v % divisorLong != 0) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
