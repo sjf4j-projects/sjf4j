@@ -43,7 +43,7 @@ class CompiledValidatorApplicatorProcessorTest {
         NavigatorTestCompiler.Result result = compile(schema, false);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
-        assertTrue(generated.contains("if (!(false)) return false;"), generated);
+        assertTrue(generated.contains("if (java.lang.Boolean.TRUE) return false;"), generated);
         assertTrue(generated.contains("_value < 1L"), generated);
         assertFalse(generated.contains("SchemaPlan"), generated);
     }
