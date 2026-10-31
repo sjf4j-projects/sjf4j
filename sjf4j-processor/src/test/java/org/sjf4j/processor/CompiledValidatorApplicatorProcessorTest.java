@@ -38,6 +38,17 @@ class CompiledValidatorApplicatorProcessorTest {
     }
 
     @Test
+    void allOfRetainsConstantFalseAndFollowingAssertions() throws Exception {
+        String schema = "{\\"allOf\\":[false,{\\"type\\":\\"integer\\",\\"minimum\\":1}]}";
+        NavigatorTestCompiler.Result result = compile(schema, false);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertTrue(generated.contains("if (!(false)) return false;"), generated);
+        assertTrue(generated.contains("_value < 1L"), generated);
+        assertFalse(generated.contains("SchemaPlan"), generated);
+    }
+
+    @Test
     void unknownBranchIsRejectedWhenFallbackDisabled() throws Exception {
         for (String schema : new String[]{
                 "{\"allOf\":[{\"type\":\"integer\",\"unevaluatedItems\":false}]}",
