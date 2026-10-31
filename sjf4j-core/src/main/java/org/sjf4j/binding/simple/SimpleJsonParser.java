@@ -6,6 +6,12 @@ import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
+import java.time.OffsetDateTime;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import org.sjf4j.util.FastOffsetDateTime;
+import org.sjf4j.util.FastInstant;
+import org.sjf4j.util.FastLocalDateTime;
 import org.sjf4j.util.FastLocalTime;
 import org.sjf4j.util.FastOffsetTime;
 import java.time.OffsetTime;
@@ -349,6 +355,116 @@ public final class SimpleJsonParser extends StreamingParser {
                 }
             }
             LocalTime value = FastLocalTime.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
+
+    @Override
+    public LocalDateTime readLocalDateTime() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Parse canonical, unescaped text directly from the current input buffer.
+            // Escapes, other ISO forms and buffer boundaries use normal JSON decoding.
+            int available = inputLimit - inputPos;
+            if (available >= 18 && inputBuffer[inputPos] == '"') {
+                int maxLength = Math.min(29, available - 2);
+                for (int length = 16; length <= maxLength; length++) {
+                    if (inputBuffer[inputPos + length + 1] == '"') {
+                        if (length == 16 || length == 19 || length >= 21) {
+                            try {
+                                LocalDateTime value = FastLocalDateTime.parse(inputBuffer, inputPos + 1, length);
+                                inputPos += length + 2;
+                                pos += length + 2;
+                                _checkValueEnd();
+                                return value;
+                            } catch (DateTimeParseException ignored) {
+                                // Invalid or escaped: let JSON decoding handle it.
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            LocalDateTime value = FastLocalDateTime.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
+
+    @Override
+    public Instant readInstant() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Decode canonical, unescaped UTC text directly from the input buffer.
+            int available = inputLimit - inputPos;
+            if (available >= 22 && inputBuffer[inputPos] == '"') {
+                int maxLength = Math.min(30, available - 2);
+                for (int length = 20; length <= maxLength; length++) {
+                    if (inputBuffer[inputPos + length + 1] == '"') {
+                        if (length == 20 || length >= 22) {
+                            try {
+                                Instant value = FastInstant.parse(inputBuffer, inputPos + 1, length);
+                                inputPos += length + 2;
+                                pos += length + 2;
+                                _checkValueEnd();
+                                return value;
+                            } catch (DateTimeParseException ignored) {
+                                // Escapes, offsets and unusual forms use JSON decoding.
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            Instant value = FastInstant.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
+
+    @Override
+    public OffsetDateTime readOffsetDateTime() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Parse canonical, unescaped ISO text directly from the input buffer.
+            int available = inputLimit - inputPos;
+            if (available >= 19 && inputBuffer[inputPos] == '"') {
+                int maxLength = Math.min(35, available - 2);
+                for (int length = 17; length <= maxLength; length++) {
+                    if (inputBuffer[inputPos + length + 1] == '"') {
+                        try {
+                            OffsetDateTime value = FastOffsetDateTime.parse(inputBuffer, inputPos + 1, length);
+                            inputPos += length + 2;
+                            pos += length + 2;
+                            _checkValueEnd();
+                            return value;
+                        } catch (DateTimeParseException ignored) {
+                            // Escapes and unsupported spellings use normal JSON decoding.
+                        }
+                        break;
+                    }
+                }
+            }
+            OffsetDateTime value = FastOffsetDateTime.parse(_readString());
             _checkValueEnd();
             return value;
         } finally {
