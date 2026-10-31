@@ -24,7 +24,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
                 "{\"type\":\"string\",\"pattern\":\"ab[0-9]+\"}", "String");
         assertTrue(result.success, result.diagnostics());
         String output = result.generatedSource("fixture/Validator_Impl.java");
-        assertTrue(output.contains("private static final java.util.regex.Pattern"), output);
+        assertTrue(output.contains("private static final Pattern"), output);
         assertTrue(output.contains("compileRegexPattern("), output);
         assertTrue(output.contains(".matcher(") && output.contains(".find()"), output);
         assertFalse(output.contains(".isValid("), output);
@@ -36,7 +36,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
                 "{\"type\":\"number\",\"multipleOf\":0.1}", "java.math.BigDecimal");
         assertTrue(result.success, result.diagnostics());
         String output = result.generatedSource("fixture/Validator_Impl.java");
-        assertTrue(output.contains("private static final java.math.BigDecimal"), output);
+        assertTrue(output.contains("private static final BigDecimal"), output);
         assertTrue(output.contains(".remainder("), output);
         assertFalse(output.contains(".isValid("), output);
     }
