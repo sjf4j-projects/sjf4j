@@ -16,21 +16,12 @@ import java.util.Map;
 final class SchemaEmitter {
     private final GeneratedClass generated;
     private final String helperPrefix;
-    private final boolean nullAsMissing;
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
 
-    SchemaEmitter(GeneratedClass generated, String helperPrefix, boolean nullAsMissing) {
+    SchemaEmitter(GeneratedClass generated, String helperPrefix) {
         this.generated = generated;
         this.helperPrefix = helperPrefix;
-        this.nullAsMissing = nullAsMissing;
-    }
-
-    /** Apply the validator's input projection only when a SchemaPlan is invoked. */
-    private String fallbackInput(String value) {
-        return nullAsMissing
-                ? "org.sjf4j.schema.SchemaValidationInput.omitNullMembers(" + value + ")"
-                : value;
     }
 
     List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
@@ -68,13 +59,8 @@ final class SchemaEmitter {
         }
         if (check.dynamic) {
             for (SchemaCheck.Required required : check.required) {
-                if (check.nullAsMissing) {
-                    statements.add("if (org.sjf4j.Nodes.getInObject(" + variable + ", "
-                            + literal(required.name) + ") == null) return false;");
-                } else {
-                    statements.add("if (!org.sjf4j.Nodes.keySetInObject(" + variable
-                            + ").contains(" + literal(required.name) + ")) return false;");
-                }
+                statements.add("if (!org.sjf4j.Nodes.keySetInObject(" + variable
+                        + ").contains(" + literal(required.name) + ")) return false;");
             }
             if (check.additionalPropertiesFalse) {
                 statements.add("for (String _key : org.sjf4j.Nodes.keySetInObject(" + variable + ")) {");
@@ -84,17 +70,8 @@ final class SchemaEmitter {
                     condition.append("!_key.equals(").append(literal(allowed)).append(")");
                 }
                 String unknown = condition.length() == 0 ? "true" : condition.toString();
-                if (check.nullAsMissing) {
-                    unknown += " && org.sjf4j.Nodes.getInObject(" + variable + ", _key) != null";
-                }
                 statements.add("    if (" + unknown + ") return false;");
                 statements.add("}");
-            }
-        } else if (check.nullAsMissing) {
-            for (SchemaCheck.Required required : check.required) {
-                if (required.staticAccess != null) {
-                    statements.add("if (" + variable + "." + required.staticAccess + " == null) return false;");
-                }
             }
         }
 
@@ -109,16 +86,12 @@ final class SchemaEmitter {
                 statements.add("if (org.sjf4j.Nodes.keySetInObject(" + variable
                         + ").contains(" + literal(property.name) + ")) {");
             }
-            if (check.nullAsMissing && property.value.nullable) {
-                statements.add("if (" + local + " != null) {");
-            }
             List<String> lines = new ArrayList<String>();
             emitValue(lines, plan, property.check, property.value, local,
                     prefix + "SUB_" + index, strictFormat, 0);
             for (String line : lines) {
-                statements.add((check.dynamic || check.nullAsMissing ? "    " : "") + line);
+                statements.add((check.dynamic ? "    " : "") + line);
             }
-            if (check.nullAsMissing && property.value.nullable) statements.add("}");
             if (check.dynamic) statements.add("}");
             index++;
         }
@@ -138,7 +111,7 @@ final class SchemaEmitter {
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
                         ((SchemaCheck.Fallback) check).uri, planName);
                 lines.add("if (!" + sub.reference() + ".isValid("
-                        + fallbackInput(expression) + ", " + strictFormat + ")) return false;");
+                        + expression + ", " + strictFormat + ")) return false;");
                 return;
             case STRING:
                 emitString(lines, (SchemaCheck.StringCheck) check, value, expression, planName, depth,
@@ -357,7 +330,7 @@ final class SchemaEmitter {
         // specialized domain values (UUID) have a format assertion in the schema.
         if (!"false".equals(strictFormat)) {
             lines.add("if (" + strictFormat + ") {");
-            lines.add("    if (!" + full.reference() + ".isValid(" + fallbackInput(expression)
+            lines.add("    if (!" + full.reference() + ".isValid(" + expression
                     + ", true)) return false;");
             lines.add("} else {");
         }
@@ -379,7 +352,7 @@ final class SchemaEmitter {
         }
         lines.add(indent + "else {");
         lines.add(indent + "    if (!" + full.reference()
-                + ".isValid(" + fallbackInput(expression) + ", false)) return false;");
+                + ".isValid(" + expression + ", false)) return false;");
         lines.add(indent + "}");
         if (!"false".equals(strictFormat)) lines.add("}");
     }
