@@ -100,7 +100,7 @@ class CompiledValidatorArchitectureTest {
     }
 
     @Test
-    void separateBindingsRetainIndependentRootFallbacks() throws Exception {
+    void separateBindingsCompileIndependentPatterns() throws Exception {
         String one = "{\"type\":\"object\",\"properties\":{"
                 + "\"name\":{\"type\":\"string\",\"pattern\":\"^a\"}}}";
         String two = "{\"type\":\"object\",\"properties\":{"
@@ -114,10 +114,9 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertEquals(1, occurrences(generated, "private static final class PLAN_0 {"), generated);
-        assertEquals(1, occurrences(generated, "private static final class PLAN_1 {"), generated);
-        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
-        assertTrue(generated.contains("Fallback.PLAN_1.ROOT.isValid("), generated);
+        assertEquals(2, occurrences(generated, "private static final java.util.regex.Pattern"), generated);
+        assertEquals(2, occurrences(generated, ".matcher("), generated);
+        assertFalse(generated.contains(".ROOT.isValid("), generated);
     }
 
     @Test
