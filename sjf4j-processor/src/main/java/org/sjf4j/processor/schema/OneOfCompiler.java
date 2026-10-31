@@ -105,8 +105,9 @@ final class OneOfCompiler {
 
             TypeMirror subtype = mappedType(candidate);
             if (subtype == null || !expected.equals(publicConstant(subtype, discriminator))) return null;
+            String branchUri = SchemaCompiler.effectiveSchemaUri(target.uri, branch);
             SchemaCheck.ObjectCheck check =
-                    objects.compileNested(subtype, snapshot, branch, target.uri, depth + 1);
+                    objects.compileNested(subtype, snapshot, branch, branchUri, depth + 1);
             // No per-property fallback is allowed on the direct path. The
             // original oneOf subplan remains the single fallback for strict
             // format assertions and unknown runtime classes.
