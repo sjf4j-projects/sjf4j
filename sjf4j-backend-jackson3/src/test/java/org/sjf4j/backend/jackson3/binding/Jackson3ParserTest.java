@@ -29,6 +29,36 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson3ParserTest {
 
     @Test
+    void readsCharsDirectlyWithUtf8AndPrefetchedTokens() throws Exception {
+        String json = "[\"A\",\"\\n\",\"é\",\"😀\",null,\"\",12]";
+        for (boolean utf8 : new boolean[]{false, true}) {
+            Jackson3Parser parser = utf8
+                ? new Jackson3Binder().createParser(
+                        json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                : parser(json);
+            try {
+                parser.readArrayStart();
+                assertEquals(StreamingParser.Token.STRING, parser.peekToken());
+                assertEquals('A', parser.readCharValue());
+                assertEquals('
+', parser.readCharValue());
+                assertEquals(Character.valueOf('é'), parser.readChar());
+                assertThrows(BindingException.class, parser::readCharValue);
+                assertEquals(StreamingParser.Token.NULL, parser.peekToken());
+                assertNull(parser.readChar());
+                BindingException empty = assertThrows(BindingException.class, parser::readChar);
+                assertEquals("cannot read char: expected single-character string, but length was 0",
+                        empty.getMessage());
+                assertThrows(IOException.class, parser::readCharValue);
+                parser.readArrayEnd();
+                parser.end();
+            } finally {
+                parser.close();
+            }
+        }
+    }
+
+    @Test
     void matchesPrefetchedFieldNamesWithoutLosingThePendingValue() throws Exception {
         NameMatcher matcher = new Jackson3NameMatcher("id", "name");
 
