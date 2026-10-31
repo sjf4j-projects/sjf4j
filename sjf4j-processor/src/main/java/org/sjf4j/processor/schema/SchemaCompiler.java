@@ -143,7 +143,9 @@ final class SchemaCompiler {
             if (compiled == null || compiled.hasFallback()) {
                 // Preserve the specialized subtype fast path for oneOf alone.
                 if (checks.isEmpty() && !schema.containsKey("allOf")
-                        && !schema.containsKey("anyOf") && !schema.containsKey("not")) {
+                        && !schema.containsKey("anyOf") && !schema.containsKey("not")
+                        && !(schema.containsKey("if")
+                             && (schema.containsKey("then") || schema.containsKey("else")))) {
                     return compiled;
                 }
                 return null;
