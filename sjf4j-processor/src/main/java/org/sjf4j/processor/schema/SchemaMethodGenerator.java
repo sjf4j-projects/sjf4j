@@ -152,7 +152,7 @@ final class SchemaMethodGenerator {
             } else {
                 // All annotated schemas participate; report all failures in
                 // parent-to-child order instead of stopping at the first failure.
-                out.line("java.util.List<org.sjf4j.schema.ValidationResult.Error> errors = new java.util.ArrayList<>();");
+                out.line("java.util.List<org.sjf4j.schema.ValidationResult.Message> errors = new java.util.ArrayList<>();");
                 out.line("boolean valid = true;");
                 out.line("org.sjf4j.schema.ValidationResult result;");
                 for (SchemaFallbackEmitter.Plan plan : plans) {

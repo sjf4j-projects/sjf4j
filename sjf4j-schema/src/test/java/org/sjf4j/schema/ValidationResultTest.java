@@ -9,7 +9,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Error and Annotation are independent data types within ValidationResult. */
+/** Errors and annotations share the same message type but remain independent lists. */
 class ValidationResultTest {
 
     private static final PathSegment ROOT = PathSegment.Root.INSTANCE;
@@ -18,7 +18,7 @@ class ValidationResultTest {
     void errorCarriesLocationsAndDescriptionWithoutSeverity() {
         URI uri = URI.create("https://example.com/schema");
         PathSegment keyword = new PathSegment.Name(ROOT, "type");
-        ValidationResult.Error error = new ValidationResult.Error("type", "expected integer", ROOT,
+        ValidationResult.Message error = new ValidationResult.Message("type", "expected integer", null, ROOT,
                 keyword, uri);
         ValidationResult result = new ValidationResult(false, List.of(error));
 
@@ -31,7 +31,9 @@ class ValidationResultTest {
         assertSame(keyword, error.getKeywordPs());
         assertEquals(uri, error.getSchemaUri());
         assertEquals(uri.toString(), error.getSchemaUriText());
-        assertTrue(error.toString().contains("ERROR"));
+        assertTrue(error.toString().contains("validate.type"));
+        assertFalse(error.toString().startsWith("ERROR"));
+        assertNull(error.getValue());
         assertTrue(result.getAnnotations().isEmpty());
     }
 
@@ -39,7 +41,7 @@ class ValidationResultTest {
     void annotationPreservesOriginalJsonValueAndLocations() {
         PathSegment keyword = new PathSegment.Name(ROOT, "examples");
         Object values = List.of(Map.of("x", 1), Map.of("x", 2));
-        ValidationResult.Annotation annotation = new ValidationResult.Annotation(
+        ValidationResult.Message annotation = new ValidationResult.Message(
                 "examples", "Example values", values, ROOT, keyword, null);
         ValidationResult result = new ValidationResult(true, null, List.of(annotation));
 
@@ -50,6 +52,8 @@ class ValidationResultTest {
         assertSame(values, annotation.getValue());
         assertEquals("examples", annotation.getKeyword());
         assertEquals("Example values", annotation.getMessage());
+        assertFalse(annotation.toString().startsWith("ERROR"));
+        assertTrue(annotation.toString().contains("Example values"));
         assertSame(ROOT, annotation.getInstancePs());
         assertSame(keyword, annotation.getKeywordPs());
         assertNull(annotation.getSchemaUri());
@@ -58,13 +62,13 @@ class ValidationResultTest {
 
     @Test
     void mergeIsNonMutatingAndKeepsParentFirst() {
-        ValidationResult.Error parentError = new ValidationResult.Error(
-                "required", "missing property", ROOT, ROOT, null);
-        ValidationResult.Error childError = new ValidationResult.Error(
-                "type", "wrong type", ROOT, ROOT, null);
-        ValidationResult.Annotation parentAnnotation = new ValidationResult.Annotation(
+        ValidationResult.Message parentError = new ValidationResult.Message(
+                "required", "missing property", null, ROOT, ROOT, null);
+        ValidationResult.Message childError = new ValidationResult.Message(
+                "type", "wrong type", null, ROOT, ROOT, null);
+        ValidationResult.Message parentAnnotation = new ValidationResult.Message(
                 "title", "Parent title", "Parent", ROOT, ROOT, null);
-        ValidationResult.Annotation childAnnotation = new ValidationResult.Annotation(
+        ValidationResult.Message childAnnotation = new ValidationResult.Message(
                 "title", "Child title", "Child", ROOT, ROOT, null);
 
         ValidationResult parent = new ValidationResult(true, null, List.of(parentAnnotation));

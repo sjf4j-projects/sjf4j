@@ -2,7 +2,6 @@ package org.sjf4j.schema;
 
 import org.sjf4j.Nodes;
 import org.sjf4j.path.PathSegment;
-import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -18,21 +17,21 @@ import java.util.List;
  */
 public class ValidationResult {
     private final boolean valid;
-    private final List<Error> errors;
-    private final List<Annotation> annotations;
+    private final List<Message> errors;
+    private final List<Message> annotations;
 
     /** Shared success result without errors or annotations. */
     public static final ValidationResult SUCCESS = new ValidationResult(true, null, null);
 
     /** Creates a result containing assertion errors and optional annotations. */
-    public ValidationResult(boolean valid, List<Error> errors, List<Annotation> annotations) {
+    public ValidationResult(boolean valid, List<Message> errors, List<Message> annotations) {
         this.valid = valid;
         this.errors = errors;
         this.annotations = annotations;
     }
 
     /** Creates a result without annotations. */
-    public ValidationResult(boolean valid, List<Error> errors) {
+    public ValidationResult(boolean valid, List<Message> errors) {
         this(valid, errors, null);
     }
 
@@ -45,15 +44,15 @@ public class ValidationResult {
         return errors == null ? 0 : errors.size();
     }
 
-    public List<Error> getErrors() {
+    public List<Message> getErrors() {
         return errors == null ? Collections.emptyList() : errors;
     }
 
-    public Error getLastError() {
+    public Message getLastError() {
         return errors == null || errors.isEmpty() ? null : errors.get(errors.size() - 1);
     }
 
-    public List<Annotation> getAnnotations() {
+    public List<Message> getAnnotations() {
         return annotations == null ? Collections.emptyList() : annotations;
     }
 
@@ -64,9 +63,9 @@ public class ValidationResult {
     public ValidationResult mergePrevious(ValidationResult previous) {
         if (previous == null || (previous.valid && previous.count() == 0
                 && previous.getAnnotations().isEmpty())) return this;
-        List<Error> combinedErrors = new ArrayList<>(previous.getErrors());
+        List<Message> combinedErrors = new ArrayList<>(previous.getErrors());
         combinedErrors.addAll(getErrors());
-        List<Annotation> combinedAnnotations = null;
+        List<Message> combinedAnnotations = null;
         if (!previous.getAnnotations().isEmpty() || !getAnnotations().isEmpty()) {
             combinedAnnotations = new ArrayList<>(previous.getAnnotations());
             combinedAnnotations.addAll(getAnnotations());
@@ -79,38 +78,11 @@ public class ValidationResult {
         return Nodes.inspect(getErrors());
     }
 
-    /** An assertion failure and its locations in the instance and schema. */
-    public static final class Error {
-        private final String keyword;
-        private final String message;
-        private final PathSegment instancePs;
-        private final PathSegment keywordPs;
-        private final URI schemaUri;
-
-        public Error(String keyword, String message, PathSegment instancePs,
-                     PathSegment keywordPs, URI schemaUri) {
-            this.keyword = keyword;
-            this.message = message;
-            this.instancePs = instancePs;
-            this.keywordPs = keywordPs;
-            this.schemaUri = schemaUri;
-        }
-
-        public String getKeyword() { return keyword; }
-        public String getMessage() { return message; }
-        public PathSegment getInstancePs() { return instancePs; }
-        public PathSegment getKeywordPs() { return keywordPs; }
-        public URI getSchemaUri() { return schemaUri; }
-        public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
-
-        @Override
-        public String toString() {
-            return SchemaUtil.formatValidationError(message, instancePs, keywordPs, schemaUri, keyword);
-        }
-    }
-
-    /** An annotation value and its locations in the instance and schema. */
-    public static final class Annotation {
+    /**
+     * One validation error or annotation with its associated locations.
+     * Membership in the errors or annotations list determines its meaning.
+     */
+    public static final class Message {
         private final String keyword;
         private final String message;
         private final Object value;
@@ -118,13 +90,13 @@ public class ValidationResult {
         private final PathSegment keywordPs;
         private final URI schemaUri;
 
-        public Annotation(String keyword, String message, Object value, PathSegment instancePs,
-                          PathSegment keywordPs, URI schemaUri) {
-            this.keyword = Asserts.notNull(keyword, "keyword");
+        public Message(String keyword, String message, Object value, PathSegment instancePs,
+                       PathSegment keywordPs, URI schemaUri) {
+            this.keyword = keyword;
             this.message = message;
             this.value = value;
-            this.instancePs = Asserts.notNull(instancePs, "instancePs");
-            this.keywordPs = Asserts.notNull(keywordPs, "keywordPs");
+            this.instancePs = instancePs;
+            this.keywordPs = keywordPs;
             this.schemaUri = schemaUri;
         }
 
@@ -135,5 +107,12 @@ public class ValidationResult {
         public PathSegment getKeywordPs() { return keywordPs; }
         public URI getSchemaUri() { return schemaUri; }
         public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
+
+        @Override
+        public String toString() {
+            return SchemaUtil.formatValidationMessage(
+                    message != null ? message : String.valueOf(value),
+                    instancePs, keywordPs, schemaUri, keyword);
+        }
     }
 }

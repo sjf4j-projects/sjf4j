@@ -19,8 +19,8 @@ public class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
     private final boolean booleanOnly;
-    private List<ValidationResult.Error> errors;
-    private List<ValidationResult.Annotation> annotations;
+    private List<ValidationResult.Message> errors;
+    private List<ValidationResult.Message> annotations;
 
     // Reused for non-converted scalar children only.
     private final Instance reusedLeaf;
@@ -60,7 +60,7 @@ public class ValidationContext {
     }
 
     /** Accesses the current annotation collection without copying it. */
-    public List<ValidationResult.Annotation> getAnnotations() {
+    public List<ValidationResult.Message> getAnnotations() {
         return annotations == null ? Collections.emptyList() : annotations;
     }
 
@@ -73,7 +73,7 @@ public class ValidationContext {
         if (booleanOnly) return;
         if (instancePs == null) instancePs = instance.materializePath();
         if (annotations == null) annotations = new ArrayList<>();
-        annotations.add(new ValidationResult.Annotation(keyword, message, value, instancePs, keywordPs, schemaUri));
+        annotations.add(new ValidationResult.Message(keyword, message, value, instancePs, keywordPs, schemaUri));
     }
 
     boolean needsErrorDetail() {
@@ -137,7 +137,7 @@ public class ValidationContext {
         if (ignoreErrorAdding != 0 || booleanOnly || (failFast && failFastErrorAdded)) return;
         if (instancePs == null && instance != null) instancePs = instance.materializePath();
         if (errors == null) errors = new ArrayList<>();
-        errors.add(new ValidationResult.Error(keyword, message, instancePs, keywordPs, schemaUri));
+        errors.add(new ValidationResult.Message(keyword, message, null, instancePs, keywordPs, schemaUri));
         if (failFast) failFastErrorAdded = true;
     }
 }

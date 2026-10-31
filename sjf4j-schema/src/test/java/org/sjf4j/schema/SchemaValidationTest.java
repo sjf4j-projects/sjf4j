@@ -485,7 +485,7 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(Collections.singletonMap("present", 1));
         assertFalse(result.isValid());
-        List<ValidationResult.Error> errors = result.getErrors();
+        List<ValidationResult.Message> errors = result.getErrors();
         assertEquals(2, errors.size());
         assertEquals("required", errors.get(0).getKeyword());
         assertEquals("type", errors.get(1).getKeyword());
