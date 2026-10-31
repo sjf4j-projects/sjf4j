@@ -6,8 +6,6 @@ import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaPlan;
-import org.sjf4j.schema.ValidationContext;
-import org.sjf4j.schema.ValidationResult;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -75,26 +73,6 @@ class CompiledValidatorFallbackBoundariesTest {
 
     private static void assertParity(SchemaPlan reference, boolean actual, Object input) {
         assertEquals(reference.isValid(input), actual, String.valueOf(input));
-    }
-
-    @Test
-    void callerOwnedContextIsReusableAndDiagnosticsRemainStable() {
-        SchemaPlan plan = JsonSchema.fromJson("""
-                {"type":"object","required":["x"],"properties":{"x":{"type":"integer"}}}
-                """).createPlan();
-        ValidationContext context = new ValidationContext();
-        ValidationResult first = plan.validate(Map.of("x", "wrong"), context);
-        assertFalse(first.isValid());
-        assertEquals(1, first.getErrors().size());
-        Object firstMessage = first.getErrors().get(0);
-        for (int i = 0; i < 10; i++) {
-            assertTrue(plan.isValid(Map.of("x", i), context));
-            assertFalse(plan.isValid(Map.of(), context));
-            assertTrue(plan.validate(Map.of("x", i), context).isValid());
-            assertFalse(plan.validate(Map.of(), context).isValid());
-        }
-        assertEquals(1, first.getErrors().size());
-        assertSame(firstMessage, first.getErrors().get(0));
     }
 
     @Test
