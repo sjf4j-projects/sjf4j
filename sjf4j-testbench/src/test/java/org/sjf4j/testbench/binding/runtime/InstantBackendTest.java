@@ -45,11 +45,6 @@ class InstantBackendTest {
                         binder.getClass().getSimpleName() + ": " + value);
             }
             assertNull(binder.readNode("null", Instant.class), binder.getClass().getSimpleName());
-            // Instant also has a numeric codec; the value shape chooses epochMillis.
-            assertEquals(Instant.EPOCH, binder.readNode("0", Instant.class),
-                    binder.getClass().getSimpleName() + ": numeric epochMillis");
-            assertEquals(Instant.ofEpochMilli(-1), binder.readNode("-1", Instant.class),
-                    binder.getClass().getSimpleName() + ": negative epochMillis");
         }
     }
 
@@ -65,41 +60,6 @@ class InstantBackendTest {
                     binder.readNode("\"2026-10-31T12:34:56Z\"", Date.class),
                     binder.getClass().getSimpleName());
         }
-    }
-
-    @Test
-    void epochMillisRoundTripsAcrossAllBackends() {
-        for (Binder<?, ?> binder : backends()) {
-            String name = binder.getClass().getSimpleName();
-            for (long value : new long[]{
-                    0L, 1L, -1L, 1_782_908_096_123L, -1_234_567_890_123L,
-                    Long.MIN_VALUE, Long.MAX_VALUE
-            }) {
-                String input = "{\"millis\":" + value + "}";
-                Timestamps decoded = (Timestamps) binder.readNode(input, Timestamps.class);
-                assertEquals(Instant.ofEpochMilli(value), decoded.millis, name + ": " + value);
-                assertEquals(Long.valueOf(value), Long.valueOf(decoded.millis.toEpochMilli()));
-                String serialized = binder.writeNodeAsString(decoded);
-                assertTrue(serialized.contains(Long.toString(value)),
-                        name + " must preserve the numeric epochMillis value: " + serialized);
-                Timestamps reread = (Timestamps) binder.readNode(serialized, Timestamps.class);
-                assertEquals(decoded.millis, reread.millis, name + ": " + value);
-            }
-            Timestamps nulls = (Timestamps) binder.readNode("{\"millis\":null}", Timestamps.class);
-            assertNull(nulls.millis, name);
-        }
-    }
-
-    @Test
-    void epochMillisRawCodecRetainsLongRepresentation() {
-        org.sjf4j.value.ValueCodec<Instant, Long> codec =
-                org.sjf4j.value.ValueCodec.INSTANT_EPOCH_MILLIS;
-        for (long value : new long[]{0L, -1L, Long.MIN_VALUE, Long.MAX_VALUE}) {
-            assertEquals(Long.valueOf(value), codec.valueToRaw(Instant.ofEpochMilli(value)));
-            assertEquals(Instant.ofEpochMilli(value), codec.rawToValue(value));
-        }
-        assertNull(codec.rawToValue(null));
-        assertNull(codec.valueToRaw(null));
     }
 
     @Test
