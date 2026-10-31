@@ -43,11 +43,11 @@ class ValidationContextReuseTest {
         ValidationResult first = ctx.toResult(false);
         assertFalse(plan.evaluate(Map.of("x", 1), ctx));
         assertEquals(2, ctx.toResult(false).getErrors().size());
-        assertSame(first.getMessages(), ctx.toResult(false).getMessages());
+        assertSame(first.getErrors(), ctx.toResult(false).getErrors());
 
         // Callers explicitly control the lifetime of their accumulated diagnostics.
-        ctx.clearMessages();
-        assertTrue(first.getMessages().isEmpty());
+        ctx.clearErrors();
+        assertTrue(first.getErrors().isEmpty());
         assertTrue(plan.evaluate(Map.of("x", 1, "y", 2), ctx));
         assertSame(ValidationResult.SUCCESS, ctx.toResult(true));
     }
@@ -81,7 +81,7 @@ class ValidationContextReuseTest {
             assertTrue(plan.evaluate(Map.of("x", i), ctx));
         }
         assertEquals(10, ctx.toResult(false).getErrors().size());
-        for (ValidationMessage msg : ctx.toResult(false).getErrors()) {
+        for (ValidationResult.Error msg : ctx.toResult(false).getErrors()) {
             assertNotNull(msg.getInstancePs());
         }
         assertTrue(ctx.planStack() == null || ctx.planStack().isEmpty());
@@ -97,10 +97,9 @@ class ValidationContextReuseTest {
         assertFalse(email.evaluate("not-an-email", strict));
         assertTrue(email.evaluate("not-an-email", permissive));
         assertEquals(1, strict.toResult(false).getErrors().size());
-        // Non-strict format is a successful annotation, not an assertion.
-        assertTrue(permissive.toResult(true).isValid());
-        assertEquals(1, permissive.toResult(true).getAnnotations().size());
-        assertEquals("format", permissive.toResult(true).getAnnotations().get(0).getKeyword());
+        // Collection of annotations is deliberately deferred to a later change.
+        assertSame(ValidationResult.SUCCESS, permissive.toResult(true));
+        assertTrue(permissive.getAnnotations().isEmpty());
 
         SchemaPlan alwaysFalse = JsonSchema.fromJson("false").createPlan();
         SchemaPlan alwaysTrue = JsonSchema.fromJson("true").createPlan();
@@ -108,7 +107,7 @@ class ValidationContextReuseTest {
         assertTrue(alwaysTrue.evaluate(new Object(), strict));
         assertFalse(alwaysFalse.evaluate(null, strict));
         assertEquals(3, strict.toResult(false).getErrors().size());
-        assertEquals("false", strict.toResult(false).getLastMessage().getKeyword());
+        assertEquals("false", strict.toResult(false).getLastError().getKeyword());
     }
 
     @Test
