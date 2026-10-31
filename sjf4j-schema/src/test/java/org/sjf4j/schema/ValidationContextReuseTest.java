@@ -16,7 +16,7 @@ class ValidationContextReuseTest {
                 .createPlan();
         SchemaPlan string = JsonSchema.fromJson("{\"type\":\"string\",\"minLength\":2}")
                 .createPlan();
-        ValidationContext context = ValidationContext.forIsValid(false);
+        ValidationContext context = new ValidationContext();
 
         for (int i = 0; i < 25; i++) {
             assertTrue(required.isValid(Map.of("x", i), context));
@@ -25,8 +25,9 @@ class ValidationContextReuseTest {
             assertTrue(string.isValid("good", context));
             assertFalse(string.isValid("x", context));
         }
-        assertThrows(IllegalArgumentException.class,
-                () -> required.validate(Map.of(), context));
+        // Switching modes is safe: call semantics belong to SchemaPlan methods.
+        assertFalse(required.validate(Map.of(), context).isValid());
+        assertFalse(required.validate(Map.of("x", "wrong"), true, false, context).isValid());
         assertTrue(required.isValid(Map.of("x", 1), context));
     }
 
@@ -36,7 +37,7 @@ class ValidationContextReuseTest {
                 "{\"type\":\"object\",\"required\":[\"x\",\"y\"],"
                         + "\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"string\"}}}")
                 .createPlan();
-        ValidationContext context = ValidationContext.forValidation(false, false);
+        ValidationContext context = new ValidationContext();
 
         ValidationResult first = plan.validate(Map.of("x", "wrong"), context);
         assertFalse(first.isValid());
@@ -63,7 +64,7 @@ class ValidationContextReuseTest {
                 "{\"properties\":{\"x\":true},\"not\":{\"allOf\":[false]},"
                         + "\"unevaluatedProperties\":false}")
                 .createPlan();
-        ValidationContext context = ValidationContext.forValidation(false, false);
+        ValidationContext context = new ValidationContext();
         for (int i = 0; i < 10; i++) {
             assertFalse(plan.validate(Map.of("unknown", i), context).isValid());
             assertTrue(plan.validate(Map.of("x", i), context).isValid());
@@ -77,7 +78,7 @@ class ValidationContextReuseTest {
         SchemaPlan required = JsonSchema.fromJson("{\"required\":[\"name\"]}").createPlan();
         SchemaPlan alwaysFalse = JsonSchema.fromJson("false").createPlan();
         SchemaPlan alwaysTrue = JsonSchema.fromJson("true").createPlan();
-        ValidationContext ctx = ValidationContext.forValidation(true, false);
+        ValidationContext ctx = new ValidationContext();
 
         ValidationResult failure = required.validate(Map.of(), ctx);
         assertEquals(1, failure.getErrors().size());
@@ -89,5 +90,7 @@ class ValidationContextReuseTest {
         assertFalse(alwaysFalse.isValid(Map.of(), ctx));
         assertTrue(alwaysTrue.isValid(Map.of(), ctx));
         assertEquals(1, failure.count());
+        assertFalse(required.isValid(Map.of(), ctx));
+        assertTrue(required.isValid(java.util.Collections.singletonMap("name", null), ctx));
     }
 }
