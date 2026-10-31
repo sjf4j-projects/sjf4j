@@ -1,0 +1,33 @@
+name: LocalDateTime backend JMH
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-core/src/main/java/org/sjf4j/util/FastLocalDateTime.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/LocalDateTimeBackendBenchmark.java'
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Run all LocalDateTime backend and shape comparisons
+        run: |
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.runtime.LocalDateTimeBackendBenchmark.*' -wi 2 -i 3 -f 2 -w 1s -r 1s -prof gc -rf text -rff localdatetime-results.txt
+          cat localdatetime-results.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localdatetime-jmh-jdk17
+          path: localdatetime-results.txt
