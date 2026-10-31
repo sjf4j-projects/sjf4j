@@ -1,14 +1,15 @@
-name: Fabien Read Blackbird Strict Comparison
+name: Fabien Fast Scalar Decoder Diagnosis
 on:
   push:
     branches:
       - experiment/fabien-blackbird-diagnosis-20261031
+      - experiment/fabien-fast-temporal-blackbird-20261101
   workflow_dispatch:
 
 jobs:
   benchmark:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     permissions:
       contents: read
     steps:
@@ -37,28 +38,19 @@ jobs:
                 cp "$file" diagnostics/generated/
               fi
             done
-      - name: Run strict and pre-bound reader comparison
+      - name: Compare Blackbird scalar deserializer variants
         shell: bash
         run: |
           set -o pipefail
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           test -n "$JAR"
-          java -jar "$JAR" \
-            '.*FabienReadBenchmark\.(users|clients)_jackson2_(compiled|blackbird|blackbird_reader|blackbird_reader_strict|native_reader_strict)' \
-            -p sizeKb=1 -p seed=12345 \
-            -f 3 -t 1 -wi 7 -i 10 -w 500ms -r 500ms \
-            -prof gc -rf json -rff fabien-results.json \
-            2>&1 | tee fabien-jmh.log
-      - name: Capture CPU stack samples
+          java -jar "$JAR"             '.*FabienReadBenchmark\.(clients_jackson2_(native|blackbird|blackbird_fast_uuid|blackbird_fast_local_date|blackbird_fast_offset_date_time|blackbird_fast_temporal|runtime|compiled|handwritten)|users_jackson2_(native|blackbird|blackbird_fast_temporal|compiled))'             -p sizeKb=1,10 -p seed=12345,324,43201             -f 2 -t 1 -wi 5 -i 7 -w 300ms -r 300ms             -prof gc -rf json -rff fabien-temporal-results.json             2>&1 | tee fabien-temporal-jmh.log
+      - name: Capture size 10 KB CPU stacks
         shell: bash
         run: |
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           set +e
-          java -jar "$JAR" \
-            '.*FabienReadBenchmark\.(users|clients)_jackson2_(blackbird_reader|blackbird_reader_strict|compiled)' \
-            -p sizeKb=1 -p seed=12345 \
-            -f 1 -t 1 -wi 5 -i 5 -w 300ms -r 300ms \
-            -prof stack > fabien-stack.log 2>&1
+          java -jar "$JAR"             '.*FabienReadBenchmark\.clients_jackson2_(blackbird|blackbird_fast_temporal|runtime|compiled)'             -p sizeKb=10 -p seed=12345             -f 1 -t 1 -wi 5 -i 5 -w 300ms -r 300ms             -prof stack > fabien-temporal-stack.log 2>&1
           echo "$?" > diagnostics/stack-profiler-exit-code.txt
           set -e
       - name: Capture JIT inlining decisions
@@ -66,26 +58,20 @@ jobs:
         run: |
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           set +e
-          java -jar "$JAR" \
-            '.*FabienReadBenchmark\.(users|clients)_jackson2_(blackbird_reader|blackbird_reader_strict|compiled)' \
-            -p sizeKb=1 -p seed=12345 \
-            -f 1 -t 1 -wi 4 -i 2 -w 250ms -r 250ms \
-            -jvmArgsAppend '-XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining' \
-            > fabien-inlining.log 2>&1
+          java -jar "$JAR"             '.*FabienReadBenchmark\.clients_jackson2_(blackbird|blackbird_fast_temporal|compiled)'             -p sizeKb=10 -p seed=12345             -f 1 -t 1 -wi 4 -i 2 -w 250ms -r 250ms             -jvmArgsAppend '-XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining'             > fabien-temporal-inlining.log 2>&1
           echo "$?" > diagnostics/inlining-exit-code.txt
-          grep -E 'FabienCompiled|Jackson2Parser|Blackbird|BeanDeserializer|BeanPropertyMap|StringDeserializer|NumberDeserializers|EnumDeserializer|CollectionDeserializer|ObjectArrayDeserializer' \
-            fabien-inlining.log > fabien-inlining-focus.txt || true
+          grep -E 'FastUuid|FastLocalDate|FastOffsetDateTime|Jackson2Parser|Blackbird|BeanDeserializer|BeanPropertyMap|StringDeserializer|CollectionDeserializer|ObjectArrayDeserializer'             fabien-temporal-inlining.log > fabien-temporal-inlining-focus.txt || true
           set -e
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fabien-read-blackbird-strict-jdk25
+          name: fabien-fast-scalar-diagnosis-jdk25
           path: |
-            fabien-results.json
-            fabien-jmh.log
-            fabien-stack.log
-            fabien-inlining.log
-            fabien-inlining-focus.txt
+            fabien-temporal-results.json
+            fabien-temporal-jmh.log
+            fabien-temporal-stack.log
+            fabien-temporal-inlining.log
+            fabien-temporal-inlining-focus.txt
             diagnostics/**
             sjf4j-testbench/build/generated/sources/annotationProcessor/jmh/**
           if-no-files-found: warn
