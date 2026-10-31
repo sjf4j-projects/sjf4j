@@ -90,15 +90,11 @@ public final class SchemaValidator {
         List<SchemaPlan> plans = _resolvePlans(pojoClazz);
         if (plans.isEmpty()) return ValidationResult.SUCCESS;
 
-        ValidationResult previous = null;
         for (SchemaPlan plan : plans) {
-            ValidationResult result = plan.validate(pojo, true, strictFormat).mergePrevious(previous);
+            ValidationResult result = plan.validate(pojo, true, strictFormat);
             if (!result.isValid()) return result;
-            previous = result;
         }
-        // Preserve successful annotation output from the resolved schema plans.
-        return previous != null && !previous.getAnnotations().isEmpty()
-                ? previous : ValidationResult.SUCCESS;
+        return ValidationResult.SUCCESS;
     }
 
     /**
