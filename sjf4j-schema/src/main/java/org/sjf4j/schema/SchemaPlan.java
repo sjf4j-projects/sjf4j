@@ -84,17 +84,21 @@ public final class SchemaPlan {
     public ValidationResult validate(Object node, ValidationContext context) {
         java.util.Objects.requireNonNull(context, "context");
         context.begin(true);
-        if (booleanSchema) {
-            if (booleanValue) return ValidationResult.SUCCESS;
-            ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
-                    PathSegment.Root.INSTANCE, keywordPs,
-                    schemaUri, "false", "schema 'false' always fails");
-            return new ValidationResult(false, null, msg);
+        try {
+            if (booleanSchema) {
+                if (booleanValue) return ValidationResult.SUCCESS;
+                ValidationMessage msg = new ValidationMessage(ValidationMessage.Severity.ERROR,
+                        PathSegment.Root.INSTANCE, keywordPs,
+                        schemaUri, "false", "schema 'false' always fails");
+                return new ValidationResult(false, null, msg);
+            }
+            Instance instance = Instance.infer(node);
+            PathSegment ps = context.isFailFast() ? null : PathSegment.Root.INSTANCE;
+            boolean valid = evaluate(instance, ps, context);
+            return context.toResult(valid);
+        } finally {
+            context.end();
         }
-        Instance instance = Instance.infer(node);
-        PathSegment ps = context.isFailFast() ? null : PathSegment.Root.INSTANCE;
-        boolean valid = evaluate(instance, ps, context);
-        return context.toResult(valid);
     }
 
     /**
@@ -104,8 +108,12 @@ public final class SchemaPlan {
     public boolean isValid(Object node, ValidationContext context) {
         java.util.Objects.requireNonNull(context, "context");
         context.begin(false);
-        if (booleanSchema) return booleanValue;
-        return evaluate(Instance.infer(node), null, context);
+        try {
+            if (booleanSchema) return booleanValue;
+            return evaluate(Instance.infer(node), null, context);
+        } finally {
+            context.end();
+        }
     }
 
     /** Returns whether the instance passes validation in fail-fast mode. */
