@@ -85,7 +85,8 @@ final class SchemaCompiler {
         }
         if (kind == null) {
             if (schema.containsKey("properties") || schema.containsKey("required")
-                    || schema.containsKey("additionalProperties")) {
+                    || schema.containsKey("additionalProperties")
+                    || schema.containsKey("minProperties") || schema.containsKey("maxProperties")) {
                 if (value.shape == SchemaValue.Shape.STRING
                         || value.shape == SchemaValue.Shape.NUMBER
                         || value.shape == SchemaValue.Shape.BOOLEAN
@@ -93,7 +94,9 @@ final class SchemaCompiler {
                     // Object-specific keywords are ignored on non-objects.
                     for (String key : schema.keySet()) {
                         if (!key.equals("properties") && !key.equals("required")
-                                && !key.equals("additionalProperties") && !isAnnotation(key))
+                                && !key.equals("additionalProperties")
+                                && !key.equals("minProperties") && !key.equals("maxProperties")
+                                && !isAnnotation(key))
                             return null;
                     }
                     return new SchemaCheck.Pass();
