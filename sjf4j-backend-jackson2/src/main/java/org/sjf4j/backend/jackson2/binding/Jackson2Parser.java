@@ -454,16 +454,33 @@ public final class Jackson2Parser extends StreamingParser {
     }
 
     @Override
+    public char readCharValue() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) {
+            throw new BindingException("cannot read null as char");
+        }
+        if (token != JsonToken.VALUE_STRING) {
+            throw expected("string or null", token);
+        }
+        return currentChar();
+    }
+
+    @Override
     public Character readChar() throws IOException {
-        String value = readString();
-        if (value == null) {
-            return null;
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) {
+            throw expected("string or null", token);
         }
-        if (value.length() != 1) {
-            throw new BindingException("cannot read char: expected single-character string, but length was "
-                    + value.length());
+        return currentChar();
+    }
+
+    private char currentChar() throws IOException {
+        int length = parser.getTextLength();
+        if (length != 1) {
+            throw new BindingException("cannot read char: expected single-character string, but length was " + length);
         }
-        return value.charAt(0);
+        return parser.getTextCharacters()[parser.getTextOffset()];
     }
 
     /* --------------------------------------------------------------
