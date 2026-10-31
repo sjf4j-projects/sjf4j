@@ -1192,7 +1192,7 @@ public interface Evaluator {
                     // and no unevaluated tracking is active, further scanning is
                     // unnecessary for contains semantics.
                     if (matches >= minContains && maxContains == -1
-                            && instance.peekEvaluated() == null) {
+                            && instance.peekEvaluated() == null && ctx.isBooleanOnly()) {
                         return true;
                     }
                 }
@@ -1345,9 +1345,9 @@ public interface Evaluator {
                 }
                 if (subResult) {
                     result = true;
-                    // Early exit: without unevaluated tracking, one success is
-                    // sufficient for anyOf semantics; no merge needed.
-                    if (cousinEvaluated == null) break;
+                    // Boolean-only evaluation can stop at the first match.
+                    // Annotation collection must inspect all successful branches.
+                    if (cousinEvaluated == null && ctx.isBooleanOnly()) break;
                 }
             }
             if (cousinEvaluated != null)
