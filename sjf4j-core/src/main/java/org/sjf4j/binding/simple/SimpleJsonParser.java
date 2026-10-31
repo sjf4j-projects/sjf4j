@@ -6,6 +6,9 @@ import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Numbers;
+import org.sjf4j.util.FastLocalDateTime;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
@@ -270,6 +273,45 @@ public final class SimpleJsonParser extends StreamingParser {
     /**
      * Reads scalar as number.
      */
+
+    @Override
+    public LocalDateTime readLocalDateTime() throws IOException {
+        if (nextIfNull()) return null;
+
+        bufferedToken = null;
+        _prepareValuePathUnchecked();
+        try {
+            // Directly parse canonical, unescaped ISO text within the current
+            // buffer. JSON escapes, other ISO forms and boundary splits use the
+            // normal JSON string decoder.
+            int available = inputLimit - inputPos;
+            if (available >= 18 && inputBuffer[inputPos] == '"') {
+                int maxLength = Math.min(29, available - 2);
+                for (int length = 16; length <= maxLength; length++) {
+                    if (inputBuffer[inputPos + length + 1] == '"') {
+                        if (length == 16 || length == 19 || length >= 21) {
+                            try {
+                                LocalDateTime value = FastLocalDateTime.parse(inputBuffer, inputPos + 1, length);
+                                inputPos += length + 2;
+                                pos += length + 2;
+                                _checkValueEnd();
+                                return value;
+                            } catch (DateTimeParseException ignored) {
+                                // Invalid or escaped: let JSON decoding handle it.
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            LocalDateTime value = FastLocalDateTime.parse(_readString());
+            _checkValueEnd();
+            return value;
+        } finally {
+            _clearActivePath();
+            _valueDone();
+        }
+    }
 
     @Override
     public Number readNumber() throws IOException {
