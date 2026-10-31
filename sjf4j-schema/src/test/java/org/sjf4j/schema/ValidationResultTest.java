@@ -31,7 +31,7 @@ class ValidationResultTest {
         assertSame(keyword, error.getKeywordPs());
         assertEquals(uri, error.getSchemaUri());
         assertEquals(uri.toString(), error.getSchemaUriText());
-        assertTrue(error.toString().contains("validate.type"));
+        assertTrue(error.toString().contains("type: expected integer"));
         assertFalse(error.toString().startsWith("ERROR"));
         assertNull(error.getValue());
         assertTrue(result.getAnnotations().isEmpty());
@@ -53,7 +53,7 @@ class ValidationResultTest {
         assertEquals("examples", annotation.getKeyword());
         assertEquals("Example values", annotation.getMessage());
         assertFalse(annotation.toString().startsWith("ERROR"));
-        assertTrue(annotation.toString().contains("Example values"));
+        assertTrue(annotation.toString().contains("examples: Example values"));
         assertSame(ROOT, annotation.getInstancePs());
         assertSame(keyword, annotation.getKeywordPs());
         assertNull(annotation.getSchemaUri());

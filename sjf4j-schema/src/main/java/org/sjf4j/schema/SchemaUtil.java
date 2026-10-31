@@ -98,18 +98,18 @@ public final class SchemaUtil {
 
     static String formatValidationError(String summary,
                                        PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword) {
-        return formatValidationDiagnostic("ERROR ", summary, instancePs, keywordPs, schemaUri, keyword);
+        return formatValidationDiagnostic("ERROR " + validationCode(keyword), summary, instancePs, keywordPs, schemaUri, keyword);
     }
 
     static String formatValidationMessage(String summary,
                                          PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword) {
-        return formatValidationDiagnostic("", summary, instancePs, keywordPs, schemaUri, keyword);
+        return formatValidationDiagnostic(keyword == null ? "message" : keyword, summary, instancePs, keywordPs, schemaUri, keyword);
     }
 
-    private static String formatValidationDiagnostic(String prefix, String summary,
+    private static String formatValidationDiagnostic(String label, String summary,
                                                      PathSegment instancePs, PathSegment keywordPs, URI schemaUri, String keyword) {
         StringBuilder sb = new StringBuilder();
-        sb.append(prefix).append(validationCode(keyword)).append(": ").append(summary);
+        sb.append(label).append(": ").append(summary);
         String keywordValue = displayPath(keywordPs);
         String keywordName = (keyword != null && (keywordValue == null || "/".equals(keywordValue))) ? keyword : null;
         _appendMeta(sb, _meta("instance", displayPath(instancePs)),
