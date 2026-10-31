@@ -1,0 +1,49 @@
+name: Simple scalar fast paths A/B
+
+on:
+  push:
+    branches: [exp/simple-parser-fastpaths-ab-20261031]
+    paths: [.github/workflows/simple-value-fastpaths-ab.yml]
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Baseline
+        shell: bash
+        run: |
+          git checkout origin/main
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+          JAR=$(find sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)
+          java -jar "$JAR" '.*SimplePojoReadOrderBenchmark\.(declaration|reverse)_(compiled|runtime)'             -f 2 -t 1 -wi 4 -i 4 -w 300ms -r 300ms -prof gc             -rf json -rff /tmp/simple-baseline.json
+      - name: Optimized
+        shell: bash
+        run: |
+          git checkout "$GITHUB_SHA"
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+          JAR=$(find sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)
+          java -jar "$JAR" '.*SimplePojoReadOrderBenchmark\.(declaration|reverse)_(compiled|runtime)'             -f 2 -t 1 -wi 4 -i 4 -w 300ms -r 300ms -prof gc             -rf json -rff /tmp/simple-optimized.json
+      - name: Comparison
+        run: |
+          python3 - <<'PY'
+          import json
+          for name in ('baseline', 'optimized'):
+              print(name)
+              for item in json.load(open('/tmp/simple-' + name + '.json')):
+                  print(item['benchmark'], item['primaryMetric']['score'], item['primaryMetric']['scoreError'],
+                        item.get('secondaryMetrics',{}).get('gc.alloc.rate.norm',{}).get('score'))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simple-value-ab
+          path: /tmp/simple-*.json
