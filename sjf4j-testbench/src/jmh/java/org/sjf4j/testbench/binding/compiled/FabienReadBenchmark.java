@@ -79,6 +79,35 @@ public class FabienReadBenchmark {
         Users users = FabienDataGenerator.users(targetBytes, seed);
         Clients clients = FabienDataGenerator.clients(targetBytes, seed);
 
+        // Debug only, outside timed JMH methods.
+        if (Boolean.getBoolean("sjf4j.fabien.diagnose")) {
+            System.out.println("==== Compiled Jackson2 matcher order ====");
+            for (java.lang.reflect.Field field : COMPILED.getClass().getDeclaredFields()) {
+                if (!org.sjf4j.binding.NameMatcher.class.isAssignableFrom(field.getType())) continue;
+                field.setAccessible(true);
+                try {
+                    org.sjf4j.binding.NameMatcher matcher =
+                            (org.sjf4j.binding.NameMatcher) field.get(null);
+                    java.util.List<String> names = new java.util.ArrayList<>();
+                    for (int i = 0; i < matcher.size(); i++) names.add(matcher.name(i));
+                    System.out.println(field.getName() + " = " + names);
+                } catch (IllegalAccessException e) { throw new IllegalStateException(e); }
+            }
+            System.out.println("==== Native serialization field order ====");
+            for (Object obj : new Object[]{users, clients}) {
+                com.fasterxml.jackson.databind.JsonNode root = NATIVE.valueToTree(obj);
+                java.util.Iterator<String> keys = root.fieldNames();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    System.out.println("root " + key);
+                    com.fasterxml.jackson.databind.JsonNode list = root.get(key);
+                    if (list.isArray() && !list.isEmpty()) {
+                        com.fasterxml.jackson.databind.JsonNode first = list.get(0);
+                        System.out.println("first " + first);
+                    }
+                }
+            }
+        }
         usersJson = NATIVE.writeValueAsBytes(users);
         clientsJson = NATIVE.writeValueAsBytes(clients);
         System.out.printf("Fabien sizeKb=%d seed=%d users=%d bytes/%d objects "
