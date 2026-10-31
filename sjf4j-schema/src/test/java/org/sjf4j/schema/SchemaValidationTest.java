@@ -253,12 +253,12 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
-        assertEquals("false", result.getLastMessage().getKeyword());
-        assertEquals("/y", result.getLastMessage().getInstancePs().rootedPointerExpr());
-        assertEquals("/additionalProperties", result.getLastMessage().getKeywordPs().rootedPointerExpr());
-        assertEquals("<inline>", result.getLastMessage().getSchemaUriText());
+        assertEquals("false", result.getLastError().getKeyword());
+        assertEquals("/y", result.getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/additionalProperties", result.getLastError().getKeywordPs().rootedPointerExpr());
+        assertEquals("<inline>", result.getLastError().getSchemaUriText());
         assertEquals("schema 'false' always fails",
-                result.getLastMessage().getMessage());
+                result.getLastError().getMessage());
 
         ValidationException ex = assertThrows(ValidationException.class, () -> plan.requireValid(bad));
         assertTrue(ex.getMessage().contains("/additionalProperties"));
@@ -284,9 +284,9 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
-        assertEquals("type", result.getLastMessage().getKeyword());
-        assertEquals("/name", result.getLastMessage().getInstancePs().rootedPointerExpr());
-        assertEquals("/properties/name/type", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+        assertEquals("type", result.getLastError().getKeyword());
+        assertEquals("/name", result.getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/properties/name/type", result.getLastError().getKeywordPs().rootedPointerExpr());
     }
 
     @Test
@@ -306,9 +306,9 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
-        assertEquals("type", result.getLastMessage().getKeyword());
-        assertEquals("/name", result.getLastMessage().getInstancePs().rootedPointerExpr());
-        assertEquals("/properties/name/type", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+        assertEquals("type", result.getLastError().getKeyword());
+        assertEquals("/name", result.getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/properties/name/type", result.getLastError().getKeywordPs().rootedPointerExpr());
     }
 
     @Test
@@ -318,9 +318,9 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(Arrays.asList("ok", null), true, false);
         assertFalse(result.isValid());
-        assertEquals("type", result.getLastMessage().getKeyword());
-        assertEquals("/1", result.getLastMessage().getInstancePs().rootedPointerExpr());
-        assertEquals("/items/type", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+        assertEquals("type", result.getLastError().getKeyword());
+        assertEquals("/1", result.getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/items/type", result.getLastError().getKeywordPs().rootedPointerExpr());
     }
 
     @Test
@@ -343,9 +343,9 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
-        assertEquals("pattern", result.getLastMessage().getKeyword());
-        assertEquals("/site", result.getLastMessage().getInstancePs().rootedPointerExpr());
-        assertEquals("/$defs/httpsUri/pattern", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+        assertEquals("pattern", result.getLastError().getKeyword());
+        assertEquals("/site", result.getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/$defs/httpsUri/pattern", result.getLastError().getKeywordPs().rootedPointerExpr());
     }
 
     @Test
@@ -363,9 +363,9 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(bad, true, false);
         assertFalse(result.isValid());
-        assertEquals("propertyNames", result.getLastMessage().getKeyword());
-        assertEquals("/Bad-Name", result.getLastMessage().getInstancePs().rootedPointerExpr());
-        assertEquals("/propertyNames", result.getLastMessage().getKeywordPs().rootedPointerExpr());
+        assertEquals("propertyNames", result.getLastError().getKeyword());
+        assertEquals("/Bad-Name", result.getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/propertyNames", result.getLastError().getKeywordPs().rootedPointerExpr());
     }
 
     @Test
@@ -473,7 +473,7 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(Collections.singletonMap("a", 1), true, false);
         assertFalse(result.isValid());
-        assertEquals("oneOf", result.getLastMessage().getKeyword());
+        assertEquals("oneOf", result.getLastError().getKeyword());
     }
 
     @Test
@@ -485,7 +485,7 @@ public class SchemaValidationTest {
 
         ValidationResult result = plan.validate(Collections.singletonMap("present", 1));
         assertFalse(result.isValid());
-        List<ValidationMessage> errors = result.getErrors();
+        List<ValidationResult.Error> errors = result.getErrors();
         assertEquals(2, errors.size());
         assertEquals("required", errors.get(0).getKeyword());
         assertEquals("type", errors.get(1).getKeyword());
