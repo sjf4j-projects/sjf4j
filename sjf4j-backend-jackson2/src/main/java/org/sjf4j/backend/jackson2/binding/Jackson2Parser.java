@@ -14,6 +14,8 @@ import com.fasterxml.jackson.core.JsonToken;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.DateTimeException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -235,6 +237,48 @@ public final class Jackson2Parser extends StreamingParser {
     /* --------------------------------------------------------------
      * String / generic number
      * -------------------------------------------------------------- */
+
+    /**
+     * ISO yyyy-MM-dd is the common LocalDate wire format. Decode directly
+     * from Jackson's reusable text buffer without creating a String or a
+     * DateTimeFormatter parse context; retain the standard parser for other
+     * valid ISO forms and invalid dates.
+     */
+    @Override
+    public LocalDate readLocalDate() throws IOException {
+        JsonToken token = nextValue();
+        if (token == JsonToken.VALUE_NULL) return null;
+        if (token != JsonToken.VALUE_STRING) {
+            throw expected("string or null", token);
+        }
+
+        if (parser.getTextLength() == 10) {
+            char[] chars = parser.getTextCharacters();
+            int pos = parser.getTextOffset();
+            if (chars[pos + 4] == '-' && chars[pos + 7] == '-'
+                    && digit(chars[pos]) && digit(chars[pos + 1])
+                    && digit(chars[pos + 2]) && digit(chars[pos + 3])
+                    && digit(chars[pos + 5]) && digit(chars[pos + 6])
+                    && digit(chars[pos + 8]) && digit(chars[pos + 9])) {
+                int year = (chars[pos] - '0') * 1000
+                        + (chars[pos + 1] - '0') * 100
+                        + (chars[pos + 2] - '0') * 10
+                        + chars[pos + 3] - '0';
+                int month = (chars[pos + 5] - '0') * 10 + chars[pos + 6] - '0';
+                int day = (chars[pos + 8] - '0') * 10 + chars[pos + 9] - '0';
+                try {
+                    return LocalDate.of(year, month, day);
+                } catch (DateTimeException invalidDate) {
+                    // Keep the same DateTimeParseException behavior on invalid input.
+                }
+            }
+        }
+        return LocalDate.parse(parser.getText());
+    }
+
+    private static boolean digit(char c) {
+        return c >= '0' && c <= '9';
+    }
 
     @Override
     public UUID readUuid() throws IOException {
