@@ -49,6 +49,16 @@ class SchemaDiagnosticMetadataTest {
     }
 
     @Test
+    void rawPointerTokensWithSpacesAndPlusRemainValid() {
+        SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(
+                "classpath:/schemas/model.json#/properties/name with+plus",
+                "minLength");
+
+        assertEquals("classpath:/schemas/model.json", diagnostic.schemaUri);
+        assertEquals("/properties/name with+plus/minLength", diagnostic.keywordPointer);
+    }
+
+    @Test
     void nestedIdStartsANewDiagnosticResourceAndResetsItsPointer() {
         String effective = SchemaCompiler.effectiveSchemaUri(
                 "classpath:/schemas/root.json#/properties/child",
