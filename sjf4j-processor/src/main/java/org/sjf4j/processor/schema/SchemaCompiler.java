@@ -17,25 +17,22 @@ import java.util.List;
  */
 final class SchemaCompiler {
     private final ProcessorContext context;
-    private final boolean nullAsMissing;
     private final ObjectCompiler objects;
     private final ScalarCompiler scalars;
     private final ArrayCompiler arrays;
     private final OneOfCompiler oneOf;
 
-    SchemaCompiler(ProcessorContext context, boolean nullAsMissing) {
+    SchemaCompiler(ProcessorContext context) {
         this.context = context;
-        this.nullAsMissing = nullAsMissing;
         this.objects = new ObjectCompiler(context, this);
         this.scalars = new ScalarCompiler();
         this.arrays = new ArrayCompiler(context, this);
-        this.oneOf = new OneOfCompiler(context, objects, this, nullAsMissing);
+        this.oneOf = new OneOfCompiler(context, objects, this);
     }
 
     SchemaCheck.ObjectCheck compileObject(TypeMirror type,
-                                          SchemaResourceResolver.Snapshot snapshot,
-                                          boolean nullAsMissing) {
-        return objects.compile(type, snapshot, nullAsMissing);
+                                          SchemaResourceResolver.Snapshot snapshot) {
+        return objects.compile(type, snapshot);
     }
 
     /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
@@ -101,8 +98,7 @@ final class SchemaCompiler {
                     }
                     return new SchemaCheck.Pass();
                 }
-                return objects.compileNested(value.type, snapshot, schema, schemaUri,
-                        nullAsMissing, depth);
+                return objects.compileNested(value.type, snapshot, schema, schemaUri, depth);
             }
             return scalars.compileLiteralsOnly(schema, value);
         }
@@ -113,8 +109,7 @@ final class SchemaCompiler {
             return arrays.compile(snapshot, schema, value, schemaUri, depth);
         }
         if ("object".equals(kind)) {
-            return objects.compileNested(value.type, snapshot, schema, schemaUri,
-                    nullAsMissing, depth);
+            return objects.compileNested(value.type, snapshot, schema, schemaUri, depth);
         }
         return null;
     }
