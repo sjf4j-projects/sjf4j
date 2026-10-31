@@ -53,6 +53,8 @@ dependencies {
 
     // jmh
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
+    // Match java-json-benchmark's seeded RandomStringUtils data generation.
+    jmhImplementation("org.apache.commons:commons-lang3:3.12.0")
     jmhCompileOnly("org.projectlombok:lombok:1.18.38")
     jmhAnnotationProcessor("org.projectlombok:lombok:1.18.38")
     // Benchmark-only comparisons; neither library is part of a production artifact.
