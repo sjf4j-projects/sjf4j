@@ -14,11 +14,20 @@ import java.util.List;
 final class SchemaEmitter {
     private final GeneratedClass generated;
     private final String helperPrefix;
+    private final boolean nullAsMissing;
     private int helperCount;
 
-    SchemaEmitter(GeneratedClass generated, String helperPrefix) {
+    SchemaEmitter(GeneratedClass generated, String helperPrefix, boolean nullAsMissing) {
         this.generated = generated;
         this.helperPrefix = helperPrefix;
+        this.nullAsMissing = nullAsMissing;
+    }
+
+    /** Apply the validator's input projection only when a SchemaPlan is invoked. */
+    private String fallbackInput(String value) {
+        return nullAsMissing
+                ? "org.sjf4j.schema.SchemaValidationInput.omitNullMembers(" + value + ")"
+                : value;
     }
 
     List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
@@ -126,7 +135,7 @@ final class SchemaEmitter {
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
                         ((SchemaCheck.Fallback) check).uri, planName);
                 lines.add("if (!" + sub.reference() + ".isValid("
-                        + expression + ", " + strictFormat + ")) return false;");
+                        + fallbackInput(expression) + ", " + strictFormat + ")) return false;");
                 return;
             case STRING:
                 emitString(lines, (SchemaCheck.StringCheck) check, value, expression, planName, depth,
@@ -345,7 +354,7 @@ final class SchemaEmitter {
         // specialized domain values (UUID) have a format assertion in the schema.
         if (!"false".equals(strictFormat)) {
             lines.add("if (" + strictFormat + ") {");
-            lines.add("    if (!" + full.reference() + ".isValid(" + expression
+            lines.add("    if (!" + full.reference() + ".isValid(" + fallbackInput(expression)
                     + ", true)) return false;");
             lines.add("} else {");
         }
@@ -367,7 +376,7 @@ final class SchemaEmitter {
         }
         lines.add(indent + "else {");
         lines.add(indent + "    if (!" + full.reference()
-                + ".isValid(" + expression + ", false)) return false;");
+                + ".isValid(" + fallbackInput(expression) + ", false)) return false;");
         lines.add(indent + "}");
         if (!"false".equals(strictFormat)) lines.add("}");
     }
