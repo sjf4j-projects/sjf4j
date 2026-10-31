@@ -80,6 +80,12 @@ public final class Instance {
         return this;
     }
 
+    /** Releases the reusable scalar wrapper's value and parent-path references. */
+    void clear() {
+        reuse(null, JsonType.NULL, false);
+        clearPath();
+    }
+
     private Instance clearPath() {
         this.pathParent = null;
         this.pathKey = null;
