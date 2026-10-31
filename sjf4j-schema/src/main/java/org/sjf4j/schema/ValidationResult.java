@@ -9,16 +9,15 @@ import java.util.stream.Collectors;
 /**
  * Result of schema validation.
  * <p>
- * Supports both aggregated-message mode and fail-fast mode where only the last
- * message may be retained. Each message may expose both instance and keyword
- * JSON Pointer paths for diagnostics. Aggregated messages are held by
- * reference and may be prepended by {@link #mergePrevious(ValidationResult)};
- * callers should treat the returned messages as read-only.
+ * Exposes validation errors and JSON Schema annotations independently.
+ * Each output entry carries instance and keyword locations. Aggregated lists
+ * are held by reference and may be modified by context reuse or result merging.
  */
 public class ValidationResult {
     private final boolean valid;
     private final List<ValidationMessage> messages;
     private final ValidationMessage lastMessage;
+    private final List<ValidationAnnotation> annotations;
 
     /**
      * Shared successful validation result.
@@ -29,9 +28,19 @@ public class ValidationResult {
      * Creates validation result with messages.
      */
     public ValidationResult(boolean valid, List<ValidationMessage> messages, ValidationMessage lastMessage) {
+        this(valid, messages, lastMessage, null);
+    }
+
+    /**
+     * Creates validation output with separate error messages and annotations.
+     * Lists are retained by reference; a reusable context may continue changing them.
+     */
+    public ValidationResult(boolean valid, List<ValidationMessage> messages,
+                            ValidationMessage lastMessage, List<ValidationAnnotation> annotations) {
         this.valid = valid;
         this.messages = messages;
         this.lastMessage = lastMessage;
+        this.annotations = annotations;
     }
 
     /**
@@ -63,6 +72,16 @@ public class ValidationResult {
             return lastMessage == null ? Collections.emptyList() : Collections.singletonList(lastMessage);
         }
         return messages;
+    }
+
+    /**
+     * Returns JSON Schema annotations with their keyword values and locations.
+     * Annotations are distinct from error/warning messages. A result obtained
+     * from a reusable context shares its annotation list until the caller
+     * chooses to clear it.
+     */
+    public List<ValidationAnnotation> getAnnotations() {
+        return annotations == null ? Collections.emptyList() : annotations;
     }
 
     /**
