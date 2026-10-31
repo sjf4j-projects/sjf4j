@@ -146,7 +146,6 @@ abstract class SchemaCheck {
     static final class ObjectCheck extends SchemaCheck {
         final boolean dynamic;
         final boolean typeRequired;
-        final boolean nullAsMissing;
         final boolean additionalPropertiesFalse;
         final Integer minProperties;
         final Integer maxProperties;
@@ -155,7 +154,7 @@ abstract class SchemaCheck {
         final List<Required> required;
         final List<PropertyCheck> properties;
 
-        ObjectCheck(boolean dynamic, boolean typeRequired, boolean nullAsMissing,
+        ObjectCheck(boolean dynamic, boolean typeRequired,
                     boolean additionalPropertiesFalse,
                     Integer minProperties, Integer maxProperties, int staticPropertyCount,
                     List<String> allowedNames, List<Required> required,
@@ -163,7 +162,6 @@ abstract class SchemaCheck {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
             this.typeRequired = typeRequired;
-            this.nullAsMissing = nullAsMissing;
             this.additionalPropertiesFalse = additionalPropertiesFalse;
             this.minProperties = minProperties;
             this.maxProperties = maxProperties;
