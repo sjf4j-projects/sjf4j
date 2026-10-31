@@ -98,7 +98,7 @@ class Jackson2ParserTest {
                 assertEquals('x', parser.readCharValue());
 
                 BindingException nullError = assertThrows(BindingException.class, parser::readCharValue);
-                assertEquals("cannot read null as char", nullError.getMessage());
+                assertEquals("expected string for char", nullError.getMessage());
                 BindingException emptyError = assertThrows(BindingException.class, parser::readCharValue);
                 assertEquals("cannot read char: expected single-character string, but length was 0",
                         emptyError.getMessage());
