@@ -6,7 +6,6 @@ import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaPlan;
-import org.sjf4j.schema.SchemaValidationInput;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -17,7 +16,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Regression coverage for child-schema URIs, projected local fallbacks,
+ * Regression coverage for child-schema URIs, local fallbacks,
  * and integer values beyond the range of a Java long.
  */
 class CompiledValidatorFallbackBoundariesTest {
@@ -60,15 +59,10 @@ class CompiledValidatorFallbackBoundariesTest {
         @ValidJsonSchema(NESTED_ARRAY) boolean nested(List<List<Map<String, Object>>> values);
     }
 
-    @CompiledValidator(nullAsMissing = true)
-    public interface Missing {
+    @CompiledValidator
+    public interface LocalFallback {
         @ValidJsonSchema(LOCAL_FALLBACK) boolean object(Map<String, Object> value);
         @ValidJsonSchema(ARRAY_LOCAL_FALLBACK) boolean array(List<Map<String, Object>> value);
-    }
-
-    @CompiledValidator
-    public interface Ordinary {
-        @ValidJsonSchema(LOCAL_FALLBACK) boolean object(Map<String, Object> value);
     }
 
     @CompiledValidator(fallback = false)
@@ -103,32 +97,24 @@ class CompiledValidatorFallbackBoundariesTest {
     }
 
     @Test
-    void localFallbackUsesNullAsMissingProjectionForNestedObjectsAndArrays() {
-        Missing projected = CompiledInstances.create(Missing.class);
-        Ordinary ordinary = CompiledInstances.create(Ordinary.class);
+    void localFallbackPreservesNullMemberPresence() {
+        LocalFallback compiled = CompiledInstances.create(LocalFallback.class);
         SchemaPlan objectPlan = JsonSchema.fromJson(LOCAL_FALLBACK).createPlan();
         SchemaPlan arrayPlan = JsonSchema.fromJson(ARRAY_LOCAL_FALLBACK).createPlan();
-
         for (Object x : java.util.Arrays.asList(null, "present")) {
             Map<String, Object> nested = new LinkedHashMap<>();
             nested.put("x", x);
-            Map<String, Object> outer = new LinkedHashMap<>();
-            outer.put("nested", nested);
-
-            assertParity(objectPlan, ordinary.object(outer), outer);
-            assertParity(objectPlan, projected.object(outer),
-                    SchemaValidationInput.omitNullMembers(outer));
-            List<Map<String, Object>> array = List.of(nested);
-            assertParity(arrayPlan, projected.array(array),
-                    SchemaValidationInput.omitNullMembers(array));
+            Map<String, Object> outer = Map.of("nested", nested);
+            assertParity(objectPlan, compiled.object(outer), outer);
+            List<Map<String, Object>> values = List.of(nested);
+            assertParity(arrayPlan, compiled.array(values), values);
         }
-
-        Map<String, Object> nullField = new LinkedHashMap<>();
-        nullField.put("x", null);
-        assertTrue(ordinary.object(Map.of("nested", nullField)));
-        assertFalse(projected.object(Map.of("nested", nullField)));
-        assertFalse(projected.array(List.of(nullField)));
-        assertTrue(projected.array(List.of(Map.of("x", "present"))));
+        Map<String, Object> nullMember = new LinkedHashMap<>();
+        nullMember.put("x", null);
+        assertTrue(compiled.object(Map.of("nested", nullMember)));
+        assertTrue(compiled.array(List.of(nullMember)));
+        assertFalse(compiled.object(Map.of("nested", Map.of())));
+        assertFalse(compiled.array(List.of(Map.of())));
     }
 
     @Test
