@@ -12,6 +12,8 @@ import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.TypeRegistry;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -266,6 +268,38 @@ class Jackson2ParserTest {
             } finally {
                 parser.close();
             }
+        }
+    }
+
+    @Test
+    void decodesCanonicalLocalDatesAndRetainsIsoFallback() throws Exception {
+        String[] dates = {
+                "2026-10-31", "2000-02-29", "0000-01-01",
+                "9999-12-31", "+10000-01-01", "-0001-12-31"
+        };
+        for (boolean utf8 : new boolean[]{false, true}) {
+            for (String date : dates) {
+                String json = "[\\\"" + date + "\\",null]";
+                try (Jackson2Parser parser = utf8
+                        ? new Jackson2Parser(new JsonFactory().createParser(
+                                json.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                        : parser(json)) {
+                    parser.readArrayStart();
+                    assertFalse(parser.nextIfArrayEnd());
+                    assertEquals(LocalDate.parse(date), parser.readLocalDate());
+                    assertNull(parser.readLocalDate());
+                    parser.readArrayEnd();
+                    parser.end();
+                }
+            }
+        }
+
+        try (Jackson2Parser parser = parser("[\\\"2023-02-29\\\",7]")) {
+            parser.readArrayStart();
+            assertThrows(DateTimeParseException.class, parser::readLocalDate);
+            assertThrows(IOException.class, parser::readLocalDate);
+            parser.readArrayEnd();
+            parser.end();
         }
     }
 
