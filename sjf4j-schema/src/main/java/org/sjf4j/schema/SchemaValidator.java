@@ -97,7 +97,9 @@ public final class SchemaValidator {
             if (!result.isValid()) return result;
             previous = result;
         }
-        return ValidationResult.SUCCESS;
+        // Preserve successful annotation output from the resolved schema plans.
+        return previous != null && !previous.getAnnotations().isEmpty()
+                ? previous : ValidationResult.SUCCESS;
     }
 
     /**
