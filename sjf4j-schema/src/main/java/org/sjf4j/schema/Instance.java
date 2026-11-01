@@ -20,8 +20,8 @@ import java.util.Map;
  * Also carries mutable per-validation state such as evaluated-location marks
  * and recursion-detection stack. Instances are validation-scoped and not
  * thread-safe. A {@code @NodeValue} domain instance is encoded through its value
- * binding before this wrapper is created, so evaluators inspect the raw OBNT
- * representation rather than the domain instance.
+ * binding before this wrapper is created. Structural schema keywords never
+ * descend into a logical value node, even when its raw encoding is a Map/List.
  */
 public final class Instance {
     private Object node;
@@ -121,11 +121,9 @@ public final class Instance {
     /**
      * Infers node metadata and wraps it as an InstancedNode.
      * <p>
-     * Registered logical value node types are first encoded to raw values for
-     * schema validation. The raw value is not recursively rebound or copied
-     * before evaluation. Child wrappers created
-     * later from converted values can be cached and reused within the same
-     * validation traversal.
+     * Registered logical value nodes are encoded for leaf assertions (such as
+     * const/enum/scalar keywords). A container-shaped raw encoding remains an
+     * atomic value: object and array structural keywords must not traverse it.
      */
     static Instance infer(Object node, Instance reusedLeaf) {
         Class<?> clazz = node == null ? null : node.getClass();
@@ -136,9 +134,14 @@ public final class Instance {
                 ValueInfo vi = ti.valueSet.defaultInfo;
                 if (vi != null) {
                     node = vi.valueToRaw(node);
-                    JsonType jsonType = node == null
+                    JsonType rawType = node == null
                             ? JsonType.NULL
                             : JsonType.of(NodeKind.plainOf(vi.rawClazz));
+                    // @NodeValue is a leaf in OBNT, even if it serializes as a
+                    // Map or List. UNKNOWN prevents all structural evaluators
+                    // from treating the raw encoding as a traversable node.
+                    JsonType jsonType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
+                            ? JsonType.UNKNOWN : rawType;
                     return new Instance(node, jsonType, true);
                 }
                 kind = NodeKind.VALUE_BINDING;
