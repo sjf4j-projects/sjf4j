@@ -10,16 +10,16 @@ the runtime `SchemaPlan`.
 ```java
 @CompiledValidator
 public interface UserValidator {
-    @ValidJsonSchema("{\"type\":\"object\"}")
+    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     boolean isValid(User user);
 
-    @ValidJsonSchema("{\"type\":\"object\"}")
+    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     boolean isValid(User user, boolean strictFormat);
 
-    @ValidJsonSchema("{\"type\":\"object\"}")
+    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     void requireValid(User user);
 
-    @ValidJsonSchema("{\"type\":\"object\"}")
+    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     ValidationResult validate(User user, boolean strictFormat);
 }
 
@@ -48,15 +48,26 @@ from directly validating the JSON value `null` through `SchemaPlan`.
 
 `@ValidJsonSchema` specifies the schema, not validation execution options.
 Selection precedence is method annotation, first-parameter annotation, and
-annotations on the value type and its ancestors (parent first). Every selected
-annotation must specify an inline JSON Schema in `value`. Nonempty `ref` and
-empty `value` (implicit type-name file lookup) are compile-time errors even
-when the annotation is declared on the value type or an ancestor. External
-schema resources do not reliably trigger incremental recompilation of the
-generated Java validator. These restrictions apply only to `@CompiledValidator`;
-runtime `SchemaValidator` still accepts schema resources. Compiled and
-fallback execution must produce equivalent validation results for supported
-input representations.
+annotations on the value type and its ancestors (parent first). An inline
+schema takes precedence over a URI reference; otherwise the type's
+conventional schema filename is searched. Compiled and fallback execution must
+produce equivalent validation results for supported input representations.
+
+### External schema resources and incremental compilation
+
+`@CompiledValidator` supports `@ValidJsonSchema(ref = "...")` from a method,
+parameter, type or superclass, and also the implicit file lookup when both
+`value` and `ref` are empty. Schemas can reference other documents via
+`$ref` as well.
+
+**Incremental compilation caveat:** Java's JSR 269 annotation processing API
+does not track changes to external JSON files as dependencies of generated Java
+code. Copying resources before compilation solves resource availability, but
+not change detection. If a referenced schema changes without Java sources
+changing, a build may skip regeneration and leave compiled validation rules
+stale. Build tooling must track schema inputs and rerun annotation processing;
+a clean rebuild is a safe fallback. Specific Gradle/Maven configuration will
+be documented separately.
 
 ## Null-valued object properties
 
@@ -187,11 +198,11 @@ native Java value shapes; custom `@NodeValue`/codec types remain on the full
 runtime path. Unsupported properties fall back as whole subtrees, not partial
 predicates. Array `items` are traversed recursively: a supported item's
 constraints compile directly; an unsupported subtree uses a cached item plan.
-Local JSON Pointer `$ref` targets within the inline schema can be compiled
-directly, for example `{"$ref":"#/$defs/name","$defs":{"name":{"type":"string"}}}`.
-The annotation's `ref` attribute is **not supported** by `@CompiledValidator`.
-Named/dynamic anchors, reference cycles, or sibling assertions that cannot be
-proven safe fall back.
+Local and classpath/file resource JSON Pointer `$ref` targets are resolved
+against the compile-time resource snapshot, without runtime fetches. A
+`@ValidJsonSchema(ref = "document.json#/$defs/name")` selection can itself
+enter direct compilation when its target schema is supported. Named/dynamic anchors, reference
+cycles, or sibling assertions that cannot be proven safe fall back.
 `fallback=false` rejects **any** required subplan at compilation time.
 Support is about the listed combinations, not arbitrary JSON Schema
 keyword combinations.
@@ -238,7 +249,7 @@ independent positive and negative cases for `minLength`, `maxLength`,
 `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`,
 string enum, integer bounds, nested array `items` and sizes,
 `required` and `additionalProperties` across POJO/Map/JsonObject/JOJO,
-null-as-missing modes and intra-document `$ref` compilation. Generated-code assertions remain in
+null-as-missing modes, and intra-/cross-resource `$ref` compilation. Generated-code assertions remain in
 `CompiledValidatorContractProcessorTest`.
 
 ## Processor architecture and regression checks

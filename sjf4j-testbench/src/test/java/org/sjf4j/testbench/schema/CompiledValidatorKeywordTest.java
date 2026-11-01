@@ -118,6 +118,11 @@ class CompiledValidatorKeywordTest {
         @ValidJsonSchema(MAXIMUM) boolean maximum(Values value);
         @ValidJsonSchema(EXCLUSIVE_MINIMUM) boolean exclusiveMinimum(Values value);
         @ValidJsonSchema(EXCLUSIVE_MAXIMUM) boolean exclusiveMaximum(Values value);
+        @ValidJsonSchema(ref = "classpath:/schema/compiled-validator-ref.json#/$defs/model")
+        boolean resourceFragment(Values value);
+        @ValidJsonSchema(ref = "classpath:/schema/compiled-validator-wrapper.json")
+        boolean externalRef(Values value);
+
         @ValidJsonSchema(NUMBERS) boolean numbers(Values value);
         @ValidJsonSchema(INTEGER) boolean integer(Values value);
         @ValidJsonSchema(ARRAYS) boolean arrays(Values value);
@@ -226,6 +231,10 @@ class CompiledValidatorKeywordTest {
         assertFalse(v.ref(value("xxxxx", BigDecimal.ONE, 1, List.of())));
         assertTrue(v.rootRef(new Values()));
         assertFalse(v.rootRef(value("x", BigDecimal.ONE, 1, List.of())));
+        assertTrue(v.resourceFragment(new Values()));
+        assertFalse(v.resourceFragment(value("x", BigDecimal.ONE, 1, List.of())));
+        assertTrue(v.externalRef(new Values()));
+        assertFalse(v.externalRef(value("x", BigDecimal.ONE, 1, List.of())));
     }
 
     @Test

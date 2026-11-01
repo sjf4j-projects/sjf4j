@@ -14,11 +14,15 @@ import java.lang.annotation.Target;
  * Schema binding is resolved in this order: method-level
  * {@link ValidJsonSchema}, parameter-level annotation, then type annotations
  * (including annotated superclasses in parent-to-child order).
- * Each selected {@link ValidJsonSchema} must supply an inline {@code value};
- * resource {@code ref} attributes and implicit schema file lookup are not supported,
- * because external resource changes cannot reliably trigger incremental Java compilation.
- * Generated fallback plans load the inline schema from its original annotation;
+ * Schema resources are analyzed during annotation processing; generated
+ * fallback plans load the original annotations or resources at runtime.
  * Schema JSON is not duplicated in the generated implementation.
+ *
+ * <p><b>Incremental compilation:</b> external schema resources referenced via
+ * {@link ValidJsonSchema#ref()} (or implicit filename lookup) can change without
+ * triggering the Java annotation processor. JSR 269 cannot declare resource
+ * files as incremental compilation dependencies. Build tooling must track
+ * these inputs and rerun compilation, or a clean rebuild may be needed.</p>
  * When {@link #fallback()} is false, compilation fails unless the validator can
  * generate all checks without relying on a runtime SchemaPlan.</p>
  */

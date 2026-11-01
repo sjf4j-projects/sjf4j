@@ -111,6 +111,20 @@ class SchemaLoaderTest {
     }
 
     @Test
+    void classpathLoaderTreatsSingleAndTripleSlashUrisAsTheSameResource() {
+        SchemaLoader.Local loader = new SchemaLoader.Local(URI.create("classpath:/"));
+        for (String reference : new String[]{
+                "classpath:/schema-loader-classpath-test.json",
+                "classpath:///schema-loader-classpath-test.json"}) {
+            JsonSchema schema = loader.load(URI.create(reference));
+            assertNotNull(schema, reference);
+            SchemaPlan plan = schema.createPlan();
+            assertTrue(plan.isValid("ok"), reference);
+            assertFalse(plan.isValid("x"), reference);
+        }
+    }
+
+    @Test
     void customReaderEnablesFutureSchemesWithoutImplicitNetworkAccess() {
         URI base = URI.create("https://example.invalid/schemas/");
         SchemaLoader loader = uri -> {
