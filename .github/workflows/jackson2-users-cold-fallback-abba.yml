@@ -1,8 +1,8 @@
-name: Jackson2 Users Cold Fallback ABBA
+name: Jackson2 Users Compiled vs Blackbird Same Runner
 on:
   push:
     branches:
-      - experiment/jackson2-users-inline-cold-fallback-20261101
+      - experiment/jackson2-users-blackbird-same-run-20261101
   workflow_dispatch:
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
           grep -Fq '.matchNext(nativeParser, expectedNameIndex)' "$SRC"
           cp "$SRC" diagnostics/original-generated.java
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
-          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
+          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_(compiled|blackbird)$' \
             -p sizeKb=1,5,10 -p seed=12,3285,5678 \
             -f 3 -t 1 -wi 6 -i 7 -w 250ms -r 250ms \
             -prof gc -rf json -rff A1.json 2>&1 | tee A1.log
@@ -55,54 +55,55 @@ jobs:
           grep -Fq '.nextFallbackName(nativeParser' "$SRC"
           cp "$SRC" diagnostics/inline-generated.java
           ./gradlew :sjf4j-testbench:test :sjf4j-backend-jackson2:test --no-daemon
-      - name: Measure B1 then B2 (inline, cold fallback)
+      - name: Measure B (inline, plus Blackbird)
         shell: bash
         run: |
           set -euo pipefail
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
-          for RUN in B1 B2; do
-            java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
+          for RUN in B1; do
+            java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_(compiled|blackbird)$' \
               -p sizeKb=1,5,10 -p seed=12,3285,5678 \
               -f 3 -t 1 -wi 6 -i 7 -w 250ms -r 250ms \
               -prof gc -rf json -rff "$RUN.json" 2>&1 | tee "$RUN.log"
           done
-      - name: Measure A2 (original matcher, reversed order)
-        shell: bash
-        run: |
-          set -euo pipefail
-          git checkout --detach "$BASE_SHA"
-          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
-          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
-          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
-            -p sizeKb=1,5,10 -p seed=12,3285,5678 \
-            -f 3 -t 1 -wi 6 -i 7 -w 250ms -r 250ms \
-            -prof gc -rf json -rff A2.json 2>&1 | tee A2.log
       - name: Compare paired A/B
         shell: bash
         run: |
           python3 - <<'PY'
           import json
+          from statistics import mean
           def load(name):
               with open(name+'.json') as f: rows=json.load(f)
-              return {(int(r['params']['sizeKb']),int(r['params']['seed'])):r for r in rows}
-          runs={name:load(name) for name in ('A1','B1','B2','A2')}
-          print('size seed A1_us B1_us B2_us A2_us first_gain_% second_gain_%')
-          for key in sorted(runs['A1']):
-              a1,b1,b2,a2=[runs[n][key]['primaryMetric']['score'] for n in ('A1','B1','B2','A2')]
-              print(f'{key[0]:>4} {key[1]:>5} {a1:>8.3f} {b1:>8.3f} {b2:>8.3f} {a2:>8.3f} {(a1-b1)/a1*100:>12.2f} {(a2-b2)/a2*100:>13.2f}')
+              return {(int(r['params']['sizeKb']),int(r['params']['seed']),r['benchmark'].rsplit('.',1)[-1]):r for r in rows}
+          a,b=load('A1'),load('B1')
+          print('size seed baseline_us inline_us blackbird_A_us blackbird_B_us inline_vs_baseline_% inline_vs_blackbird_% baseline_vs_blackbird_%')
+          for size,seed in sorted({(k[0],k[1]) for k in a}):
+              get=lambda d,name:d[(size,seed,'users_jackson2_'+name)]['primaryMetric']['score']
+              ac,bc=get(a,'compiled'),get(b,'compiled')
+              ab,bb=get(a,'blackbird'),get(b,'blackbird')
+              black=mean((ab,bb))
+              print(f'{size:>4} {seed:>5} {ac:>10.3f} {bc:>9.3f} {ab:>14.3f} {bb:>14.3f} {(ac-bc)/ac*100:>20.2f} {(black-bc)/black*100:>21.2f} {(black-ac)/black*100:>23.2f}')
+          print('AGGREGATE size baseline_us inline_us blackbird_us inline_vs_blackbird_%')
+          for size in (1,5,10):
+              keys=sorted({k[1] for k in a if k[0]==size})
+              get=lambda d,seed,name:d[(size,seed,'users_jackson2_'+name)]['primaryMetric']['score']
+              ac=mean(get(a,seed,'compiled') for seed in keys)
+              bc=mean(get(b,seed,'compiled') for seed in keys)
+              black=mean((get(a,seed,'blackbird')+get(b,seed,'blackbird'))/2 for seed in keys)
+              print(f'{size:>4} {ac:>11.3f} {bc:>9.3f} {black:>12.3f} {(black-bc)/black*100:>22.2f}')
+          print('ALLOCATION size seed baseline_B/op inline_B/op blackbird_A_B/op blackbird_B_B/op')
+          for size,seed in sorted({(k[0],k[1]) for k in a}):
+              alloc=lambda d,name:d[(size,seed,'users_jackson2_'+name)]['secondaryMetrics']['gc.alloc.rate.norm']['score']
+              print(f'{size:>4} {seed:>5} {alloc(a,"compiled"):>13.1f} {alloc(b,"compiled"):>11.1f} {alloc(a,"blackbird"):>17.1f} {alloc(b,"blackbird"):>17.1f}')
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: jackson2-users-cold-fallback-abba-jdk25
+          name: jackson2-users-blackbird-same-run-jdk25
           path: |
             A1.json
             B1.json
-            B2.json
-            A2.json
-            A1.log
+                                    A1.log
             B1.log
-            B2.log
-            A2.log
-            diagnostics/**
+                                    diagnostics/**
           if-no-files-found: warn
