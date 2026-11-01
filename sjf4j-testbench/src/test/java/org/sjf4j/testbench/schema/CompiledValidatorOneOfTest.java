@@ -105,6 +105,26 @@ public class CompiledValidatorOneOfTest {
         assertFalse(compiled.valid(model, true));
     }
 
+    @CompiledValidator
+    public interface FullyCompiledValidator {
+        @ValidJsonSchema(SCHEMA) boolean valid(Model model);
+        @ValidJsonSchema(SCHEMA) boolean valid(Model model, boolean strictFormat);
+    }
+
+    @Test
+    void unknownRuntimeSubtypeUsesCompiledGenericBranches() {
+        FullyCompiledValidator compiled = CompiledInstances.create(FullyCompiledValidator.class);
+        SchemaPlan reference = JsonSchema.fromJson(SCHEMA).createPlan();
+        for (Model model : Arrays.asList(
+                new Model(List.of(new A("valid"), new B(2))),
+                new Model(List.of(new Other())),
+                new Model(List.of(new A("x"))),
+                new Model(List.of(new B(0))))) {
+            assertEquals(reference.isValid(model), compiled.valid(model));
+            assertEquals(reference.isValid(model, true), compiled.valid(model, true));
+        }
+    }
+
     @Test
     void matchesRuntimeForCompiledAndUnknownSubtypes() {
         Validator compiled = CompiledInstances.create(Validator.class);

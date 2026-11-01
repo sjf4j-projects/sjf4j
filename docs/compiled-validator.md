@@ -155,6 +155,22 @@ This mapping describes the intended shape dispatch; **it does not claim**
 every combination of the JSON Schema `type` keyword has a direct compiler
 implementation yet (notably `boolean`, `null`, and nested `object`).
 
+### Compiled oneOf subtype pruning
+
+A `oneOf` starts from **independent schema branch predicates**, compiled
+against the declared Java type. Missing statically declared properties use
+Nodes runtime object access; this is **not** a `SchemaPlan` fallback.
+
+When `@OneOf` maps Java subtypes to discriminator values and both the JSON
+Schema branch constraints and a public constant Java property prove those
+values disjoint, the processor emits only the surviving subtype/branch checks.
+For example, `PolyTypeA.@type = "poly-a"` cannot satisfy a branch requiring
+`@type = "poly-b"`, so that cross-combination is pruned. This is an optional
+optimization, not the semantic basis of `oneOf`: matching still means
+**exactly one** branch validates. Runtime classes absent from the mapping
+must evaluate the generic compiled branches where possible; otherwise the
+original `SchemaPlan` fallback rules apply.
+
 ## Direct keyword coverage
 
 **Status meaning:** Direct = emitted Java checks without a runtime plan;
@@ -163,25 +179,47 @@ Conditional = a known Java representation/root shape and/or localized
 matrix covers the production `org.sjf4j.processor.schema` generator, not the retired
 incubator prototype.
 
-The direct POJO path requires a **public final POJO with public readable
-properties** (public getters without checked exceptions, or public fields).
-The root is also supported for **Map, JsonObject and JOJO** representations:
-dynamic keys are checked at runtime, including `required` and
-`additionalProperties:false`. When a dynamic property's value type
-cannot be determined statically, only that property's validation falls back.
+The compiler separates **schema compilation** from **value access**.
+For a complete public final POJO projection, an absent `required` property is a
+compile-time constant rejection (not a SchemaPlan fallback or compilation
+error); inside `oneOf` or `anyOf`, this allows branch pruning.
+JsonObject and JOJO declarations use native `containsKey`, `getNode`,
+`keySet`, and `size` operations rather than generic Nodes dispatch.
+A supported keyword is emitted as Java checks regardless of whether the declared
+Java type exposes all properties. A public final POJO with an accessible,
+fully known projection uses Java getters/fields directly. JsonObject and JOJO
+use their native APIs, while interfaces, non-final classes, unknown property
+types, and Map use `Nodes` to inspect the **runtime** property set. Nodes access is compiled execution, **not SchemaPlan fallback**.
+A `@NodeValue` or registered value-codec instance remains an **atomic
+leaf**, even if its serialized raw representation is a Map or List. Object and
+array structural keywords must **not** traverse that raw encoding. Generated
+predicates check whether the runtime value is a structural node before calling
+Nodes, including for `Object`-typed declarations. A container-valued logical
+leaf has no object/array schema type; without an explicit `type`, object-only
+keywords are inapplicable to that leaf. A plain Map/List still behaves as a
+normal traversable object/array. Scalar raw encodings remain available for
+leaf assertions such as const/enum and scalar constraints.
+Only unsupported schema semantics trigger `fallback=true` or a compilation
+error when `fallback=false`.
+
+Dynamic object checks include a runtime JSON-object guard: an explicit
+`type:object` rejects non-object values; object-specific keywords without
+`type` do not apply to non-objects. A missing property skips its
+`properties` subschema; a present property holding `null` is still present
+for `required`. Runtime subclass properties are included for
+`additionalProperties:false` and property counts. Generic `oneOf` can
+compile independent predicates without requiring `@OneOf` on the declared
+base type, provided that **every branch** can compile without SchemaPlan.
+
 The root may contain `type:object`, `properties`, `required`,
 `additionalProperties` (boolean), and non-applicative metadata including
-`$schema`, `title`, `definitions`, and `$defs`. For
-`additionalProperties:false`, all readable Java properties must appear in
-the schema's declared property set; otherwise the complete root falls back.
-Required keys refer to readable POJO properties: **the value may be null**
-without violating `required`, although its property schema may reject null.
+`$schema`, `title`, `definitions`, and `$defs`.
 
 | Keyword / feature | Direct code generation | Runtime SchemaPlan |
 | --- | --- | --- |
 | Boolean root schemas (`true`, `false`) | Yes | Yes |
-| `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys; type-less object assertions supported | Yes |
-| `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes |
+| `type:object`, `properties` | Direct: final POJO getters/fields when safe, otherwise Nodes for runtime object keys (including base types/interfaces); type-less object assertions supported | Yes |
+| `required` | Final POJO presence or runtime Nodes key presence; opt-in null-as-missing | Yes |
 | `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes |
 | `minProperties`, `maxProperties` | Static POJO property count or runtime object-size check; null-as-missing uses runtime fallback | Yes |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes |
@@ -198,7 +236,7 @@ without violating `required`, although its property schema may reject null.
 | `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes |
 | `format` | Known typed-string constraints use `FormatValidator` when `strictFormat` is true; assertion vocabularies and non-standard dialects fall back | Yes; assertion vocabulary may enforce format even in non-strict mode |
 | `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes |
-| `oneOf` | General branch counting with statically compiled predicates (overlap allowed); optional optimized subtype dispatch when proven disjoint | Yes |
+| `oneOf` | Compile all branch predicates against the declared Java type; optionally specialize and prune subtype/branch combinations when the discriminator and Java compile-time constant prove disjointness. Unknown runtime subclasses use compiled generic predicates where available | Yes, only if generic branches cannot compile |
 | `allOf`, `anyOf`, `not` | Direct boolean predicates for fully compiled branches; siblings are conjoined; unsupported/stateful branches fall back as one scope | Yes |
 | `if`, `then`, `else` | Static conditional dispatch with constant folding; missing `if` or unused branches ignored | Yes |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes |

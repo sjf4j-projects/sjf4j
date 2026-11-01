@@ -29,16 +29,13 @@ final class ObjectCompiler {
         this.schemaCompiler = schemaCompiler;
     }
 
-    SchemaCheck.ObjectCheck compile(TypeMirror type,
+    SchemaCheck compile(TypeMirror type,
                                            SchemaResourceResolver.Snapshot snapshot) {
         NodeKind nodeKind = context.types.nodeKind(type);
-        boolean dynamic = nodeKind == NodeKind.OBJECT_MAP ||
-                nodeKind == NodeKind.OBJECT_JSON_OBJECT || nodeKind == NodeKind.OBJECT_JOJO;
+        // A non-final declared type cannot prove the runtime object's property set.
+        // Such values use Nodes for access, without falling back to SchemaPlan.
+        boolean dynamic = useDynamicAccess(type);
         if (!dynamic && nodeKind != NodeKind.OBJECT_POJO) return null;
-        TypeElement owner = context.types.typeElement(type);
-        if (!dynamic && (owner == null || !owner.getModifiers().contains(Modifier.FINAL) ||
-                !owner.getModifiers().contains(Modifier.PUBLIC) ||
-                owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null)) return null;
 
         Object parsed = Sjf4j.global().fromJson(snapshot.documents[0]);
         if (JsonType.of(parsed) != JsonType.OBJECT) return null;
@@ -62,30 +59,18 @@ final class ObjectCompiler {
     }
 
     /** Compiles a concrete nested object without changing root schema selection. */
-    SchemaCheck.ObjectCheck compileNested(TypeMirror type, SchemaResourceResolver.Snapshot snapshot,
+    SchemaCheck compileNested(TypeMirror type, SchemaResourceResolver.Snapshot snapshot,
                                            JsonObject schema, String schemaUri,
                                            int depth) {
-        NodeKind kind = type == null ? NodeKind.COMPILE_TIME_UNKNOWN : context.types.nodeKind(type);
-        boolean dynamic = type == null || "java.lang.Object".equals(type.toString())
-                || kind == NodeKind.OBJECT_MAP || kind == NodeKind.OBJECT_JSON_OBJECT
-                || kind == NodeKind.OBJECT_JOJO;
-        if (!dynamic && kind != NodeKind.OBJECT_POJO) return null;
-        if (!dynamic) {
-            TypeElement owner = context.types.typeElement(type);
-            if (owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)
-                    || !owner.getModifiers().contains(Modifier.FINAL)
-                    || owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null) return null;
-        }
+        if (!useDynamicAccess(type) && context.types.nodeKind(type) != NodeKind.OBJECT_POJO)
+            return null;
         return compileResolved(type, snapshot, schema, schemaUri, depth);
     }
 
-    private SchemaCheck.ObjectCheck compileResolved(TypeMirror type,
+    private SchemaCheck compileResolved(TypeMirror type,
                     SchemaResourceResolver.Snapshot snapshot, JsonObject root,
                     String rootUri, int depth) {
-        NodeKind nodeKind = type == null ? NodeKind.COMPILE_TIME_UNKNOWN : context.types.nodeKind(type);
-        boolean dynamic = type == null || "java.lang.Object".equals(type.toString())
-                || nodeKind == NodeKind.OBJECT_MAP || nodeKind == NodeKind.OBJECT_JSON_OBJECT
-                || nodeKind == NodeKind.OBJECT_JOJO;
+        boolean dynamic = useDynamicAccess(type);
         // The direct POJO path only understands the public structural projection.
         // Non-public annotated members may be visible to runtime reflection and
         // must not silently disappear from additionalProperties/required checks.
@@ -118,7 +103,11 @@ final class ObjectCompiler {
             if (JsonType.of(required) != JsonType.ARRAY) return null;
             for (int i = 0; i < Nodes.sizeInArray(required); i++) {
                 Object name = Nodes.getInArray(required, i);
-                if (!(name instanceof String) || (!dynamic && !javaProperties.containsKey(name))) return null;
+                if (!(name instanceof String)) return null;
+                if (!dynamic && !javaProperties.containsKey(name)) {
+                    // The complete final POJO projection cannot satisfy this required key.
+                    return missingRequired(rootUri, typeRequired);
+                }
             }
         }
         Object additional = root.getNode("additionalProperties");
@@ -128,7 +117,8 @@ final class ObjectCompiler {
                     && !propertyMap.keySet().containsAll(javaProperties.keySet())) return null;
         }
         for (String name : propertyMap.keySet()) {
-            if (!dynamic && !javaProperties.containsKey(name) && isRequired(required, name)) return null;
+            if (!dynamic && !javaProperties.containsKey(name) && isRequired(required, name))
+                return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
         }
         if (!dynamic) {
             for (Property property : javaProperties.values()) {
@@ -144,7 +134,8 @@ final class ObjectCompiler {
             for (int i = 0; i < Nodes.sizeInArray(required); i++) {
                 String name = (String) Nodes.getInArray(required, i);
                 Property property = dynamic ? null : javaProperties.get(name);
-                if (!dynamic && (property == null || property.read() == null)) return null;
+                if (!dynamic && (property == null || property.read() == null))
+                    return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
                 // Primitive members cannot be null, so a required check is redundant.
                 String requiredAccess = property == null || property.read().type().getKind().isPrimitive()
                         ? null : property.read().memberName() + (property.read().isMethod() ? "()" : "");
@@ -171,7 +162,11 @@ final class ObjectCompiler {
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
         }
         if (directCount == 0) return null;
-        return new SchemaCheck.ObjectCheck(dynamic, typeRequired,
+        // JOJO inherits the public JsonObject operations, so generated code
+        // can bypass generic Nodes dispatch while preserving dynamic keys.
+        boolean jsonObject = dynamic && type != null && (context.types.nodeKind(type) == NodeKind.OBJECT_JSON_OBJECT
+                || context.types.nodeKind(type) == NodeKind.OBJECT_JOJO);
+        return new SchemaCheck.ObjectCheck(dynamic, jsonObject, typeRequired,
                 Boolean.FALSE.equals(additional),
                 minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
                 new ArrayList<String>(propertyMap.keySet()), requiredChecks, properties,
@@ -181,6 +176,37 @@ final class ObjectCompiler {
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
                 Boolean.FALSE.equals(additional)
                         ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null);
+    }
+
+    /**
+     * Object-only keywords do not apply to null. A final POJO with a missing
+     * required property can only satisfy a type-less schema when it is null.
+     */
+    private static SchemaCheck missingRequired(String uri, boolean typeRequired) {
+        SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(uri, "required");
+        if (typeRequired) return new SchemaCheck.Reject(diagnostic);
+        return new SchemaCheck.TypeCheck(java.util.Collections.singletonList("null"), diagnostic);
+    }
+
+    /**
+     * Only a public final POJO with an unambiguous public projection can use
+     * static property access. Everything else uses Nodes, including interfaces,
+     * extensible classes, maps and Object-typed values. Dynamic access is not
+     * a SchemaPlan fallback.
+     */
+    private boolean useDynamicAccess(TypeMirror type) {
+        if (type == null) return true;
+        if ("java.lang.Object".equals(type.toString())) return true;
+        NodeKind kind = context.types.nodeKind(type);
+        // Scalar and array declarations cannot be treated as dynamic objects;
+        // in particular their generated expressions may be primitive values.
+        if (kind.isValue() || kind.isArray()) return false;
+        if (kind != NodeKind.OBJECT_POJO) return true;
+        TypeElement owner = context.types.typeElement(type);
+        return owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)
+                || !owner.getModifiers().contains(Modifier.FINAL)
+                || owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null
+                || hasHiddenNodeMembers(type);
     }
 
     private boolean hasHiddenNodeMembers(TypeMirror type) {

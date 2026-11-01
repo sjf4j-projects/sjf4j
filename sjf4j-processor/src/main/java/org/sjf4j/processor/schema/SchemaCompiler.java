@@ -30,7 +30,7 @@ final class SchemaCompiler {
         this.oneOf = new OneOfCompiler(context, objects, this);
     }
 
-    SchemaCheck.ObjectCheck compileObject(TypeMirror type,
+    SchemaCheck compileObject(TypeMirror type,
                                           SchemaResourceResolver.Snapshot snapshot) {
         return objects.compile(type, snapshot);
     }

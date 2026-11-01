@@ -96,6 +96,8 @@ class CompiledValidatorArchitectureTest {
         assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
         assertTrue(generated.contains("_matches_"), generated);
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
+        // The String-typed method still needs the shared runtime plan; the
+        // object-typed methods use compiled access to runtime properties.
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
     }
 

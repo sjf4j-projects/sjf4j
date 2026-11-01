@@ -46,16 +46,19 @@ abstract class SchemaCheck {
         return kind == Kind.FALLBACK;
     }
 
-    /** Disjoint Java subtypes compiled directly, with one full-schema fallback for unknown types. */
+    /** Proven disjoint subtype checks plus a generic branch predicate for unknown classes. */
     static final class OneOfCheck extends SchemaCheck {
         final String uri;
         final List<Subtype> subtypes;
-        OneOfCheck(String uri, Diagnostic diagnostic, List<Subtype> subtypes) {
+        final GenericOneOfCheck generic;
+        OneOfCheck(String uri, Diagnostic diagnostic, List<Subtype> subtypes,
+                   GenericOneOfCheck generic) {
             super(Kind.ONE_OF, diagnostic);
             this.uri = uri;
             this.subtypes = Collections.unmodifiableList(new ArrayList<Subtype>(subtypes));
+            this.generic = generic;
         }
-        @Override boolean hasFallback() { return true; }
+        @Override boolean hasFallback() { return generic == null; }
 
         static final class Subtype {
             final String type;
@@ -170,6 +173,7 @@ abstract class SchemaCheck {
 
     static final class ObjectCheck extends SchemaCheck {
         final boolean dynamic;
+        final boolean jsonObject;
         final boolean typeRequired;
         final boolean additionalPropertiesFalse;
         final Integer minProperties;
@@ -184,7 +188,7 @@ abstract class SchemaCheck {
         final List<Required> required;
         final List<PropertyCheck> properties;
 
-        ObjectCheck(boolean dynamic, boolean typeRequired,
+        ObjectCheck(boolean dynamic, boolean jsonObject, boolean typeRequired,
                     boolean additionalPropertiesFalse,
                     Integer minProperties, Integer maxProperties, int staticPropertyCount,
                     List<String> allowedNames, List<Required> required,
@@ -194,6 +198,7 @@ abstract class SchemaCheck {
                     Diagnostic additionalPropertiesDiagnostic) {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
+            this.jsonObject = jsonObject;
             this.typeRequired = typeRequired;
             this.additionalPropertiesFalse = additionalPropertiesFalse;
             this.minProperties = minProperties;
