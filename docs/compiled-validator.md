@@ -155,6 +155,22 @@ This mapping describes the intended shape dispatch; **it does not claim**
 every combination of the JSON Schema `type` keyword has a direct compiler
 implementation yet (notably `boolean`, `null`, and nested `object`).
 
+### Compiled oneOf subtype pruning
+
+A `oneOf` starts from **independent schema branch predicates**, compiled
+against the declared Java type. Missing statically declared properties use
+Nodes runtime object access; this is **not** a `SchemaPlan` fallback.
+
+When `@OneOf` maps Java subtypes to discriminator values and both the JSON
+Schema branch constraints and a public constant Java property prove those
+values disjoint, the processor emits only the surviving subtype/branch checks.
+For example, `PolyTypeA.@type = "poly-a"` cannot satisfy a branch requiring
+`@type = "poly-b"`, so that cross-combination is pruned. This is an optional
+optimization, not the semantic basis of `oneOf`: matching still means
+**exactly one** branch validates. Runtime classes absent from the mapping
+must evaluate the generic compiled branches where possible; otherwise the
+original `SchemaPlan` fallback rules apply.
+
 ## Direct keyword coverage
 
 **Status meaning:** Direct = emitted Java checks without a runtime plan;
@@ -207,7 +223,7 @@ The root may contain `type:object`, `properties`, `required`,
 | `items` | Recursive keyword checks for typed nested collections; unsupported item subtrees use a cached plan | Yes |
 | `format` | Known typed-string constraints use `FormatValidator` when `strictFormat` is true; assertion vocabularies and non-standard dialects fall back | Yes; assertion vocabulary may enforce format even in non-strict mode |
 | `$ref`, `definitions`, `$defs` | Pure reference to a compile-time-resolvable JSON Pointer target; finite reference chains only; unsupported cycles/anchors fallback | Yes |
-| `oneOf` | General branch counting with statically compiled predicates (overlap allowed); optional optimized subtype dispatch when proven disjoint | Yes |
+| `oneOf` | Compile all branch predicates against the declared Java type; optionally specialize and prune subtype/branch combinations when the discriminator and Java compile-time constant prove disjointness. Unknown runtime subclasses use compiled generic predicates where available | Yes, only if generic branches cannot compile |
 | `allOf`, `anyOf`, `not` | Direct boolean predicates for fully compiled branches; siblings are conjoined; unsupported/stateful branches fall back as one scope | Yes |
 | `if`, `then`, `else` | Static conditional dispatch with constant folding; missing `if` or unused branches ignored | Yes |
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes |
