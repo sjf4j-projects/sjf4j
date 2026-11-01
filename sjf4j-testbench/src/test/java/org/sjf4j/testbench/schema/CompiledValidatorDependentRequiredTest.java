@@ -59,4 +59,16 @@ class CompiledValidatorDependentRequiredTest {
         assertEquals(JsonSchema.fromJson(schema).createPlan().isValid(model),
                 compiled.valid(model));
     }
+
+    @Test
+    void honorsDraft07KeywordInapplicability() {
+        String draft07 = "{\"$schema\":\"http://json-schema.org/draft-07/schema#\","
+                + "\"dependentRequired\":{\"a\":[\"b\"]}}";
+        String latest = "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\","
+                + "\"dependentRequired\":{\"a\":[\"b\"]}}";
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("a", 1);
+        assertEquals(true, JsonSchema.fromJson(draft07).createPlan().isValid(input));
+        assertEquals(false, JsonSchema.fromJson(latest).createPlan().isValid(input));
+    }
 }

@@ -30,7 +30,7 @@ final class SchemaCompiler {
         this.oneOf = new OneOfCompiler(context, objects, this);
     }
 
-    SchemaCheck.ObjectCheck compileObject(TypeMirror type,
+    SchemaCheck compileObject(TypeMirror type,
                                           SchemaResourceResolver.Snapshot snapshot) {
         return objects.compile(type, snapshot);
     }
@@ -96,8 +96,7 @@ final class SchemaCompiler {
                         if (!key.equals("properties") && !key.equals("required")
                                 && !key.equals("additionalProperties")
                                 && !key.equals("minProperties") && !key.equals("maxProperties")
-                                && !key.equals("dependentRequired")
-                                && !isAnnotation(key))
+                                && !key.equals("dependentRequired") && !isAnnotation(key))
                             return null;
                     }
                     return new SchemaCheck.Pass();
@@ -366,6 +365,35 @@ final class SchemaCompiler {
 
     static String keywordUri(String base, String keyword) {
         return base + (base.contains("#") ? "/" : "#/") + keyword;
+    }
+
+    /**
+     * Returns whether dependentRequired applies under this schema dialect.
+     * Unknown vocabulary or dialect delegates to SchemaPlan.
+     */
+    static Boolean supportsDependentRequired(SchemaResourceResolver.Snapshot snapshot,
+                                             String schemaUri, JsonObject schema) {
+        if (schema.containsKey("$vocabulary")) return null;
+        String documentUri = schemaUri.split("#", 2)[0];
+        for (int i = 0; i < snapshot.uris.length; i++) {
+            if (!snapshot.uris[i].equals(documentUri)) continue;
+            Object parsed = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[i]);
+            if (JsonType.of(parsed) != JsonType.OBJECT) return null;
+            JsonObject document = Nodes.toJsonObject(parsed);
+            if (document.containsKey("$vocabulary")) return null;
+            String declared = schema.getString("$schema");
+            if (declared == null) declared = document.getString("$schema");
+            if (declared == null) return Boolean.TRUE; // Registry default is 2020-12.
+            org.sjf4j.schema.SchemaDialect dialect = org.sjf4j.schema.SchemaDialect.detect(declared);
+            if (dialect == null) return null;
+            // Conservatively fall back if an ancestor could override the dialect.
+            if (schema.getString("$schema") == null
+                    && snapshot.documents[i].indexOf("\"$schema\"",
+                    snapshot.documents[i].indexOf("\"$schema\"") + 1) >= 0)
+                return null;
+            return dialect != org.sjf4j.schema.SchemaDialect.DRAFT_07;
+        }
+        return null;
     }
 
     private static boolean canCompileFormat(SchemaResourceResolver.Snapshot snapshot) {

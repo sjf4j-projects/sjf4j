@@ -23,7 +23,8 @@ class CompiledValidatorOneOfProcessorTest {
                 || generated.contains("getClass() == fixture.B.class"), generated);
         assertTrue(generated.contains(".getName()"), generated);
         assertTrue(generated.contains(".getCount()"), generated);
-        assertTrue(generated.contains("SUB_0_ITEM.isValid("), generated);
+        assertFalse(generated.contains("SUB_0_ITEM.isValid("), generated);
+        assertTrue(generated.contains("_matches_"), generated);
     }
 
     @Test
@@ -37,6 +38,27 @@ class CompiledValidatorOneOfProcessorTest {
                 || generated.contains("getClass() == fixture.A.class"), generated);
         assertTrue(generated.contains("FormatValidator.of(\"email\")"), generated);
         assertFalse(generated.contains(".isValid(value, true)"), generated);
+        assertTrue(generated.contains("_matches_"), generated);
+    }
+
+    @Test
+    void fullyCompiledOneOfDoesNotRequireSchemaPlan() throws Exception {
+        NavigatorTestCompiler.Result result = compile(true, SCHEMA, false, false);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertTrue(generated.contains("getClass() =="), generated);
+        assertTrue(generated.contains("_matches_"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+    }
+
+    @Test
+    void hiddenNodeMembersDisableSubtypePruning() throws Exception {
+        NavigatorTestCompiler.Result result = compile(true, SCHEMA, false, false, true);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertFalse(generated.contains("getClass() =="), generated);
+        assertTrue(generated.contains("_matches_"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
     }
 
     @Test
@@ -45,7 +67,8 @@ class CompiledValidatorOneOfProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertFalse(generated.contains("getClass() =="), generated);
-        assertTrue(generated.contains(".isValid("), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+        assertTrue(generated.contains("keySetInObject("), generated);
     }
 
     private static NavigatorTestCompiler.Result compile(boolean exposed) throws Exception {
@@ -54,6 +77,17 @@ class CompiledValidatorOneOfProcessorTest {
 
     private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
                                                         boolean strictFormat) throws Exception {
+        return compile(exposed, schema, strictFormat, true);
+    }
+
+    private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
+                                                        boolean strictFormat, boolean fallback) throws Exception {
+        return compile(exposed, schema, strictFormat, fallback, false);
+    }
+
+    private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
+                                                        boolean strictFormat, boolean fallback,
+                                                        boolean hiddenNodeMember) throws Exception {
         String visibility = exposed ? "public " : "private ";
         Map<String, String> sources = new LinkedHashMap<String, String>();
         sources.put("fixture/Variant.java",
@@ -66,6 +100,7 @@ class CompiledValidatorOneOfProcessorTest {
                 "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class A implements Variant { "
                 + "@NodeProperty(\"kind\") " + visibility + "final String kind = \"a\"; "
+                + (hiddenNodeMember ? "@NodeIgnore private String hidden = \"x\"; " : "")
                 + "public String getName() {return \"good\";} }");
         sources.put("fixture/B.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
@@ -77,7 +112,7 @@ class CompiledValidatorOneOfProcessorTest {
                 + "public List<Variant> getItems() { return java.util.Arrays.<Variant>asList(new A(),new B()); }}");
         sources.put("fixture/Validator.java",
                 "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator(fallback=true) public interface Validator { "
+                + "@CompiledValidator(fallback=" + fallback + ") public interface Validator { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
                 + (strictFormat ? "boolean valid(Model value, boolean strictFormat); }"
                         : "boolean valid(Model value); }"));

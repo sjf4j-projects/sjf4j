@@ -31,7 +31,7 @@ final class SchemaEmitter {
         // object-only keywords. Keep the fast path for known object types, but
         // emit the shape/applicability guard for Object-typed roots.
         if (check.kind == SchemaCheck.Kind.OBJECT
-                && value.shape != SchemaValue.Shape.DYNAMIC) {
+                && !((SchemaCheck.ObjectCheck) check).dynamic) {
             return emit((SchemaCheck.ObjectCheck) check, variable, plan, strictFormat, onFailure);
         }
         List<String> lines = new ArrayList<String>();
@@ -49,7 +49,8 @@ final class SchemaEmitter {
                               String prefix, String onFailure) {
         List<String> statements = new ArrayList<String>();
         if (check.minProperties != null || check.maxProperties != null) {
-            String count = check.dynamic
+            String count = check.jsonObject ? variable + ".size()"
+                    : check.dynamic
                     ? "org.sjf4j.node.NodeWalker.sizeInObject(" + variable + ")"
                     : Integer.toString(check.staticPropertyCount);
             if (check.minProperties != null) {
@@ -61,26 +62,31 @@ final class SchemaEmitter {
         }
         if (check.dynamic) {
             for (SchemaCheck.Required required : check.required) {
-                statements.add("if (!org.sjf4j.Nodes.keySetInObject(" + variable
-                        + ").contains(" + literal(required.name) + ")) " + onFailure);
+                String contains = check.jsonObject
+                        ? variable + ".containsKey(" + literal(required.name) + ")"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable
+                                + ").contains(" + literal(required.name) + ")";
+                statements.add("if (!" + contains + ") " + onFailure);
             }
             if (!check.dependentRequired.isEmpty()) {
                 String keys = "_keys_" + helperPrefix + "_" + helperCount++;
-                statements.add("java.util.Set<String> " + keys
-                        + " = org.sjf4j.Nodes.keySetInObject(" + variable + ");");
+                statements.add("java.util.Set<String> " + keys + " = "
+                        + (check.jsonObject ? variable + ".keySet()"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ";");
                 for (SchemaCheck.DependentRequired dependency : check.dependentRequired) {
-                    StringBuilder condition = new StringBuilder();
+                    StringBuilder missing = new StringBuilder();
                     for (String name : dependency.dependencies) {
-                        if (condition.length() != 0) condition.append(" || ");
-                        condition.append("!").append(keys).append(".contains(")
+                        if (missing.length() != 0) missing.append(" || ");
+                        missing.append("!").append(keys).append(".contains(")
                                 .append(literal(name)).append(")");
                     }
                     statements.add("if (" + keys + ".contains(" + literal(dependency.trigger)
-                            + ") && (" + condition + ")) " + onFailure);
+                            + ") && (" + missing + ")) " + onFailure);
                 }
             }
             if (check.additionalPropertiesFalse) {
-                statements.add("for (String _key : org.sjf4j.Nodes.keySetInObject(" + variable + ")) {");
+                statements.add("for (String _key : " + (check.jsonObject ? variable + ".keySet()"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
                 StringBuilder condition = new StringBuilder();
                 for (String allowed : check.allowedNames) {
                     if (condition.length() != 0) condition.append(" && ");
@@ -95,13 +101,18 @@ final class SchemaEmitter {
         int index = 0;
         for (SchemaCheck.PropertyCheck property : check.properties) {
             String local = prefix + "_property" + index;
-            String access = check.dynamic
+            String access = check.jsonObject
+                    ? variable + ".getNode(" + literal(property.name) + ")"
+                    : check.dynamic
                     ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
             statements.add(property.value.localType() + " " + local + " = " + access + ";");
             if (check.dynamic) {
-                statements.add("if (org.sjf4j.Nodes.keySetInObject(" + variable
-                        + ").contains(" + literal(property.name) + ")) {");
+                String contains = check.jsonObject
+                        ? variable + ".containsKey(" + literal(property.name) + ")"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable
+                                + ").contains(" + literal(property.name) + ")";
+                statements.add("if (" + contains + ") {");
             }
             List<String> lines = new ArrayList<String>();
             emitValue(lines, plan, property.check, property.value, local,
@@ -143,7 +154,7 @@ final class SchemaEmitter {
                         planName, strictFormat, depth, onFailure);
                 return;
             case ONE_OF:
-                emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, expression,
+                emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, value, expression,
                         planName, strictFormat, depth, onFailure);
                 return;
             case GENERIC_ONE_OF:
@@ -162,25 +173,36 @@ final class SchemaEmitter {
                 return;
             case OBJECT:
                 SchemaCheck.ObjectCheck object = (SchemaCheck.ObjectCheck) check;
-                boolean unknownShape = object.dynamic && value.shape == SchemaValue.Shape.DYNAMIC;
+                // Logical @NodeValue instances remain leaves even if their
+                // serialized raw representation is a Map or List. Never unwrap
+                // them to traverse the raw encoding as an object.
+                String subject = expression;
+                if (object.dynamic && !object.jsonObject) {
+                    subject = "_struct_" + helperCount++;
+                    lines.add("Object " + subject
+                            + " = org.sjf4j.schema.CompiledSchemaValues.structuralNode("
+                            + expression + ");");
+                }
+                boolean unknownShape = object.dynamic;
                 if (object.typeRequired) {
-                    if (value.nullable) lines.add("if (" + expression + " == null) " + onFailure);
+                    if (value.nullable || object.dynamic)
+                        lines.add("if (" + subject + " == null) " + onFailure);
                     if (unknownShape) {
-                        lines.add("if (org.sjf4j.JsonType.rawOf(" + expression
+                        lines.add("if (org.sjf4j.JsonType.rawOf(" + subject
                                 + ".getClass()) != org.sjf4j.JsonType.OBJECT) " + onFailure);
                     }
-                    lines.addAll(emit(object, expression, plan, strictFormat, planName + "_", onFailure));
+                    lines.addAll(emit(object, subject, plan, strictFormat, planName + "_", onFailure));
                 } else if (unknownShape || value.nullable) {
                     String applies = unknownShape
-                            ? expression + " != null && org.sjf4j.JsonType.rawOf("
-                                    + expression + ".getClass()) == org.sjf4j.JsonType.OBJECT"
-                            : expression + " != null";
+                            ? subject + " != null && org.sjf4j.JsonType.rawOf("
+                                    + subject + ".getClass()) == org.sjf4j.JsonType.OBJECT"
+                            : subject + " != null";
                     lines.add("if (" + applies + ") {");
-                    for (String statement : emit(object, expression, plan, strictFormat,
+                    for (String statement : emit(object, subject, plan, strictFormat,
                             planName + "_", onFailure)) lines.add("    " + statement);
                     lines.add("}");
                 } else {
-                    lines.addAll(emit(object, expression, plan, strictFormat, planName + "_", onFailure));
+                    lines.addAll(emit(object, subject, plan, strictFormat, planName + "_", onFailure));
                 }
                 return;
             case REJECT:
@@ -299,8 +321,8 @@ final class SchemaEmitter {
             if ("null".equals(type)) {
                 branch = value.nullable ? expression + " == null" : "false";
                 if (value.shape == SchemaValue.Shape.DYNAMIC || value.shape == SchemaValue.Shape.OTHER) {
-                    branch += " || (" + expression + " != null && org.sjf4j.JsonType.rawOf("
-                            + expression + ".getClass()) == org.sjf4j.JsonType.NULL)";
+                    branch += " || (" + expression + " != null && org.sjf4j.schema.CompiledSchemaValues.schemaType("
+                            + expression + ") == org.sjf4j.JsonType.NULL)";
                 }
             } else {
                 String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(java.util.Locale.ROOT);
@@ -312,8 +334,8 @@ final class SchemaEmitter {
                 if (known != null) {
                     shape = known.equals(name) ? "true" : "false";
                 } else {
-                    shape = "org.sjf4j.JsonType.rawOf(" + expression
-                            + ".getClass()) == org.sjf4j.JsonType." + name;
+                    shape = "org.sjf4j.schema.CompiledSchemaValues.schemaType(" + expression
+                            + ") == org.sjf4j.JsonType." + name;
                 }
                 if ("integer".equals(type) && !"false".equals(shape)) {
                     shape = "(" + shape + " && org.sjf4j.util.Numbers.isSemanticInteger("
@@ -349,11 +371,11 @@ final class SchemaEmitter {
     }
 
     private void emitOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
-                           SchemaCheck.OneOfCheck check, String expression, String name,
+                           SchemaCheck.OneOfCheck check, SchemaValue value, String expression, String name,
                            String strictFormat, int depth, String onFailure) {
-        // A subtype's compiled checks already handle strictFormat, including
-        // format assertions. Only unknown runtime classes need the full plan.
-        SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
+        // The subtype fast path is valid only for compiler-proven, disjoint
+        // discriminator constants. Unknown classes still evaluate every schema
+        // branch (including overlaps), preferably through compiled predicates.
         lines.add("if (" + expression + " == null) " + onFailure);
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
@@ -369,8 +391,16 @@ final class SchemaEmitter {
             n++;
         }
         lines.add("else {");
-        lines.add("    if (!" + full.reference()
-                + ".isValid(" + expression + ", " + strictFormat + ")) " + onFailure);
+        if (check.generic != null) {
+            List<String> genericLines = new ArrayList<String>();
+            emitGenericOneOf(genericLines, plan, check.generic, value, expression,
+                    name + "_generic", strictFormat, onFailure);
+            for (String source : genericLines) lines.add("    " + source);
+        } else {
+            SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
+            lines.add("    if (!" + full.reference()
+                    + ".isValid(" + expression + ", " + strictFormat + ")) " + onFailure);
+        }
         lines.add("}");
     }
 
@@ -511,17 +541,24 @@ final class SchemaEmitter {
                             String onFailure) {
         boolean knownCollection = value.shape == SchemaValue.Shape.COLLECTION;
         boolean knownArray = value.shape == SchemaValue.Shape.ARRAY;
+        String subject = expression;
+        if (value.shape == SchemaValue.Shape.DYNAMIC) {
+            subject = "_struct_array_" + helperCount++;
+            lines.add("Object " + subject
+                    + " = org.sjf4j.schema.CompiledSchemaValues.structuralNode("
+                    + expression + ");");
+        }
         if (value.nullable) {
             if (value.shape == SchemaValue.Shape.DYNAMIC) {
-                lines.add("if (" + expression + " == null || org.sjf4j.JsonType.rawOf("
-                        + expression + ".getClass()) != org.sjf4j.JsonType.ARRAY) " + onFailure);
+                lines.add("if (" + subject + " == null || org.sjf4j.JsonType.rawOf("
+                        + subject + ".getClass()) != org.sjf4j.JsonType.ARRAY) " + onFailure);
             } else {
-                lines.add("if (" + expression + " == null) " + onFailure);
+                lines.add("if (" + subject + " == null) " + onFailure);
             }
         }
-        String size = knownCollection ? expression + ".size()"
-                : knownArray ? expression + ".length"
-                : "org.sjf4j.Nodes.sizeInArray(" + expression + ")";
+        String size = knownCollection ? subject + ".size()"
+                : knownArray ? subject + ".length"
+                : "org.sjf4j.Nodes.sizeInArray(" + subject + ")";
         if (check.minItems != null) lines.add("if (" + size + " < " + check.minItems + ") " + onFailure);
         if (check.maxItems != null) lines.add("if (" + size + " > " + check.maxItems + ") " + onFailure);
         if (check.items == null) return;
@@ -531,11 +568,11 @@ final class SchemaEmitter {
         if (knownCollection || knownArray) {
             String itemJavaType = itemType == null || itemType.getKind() == TypeKind.WILDCARD
                     ? "Object" : itemType.toString();
-            lines.add("for (" + itemJavaType + " " + itemVar + " : " + expression + ") {");
+            lines.add("for (" + itemJavaType + " " + itemVar + " : " + subject + ") {");
         } else {
             String iterator = "_iter" + depth + "_" + planName;
             lines.add("java.util.Iterator<Object> " + iterator
-                    + " = org.sjf4j.Nodes.iteratorInArray(" + expression + ");");
+                    + " = org.sjf4j.Nodes.iteratorInArray(" + subject + ");");
             lines.add("while (" + iterator + ".hasNext()) {");
             lines.add("    Object " + itemVar + " = " + iterator + ".next();");
         }
