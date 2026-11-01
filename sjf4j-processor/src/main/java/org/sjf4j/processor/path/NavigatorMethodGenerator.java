@@ -49,7 +49,8 @@ public final class NavigatorMethodGenerator {
      */
     public void generate(
             ExecutableElement method,
-            GeneratedClass generated) {
+            GeneratedClass generated,
+            boolean allowFallback) {
 
         if (!method.getTypeParameters().isEmpty()) {
             error(
@@ -76,7 +77,7 @@ public final class NavigatorMethodGenerator {
                 return;
 
             case FIND:
-                findGenerator.generate(method, generated, operation.path, operation.allowFallback);
+                findGenerator.generate(method, generated, operation.path, allowFallback);
                 return;
 
             default:
@@ -292,7 +293,7 @@ public final class NavigatorMethodGenerator {
         if (find != null) {
             operation = select(method, generated, operation,
                     new Operation(Kind.FIND, "@FindByPath", find.value(),
-                            find.allowFallback(), false, false, false));
+                            false, false, false, false));
         }
 
         if (operation == null) {
