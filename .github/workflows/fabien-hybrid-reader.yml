@@ -25,6 +25,17 @@ jobs:
           lscpu > diagnostics/lscpu.txt
       - name: Build JMH jar and verify correctness at setup
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Inspect actual Jackson2 generated binder
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$(find sjf4j-testbench/build -type f -name '*FabienCompiled_Impl.java' -print -quit)"
+          test -n "$SRC"
+          grep -q 'matchNext(nativeParser' "$SRC"
+          grep -q 'nativeParser.nextToken()' "$SRC"
+          mkdir -p diagnostics/generated
+          cp "$SRC" diagnostics/generated/
+          echo "Native compiled object and array loops verified in $SRC"
       - name: Verify compiled binding and Jackson2 regression tests
         run: ./gradlew :sjf4j-testbench:test :sjf4j-backend-jackson2:test --no-daemon
       - name: Benchmark four retained readers
