@@ -36,7 +36,7 @@ class CompiledValidatorArchitectureTest {
                 + "public List<Object> getItems() { return List.of(\"A\"); } }";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "import org.sjf4j.schema.ValidationResult; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + "boolean first(Model value); "
                 + "boolean second(Model value, boolean strictFormat); "
                 + "void requireValid(Model value); "
@@ -82,7 +82,7 @@ class CompiledValidatorArchitectureTest {
     void sharesFallbackAcrossDistinctAnnotationsAndJavaTypesForSameResource() throws Exception {
         String ref = "@ValidJsonSchema(ref = \"classpath:/schema/compiled-validator-shared-fallback.json\") ";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + ref + "boolean first(Model value); "
                 + ref + "boolean second(Model value, boolean strictFormat); "
                 + ref + "void requireValid(Model value); "
@@ -124,7 +124,7 @@ class CompiledValidatorArchitectureTest {
         String two = "{\"type\":\"object\",\"properties\":{"
                 + "\"name\":{\"type\":\"string\",\"pattern\":\"^b\"}}}";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(one) + ") "
                 + "boolean email(Model value); "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(two) + ") "
