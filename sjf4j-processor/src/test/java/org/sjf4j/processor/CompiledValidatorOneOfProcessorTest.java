@@ -28,14 +28,14 @@ class CompiledValidatorOneOfProcessorTest {
 
     @Test
     void strictFormatKeepsDirectSubtypeDispatch() throws Exception {
-        String schema = SCHEMA.replace("\\\"minLength\\\":2",
-                "\\\"minLength\\\":2,\\\"format\\\":\\\"email\\\"");
+        String schema = SCHEMA.replace("\"minLength\":2",
+                "\"minLength\":2,\"format\":\"email\"");
         NavigatorTestCompiler.Result result = compile(true, schema, true);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertTrue(generated.contains("getClass() == A.class")
                 || generated.contains("getClass() == fixture.A.class"), generated);
-        assertTrue(generated.contains("FormatValidator.of(\\\"email\\\")"), generated);
+        assertTrue(generated.contains("FormatValidator.of(\"email\")"), generated);
         assertFalse(generated.contains(".isValid(value, true)"), generated);
     }
 
