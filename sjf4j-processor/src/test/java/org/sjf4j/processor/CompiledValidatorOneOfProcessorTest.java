@@ -59,7 +59,7 @@ class CompiledValidatorOneOfProcessorTest {
                 + "public List<Variant> getItems() { return java.util.Arrays.<Variant>asList(new A(),new B()); }}");
         sources.put("fixture/Validator.java",
                 "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator public interface Validator { "
+                + "@CompiledValidator(fallback=true) public interface Validator { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(SCHEMA) + ") "
                 + "boolean valid(Model value); }");
         return NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
