@@ -54,7 +54,8 @@ public class CompiledValidatorValueBindingTest {
 
     @NodeObject
     public static class Holder {
-        private final Object items;
+        private Object items;
+        public Holder() {}
         public Holder(Object items) { this.items = items; }
         public Object getItems() { return items; }
     }
