@@ -652,16 +652,17 @@ final class ReadEmitter {
     /** Enter a native container from FIELD_NAME, an array element, or document root. */
     private void emitNativeStart(JavaWriter out, String kind) {
         out.line("com.fasterxml.jackson.core.JsonParser nativeParser = parser.nativeParser();");
-        out.line("com.fasterxml.jackson.core.JsonToken firstToken = nativeParser.currentToken();");
-        out.beginBlock("if (firstToken != com.fasterxml.jackson.core.JsonToken." + kind
-                + " && firstToken != com.fasterxml.jackson.core.JsonToken.VALUE_NULL)");
-        out.line("firstToken = nativeParser.nextToken();");
-        out.endBlock();
-        out.beginBlock("if (firstToken == com.fasterxml.jackson.core.JsonToken.VALUE_NULL)");
+        out.beginBlock("if (nativeParser.currentToken() != com.fasterxml.jackson.core.JsonToken." + kind + ")");
+        out.beginBlock("if (nativeParser.currentToken() == com.fasterxml.jackson.core.JsonToken.VALUE_NULL)");
         out.line("return null;");
         out.endBlock();
-        out.beginBlock("if (firstToken != com.fasterxml.jackson.core.JsonToken." + kind + ")");
-        out.line("throw new java.io.IOException(\"expected " + kind + " but was \" + firstToken);");
+        out.beginBlock("if (nativeParser.nextToken() != com.fasterxml.jackson.core.JsonToken." + kind + ")");
+        out.beginBlock("if (nativeParser.currentToken() == com.fasterxml.jackson.core.JsonToken.VALUE_NULL)");
+        out.line("return null;");
+        out.endBlock();
+        out.line("throw new java.io.IOException(\"expected " + kind
+                + " but was \" + nativeParser.currentToken());");
+        out.endBlock();
         out.endBlock();
     }
 
