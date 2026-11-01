@@ -163,25 +163,34 @@ Conditional = a known Java representation/root shape and/or localized
 matrix covers the production `org.sjf4j.processor.schema` generator, not the retired
 incubator prototype.
 
-The direct POJO path requires a **public final POJO with public readable
-properties** (public getters without checked exceptions, or public fields).
-The root is also supported for **Map, JsonObject and JOJO** representations:
-dynamic keys are checked at runtime, including `required` and
-`additionalProperties:false`. When a dynamic property's value type
-cannot be determined statically, only that property's validation falls back.
+The compiler separates **schema compilation** from **value access**.
+A supported keyword is emitted as Java checks regardless of whether the declared
+Java type exposes all properties. A public final POJO with an accessible,
+fully known projection uses Java getters/fields directly. Interfaces, non-final
+classes, unknown property types, Map, JsonObject, and JOJO use
+`Nodes.getInObject` and `Nodes.keySetInObject` to inspect the **runtime**
+property set. Nodes access is compiled execution, **not SchemaPlan fallback**.
+Only unsupported schema semantics trigger `fallback=true` or a compilation
+error when `fallback=false`.
+
+Dynamic object checks include a runtime JSON-object guard: an explicit
+`type:object` rejects non-object values; object-specific keywords without
+`type` do not apply to non-objects. A missing property skips its
+`properties` subschema; a present property holding `null` is still present
+for `required`. Runtime subclass properties are included for
+`additionalProperties:false` and property counts. Generic `oneOf` can
+compile independent predicates without requiring `@OneOf` on the declared
+base type, provided that **every branch** can compile without SchemaPlan.
+
 The root may contain `type:object`, `properties`, `required`,
 `additionalProperties` (boolean), and non-applicative metadata including
-`$schema`, `title`, `definitions`, and `$defs`. For
-`additionalProperties:false`, all readable Java properties must appear in
-the schema's declared property set; otherwise the complete root falls back.
-Required keys refer to readable POJO properties: **the value may be null**
-without violating `required`, although its property schema may reject null.
+`$schema`, `title`, `definitions`, and `$defs`.
 
 | Keyword / feature | Direct code generation | Runtime SchemaPlan |
 | --- | --- | --- |
 | Boolean root schemas (`true`, `false`) | Yes | Yes |
-| `type:object`, `properties` | Conditional: POJO direct fields; Map/JsonObject/JOJO dynamic keys; type-less object assertions supported | Yes |
-| `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes |
+| `type:object`, `properties` | Direct: final POJO getters/fields when safe, otherwise Nodes for runtime object keys (including base types/interfaces); type-less object assertions supported | Yes |
+| `required` | Final POJO presence or runtime Nodes key presence; opt-in null-as-missing | Yes |
 | `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes |
 | `minProperties`, `maxProperties` | Static POJO property count or runtime object-size check; null-as-missing uses runtime fallback | Yes |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes |
