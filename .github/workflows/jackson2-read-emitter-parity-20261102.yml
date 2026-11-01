@@ -1,0 +1,74 @@
+name: Jackson2 ReadEmitter Generated Source Parity
+on:
+  push:
+    branches:
+      - experiment/jackson2-read-emitter-parity-20261102
+  workflow_dispatch:
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      BASE_SHA: bfceecd099de2eb3d70e69beca93d73e7ed7b226
+      VARIANT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile baseline generated sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASE_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:compileTestJava :sjf4j-testbench:compileJmhJava --no-daemon
+          mkdir -p "$RUNNER_TEMP/parity/base"
+          cp -a sjf4j-testbench/build/generated/. "$RUNNER_TEMP/parity/base/"
+          echo "Baseline sources: $(find "$RUNNER_TEMP/parity/base" -name '*.java' | wc -l)"
+      - name: Compile refactored generated sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$VARIANT_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:compileTestJava :sjf4j-testbench:compileJmhJava --no-daemon
+          mkdir -p "$RUNNER_TEMP/parity/variant"
+          cp -a sjf4j-testbench/build/generated/. "$RUNNER_TEMP/parity/variant/"
+          echo "Refactor sources: $(find "$RUNNER_TEMP/parity/variant" -name '*.java' | wc -l)"
+      - name: Compare every generated Java source byte for byte
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import difflib
+          import os
+          import pathlib
+          import sys
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'parity'
+          def files(name):
+              folder = root / name
+              return {p.relative_to(folder).as_posix(): p.read_bytes() for p in folder.rglob('*.java')}
+          a, b = files('base'), files('variant')
+          print(f'Generated Java sources: baseline={len(a)}, refactor={len(b)}')
+          missing_a = sorted(b.keys() - a.keys())
+          missing_b = sorted(a.keys() - b.keys())
+          changed = [name for name in sorted(a.keys() & b.keys()) if a[name] != b[name]]
+          print(f'Added={len(missing_a)}, removed={len(missing_b)}, changed={len(changed)}')
+          for name in missing_a[:10]: print(f'  added {name}')
+          for name in missing_b[:10]: print(f'  removed {name}')
+          for name in changed[:5]:
+              print(f'  changed {name}')
+              d = difflib.unified_diff(a[name].decode('utf-8').splitlines(),
+                                       b[name].decode('utf-8').splitlines(),
+                                       fromfile='main/'+name, tofile='refactor/'+name, lineterm='')
+              for i, line in enumerate(d):
+                  if i == 100: break
+                  print(line)
+          if not a or missing_a or missing_b or changed: sys.exit(1)
+          print('PASS: all generated Java sources are byte-identical')
+          PY
