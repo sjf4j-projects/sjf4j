@@ -109,7 +109,7 @@ class CompiledValidatorContractTest {
         ValidationResult expected = reference.validate(bad);
 
         assertFalse(actual.isValid());
-        assertEquals(expected.getErrors().size(), actual.getErrors().size(), actual.toString());
+        assertEquals(expected.getErrors().size(), actual.getErrors().size(), "runtime=" + expected + " compiled=" + actual);
         java.util.Set<String> expectedPaths = new java.util.HashSet<>();
         for (ValidationResult.Message error : expected.getErrors()) {
             expectedPaths.add(error.getKeyword() + ":"
