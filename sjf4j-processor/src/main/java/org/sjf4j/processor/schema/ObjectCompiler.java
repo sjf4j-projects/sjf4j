@@ -178,6 +178,9 @@ final class ObjectCompiler {
         if (type == null) return true;
         if ("java.lang.Object".equals(type.toString())) return true;
         NodeKind kind = context.types.nodeKind(type);
+        // Scalar and array declarations cannot be treated as dynamic objects;
+        // in particular their generated expressions may be primitive values.
+        if (kind.isValue() || kind.isArray()) return false;
         if (kind != NodeKind.OBJECT_POJO) return true;
         TypeElement owner = context.types.typeElement(type);
         return owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)
