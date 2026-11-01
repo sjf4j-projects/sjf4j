@@ -117,9 +117,16 @@ final class SchemaMethodGenerator {
             fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method");
             return;
         }
+        // The same checks serve both APIs; only their failure action differs.
+        // Boolean branch helpers (oneOf/anyOf/not/if) still return boolean.
+        final String failure = isVoid && bound != null
+                ? "throw new org.sjf4j.schema.ValidationException("
+                    + bound.rootReference() + ".validate(" + value + ", true, " + strictParam + "));"
+                : "return false;";
         List<String> emitted = direct == null ? null
                 : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
-                        direct, SchemaValue.of(context, parameterType), value, bound, strictParam);
+                        direct, SchemaValue.of(context, parameterType), value, bound, strictParam,
+                        failure);
         if (fallback && emitted == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
         }
@@ -129,10 +136,6 @@ final class SchemaMethodGenerator {
             bound.useRoot();
         }
 
-        final String failure = isVoid && bound != null
-                ? "throw new org.sjf4j.schema.ValidationException("
-                    + bound.rootReference() + ".validate(" + value + ", true, " + strictParam + "));"
-                : null;
         final String literal = booleanLiteral;
         final List<String> checks = emitted;
         generated.addMethod(out -> {
@@ -149,14 +152,8 @@ final class SchemaMethodGenerator {
                     out.line("return " + literal + ";");
                 }
             } else if (checks != null) {
-                if (isVoid) {
-                    for (String statement : SchemaRequireEmitter.throwOnFailure(checks, failure)) {
-                        out.line(statement);
-                    }
-                } else {
-                    for (String statement : checks) out.line(statement);
-                    out.line("return true;");
-                }
+                for (String statement : checks) out.line(statement);
+                if (isBoolean) out.line("return true;");
             } else if (isBoolean) {
                 for (SchemaFallbackEmitter.Plan plan : plans) {
                     out.line("if (!" + plan.rootReference() + ".isValid(" + value + ", " + strictParam + ")) return false;");
