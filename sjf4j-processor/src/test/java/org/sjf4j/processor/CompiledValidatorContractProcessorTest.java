@@ -127,7 +127,7 @@ class CompiledValidatorContractProcessorTest {
                 + "\"items\":{\"oneOf\":[{\"type\":\"string\",\"enum\":[\"A\"]},"
                 + "{\"type\":\"number\",\"minimum\":1}]}}}}";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema)
                 + ") boolean valid(Model value, boolean strictFormat); }";
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
@@ -182,7 +182,7 @@ class CompiledValidatorContractProcessorTest {
     void annotatedStrictFormatMethodResolvesBothReflectionParameters() throws Exception {
         String schema = "{\"type\":\"object\",\"properties\":{\"name\":{\"format\":\"email\"}}}";
         NavigatorTestCompiler.Result result = compile(
-                "@CompiledValidator public interface Check { "
+                "@CompiledValidator(fallback=true) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
                         + "boolean valid(Model value, boolean strictFormat); }");
         assertTrue(result.success, result.diagnostics());
