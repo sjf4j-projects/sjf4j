@@ -65,6 +65,28 @@ public final class Jackson2NameMatcher extends NameMatcher {
         throw new IOException("expected FIELD_NAME or END_OBJECT, but was " + token);
     }
 
+    /** Prepared expected name for compiled Jackson 2 field probes. */
+    public SerializableString serializedName(int index) {
+        return serializedNames[index];
+    }
+
+    /**
+     * Cold path after an expected-name probe failed. When no probe was made,
+     * advance exactly once; otherwise nextFieldName has already advanced.
+     * Returns null only at END_OBJECT, preserving the actual unknown/alias
+     * name so compiled JOJO binding can reuse it without another currentName().
+     */
+    public String nextFallbackName(JsonParser parser, boolean advance) throws IOException {
+        JsonToken token = advance ? parser.nextToken() : parser.currentToken();
+        if (token == JsonToken.FIELD_NAME) {
+            return parser.currentName();
+        }
+        if (token == JsonToken.END_OBJECT) {
+            return null;
+        }
+        throw new IOException("expected FIELD_NAME or END_OBJECT, but was " + token);
+    }
+
     private Jackson2NameMatcher(PropertyInfo[] settableProperties, String[] names, String[][] aliases) {
         super(settableProperties, names, aliases);
         serializedNames = new SerializableString[size()];
