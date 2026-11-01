@@ -41,21 +41,18 @@ public final class Jackson2NameMatcher extends NameMatcher {
      * Handles reordered/aliased/unknown fields by the existing fallback map.
      */
     public int matchNext(JsonParser parser, int expectedIndex) throws IOException {
-        if (expectedIndex >= 0 && expectedIndex < serializedNames.length
-                && parser.nextFieldName(serializedNames[expectedIndex])) {
-            return expectedIndex;
-        }
-        JsonToken token;
-        if (expectedIndex < 0 || expectedIndex >= serializedNames.length) {
+        if (expectedIndex >= 0 && expectedIndex < serializedNames.length) {
+            if (parser.nextFieldName(serializedNames[expectedIndex])) {
+                return expectedIndex;
+            }
+        } else {
             String name = parser.nextFieldName();
             if (name != null) {
                 return fallback(name);
             }
-            token = parser.currentToken();
-        } else {
-            // Failed nextFieldName has already advanced. Do not advance twice.
-            token = parser.currentToken();
         }
+        // nextFieldName already advanced on both the expected and fallback paths.
+        JsonToken token = parser.currentToken();
         if (token == JsonToken.FIELD_NAME) {
             return fallback(parser.currentName());
         }
