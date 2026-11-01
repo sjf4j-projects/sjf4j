@@ -92,12 +92,12 @@ final class SchemaMethodGenerator {
         String parameterDeclaration = type + " " + value + (parameterCount == 2
                 ? ", boolean " + strictParam : "");
 
-        // Compile a semantic tree before emitting Java. Only a complete
-        // root check is eligible for the native boolean path.
+        // Boolean and void methods share the same native fail-fast checks.
+        // ValidationResult still uses the runtime engine to accumulate errors.
         SchemaFallbackEmitter.Plan bound = null;
         String booleanLiteral = null;
         SchemaCheck direct = null;
-        if (isBoolean && plans.size() == 1) {
+        if ((isBoolean || isVoid) && plans.size() == 1) {
             bound = plans.get(0);
             booleanLiteral = compileBoolean(bound.snapshot);
             if (booleanLiteral == null) {
@@ -123,7 +123,16 @@ final class SchemaMethodGenerator {
         if (fallback && emitted == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
         }
+        // Valid requireValid calls execute only generated checks. Diagnostics
+        // use the full SchemaPlan lazily, and only after a native check fails.
+        if (isVoid && (emitted != null || "false".equals(booleanLiteral))) {
+            bound.useRoot();
+        }
 
+        final String failure = isVoid && bound != null
+                ? "throw new org.sjf4j.schema.ValidationException("
+                    + bound.rootReference() + ".validate(" + value + ", true, " + strictParam + "));"
+                : null;
         final String literal = booleanLiteral;
         final List<String> checks = emitted;
         generated.addMethod(out -> {
@@ -134,10 +143,20 @@ final class SchemaMethodGenerator {
                     + (isBoolean ? "return true;" :
                        isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
             if (literal != null) {
-                out.line("return " + literal + ";");
+                if (isVoid) {
+                    if ("false".equals(literal)) out.line(failure);
+                } else {
+                    out.line("return " + literal + ";");
+                }
             } else if (checks != null) {
-                for (String statement : checks) out.line(statement);
-                out.line("return true;");
+                if (isVoid) {
+                    for (String statement : SchemaRequireEmitter.throwOnFailure(checks, failure)) {
+                        out.line(statement);
+                    }
+                } else {
+                    for (String statement : checks) out.line(statement);
+                    out.line("return true;");
+                }
             } else if (isBoolean) {
                 for (SchemaFallbackEmitter.Plan plan : plans) {
                     out.line("if (!" + plan.rootReference() + ".isValid(" + value + ", " + strictParam + ")) return false;");
