@@ -162,6 +162,8 @@ final class ObjectCompiler {
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
         }
         if (directCount == 0) return null;
+        // JOJO inherits the public JsonObject operations, so generated code
+        // can bypass generic Nodes dispatch while preserving dynamic keys.
         boolean jsonObject = dynamic && type != null && (context.types.nodeKind(type) == NodeKind.OBJECT_JSON_OBJECT
                 || context.types.nodeKind(type) == NodeKind.OBJECT_JOJO);
         return new SchemaCheck.ObjectCheck(dynamic, jsonObject, typeRequired,
