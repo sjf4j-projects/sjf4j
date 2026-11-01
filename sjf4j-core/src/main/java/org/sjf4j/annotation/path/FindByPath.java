@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * <p>Currently supports root, simple wildcard ({@code [*]}), slice, and
  * union ({@code [0,2]} / {@code ['a','b']}) path expressions that the
  * annotation processor can compile directly. Filter and descendant paths
- * require {@link #allowFallback()} because they use precompiled runtime
+ * require {@link CompiledNavigator#fallback()} because they use precompiled runtime
  * fallback for the non-direct part. Unsupported path shapes fail at compile
  * time.</p>
  *
@@ -36,9 +36,4 @@ public @interface FindByPath {
      */
     String value();
 
-    /**
-     * Allows generated implementations to use precompiled runtime JSONPath or
-     * filter-expression fallback for path parts that are not fully compiled.
-     */
-    boolean allowFallback() default false;
 }
