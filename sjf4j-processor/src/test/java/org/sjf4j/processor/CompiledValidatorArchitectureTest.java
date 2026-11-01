@@ -96,7 +96,7 @@ class CompiledValidatorArchitectureTest {
         assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
         assertTrue(generated.contains("_matches_"), generated);
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
-        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
+        assertFalse(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
     }
 
     @Test
