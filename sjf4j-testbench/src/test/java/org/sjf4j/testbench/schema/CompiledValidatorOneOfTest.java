@@ -67,7 +67,7 @@ public class CompiledValidatorOneOfTest {
         public List<Variant> getItems() { return items; }
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface Validator {
         @ValidJsonSchema(SCHEMA) boolean valid(Model model);
         @ValidJsonSchema(SCHEMA) boolean valid(Model model, boolean strictFormat);
