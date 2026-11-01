@@ -34,7 +34,7 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertFalse(generated.contains(".isValid("), generated);
-        assertTrue(generated.contains("java.lang.Boolean.TRUE"), generated);
+        assertTrue(generated.contains("return false;"), generated);
     }
 
     @Test
