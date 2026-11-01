@@ -157,27 +157,35 @@ final class SchemaEmitter {
                 return;
             case OBJECT:
                 SchemaCheck.ObjectCheck object = (SchemaCheck.ObjectCheck) check;
-                // Nodes-based access must check runtime shape even when the declared
-                // Java type is a non-final base class or interface.
+                // The raw JSON representation, not the logical @NodeValue
+                // wrapper, is the target of structural validation. Convert once
+                // per predicate, then use that same node for shape and members.
+                String subject = expression;
+                if (object.dynamic && !object.jsonObject) {
+                    subject = "_raw_" + helperCount++;
+                    lines.add("Object " + subject
+                            + " = org.sjf4j.schema.CompiledSchemaValues.raw(" + expression + ");");
+                }
                 boolean unknownShape = object.dynamic;
                 if (object.typeRequired) {
-                    if (value.nullable) lines.add("if (" + expression + " == null) " + onFailure);
+                    if (value.nullable || object.dynamic)
+                        lines.add("if (" + subject + " == null) " + onFailure);
                     if (unknownShape) {
-                        lines.add("if (org.sjf4j.JsonType.rawOf(" + expression
+                        lines.add("if (org.sjf4j.JsonType.rawOf(" + subject
                                 + ".getClass()) != org.sjf4j.JsonType.OBJECT) " + onFailure);
                     }
-                    lines.addAll(emit(object, expression, plan, strictFormat, planName + "_", onFailure));
+                    lines.addAll(emit(object, subject, plan, strictFormat, planName + "_", onFailure));
                 } else if (unknownShape || value.nullable) {
                     String applies = unknownShape
-                            ? expression + " != null && org.sjf4j.JsonType.rawOf("
-                                    + expression + ".getClass()) == org.sjf4j.JsonType.OBJECT"
-                            : expression + " != null";
+                            ? subject + " != null && org.sjf4j.JsonType.rawOf("
+                                    + subject + ".getClass()) == org.sjf4j.JsonType.OBJECT"
+                            : subject + " != null";
                     lines.add("if (" + applies + ") {");
-                    for (String statement : emit(object, expression, plan, strictFormat,
+                    for (String statement : emit(object, subject, plan, strictFormat,
                             planName + "_", onFailure)) lines.add("    " + statement);
                     lines.add("}");
                 } else {
-                    lines.addAll(emit(object, expression, plan, strictFormat, planName + "_", onFailure));
+                    lines.addAll(emit(object, subject, plan, strictFormat, planName + "_", onFailure));
                 }
                 return;
             case REJECT:
