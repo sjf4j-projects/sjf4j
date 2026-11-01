@@ -1,5 +1,6 @@
 package org.sjf4j.processor.path;
 
+import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -46,8 +47,10 @@ public final class NavigatorGenerator {
         // Navigation currently has no RuntimeContext-dependent operations.
         generated.enableRuntimeContext();
 
+        CompiledNavigator annotation = type.getAnnotation(CompiledNavigator.class);
+        boolean allowFallback = annotation != null && annotation.fallback();
         for (ResolvedMethod method : methods) {
-            methodGenerator.generate(method.declaration(), generated);
+            methodGenerator.generate(method.declaration(), generated, allowFallback);
         }
 
         generated.write();
