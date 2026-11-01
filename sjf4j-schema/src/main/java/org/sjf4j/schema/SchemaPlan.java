@@ -31,8 +31,10 @@ public final class SchemaPlan {
      * Validates one instance with aggregated errors and non-strict format checks.
      * <p>
      * The framework does not write the instance graph. {@code @NodeValue}
-     * instances are validated as raw representations encoded by their configured
-     * value binding; invoked getters and user extensions can have side effects.
+     * instances use their configured raw encoding for leaf assertions, but
+     * remain atomic value nodes: object/array keywords never traverse a raw
+     * Map/List produced by the binding. Invoked getters and user extensions
+     * can have side effects.
      */
     public ValidationResult validate(Object node) {
         return validate(node, false, false);
