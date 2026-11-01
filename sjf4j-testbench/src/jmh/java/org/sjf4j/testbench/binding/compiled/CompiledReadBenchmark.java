@@ -58,7 +58,7 @@ public class CompiledReadBenchmark {
 
     public static void main(String[] args) throws Exception {
 //        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
-        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*jackson2_pojo"});
+        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*_pojo"});
     }
 
     public static final byte[] JSON_UTF8 = User.JSON_DATA.getBytes(StandardCharsets.UTF_8);
@@ -293,25 +293,25 @@ public class CompiledReadBenchmark {
     // ----- JACKSON2 -----
     // Exercise the same compiled name-match path with the opposite field
     // order; the existing JSON_DATA benchmark covers ordered fields.
-    @Benchmark
-    public Object jackson2_pojo_reversed_string_compiled() throws IOException {
-        return JACKSON2_COMPILED.readPojo(JSON_REVERSED);
-    }
-
-    @Benchmark
-    public Object jackson2_pojo_reversed_utf8_compiled() throws IOException {
-        return JACKSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
-    }
-
-    @Benchmark
-    public Object jackson2_pojo_reversed_string_runtime() {
-        return JACKSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
-    }
-
-    @Benchmark
-    public Object jackson2_pojo_reversed_utf8_runtime() {
-        return JACKSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
-    }
+//    @Benchmark
+//    public Object jackson2_pojo_reversed_string_compiled() throws IOException {
+//        return JACKSON2_COMPILED.readPojo(JSON_REVERSED);
+//    }
+//
+//    @Benchmark
+//    public Object jackson2_pojo_reversed_utf8_compiled() throws IOException {
+//        return JACKSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
+//    }
+//
+//    @Benchmark
+//    public Object jackson2_pojo_reversed_string_runtime() {
+//        return JACKSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
+//    }
+//
+//    @Benchmark
+//    public Object jackson2_pojo_reversed_utf8_runtime() {
+//        return JACKSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
+//    }
 
     @Benchmark
     public Object jackson2_pojo_string_compiled() throws IOException {
@@ -602,25 +602,25 @@ public class CompiledReadBenchmark {
     }
 
     // ----- FASTJSON2 -----
-    @Benchmark
-    public Object fastjson2_pojo_reversed_string_compiled() throws IOException {
-        return FASTJSON2_COMPILED.readPojo(JSON_REVERSED);
-    }
-
-    @Benchmark
-    public Object fastjson2_pojo_reversed_string_runtime() {
-        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
-    }
-
-    @Benchmark
-    public Object fastjson2_pojo_reversed_utf8_compiled() throws IOException {
-        return FASTJSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
-    }
-
-    @Benchmark
-    public Object fastjson2_pojo_reversed_utf8_runtime() {
-        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
-    }
+//    @Benchmark
+//    public Object fastjson2_pojo_reversed_string_compiled() throws IOException {
+//        return FASTJSON2_COMPILED.readPojo(JSON_REVERSED);
+//    }
+//
+//    @Benchmark
+//    public Object fastjson2_pojo_reversed_string_runtime() {
+//        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED, User.class);
+//    }
+//
+//    @Benchmark
+//    public Object fastjson2_pojo_reversed_utf8_compiled() throws IOException {
+//        return FASTJSON2_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
+//    }
+//
+//    @Benchmark
+//    public Object fastjson2_pojo_reversed_utf8_runtime() {
+//        return FASTJSON2_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
+//    }
 
     @Benchmark
     public Object fastjson2_pojo_string_compiled() throws IOException {

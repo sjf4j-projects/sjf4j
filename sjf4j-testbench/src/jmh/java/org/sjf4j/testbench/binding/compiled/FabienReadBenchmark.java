@@ -70,11 +70,11 @@ public class FabienReadBenchmark {
     private static final FabienCompiled COMPILED = CompiledInstances.create(FabienCompiled.class);
 
     // Matches java-json-benchmark's default --size 1 (1,000 target bytes).
-    @Param({"1"})
+    @Param({"1", "10"})
     public int sizeKb;
 
     // Deterministic counterpart to java-json-benchmark's SEED environment variable.
-    @Param({"12345"})
+    @Param({"12345", "324", "43201"})
     public long seed;
 
     private byte[] usersJson;
@@ -106,11 +106,6 @@ public class FabienReadBenchmark {
         checkClients("runtime", expectedClients, clients_jackson2_runtime());
         checkClients("compiled", expectedClients, clients_jackson2_compiled());
         checkClients("handwritten", expectedClients, clients_jackson2_handwritten());
-        checkClients("handwritten jdk UUID", expectedClients, clients_jackson2_handwritten_jdk_uuid());
-        checkClients("handwritten wrapped scalars", expectedClients,
-                clients_jackson2_handwritten_wrapped_scalars());
-        checkClients("handwritten wrapped arrays", expectedClients,
-                clients_jackson2_handwritten_wrapped_arrays());
         Clients sample = Clients.sample();
         byte[] sampleJson = NATIVE.writeValueAsBytes(sample);
         checkClients("handwritten sample", sample,
@@ -184,20 +179,20 @@ public class FabienReadBenchmark {
         return Jackson2HandRead.readClients(HAND_FACTORY, clientsJson);
     }
 
-    @Benchmark
-    public Clients clients_jackson2_handwritten_jdk_uuid() throws IOException {
-        return Jackson2HandRead.readClientsWithJdkUuid(HAND_FACTORY, clientsJson);
-    }
-
-    @Benchmark
-    public Clients clients_jackson2_handwritten_wrapped_scalars() throws IOException {
-        return Jackson2HandRead.readClientsWithWrappedScalars(HAND_FACTORY, clientsJson);
-    }
-
-    @Benchmark
-    public Clients clients_jackson2_handwritten_wrapped_arrays() throws IOException {
-        return Jackson2HandRead.readClientsWithWrappedArrays(HAND_FACTORY, clientsJson);
-    }
+//    @Benchmark
+//    public Clients clients_jackson2_handwritten_jdk_uuid() throws IOException {
+//        return Jackson2HandRead.readClientsWithJdkUuid(HAND_FACTORY, clientsJson);
+//    }
+//
+//    @Benchmark
+//    public Clients clients_jackson2_handwritten_wrapped_scalars() throws IOException {
+//        return Jackson2HandRead.readClientsWithWrappedScalars(HAND_FACTORY, clientsJson);
+//    }
+//
+//    @Benchmark
+//    public Clients clients_jackson2_handwritten_wrapped_arrays() throws IOException {
+//        return Jackson2HandRead.readClientsWithWrappedArrays(HAND_FACTORY, clientsJson);
+//    }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface FabienCompiled {

@@ -115,30 +115,44 @@ public class CreekSchemaBenchmark {
         boolean isValid(TestModel value);
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value, boolean strictFormat);
+
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         void requireValid(TestModel value);
     }
 
     /** Strict format control matching the generated validator's fallback path. */
     @Benchmark
-    public boolean schema_is_valid_pojo_strict() {
+    public boolean pojo_isValid_runtime() {
         return plan.isValid(model, true);
     }
 
     /** Generated direct Creek checks with the default non-strict format behavior. */
     @Benchmark
-    public boolean compiled_schema_is_valid_pojo() {
-        return compiledValidator.isValid(model);
-    }
-
-    /** Explicit format assertion for a strict-to-strict control. */
-    @Benchmark
-    public boolean compiled_schema_is_valid_pojo_strict() {
+    public boolean pojo_isValid_compiled() {
         return compiledValidator.isValid(model, true);
     }
 
     @Benchmark
-    public TestModel round_trip_is_valid_compiled() throws IOException {
+    public void pojo_requireValid_runtime() {
+        plan.requireValid(model, false);
+    }
+
+    /** Compiled fail-fast checks; failure diagnostics are cold-path only. */
+    @Benchmark
+    public void pojo_requireValid_compiled() {
+        compiledValidator.requireValid(model);
+    }
+
+
+
+    @Benchmark
+    public TestModel roundtrip_jackson() throws IOException {
+        byte[] bytes = JACKSON.writeValueAsBytes(model);
+        return JACKSON.readValue(bytes, TestModel.class);
+    }
+
+    @Benchmark
+    public TestModel roundtrip_isValid_compiled() throws IOException {
         byte[] bytes = JACKSON.writeValueAsBytes(model);
         TestModel result = JACKSON.readValue(bytes, TestModel.class);
         if (!compiledValidator.isValid(result)) {
@@ -147,19 +161,8 @@ public class CreekSchemaBenchmark {
         return result;
     }
 
-    /** Boolean-only path with no ValidationResult or failure diagnostics. */
     @Benchmark
-    public boolean schema_is_valid_pojo() {
-        return plan.isValid(model);
-    }
-
-    @Benchmark
-    public boolean schema_is_valid_map() {
-        return plan.isValid(mapNode);
-    }
-
-    @Benchmark
-    public TestModel round_trip_is_valid() throws IOException {
+    public TestModel roundtrip_isValid_runtime() throws IOException {
         byte[] bytes = JACKSON.writeValueAsBytes(model);
         TestModel result = JACKSON.readValue(bytes, TestModel.class);
         if (!plan.isValid(result)) {
@@ -169,32 +172,33 @@ public class CreekSchemaBenchmark {
     }
 
     @Benchmark
-    public void schema_validate_pojo() {
-        plan.requireValid(model, false);
-    }
-
-    /** Compiled fail-fast checks; failure diagnostics are cold-path only. */
-    @Benchmark
-    public void compiled_schema_require_valid_pojo() {
-        compiledValidator.requireValid(model);
-    }
-
-    @Benchmark
-    public void schema_validate_map() {
-        plan.requireValid(mapNode, false);
-    }
-
-    @Benchmark
-    public TestModel jackson_round_trip() throws IOException {
-        byte[] bytes = JACKSON.writeValueAsBytes(model);
-        return JACKSON.readValue(bytes, TestModel.class);
-    }
-
-    @Benchmark
-    public TestModel round_trip_validate() throws IOException {
+    public TestModel roundtrip_requireValid_runtime() throws IOException {
         byte[] bytes = JACKSON.writeValueAsBytes(model);
         TestModel result = JACKSON.readValue(bytes, TestModel.class);
         plan.requireValid(result, false);
         return result;
     }
+
+    @Benchmark
+    public TestModel roundtrip_requireValid_compiled() throws IOException {
+        byte[] bytes = JACKSON.writeValueAsBytes(model);
+        TestModel result = JACKSON.readValue(bytes, TestModel.class);
+        compiledValidator.requireValid(result);
+        return result;
+    }
+
+    /// Map
+
+    @Benchmark
+    public boolean map_runtime_isValid() {
+        return plan.isValid(mapNode);
+    }
+
+    @Benchmark
+    public void map_runtime_requireValid() {
+        plan.requireValid(mapNode, false);
+    }
+
+
+
 }
