@@ -63,7 +63,7 @@ class RecordDescendantPathTest {
                 "import java.util.List;\n" +
                 "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledNavigator\n" +
+                "@CompiledNavigator(fallback=true)\n" +
                 "public interface FindDeep {\n" +
                 "  @FindByPath(\"$.child..name\")\n" +
                 "  List<String> names(Root root);\n" +
