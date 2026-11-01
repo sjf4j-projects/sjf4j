@@ -211,6 +211,8 @@ public class FabienReadBenchmark {
         checkClients("handwritten", expectedClients, clients_jackson2_handwritten());
         checkClients("handwritten fast temporal", expectedClients,
                 clients_jackson2_handwritten_fast_temporal());
+        checkClients("hybrid handwritten", expectedClients,
+                clients_jackson2_hybrid_handwritten());
         checkClients("handwritten jdk UUID", expectedClients, clients_jackson2_handwritten_jdk_uuid());
         checkClients("handwritten wrapped scalars", expectedClients,
                 clients_jackson2_handwritten_wrapped_scalars());
@@ -221,6 +223,8 @@ public class FabienReadBenchmark {
         byte[] sampleJson = NATIVE.writeValueAsBytes(sample);
         checkClients("handwritten sample", sample,
                 Jackson2HandRead.readClients(HAND_FACTORY, sampleJson));
+        checkClients("hybrid handwritten sample", sample,
+                Jackson2HybridHandRead.readClients(HAND_FACTORY, sampleJson));
         checkClients("handwritten jdk UUID sample", sample,
                 Jackson2HandRead.readClientsWithJdkUuid(HAND_FACTORY, sampleJson));
         checkClients("handwritten wrapped scalars sample", sample,
@@ -348,6 +352,11 @@ public class FabienReadBenchmark {
     @Benchmark
     public Clients clients_jackson2_handwritten_fast_temporal() throws IOException {
         return Jackson2HandReadFast.readClients(HAND_FACTORY, clientsJson);
+    }
+
+    @Benchmark
+    public Clients clients_jackson2_hybrid_handwritten() throws IOException {
+        return Jackson2HybridHandRead.readClients(HAND_FACTORY, clientsJson);
     }
 
     @Benchmark
