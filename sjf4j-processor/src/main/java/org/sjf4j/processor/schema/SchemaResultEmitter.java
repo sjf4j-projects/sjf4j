@@ -117,6 +117,13 @@ final class SchemaResultEmitter {
     private void emitObject(List<String> out, SchemaCheck.ObjectCheck check,
                             SchemaValue value, String expression, String path,
                             SchemaFallbackEmitter.Plan plan, String strict) {
+        // Object-specific keywords do not apply to null unless type:object
+        // is explicitly asserted. Guard nested POJOs before member access.
+        if (value.nullable) {
+            out.add("if (" + expression + " == null) {");
+            if (check.typeRequired) error(out, check.typeDiagnostic, path, "expected object");
+            out.add("} else {");
+        }
         // All fields on a static POJO are present, and ObjectCompiler has
         // already proved additionalProperties:false against the Java shape.
         if (check.minProperties != null && check.staticPropertyCount < check.minProperties) {
@@ -135,6 +142,7 @@ final class SchemaResultEmitter {
             emit(out, property.check, property.value, local, childPath, plan, strict);
             n++;
         }
+        if (value.nullable) out.add("}");
     }
 
     private void emitString(List<String> out, SchemaCheck.StringCheck check,
