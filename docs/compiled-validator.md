@@ -180,6 +180,11 @@ matrix covers the production `org.sjf4j.processor.schema` generator, not the ret
 incubator prototype.
 
 The compiler separates **schema compilation** from **value access**.
+For a complete public final POJO projection, an absent `required` property is a
+compile-time constant rejection (not a SchemaPlan fallback or compilation
+error); inside `oneOf` or `anyOf`, this allows branch pruning.
+JsonObject and JOJO declarations use native `containsKey`, `getNode`,
+`keySet`, and `size` operations rather than generic Nodes dispatch.
 A supported keyword is emitted as Java checks regardless of whether the declared
 Java type exposes all properties. A public final POJO with an accessible,
 fully known projection uses Java getters/fields directly. Interfaces, non-final
