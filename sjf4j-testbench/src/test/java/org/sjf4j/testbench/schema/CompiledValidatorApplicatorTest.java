@@ -103,7 +103,7 @@ class CompiledValidatorApplicatorTest {
         @ValidJsonSchema(NULL_MISSING) boolean notRequired(Map<String, Object> input);
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface Fallback {
         @ValidJsonSchema(FALLBACK) boolean unsupported(String input);
         @ValidJsonSchema(UNEVALUATED) boolean unevaluated(Map<String, Object> input);
