@@ -1,4 +1,4 @@
-name: Fabien Hybrid Jackson2 Native Scalars Diagnosis
+name: Fabien Focused Compiled vs Hybrid Benchmark
 on:
   push:
     branches:
@@ -25,24 +25,24 @@ jobs:
           lscpu > diagnostics/lscpu.txt
       - name: Build JMH jar and verify correctness at setup
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
-      - name: Bench native vs hybrid vs compiled vs equalized Blackbird
+      - name: Benchmark four retained readers
         shell: bash
         run: |
           set -euo pipefail
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           test -n "$JAR"
           java -jar "$JAR" \
-            '.*FabienReadBenchmark\.(clients_jackson2_(hybrid_native_scalars|hybrid_handwritten|handwritten_fast_temporal|compiled|blackbird_fast_temporal))$' \
+            '.*FabienReadBenchmark\.(clients_jackson2_(hybrid_handwritten|handwritten_fast_temporal|compiled|blackbird_fast_temporal))$' \
             -p sizeKb=10 -p seed=12345,324,43201 \
             -f 3 -t 1 -wi 5 -i 7 -w 200ms -r 200ms \
-            -prof gc -rf json -rff fabien-hybrid-native-scalars-results.json \
-            2>&1 | tee fabien-hybrid-native-scalars-jmh.log
+            -prof gc -rf json -rff fabien-focused-results.json \
+            2>&1 | tee fabien-focused-jmh.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fabien-hybrid-native-scalars-jdk25
+          name: fabien-focused-jdk25
           path: |
-            fabien-hybrid-native-scalars-results.json
-            fabien-hybrid-native-scalars-jmh.log
+            fabien-focused-results.json
+            fabien-focused-jmh.log
             diagnostics/**
           if-no-files-found: warn
