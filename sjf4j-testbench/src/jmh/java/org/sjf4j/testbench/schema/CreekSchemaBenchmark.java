@@ -88,6 +88,7 @@ public class CreekSchemaBenchmark {
         plan.requireValid(model, false);
         plan.requireValid(deserializedModel, false);
         plan.requireValid(mapNode, false);
+        compiledValidator.requireValid(model);
         // The generated validator checks known polymorphic Java subtypes directly;
         // unknown subtypes and strict format checks retain the SchemaPlan fallback.
         if (!plan.isValid(model, true) || !compiledValidator.isValid(model, true)
@@ -114,6 +115,8 @@ public class CreekSchemaBenchmark {
         boolean isValid(TestModel value);
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value, boolean strictFormat);
+        @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
+        void requireValid(TestModel value);
     }
 
     /** Strict format control matching the generated validator's fallback path. */
@@ -168,6 +171,12 @@ public class CreekSchemaBenchmark {
     @Benchmark
     public void schema_validate_pojo() {
         plan.requireValid(model, false);
+    }
+
+    /** Compiled fail-fast checks; failure diagnostics are cold-path only. */
+    @Benchmark
+    public void compiled_schema_require_valid_pojo() {
+        compiledValidator.requireValid(model);
     }
 
     @Benchmark
