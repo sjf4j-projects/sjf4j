@@ -1,8 +1,8 @@
-name: SJF4J Users Blackbird vs Compiled ARM64
+name: SJF4J Users Blackbird vs Compiled ARM64 Jackson217
 on:
   push:
     branches:
-      - experiment/jackson2-users-blackbird-arm64-20261101
+      - experiment/jackson2-users-blackbird-arm64-jackson217-20261101
   workflow_dispatch:
 
 jobs:
@@ -24,7 +24,10 @@ jobs:
           java -version 2> diagnostics/java-version.txt
           lscpu > diagnostics/lscpu.txt
       - name: Build benchmark JAR
-        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+        run: |
+          ./gradlew :sjf4j-testbench:dependencies --configuration jmhRuntimeClasspath --no-daemon > diagnostics/dependency-tree.txt
+          grep 'jackson-databind' diagnostics/dependency-tree.txt | head -n 15
+          ./gradlew :sjf4j-testbench:jmhJar --no-daemon
       - name: Measure Jackson Blackbird and current-main Compiled on identical payloads
         shell: bash
         run: |
@@ -54,7 +57,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sjf4j-users-blackbird-compiled-arm64-jdk25
+          name: sjf4j-users-blackbird-compiled-arm64-jackson217-jdk25
           path: |
             arm64-users.json
             arm64-users.log
