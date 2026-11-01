@@ -60,6 +60,31 @@ public final class Jackson2Parser extends StreamingParser {
         this.prefetched = parser.currentToken() != null;
     }
 
+    /**
+     * Provides native Jackson token traversal for a compiled fast path.
+     * The caller must not switch while a lookahead token is pending.
+     * Use native cursor operations for complete structural segments,
+     * leaving FIELD_NAME for SJF4J's consuming scalar readers.
+     */
+    public JsonParser nativeParser() {
+        if (prefetched) {
+            throw new IllegalStateException("cannot access native parser with pending lookahead token");
+        }
+        return parser;
+    }
+
+    /**
+     * Hands a token already advanced by native array traversal back to the
+     * consuming SJF4J reader. The next readXxx/readRaw/nextIf consumes this
+     * token without advancing Jackson's cursor again.
+     */
+    public void adoptNativeToken() {
+        if (prefetched || parser.currentToken() == null) {
+            throw new IllegalStateException("cannot adopt a pending or absent native token");
+        }
+        prefetched = true;
+    }
+
     /* --------------------------------------------------------------
      * Document / inspection
      * -------------------------------------------------------------- */
