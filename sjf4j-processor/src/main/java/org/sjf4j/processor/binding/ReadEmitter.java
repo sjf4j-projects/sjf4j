@@ -291,6 +291,35 @@ final class ReadEmitter {
         return value.primitive() ? decoded : "(" + raw + " == null ? null : " + decoded + ")";
     }
 
+    /**
+     * Experimental A/B variant: inline Jackson's prepared expected-name probe
+     * in generated POJO and creator loops. Keep the existing matcher only for
+     * the reordered/aliased/unknown-name fallback.
+     */
+    private void emitNativeInlineNameLoopStart(JavaWriter out, BindingValue value) {
+        String matcher = matcherFieldName(value);
+        int propertyCount = value.properties().size();
+        out.beginBlock("while (true)");
+        out.beginBlock("if (expectedNameIndex < " + propertyCount
+                + " && nativeParser.nextFieldName(" + matcher
+                + ".serializedName(expectedNameIndex)))");
+        out.line("nameIndex = expectedNameIndex;");
+        out.endBlock();
+        out.beginBlock("else");
+        out.beginBlock("if (expectedNameIndex == " + propertyCount + ")");
+        out.line("nativeParser.nextToken();");
+        out.endBlock();
+        out.line("com.fasterxml.jackson.core.JsonToken fieldToken = nativeParser.currentToken();");
+        out.beginBlock("if (fieldToken == com.fasterxml.jackson.core.JsonToken.END_OBJECT)");
+        out.line("break;");
+        out.endBlock();
+        out.beginBlock("if (fieldToken != com.fasterxml.jackson.core.JsonToken.FIELD_NAME)");
+        out.line("throw new java.io.IOException(\"expected FIELD_NAME or END_OBJECT, but was \" + fieldToken);");
+        out.endBlock();
+        out.line("nameIndex = " + matcher + ".fallback(nativeParser.currentName());");
+        out.endBlock();
+    }
+
     private void emitPojo(JavaWriter out, BindingValue value) {
         emitPojo(out, value, false, null);
     }
@@ -321,11 +350,14 @@ final class ReadEmitter {
                 out.line("int expectedNameIndex = 0;");
             }
 
-            out.beginBlock("while ((nameIndex = "
-                    + (nativeObject ? matcherFieldName(value) + ".matchNext(nativeParser, expectedNameIndex)"
-                    : "parser.nextNameMatch(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
-                    + ") != " + NAME_MATCHER + ".OBJECT_END)");
+            if (nativeObject) {
+                emitNativeInlineNameLoopStart(out, value);
+            } else {
+                out.beginBlock("while ((nameIndex = parser.nextNameMatch("
+                        + matcherFieldName(value)
+                        + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
+                        + ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            }
 
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
@@ -400,11 +432,14 @@ final class ReadEmitter {
         } else if (backend.usesNameMatcher() && size != 0) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
-            out.beginBlock("while ((nameIndex = "
-                    + (nativeObject ? matcherFieldName(value) + ".matchNext(nativeParser, expectedNameIndex)"
-                    : "parser.nextNameMatch(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
-                    + ") != " + NAME_MATCHER + ".OBJECT_END)");
+            if (nativeObject) {
+                emitNativeInlineNameLoopStart(out, value);
+            } else {
+                out.beginBlock("while ((nameIndex = parser.nextNameMatch("
+                        + matcherFieldName(value)
+                        + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
+                        + ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            }
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
             out.line("String name;");
