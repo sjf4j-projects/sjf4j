@@ -673,8 +673,9 @@ final class ReadEmitter {
         }
         out.beginBlock("while (nativeParser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_ARRAY)");
         boolean nativeElement = element.helperRequired()
-                && (element.kind() == BindingValue.Kind.POJO
-                    || element.kind() == BindingValue.Kind.JOJO
+                && (((element.kind() == BindingValue.Kind.POJO
+                        || element.kind() == BindingValue.Kind.JOJO)
+                        && !element.properties().isEmpty())
                     || element.kind() == BindingValue.Kind.ARRAY
                     || element.kind() == BindingValue.Kind.LIST
                     || element.kind() == BindingValue.Kind.SET);
