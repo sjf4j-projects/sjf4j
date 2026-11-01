@@ -30,8 +30,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "Generated candidates:"
-          find sjf4j-testbench/build -type f -name '*Fabien*Compiled*.java' -print
-          SRC="$(find sjf4j-testbench/build -type f -name '*Fabien*Compiled*.java' -print -quit)"
+          find sjf4j-testbench/build -type f -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print
+          SRC="$(find sjf4j-testbench/build -type f -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print -quit)"
           if [ -z "$SRC" ]; then echo "No generated Fabien compiled source found"; exit 1; fi
           mkdir -p diagnostics/generated
           cp "$SRC" diagnostics/generated/
