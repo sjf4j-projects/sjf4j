@@ -51,6 +51,8 @@ class CompiledValidatorContractTest {
     public interface DirectValidator {
         boolean isValid(Name value);
         boolean isValid(Name value, boolean strictFormat);
+        void requireValid(Name value);
+        void requireValid(Name value, boolean strictFormat);
     }
 
     @Test
@@ -103,5 +105,22 @@ class CompiledValidatorContractTest {
         assertTrue(validator.isValid(new Name("ok"), false));
         assertFalse(validator.isValid(new Name("x")));
         assertFalse(validator.isValid(new Name("x"), true));
+    }
+
+    @Test
+    void nativeRequireValidPreservesFullFailureDiagnostics() {
+        DirectValidator validator = CompiledInstances.create(DirectValidator.class);
+        assertDoesNotThrow(() -> validator.requireValid(new Name("good")));
+        assertDoesNotThrow(() -> validator.requireValid(new Name("good"), true));
+        assertDoesNotThrow(() -> validator.requireValid(null));
+
+        ValidationException failure = assertThrows(ValidationException.class,
+                () -> validator.requireValid(new Name("x")));
+        assertFalse(failure.getResult().isValid());
+        assertEquals("minLength", failure.getResult().getLastError().getKeyword());
+        assertEquals("/name", failure.getResult().getLastError()
+                .getInstancePs().rootedPointerExpr());
+        assertThrows(ValidationException.class,
+                () -> validator.requireValid(new Name("x"), true));
     }
 }
