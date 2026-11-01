@@ -27,6 +27,19 @@ class CompiledValidatorOneOfProcessorTest {
     }
 
     @Test
+    void strictFormatKeepsDirectSubtypeDispatch() throws Exception {
+        String schema = SCHEMA.replace("\\\"minLength\\\":2",
+                "\\\"minLength\\\":2,\\\"format\\\":\\\"email\\\"");
+        NavigatorTestCompiler.Result result = compile(true, schema, true);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertTrue(generated.contains("getClass() == A.class")
+                || generated.contains("getClass() == fixture.A.class"), generated);
+        assertTrue(generated.contains("FormatValidator.of(\\\"email\\\")"), generated);
+        assertFalse(generated.contains(".isValid(value, true)"), generated);
+    }
+
+    @Test
     void nonPublicAnnotatedConstantDoesNotGrantGeneratedJavaAccess() throws Exception {
         NavigatorTestCompiler.Result result = compile(false);
         assertTrue(result.success, result.diagnostics());
@@ -36,6 +49,11 @@ class CompiledValidatorOneOfProcessorTest {
     }
 
     private static NavigatorTestCompiler.Result compile(boolean exposed) throws Exception {
+        return compile(exposed, SCHEMA, false);
+    }
+
+    private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
+                                                        boolean strictFormat) throws Exception {
         String visibility = exposed ? "public " : "private ";
         Map<String, String> sources = new LinkedHashMap<String, String>();
         sources.put("fixture/Variant.java",
@@ -60,8 +78,9 @@ class CompiledValidatorOneOfProcessorTest {
         sources.put("fixture/Validator.java",
                 "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=true) public interface Validator { "
-                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(SCHEMA) + ") "
-                + "boolean valid(Model value); }");
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + (strictFormat ? "boolean valid(Model value, boolean strictFormat); }"
+                        : "boolean valid(Model value); }"));
         return NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
     }
 }
