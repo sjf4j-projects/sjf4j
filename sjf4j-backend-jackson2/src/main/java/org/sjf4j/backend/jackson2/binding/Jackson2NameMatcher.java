@@ -2,6 +2,9 @@
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.SerializableString;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import java.io.IOException;
 import com.fasterxml.jackson.core.io.SerializedString;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.meta.PropertyInfo;
@@ -30,6 +33,36 @@ public final class Jackson2NameMatcher extends NameMatcher {
      */
     public Jackson2NameMatcher(String[] names, String[][] aliases) {
         this(null, names, aliases);
+    }
+
+    /**
+     * Native Jackson field traversal for compiled binding. FIELD_NAME stays
+     * current so the next Jackson2Parser scalar reader consumes the value.
+     * Handles reordered/aliased/unknown fields by the existing fallback map.
+     */
+    public int matchNext(JsonParser parser, int expectedIndex) throws IOException {
+        if (expectedIndex >= 0 && expectedIndex < serializedNames.length
+                && parser.nextFieldName(serializedNames[expectedIndex])) {
+            return expectedIndex;
+        }
+        JsonToken token;
+        if (expectedIndex < 0 || expectedIndex >= serializedNames.length) {
+            String name = parser.nextFieldName();
+            if (name != null) {
+                return fallback(name);
+            }
+            token = parser.currentToken();
+        } else {
+            // Failed nextFieldName has already advanced. Do not advance twice.
+            token = parser.currentToken();
+        }
+        if (token == JsonToken.FIELD_NAME) {
+            return fallback(parser.currentName());
+        }
+        if (token == JsonToken.END_OBJECT) {
+            return OBJECT_END;
+        }
+        throw new IOException("expected FIELD_NAME or END_OBJECT, but was " + token);
     }
 
     private Jackson2NameMatcher(PropertyInfo[] settableProperties, String[] names, String[][] aliases) {
