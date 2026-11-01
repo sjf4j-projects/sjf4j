@@ -69,6 +69,73 @@ class CompiledValidatorContractTest {
         void requireNot(Object value);
     }
 
+    @ValidJsonSchema("{\"type\":\"object\",\"required\":[\"name\",\"age\",\"tags\"],"
+            + "\"properties\":{"
+            + "\"name\":{\"type\":\"string\",\"minLength\":2,\"maxLength\":5},"
+            + "\"age\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":120},"
+            + "\"tags\":{\"type\":\"array\",\"minItems\":1,"
+            + "\"items\":{\"type\":\"string\",\"minLength\":2}}}}")
+    public static final class ResultModel {
+        private final String name;
+        private final int age;
+        private final java.util.List<String> tags;
+        public ResultModel(String name, int age, java.util.List<String> tags) {
+            this.name = name;
+            this.age = age;
+            this.tags = tags;
+        }
+        public String getName() { return name; }
+        public int getAge() { return age; }
+        public java.util.List<String> getTags() { return tags; }
+    }
+
+    @CompiledValidator(fallback = false)
+    public interface NativeResultValidator {
+        ValidationResult validate(ResultModel value);
+        ValidationResult validate(ResultModel value, boolean strictFormat);
+    }
+
+    @Test
+    void compiledResultAggregatesIndependentFailuresAndPaths() {
+        NativeResultValidator validator = CompiledInstances.create(NativeResultValidator.class);
+        ResultModel good = new ResultModel("Alice", 20, java.util.List.of("java"));
+        assertSame(ValidationResult.SUCCESS, validator.validate(good));
+        assertSame(ValidationResult.SUCCESS, validator.validate(null));
+
+        ResultModel bad = new ResultModel("x", -3, java.util.List.of("a", "ok", "z"));
+        ValidationResult actual = validator.validate(bad);
+        SchemaPlan reference = JsonSchema.fromJson(
+                ResultModel.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
+        ValidationResult expected = reference.validate(bad);
+
+        assertFalse(actual.isValid());
+        assertEquals(expected.getErrors().size(), actual.getErrors().size(), actual.toString());
+        java.util.Set<String> expectedPaths = new java.util.HashSet<>();
+        for (ValidationResult.Message error : expected.getErrors()) {
+            expectedPaths.add(error.getKeyword() + ":"
+                    + error.getInstancePs().rootedPointerExpr());
+        }
+        java.util.Set<String> actualPaths = new java.util.HashSet<>();
+        for (ValidationResult.Message error : actual.getErrors()) {
+            assertNotNull(error.getKeywordPs());
+            assertNotNull(error.getSchemaUri());
+            actualPaths.add(error.getKeyword() + ":"
+                    + error.getInstancePs().rootedPointerExpr());
+        }
+        assertEquals(expectedPaths, actualPaths);
+        assertEquals(actualPaths, java.util.Set.of(
+                "minLength:/name", "minimum:/age", "minLength:/tags/0", "minLength:/tags/2"));
+        assertEquals(actualPaths, toLocations(validator.validate(bad, true)));
+    }
+
+    private static java.util.Set<String> toLocations(ValidationResult result) {
+        java.util.Set<String> locations = new java.util.HashSet<>();
+        for (ValidationResult.Message error : result.getErrors()) {
+            locations.add(error.getKeyword() + ":" + error.getInstancePs().rootedPointerExpr());
+        }
+        return locations;
+    }
+
     @Test
     void nativeRequireValidKeepsNestedPredicatesBoolean() {
         ApplicatorValidator validator = CompiledInstances.create(ApplicatorValidator.class);
