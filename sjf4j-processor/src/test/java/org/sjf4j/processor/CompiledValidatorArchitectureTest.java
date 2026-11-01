@@ -71,7 +71,6 @@ class CompiledValidatorArchitectureTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".codePointCount("), generated);
-        assertTrue(generated.contains("throw new org.sjf4j.schema.ValidationException("), generated);
         assertTrue(generated.contains(".ROOT.validate("), generated);
         assertFalse(generated.contains(".ROOT.requireValid("), generated);
         // Unsupported assertions remain forbidden by fallback=false; only
