@@ -29,7 +29,7 @@ class CompiledValidatorContractTest {
         public String getCode() { return code; }
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface PersonValidator {
         boolean isValid(Person person);
         boolean isValid(Person person, boolean strictFormat);
