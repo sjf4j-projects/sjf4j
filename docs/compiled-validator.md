@@ -190,6 +190,11 @@ Java type exposes all properties. A public final POJO with an accessible,
 fully known projection uses Java getters/fields directly. JsonObject and JOJO
 use their native APIs, while interfaces, non-final classes, unknown property
 types, and Map use `Nodes` to inspect the **runtime** property set. Nodes access is compiled execution, **not SchemaPlan fallback**.
+For object predicates on dynamic Java types, runtime `@NodeValue` and registered
+value-codec wrappers are converted **once per predicate** to their default
+raw JSON representation before shape checks and structural access. This also
+covers `Object`-typed declarations. The core Nodes structural APIs do not
+implicitly unwrap value bindings.
 Only unsupported schema semantics trigger `fallback=true` or a compilation
 error when `fallback=false`.
 
