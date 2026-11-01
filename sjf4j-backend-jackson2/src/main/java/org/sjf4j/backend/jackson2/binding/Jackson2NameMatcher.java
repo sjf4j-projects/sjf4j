@@ -65,6 +65,11 @@ public final class Jackson2NameMatcher extends NameMatcher {
         throw new IOException("expected FIELD_NAME or END_OBJECT, but was " + token);
     }
 
+    /** Prepared name for a generated Jackson2 field-name fast path. */
+    public SerializableString serializedName(int index) {
+        return serializedNames[index];
+    }
+
     private Jackson2NameMatcher(PropertyInfo[] settableProperties, String[] names, String[][] aliases) {
         super(settableProperties, names, aliases);
         serializedNames = new SerializableString[size()];
