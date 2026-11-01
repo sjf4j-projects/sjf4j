@@ -679,7 +679,7 @@ final class ReadEmitter {
                     || element.kind() == BindingValue.Kind.ARRAY
                     || element.kind() == BindingValue.Kind.LIST
                     || element.kind() == BindingValue.Kind.SET);
-        if (!nativeElement) out.line("parser.adoptNativeToken();");
+        if (!nativeElement) out.line("parser.reuseCurrentToken();");
     }
 
     private void emitObjectStart(JavaWriter out) {
