@@ -40,7 +40,7 @@ jobs:
           cp "$SRC" diagnostics/baseline-generated.java
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           test -n "$JAR"
-          java -jar "$JAR" '.*FabienReadBenchmark\\.users_jackson2_compiled$' \
+          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
             -p sizeKb=1,5,10 -p seed=12,3285,5678 \
             -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
             -prof gc -rf json -rff baseline-users.json \
@@ -59,7 +59,7 @@ jobs:
           ./gradlew :sjf4j-testbench:test :sjf4j-backend-jackson2:test --no-daemon
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           test -n "$JAR"
-          java -jar "$JAR" '.*FabienReadBenchmark\\.users_jackson2_compiled$' \
+          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
             -p sizeKb=1,5,10 -p seed=12,3285,5678 \
             -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
             -prof gc -rf json -rff inline-users.json \
