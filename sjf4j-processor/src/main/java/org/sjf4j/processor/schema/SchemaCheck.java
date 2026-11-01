@@ -46,16 +46,19 @@ abstract class SchemaCheck {
         return kind == Kind.FALLBACK;
     }
 
-    /** Disjoint Java subtypes compiled directly, with one full-schema fallback for unknown types. */
+    /** Proven disjoint subtype checks plus a generic branch predicate for unknown classes. */
     static final class OneOfCheck extends SchemaCheck {
         final String uri;
         final List<Subtype> subtypes;
-        OneOfCheck(String uri, Diagnostic diagnostic, List<Subtype> subtypes) {
+        final GenericOneOfCheck generic;
+        OneOfCheck(String uri, Diagnostic diagnostic, List<Subtype> subtypes,
+                   GenericOneOfCheck generic) {
             super(Kind.ONE_OF, diagnostic);
             this.uri = uri;
             this.subtypes = Collections.unmodifiableList(new ArrayList<Subtype>(subtypes));
+            this.generic = generic;
         }
-        @Override boolean hasFallback() { return true; }
+        @Override boolean hasFallback() { return generic == null; }
 
         static final class Subtype {
             final String type;
