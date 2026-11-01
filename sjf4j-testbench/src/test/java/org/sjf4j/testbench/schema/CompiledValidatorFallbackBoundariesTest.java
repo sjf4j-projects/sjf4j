@@ -53,13 +53,13 @@ class CompiledValidatorFallbackBoundariesTest {
             {"type":"integer","multipleOf":18446744073709551616}
             """;
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface Arrays {
         @ValidJsonSchema(ROOT_ARRAY) boolean root(List<Map<String, Object>> values);
         @ValidJsonSchema(NESTED_ARRAY) boolean nested(List<List<Map<String, Object>>> values);
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface LocalFallback {
         @ValidJsonSchema(LOCAL_FALLBACK) boolean object(Map<String, Object> value);
         @ValidJsonSchema(ARRAY_LOCAL_FALLBACK) boolean array(List<Map<String, Object>> value);
