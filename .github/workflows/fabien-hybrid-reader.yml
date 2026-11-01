@@ -25,6 +25,8 @@ jobs:
           lscpu > diagnostics/lscpu.txt
       - name: Build JMH jar and verify correctness at setup
         run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Verify compiled binding and Jackson2 regression tests
+        run: ./gradlew :sjf4j-testbench:test :sjf4j-backend-jackson2:test --no-daemon
       - name: Benchmark four retained readers
         shell: bash
         run: |
