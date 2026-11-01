@@ -49,7 +49,8 @@ final class SchemaEmitter {
                               String prefix, String onFailure) {
         List<String> statements = new ArrayList<String>();
         if (check.minProperties != null || check.maxProperties != null) {
-            String count = check.dynamic
+            String count = check.jsonObject ? variable + ".size()"
+                    : check.dynamic
                     ? "org.sjf4j.node.NodeWalker.sizeInObject(" + variable + ")"
                     : Integer.toString(check.staticPropertyCount);
             if (check.minProperties != null) {
@@ -61,11 +62,15 @@ final class SchemaEmitter {
         }
         if (check.dynamic) {
             for (SchemaCheck.Required required : check.required) {
-                statements.add("if (!org.sjf4j.Nodes.keySetInObject(" + variable
-                        + ").contains(" + literal(required.name) + ")) " + onFailure);
+                String contains = check.jsonObject
+                        ? variable + ".containsKey(" + literal(required.name) + ")"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable
+                                + ").contains(" + literal(required.name) + ")";
+                statements.add("if (!" + contains + ") " + onFailure);
             }
             if (check.additionalPropertiesFalse) {
-                statements.add("for (String _key : org.sjf4j.Nodes.keySetInObject(" + variable + ")) {");
+                statements.add("for (String _key : " + (check.jsonObject ? variable + ".keySet()"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
                 StringBuilder condition = new StringBuilder();
                 for (String allowed : check.allowedNames) {
                     if (condition.length() != 0) condition.append(" && ");
@@ -80,13 +85,18 @@ final class SchemaEmitter {
         int index = 0;
         for (SchemaCheck.PropertyCheck property : check.properties) {
             String local = prefix + "_property" + index;
-            String access = check.dynamic
+            String access = check.jsonObject
+                    ? variable + ".getNode(" + literal(property.name) + ")"
+                    : check.dynamic
                     ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
             statements.add(property.value.localType() + " " + local + " = " + access + ";");
             if (check.dynamic) {
-                statements.add("if (org.sjf4j.Nodes.keySetInObject(" + variable
-                        + ").contains(" + literal(property.name) + ")) {");
+                String contains = check.jsonObject
+                        ? variable + ".containsKey(" + literal(property.name) + ")"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable
+                                + ").contains(" + literal(property.name) + ")";
+                statements.add("if (" + contains + ") {");
             }
             List<String> lines = new ArrayList<String>();
             emitValue(lines, plan, property.check, property.value, local,
