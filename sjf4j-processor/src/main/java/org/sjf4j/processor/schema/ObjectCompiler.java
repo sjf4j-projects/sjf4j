@@ -29,7 +29,7 @@ final class ObjectCompiler {
         this.schemaCompiler = schemaCompiler;
     }
 
-    SchemaCheck.ObjectCheck compile(TypeMirror type,
+    SchemaCheck compile(TypeMirror type,
                                            SchemaResourceResolver.Snapshot snapshot) {
         NodeKind nodeKind = context.types.nodeKind(type);
         // A non-final declared type cannot prove the runtime object's property set.
@@ -59,7 +59,7 @@ final class ObjectCompiler {
     }
 
     /** Compiles a concrete nested object without changing root schema selection. */
-    SchemaCheck.ObjectCheck compileNested(TypeMirror type, SchemaResourceResolver.Snapshot snapshot,
+    SchemaCheck compileNested(TypeMirror type, SchemaResourceResolver.Snapshot snapshot,
                                            JsonObject schema, String schemaUri,
                                            int depth) {
         if (!useDynamicAccess(type) && context.types.nodeKind(type) != NodeKind.OBJECT_POJO)
@@ -67,7 +67,7 @@ final class ObjectCompiler {
         return compileResolved(type, snapshot, schema, schemaUri, depth);
     }
 
-    private SchemaCheck.ObjectCheck compileResolved(TypeMirror type,
+    private SchemaCheck compileResolved(TypeMirror type,
                     SchemaResourceResolver.Snapshot snapshot, JsonObject root,
                     String rootUri, int depth) {
         boolean dynamic = useDynamicAccess(type);
@@ -103,7 +103,11 @@ final class ObjectCompiler {
             if (JsonType.of(required) != JsonType.ARRAY) return null;
             for (int i = 0; i < Nodes.sizeInArray(required); i++) {
                 Object name = Nodes.getInArray(required, i);
-                if (!(name instanceof String) || (!dynamic && !javaProperties.containsKey(name))) return null;
+                if (!(name instanceof String)) return null;
+                if (!dynamic && !javaProperties.containsKey(name)) {
+                    // The complete final POJO projection cannot satisfy this required key.
+                    return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
+                }
             }
         }
         Object additional = root.getNode("additionalProperties");
@@ -113,7 +117,8 @@ final class ObjectCompiler {
                     && !propertyMap.keySet().containsAll(javaProperties.keySet())) return null;
         }
         for (String name : propertyMap.keySet()) {
-            if (!dynamic && !javaProperties.containsKey(name) && isRequired(required, name)) return null;
+            if (!dynamic && !javaProperties.containsKey(name) && isRequired(required, name))
+                return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
         }
         if (!dynamic) {
             for (Property property : javaProperties.values()) {
@@ -129,7 +134,8 @@ final class ObjectCompiler {
             for (int i = 0; i < Nodes.sizeInArray(required); i++) {
                 String name = (String) Nodes.getInArray(required, i);
                 Property property = dynamic ? null : javaProperties.get(name);
-                if (!dynamic && (property == null || property.read() == null)) return null;
+                if (!dynamic && (property == null || property.read() == null))
+                    return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
                 // Primitive members cannot be null, so a required check is redundant.
                 String requiredAccess = property == null || property.read().type().getKind().isPrimitive()
                         ? null : property.read().memberName() + (property.read().isMethod() ? "()" : "");
@@ -156,7 +162,9 @@ final class ObjectCompiler {
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
         }
         if (directCount == 0) return null;
-        return new SchemaCheck.ObjectCheck(dynamic, typeRequired,
+        boolean jsonObject = dynamic && type != null && (context.types.nodeKind(type) == NodeKind.OBJECT_JSON_OBJECT
+                || context.types.nodeKind(type) == NodeKind.OBJECT_JOJO);
+        return new SchemaCheck.ObjectCheck(dynamic, jsonObject, typeRequired,
                 Boolean.FALSE.equals(additional),
                 minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
                 new ArrayList<String>(propertyMap.keySet()), requiredChecks, properties,
