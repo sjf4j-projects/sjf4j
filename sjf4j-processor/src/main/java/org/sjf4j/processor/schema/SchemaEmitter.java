@@ -305,8 +305,8 @@ final class SchemaEmitter {
             if ("null".equals(type)) {
                 branch = value.nullable ? expression + " == null" : "false";
                 if (value.shape == SchemaValue.Shape.DYNAMIC || value.shape == SchemaValue.Shape.OTHER) {
-                    branch += " || (" + expression + " != null && org.sjf4j.JsonType.rawOf("
-                            + expression + ".getClass()) == org.sjf4j.JsonType.NULL)";
+                    branch += " || (" + expression + " != null && org.sjf4j.schema.CompiledSchemaValues.schemaType("
+                            + expression + ") == org.sjf4j.JsonType.NULL)";
                 }
             } else {
                 String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(java.util.Locale.ROOT);
@@ -319,7 +319,7 @@ final class SchemaEmitter {
                     shape = known.equals(name) ? "true" : "false";
                 } else {
                     shape = "org.sjf4j.schema.CompiledSchemaValues.schemaType(" + expression
-                            + ".getClass()) == org.sjf4j.JsonType." + name;
+                            + ") == org.sjf4j.JsonType." + name;
                 }
                 if ("integer".equals(type) && !"false".equals(shape)) {
                     shape = "(" + shape + " && org.sjf4j.util.Numbers.isSemanticInteger("
