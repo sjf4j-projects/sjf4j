@@ -602,7 +602,7 @@ final class ReadEmitter {
         out.beginBlock("if (size == value.length)");
         out.line("value = java.util.Arrays.copyOf(value, size << 1);");
         out.endBlock();
-        out.line("value[size++] = " + readExpression(value.elementValue(), "parser") + ";");
+        out.line("value[size++] = " + arrayElementReadExpression(value.elementValue()) + ";");
         out.endBlock();
 
         out.line("return size == value.length ? value : java.util.Arrays.copyOf(value, size);");
@@ -614,7 +614,7 @@ final class ReadEmitter {
 
         out.line(value.type() + " value = new java.util.ArrayList<>();");
         emitArrayLoopStart(out, value.elementValue());
-        out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
+        out.line("value.add(" + arrayElementReadExpression(value.elementValue()) + ");");
 
         out.endBlock();
         out.line("return value;");
@@ -626,7 +626,7 @@ final class ReadEmitter {
 
         out.line(value.type() + " value = new java.util.LinkedHashSet<>();");
         emitArrayLoopStart(out, value.elementValue());
-        out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
+        out.line("value.add(" + arrayElementReadExpression(value.elementValue()) + ");");
 
         out.endBlock();
         out.line("return value;");
@@ -680,7 +680,17 @@ final class ReadEmitter {
                     || element.kind() == BindingValue.Kind.ARRAY
                     || element.kind() == BindingValue.Kind.LIST
                     || element.kind() == BindingValue.Kind.SET);
-        if (!nativeElement) out.line("parser.reuseCurrentToken();");
+        if (!nativeElement && element.kind() != BindingValue.Kind.STRING) {
+            out.line("parser.reuseCurrentToken();");
+        }
+    }
+
+    /** Inline string-array consumption only when Jackson2 native traversal already advanced. */
+    private String arrayElementReadExpression(BindingValue element) {
+        if (jackson2() && element.kind() == BindingValue.Kind.STRING) {
+            return "parser.readCurrentString()";
+        }
+        return readExpression(element, "parser");
     }
 
     private void emitObjectStart(JavaWriter out) {
