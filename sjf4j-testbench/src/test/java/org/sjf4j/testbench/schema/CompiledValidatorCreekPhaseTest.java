@@ -74,7 +74,7 @@ class CompiledValidatorCreekPhaseTest {
 
     public enum Kind { THIS, THAT, OTHER }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface Validator {
         boolean valid(Model value);
         boolean valid(Model value, boolean strictFormat);
