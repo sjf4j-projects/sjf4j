@@ -187,10 +187,9 @@ JsonObject and JOJO declarations use native `containsKey`, `getNode`,
 `keySet`, and `size` operations rather than generic Nodes dispatch.
 A supported keyword is emitted as Java checks regardless of whether the declared
 Java type exposes all properties. A public final POJO with an accessible,
-fully known projection uses Java getters/fields directly. Interfaces, non-final
-classes, unknown property types, Map, JsonObject, and JOJO use
-`Nodes.getInObject` and `Nodes.keySetInObject` to inspect the **runtime**
-property set. Nodes access is compiled execution, **not SchemaPlan fallback**.
+fully known projection uses Java getters/fields directly. JsonObject and JOJO
+use their native APIs, while interfaces, non-final classes, unknown property
+types, and Map use `Nodes` to inspect the **runtime** property set. Nodes access is compiled execution, **not SchemaPlan fallback**.
 Only unsupported schema semantics trigger `fallback=true` or a compilation
 error when `fallback=false`.
 
