@@ -92,27 +92,30 @@ final class SchemaMethodGenerator {
         String parameterDeclaration = type + " " + value + (parameterCount == 2
                 ? ", boolean " + strictParam : "");
 
-        // Boolean and void methods share the same native fail-fast checks.
-        // ValidationResult still uses the runtime engine to accumulate errors.
+        // All methods share SchemaCheck analysis. Boolean and void use
+        // fail-fast emission; Result uses a separate aggregating emitter.
         SchemaFallbackEmitter.Plan bound = null;
         String booleanLiteral = null;
         SchemaCheck direct = null;
-        if ((isBoolean || isVoid) && plans.size() == 1) {
+        if (plans.size() == 1) {
             bound = plans.get(0);
-            booleanLiteral = compileBoolean(bound.snapshot);
+            if (!isResult) booleanLiteral = compileBoolean(bound.snapshot);
             if (booleanLiteral == null) {
                 SchemaCompiler compiler = new SchemaCompiler(context);
                 direct = compiler.compileObject(parameterType, bound.snapshot);
                 if (direct == null) direct = compiler.compileRoot(parameterType, bound.snapshot);
-                if (direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
+                if (!isResult && direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
                     booleanLiteral = "false";
                     direct = null;
                 }
             }
         }
 
+        SchemaValue schemaValue = SchemaValue.of(context, parameterType);
+        boolean nativeResult = isResult && direct != null
+                && SchemaResultEmitter.supports(direct, schemaValue);
         boolean fallback = booleanLiteral == null &&
-                (direct == null || direct.hasFallback());
+                (direct == null || direct.hasFallback() || (isResult && !nativeResult));
         if (fallback && !allowFallback) {
             fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method");
             return;
@@ -123,11 +126,13 @@ final class SchemaMethodGenerator {
                 ? "throw new org.sjf4j.schema.ValidationException("
                     + bound.rootReference() + ".validate(" + value + ", true, " + strictParam + "));"
                 : "return false;";
-        List<String> emitted = direct == null ? null
+        List<String> emitted = direct == null || isResult ? null
                 : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
-                        direct, SchemaValue.of(context, parameterType), value, bound, strictParam,
-                        failure);
-        if (fallback && emitted == null) {
+                        direct, schemaValue, value, bound, strictParam, failure);
+        List<String> resultChecks = !nativeResult ? null
+                : new SchemaResultEmitter(generated, "R" + methodSerial++).emitRoot(
+                        direct, schemaValue, value, bound, strictParam);
+        if (fallback && emitted == null && resultChecks == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
         }
         // Valid requireValid calls execute only generated checks. Diagnostics
@@ -138,6 +143,7 @@ final class SchemaMethodGenerator {
 
         final String literal = booleanLiteral;
         final List<String> checks = emitted;
+        final List<String> diagnostics = resultChecks;
         generated.addMethod(out -> {
             out.line("@Override");
             out.beginBlock("public " + resultName + " " + method.getSimpleName()
@@ -154,6 +160,8 @@ final class SchemaMethodGenerator {
             } else if (checks != null) {
                 for (String statement : checks) out.line(statement);
                 if (isBoolean) out.line("return true;");
+            } else if (diagnostics != null) {
+                for (String statement : diagnostics) out.line(statement);
             } else if (isBoolean) {
                 for (SchemaFallbackEmitter.Plan plan : plans) {
                     out.line("if (!" + plan.rootReference() + ".isValid(" + value + ", " + strictParam + ")) return false;");
