@@ -52,6 +52,16 @@ class CompiledValidatorOneOfProcessorTest {
     }
 
     @Test
+    void hiddenNodeMembersDisableSubtypePruning() throws Exception {
+        NavigatorTestCompiler.Result result = compile(true, SCHEMA, false, false, true);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertFalse(generated.contains("getClass() =="), generated);
+        assertTrue(generated.contains("_matches_"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+    }
+
+    @Test
     void nonPublicAnnotatedConstantDoesNotGrantGeneratedJavaAccess() throws Exception {
         NavigatorTestCompiler.Result result = compile(false);
         assertTrue(result.success, result.diagnostics());
@@ -72,6 +82,12 @@ class CompiledValidatorOneOfProcessorTest {
 
     private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
                                                         boolean strictFormat, boolean fallback) throws Exception {
+        return compile(exposed, schema, strictFormat, fallback, false);
+    }
+
+    private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
+                                                        boolean strictFormat, boolean fallback,
+                                                        boolean hiddenNodeMember) throws Exception {
         String visibility = exposed ? "public " : "private ";
         Map<String, String> sources = new LinkedHashMap<String, String>();
         sources.put("fixture/Variant.java",
@@ -84,6 +100,7 @@ class CompiledValidatorOneOfProcessorTest {
                 "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class A implements Variant { "
                 + "@NodeProperty(\"kind\") " + visibility + "final String kind = \"a\"; "
+                + (hiddenNodeMember ? "@NodeIgnore private String hidden = \"x\"; " : "")
                 + "public String getName() {return \"good\";} }");
         sources.put("fixture/B.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
