@@ -54,7 +54,7 @@ class CompiledValidatorArchitectureTest {
         assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
         assertFalse(generated.contains(".isValid("), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
-        assertTrue(generated.contains(".ROOT.requireValid("), generated);
+        assertFalse(generated.contains(".ROOT.requireValid("), generated);
         assertTrue(generated.contains(".ROOT.validate("), generated);
         assertTrue(generated.contains(".codePointCount("), generated);
         assertTrue(generated.contains(".size()"), generated);
@@ -62,8 +62,7 @@ class CompiledValidatorArchitectureTest {
 
     @Test
     void requireValidUsesDirectGuardsAndOnlyLoadsDiagnosticsOnFailure() throws Exception {
-        String schema = "{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{"
-                + "\\\"name\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":2}}}";
+        String schema = MIXED;
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=false) public interface Check { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
