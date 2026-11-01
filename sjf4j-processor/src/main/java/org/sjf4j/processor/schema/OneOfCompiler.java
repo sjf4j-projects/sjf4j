@@ -20,10 +20,10 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Directly validates disjoint OneOf subtypes only when the JSON Schema
- * discriminator and the Java object's public constant property prove that
- * precisely one branch can match. This is a schema assertion optimization,
- * not a shortcut through binding's discriminator alone.
+ * Compiles each schema branch against the declared Java type first. If a
+ * discriminator and constant subtype property prove disjointness, also emits
+ * specialized checks for the surviving branch/type combinations. Unknown
+ * runtime classes use the generic compiled branches when available.
  */
 final class OneOfCompiler {
     private final ProcessorContext context;
@@ -41,8 +41,10 @@ final class OneOfCompiler {
         for (String key : schema.keySet()) {
             if (!key.equals("oneOf") && !SchemaCompiler.isAnnotation(key)) return null;
         }
-        SchemaCheck specialized = compileSpecialized(snapshot, schema, value, uri, depth);
-        return specialized != null ? specialized : compileGeneric(snapshot, schema, value, uri, depth);
+        SchemaCheck generic = compileGeneric(snapshot, schema, value, uri, depth);
+        SchemaCheck specialized = compileSpecialized(snapshot, schema, value, uri, depth,
+                (SchemaCheck.GenericOneOfCheck) generic);
+        return specialized != null ? specialized : generic;
     }
 
     private SchemaCheck compileGeneric(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
@@ -66,7 +68,8 @@ final class OneOfCompiler {
     }
 
     private SchemaCheck compileSpecialized(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
-                        SchemaValue value, String uri, int depth) {
+                        SchemaValue value, String uri, int depth,
+                        SchemaCheck.GenericOneOfCheck generic) {
         if (value.type == null || depth >= 8) return null;
         TypeElement parent = context.types.typeElement(value.type);
         if (parent == null) return null;
@@ -108,14 +111,14 @@ final class OneOfCompiler {
             String branchUri = SchemaCompiler.effectiveSchemaUri(target.uri, branch);
             SchemaCheck.ObjectCheck check =
                     objects.compileNested(subtype, snapshot, branch, branchUri, depth + 1);
-            // No per-property fallback is allowed on the direct path. The
-            // original oneOf subplan remains the single fallback for strict
-            // format assertions and unknown runtime classes.
+            // A surviving branch/type combination must compile completely.
+            // Unmapped runtime types use generic branches (or SchemaPlan if
+            // their declared-type compilation is unavailable).
             if (check == null || check.hasFallback()) return null;
             compiled.add(new SchemaCheck.OneOfCheck.Subtype(subtype.toString(), check));
         }
         return new SchemaCheck.OneOfCheck(uri,
-                SchemaCompiler.diagnostic(uri, "oneOf"), compiled);
+                SchemaCompiler.diagnostic(uri, "oneOf"), compiled, generic);
     }
 
     private TypeMirror mappedType(OneOfMapping mapping) {
