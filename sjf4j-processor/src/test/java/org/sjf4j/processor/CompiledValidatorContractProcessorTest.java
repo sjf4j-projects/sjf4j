@@ -25,6 +25,19 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void missingRequiredOnFinalPojoCompilesToReject() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
+                                "{\"type\":\"object\",\"required\":[\"missing\"]}") + ") "
+                        + "boolean valid(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertFalse(generated.contains(".isValid("), generated);
+        assertTrue(generated.contains("java.lang.Boolean.TRUE"), generated);
+    }
+
+    @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
