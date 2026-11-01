@@ -45,7 +45,8 @@ class CompiledValidatorContractProcessorTest {
                                 "{\"type\":\"object\",\"required\":[\"b\"],"
                                 + "\"properties\":{\"b\":{\"type\":\"string\",\"minLength\":2}},"
                                 + "\"additionalProperties\":false}") + ") "
-                        + "boolean valid(org.sjf4j.JsonObject value); }");
+                        + "class Variant extends org.sjf4j.JsonObject {} "
+                        + "boolean valid(Variant value); }");
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".containsKey(\"b\")"), generated);
