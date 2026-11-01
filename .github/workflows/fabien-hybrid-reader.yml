@@ -42,7 +42,7 @@ jobs:
         with:
           name: fabien-hybrid-native-scalars-jdk25
           path: |
-            fabien-hybrid-results.json
-            fabien-hybrid-jmh.log
+            fabien-hybrid-native-scalars-results.json
+            fabien-hybrid-native-scalars-jmh.log
             diagnostics/**
           if-no-files-found: warn
