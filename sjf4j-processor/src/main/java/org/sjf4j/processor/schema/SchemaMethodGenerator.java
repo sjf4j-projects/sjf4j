@@ -65,6 +65,15 @@ final class SchemaMethodGenerator {
             return;
         }
 
+        // Aggregated diagnostics intentionally use the runtime SchemaPlan.
+        // An explicit fallback=true is required for this return type.
+        if (isResult && !allowFallback) {
+            fail(generated, method,
+                    "ValidationResult methods require @CompiledValidator(fallback=true): "
+                    + "aggregating validation is implemented by SchemaPlan");
+            return;
+        }
+
         TypeMirror parameterType = signature.getParameterTypes().get(0);
         List<Binding> bindings = resolveBindings(method, parameterType);
         if (bindings.isEmpty()) {
