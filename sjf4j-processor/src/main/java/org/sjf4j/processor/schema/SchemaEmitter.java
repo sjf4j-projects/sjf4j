@@ -254,14 +254,14 @@ final class SchemaEmitter {
 
     /** Reusable, statically dispatched boolean predicate for nested applicators. */
     private String branchPredicate(SchemaFallbackEmitter.Plan plan, SchemaCheck branch,
-                                   SchemaValue value, String expression, String strictFormat, String onFailure) {
+                                   SchemaValue value, String expression, String strictFormat) {
         if (branch.kind == SchemaCheck.Kind.PASS) return "true";
         if (branch.kind == SchemaCheck.Kind.REJECT) return "false";
         String helper = "_schema_" + helperPrefix + "_" + helperCount++;
         List<String> body = new ArrayList<String>();
         // Nested boolean branch helpers must retain boolean return semantics.
         emitValue(body, plan, branch, value, "_value", helper, "_strictFormat", 0,
-                "" + onFailure);
+                "return false;");
         boolean alwaysRejects = !body.isEmpty()
                 && "return false;".equals(body.get(body.size() - 1));
         String parameterType = value.type == null ? "Object" : value.type.toString();
