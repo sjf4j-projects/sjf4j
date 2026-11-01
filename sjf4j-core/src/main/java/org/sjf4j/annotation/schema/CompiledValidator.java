@@ -29,7 +29,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface CompiledValidator {
-    /** Whether unsupported checks may be delegated to SchemaPlan at runtime. */
-    boolean fallback() default true;
+    /** Whether unsupported checks and ValidationResult methods may use SchemaPlan at runtime. */
+    boolean fallback() default false;
 
 }
