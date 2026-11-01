@@ -3,6 +3,7 @@ package org.sjf4j.testbench.schema;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
@@ -25,6 +26,11 @@ public class CompiledValidatorValueBindingTest {
 
         public MapValue(Map<String, Object> raw) {
             this.raw = raw;
+        }
+
+        @RawToValue
+        public static MapValue fromRaw(Map<String, Object> raw) {
+            return new MapValue(raw);
         }
 
         @ValueToRaw
