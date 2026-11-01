@@ -52,6 +52,102 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class CreekSchemaBenchmark {
 
+    // Inline schema makes resource changes visible to Java incremental compilation.
+    private static final String CREEK_SCHEMA = """
+            {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "title": "Test Model",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "decimal": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                "anEnum": {
+                  "type": "string",
+                  "enum": ["THIS", "THAT", "OTHER"]
+                },
+                "list": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 0
+                },
+                "polymorphicTypes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 30,
+                  "items": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/definitions/poly-a"
+                      },
+                      {
+                        "$ref": "#/definitions/poly-b"
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "decimal",
+                "list",
+                "name",
+                "polymorphicTypes"
+              ],
+              "definitions": {
+                "poly-a": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "@type": {
+                      "type": "string",
+                      "enum": [
+                        "poly-a"
+                      ],
+                      "default": "poly-a"
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "title": "poly-a",
+                  "required": [
+                    "@type",
+                    "id"
+                  ]
+                },
+                "poly-b": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "@type": {
+                      "type": "string",
+                      "enum": [
+                        "poly-b"
+                      ],
+                      "default": "poly-b"
+                    },
+                    "num": {
+                      "type": "number"
+                    }
+                  },
+                  "title": "poly-b",
+                  "required": [
+                    "@type",
+                    "num"
+                  ]
+                }
+              }
+            }
+            """;
+
     private static final ObjectMapper JACKSON = new ObjectMapper();
 
     private SchemaPlan plan;
@@ -73,6 +169,9 @@ public class CreekSchemaBenchmark {
                 throw new IllegalStateException("Creek JSON Schema fixture not found");
             }
             String schema = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+            if (!CREEK_SCHEMA.equals(schema)) {
+                throw new IllegalStateException("Inline Creek schema differs from the benchmark fixture");
+            }
             plan = JsonSchema.fromJson(schema)
                     .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
         }
@@ -110,9 +209,9 @@ public class CreekSchemaBenchmark {
      */
     @CompiledValidator
     public interface CreekValidator {
-        @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
+        @ValidJsonSchema(CREEK_SCHEMA)
         boolean isValid(TestModel value);
-        @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
+        @ValidJsonSchema(CREEK_SCHEMA)
         boolean isValid(TestModel value, boolean strictFormat);
     }
 
