@@ -2,6 +2,8 @@ package org.sjf4j.testbench.schema;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.Nodes;
+import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.RawToValue;
@@ -113,7 +115,12 @@ public class CompiledValidatorValueBindingTest {
         assertEquals(false, compiled.array(listValue));
         assertEquals(JsonSchema.fromJson("{\"type\":\"array\",\"minItems\":1}")
                 .createPlan().isValid(listValue), compiled.array(listValue));
-        assertEquals(true, compiled.nested(new Holder(List.of("abc"))));
+        Holder ordinary = new Holder(List.of("abc"));
+        assertEquals(JsonType.OBJECT, JsonType.rawOf(Holder.class));
+        assertEquals(true, Nodes.keySetInObject(ordinary).contains("items"));
+        assertEquals(1, Nodes.sizeInArray(Nodes.getInObject(ordinary, "items")));
+        assertEquals(true, JsonSchema.fromJson("{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"minItems\":1}}}").createPlan().isValid(ordinary));
+        assertEquals(true, compiled.nested(ordinary));
         assertEquals(false, compiled.nested(new Holder(listValue)));
     }
 }
