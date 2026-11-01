@@ -184,6 +184,7 @@ without violating `required`, although its property schema may reject null.
 | `required` | POJO presence; Map/JOJO dynamic key presence; opt-in null-as-missing | Yes |
 | `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes |
 | `minProperties`, `maxProperties` | Static POJO property count or runtime object-size check; null-as-missing uses runtime fallback | Yes |
+| `dependentRequired` | Direct property presence dependencies for Map/JsonObject/JOJO; statically resolved for public final POJOs | Yes |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes |
 | `minLength`, `maxLength` | Direct string Unicode code-point length | Yes |
 | `pattern` | Static precompiled ECMA-compatible regex; Java `Matcher.find()` | Yes |
