@@ -53,6 +53,22 @@ schema takes precedence over a URI reference; otherwise the type's
 conventional schema filename is searched. Compiled and fallback execution must
 produce equivalent validation results for supported input representations.
 
+### External schema resources and incremental compilation
+
+`@CompiledValidator` supports `@ValidJsonSchema(ref = "...")` from a method,
+parameter, type or superclass, and also the implicit file lookup when both
+`value` and `ref` are empty. Schemas can reference other documents via
+`$ref` as well.
+
+**Incremental compilation caveat:** Java's JSR 269 annotation processing API
+does not track changes to external JSON files as dependencies of generated Java
+code. Copying resources before compilation solves resource availability, but
+not change detection. If a referenced schema changes without Java sources
+changing, a build may skip regeneration and leave compiled validation rules
+stale. Build tooling must track schema inputs and rerun annotation processing;
+a clean rebuild is a safe fallback. Specific Gradle/Maven configuration will
+be documented separately.
+
 ## Null-valued object properties
 
 Compiled and runtime validation follow JSON Schema semantics: a property

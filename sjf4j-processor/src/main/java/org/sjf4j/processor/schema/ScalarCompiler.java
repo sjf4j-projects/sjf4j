@@ -10,7 +10,8 @@ import java.util.List;
 /** Compiles string and numeric constraints without generating Java statements. */
 final class ScalarCompiler {
     /** JSON scalar equality is distinct from Java equals (numeric types compare by value). */
-    private static SchemaCheck.LiteralCheck literals(Object raw, boolean enumeration) {
+    private static SchemaCheck.LiteralCheck literals(Object raw, boolean enumeration,
+                                                      SchemaCheck.Diagnostic diagnostic) {
         if (enumeration && JsonType.of(raw) != JsonType.ARRAY) return null;
         List<Object> values = new ArrayList<Object>();
         int n = enumeration ? Nodes.sizeInArray(raw) : 1;
@@ -23,7 +24,7 @@ final class ScalarCompiler {
             else if (type == JsonType.NULL) values.add(null);
             else return null;
         }
-        return new SchemaCheck.LiteralCheck(values);
+        return new SchemaCheck.LiteralCheck(values, diagnostic);
     }
 
     private static SchemaCheck combine(SchemaCheck first, List<SchemaCheck> following) {
@@ -35,7 +36,7 @@ final class ScalarCompiler {
         return new SchemaCheck.AllCheck(all);
     }
 
-    SchemaCheck compileLiteralsOnly(JsonObject schema, SchemaValue value) {
+    SchemaCheck compileLiteralsOnly(JsonObject schema, SchemaValue value, String schemaUri) {
         if (value.shape != SchemaValue.Shape.STRING
                 && value.shape != SchemaValue.Shape.NUMBER
                 && value.shape != SchemaValue.Shape.DYNAMIC
@@ -44,25 +45,27 @@ final class ScalarCompiler {
             if (!key.equals("const") && !key.equals("enum") && !SchemaCompiler.isAnnotation(key))
                 return null;
         }
-        return literalChecks(schema, null);
+        return literalChecks(schema, null, schemaUri);
     }
 
-    private SchemaCheck literalChecks(JsonObject schema, SchemaCheck first) {
+    private SchemaCheck literalChecks(JsonObject schema, SchemaCheck first, String schemaUri) {
         List<SchemaCheck> checks = new ArrayList<SchemaCheck>();
         if (schema.containsKey("const")) {
-            SchemaCheck.LiteralCheck check = literals(schema.getNode("const"), false);
+            SchemaCheck.LiteralCheck check = literals(schema.getNode("const"), false,
+                    SchemaCompiler.diagnostic(schemaUri, "const"));
             if (check == null) return null;
             checks.add(check);
         }
         if (schema.containsKey("enum")) {
-            SchemaCheck.LiteralCheck check = literals(schema.getNode("enum"), true);
+            SchemaCheck.LiteralCheck check = literals(schema.getNode("enum"), true,
+                    SchemaCompiler.diagnostic(schemaUri, "enum"));
             if (check == null) return null;
             checks.add(check);
         }
         return combine(first, checks);
     }
 
-    SchemaCheck compile(JsonObject schema, SchemaValue value, String kind) {
+    SchemaCheck compile(JsonObject schema, SchemaValue value, String kind, String schemaUri) {
         if ("string".equals(kind)) {
             if (value.shape != SchemaValue.Shape.STRING && value.shape != SchemaValue.Shape.DYNAMIC) return null;
             for (String key : schema.keySet()) {
@@ -97,9 +100,16 @@ final class ScalarCompiler {
                 }
             }
             SchemaCheck.StringCheck string = new SchemaCheck.StringCheck(min, max, choices,
-                    schema.getString("format"), pattern);
+                    schema.getString("format"), pattern,
+                    SchemaCompiler.diagnostic(schemaUri, "type"),
+                    min == null ? null : SchemaCompiler.diagnostic(schemaUri, "minLength"),
+                    max == null ? null : SchemaCompiler.diagnostic(schemaUri, "maxLength"),
+                    choices == null ? null : SchemaCompiler.diagnostic(schemaUri, "enum"),
+                    schema.containsKey("format") ? SchemaCompiler.diagnostic(schemaUri, "format") : null,
+                    pattern == null ? null : SchemaCompiler.diagnostic(schemaUri, "pattern"));
             if (!schema.containsKey("const")) return string;
-            SchemaCheck.LiteralCheck constant = literals(schema.getNode("const"), false);
+            SchemaCheck.LiteralCheck constant = literals(schema.getNode("const"), false,
+                    SchemaCompiler.diagnostic(schemaUri, "const"));
             return constant == null ? null : combine(string, Arrays.<SchemaCheck>asList(constant));
         }
 
@@ -117,15 +127,18 @@ final class ScalarCompiler {
                 Object limit = schema.getNode(key);
                 if (limit == null) continue;
                 if (!(limit instanceof Number)) return null;
-                bounds.add(new SchemaCheck.NumericBound(key, (Number) limit));
+                bounds.add(new SchemaCheck.NumericBound(key, (Number) limit,
+                        SchemaCompiler.diagnostic(schemaUri, key)));
             }
             Object rawMultiple = schema.getNode("multipleOf");
             if (rawMultiple != null && !(rawMultiple instanceof Number)) return null;
             if (rawMultiple != null && org.sjf4j.util.Numbers.normalizeDecimal(
                     (Number) rawMultiple).signum() <= 0) return null;
             SchemaCheck.NumberCheck number = new SchemaCheck.NumberCheck(
-                    "integer".equals(kind), bounds, (Number) rawMultiple);
-            return literalChecks(schema, number);
+                    "integer".equals(kind), bounds, (Number) rawMultiple,
+                    SchemaCompiler.diagnostic(schemaUri, "type"),
+                    rawMultiple == null ? null : SchemaCompiler.diagnostic(schemaUri, "multipleOf"));
+            return literalChecks(schema, number, schemaUri);
         }
 
         return null;

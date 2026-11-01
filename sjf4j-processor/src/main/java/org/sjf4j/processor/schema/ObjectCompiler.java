@@ -57,6 +57,7 @@ final class ObjectCompiler {
             root = Nodes.toJsonObject(target.value);
             rootUri = target.uri;
         }
+        rootUri = SchemaCompiler.effectiveSchemaUri(rootUri, root);
         return compileResolved(type, snapshot, root, rootUri, 0);
     }
 
@@ -173,7 +174,13 @@ final class ObjectCompiler {
         return new SchemaCheck.ObjectCheck(dynamic, typeRequired,
                 Boolean.FALSE.equals(additional),
                 minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
-                new ArrayList<String>(propertyMap.keySet()), requiredChecks, properties);
+                new ArrayList<String>(propertyMap.keySet()), requiredChecks, properties,
+                typeRequired ? SchemaCompiler.diagnostic(rootUri, "type") : null,
+                minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
+                maxProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "maxProperties"),
+                required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
+                Boolean.FALSE.equals(additional)
+                        ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null);
     }
 
     private boolean hasHiddenNodeMembers(TypeMirror type) {

@@ -61,7 +61,8 @@ final class OneOfCompiler {
             if (branch == null || branch.hasFallback()) return null;
             branches.add(branch);
         }
-        return new SchemaCheck.GenericOneOfCheck(branches);
+        return new SchemaCheck.GenericOneOfCheck(
+                SchemaCompiler.diagnostic(uri, "oneOf"), branches);
     }
 
     private SchemaCheck compileSpecialized(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
@@ -104,15 +105,17 @@ final class OneOfCompiler {
 
             TypeMirror subtype = mappedType(candidate);
             if (subtype == null || !expected.equals(publicConstant(subtype, discriminator))) return null;
+            String branchUri = SchemaCompiler.effectiveSchemaUri(target.uri, branch);
             SchemaCheck.ObjectCheck check =
-                    objects.compileNested(subtype, snapshot, branch, target.uri, depth + 1);
+                    objects.compileNested(subtype, snapshot, branch, branchUri, depth + 1);
             // No per-property fallback is allowed on the direct path. The
             // original oneOf subplan remains the single fallback for strict
             // format assertions and unknown runtime classes.
             if (check == null || check.hasFallback()) return null;
             compiled.add(new SchemaCheck.OneOfCheck.Subtype(subtype.toString(), check));
         }
-        return new SchemaCheck.OneOfCheck(uri, compiled);
+        return new SchemaCheck.OneOfCheck(uri,
+                SchemaCompiler.diagnostic(uri, "oneOf"), compiled);
     }
 
     private TypeMirror mappedType(OneOfMapping mapping) {

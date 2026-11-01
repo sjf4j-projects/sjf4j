@@ -17,6 +17,12 @@ import java.lang.annotation.Target;
  * Schema resources are analyzed during annotation processing; generated
  * fallback plans load the original annotations or resources at runtime.
  * Schema JSON is not duplicated in the generated implementation.
+ *
+ * <p><b>Incremental compilation:</b> external schema resources referenced via
+ * {@link ValidJsonSchema#ref()} (or implicit filename lookup) can change without
+ * triggering the Java annotation processor. JSR 269 cannot declare resource
+ * files as incremental compilation dependencies. Build tooling must track
+ * these inputs and rerun compilation, or a clean rebuild may be needed.</p>
  * When {@link #fallback()} is false, compilation fails unless the validator can
  * generate all checks without relying on a runtime SchemaPlan.</p>
  */

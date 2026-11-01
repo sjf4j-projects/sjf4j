@@ -13,12 +13,18 @@ import java.lang.annotation.Target;
  * On {@code @CompiledValidator} methods, a method-level annotation overrides a
  * parameter annotation, which overrides annotations on the parameter type.
  * The runtime {@code SchemaValidator} resolves type annotations only.
+ * External schemas used by {@code @CompiledValidator} may change without
+ * triggering incremental Java recompilation; build tooling must track them.
  */
 @Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidJsonSchema {
     /** Inline JSON Schema document, if supplied. */
     String value() default "";
-    /** Schema URI resolved against the validator's configured base directory. */
+    /**
+     * Schema URI resolved against the validator's configured base directory.
+     * When used by {@code @CompiledValidator}, changes to this external resource
+     * may not trigger incremental Java recompilation.
+     */
     String ref() default "";
 }

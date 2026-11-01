@@ -32,6 +32,9 @@ final class ArrayCompiler {
             itemCheck = schemaCompiler.compileValue(snapshot, schema.getNode("items"), itemValue, itemUri, depth + 1);
             if (itemCheck == null) itemCheck = new SchemaCheck.Fallback(itemUri);
         }
-        return new SchemaCheck.ArrayCheck(min, max, itemCheck, itemValue);
+        return new SchemaCheck.ArrayCheck(min, max, itemCheck, itemValue,
+                SchemaCompiler.diagnostic(schemaUri, "type"),
+                min == null ? null : SchemaCompiler.diagnostic(schemaUri, "minItems"),
+                max == null ? null : SchemaCompiler.diagnostic(schemaUri, "maxItems"));
     }
 }

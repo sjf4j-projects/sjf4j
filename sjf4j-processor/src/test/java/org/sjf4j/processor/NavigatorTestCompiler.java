@@ -36,12 +36,29 @@ final class NavigatorTestCompiler {
     static Result compile(
             Map<String, String> sources,
             Class<?> processor) throws IOException {
+        return compile(sources, processor, java.util.Collections.emptyMap());
+    }
+
+    /**
+     * Compiles sources with an uncopied src/main/resources tree to reproduce
+     * IDEA/javac compilation before resources appear in CLASS_OUTPUT.
+     */
+    static Result compile(
+            Map<String, String> sources,
+            Class<?> processor,
+            Map<String, String> resources) throws IOException {
 
         Path directory = Files.createTempDirectory("sjf4j-navigator-test");
-        Path source = directory.resolve("src");
+        Path source = directory.resolve("src/main/java");
+        Path resourceRoot = directory.resolve("src/main/resources");
         Path classes = directory.resolve("classes");
         Path generated = directory.resolve("generated");
         Files.createDirectories(source);
+        for (Map.Entry<String, String> entry : resources.entrySet()) {
+            Path resource = resourceRoot.resolve(entry.getKey());
+            Files.createDirectories(resource.getParent());
+            Files.writeString(resource, entry.getValue(), StandardCharsets.UTF_8);
+        }
         Files.createDirectories(classes);
         Files.createDirectories(generated);
 
