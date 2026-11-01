@@ -85,7 +85,8 @@ final class SchemaCompiler {
         if (kind == null) {
             if (schema.containsKey("properties") || schema.containsKey("required")
                     || schema.containsKey("additionalProperties")
-                    || schema.containsKey("minProperties") || schema.containsKey("maxProperties")) {
+                    || schema.containsKey("minProperties") || schema.containsKey("maxProperties")
+                    || schema.containsKey("dependentRequired")) {
                 if (value.shape == SchemaValue.Shape.STRING
                         || value.shape == SchemaValue.Shape.NUMBER
                         || value.shape == SchemaValue.Shape.BOOLEAN
@@ -95,6 +96,7 @@ final class SchemaCompiler {
                         if (!key.equals("properties") && !key.equals("required")
                                 && !key.equals("additionalProperties")
                                 && !key.equals("minProperties") && !key.equals("maxProperties")
+                                && !key.equals("dependentRequired")
                                 && !isAnnotation(key))
                             return null;
                     }
