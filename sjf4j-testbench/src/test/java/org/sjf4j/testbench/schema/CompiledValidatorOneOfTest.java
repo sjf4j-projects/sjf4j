@@ -73,6 +73,26 @@ public class CompiledValidatorOneOfTest {
         @ValidJsonSchema(SCHEMA) boolean valid(Model model, boolean strictFormat);
     }
 
+    private static final String FORMAT_SCHEMA =
+            SCHEMA.replace("\"minLength\":2", "\"minLength\":2,\"format\":\"email\"");
+
+    @CompiledValidator(fallback = true)
+    public interface StrictFormatValidator {
+        @ValidJsonSchema(FORMAT_SCHEMA)
+        boolean valid(Model model, boolean strictFormat);
+    }
+
+    @Test
+    void strictFormatUsesCompiledSubtypeChecks() {
+        StrictFormatValidator compiled = CompiledInstances.create(StrictFormatValidator.class);
+        SchemaPlan reference = JsonSchema.fromJson(FORMAT_SCHEMA).createPlan();
+        Model model = new Model(List.of(new A("not-an-email"), new B(2)));
+        assertTrue(reference.isValid(model, false));
+        assertTrue(compiled.valid(model, false));
+        assertFalse(reference.isValid(model, true));
+        assertFalse(compiled.valid(model, true));
+    }
+
     @Test
     void matchesRuntimeForCompiledAndUnknownSubtypes() {
         Validator compiled = CompiledInstances.create(Validator.class);
