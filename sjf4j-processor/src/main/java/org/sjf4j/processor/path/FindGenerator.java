@@ -26,7 +26,7 @@ import java.util.List;
  * <p>Supported multi-target paths are emitted as direct Java loops. Filters
  * keep their parsed expression as a generated static field and evaluate only
  * the filter condition at runtime. Descendant paths fall back to JsonPath when
- * explicitly enabled by the annotation.</p>
+ * explicitly enabled by @CompiledNavigator(fallback=true).</p>
  */
 public final class FindGenerator {
 
@@ -134,7 +134,7 @@ public final class FindGenerator {
                     generated,
                     "@FindByPath path '" +
                             expression +
-                            "' requires allowFallback=true because filter expressions use runtime evaluation");
+                            "' cannot fully compile filter expressions; set @CompiledNavigator(fallback=true) to allow runtime evaluation");
             return;
         }
 
@@ -144,7 +144,7 @@ public final class FindGenerator {
                     generated,
                     "@FindByPath path '" +
                             expression +
-                            "' requires allowFallback=true because descendant is not fully compiled");
+                            "' cannot fully compile descendant paths; set @CompiledNavigator(fallback=true) to allow runtime evaluation");
             return;
         }
 
