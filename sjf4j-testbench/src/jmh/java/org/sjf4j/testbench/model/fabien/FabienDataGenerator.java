@@ -1,7 +1,5 @@
 package org.sjf4j.testbench.model.fabien;
 
-import org.apache.commons.lang3.RandomStringUtils;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -16,8 +14,8 @@ import java.util.UUID;
  *
  * <p>Keep a separate RNG per model: java-json-benchmark runs each data type
  * independently, with RandomUtils seeded from the SEED environment variable.
- * For comparable strings, this uses the same Commons Lang RandomStringUtils
- * overload as the upstream generator.
+ * For comparable strings, the local generator reproduces Commons Lang 3.12.0's
+ * seeded ASCII sampling and retry behavior used by the upstream generator.
  *
  * <p>The upstream generators estimate JSON sizes while populating objects,
  * rather than guaranteeing exact byte lengths. We retain their estimates and
@@ -219,14 +217,30 @@ public final class FabienDataGenerator {
     }
 
     private static String numeric(Random random, int count) {
-        return RandomStringUtils.random(count, 0, 0, false, true, null, random);
+        return randomAscii(random, count, false, true);
     }
 
     private static String alphabetic(Random random, int count) {
-        return RandomStringUtils.random(count, 0, 0, true, false, null, random);
+        return randomAscii(random, count, true, false);
     }
 
     private static String alphanumeric(Random random, int count) {
-        return RandomStringUtils.random(count, 0, 0, true, true, null, random);
+        return randomAscii(random, count, true, true);
+    }
+
+    /**
+     * Matches Commons Lang 3.12.0's seeded RandomStringUtils selection for
+     * letters and digits: sample printable ASCII from ' ' through 'z' and
+     * retry rejected characters without consuming a position in the result.
+     */
+    private static String randomAscii(Random random, int count, boolean letters, boolean numbers) {
+        StringBuilder result = new StringBuilder(count);
+        while (result.length() < count) {
+            int codePoint = random.nextInt('z' - ' ' + 1) + ' ';
+            if ((letters && Character.isLetter(codePoint)) || (numbers && Character.isDigit(codePoint))) {
+                result.append((char) codePoint);
+            }
+        }
+        return result.toString();
     }
 }
