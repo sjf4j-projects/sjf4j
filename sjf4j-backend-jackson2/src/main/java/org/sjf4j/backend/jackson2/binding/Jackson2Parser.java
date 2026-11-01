@@ -73,6 +73,18 @@ public final class Jackson2Parser extends StreamingParser {
         return parser;
     }
 
+    /**
+     * Hands a token already advanced by native array traversal back to the
+     * consuming SJF4J reader. The next readXxx/readRaw/nextIf consumes this
+     * token without advancing Jackson's cursor again.
+     */
+    public void adoptNativeToken() {
+        if (prefetched || parser.currentToken() == null) {
+            throw new IllegalStateException("cannot adopt a pending or absent native token");
+        }
+        prefetched = true;
+    }
+
     /* --------------------------------------------------------------
      * Document / inspection
      * -------------------------------------------------------------- */
