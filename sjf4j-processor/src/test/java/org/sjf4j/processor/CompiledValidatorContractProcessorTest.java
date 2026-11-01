@@ -41,7 +41,7 @@ class CompiledValidatorContractProcessorTest {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
-                                "{\\"type\\":\\"object\\",\\"patternProperties\\":{\\"^x\\":true}}") + ") "
+                                "{\"type\":\"object\",\"patternProperties\":{\"^x\":true}}") + ") "
                         + "void requireValid(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
