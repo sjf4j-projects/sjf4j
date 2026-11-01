@@ -117,9 +117,16 @@ class CompiledValidatorContractTest {
         ValidationException failure = assertThrows(ValidationException.class,
                 () -> validator.requireValid(new Name("x")));
         assertFalse(failure.getResult().isValid());
-        assertEquals("minLength", failure.getResult().getLastError().getKeyword());
-        assertEquals("/name", failure.getResult().getLastError()
-                .getInstancePs().rootedPointerExpr());
+        SchemaPlan reference = JsonSchema.fromJson(
+                Name.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
+        ValidationException expected = assertThrows(ValidationException.class,
+                () -> reference.requireValid(new Name("x"), false));
+        assertEquals(expected.getResult().getErrors().size(),
+                failure.getResult().getErrors().size());
+        assertEquals(expected.getResult().getLastError().getKeyword(),
+                failure.getResult().getLastError().getKeyword());
+        assertEquals(expected.getResult().getLastError().getInstancePs().rootedPointerExpr(),
+                failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
         assertThrows(ValidationException.class,
                 () -> validator.requireValid(new Name("x"), true));
     }
