@@ -109,8 +109,10 @@ final class OneOfCompiler {
             TypeMirror subtype = mappedType(candidate);
             if (subtype == null || !expected.equals(publicConstant(subtype, discriminator))) return null;
             String branchUri = SchemaCompiler.effectiveSchemaUri(target.uri, branch);
-            SchemaCheck.ObjectCheck check =
+            SchemaCheck candidateCheck =
                     objects.compileNested(subtype, snapshot, branch, branchUri, depth + 1);
+            if (!(candidateCheck instanceof SchemaCheck.ObjectCheck)) return null;
+            SchemaCheck.ObjectCheck check = (SchemaCheck.ObjectCheck) candidateCheck;
             // A surviving branch/type combination must compile completely.
             // Unmapped runtime types use generic branches (or SchemaPlan if
             // their declared-type compilation is unavailable).
