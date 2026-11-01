@@ -231,8 +231,21 @@ must pass for `allOf`, any one may pass for `anyOf` (including overlaps), and
 with logical AND, not skipped. Unsupported or evaluated-state-dependent branches
 fall back as a complete combinator scope. The boolean direct path preserves
 `strictFormat`; `requireValid` reuses its fail-fast guards and defers
-diagnostic creation until an assertion fails. Aggregating `ValidationResult`
-continues to use `SchemaPlan`.
+diagnostic creation until an assertion fails. **`ValidationResult` now
+directly compiles independent assertions on statically typed POJOs**, including
+string length, enum, pattern, format, numeric bounds, array sizes, and nested
+array items. The result emitter uses the same `SchemaEmitter` predicates as
+the fail-fast paths, but accumulates errors with keyword URI and instance
+pointers rather than returning early. Successfully checked inputs return
+`ValidationResult.SUCCESS`, without invoking `SchemaPlan`.
+
+The aggregating emitter currently rejects dynamic object shapes and
+scope-sensitive applicators (`allOf`, `anyOf`, `oneOf`, `not`,
+`if/then/else`). These retain **whole-method `SchemaPlan` fallback** when
+allowed, so branch probes and evaluated-location semantics cannot leak
+incorrect errors. `fallback=false` rejects such Result methods at compile
+time. Directly compiled `isValid` and `requireValid` keyword coverage is
+unchanged; Result emission remains a separately expanding subset.
 
 Conditional `if/then/else` compiles to one boolean predicate for `if` and
 exactly one selected branch. If `if` is absent, `then` and `else` have no
