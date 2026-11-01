@@ -106,7 +106,7 @@ final class ObjectCompiler {
                 if (!(name instanceof String)) return null;
                 if (!dynamic && !javaProperties.containsKey(name)) {
                     // The complete final POJO projection cannot satisfy this required key.
-                    return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
+                    return missingRequired(rootUri, typeRequired);
                 }
             }
         }
@@ -176,6 +176,16 @@ final class ObjectCompiler {
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
                 Boolean.FALSE.equals(additional)
                         ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null);
+    }
+
+    /**
+     * Object-only keywords do not apply to null. A final POJO with a missing
+     * required property can only satisfy a type-less schema when it is null.
+     */
+    private static SchemaCheck missingRequired(String uri, boolean typeRequired) {
+        SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(uri, "required");
+        if (typeRequired) return new SchemaCheck.Reject(diagnostic);
+        return new SchemaCheck.TypeCheck(java.util.Collections.singletonList("null"), diagnostic);
     }
 
     /**
