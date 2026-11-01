@@ -46,7 +46,7 @@ jobs:
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           test -n "$JAR"
           java -jar "$JAR" \
-            '.*FabienReadBenchmark\\.clients_jackson2_(blackbird|blackbird_fast_temporal|handwritten|handwritten_fast_temporal|compiled|runtime)' \
+            '.*FabienReadBenchmark\.clients_jackson2_(blackbird|blackbird_fast_temporal|handwritten|handwritten_fast_temporal|compiled|runtime)' \
             -p sizeKb=1,10 -p seed=12345,324,43201 \
             -f 2 -t 1 -wi 5 -i 7 -w 300ms -r 300ms \
             -prof gc -rf json -rff fabien-generic-results.json \
