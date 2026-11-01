@@ -101,12 +101,12 @@ public class CompiledFindBenchmark {
         public Double price;
     }
 
-    @CompiledNavigator
+    @CompiledNavigator(fallback = true)
     public interface FindNodes {
         @FindByPath("$.store.book[*].author")
         List<String> authors(Bookstore root);
 
-        @FindByPath(value = "$.store.book[?(@.price > 10)].title", allowFallback = true)
+        @FindByPath(value = "$.store.book[?(@.price > 10)].title")
         List<String> expensiveTitles(Bookstore root);
 
         @FindByPath("$.store.book[0,2].title")
@@ -115,7 +115,7 @@ public class CompiledFindBenchmark {
         @FindByPath("$.store.book[1:4].title")
         List<String> sliceTitles(Bookstore root);
 
-        @FindByPath(value = "$.store..price", allowFallback = true)
+        @FindByPath(value = "$.store..price")
         List<Object> storePrices(Bookstore root);
     }
 

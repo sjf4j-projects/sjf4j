@@ -379,9 +379,9 @@ public class FindProcessorTest {
                 "import java.util.List;\n" +
                 "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledNavigator\n" +
+                "@CompiledNavigator(fallback=true)\n" +
                 "public interface FindFiltered {\n" +
-                "  @FindByPath(value=\"$.items[?(@.age > 18)].name\", allowFallback=true)\n" +
+                "  @FindByPath(value=\"$.items[?(@.age > 18)].name\")\n" +
                 "  List<String> adultNames(FilterRoot root);\n" +
                 "}\n");
 

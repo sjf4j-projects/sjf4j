@@ -49,7 +49,8 @@ public final class NavigatorMethodGenerator {
      */
     public void generate(
             ExecutableElement method,
-            GeneratedClass generated) {
+            GeneratedClass generated,
+            boolean allowFallback) {
 
         if (!method.getTypeParameters().isEmpty()) {
             error(
@@ -76,7 +77,7 @@ public final class NavigatorMethodGenerator {
                 return;
 
             case FIND:
-                findGenerator.generate(method, generated, operation.path, operation.allowFallback);
+                findGenerator.generate(method, generated, operation.path, allowFallback);
                 return;
 
             default:
@@ -251,14 +252,14 @@ public final class NavigatorMethodGenerator {
 
         if (get != null) {
             operation = select(method, generated, operation,
-                    new Operation(Kind.GET, "@GetByPath", get.value(), false, false, false, false));
+                    new Operation(Kind.GET, "@GetByPath", get.value(), false, false, false));
         }
 
         PutByPath put = method.getAnnotation(PutByPath.class);
 
         if (put != null) {
             operation = select(method, generated, operation,
-                    new Operation(Kind.PUT, "@PutByPath", put.value(), false, false, false, false));
+                    new Operation(Kind.PUT, "@PutByPath", put.value(), false, false, false));
         }
 
         PutIfParentPresentByPath putIfParentPresent =
@@ -267,7 +268,7 @@ public final class NavigatorMethodGenerator {
         if (putIfParentPresent != null) {
             operation = select(method, generated, operation,
                     new Operation(Kind.PUT_IF_PARENT_PRESENT, "@PutIfParentPresentByPath",
-                            putIfParentPresent.value(), false, false, true, false));
+                            putIfParentPresent.value(), false, true, false));
         }
 
         EnsurePutByPath ensurePut = method.getAnnotation(EnsurePutByPath.class);
@@ -275,7 +276,7 @@ public final class NavigatorMethodGenerator {
         if (ensurePut != null) {
             operation = select(method, generated, operation,
                     new Operation(Kind.ENSURE_PUT, "@EnsurePutByPath",
-                            ensurePut.value(), false, true, false, false));
+                            ensurePut.value(), true, false, false));
         }
 
         EnsurePutIfAbsentByPath ensurePutIfAbsent =
@@ -284,7 +285,7 @@ public final class NavigatorMethodGenerator {
         if (ensurePutIfAbsent != null) {
             operation = select(method, generated, operation,
                     new Operation(Kind.ENSURE_PUT_IF_ABSENT, "@EnsurePutIfAbsentByPath",
-                            ensurePutIfAbsent.value(), false, true, false, true));
+                            ensurePutIfAbsent.value(), true, false, true));
         }
 
         FindByPath find = method.getAnnotation(FindByPath.class);
@@ -292,7 +293,7 @@ public final class NavigatorMethodGenerator {
         if (find != null) {
             operation = select(method, generated, operation,
                     new Operation(Kind.FIND, "@FindByPath", find.value(),
-                            find.allowFallback(), false, false, false));
+                            false, false, false));
         }
 
         if (operation == null) {
@@ -560,8 +561,6 @@ public final class NavigatorMethodGenerator {
         final String annotation;
         final String path;
 
-        final boolean allowFallback;
-
         final boolean ensure;
         final boolean ifParentPresent;
         final boolean ifAbsent;
@@ -570,7 +569,6 @@ public final class NavigatorMethodGenerator {
                 Kind kind,
                 String annotation,
                 String path,
-                boolean allowFallback,
                 boolean ensure,
                 boolean ifParentPresent,
                 boolean ifAbsent) {
@@ -578,7 +576,6 @@ public final class NavigatorMethodGenerator {
             this.kind = kind;
             this.annotation = annotation;
             this.path = path;
-            this.allowFallback = allowFallback;
             this.ensure = ensure;
             this.ifParentPresent = ifParentPresent;
             this.ifAbsent = ifAbsent;

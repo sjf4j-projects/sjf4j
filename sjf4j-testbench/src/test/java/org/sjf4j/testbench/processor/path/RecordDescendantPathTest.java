@@ -44,7 +44,7 @@ class RecordDescendantPathTest {
 
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
         assertFalse(compile(diagnostics, src.resolve("DeepNode.java"), src.resolve("FindComplex.java")));
-        assertTrue(messages(diagnostics).contains("allowFallback=true"), messages(diagnostics));
+        assertTrue(messages(diagnostics).contains("fallback=true"), messages(diagnostics));
     }
 
     @Test
@@ -63,11 +63,11 @@ class RecordDescendantPathTest {
                 "import java.util.List;\n" +
                 "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledNavigator\n" +
+                "@CompiledNavigator(fallback=true)\n" +
                 "public interface FindDeep {\n" +
-                "  @FindByPath(value=\"$.child..name\", allowFallback=true)\n" +
+                "  @FindByPath(\"$.child..name\")\n" +
                 "  List<String> names(Root root);\n" +
-                "  @FindByPath(value=\"$..name\", allowFallback=true)\n" +
+                "  @FindByPath(\"$..name\")\n" +
                 "  List<String> allNames(Root root);\n" +
                 "}\n");
 

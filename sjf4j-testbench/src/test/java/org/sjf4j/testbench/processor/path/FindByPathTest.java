@@ -47,7 +47,7 @@ public class FindByPathTest {
 
     // ---- Compiled interfaces -----------------------------------------------
 
-    @CompiledNavigator
+    @CompiledNavigator(fallback = true)
     interface FindNodes {
         @FindByPath("$.items[*].name")
         List<String> itemNames(Container root);
@@ -91,16 +91,16 @@ public class FindByPathTest {
         @FindByPath("$.items[-1,2:0:-1].name")
         List<String> unionSliceItemNames(Container root);
 
-        @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
+        @FindByPath(value = "$.items[?(@.age > 18)].name")
         List<String> adultItemNames(Container root);
 
-        @FindByPath(value = "$.items[?(@.name == \"Bob\")].age", allowFallback = true)
+        @FindByPath(value = "$.items[?(@.name == \"Bob\")].age")
         List<Integer> bobAges(Container root);
 
-        @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
+        @FindByPath(value = "$.items[?(@.age > 18)].name")
         List<String> adultRegistryNames(Registry root);
 
-        @FindByPath(value = "$.families..name", allowFallback = true)
+        @FindByPath(value = "$.families..name")
         List<String> familyDescendantNames(Container root);
 
         @FindByPath("$.items[*].name")
@@ -124,10 +124,10 @@ public class FindByPathTest {
         @FindByPath("$.items[1:2].name")
         List<String> singleName(Concrete root);
 
-        @FindByPath(value = "$.items[?(@ == null)]", allowFallback = true)
+        @FindByPath(value = "$.items[?(@ == null)]")
         List<Item> nullItems(Concrete root);
 
-        @FindByPath(value = "$.items[?(@.age > 18)].name", allowFallback = true)
+        @FindByPath(value = "$.items[?(@.age > 18)].name")
         List<String> concreteAdultNames(Concrete root);
 
         @FindByPath("$.items[::-1].name")
