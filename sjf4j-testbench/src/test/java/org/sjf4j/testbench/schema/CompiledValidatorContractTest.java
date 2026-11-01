@@ -79,6 +79,9 @@ class CompiledValidatorContractTest {
         private final String name;
         private final int age;
         private final java.util.List<String> tags;
+        // Keep the model recognizable to the runtime POJO inspector as well
+        // as the annotation processor (without relying on parameter metadata).
+        public ResultModel() { this(null, 0, null); }
         public ResultModel(String name, int age, java.util.List<String> tags) {
             this.name = name;
             this.age = age;
