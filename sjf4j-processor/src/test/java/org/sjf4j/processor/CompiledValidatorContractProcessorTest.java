@@ -38,6 +38,23 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void jojoUsesNativeJsonObjectAccess() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
+                                "{\"type\":\"object\",\"required\":[\"b\"],"
+                                + "\"properties\":{\"b\":{\"type\":\"string\",\"minLength\":2}},"
+                                + "\"additionalProperties\":false}") + ") "
+                        + "boolean valid(org.sjf4j.JsonObject value); }");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains(".containsKey(\"b\")"), generated);
+        assertTrue(generated.contains(".getNode(\"b\")"), generated);
+        assertTrue(generated.contains(".keySet()"), generated);
+        assertFalse(generated.contains("Nodes.getInObject("), generated);
+    }
+
+    @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
