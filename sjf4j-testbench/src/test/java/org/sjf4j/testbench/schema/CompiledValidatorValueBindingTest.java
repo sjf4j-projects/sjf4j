@@ -15,7 +15,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** Runtime logical values must be normalized before structural Nodes checks. */
+/** A logical NodeValue is atomic even when its raw encoding is a container. */
 public class CompiledValidatorValueBindingTest {
     private static final String SCHEMA =
             "{\"type\":\"object\",\"maxProperties\":1,\"required\":[\"name\"],"
@@ -49,6 +49,12 @@ public class CompiledValidatorValueBindingTest {
         public static ListValue fromRaw(List<Object> raw) { return new ListValue(); }
     }
 
+    public static class Holder {
+        private final Object items;
+        public Holder(Object items) { this.items = items; }
+        public Object getItems() { return items; }
+    }
+
     @CompiledValidator(fallback = false)
     public interface Validator {
         @ValidJsonSchema(SCHEMA)
@@ -62,6 +68,10 @@ public class CompiledValidatorValueBindingTest {
 
         @ValidJsonSchema("{\"type\":\"array\",\"minItems\":1}")
         boolean array(Object value);
+
+        @ValidJsonSchema("{\"type\":\"object\",\"properties\":"
+                + "{\"items\":{\"type\":\"array\",\"minItems\":1}}}")
+        boolean nested(Holder value);
     }
 
     @Test
@@ -101,5 +111,7 @@ public class CompiledValidatorValueBindingTest {
         assertEquals(false, compiled.array(listValue));
         assertEquals(JsonSchema.fromJson("{\"type\":\"array\",\"minItems\":1}")
                 .createPlan().isValid(listValue), compiled.array(listValue));
+        assertEquals(true, compiled.nested(new Holder(List.of("abc"))));
+        assertEquals(false, compiled.nested(new Holder(listValue)));
     }
 }
