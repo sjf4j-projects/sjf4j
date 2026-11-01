@@ -2,13 +2,9 @@ package org.sjf4j.testbench.binding.compiled;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.deser.std.StdScalarDeserializer;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
@@ -30,22 +26,17 @@ import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
 import org.sjf4j.testbench.model.fabien.Clients;
 import org.sjf4j.testbench.model.fabien.FabienDataGenerator;
-import org.sjf4j.util.FastLocalDate;
-import org.sjf4j.util.FastOffsetDateTime;
-import org.sjf4j.util.FastUuid;
 
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Focused comparison of SJF4J compiled binding, native-structure hybrid,
  * handwritten Jackson Core and Blackbird.
  *
- * Blackbird and the handwritten reader use the same SJF4J UUID/date codecs
- * as compiled binding, so their performance is not skewed by scalar parsing.
+ * Blackbird uses Jackson's native scalar deserializers without SJF4J overrides.
+ * The handwritten reader retains the fast scalar decoders for a structural
+ * parsing reference, not as a codec-equalized Blackbird comparison.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -64,61 +55,11 @@ public class FabienReadBenchmark {
             .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-    private static final ObjectMapper BLACKBIRD_FAST = blackbirdWithFastScalars();
-
-    private static ObjectMapper blackbirdWithFastScalars() {
-        SimpleModule fastScalars = new SimpleModule("SJF4JFastScalarDecoders");
-        fastScalars.addDeserializer(UUID.class, new FastUuidDeserializer());
-        fastScalars.addDeserializer(LocalDate.class, new FastLocalDateDeserializer());
-        fastScalars.addDeserializer(OffsetDateTime.class, new FastOffsetDateTimeDeserializer());
-        return new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .registerModule(fastScalars)
-                .registerModule(new BlackbirdModule())
-                .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    }
-
-    private static final class FastUuidDeserializer extends StdScalarDeserializer<UUID> {
-        FastUuidDeserializer() { super(UUID.class); }
-
-        @Override
-        public UUID deserialize(JsonParser parser, DeserializationContext context) throws IOException {
-            if (parser.hasToken(JsonToken.VALUE_STRING)) {
-                return FastUuid.parseUUID(
-                        parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
-            }
-            return (UUID) context.handleUnexpectedToken(UUID.class, parser);
-        }
-    }
-
-    private static final class FastLocalDateDeserializer extends StdScalarDeserializer<LocalDate> {
-        FastLocalDateDeserializer() { super(LocalDate.class); }
-
-        @Override
-        public LocalDate deserialize(JsonParser parser, DeserializationContext context) throws IOException {
-            if (parser.hasToken(JsonToken.VALUE_STRING)) {
-                return FastLocalDate.parse(
-                        parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
-            }
-            return (LocalDate) context.handleUnexpectedToken(LocalDate.class, parser);
-        }
-    }
-
-    private static final class FastOffsetDateTimeDeserializer
-            extends StdScalarDeserializer<OffsetDateTime> {
-        FastOffsetDateTimeDeserializer() { super(OffsetDateTime.class); }
-
-        @Override
-        public OffsetDateTime deserialize(JsonParser parser, DeserializationContext context)
-                throws IOException {
-            if (parser.hasToken(JsonToken.VALUE_STRING)) {
-                return FastOffsetDateTime.parse(
-                        parser.getTextCharacters(), parser.getTextOffset(), parser.getTextLength());
-            }
-            return (OffsetDateTime) context.handleUnexpectedToken(OffsetDateTime.class, parser);
-        }
-    }
+    private static final ObjectMapper BLACKBIRD = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .registerModule(new BlackbirdModule())
+            .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     @SuppressWarnings("deprecation")
     private static final JsonFactory HAND_FACTORY = new JsonFactory()
@@ -145,7 +86,7 @@ public class FabienReadBenchmark {
         checkClients("compiled", expected, clients_jackson2_compiled());
         checkClients("hybrid", expected, clients_jackson2_hybrid_handwritten());
         checkClients("handwritten", expected, clients_jackson2_handwritten_fast_temporal());
-        checkClients("blackbird", expected, clients_jackson2_blackbird_fast_temporal());
+        checkClients("blackbird", expected, clients_jackson2_blackbird());
 
         Clients sample = Clients.sample();
         byte[] sampleJson = NATIVE.writeValueAsBytes(sample);
@@ -179,10 +120,10 @@ public class FabienReadBenchmark {
         return Jackson2HandReadFast.readClients(HAND_FACTORY, clientsJson);
     }
 
-    /** Independent Jackson Blackbird baseline, equalized UUID/date parsing. */
+    /** Native Jackson Blackbird baseline, with its standard scalar codecs. */
     @Benchmark
-    public Clients clients_jackson2_blackbird_fast_temporal() throws IOException {
-        return BLACKBIRD_FAST.readValue(clientsJson, Clients.class);
+    public Clients clients_jackson2_blackbird() throws IOException {
+        return BLACKBIRD.readValue(clientsJson, Clients.class);
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
