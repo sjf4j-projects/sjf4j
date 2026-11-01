@@ -73,6 +73,38 @@ public class CompiledValidatorOneOfTest {
         @ValidJsonSchema(SCHEMA) boolean valid(Model model, boolean strictFormat);
     }
 
+    private static final String FORMAT_SCHEMA = """
+            {"type":"object","properties":{"items":{"type":"array","items":{"oneOf":[
+              {"$ref":"#/$defs/a"},{"$ref":"#/$defs/b"}]}}},
+             "$defs":{
+               "a":{"type":"object","additionalProperties":false,
+                    "required":["kind","name"],"properties":{
+                    "kind":{"type":"string","enum":["a"]},
+                    "name":{"type":"string","minLength":2,"format":"email"}}},
+               "b":{"type":"object","additionalProperties":false,
+                    "required":["kind","count"],"properties":{
+                    "kind":{"type":"string","enum":["b"]},
+                    "count":{"type":"integer","minimum":1}}}}
+            }
+            """;
+
+    @CompiledValidator(fallback = true)
+    public interface StrictFormatValidator {
+        @ValidJsonSchema(FORMAT_SCHEMA)
+        boolean valid(Model model, boolean strictFormat);
+    }
+
+    @Test
+    void strictFormatUsesCompiledSubtypeChecks() {
+        StrictFormatValidator compiled = CompiledInstances.create(StrictFormatValidator.class);
+        SchemaPlan reference = JsonSchema.fromJson(FORMAT_SCHEMA).createPlan();
+        Model model = new Model(List.of(new A("not-an-email"), new B(2)));
+        assertTrue(reference.isValid(model, false));
+        assertTrue(compiled.valid(model, false));
+        assertFalse(reference.isValid(model, true));
+        assertFalse(compiled.valid(model, true));
+    }
+
     @Test
     void matchesRuntimeForCompiledAndUnknownSubtypes() {
         Validator compiled = CompiledInstances.create(Validator.class);

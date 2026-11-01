@@ -336,36 +336,27 @@ final class SchemaEmitter {
     private void emitOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
                            SchemaCheck.OneOfCheck check, String expression, String name,
                            String strictFormat, int depth, String onFailure) {
+        // A subtype's compiled checks already handle strictFormat, including
+        // format assertions. Only unknown runtime classes need the full plan.
         SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
-        // Explicit strict format assertions are delegated as a unit: some
-        // specialized domain values (UUID) have a format assertion in the schema.
-        if (!"false".equals(strictFormat)) {
-            lines.add("if (" + strictFormat + ") {");
-            lines.add("    if (!" + full.reference() + ".isValid(" + expression
-                    + ", true)) " + onFailure);
-            lines.add("} else {");
-        }
-        String indent = "false".equals(strictFormat) ? "" : "    ";
-        lines.add(indent + "if (" + expression + " == null) " + onFailure);
+        lines.add("if (" + expression + " == null) " + onFailure);
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
             String typed = "_typed" + depth + "_" + name + "_" + n;
-            lines.add(indent + (n == 0 ? "if" : "else if") + " ("
+            lines.add((n == 0 ? "if" : "else if") + " ("
                     + expression + ".getClass() == " + subtype.type + ".class) {");
-            lines.add(indent + "    " + subtype.type + " " + typed
+            lines.add("    " + subtype.type + " " + typed
                     + " = (" + subtype.type + ") " + expression + ";");
             for (String source : emit(subtype.check, typed, plan, strictFormat, typed + "_", onFailure)) {
-                // Shared local naming is safe: every subtype occupies a block.
-                lines.add(indent + "    " + source);
+                lines.add("    " + source);
             }
-            lines.add(indent + "}");
+            lines.add("}");
             n++;
         }
-        lines.add(indent + "else {");
-        lines.add(indent + "    if (!" + full.reference()
-                + ".isValid(" + expression + ", false)) " + onFailure);
-        lines.add(indent + "}");
-        if (!"false".equals(strictFormat)) lines.add("}");
+        lines.add("else {");
+        lines.add("    if (!" + full.reference()
+                + ".isValid(" + expression + ", " + strictFormat + ")) " + onFailure);
+        lines.add("}");
     }
 
     private void emitString(List<String> lines, SchemaCheck.StringCheck check,
