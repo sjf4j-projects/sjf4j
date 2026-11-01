@@ -1,4 +1,4 @@
-name: Jackson2 Users Inline Name A-B
+name: Jackson2 Users Inline Name B-A
 on:
   push:
     branches:
@@ -28,23 +28,6 @@ jobs:
           mkdir -p diagnostics
           java -version 2> diagnostics/java-version.txt
           lscpu > diagnostics/lscpu.txt
-      - name: Baseline A - current matcher call
-        shell: bash
-        run: |
-          set -euo pipefail
-          git checkout --detach "$BASE_SHA"
-          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
-          SRC="$(find sjf4j-testbench/build/generated -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print -quit)"
-          test -n "$SRC"
-          grep -Fq '.matchNext(nativeParser, expectedNameIndex)' "$SRC"
-          cp "$SRC" diagnostics/baseline-generated.java
-          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
-          test -n "$JAR"
-          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
-            -p sizeKb=1,5,10 -p seed=12,3285,5678 \
-            -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
-            -prof gc -rf json -rff baseline-users.json \
-            2>&1 | tee baseline-users.log
       - name: Variant B - generated native expected-name inline
         shell: bash
         run: |
@@ -64,6 +47,23 @@ jobs:
             -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
             -prof gc -rf json -rff inline-users.json \
             2>&1 | tee inline-users.log
+      - name: Baseline A - current matcher call
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASE_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
+          SRC="$(find sjf4j-testbench/build/generated -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print -quit)"
+          test -n "$SRC"
+          grep -Fq '.matchNext(nativeParser, expectedNameIndex)' "$SRC"
+          cp "$SRC" diagnostics/baseline-generated.java
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
+            -p sizeKb=1,5,10 -p seed=12,3285,5678 \
+            -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
+            -prof gc -rf json -rff baseline-users.json \
+            2>&1 | tee baseline-users.log
       - name: Compare A/B per Users workload
         shell: bash
         run: |
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: jackson2-users-inline-name-ab-jdk25
+          name: jackson2-users-inline-name-ba-jdk25
           path: |
             baseline-users.json
             baseline-users.log
