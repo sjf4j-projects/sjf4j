@@ -55,7 +55,7 @@ jobs:
           def normalized(path, data):
               # Only MapStruct @Generated date= is intentionally nondeterministic.
               if path.endswith('$MapStructMapperImpl.java'):
-                  return bytes(10).join(line for line in data.splitlines()
+                  return bytes([10]).join(line for line in data.splitlines()
                                         if not line.strip().startswith(b'date = '))
               return data
           base, variant = load('base'), load('variant')
