@@ -76,7 +76,7 @@ final class SchemaMethodGenerator {
         for (Binding binding : bindings) {
             SchemaResourceResolver.Snapshot snapshot;
             try {
-                snapshot = resources.resolve(binding.annotation, binding.ownerName, binding.originName);
+                snapshot = resources.resolve(binding.annotation, binding.ownerName, binding.originName, method);
             } catch (RuntimeException e) {
                 fail(generated, method, "cannot compile @ValidJsonSchema: " + e.getMessage());
                 return;

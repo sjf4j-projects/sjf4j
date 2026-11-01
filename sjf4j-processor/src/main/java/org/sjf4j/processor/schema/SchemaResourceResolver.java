@@ -9,12 +9,17 @@ import org.sjf4j.schema.SchemaRegistry;
 import org.sjf4j.schema.SchemaLoader;
 import org.sjf4j.schema.JsonSchema;
 
+import com.sun.source.util.TreePath;
+import com.sun.source.util.Trees;
+import javax.lang.model.element.Element;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
@@ -53,7 +58,9 @@ final class SchemaResourceResolver {
         this.context = context;
     }
 
-    Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName) {
+    Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName,
+                     Element sourceElement) {
+        Path resourceDirectory = findResourceDirectory(sourceElement);
         String inline = annotation.value();
         String ref = annotation.ref().trim();
         URI rootUri;
@@ -75,17 +82,17 @@ final class SchemaResourceResolver {
             } else {
                 String simple = ownerName.substring(ownerName.lastIndexOf('.') + 1);
                 rootUri = baseDir.resolve(simple + ".json");
-                rootDocument = read(rootUri);
+                rootDocument = read(rootUri, resourceDirectory);
                 if (rootDocument == null) {
                     String snake = Strings.toSnakeCase(simple);
                     rootUri = baseDir.resolve(snake + ".json");
                 }
                 selectedUri = rootUri;
             }
-            rootDocument = read(rootUri);
+            rootDocument = read(rootUri, resourceDirectory);
             if (rootDocument == null) {
                 throw new IllegalArgumentException("schema resource not found: " + rootUri
-                        + " (make the resource visible on the compilation classpath)");
+                        + " (resource not found on the compilation classpath or alongside the source set)");
             }
         }
 
@@ -95,7 +102,7 @@ final class SchemaResourceResolver {
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
             JsonSchema schema = JsonSchema.fromJson(resources.get(uri));
-            scanRefs(schema, uri, resources, queue);
+            scanRefs(schema, uri, resources, queue, resourceDirectory);
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri);
@@ -126,7 +133,8 @@ final class SchemaResourceResolver {
         return id instanceof String ? base.resolve((String) id) : base;
     }
 
-    private void scanRefs(Object node, URI base, Map<URI, String> resources, List<URI> queue) {
+    private void scanRefs(Object node, URI base, Map<URI, String> resources, List<URI> queue,
+                          Path resourceDirectory) {
         JsonType type = JsonType.of(node);
         if (type == JsonType.OBJECT) {
             URI local = effectiveBase(base, node);
@@ -139,7 +147,7 @@ final class SchemaResourceResolver {
                 if (!"classpath".equals(document.getScheme()) && !"file".equals(document.getScheme())) {
                     continue; // Embedded $id and built-in meta-schema refs resolve in the planner.
                 }
-                String contents = read(document);
+                String contents = read(document, resourceDirectory);
                 if (contents == null) {
                     // Could be a nested $id within an already indexed resource.
                     // The planner decides whether that resource actually exists.
@@ -156,7 +164,7 @@ final class SchemaResourceResolver {
                 Object mapping = Nodes.getInObject(node, keyword);
                 if (JsonType.of(mapping) != JsonType.OBJECT) continue;
                 for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(mapping)) {
-                    scanRefs(entry.getValue(), local, resources, queue);
+                    scanRefs(entry.getValue(), local, resources, queue, resourceDirectory);
                 }
             }
             for (String keyword : new String[]{
@@ -165,17 +173,17 @@ final class SchemaResourceResolver {
                     "unevaluatedItems", "unevaluatedProperties", "contentSchema",
                     "allOf", "anyOf", "oneOf", "prefixItems"}) {
                 Object subschema = Nodes.getInObject(node, keyword);
-                if (subschema != null) scanRefs(subschema, local, resources, queue);
+                if (subschema != null) scanRefs(subschema, local, resources, queue, resourceDirectory);
             }
         } else if (type == JsonType.ARRAY) {
             Iterator<Object> iter = Nodes.iteratorInArray(node);
-            while (iter.hasNext()) scanRefs(iter.next(), base, resources, queue);
+            while (iter.hasNext()) scanRefs(iter.next(), base, resources, queue, resourceDirectory);
         }
     }
 
-    private String read(URI uri) {
+    private String read(URI uri, Path resourceDirectory) {
         URI document = SchemaLoader.documentUri(uri);
-        try (java.io.Reader reader = openResource(document)) {
+        try (java.io.Reader reader = openResource(document, resourceDirectory)) {
             if (reader == null) return null;
             StringBuilder text = new StringBuilder();
             char[] buf = new char[4096];
@@ -186,7 +194,7 @@ final class SchemaResourceResolver {
         }
     }
 
-    private java.io.Reader openResource(URI uri) throws IOException {
+    private java.io.Reader openResource(URI uri, Path resourceDirectory) throws IOException {
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             try {
                 return java.nio.file.Files.newBufferedReader(Paths.get(uri), java.nio.charset.StandardCharsets.UTF_8);
@@ -209,6 +217,49 @@ final class SchemaResourceResolver {
             } catch (IOException | IllegalArgumentException ignored) {
                 // Continue searching compiler resource locations.
             }
+        }
+        // In javac/IDEA, resources in src/<sourceSet>/resources may not have
+        // been copied to the compilation classpath when annotation processing runs.
+        // Resolve them relative to the Java source being compiled, not user.dir
+        // (which can point to a different module in multi-project builds).
+        if (resourceDirectory != null) {
+            Path file = resourceDirectory.resolve(path).normalize();
+            if (file.startsWith(resourceDirectory) && Files.isRegularFile(file)) {
+                return Files.newBufferedReader(file, StandardCharsets.UTF_8);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds the conventional resources root belonging to the Java compilation
+     * unit. This is a fallback only: compiler resource locations take precedence.
+     * No Gradle/Maven/IDEA-specific APIs or project-wide directory search.
+     */
+    private Path findResourceDirectory(Element sourceElement) {
+        if (sourceElement == null) return null;
+        try {
+            TreePath sourcePath = Trees.instance(context.processingEnvironment).getPath(sourceElement);
+            if (sourcePath == null || sourcePath.getCompilationUnit().getSourceFile() == null) return null;
+            URI uri = sourcePath.getCompilationUnit().getSourceFile().toUri();
+            if (!"file".equalsIgnoreCase(uri.getScheme())) return null;
+            Path directory = Paths.get(uri).toAbsolutePath().normalize().getParent();
+            while (directory != null) {
+                Path name = directory.getFileName();
+                if (name != null && "java".equals(name.toString())) {
+                    Path sourceSet = directory.getParent();
+                    if (sourceSet != null) {
+                        Path src = sourceSet.getParent();
+                        if (src != null && src.getFileName() != null
+                                && "src".equals(src.getFileName().toString())) {
+                            return sourceSet.resolve("resources").normalize();
+                        }
+                    }
+                }
+                directory = directory.getParent();
+            }
+        } catch (IllegalArgumentException | UnsupportedOperationException ignored) {
+            // Some compiler implementations do not expose source locations through Trees.
         }
         return null;
     }
