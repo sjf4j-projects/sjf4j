@@ -109,7 +109,7 @@ public class CreekSchemaBenchmark {
      * unsupported runtime subtypes retain a cached SchemaPlan fallback.
      * The original Creek schema is unchanged.
      */
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface CreekValidator {
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value);
