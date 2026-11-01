@@ -51,7 +51,7 @@ class CompiledValidatorContractProcessorTest {
     void rejectsResultWithoutExplicitFallback() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator public interface Check { "
-                        + "@ValidJsonSchema(\\\"true\\\") "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral("true") + ") "
                         + "org.sjf4j.schema.ValidationResult validate(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("ValidationResult methods require @CompiledValidator(fallback=true)"),
@@ -62,7 +62,7 @@ class CompiledValidatorContractProcessorTest {
     void allowsResultWithExplicitFallback() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=true) public interface Check { "
-                        + "@ValidJsonSchema(\\\"true\\\") "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral("true") + ") "
                         + "org.sjf4j.schema.ValidationResult validate(Model value); }");
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
@@ -71,9 +71,10 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void defaultFallbackRejectsUnsupportedChecks() throws Exception {
+        String schema = "{\"patternProperties\":{\"^x\":true}}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator public interface Check { "
-                        + "@ValidJsonSchema(\\\"{\\\\\\\"patternProperties\\\\\\\":{\\\\\\\"^x\\\\\\\":true}}\\\") "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
                         + "boolean valid(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
