@@ -291,6 +291,38 @@ final class ReadEmitter {
         return value.primitive() ? decoded : "(" + raw + " == null ? null : " + decoded + ")";
     }
 
+    private boolean needsFallbackName(BindingValue value, String consumedDiscriminator) {
+        return consumedDiscriminator != null
+                || (value.kind() == BindingValue.Kind.JOJO && value.readDynamic());
+    }
+
+    /**
+     * Inline Jackson's expected-name fast path but keep token validation in
+     * the cold matcher helper. JOJO retains the fallback name for dynamic keys.
+     */
+    private void emitNativeInlineNameLoopStart(JavaWriter out, BindingValue value,
+                                               String consumedDiscriminator) {
+        String matcher = matcherFieldName(value);
+        boolean retainName = needsFallbackName(value, consumedDiscriminator);
+        if (retainName) out.line("String fallbackName = null;");
+        out.beginBlock("while (true)");
+        out.beginBlock("if (expectedNameIndex < " + value.properties().size()
+                + " && nativeParser.nextFieldName(" + matcher
+                + ".serializedName(expectedNameIndex)))");
+        out.line("nameIndex = expectedNameIndex;");
+        out.endBlock();
+        out.beginBlock("else");
+        out.line("String name = " + matcher
+                + ".nextFallbackName(nativeParser, expectedNameIndex >= "
+                + value.properties().size() + ");");
+        out.beginBlock("if (name == null)");
+        out.line("break;");
+        out.endBlock();
+        out.line("nameIndex = " + matcher + ".fallback(name);");
+        if (retainName) out.line("fallbackName = name;");
+        out.endBlock();
+    }
+
     private void emitPojo(JavaWriter out, BindingValue value) {
         emitPojo(out, value, false, null);
     }
@@ -321,13 +353,18 @@ final class ReadEmitter {
                 out.line("int expectedNameIndex = 0;");
             }
 
-            out.beginBlock("while ((nameIndex = "
-                    + (nativeObject ? matcherFieldName(value) + ".matchNext(nativeParser, expectedNameIndex)"
-                    : "parser.nextNameMatch(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
-                    + ") != " + NAME_MATCHER + ".OBJECT_END)");
+            if (nativeObject) {
+                emitNativeInlineNameLoopStart(out, value, consumedDiscriminator);
+            } else {
+                out.beginBlock("while ((nameIndex = parser.nextNameMatch("
+                        + matcherFieldName(value)
+                        + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
+                        + ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            }
 
-            emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
+            emitMatchedPojoProperty(out, value, true, consumedDiscriminator,
+                    nativeObject && needsFallbackName(value, consumedDiscriminator)
+                            ? "fallbackName" : "parser.currentName()");
         } else {
             out.line("String name;");
             out.beginBlock("while ((name = parser.nextName()) != null)");
@@ -400,12 +437,17 @@ final class ReadEmitter {
         } else if (backend.usesNameMatcher() && size != 0) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
-            out.beginBlock("while ((nameIndex = "
-                    + (nativeObject ? matcherFieldName(value) + ".matchNext(nativeParser, expectedNameIndex)"
-                    : "parser.nextNameMatch(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
-                    + ") != " + NAME_MATCHER + ".OBJECT_END)");
-            emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
+            if (nativeObject) {
+                emitNativeInlineNameLoopStart(out, value, consumedDiscriminator);
+            } else {
+                out.beginBlock("while ((nameIndex = parser.nextNameMatch("
+                        + matcherFieldName(value)
+                        + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
+                        + ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            }
+            emitMatchedPojoProperty(out, value, true, consumedDiscriminator,
+                    nativeObject && needsFallbackName(value, consumedDiscriminator)
+                            ? "fallbackName" : "parser.currentName()");
         } else {
             out.line("String name;");
             out.beginBlock("while ((name = parser.nextName()) != null)");
@@ -462,6 +504,13 @@ final class ReadEmitter {
 
     private void emitMatchedPojoProperty(JavaWriter out, BindingValue value,
                                          boolean updateExpected, String consumedDiscriminator) {
+        emitMatchedPojoProperty(out, value, updateExpected, consumedDiscriminator,
+                "parser.currentName()");
+    }
+
+    private void emitMatchedPojoProperty(JavaWriter out, BindingValue value,
+                                         boolean updateExpected, String consumedDiscriminator,
+                                         String unknownNameExpression) {
         out.beginBlock("switch (nameIndex)");
 
         int index = 0;
@@ -479,8 +528,8 @@ final class ReadEmitter {
 
         out.line("default:");
         out.indent();
-        emitDuplicateOneOfCheck(out, consumedDiscriminator, "parser.currentName()");
-        emitUnknownObjectProperty(out, value, "parser.currentName()");
+        emitDuplicateOneOfCheck(out, consumedDiscriminator, unknownNameExpression);
+        emitUnknownObjectProperty(out, value, unknownNameExpression);
         out.line("break;");
         out.dedent();
 
