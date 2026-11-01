@@ -102,6 +102,27 @@ class CompiledObntCodecTest {
                 simple::readToken, simple::writeToken);
     }
 
+    @Test
+    void jackson2InlineFallbackReusesDynamicNamesWithAliasesAndUnknownMembers() throws Exception {
+        Jackson2Compiled binder = CompiledInstances.create(Jackson2Compiled.class);
+        OpenJojo value = binder.readJojo(
+                "{\"id\":8,\"name\":\"first\",\"payload\":{},\"items\":[],"
+                        + "\"extra\":{\"nested\":[1,2]},\"note\":null,"
+                        + "\"oldName\":\"alias\",\"readOnly\":\"ignored\","
+                        + "\"名字\":true}");
+        assertEquals(8L, value.id);
+        assertEquals("alias", value.name);
+        assertTrue(value.dynamicMembers().containsKey("extra"));
+        assertTrue(value.dynamicMembers().containsKey("note"));
+        assertTrue(value.dynamicMembers().containsKey("名字"));
+        assertFalse(value.dynamicMembers().containsKey("oldName"));
+        assertFalse(value.dynamicMembers().containsKey("readOnly"));
+        JsonNode tree = JSON.readTree(binder.writeJojo(value));
+        assertEquals(2, tree.path("extra").path("nested").size());
+        assertTrue(tree.path("note").isNull());
+        assertTrue(tree.path("名字").asBoolean());
+    }
+
     private static void check(String name, Binder<?, ?> runtime,
                               Reader<CodecPojo> readCodec, Writer<CodecPojo> writeCodec,
                               Reader<OpenJojo> readJojo, Writer<OpenJojo> writeJojo,
