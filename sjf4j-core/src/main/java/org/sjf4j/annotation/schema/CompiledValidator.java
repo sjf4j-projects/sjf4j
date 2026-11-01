@@ -14,8 +14,10 @@ import java.lang.annotation.Target;
  * Schema binding is resolved in this order: method-level
  * {@link ValidJsonSchema}, parameter-level annotation, then type annotations
  * (including annotated superclasses in parent-to-child order).
- * Schema resources are analyzed during annotation processing; generated
- * fallback plans load the original annotations or resources at runtime.
+ * Each selected {@link ValidJsonSchema} must supply an inline {@code value};
+ * resource {@code ref} attributes and implicit schema file lookup are not supported,
+ * because external resource changes cannot reliably trigger incremental Java compilation.
+ * Generated fallback plans load the inline schema from its original annotation;
  * Schema JSON is not duplicated in the generated implementation.
  * When {@link #fallback()} is false, compilation fails unless the validator can
  * generate all checks without relying on a runtime SchemaPlan.</p>
