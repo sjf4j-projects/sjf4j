@@ -11,6 +11,7 @@ import org.sjf4j.schema.JsonSchema;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -39,6 +40,15 @@ public class CompiledValidatorValueBindingTest {
         }
     }
 
+    @NodeValue
+    public static final class ListValue {
+        @ValueToRaw
+        public List<Object> toRaw() { return List.of("abc"); }
+
+        @RawToValue
+        public static ListValue fromRaw(List<Object> raw) { return new ListValue(); }
+    }
+
     @CompiledValidator(fallback = false)
     public interface Validator {
         @ValidJsonSchema(SCHEMA)
@@ -46,6 +56,12 @@ public class CompiledValidatorValueBindingTest {
 
         @ValidJsonSchema(SCHEMA)
         boolean wrapped(MapValue value);
+
+        @ValidJsonSchema("{\"required\":[\"name\"]}")
+        boolean untypedRequired(Object value);
+
+        @ValidJsonSchema("{\"type\":\"array\",\"minItems\":1}")
+        boolean array(Object value);
     }
 
     @Test
@@ -62,6 +78,28 @@ public class CompiledValidatorValueBindingTest {
             boolean expected = JsonSchema.fromJson(SCHEMA).createPlan().isValid(value);
             assertEquals(expected, compiled.object(value));
             assertEquals(expected, compiled.wrapped(value));
+            // The Map encoding is a leaf representation, not traversable OBNT.
+            assertEquals(false, expected);
         }
+    }
+
+    @Test
+    void valueBindingsRemainLeavesEvenWithContainerRawEncodings() {
+        Validator compiled = CompiledInstances.create(Validator.class);
+        MapValue wrapped = new MapValue(Map.of("name", "Alice"));
+        MapValue missing = new MapValue(Map.of("missing", 1));
+
+        // Raw Map itself is traversable; a Map-valued @NodeValue is not.
+        assertEquals(true, compiled.object(Map.of("name", "Alice")));
+        assertEquals(false, compiled.object(wrapped));
+        assertEquals(true, compiled.untypedRequired(wrapped));
+        assertEquals(true, compiled.untypedRequired(missing));
+        assertEquals(false, compiled.untypedRequired(Map.of("missing", 1)));
+
+        ListValue listValue = new ListValue();
+        assertEquals(true, compiled.array(List.of("abc")));
+        assertEquals(false, compiled.array(listValue));
+        assertEquals(JsonSchema.fromJson("{\"type\":\"array\",\"minItems\":1}")
+                .createPlan().isValid(listValue), compiled.array(listValue));
     }
 }
