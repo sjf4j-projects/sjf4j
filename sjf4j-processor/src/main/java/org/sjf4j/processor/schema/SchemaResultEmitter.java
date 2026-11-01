@@ -232,16 +232,14 @@ final class SchemaResultEmitter {
         if (check.items != null) {
             String index = "_resultIndex" + sequence++;
             String item = "_resultItem" + sequence++;
-            String element = value.shape == SchemaValue.Shape.ARRAY
-                    ? expression + "[" + index + "]"
-                    : "org.sjf4j.Nodes.getInArray(" + expression + ", " + index + ")";
-            String size = value.shape == SchemaValue.Shape.ARRAY
-                    ? expression + ".length" : expression + ".size()";
-            out.add("for (int " + index + " = 0; " + index + " < " + size + "; " + index + "++) {");
-            out.add(check.itemValue.localType() + " " + item + " = " + element + ";");
+            String itemType = check.itemValue.type == null
+                    ? "Object" : check.itemValue.type.toString();
+            out.add("int " + index + " = 0;");
+            out.add("for (" + itemType + " " + item + " : " + expression + ") {");
             emit(out, check.items, check.itemValue, item,
                     "new org.sjf4j.path.PathSegment.Index(" + path + ", " + index + ")",
                     plan, strict);
+            out.add(index + "++;");
             out.add("}");
         }
         if (value.nullable) out.add("}");
