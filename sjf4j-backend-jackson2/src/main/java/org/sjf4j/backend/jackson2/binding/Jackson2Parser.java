@@ -363,6 +363,22 @@ public final class Jackson2Parser extends StreamingParser {
         throw expected("string or null", current);
     }
 
+    /**
+     * Reads a string/null value already advanced by a compiled native array loop.
+     * Unlike readString(), no token is advanced or handed through prefetched.
+     * Call only when the native parser is positioned on the array element.
+     */
+    public String readCurrentString() throws IOException {
+        JsonToken token = parser.currentToken();
+        if (token == JsonToken.VALUE_STRING) {
+            return parser.getText();
+        }
+        if (token == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        throw expected("string or null", token);
+    }
+
     @Override
     public Number readNumber() throws IOException {
         JsonToken current = nextValue();
