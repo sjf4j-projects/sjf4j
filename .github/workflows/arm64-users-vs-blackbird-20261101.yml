@@ -1,0 +1,62 @@
+name: SJF4J Users Blackbird vs Compiled ARM64
+on:
+  push:
+    branches:
+      - experiment/jackson2-users-blackbird-arm64-20261101
+  workflow_dispatch:
+
+jobs:
+  arm64-users:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Record hardware
+        run: |
+          mkdir -p diagnostics
+          java -version 2> diagnostics/java-version.txt
+          lscpu > diagnostics/lscpu.txt
+      - name: Build benchmark JAR
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Measure Jackson Blackbird and current-main Compiled on identical payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_(native|blackbird|compiled)$' \
+            -p sizeKb=1 -p seed=12,3285,5678,12345 \
+            -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
+            -prof gc -rf json -rff arm64-users.json 2>&1 | tee arm64-users.log
+      - name: Summarize
+        run: |
+          python3 - <<'PY'
+          import json,statistics
+          with open('arm64-users.json') as f: data=json.load(f)
+          rows={(int(r['params']['seed']),r['benchmark'].rsplit('.',1)[-1]):r for r in data}
+          print('seed native_us blackbird_us compiled_us compiled_vs_blackbird_% native_B/op blackbird_B/op compiled_B/op')
+          for seed in [12,3285,5678,12345]:
+              x=[rows[(seed,'users_jackson2_'+name)] for name in ['native','blackbird','compiled']]
+              n,b,c=[r['primaryMetric']['score'] for r in x]
+              alloc=[r['secondaryMetrics']['gc.alloc.rate.norm']['score'] for r in x]
+              print(f'{seed:>5} {n:>9.3f} {b:>12.3f} {c:>11.3f} {(b-c)/b*100:>23.2f} {alloc[0]:>11.1f} {alloc[1]:>14.1f} {alloc[2]:>13.1f}')
+          for name in ['native','blackbird','compiled']:
+              v=[rows[(seed,'users_jackson2_'+name)]['primaryMetric']['score'] for seed in [12,3285,5678,12345]]
+              print(f'MEAN {name} {statistics.mean(v):.3f} us/op')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sjf4j-users-blackbird-compiled-arm64-jdk25
+          path: |
+            arm64-users.json
+            arm64-users.log
+            diagnostics/**
+          if-no-files-found: warn
