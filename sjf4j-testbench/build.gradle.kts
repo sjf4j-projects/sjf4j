@@ -32,7 +32,7 @@ dependencies {
     implementation(project(":sjf4j-backend-snake"))
 
     implementation("tools.jackson.core:jackson-databind:3.2.3")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
     implementation("com.google.code.gson:gson:2.13.1")
     implementation("com.alibaba.fastjson2:fastjson2:2.0.59")
     implementation("jakarta.json:jakarta.json-api:2.1.3")
@@ -64,9 +64,9 @@ dependencies {
 
     jmhImplementation("org.mapstruct:mapstruct:1.6.3")
     jmhAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
-    jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.3")
-    jmhImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.3")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
+    jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.17.1")
+    jmhImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1")
     jmhImplementation("tools.jackson.core:jackson-databind:3.2.3")
     jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.2.3")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
