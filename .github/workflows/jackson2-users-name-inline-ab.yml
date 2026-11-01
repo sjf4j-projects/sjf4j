@@ -1,0 +1,96 @@
+name: Jackson2 Users Inline Name A-B
+on:
+  push:
+    branches:
+      - experiment/jackson2-users-inline-name-ab-20261101
+  workflow_dispatch:
+
+jobs:
+  users-inline-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      BASE_SHA: 3fd9cdd3f48b4640baf8bd024e38e02768c51380
+      VARIANT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Record hardware
+        run: |
+          mkdir -p diagnostics
+          java -version 2> diagnostics/java-version.txt
+          lscpu > diagnostics/lscpu.txt
+      - name: Baseline A - current matcher call
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASE_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
+          SRC="$(find sjf4j-testbench/build/generated -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print -quit)"
+          test -n "$SRC"
+          grep -Fq '.matchNext(nativeParser, expectedNameIndex)' "$SRC"
+          cp "$SRC" diagnostics/baseline-generated.java
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" '.*FabienReadBenchmark\\.users_jackson2_compiled$' \
+            -p sizeKb=1,5,10 -p seed=12,3285,5678 \
+            -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
+            -prof gc -rf json -rff baseline-users.json \
+            2>&1 | tee baseline-users.log
+      - name: Variant B - generated native expected-name inline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$VARIANT_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
+          SRC="$(find sjf4j-testbench/build/generated -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print -quit)"
+          test -n "$SRC"
+          grep -Fq '.serializedName(expectedNameIndex)' "$SRC"
+          grep -Fq 'nativeParser.nextFieldName(' "$SRC"
+          cp "$SRC" diagnostics/inline-generated.java
+          ./gradlew :sjf4j-testbench:test :sjf4j-backend-jackson2:test --no-daemon
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" '.*FabienReadBenchmark\\.users_jackson2_compiled$' \
+            -p sizeKb=1,5,10 -p seed=12,3285,5678 \
+            -f 3 -t 1 -wi 6 -i 7 -w 300ms -r 300ms \
+            -prof gc -rf json -rff inline-users.json \
+            2>&1 | tee inline-users.log
+      - name: Compare A/B per Users workload
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          with open("baseline-users.json") as f: baseline = json.load(f)
+          with open("inline-users.json") as f: inline = json.load(f)
+          def keyed(records):
+              return {(r["params"]["seed"], r["params"]["sizeKb"]): r for r in records}
+          a, b = keyed(baseline), keyed(inline)
+          print("seed  KB  baseline_us  inline_us  improvement_%  baseline_B/op  inline_B/op")
+          for seed, size in sorted(a, key=lambda k:(int(k[1]),int(k[0]))):
+              x, y = a[(seed,size)], b[(seed,size)]
+              va=x["primaryMetric"]["score"]
+              vb=y["primaryMetric"]["score"]
+              alloc_a=x["secondaryMetrics"].get("gc.alloc.rate.norm",{}).get("score",float("nan"))
+              alloc_b=y["secondaryMetrics"].get("gc.alloc.rate.norm",{}).get("score",float("nan"))
+              print(f"{seed:>4} {size:>3} {va:>12.3f} {vb:>10.3f} {(va-vb)/va*100:>13.2f} {alloc_a:>14.1f} {alloc_b:>12.1f}")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jackson2-users-inline-name-ab-jdk25
+          path: |
+            baseline-users.json
+            baseline-users.log
+            inline-users.json
+            inline-users.log
+            diagnostics/**
+          if-no-files-found: warn
