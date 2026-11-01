@@ -186,13 +186,14 @@ abstract class SchemaCheck {
         final int staticPropertyCount;
         final List<String> allowedNames;
         final List<Required> required;
+        final List<DependentRequired> dependentRequired;
         final List<PropertyCheck> properties;
 
         ObjectCheck(boolean dynamic, boolean jsonObject, boolean typeRequired,
                     boolean additionalPropertiesFalse,
                     Integer minProperties, Integer maxProperties, int staticPropertyCount,
                     List<String> allowedNames, List<Required> required,
-                    List<PropertyCheck> properties,
+                    List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
                     Diagnostic typeDiagnostic, Diagnostic minPropertiesDiagnostic,
                     Diagnostic maxPropertiesDiagnostic, Diagnostic requiredDiagnostic,
                     Diagnostic additionalPropertiesDiagnostic) {
@@ -211,6 +212,7 @@ abstract class SchemaCheck {
             this.staticPropertyCount = staticPropertyCount;
             this.allowedNames = Collections.unmodifiableList(new ArrayList<String>(allowedNames));
             this.required = Collections.unmodifiableList(new ArrayList<Required>(required));
+            this.dependentRequired = Collections.unmodifiableList(new ArrayList<DependentRequired>(dependentRequired));
             this.properties = Collections.unmodifiableList(new ArrayList<PropertyCheck>(properties));
         }
 
@@ -230,6 +232,16 @@ abstract class SchemaCheck {
         Required(String name, String staticAccess) {
             this.name = name;
             this.staticAccess = staticAccess;
+        }
+    }
+
+    static final class DependentRequired {
+        final String trigger;
+        final List<String> dependencies;
+
+        DependentRequired(String trigger, List<String> dependencies) {
+            this.trigger = trigger;
+            this.dependencies = Collections.unmodifiableList(new ArrayList<String>(dependencies));
         }
     }
 

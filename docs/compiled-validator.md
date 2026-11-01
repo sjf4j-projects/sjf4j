@@ -222,6 +222,7 @@ The root may contain `type:object`, `properties`, `required`,
 | `required` | Final POJO presence or runtime Nodes key presence; opt-in null-as-missing | Yes |
 | `additionalProperties:false` | Static POJO or runtime key scan for Map/JsonObject/JOJO | Yes |
 | `minProperties`, `maxProperties` | Static POJO property count or runtime object-size check; null-as-missing uses runtime fallback | Yes |
+| `dependentRequired` | Direct dynamic-key checks and constant final-POJO evaluation; ignored under Draft 7 | Yes |
 | `type:string` | Native `String`, `Character`, and enum fields/items | Yes |
 | `minLength`, `maxLength` | Direct string Unicode code-point length | Yes |
 | `pattern` | Static precompiled ECMA-compatible regex; Java `Matcher.find()` | Yes |

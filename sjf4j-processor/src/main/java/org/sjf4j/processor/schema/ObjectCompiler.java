@@ -79,6 +79,7 @@ final class ObjectCompiler {
             if (!key.equals("type") && !key.equals("properties") && !key.equals("required")
                     && !key.equals("additionalProperties")
                     && !key.equals("minProperties") && !key.equals("maxProperties")
+                    && !key.equals("dependentRequired")
                     && !SchemaCompiler.isAnnotation(key)) return null;
         }
         boolean typeRequired = root.containsKey("type");
@@ -86,7 +87,8 @@ final class ObjectCompiler {
         if (!typeRequired && !root.containsKey("properties") && !root.containsKey("required")
                 && !root.containsKey("additionalProperties")
                 && !root.containsKey("minProperties")
-                && !root.containsKey("maxProperties")) return null;
+                && !root.containsKey("maxProperties")
+                && !root.containsKey("dependentRequired")) return null;
         Object raw = root.getNode("properties");
         if (raw != null && JsonType.of(raw) != JsonType.OBJECT) return null;
         JsonObject propertyMap = raw == null ? new JsonObject() : Nodes.toJsonObject(raw);
@@ -107,6 +109,35 @@ final class ObjectCompiler {
                 if (!dynamic && !javaProperties.containsKey(name)) {
                     // The complete final POJO projection cannot satisfy this required key.
                     return missingRequired(rootUri, typeRequired);
+                }
+            }
+        }
+        List<SchemaCheck.DependentRequired> dependencies = new ArrayList<SchemaCheck.DependentRequired>();
+        if (root.containsKey("dependentRequired")) {
+            Boolean supported = SchemaCompiler.supportsDependentRequired(snapshot, rootUri, root);
+            if (supported == null) return null;
+            if (supported) {
+                Object rawDependencies = root.getNode("dependentRequired");
+                if (JsonType.of(rawDependencies) != JsonType.OBJECT) return null;
+                JsonObject dependencyMap = Nodes.toJsonObject(rawDependencies);
+                for (String trigger : dependencyMap.keySet()) {
+                    Object rawNames = dependencyMap.getNode(trigger);
+                    if (JsonType.of(rawNames) != JsonType.ARRAY) return null;
+                    List<String> names = new ArrayList<String>();
+                    for (int i = 0; i < Nodes.sizeInArray(rawNames); i++) {
+                        Object name = Nodes.getInArray(rawNames, i);
+                        if (!(name instanceof String) || names.contains(name)) return null;
+                        names.add((String) name);
+                    }
+                    if (dynamic) {
+                        if (!names.isEmpty())
+                            dependencies.add(new SchemaCheck.DependentRequired(trigger, names));
+                    } else if (javaProperties.containsKey(trigger)) {
+                        for (String name : names) {
+                            if (!javaProperties.containsKey(name))
+                                return missingObjectConstraint(rootUri, typeRequired, "dependentRequired");
+                        }
+                    }
                 }
             }
         }
@@ -146,6 +177,7 @@ final class ObjectCompiler {
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
         int directCount = (typeRequired && propertyMap.isEmpty() ? 1 : 0)
                 + (required != null ? 1 : 0)
+                + (!dependencies.isEmpty() ? 1 : 0)
                 + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0)
                 + (minProperties != null || maxProperties != null ? 1 : 0);
         for (String name : propertyMap.keySet()) {
@@ -161,7 +193,8 @@ final class ObjectCompiler {
             else directCount++;
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
         }
-        if (directCount == 0) return null;
+        if (directCount == 0) return root.containsKey("dependentRequired")
+                ? new SchemaCheck.Pass() : null;
         // JOJO inherits the public JsonObject operations, so generated code
         // can bypass generic Nodes dispatch while preserving dynamic keys.
         boolean jsonObject = dynamic && type != null && (context.types.nodeKind(type) == NodeKind.OBJECT_JSON_OBJECT
@@ -169,7 +202,7 @@ final class ObjectCompiler {
         return new SchemaCheck.ObjectCheck(dynamic, jsonObject, typeRequired,
                 Boolean.FALSE.equals(additional),
                 minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
-                new ArrayList<String>(propertyMap.keySet()), requiredChecks, properties,
+                new ArrayList<String>(propertyMap.keySet()), requiredChecks, dependencies, properties,
                 typeRequired ? SchemaCompiler.diagnostic(rootUri, "type") : null,
                 minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
                 maxProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "maxProperties"),
@@ -183,7 +216,11 @@ final class ObjectCompiler {
      * required property can only satisfy a type-less schema when it is null.
      */
     private static SchemaCheck missingRequired(String uri, boolean typeRequired) {
-        SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(uri, "required");
+        return missingObjectConstraint(uri, typeRequired, "required");
+    }
+
+    private static SchemaCheck missingObjectConstraint(String uri, boolean typeRequired, String keyword) {
+        SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(uri, keyword);
         if (typeRequired) return new SchemaCheck.Reject(diagnostic);
         return new SchemaCheck.TypeCheck(java.util.Collections.singletonList("null"), diagnostic);
     }

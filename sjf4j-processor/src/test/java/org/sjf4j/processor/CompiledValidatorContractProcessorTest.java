@@ -69,6 +69,48 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void dependentRequiredCompilesWithoutSchemaPlan() throws Exception {
+        String schema = "{\"type\":\"object\",\"dependentRequired\":{\"a\":[\"b\",\"c\"]}}";
+        String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                + "boolean valid(Map<String,Object> value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Check.java", source), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains("keySetInObject"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+    }
+
+    @Test
+    void dependentRequiredOnFinalPojoCompilesToConstantReject() throws Exception {
+        String schema = "{\"type\":\"object\",\"dependentRequired\":{\"name\":[\"missing\"]}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.generatedSource("fixture/Check_Impl.java").contains("return false;"));
+    }
+
+    @Test
+    void draft07DependentRequiredIsIgnoredByCompiledValidator() throws Exception {
+        String schema = "{\"$schema\":\"http://json-schema.org/draft-07/schema#\","
+                + "\"dependentRequired\":{\"a\":[\"b\"]}}";
+        String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                + "boolean valid(Map<String,Object> value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Check.java", source), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertFalse(generated.contains("keySetInObject"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+    }
+
+    @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "

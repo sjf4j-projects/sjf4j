@@ -68,6 +68,22 @@ final class SchemaEmitter {
                                 + ").contains(" + literal(required.name) + ")";
                 statements.add("if (!" + contains + ") " + onFailure);
             }
+            if (!check.dependentRequired.isEmpty()) {
+                String keys = "_keys_" + helperPrefix + "_" + helperCount++;
+                statements.add("java.util.Set<String> " + keys + " = "
+                        + (check.jsonObject ? variable + ".keySet()"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ";");
+                for (SchemaCheck.DependentRequired dependency : check.dependentRequired) {
+                    StringBuilder missing = new StringBuilder();
+                    for (String name : dependency.dependencies) {
+                        if (missing.length() != 0) missing.append(" || ");
+                        missing.append("!").append(keys).append(".contains(")
+                                .append(literal(name)).append(")");
+                    }
+                    statements.add("if (" + keys + ".contains(" + literal(dependency.trigger)
+                            + ") && (" + missing + ")) " + onFailure);
+                }
+            }
             if (check.additionalPropertiesFalse) {
                 statements.add("for (String _key : " + (check.jsonObject ? variable + ".keySet()"
                         : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
