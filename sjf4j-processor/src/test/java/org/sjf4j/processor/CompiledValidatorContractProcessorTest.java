@@ -25,6 +25,32 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void dependentRequiredCompilesWithoutSchemaPlan() throws Exception {
+        String schema = "{\"type\":\"object\",\"dependentRequired\":{\"a\":[\"b\",\"c\"]}}";
+        String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator public interface Check { "
+                + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                + "boolean valid(Map<String,Object> value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Check.java", source), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains("keySetInObject"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+    }
+
+    @Test
+    void dependentRequiredOnKnownPojoRequiresKnownDependencies() throws Exception {
+        String schema = "{\"type\":\"object\",\"dependentRequired\":{\"name\":[\"missing\"]}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+    }
+
+    @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
