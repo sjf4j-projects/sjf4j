@@ -29,13 +29,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SRC="$(find sjf4j-testbench/build -type f -name '*FabienCompiled_Impl.java' -print -quit)"
-          test -n "$SRC"
-          grep -q 'matchNext(nativeParser' "$SRC"
-          grep -q 'nativeParser.nextToken()' "$SRC"
+          echo "Generated candidates:"
+          find sjf4j-testbench/build -type f -name '*Fabien*Compiled*.java' -print
+          SRC="$(find sjf4j-testbench/build -type f -name '*Fabien*Compiled*.java' -print -quit)"
+          if [ -z "$SRC" ]; then echo "No generated Fabien compiled source found"; exit 1; fi
           mkdir -p diagnostics/generated
           cp "$SRC" diagnostics/generated/
-          echo "Native compiled object and array loops verified in $SRC"
+          echo "Inspecting $SRC"
+          grep -nE 'nativeParser|nextNameMatch|matchNext|nextIfArrayEnd' "$SRC" | head -70 || true
+          grep -Fq 'matchNext(nativeParser' "$SRC" || { echo "Missing native name match"; exit 1; }
+          grep -Fq 'nativeParser.nextToken()' "$SRC" || { echo "Missing native array loop"; exit 1; }
+          echo "Native compiled object and array loops verified"
       - name: Verify compiled binding and Jackson2 regression tests
         run: ./gradlew :sjf4j-testbench:test :sjf4j-backend-jackson2:test --no-daemon
       - name: Benchmark four retained readers
