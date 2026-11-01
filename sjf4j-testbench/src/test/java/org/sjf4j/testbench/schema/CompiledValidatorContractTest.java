@@ -55,6 +55,38 @@ class CompiledValidatorContractTest {
         void requireValid(Name value, boolean strictFormat);
     }
 
+    @CompiledValidator(fallback = false)
+    public interface ApplicatorValidator {
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"string\",\"minLength\":3},"
+                + "{\"type\":\"string\",\"minLength\":5}]}")
+        void requireOneOf(String value);
+
+        @ValidJsonSchema("{\"anyOf\":[{\"type\":\"string\",\"minLength\":3},"
+                + "{\"type\":\"number\",\"minimum\":10}]}")
+        void requireAnyOf(Object value);
+
+        @ValidJsonSchema("{\"not\":{\"type\":\"integer\"}}")
+        void requireNot(Object value);
+    }
+
+    @Test
+    void nativeRequireValidKeepsNestedPredicatesBoolean() {
+        ApplicatorValidator validator = CompiledInstances.create(ApplicatorValidator.class);
+
+        // Overlapping oneOf branches: exactly one match is required.
+        assertDoesNotThrow(() -> validator.requireOneOf("abcd"));
+        assertThrows(ValidationException.class, () -> validator.requireOneOf("ab"));
+        assertThrows(ValidationException.class, () -> validator.requireOneOf("abcdef"));
+
+        // anyOf accepts either branch; not inverts the nested predicate.
+        assertDoesNotThrow(() -> validator.requireAnyOf("hello"));
+        assertDoesNotThrow(() -> validator.requireAnyOf(11));
+        assertThrows(ValidationException.class, () -> validator.requireAnyOf("x"));
+        assertThrows(ValidationException.class, () -> validator.requireAnyOf(5));
+        assertDoesNotThrow(() -> validator.requireNot("text"));
+        assertThrows(ValidationException.class, () -> validator.requireNot(12));
+    }
+
     @Test
     void compiledBooleanUsesStrictFormatOnlyWhenRequested() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
