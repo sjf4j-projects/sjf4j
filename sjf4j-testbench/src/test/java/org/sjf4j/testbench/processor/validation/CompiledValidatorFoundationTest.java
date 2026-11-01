@@ -127,7 +127,7 @@ class CompiledValidatorFoundationTest {
         public int getLevel() { return level; }
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface FastPojoValidator {
         @ValidJsonSchema(FAST_SCHEMA)
         boolean test(FastPojo input);
@@ -152,7 +152,7 @@ class CompiledValidatorFoundationTest {
         public String getName() { return name; }
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface DirectValidator {
         @ValidJsonSchema("{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":2,\"maxLength\":10}}}")
         boolean valid(DirectBean input);
@@ -180,7 +180,7 @@ class CompiledValidatorFoundationTest {
         public java.util.List<Integer> getTags() { return tags; }
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface MixedValidator {
         @ValidJsonSchema("{\"type\":\"object\",\"properties\":{"
                 + "\"name\":{\"type\":\"string\",\"minLength\":2},"
@@ -236,7 +236,7 @@ class CompiledValidatorFoundationTest {
 
     public record Payload(String value) {}
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface PersonValidator {
         boolean isValid(Employee employee);
         ValidationResult validate(Employee employee);

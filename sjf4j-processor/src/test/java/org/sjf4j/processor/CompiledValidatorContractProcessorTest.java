@@ -37,6 +37,50 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void rejectsUnsupportedRequireValidWhenFallbackDisabled() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^x\":true}}") + ") "
+                        + "void requireValid(Model value); }");
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+    }
+
+    @Test
+    void rejectsResultWithoutExplicitFallback() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral("true") + ") "
+                        + "org.sjf4j.schema.ValidationResult validate(Model value); }");
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("ValidationResult methods require @CompiledValidator(fallback=true)"),
+                result.diagnostics());
+    }
+
+    @Test
+    void allowsResultWithExplicitFallback() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=true) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral("true") + ") "
+                        + "org.sjf4j.schema.ValidationResult validate(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains(".validate("), generated);
+    }
+
+    @Test
+    void defaultFallbackRejectsUnsupportedChecks() throws Exception {
+        String schema = "{\"patternProperties\":{\"^x\":true}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+    }
+
+    @Test
     void allowsStrictFormatParameterOnFullyDirectMethod() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
@@ -83,7 +127,7 @@ class CompiledValidatorContractProcessorTest {
                 + "\"items\":{\"oneOf\":[{\"type\":\"string\",\"enum\":[\"A\"]},"
                 + "{\"type\":\"number\",\"minimum\":1}]}}}}";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema)
                 + ") boolean valid(Model value, boolean strictFormat); }";
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
@@ -138,7 +182,7 @@ class CompiledValidatorContractProcessorTest {
     void annotatedStrictFormatMethodResolvesBothReflectionParameters() throws Exception {
         String schema = "{\"type\":\"object\",\"properties\":{\"name\":{\"format\":\"email\"}}}";
         NavigatorTestCompiler.Result result = compile(
-                "@CompiledValidator public interface Check { "
+                "@CompiledValidator(fallback=true) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
                         + "boolean valid(Model value, boolean strictFormat); }");
         assertTrue(result.success, result.diagnostics());

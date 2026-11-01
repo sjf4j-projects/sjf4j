@@ -36,7 +36,7 @@ class CompiledValidatorArchitectureTest {
                 + "public List<Object> getItems() { return List.of(\"A\"); } }";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "import org.sjf4j.schema.ValidationResult; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + "boolean first(Model value); "
                 + "boolean second(Model value, boolean strictFormat); "
                 + "void requireValid(Model value); "
@@ -54,17 +54,35 @@ class CompiledValidatorArchitectureTest {
         assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
         assertFalse(generated.contains(".isValid("), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
-        assertTrue(generated.contains(".ROOT.requireValid("), generated);
+        assertFalse(generated.contains(".ROOT.requireValid("), generated);
         assertTrue(generated.contains(".ROOT.validate("), generated);
         assertTrue(generated.contains(".codePointCount("), generated);
         assertTrue(generated.contains(".size()"), generated);
     }
 
     @Test
+    void requireValidUsesDirectGuardsAndOnlyLoadsDiagnosticsOnFailure() throws Exception {
+        String schema = MIXED;
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "void requireValid(Model value); }";
+        NavigatorTestCompiler.Result result = compile(MODEL, validator);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains(".codePointCount("), generated);
+        assertTrue(generated.contains("throw new ValidationException("), generated);
+        assertTrue(generated.contains(".ROOT.validate("), generated);
+        assertFalse(generated.contains(".ROOT.requireValid("), generated);
+        // Unsupported assertions remain forbidden by fallback=false; only
+        // diagnostic reporting of a failed compiled assertion uses SchemaPlan.
+    }
+
+    @Test
     void sharesFallbackAcrossDistinctAnnotationsAndJavaTypesForSameResource() throws Exception {
         String ref = "@ValidJsonSchema(ref = \"classpath:/schema/compiled-validator-shared-fallback.json\") ";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + ref + "boolean first(Model value); "
                 + ref + "boolean second(Model value, boolean strictFormat); "
                 + ref + "void requireValid(Model value); "
@@ -77,7 +95,7 @@ class CompiledValidatorArchitectureTest {
         assertEquals(1, occurrences(generated, "new SchemaRegistry()"), generated);
         assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
         assertTrue(generated.contains("_matches_"), generated);
-        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.requireValid("), generated);
+        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
     }
 
@@ -106,7 +124,7 @@ class CompiledValidatorArchitectureTest {
         String two = "{\"type\":\"object\",\"properties\":{"
                 + "\"name\":{\"type\":\"string\",\"pattern\":\"^b\"}}}";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator public interface Check { "
+                + "@CompiledValidator(fallback=true) public interface Check { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(one) + ") "
                 + "boolean email(Model value); "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(two) + ") "

@@ -107,7 +107,7 @@ class CompiledValidatorConditionalTest {
         @ValidJsonSchema(ADDRESS) boolean address(Map<String, Object> value);
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface Runtime {
         @ValidJsonSchema(UNEVALUATED) boolean unevaluated(Map<String, Object> value);
         @ValidJsonSchema(UNSUPPORTED) boolean unsupported(String value);

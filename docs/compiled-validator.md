@@ -19,11 +19,16 @@ public interface UserValidator {
     @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     void requireValid(User user);
 
-    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
-    ValidationResult validate(User user, boolean strictFormat);
 }
 
 UserValidator validator = CompiledInstances.create(UserValidator.class);
+
+// Aggregated diagnostics are an explicit runtime opt-in.
+@CompiledValidator(fallback = true)
+public interface UserDiagnosticValidator {
+    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
+    ValidationResult validate(User user, boolean strictFormat);
+}
 ```
 
 The return type, not the method name, selects the validation operation:
@@ -31,7 +36,7 @@ The return type, not the method name, selects the validation operation:
 | Return type | Equivalent SchemaPlan semantics | Failure behavior |
 | --- | --- | --- |
 | `boolean` | `isValid(value, strictFormat)` | Fail fast, return false; do not create diagnostics |
-| `void` | `requireValid(value, strictFormat)` | Fail fast; throw `ValidationException` with diagnostics |
+| `void` | `requireValid(value, strictFormat)` | Native fail-fast checks when fully compiled; on failure, produce diagnostics and throw `ValidationException` |
 | `ValidationResult` | `validate(value, false, strictFormat)` | Collect **all** errors, return the result |
 
 Each abstract method accepts **one fully resolved value parameter**, optionally
@@ -79,18 +84,24 @@ represented as absent properties.
 ## Compilation and fallback
 
 ```java
-@CompiledValidator(fallback = false)
+@CompiledValidator // fallback=false by default
 public interface FastValidator {
     boolean isValid(MyPojo value);
 }
 ```
 
-The default is `fallback = true`, which allows the generator to use a
-`SchemaPlan` for unsupported keywords or a remaining property subtree. With
-`fallback = false`, **every check for every method must be emitted directly**;
-otherwise annotation processing fails. It never silently generates a
-`SchemaPlan` call. The restriction applies to both return types and keyword
-combinations, not only to isolated keywords.
+The default is `fallback = false`: **every assertion must be compiled**
+or annotation processing fails. Set `fallback = true` explicitly to allow
+`SchemaPlan` for unsupported keywords or a remaining property subtree.
+Methods returning `ValidationResult` always use runtime `SchemaPlan.validate`
+for complete diagnostics, and therefore **require `fallback = true`**.
+Otherwise annotation processing reports an explicit error. Unsupported assertions never silently
+fall back to `SchemaPlan`. For `void requireValid`, successfully compiled
+assertions run natively, while a **failed assertion only** invokes the shared
+`SchemaPlan` to materialize the original keyword and instance-path diagnostics.
+No `SchemaPlan` evaluation occurs on the valid fast path. The restriction
+applies to both return types and keyword combinations, not only to isolated
+keywords.
 
 The generated implementation supports
 `CompiledInstances.create(Validator.class)` and the existing
@@ -226,7 +237,9 @@ must pass for `allOf`, any one may pass for `anyOf` (including overlaps), and
 `not` inverts a full subschema. Assertions alongside applicators are combined
 with logical AND, not skipped. Unsupported or evaluated-state-dependent branches
 fall back as a complete combinator scope. The boolean direct path preserves
-`strictFormat`; diagnostic modes retain SchemaPlan.
+`strictFormat`; `requireValid` reuses its fail-fast guards and defers
+diagnostic creation until an assertion fails. Aggregating `ValidationResult`
+continues to use `SchemaPlan`.
 
 Conditional `if/then/else` compiles to one boolean predicate for `if` and
 exactly one selected branch. If `if` is absent, `then` and `else` have no

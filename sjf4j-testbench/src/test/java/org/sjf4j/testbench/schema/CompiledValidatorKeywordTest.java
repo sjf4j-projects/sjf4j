@@ -155,7 +155,7 @@ class CompiledValidatorKeywordTest {
         @ValidJsonSchema(PRIMITIVE_REQUIRED) boolean valid(PrimitiveModel model);
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface ScopedRefs {
         @ValidJsonSchema(SCOPED_REF) boolean valid(Values value);
     }

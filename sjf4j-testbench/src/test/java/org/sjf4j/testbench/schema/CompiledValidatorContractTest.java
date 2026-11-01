@@ -29,7 +29,7 @@ class CompiledValidatorContractTest {
         public String getCode() { return code; }
     }
 
-    @CompiledValidator
+    @CompiledValidator(fallback=true)
     public interface PersonValidator {
         boolean isValid(Person person);
         boolean isValid(Person person, boolean strictFormat);
@@ -51,6 +51,40 @@ class CompiledValidatorContractTest {
     public interface DirectValidator {
         boolean isValid(Name value);
         boolean isValid(Name value, boolean strictFormat);
+        void requireValid(Name value);
+        void requireValid(Name value, boolean strictFormat);
+    }
+
+    @CompiledValidator(fallback = false)
+    public interface ApplicatorValidator {
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"string\",\"minLength\":3},"
+                + "{\"type\":\"string\",\"minLength\":5}]}")
+        void requireOneOf(String value);
+
+        @ValidJsonSchema("{\"anyOf\":[{\"type\":\"string\",\"minLength\":3},"
+                + "{\"type\":\"number\",\"minimum\":10}]}")
+        void requireAnyOf(Object value);
+
+        @ValidJsonSchema("{\"not\":{\"type\":\"integer\"}}")
+        void requireNot(Object value);
+    }
+
+    @Test
+    void nativeRequireValidKeepsNestedPredicatesBoolean() {
+        ApplicatorValidator validator = CompiledInstances.create(ApplicatorValidator.class);
+
+        // Overlapping oneOf branches: exactly one match is required.
+        assertDoesNotThrow(() -> validator.requireOneOf("abcd"));
+        assertThrows(ValidationException.class, () -> validator.requireOneOf("ab"));
+        assertThrows(ValidationException.class, () -> validator.requireOneOf("abcdef"));
+
+        // anyOf accepts either branch; not inverts the nested predicate.
+        assertDoesNotThrow(() -> validator.requireAnyOf("hello"));
+        assertDoesNotThrow(() -> validator.requireAnyOf(11));
+        assertThrows(ValidationException.class, () -> validator.requireAnyOf("x"));
+        assertThrows(ValidationException.class, () -> validator.requireAnyOf(5));
+        assertDoesNotThrow(() -> validator.requireNot("text"));
+        assertThrows(ValidationException.class, () -> validator.requireNot(12));
     }
 
     @Test
@@ -103,5 +137,29 @@ class CompiledValidatorContractTest {
         assertTrue(validator.isValid(new Name("ok"), false));
         assertFalse(validator.isValid(new Name("x")));
         assertFalse(validator.isValid(new Name("x"), true));
+    }
+
+    @Test
+    void nativeRequireValidPreservesFullFailureDiagnostics() {
+        DirectValidator validator = CompiledInstances.create(DirectValidator.class);
+        assertDoesNotThrow(() -> validator.requireValid(new Name("good")));
+        assertDoesNotThrow(() -> validator.requireValid(new Name("good"), true));
+        assertDoesNotThrow(() -> validator.requireValid(null));
+
+        ValidationException failure = assertThrows(ValidationException.class,
+                () -> validator.requireValid(new Name("x")));
+        assertFalse(failure.getResult().isValid());
+        SchemaPlan reference = JsonSchema.fromJson(
+                Name.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
+        ValidationException expected = assertThrows(ValidationException.class,
+                () -> reference.requireValid(new Name("x"), false));
+        assertEquals(expected.getResult().getErrors().size(),
+                failure.getResult().getErrors().size());
+        assertEquals(expected.getResult().getLastError().getKeyword(),
+                failure.getResult().getLastError().getKeyword());
+        assertEquals(expected.getResult().getLastError().getInstancePs().rootedPointerExpr(),
+                failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertThrows(ValidationException.class,
+                () -> validator.requireValid(new Name("x"), true));
     }
 }

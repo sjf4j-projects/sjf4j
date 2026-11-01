@@ -65,6 +65,15 @@ final class SchemaMethodGenerator {
             return;
         }
 
+        // Aggregated diagnostics intentionally use the runtime SchemaPlan.
+        // An explicit fallback=true is required for this return type.
+        if (isResult && !allowFallback) {
+            fail(generated, method,
+                    "ValidationResult methods require @CompiledValidator(fallback=true): "
+                    + "aggregating validation is implemented by SchemaPlan");
+            return;
+        }
+
         TypeMirror parameterType = signature.getParameterTypes().get(0);
         List<Binding> bindings = resolveBindings(method, parameterType);
         if (bindings.isEmpty()) {
@@ -92,12 +101,12 @@ final class SchemaMethodGenerator {
         String parameterDeclaration = type + " " + value + (parameterCount == 2
                 ? ", boolean " + strictParam : "");
 
-        // Compile a semantic tree before emitting Java. Only a complete
-        // root check is eligible for the native boolean path.
+        // Boolean and void methods share the same native fail-fast checks.
+        // ValidationResult still uses the runtime engine to accumulate errors.
         SchemaFallbackEmitter.Plan bound = null;
         String booleanLiteral = null;
         SchemaCheck direct = null;
-        if (isBoolean && plans.size() == 1) {
+        if ((isBoolean || isVoid) && plans.size() == 1) {
             bound = plans.get(0);
             booleanLiteral = compileBoolean(bound.snapshot);
             if (booleanLiteral == null) {
@@ -117,11 +126,23 @@ final class SchemaMethodGenerator {
             fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method");
             return;
         }
+        // The same checks serve both APIs; only their failure action differs.
+        // Boolean branch helpers (oneOf/anyOf/not/if) still return boolean.
+        final String failure = isVoid && bound != null
+                ? "throw new org.sjf4j.schema.ValidationException("
+                    + bound.rootReference() + ".validate(" + value + ", true, " + strictParam + "));"
+                : "return false;";
         List<String> emitted = direct == null ? null
                 : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
-                        direct, SchemaValue.of(context, parameterType), value, bound, strictParam);
+                        direct, SchemaValue.of(context, parameterType), value, bound, strictParam,
+                        failure);
         if (fallback && emitted == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
+        }
+        // Valid requireValid calls execute only generated checks. Diagnostics
+        // use the full SchemaPlan lazily, and only after a native check fails.
+        if (isVoid && (emitted != null || "false".equals(booleanLiteral))) {
+            bound.useRoot();
         }
 
         final String literal = booleanLiteral;
@@ -134,10 +155,14 @@ final class SchemaMethodGenerator {
                     + (isBoolean ? "return true;" :
                        isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
             if (literal != null) {
-                out.line("return " + literal + ";");
+                if (isVoid) {
+                    if ("false".equals(literal)) out.line(failure);
+                } else {
+                    out.line("return " + literal + ";");
+                }
             } else if (checks != null) {
                 for (String statement : checks) out.line(statement);
-                out.line("return true;");
+                if (isBoolean) out.line("return true;");
             } else if (isBoolean) {
                 for (SchemaFallbackEmitter.Plan plan : plans) {
                     out.line("if (!" + plan.rootReference() + ".isValid(" + value + ", " + strictParam + ")) return false;");
