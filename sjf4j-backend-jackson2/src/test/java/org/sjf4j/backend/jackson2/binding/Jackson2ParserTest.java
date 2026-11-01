@@ -35,25 +35,25 @@ class Jackson2ParserTest {
             assertEquals(com.fasterxml.jackson.core.JsonToken.START_ARRAY, nativeParser.nextToken());
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_INT, nativeParser.nextToken());
-            reader.adoptNativeToken();
+            reader.reuseCurrentToken();
             assertThrows(IllegalStateException.class, reader::nativeParser);
-            assertThrows(IllegalStateException.class, reader::adoptNativeToken);
+            assertThrows(IllegalStateException.class, reader::reuseCurrentToken);
             assertEquals(7, reader.readIntValue());
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.VALUE_NULL, nativeParser.nextToken());
-            reader.adoptNativeToken();
+            reader.reuseCurrentToken();
             assertNull(reader.readString());
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.VALUE_STRING, nativeParser.nextToken());
-            reader.adoptNativeToken();
+            reader.reuseCurrentToken();
             assertEquals("Ada", reader.readString());
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.START_OBJECT, nativeParser.nextToken());
-            reader.adoptNativeToken();
+            reader.reuseCurrentToken();
             assertEquals(2, ((Map<?, ?>) reader.readRaw()).get("id"));
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.START_ARRAY, nativeParser.nextToken());
-            reader.adoptNativeToken();
+            reader.reuseCurrentToken();
             assertEquals(Arrays.asList(true, null), reader.readRaw());
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.END_ARRAY, nativeParser.nextToken());
