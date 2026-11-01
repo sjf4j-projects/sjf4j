@@ -61,6 +61,25 @@ class CompiledValidatorArchitectureTest {
     }
 
     @Test
+    void requireValidUsesDirectGuardsAndOnlyLoadsDiagnosticsOnFailure() throws Exception {
+        String schema = "{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{"
+                + "\\\"name\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":2}}}";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "void requireValid(Model value); }";
+        NavigatorTestCompiler.Result result = compile(MODEL, validator);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains(".codePointCount("), generated);
+        assertTrue(generated.contains("throw new org.sjf4j.schema.ValidationException("), generated);
+        assertTrue(generated.contains(".ROOT.validate("), generated);
+        assertFalse(generated.contains(".ROOT.requireValid("), generated);
+        // Unsupported assertions remain forbidden by fallback=false; only
+        // diagnostic reporting of a failed compiled assertion uses SchemaPlan.
+    }
+
+    @Test
     void sharesFallbackAcrossDistinctAnnotationsAndJavaTypesForSameResource() throws Exception {
         String ref = "@ValidJsonSchema(ref = \"classpath:/schema/compiled-validator-shared-fallback.json\") ";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
