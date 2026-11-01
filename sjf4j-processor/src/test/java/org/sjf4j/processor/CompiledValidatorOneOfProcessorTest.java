@@ -45,7 +45,8 @@ class CompiledValidatorOneOfProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertFalse(generated.contains("getClass() =="), generated);
-        assertTrue(generated.contains(".isValid("), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+        assertTrue(generated.contains("keySetInObject("), generated);
     }
 
     private static NavigatorTestCompiler.Result compile(boolean exposed) throws Exception {
