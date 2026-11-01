@@ -1,0 +1,48 @@
+name: Fabien Hybrid Jackson2 Reader Diagnosis
+on:
+  push:
+    branches:
+      - experiment/fabien-jackson2-hybrid-reader-20261101
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Record hardware
+        run: |
+          mkdir -p diagnostics
+          java -version 2> diagnostics/java-version.txt
+          lscpu > diagnostics/lscpu.txt
+      - name: Build JMH jar and verify correctness at setup
+        run: ./gradlew :sjf4j-testbench:jmhJar --no-daemon
+      - name: Bench native vs hybrid vs compiled vs equalized Blackbird
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" \
+            '.*FabienReadBenchmark\.(clients_jackson2_(hybrid_handwritten|handwritten_fast_temporal|compiled|blackbird_fast_temporal)|users_jackson2_(compiled|blackbird_fast_temporal))$' \
+            -p sizeKb=1,10 -p seed=12345,324,43201 \
+            -f 3 -t 1 -wi 5 -i 7 -w 250ms -r 250ms \
+            -prof gc -rf json -rff fabien-hybrid-results.json \
+            2>&1 | tee fabien-hybrid-jmh.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fabien-hybrid-reader-jdk25
+          path: |
+            fabien-hybrid-results.json
+            fabien-hybrid-jmh.log
+            diagnostics/**
+          if-no-files-found: warn
