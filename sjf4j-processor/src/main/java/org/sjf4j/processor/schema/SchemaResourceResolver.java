@@ -9,9 +9,9 @@ import org.sjf4j.schema.SchemaRegistry;
 import org.sjf4j.schema.SchemaLoader;
 import org.sjf4j.schema.JsonSchema;
 
-import com.sun.source.util.TreePath;
-import com.sun.source.util.Trees;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
+import javax.tools.JavaFileObject;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.IOException;
@@ -239,9 +239,8 @@ final class SchemaResourceResolver {
     private Path findResourceDirectory(Element sourceElement) {
         if (sourceElement == null) return null;
         try {
-            TreePath sourcePath = Trees.instance(context.processingEnvironment).getPath(sourceElement);
-            if (sourcePath == null || sourcePath.getCompilationUnit().getSourceFile() == null) return null;
-            URI uri = sourcePath.getCompilationUnit().getSourceFile().toUri();
+            URI uri = sourceUri(sourceElement);
+            if (uri == null) return null;
             if (!"file".equalsIgnoreCase(uri.getScheme())) return null;
             Path directory = Paths.get(uri).toAbsolutePath().normalize().getParent();
             while (directory != null) {
@@ -259,8 +258,32 @@ final class SchemaResourceResolver {
                 directory = directory.getParent();
             }
         } catch (IllegalArgumentException | UnsupportedOperationException ignored) {
-            // Some compiler implementations do not expose source locations through Trees.
+            // Some source URIs cannot be represented as local file paths.
         }
         return null;
+    }
+
+    /**
+     * Uses the javac Tree API when present without linking it at compile time:
+     * this processor is compiled with --release 8, where com.sun.source.* is
+     * intentionally unavailable on the Java platform API surface.
+     */
+    private URI sourceUri(Element element) {
+        try {
+            Class<?> treesType = Class.forName("com.sun.source.util.Trees");
+            Object trees = treesType.getMethod("instance", ProcessingEnvironment.class)
+                    .invoke(null, context.processingEnvironment);
+            Object treePath = treesType.getMethod("getPath", Element.class).invoke(trees, element);
+            if (treePath == null) return null;
+
+            Class<?> pathType = Class.forName("com.sun.source.util.TreePath");
+            Object unit = pathType.getMethod("getCompilationUnit").invoke(treePath);
+            Class<?> unitType = Class.forName("com.sun.source.tree.CompilationUnitTree");
+            JavaFileObject file = (JavaFileObject) unitType.getMethod("getSourceFile").invoke(unit);
+            return file == null ? null : file.toUri();
+        } catch (ReflectiveOperationException | IllegalArgumentException | SecurityException ignored) {
+            // Other compilers or processing wrappers may not expose the Tree API.
+            return null;
+        }
     }
 }
