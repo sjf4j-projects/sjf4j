@@ -31,7 +31,7 @@ final class SchemaEmitter {
         // object-only keywords. Keep the fast path for known object types, but
         // emit the shape/applicability guard for Object-typed roots.
         if (check.kind == SchemaCheck.Kind.OBJECT
-                && value.shape != SchemaValue.Shape.DYNAMIC) {
+                && !((SchemaCheck.ObjectCheck) check).dynamic) {
             return emit((SchemaCheck.ObjectCheck) check, variable, plan, strictFormat, onFailure);
         }
         List<String> lines = new ArrayList<String>();
@@ -147,7 +147,9 @@ final class SchemaEmitter {
                 return;
             case OBJECT:
                 SchemaCheck.ObjectCheck object = (SchemaCheck.ObjectCheck) check;
-                boolean unknownShape = object.dynamic && value.shape == SchemaValue.Shape.DYNAMIC;
+                // Nodes-based access must check runtime shape even when the declared
+                // Java type is a non-final base class or interface.
+                boolean unknownShape = object.dynamic;
                 if (object.typeRequired) {
                     if (value.nullable) lines.add("if (" + expression + " == null) " + onFailure);
                     if (unknownShape) {
