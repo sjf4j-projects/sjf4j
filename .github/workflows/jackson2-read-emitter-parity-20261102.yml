@@ -41,57 +41,32 @@ jobs:
           mkdir -p "$RUNNER_TEMP/parity/variant"
           cp -a sjf4j-testbench/build/generated/. "$RUNNER_TEMP/parity/variant/"
           echo "Refactor sources: $(find "$RUNNER_TEMP/parity/variant" -name '*.java' | wc -l)"
-      - name: Compare every generated Java source byte for byte
+      - name: Compare generated Java sources (ignore MapStruct build timestamps)
         shell: bash
         run: |
           python3 - <<'PY'
-          import difflib
           import os
           import pathlib
           import sys
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'parity'
-          def files(name):
+          def load(name):
               folder = root / name
               return {p.relative_to(folder).as_posix(): p.read_bytes() for p in folder.rglob('*.java')}
-          a, b = files('base'), files('variant')
-          print(f'Generated Java sources: baseline={len(a)}, refactor={len(b)}')
-          missing_a = sorted(b.keys() - a.keys())
-          missing_b = sorted(a.keys() - b.keys())
-          import re
-          def normalize(name, source):
-              # MapStruct writes the wall-clock compilation date in @Generated.
-              # Do not normalize any other files or generated statements.
-              if name.endswith('$MapStructMapperImpl.java'):
-                  return re.sub(rb'(?m)^(\\s*date = ")[^"]+(",)
-          print(f'Added={len(missing_a)}, removed={len(missing_b)}, changed={len(changed)}')
-          for name in missing_a[:10]: print(f'  added {name}')
-          for name in missing_b[:10]: print(f'  removed {name}')
-          for name in changed[:5]:
-              print(f'  changed {name}')
-              d = difflib.unified_diff(a[name].decode('utf-8').splitlines(),
-                                       b[name].decode('utf-8').splitlines(),
-                                       fromfile='main/'+name, tofile='refactor/'+name, lineterm='')
-              for i, line in enumerate(d):
-                  if i == 100: break
-                  print(line)
-          if not a or missing_a or missing_b or changed: sys.exit(1)
-          print('PASS: all generated Java sources are byte-identical')
-          PY
-, rb'\\g<1>DATE\\2', source)
-              return source
-          changed = [name for name in sorted(a.keys() & b.keys())
-                     if normalize(name, a[name]) != normalize(name, b[name])]
-          print(f'Added={len(missing_a)}, removed={len(missing_b)}, changed={len(changed)}')
-          for name in missing_a[:10]: print(f'  added {name}')
-          for name in missing_b[:10]: print(f'  removed {name}')
-          for name in changed[:5]:
-              print(f'  changed {name}')
-              d = difflib.unified_diff(a[name].decode('utf-8').splitlines(),
-                                       b[name].decode('utf-8').splitlines(),
-                                       fromfile='main/'+name, tofile='refactor/'+name, lineterm='')
-              for i, line in enumerate(d):
-                  if i == 100: break
-                  print(line)
-          if not a or missing_a or missing_b or changed: sys.exit(1)
-          print('PASS: all generated Java sources are byte-identical')
+          def normalized(path, data):
+              # Only MapStruct @Generated date= is intentionally nondeterministic.
+              if path.endswith('$MapStructMapperImpl.java'):
+                  return bytes(10).join(line for line in data.splitlines()
+                                        if not line.strip().startswith(b'date = '))
+              return data
+          base, variant = load('base'), load('variant')
+          missing = sorted(base.keys() ^ variant.keys())
+          changed = [p for p in sorted(base.keys() & variant.keys())
+                     if normalized(p, base[p]) != normalized(p, variant[p])]
+          print('Baseline files:', len(base))
+          print('Refactor files:', len(variant))
+          print('Missing / added:', missing[:15])
+          print('Changed:', changed[:15])
+          if not base or missing or changed:
+              sys.exit(1)
+          print('PASS: all generated Java outputs are identical except MapStruct generation dates')
           PY
