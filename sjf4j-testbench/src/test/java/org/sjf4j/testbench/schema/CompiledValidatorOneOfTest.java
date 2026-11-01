@@ -73,8 +73,20 @@ public class CompiledValidatorOneOfTest {
         @ValidJsonSchema(SCHEMA) boolean valid(Model model, boolean strictFormat);
     }
 
-    private static final String FORMAT_SCHEMA =
-            SCHEMA.replace("\"minLength\":2", "\"minLength\":2,\"format\":\"email\"");
+    private static final String FORMAT_SCHEMA = """
+            {"type":"object","properties":{"items":{"type":"array","items":{"oneOf":[
+              {"$ref":"#/$defs/a"},{"$ref":"#/$defs/b"}]}}},
+             "$defs":{
+               "a":{"type":"object","additionalProperties":false,
+                    "required":["kind","name"],"properties":{
+                    "kind":{"type":"string","enum":["a"]},
+                    "name":{"type":"string","minLength":2,"format":"email"}}},
+               "b":{"type":"object","additionalProperties":false,
+                    "required":["kind","count"],"properties":{
+                    "kind":{"type":"string","enum":["b"]},
+                    "count":{"type":"integer","minimum":1}}}}
+            }
+            """;
 
     @CompiledValidator(fallback = true)
     public interface StrictFormatValidator {
