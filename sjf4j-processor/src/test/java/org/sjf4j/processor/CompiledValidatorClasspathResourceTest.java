@@ -26,11 +26,11 @@ class CompiledValidatorClasspathResourceTest {
         sources.put("fixture/Validator.java",
                 "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=false) public interface Validator { "
-                + "@ValidJsonSchema(ref=\\\"classpath:/schema-draft-2020-12.json\\\") "
+                + "@ValidJsonSchema(ref=\"classpath:/schema-draft-2020-12.json\") "
                 + "boolean root(String value); "
-                + "@ValidJsonSchema(ref=\\\"classpath:/nested/alias.json\\\") "
+                + "@ValidJsonSchema(ref=\"classpath:/nested/alias.json\") "
                 + "boolean referenced(String value); "
-                + "@ValidJsonSchema(ref=\\\"classpath:/nested/short.json\\\") "
+                + "@ValidJsonSchema(ref=\"classpath:/nested/short.json\") "
                 + "boolean another(String value); }");
 
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
