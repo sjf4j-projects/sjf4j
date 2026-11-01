@@ -44,8 +44,17 @@ final class Jackson2ReadEmitter {
         out.endBlock();
     }
 
-    /** Native array loops advance once. Wrapped scalar/runtime reads adopt that token. */
+    /** Native array loops advance once. String elements use the token directly. */
     void emitArrayLoopStart(JavaWriter out, BindingValue element) {
+        if (element.kind() == BindingValue.Kind.STRING) {
+            out.line("com.fasterxml.jackson.core.JsonToken elementToken;");
+            out.beginBlock("while ((elementToken = nativeParser.nextToken()) != com.fasterxml.jackson.core.JsonToken.END_ARRAY)");
+            out.beginBlock("if (elementToken != com.fasterxml.jackson.core.JsonToken.VALUE_STRING"
+                    + " && elementToken != com.fasterxml.jackson.core.JsonToken.VALUE_NULL)");
+            out.line("throw new java.io.IOException(\"expected string or null, but was \" + elementToken);");
+            out.endBlock();
+            return;
+        }
         out.beginBlock("while (nativeParser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_ARRAY)");
         boolean nativeElement = element.helperRequired()
                 && (((element.kind() == BindingValue.Kind.POJO
@@ -54,14 +63,15 @@ final class Jackson2ReadEmitter {
                     || element.kind() == BindingValue.Kind.ARRAY
                     || element.kind() == BindingValue.Kind.LIST
                     || element.kind() == BindingValue.Kind.SET);
-        if (!nativeElement && element.kind() != BindingValue.Kind.STRING) {
+        if (!nativeElement) {
             out.line("parser.reuseCurrentToken();");
         }
     }
 
-    /** String elements can be read from the native cursor without prefetched handoff. */
+    /** The string-element loop already checked VALUE_STRING or VALUE_NULL. */
     String arrayElementReadExpression(BindingValue element, String normalRead) {
         return element.kind() == BindingValue.Kind.STRING
-                ? "parser.readCurrentString()" : normalRead;
+                ? "(elementToken == com.fasterxml.jackson.core.JsonToken.VALUE_NULL ? null : nativeParser.getText())"
+                : normalRead;
     }
 }
