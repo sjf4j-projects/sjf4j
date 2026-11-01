@@ -3,6 +3,7 @@ package org.sjf4j.testbench.schema;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.schema.CompiledValidator;
@@ -49,6 +50,7 @@ public class CompiledValidatorValueBindingTest {
         public static ListValue fromRaw(List<Object> raw) { return new ListValue(); }
     }
 
+    @NodeObject
     public static class Holder {
         private final Object items;
         public Holder(Object items) { this.items = items; }
