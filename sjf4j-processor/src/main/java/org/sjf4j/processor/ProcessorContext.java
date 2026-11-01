@@ -30,7 +30,6 @@ public final class ProcessorContext {
     public final Elements elements;
     public final Messager messager;
     public final Filer filer;
-    public final ProcessingEnvironment processingEnvironment;
 
     public final TypeSystem types;
     public final RegistryDiscovery discovery;
@@ -46,7 +45,6 @@ public final class ProcessorContext {
         this.elements = environment.getElementUtils();
         this.messager = environment.getMessager();
         this.filer = environment.getFiler();
-        this.processingEnvironment = environment;
 
         this.types = new TypeSystem(typeUtils, elements);
         this.discovery = new RegistryDiscovery(this);

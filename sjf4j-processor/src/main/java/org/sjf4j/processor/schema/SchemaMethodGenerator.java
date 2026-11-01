@@ -74,9 +74,21 @@ final class SchemaMethodGenerator {
 
         List<SchemaFallbackEmitter.Plan> plans = new ArrayList<SchemaFallbackEmitter.Plan>();
         for (Binding binding : bindings) {
+            if (!binding.annotation.ref().isEmpty()) {
+                fail(generated, method, "@CompiledValidator requires inline @ValidJsonSchema(value=...): "
+                        + "ref is unsupported because changes to external schema resources "
+                        + "cannot reliably trigger incremental recompilation");
+                return;
+            }
+            if (binding.annotation.value().isEmpty()) {
+                fail(generated, method, "@CompiledValidator requires inline @ValidJsonSchema(value=...): "
+                        + "implicit schema file lookup is unsupported because changes to external "
+                        + "schema resources cannot reliably trigger incremental recompilation");
+                return;
+            }
             SchemaResourceResolver.Snapshot snapshot;
             try {
-                snapshot = resources.resolve(binding.annotation, binding.ownerName, binding.originName, method);
+                snapshot = resources.resolve(binding.annotation, binding.ownerName, binding.originName);
             } catch (RuntimeException e) {
                 fail(generated, method, "cannot compile @ValidJsonSchema: " + e.getMessage());
                 return;
