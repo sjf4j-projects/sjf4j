@@ -31,6 +31,8 @@ public class DirectValidatorBenchmark {
 
     @Benchmark public boolean runtime() { return runtime.isValid(bean, true); }
     @Benchmark public boolean compiled() { return compiled.isValid(bean); }
+    @Benchmark public org.sjf4j.schema.ValidationResult runtimeResult() { return runtime.validate(bean, false, true); }
+    @Benchmark public org.sjf4j.schema.ValidationResult compiledResult() { return compiled.validate(bean, true); }
 
     public static final class Bean {
         private String name;
@@ -43,5 +45,7 @@ public class DirectValidatorBenchmark {
     public interface Validator {
         @ValidJsonSchema(SCHEMA)
         boolean isValid(Bean bean);
+        @ValidJsonSchema(SCHEMA)
+        org.sjf4j.schema.ValidationResult validate(Bean bean, boolean strictFormat);
     }
 }
