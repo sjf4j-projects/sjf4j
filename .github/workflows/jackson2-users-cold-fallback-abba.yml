@@ -1,0 +1,108 @@
+name: Jackson2 Users Cold Fallback ABBA
+on:
+  push:
+    branches:
+      - experiment/jackson2-users-inline-cold-fallback-20261101
+  workflow_dispatch:
+
+jobs:
+  users-abba:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      BASE_SHA: 3fd9cdd3f48b4640baf8bd024e38e02768c51380
+      VARIANT_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Record hardware
+        run: |
+          mkdir -p diagnostics
+          java -version 2> diagnostics/java-version.txt
+          lscpu > diagnostics/lscpu.txt
+      - name: Build and measure A1 (original matcher)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASE_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
+          SRC="$(find sjf4j-testbench/build/generated -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print -quit)"
+          test -n "$SRC"
+          grep -Fq '.matchNext(nativeParser, expectedNameIndex)' "$SRC"
+          cp "$SRC" diagnostics/original-generated.java
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
+            -p sizeKb=1,5,10 -p seed=12,3285,5678 \
+            -f 3 -t 1 -wi 6 -i 7 -w 250ms -r 250ms \
+            -prof gc -rf json -rff A1.json 2>&1 | tee A1.log
+      - name: Build B and verify JOJO correctness
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$VARIANT_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
+          SRC="$(find sjf4j-testbench/build/generated -name '*FabienReadBenchmark*FabienCompiled_Impl.java' -print -quit)"
+          test -n "$SRC"
+          grep -Fq '.serializedName(expectedNameIndex)' "$SRC"
+          grep -Fq '.nextFallbackName(nativeParser' "$SRC"
+          cp "$SRC" diagnostics/inline-generated.java
+          ./gradlew :sjf4j-testbench:test :sjf4j-backend-jackson2:test --no-daemon
+      - name: Measure B1 then B2 (inline, cold fallback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          for RUN in B1 B2; do
+            java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
+              -p sizeKb=1,5,10 -p seed=12,3285,5678 \
+              -f 3 -t 1 -wi 6 -i 7 -w 250ms -r 250ms \
+              -prof gc -rf json -rff "$RUN.json" 2>&1 | tee "$RUN.log"
+          done
+      - name: Measure A2 (original matcher, reversed order)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASE_SHA"
+          ./gradlew :sjf4j-processor:clean :sjf4j-testbench:clean :sjf4j-testbench:jmhJar --no-daemon
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          java -jar "$JAR" '.*FabienReadBenchmark\.users_jackson2_compiled$' \
+            -p sizeKb=1,5,10 -p seed=12,3285,5678 \
+            -f 3 -t 1 -wi 6 -i 7 -w 250ms -r 250ms \
+            -prof gc -rf json -rff A2.json 2>&1 | tee A2.log
+      - name: Compare paired A/B
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          def load(name):
+              with open(name+'.json') as f: rows=json.load(f)
+              return {(int(r['params']['sizeKb']),int(r['params']['seed'])):r for r in rows}
+          runs={name:load(name) for name in ('A1','B1','B2','A2')}
+          print('size seed A1_us B1_us B2_us A2_us first_gain_% second_gain_%')
+          for key in sorted(runs['A1']):
+              a1,b1,b2,a2=[runs[n][key]['primaryMetric']['score'] for n in ('A1','B1','B2','A2')]
+              print(f'{key[0]:>4} {key[1]:>5} {a1:>8.3f} {b1:>8.3f} {b2:>8.3f} {a2:>8.3f} {(a1-b1)/a1*100:>12.2f} {(a2-b2)/a2*100:>13.2f}')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jackson2-users-cold-fallback-abba-jdk25
+          path: |
+            A1.json
+            B1.json
+            B2.json
+            A2.json
+            A1.log
+            B1.log
+            B2.log
+            A2.log
+            diagnostics/**
+          if-no-files-found: warn
