@@ -18,13 +18,11 @@ import java.util.List;
 final class SchemaResultEmitter {
     private final GeneratedClass generated;
     private final String prefix;
-    private final SchemaEmitter checks;
     private int sequence;
 
     SchemaResultEmitter(GeneratedClass generated, String prefix) {
         this.generated = generated;
         this.prefix = prefix;
-        this.checks = new SchemaEmitter(generated, prefix);
     }
 
     static boolean supports(SchemaCheck check, SchemaValue value) {
@@ -257,7 +255,9 @@ final class SchemaResultEmitter {
                            String expression, String path, SchemaFallbackEmitter.Plan plan,
                            String strict, SchemaCheck.Diagnostic diagnostic, String message) {
         String onFailure = errorStatement(diagnostic, path, message);
-        List<String> source = checks.emitRoot(check, value, expression, plan, strict, onFailure);
+        // Each independent assertion needs its own local-variable namespace.
+        List<String> source = new SchemaEmitter(generated, prefix + "_A" + sequence++)
+                .emitRoot(check, value, expression, plan, strict, onFailure);
         out.addAll(source);
     }
 
