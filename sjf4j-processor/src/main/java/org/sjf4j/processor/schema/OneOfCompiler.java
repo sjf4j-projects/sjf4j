@@ -113,6 +113,11 @@ final class OneOfCompiler {
                     objects.compileNested(subtype, snapshot, branch, branchUri, depth + 1);
             if (!(candidateCheck instanceof SchemaCheck.ObjectCheck)) return null;
             SchemaCheck.ObjectCheck check = (SchemaCheck.ObjectCheck) candidateCheck;
+            // A constant discriminator proves a schema branch only when the
+            // complete runtime-visible projection matches the static POJO
+            // view. Hidden/ignored properties switch to dynamic access, so
+            // those types must retain generic oneOf branch counting.
+            if (check.dynamic) return null;
             // A surviving branch/type combination must compile completely.
             // Unmapped runtime types use generic branches (or SchemaPlan if
             // their declared-type compilation is unavailable).
