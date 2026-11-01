@@ -19,11 +19,16 @@ public interface UserValidator {
     @ValidJsonSchema(ref = "classpath:/schemas/user.json")
     void requireValid(User user);
 
-    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
-    ValidationResult validate(User user, boolean strictFormat);
 }
 
 UserValidator validator = CompiledInstances.create(UserValidator.class);
+
+// Aggregated diagnostics are an explicit runtime opt-in.
+@CompiledValidator(fallback = true)
+public interface UserDiagnosticValidator {
+    @ValidJsonSchema(ref = "classpath:/schemas/user.json")
+    ValidationResult validate(User user, boolean strictFormat);
+}
 ```
 
 The return type, not the method name, selects the validation operation:
@@ -79,16 +84,18 @@ represented as absent properties.
 ## Compilation and fallback
 
 ```java
-@CompiledValidator(fallback = false)
+@CompiledValidator // fallback=false by default
 public interface FastValidator {
     boolean isValid(MyPojo value);
 }
 ```
 
-The default is `fallback = true`, which allows the generator to use a
-`SchemaPlan` for unsupported keywords or a remaining property subtree. With
-`fallback = false`, **every check for every method must be emitted directly**;
-otherwise annotation processing fails. Unsupported assertions never silently
+The default is `fallback = false`: **every assertion must be compiled**
+or annotation processing fails. Set `fallback = true` explicitly to allow
+`SchemaPlan` for unsupported keywords or a remaining property subtree.
+Methods returning `ValidationResult` always use runtime `SchemaPlan.validate`
+for complete diagnostics, and therefore **require `fallback = true`**.
+Otherwise annotation processing reports an explicit error. Unsupported assertions never silently
 fall back to `SchemaPlan`. For `void requireValid`, successfully compiled
 assertions run natively, while a **failed assertion only** invokes the shared
 `SchemaPlan` to materialize the original keyword and instance-path diagnostics.
