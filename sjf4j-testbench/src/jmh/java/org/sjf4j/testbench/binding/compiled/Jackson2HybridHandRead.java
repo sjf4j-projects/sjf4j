@@ -92,7 +92,7 @@ final class Jackson2HybridHandRead {
         Clients.Client value = new Clients.Client();
         int expected = 0;
         int index;
-        while ((index = CLIENT_NAMES.matchNext(parser, expected)) != NameMatcher.OBJECT_END) {
+        while ((index = CLIENT_NAMES.matchNext(parser, expected)) != Jackson2NameMatcher.OBJECT_END) {
             if (index >= 0) expected = index + 1;
             switch (index) {
                 case 0: value.setId(reader.readLongValue()); break;
@@ -188,7 +188,7 @@ final class Jackson2HybridHandRead {
         Clients.Partner value = new Clients.Partner();
         int index;
         int expected = 0;
-        while ((index = PARTNER_NAMES.matchNext(parser, expected)) != NameMatcher.OBJECT_END) {
+        while ((index = PARTNER_NAMES.matchNext(parser, expected)) != Jackson2NameMatcher.OBJECT_END) {
             if (index >= 0) expected = index + 1;
             switch (index) {
                 case 0: value.setId(reader.readLongValue()); break;
