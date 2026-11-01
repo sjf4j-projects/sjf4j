@@ -29,6 +29,63 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson2ParserTest {
 
     @Test
+    void nativeArrayTraversalHandsTokensBackToScalarAndRawReaders() throws Exception {
+        try (Jackson2Parser reader = parser("[7,null,\"Ada\",{\"id\":2},[true,null]]")) {
+            JsonParser nativeParser = reader.nativeParser();
+            assertEquals(com.fasterxml.jackson.core.JsonToken.START_ARRAY, nativeParser.nextToken());
+
+            assertEquals(com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_INT, nativeParser.nextToken());
+            reader.reuseCurrentToken();
+            assertThrows(IllegalStateException.class, reader::nativeParser);
+            assertThrows(IllegalStateException.class, reader::reuseCurrentToken);
+            assertEquals(7, reader.readIntValue());
+
+            assertEquals(com.fasterxml.jackson.core.JsonToken.VALUE_NULL, nativeParser.nextToken());
+            reader.reuseCurrentToken();
+            assertNull(reader.readString());
+
+            assertEquals(com.fasterxml.jackson.core.JsonToken.VALUE_STRING, nativeParser.nextToken());
+            reader.reuseCurrentToken();
+            assertEquals("Ada", reader.readString());
+
+            assertEquals(com.fasterxml.jackson.core.JsonToken.START_OBJECT, nativeParser.nextToken());
+            reader.reuseCurrentToken();
+            assertEquals(2, ((Map<?, ?>) reader.readRaw()).get("id"));
+
+            assertEquals(com.fasterxml.jackson.core.JsonToken.START_ARRAY, nativeParser.nextToken());
+            reader.reuseCurrentToken();
+            assertEquals(Arrays.asList(true, null), reader.readRaw());
+
+            assertEquals(com.fasterxml.jackson.core.JsonToken.END_ARRAY, nativeParser.nextToken());
+            reader.end();
+        }
+    }
+
+    @Test
+    void nativeNameMatcherHandlesExpectedAliasesUnknownAndReorderedProperties() throws Exception {
+        Jackson2NameMatcher matcher = new Jackson2NameMatcher(
+                new String[]{"id", "name"}, new String[][]{{"identifier"}, {"alias"}});
+        try (Jackson2Parser reader = parser(
+                "{\"name\":\"Ada\",\"unknown\":[1,{\"nested\":true}],"
+                        + "\"identifier\":7,\"alias\":\"Grace\"}")) {
+            JsonParser nativeParser = reader.nativeParser();
+            assertEquals(com.fasterxml.jackson.core.JsonToken.START_OBJECT, nativeParser.nextToken());
+
+            assertEquals(1, matcher.matchNext(nativeParser, 0));
+            assertEquals("Ada", reader.readString());
+            assertEquals(NameMatcher.UNKNOWN, matcher.matchNext(nativeParser, 1));
+            reader.skipNode();
+
+            assertEquals(0, matcher.matchNext(nativeParser, 1));
+            assertEquals(7, reader.readIntValue());
+            assertEquals(1, matcher.matchNext(nativeParser, 1));
+            assertEquals("Grace", reader.readString());
+            assertEquals(NameMatcher.OBJECT_END, matcher.matchNext(nativeParser, 0));
+            reader.end();
+        }
+    }
+
+    @Test
     void readsCharsDirectlyWithUtf8AndPrefetchedTokens() throws Exception {
         String json = "[\"A\",\"\\n\",\"é\",\"😀\",null,\"\",12]";
         for (boolean utf8 : new boolean[]{false, true}) {

@@ -77,7 +77,7 @@ final class ReadEmitter {
 
         StringBuilder line = new StringBuilder();
         line.append("private static final ")
-                .append(NAME_MATCHER)
+                .append(jackson2() ? backend.matcherType() : NAME_MATCHER)
                 .append(' ')
                 .append(matcherFieldName(value))
                 .append(" = new ")
@@ -302,7 +302,13 @@ final class ReadEmitter {
             return;
         }
 
-        if (!insideObject) emitObjectStart(out);
+        boolean nativeObject = jackson2() && !value.properties().isEmpty();
+        if (nativeObject) {
+            if (insideObject) out.line("com.fasterxml.jackson.core.JsonParser nativeParser = parser.nativeParser();");
+            else emitNativeStart(out, "START_OBJECT");
+        } else if (!insideObject) {
+            emitObjectStart(out);
+        }
 
         out.line(value.type() + " value = new " + value.type() + "();");
         if (consumedDiscriminator != null) emitOneOfPrefixReplay(out, value);
@@ -315,9 +321,11 @@ final class ReadEmitter {
                 out.line("int expectedNameIndex = 0;");
             }
 
-            out.beginBlock("while ((nameIndex = parser.nextNameMatch(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
-                    + ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            out.beginBlock("while ((nameIndex = "
+                    + (nativeObject ? matcherFieldName(value) + ".matchNext(nativeParser, expectedNameIndex)"
+                    : "parser.nextNameMatch(" + matcherFieldName(value)
+                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
+                    + ") != " + NAME_MATCHER + ".OBJECT_END)");
 
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
@@ -336,7 +344,13 @@ final class ReadEmitter {
     /** Compiled creator binding: typed arguments and deferred writable fields. */
     private void emitCreator(JavaWriter out, BindingValue value, boolean insideObject,
                              String consumedDiscriminator) {
-        if (!insideObject) emitObjectStart(out);
+        boolean nativeObject = jackson2() && !value.properties().isEmpty();
+        if (nativeObject) {
+            if (insideObject) out.line("com.fasterxml.jackson.core.JsonParser nativeParser = parser.nativeParser();");
+            else emitNativeStart(out, "START_OBJECT");
+        } else if (!insideObject) {
+            emitObjectStart(out);
+        }
 
         int argCount = value.creator().parameterTypes().size();
         int pendingCount = 0;
@@ -386,9 +400,11 @@ final class ReadEmitter {
         } else if (backend.usesNameMatcher() && size != 0) {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
-            out.beginBlock("while ((nameIndex = parser.nextNameMatch(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "")
-                    + ")) != " + NAME_MATCHER + ".OBJECT_END)");
+            out.beginBlock("while ((nameIndex = "
+                    + (nativeObject ? matcherFieldName(value) + ".matchNext(nativeParser, expectedNameIndex)"
+                    : "parser.nextNameMatch(" + matcherFieldName(value)
+                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
+                    + ") != " + NAME_MATCHER + ".OBJECT_END)");
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
             out.line("String name;");
@@ -575,13 +591,14 @@ final class ReadEmitter {
     }
 
     private void emitArray(JavaWriter out, BindingValue value) {
-        emitArrayStart(out);
+        if (jackson2()) emitNativeStart(out, "START_ARRAY");
+        else emitArrayStart(out);
 
         String allocation = value.type().toString().replaceFirst("\\[\\]", "[8]");
         out.line(value.type() + " value = new " + allocation + ";");
         out.line("int size = 0;");
 
-        out.beginBlock("while (!parser.nextIfArrayEnd())");
+        emitArrayLoopStart(out, value.elementValue());
         out.beginBlock("if (size == value.length)");
         out.line("value = java.util.Arrays.copyOf(value, size << 1);");
         out.endBlock();
@@ -592,10 +609,11 @@ final class ReadEmitter {
     }
 
     private void emitList(JavaWriter out, BindingValue value) {
-        emitArrayStart(out);
+        if (jackson2()) emitNativeStart(out, "START_ARRAY");
+        else emitArrayStart(out);
 
         out.line(value.type() + " value = new java.util.ArrayList<>();");
-        out.beginBlock("while (!parser.nextIfArrayEnd())");
+        emitArrayLoopStart(out, value.elementValue());
         out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
 
         out.endBlock();
@@ -603,10 +621,11 @@ final class ReadEmitter {
     }
 
     private void emitSet(JavaWriter out, BindingValue value) {
-        emitArrayStart(out);
+        if (jackson2()) emitNativeStart(out, "START_ARRAY");
+        else emitArrayStart(out);
 
         out.line(value.type() + " value = new java.util.LinkedHashSet<>();");
-        out.beginBlock("while (!parser.nextIfArrayEnd())");
+        emitArrayLoopStart(out, value.elementValue());
         out.line("value.add(" + readExpression(value.elementValue(), "parser") + ");");
 
         out.endBlock();
@@ -624,6 +643,43 @@ final class ReadEmitter {
 
         out.endBlock();
         out.line("return value;");
+    }
+
+    private boolean jackson2() {
+        return backend.backend() == Backend.JACKSON2;
+    }
+
+    /** Enter a native container from FIELD_NAME, an array element, or document root. */
+    private void emitNativeStart(JavaWriter out, String kind) {
+        out.line("com.fasterxml.jackson.core.JsonParser nativeParser = parser.nativeParser();");
+        out.line("com.fasterxml.jackson.core.JsonToken firstToken = nativeParser.currentToken();");
+        out.beginBlock("if (firstToken != com.fasterxml.jackson.core.JsonToken." + kind
+                + " && firstToken != com.fasterxml.jackson.core.JsonToken.VALUE_NULL)");
+        out.line("firstToken = nativeParser.nextToken();");
+        out.endBlock();
+        out.beginBlock("if (firstToken == com.fasterxml.jackson.core.JsonToken.VALUE_NULL)");
+        out.line("return null;");
+        out.endBlock();
+        out.beginBlock("if (firstToken != com.fasterxml.jackson.core.JsonToken." + kind + ")");
+        out.line("throw new java.io.IOException(\"expected " + kind + " but was \" + firstToken);");
+        out.endBlock();
+    }
+
+    /** Native array loops advance once. Wrapped scalar/runtime reads adopt that token. */
+    private void emitArrayLoopStart(JavaWriter out, BindingValue element) {
+        if (!jackson2()) {
+            out.beginBlock("while (!parser.nextIfArrayEnd())");
+            return;
+        }
+        out.beginBlock("while (nativeParser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_ARRAY)");
+        boolean nativeElement = element.helperRequired()
+                && (((element.kind() == BindingValue.Kind.POJO
+                        || element.kind() == BindingValue.Kind.JOJO)
+                        && !element.properties().isEmpty())
+                    || element.kind() == BindingValue.Kind.ARRAY
+                    || element.kind() == BindingValue.Kind.LIST
+                    || element.kind() == BindingValue.Kind.SET);
+        if (!nativeElement) out.line("parser.reuseCurrentToken();");
     }
 
     private void emitObjectStart(JavaWriter out) {
