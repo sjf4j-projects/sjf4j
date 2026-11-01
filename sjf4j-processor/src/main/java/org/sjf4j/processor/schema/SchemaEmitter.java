@@ -128,7 +128,7 @@ final class SchemaEmitter {
                         planName, strictFormat, depth, onFailure);
                 return;
             case ONE_OF:
-                emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, expression,
+                emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, value, expression,
                         planName, strictFormat, depth, onFailure);
                 return;
             case GENERIC_ONE_OF:
@@ -336,11 +336,11 @@ final class SchemaEmitter {
     }
 
     private void emitOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
-                           SchemaCheck.OneOfCheck check, String expression, String name,
+                           SchemaCheck.OneOfCheck check, SchemaValue value, String expression, String name,
                            String strictFormat, int depth, String onFailure) {
-        // A subtype's compiled checks already handle strictFormat, including
-        // format assertions. Only unknown runtime classes need the full plan.
-        SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
+        // The subtype fast path is valid only for compiler-proven, disjoint
+        // discriminator constants. Unknown classes still evaluate every schema
+        // branch (including overlaps), preferably through compiled predicates.
         lines.add("if (" + expression + " == null) " + onFailure);
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
@@ -356,8 +356,16 @@ final class SchemaEmitter {
             n++;
         }
         lines.add("else {");
-        lines.add("    if (!" + full.reference()
-                + ".isValid(" + expression + ", " + strictFormat + ")) " + onFailure);
+        if (check.generic != null) {
+            List<String> genericLines = new ArrayList<String>();
+            emitGenericOneOf(genericLines, plan, check.generic, value, expression,
+                    name + "_generic", strictFormat, onFailure);
+            for (String source : genericLines) lines.add("    " + source);
+        } else {
+            SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
+            lines.add("    if (!" + full.reference()
+                    + ".isValid(" + expression + ", " + strictFormat + ")) " + onFailure);
+        }
         lines.add("}");
     }
 
