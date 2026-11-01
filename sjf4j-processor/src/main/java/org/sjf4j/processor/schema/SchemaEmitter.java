@@ -370,7 +370,7 @@ final class SchemaEmitter {
 
     private void emitString(List<String> lines, SchemaCheck.StringCheck check,
                             SchemaValue value, String expression, String planName, int depth,
-                            String strictFormat) {
+                            String strictFormat, String onFailure) {
         String text = expression;
         String temp = "_text" + depth + "_" + planName;
         if (value.shape == SchemaValue.Shape.STRING) {
