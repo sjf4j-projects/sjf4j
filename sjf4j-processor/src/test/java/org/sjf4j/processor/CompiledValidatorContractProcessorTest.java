@@ -48,6 +48,38 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void rejectsResultWithoutExplicitFallback() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator public interface Check { "
+                        + "@ValidJsonSchema(\\\"true\\\") "
+                        + "org.sjf4j.schema.ValidationResult validate(Model value); }");
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("ValidationResult methods require @CompiledValidator(fallback=true)"),
+                result.diagnostics());
+    }
+
+    @Test
+    void allowsResultWithExplicitFallback() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=true) public interface Check { "
+                        + "@ValidJsonSchema(\\\"true\\\") "
+                        + "org.sjf4j.schema.ValidationResult validate(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains(".validate("), generated);
+    }
+
+    @Test
+    void defaultFallbackRejectsUnsupportedChecks() throws Exception {
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator public interface Check { "
+                        + "@ValidJsonSchema(\\\"{\\\\\\\"patternProperties\\\\\\\":{\\\\\\\"^x\\\\\\\":true}}\\\") "
+                        + "boolean valid(Model value); }");
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+    }
+
+    @Test
     void allowsStrictFormatParameterOnFullyDirectMethod() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
