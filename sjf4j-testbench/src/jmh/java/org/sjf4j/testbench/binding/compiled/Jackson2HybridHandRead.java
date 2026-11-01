@@ -5,7 +5,6 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher;
 import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
-import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.testbench.model.fabien.Clients;
 
 import java.io.IOException;
@@ -18,7 +17,7 @@ import java.util.List;
  *
  * A single Jackson2Parser is passed throughout, as it would be in generated code.
  * Object/array boundaries and array element iteration use the native JsonParser.
- * Property matching still uses the reusable Jackson2NameMatcher, and individual
+ * Property matching directly uses the native JsonParser with the reusable Jackson2NameMatcher, and individual
  * POJO scalar reads use the existing Jackson2Parser contract.
  *
  * IMPORTANT: After matching FIELD_NAME, scalar reads must consume their own token.
@@ -57,7 +56,7 @@ final class Jackson2HybridHandRead {
         Clients result = new Clients();
         int expected = 0;
         int index;
-        while ((index = reader.nextNameMatch(ROOT_NAMES, expected)) != NameMatcher.OBJECT_END) {
+        while ((index = ROOT_NAMES.matchNext(parser, expected)) != Jackson2NameMatcher.OBJECT_END) {
             if (index >= 0) expected = index + 1;
             if (index == 0) {
                 result.setClients(readClientsArray(reader));
@@ -93,7 +92,7 @@ final class Jackson2HybridHandRead {
         Clients.Client value = new Clients.Client();
         int expected = 0;
         int index;
-        while ((index = reader.nextNameMatch(CLIENT_NAMES, expected)) != NameMatcher.OBJECT_END) {
+        while ((index = CLIENT_NAMES.matchNext(parser, expected)) != NameMatcher.OBJECT_END) {
             if (index >= 0) expected = index + 1;
             switch (index) {
                 case 0: value.setId(reader.readLongValue()); break;
@@ -185,10 +184,11 @@ final class Jackson2HybridHandRead {
     }
 
     private static Clients.Partner readPartner(Jackson2Parser reader) throws IOException {
+        JsonParser parser = reader.nativeParser();
         Clients.Partner value = new Clients.Partner();
         int index;
         int expected = 0;
-        while ((index = reader.nextNameMatch(PARTNER_NAMES, expected)) != NameMatcher.OBJECT_END) {
+        while ((index = PARTNER_NAMES.matchNext(parser, expected)) != NameMatcher.OBJECT_END) {
             if (index >= 0) expected = index + 1;
             switch (index) {
                 case 0: value.setId(reader.readLongValue()); break;
