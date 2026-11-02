@@ -380,7 +380,7 @@ final class Fastjson2WriteEmitter {
                 out.line(generator + ".writeNumber(" + expression + ");");
                 return;
             case STRING:
-                out.line("_writeString(" + raw + ", " + expression + ");");
+                out.line(writes.stringHelper() + "(" + raw + ", " + expression + ");");
                 return;
             case CHARACTER:
                 if (value.primitive()) {
