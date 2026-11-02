@@ -437,9 +437,10 @@ final class SchemaEmitter {
     private void emitOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
                            SchemaCheck.OneOfCheck check, SchemaValue value, String expression, String name,
                            String strictFormat, int depth, String onFailure) {
-        // For each known runtime class, evaluate every potentially matching
-        // schema branch. Constant discriminator proofs may prune branches, but
-        // a Java subtype is never itself proof that oneOf matches exactly once.
+        // A mapping is only a hint. When the schema proves the discriminator
+        // branches mutually exclusive, check the actual JSON-visible property
+        // before executing just the matching branch; otherwise count every
+        // potentially matching oneOf branch for this concrete Java type.
         lines.add("if (" + expression + " == null) " + fail(onFailure, check.diagnostic));
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
@@ -449,10 +450,22 @@ final class SchemaEmitter {
                     + expression + ".getClass() == " + subtype.type + ".class) {");
             lines.add("    " + subtype.type + " " + typed
                     + " = (" + subtype.type + ") " + expression + ";");
+            if (subtype.guardedBranch >= 0) {
+                String accessor = typed + "." + subtype.discriminatorAccess;
+                lines.add("    if (" + literal(subtype.discriminatorValue)
+                        + ".equals(" + accessor + ")) {");
+                SchemaCheck branch = subtype.check.branches.get(subtype.guardedBranch);
+                String matches = branchPredicate(plan, branch, subtype.value, typed, strictFormat);
+                lines.add("        if (!(" + matches + ")) " + fail(onFailure, check.diagnostic));
+                lines.add("    } else {");
+            }
             List<String> candidateLines = new ArrayList<String>();
             emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value, typed,
                     name + "_subtype", strictFormat, onFailure);
-            for (String source : candidateLines) lines.add("    " + source);
+            for (String source : candidateLines) {
+                lines.add((subtype.guardedBranch >= 0 ? "        " : "    ") + source);
+            }
+            if (subtype.guardedBranch >= 0) lines.add("    }");
             lines.add("}");
             n++;
         }
