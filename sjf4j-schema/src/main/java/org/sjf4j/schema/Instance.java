@@ -21,12 +21,14 @@ import java.util.Map;
  * <p>
  * Also carries mutable per-validation state such as evaluated-location marks
  * and recursion-detection stack. Instances are validation-scoped and not
- * thread-safe. A {@code @NodeValue} domain instance is encoded through its value
- * binding before this wrapper is created. Structural schema keywords never
- * descend into a logical value node, even when its raw encoding is a Map/List.
+ * thread-safe. The original node is preserved; a {@code @NodeValue} instance's
+ * encoded representation is available through {@link #raw()}. Structural schema
+ * keywords never descend into a logical value node, even when its raw encoding
+ * is a Map/List.
  */
 public final class Instance {
     private Object node;
+    private Object raw;
     private JsonType jsonType;
     private boolean converted;
     // Lazily cached for POJO, JOJO, and external object traversal.
@@ -52,10 +54,16 @@ public final class Instance {
         this.converted = converted;
     }
 
-    /** Returns the representation evaluated by schema keywords. */
+    /** Returns the original Java node, before any value codec conversion. */
     public Object node() {
         return node;
     }
+
+    /** Returns the JSON representation (which may be null) after value codec conversion. */
+    public Object raw() {
+        return converted ? raw : node;
+    }
+
     /** Returns the JSON-semantic shape of the evaluated representation. */
     public JsonType jsonType() {
         return jsonType;
@@ -77,6 +85,7 @@ public final class Instance {
 
     Instance reuse(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
+        this.raw = null;
         this.jsonType = jsonType;
         this.converted = converted;
         this.typeInfo = null;
@@ -153,15 +162,7 @@ public final class Instance {
             ti = declaredType != null && declaredType.clazz == clazz
                     ? declaredType.get() : TypeRegistry.registerTypeInfo(clazz);
             if (ti.valueSet != null) {
-                ValueInfo vi = ti.valueSet.defaultInfo;
-                node = vi.valueToRaw(node);
-                JsonType rawType = node == null
-                        ? JsonType.NULL
-                        : vi.rawJsonType;
-                // Map/List raw encodings still belong to an atomic value node.
-                JsonType jsonType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
-                        ? JsonType.UNKNOWN : rawType;
-                return new Instance(node, jsonType, true);
+                return infer(node, ti.valueSet.defaultInfo, declaredType, reusedLeaf);
             } else if (ti.externalNode != null) {
                 kind = ti.externalNode.nodeKind(node);
             } else if (ti.pojoInfo != null) {
@@ -187,7 +188,9 @@ public final class Instance {
         JsonType rawType = raw == null ? JsonType.NULL : codec.rawJsonType;
         JsonType logicalType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
                 ? JsonType.UNKNOWN : rawType;
-        return new Instance(raw, logicalType, true);
+        Instance instance = new Instance(node, logicalType, true);
+        instance.raw = raw;
+        return instance;
     }
 
     /**
