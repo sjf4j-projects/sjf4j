@@ -62,9 +62,12 @@ abstract class SchemaCheck {
 
         static final class Subtype {
             final String type;
-            final ObjectCheck check;
-            Subtype(String type, ObjectCheck check) {
+            final SchemaValue value;
+            final GenericOneOfCheck check;
+
+            Subtype(String type, SchemaValue value, GenericOneOfCheck check) {
                 this.type = type;
+                this.value = value;
                 this.check = check;
             }
         }
