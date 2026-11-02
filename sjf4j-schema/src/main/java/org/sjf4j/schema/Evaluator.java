@@ -526,7 +526,7 @@ public interface Evaluator {
             if (instance.jsonType() != JsonType.STRING) return true;
             if (!assertion && !ctx.isStrictFormat()) return true;
 
-            Object source = instance.formatSource();
+            Object source = instance.originalValue();
             boolean valid;
             if ("uuid".equals(format) && source instanceof java.util.UUID) {
                 valid = true; // The built-in UUID codec always produces canonical UUID text.
