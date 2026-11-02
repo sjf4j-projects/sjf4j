@@ -174,20 +174,20 @@ public final class TypeRegistry {
      * over the named variant, matching @NodeProperty runtime semantics.
      * Call once per generated binder codec field, never inside a value loop.
      */
-    public static ValueInfo requireRegisteredValueInfo(Class<?> clazz, String codecName,
-                                                       String codecPattern) {
-        if (codecPattern == null || codecPattern.isEmpty()) {
-            return requireRegisteredValueInfo(clazz, codecName);
+    public static ValueInfo requireRegisteredValueInfo(Class<?> clazz, String valueFormat,
+                                                       String valuePattern) {
+        if (valuePattern == null || valuePattern.isEmpty()) {
+            return requireRegisteredValueInfo(clazz, valueFormat);
         }
         ValueInfo base = requireRegisteredValueInfo(clazz, null);
         if (!(base.codec instanceof PatternedValueCodec)) {
             throw new BindingException("type '" + clazz.getName()
-                    + "' does not support codecPattern; its ValueCodec does not implement "
+                    + "' does not support valuePattern; its ValueCodec does not implement "
                     + PatternedValueCodec.class.getName());
         }
         ValueCodec<?, ?> patterned =
-                ((PatternedValueCodec<?, ?>) base.codec).withPattern(codecPattern);
-        return new ValueInfo(codecPattern, patterned.valueClazz(), patterned.rawClazz(),
+                ((PatternedValueCodec<?, ?>) base.codec).withPattern(valuePattern);
+        return new ValueInfo(valuePattern, patterned.valueClazz(), patterned.rawClazz(),
                 patterned, null, null, null);
     }
 

@@ -258,7 +258,7 @@ public final class ReflectUtil {
                 }
             }
             if (genericDependent &&
-                    (family.oneOfInfo != null || family.codecName != null || family.codecPattern != null)) {
+                    (family.oneOfInfo != null || family.valueFormat != null || family.valuePattern != null)) {
                 throw new BindingException("generic field '" + finalName +
                         "' does not support field-level OneOf or value codec");
             }
@@ -267,7 +267,7 @@ public final class ReflectUtil {
                     Invokers.createGetterLambda(lookup, getterHandle, Function.class, Object.class);
             BiConsumer<Object, Object> setterLambda = setterHandle == null ? null :
                     Invokers.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
-            ValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
+            ValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.valueFormat, family.valuePattern);
 
             PropertyParser propertyReader = PropertyParser.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
                     setterHandle, setterLambda, resolvedCodec, lookup);
@@ -276,7 +276,7 @@ public final class ReflectUtil {
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
-                    family.codecName, resolvedCodec,
+                    family.valueFormat, resolvedCodec,
                     propertyReader);
             PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
@@ -348,11 +348,11 @@ public final class ReflectUtil {
             if (field.getType().isAnnotationPresent(NodeIgnore.class)) continue;
             String explicitName = getExplicitName(field);
             String[] aliases = getAliases(field);
-            String codecName = getCodecName(field);
-            String codecPattern = getCodecPattern(field);
+            String valueFormat = getValueFormat(field);
+            String valuePattern = getValuePattern(field);
             OneOf oneOf = field.getAnnotation(OneOf.class);
             boolean explicit = field.getAnnotation(NodeProperty.class) != null || explicitName != null
-                    || oneOf != null || codecName != null || codecPattern != null || aliases != null;
+                    || oneOf != null || valueFormat != null || valuePattern != null || aliases != null;
             boolean nonPublic = !Modifier.isPublic(mod);
             if (strategy == PropertyStrategy.BEAN_FIELD && nonPublic && !explicit) continue;
             Type fieldType = Types.fieldType(ownerType, field);
@@ -369,8 +369,8 @@ public final class ReflectUtil {
                 family.fieldType = fieldType;
                 family.fieldExplicitName = explicitName;
                 family.addAliases(aliases);
-                family.mergeCodecName(codecName, root);
-                family.mergeCodecPattern(codecPattern, root);
+                family.mergeValueFormat(valueFormat, root);
+                family.mergeValuePattern(valuePattern, root);
                 if (oneOf != null) {
                     family.oneOfInfo = ReflectUtil.analyzeOneOf(Types.rawClazz(fieldType), oneOf);
                 }
@@ -425,8 +425,8 @@ public final class ReflectUtil {
             }
             family.addExplicitName(getExplicitName(method), root);
             family.addAliases(getAliases(method));
-            family.mergeCodecName(getCodecName(method), root);
-            family.mergeCodecPattern(getCodecPattern(method), root);
+            family.mergeValueFormat(getValueFormat(method), root);
+            family.mergeValuePattern(getValuePattern(method), root);
         }
     }
 
@@ -557,8 +557,8 @@ public final class ReflectUtil {
         boolean ignoreGetter;
         boolean ignoreSetter;
         String explicitName;
-        String codecName;
-        String codecPattern;
+        String valueFormat;
+        String valuePattern;
         List<String> aliases = new ArrayList<>();
         OneOfInfo oneOfInfo;
 
@@ -574,15 +574,15 @@ public final class ReflectUtil {
             if (src == null || src.length == 0) return;
             for (String alias : src) if (alias != null && !alias.isEmpty()) aliases.add(alias);
         }
-        void mergeCodecName(String cn, Class<?> owner) {
+        void mergeValueFormat(String cn, Class<?> owner) {
             if (cn == null) return;
-            if (codecName == null) codecName = cn;
-            else if (!codecName.equals(cn)) throw new BindingException("conflicting codecName for property '" + implicitName + "' in " + owner.getName());
+            if (valueFormat == null) valueFormat = cn;
+            else if (!valueFormat.equals(cn)) throw new BindingException("conflicting valueFormat for property '" + implicitName + "' in " + owner.getName());
         }
-        void mergeCodecPattern(String cp, Class<?> owner) {
+        void mergeValuePattern(String cp, Class<?> owner) {
             if (cp == null) return;
-            if (codecPattern == null) codecPattern = cp;
-            else if (!codecPattern.equals(cp)) throw new BindingException("conflicting codecPattern for property '" + implicitName + "' in " + owner.getName());
+            if (valuePattern == null) valuePattern = cp;
+            else if (!valuePattern.equals(cp)) throw new BindingException("conflicting valuePattern for property '" + implicitName + "' in " + owner.getName());
         }
         boolean canUseGetter() {
             return getterMethod != null && !ignoreGetter;
@@ -641,35 +641,35 @@ public final class ReflectUtil {
         return null;
     }
 
-    public static String getCodecName(AnnotatedElement element) {
+    public static String getValueFormat(AnnotatedElement element) {
         NodeProperty ann = element.getAnnotation(NodeProperty.class);
         if (ann == null) return null;
-        String codecName = ann.codecName();
-        return NodeProperty.CODEC_NAME_UNSET.equals(codecName) ? null : codecName;
+        String valueFormat = ann.valueFormat();
+        return NodeProperty.VALUE_FORMAT_UNSET.equals(valueFormat) ? null : valueFormat;
     }
 
-    public static String getCodecPattern(AnnotatedElement element) {
+    public static String getValuePattern(AnnotatedElement element) {
         NodeProperty ann = element.getAnnotation(NodeProperty.class);
         if (ann == null) return null;
-        String vp = ann.codecPattern();
+        String vp = ann.valuePattern();
         return vp.isEmpty() ? null : vp;
     }
 
-    static ValueInfo _resolvePatternedValueCodec(Class<?> rawType, String codecName, String codecPattern) {
-        if (codecPattern != null && !codecPattern.isEmpty()) {
-            // codecPattern takes precedence: get the base codec and parameterize it
+    static ValueInfo _resolvePatternedValueCodec(Class<?> rawType, String valueFormat, String valuePattern) {
+        if (valuePattern != null && !valuePattern.isEmpty()) {
+            // valuePattern takes precedence: get the base codec and parameterize it
             ValueInfo base = TypeRegistry.requireRegisteredValueInfo(rawType, null);
             if (base.codec instanceof PatternedValueCodec) {
                 PatternedValueCodec<?, ?> pvc = (PatternedValueCodec<?, ?>) base.codec;
-                ValueCodec<?, ?> codec = pvc.withPattern(codecPattern);
-                return new ValueInfo(codecPattern, codec.valueClazz(),
+                ValueCodec<?, ?> codec = pvc.withPattern(valuePattern);
+                return new ValueInfo(valuePattern, codec.valueClazz(),
                         codec.rawClazz(), codec, null, null, null);
             }
-            throw new BindingException("type '" + rawType.getName() + "' does not support codecPattern;" +
+            throw new BindingException("type '" + rawType.getName() + "' does not support valuePattern;" +
                     " its ValueCodec does not implement " + PatternedValueCodec.class.getName());
         }
-        if (codecName != null) {
-            return TypeRegistry.requireRegisteredValueInfo(rawType, codecName);
+        if (valueFormat != null) {
+            return TypeRegistry.requireRegisteredValueInfo(rawType, valueFormat);
         }
         return null;
     }
@@ -799,10 +799,10 @@ public final class ReflectUtil {
                     throw new BindingException("missing parameter name for creator in " + clazz.getName() +
                             ": parameter index " + i + " (from 0). Use @NodeProperty on parameters.");
                 argNames[i] = name;
-                String codecName = getCodecName(params[i]);
-                String codecPattern = getCodecPattern(params[i]);
-                argValueFormats[i] = codecName;
-                argValueCodecs[i] = _resolvePatternedValueCodec(Types.rawBox(argTypes[i]), codecName, codecPattern);
+                String valueFormat = getValueFormat(params[i]);
+                String valuePattern = getValuePattern(params[i]);
+                argValueFormats[i] = valueFormat;
+                argValueCodecs[i] = _resolvePatternedValueCodec(Types.rawBox(argTypes[i]), valueFormat, valuePattern);
                 OneOf parameterOneOf = params[i].getAnnotation(OneOf.class);
                 if (parameterOneOf != null) {
                     if (parameterOneOf.scope() != OneOf.Scope.CURRENT) {

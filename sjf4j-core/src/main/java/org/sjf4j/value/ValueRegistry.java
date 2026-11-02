@@ -193,10 +193,10 @@ public final class ValueRegistry {
                 throw new BindingException("duplicate @NodeValue codec format '" + format
                         + "' for type '" + codec.valueClazz().getName() + "'");
             }
-            java.util.IdentityHashMap<ValueCodec<?, ?>, String> codecNames =
+            java.util.IdentityHashMap<ValueCodec<?, ?>, String> valueFormats =
                     declaredCodecs.computeIfAbsent(codec.valueClazz(),
                             k -> new java.util.IdentityHashMap<>());
-            String prior = codecNames.putIfAbsent(codec, format);
+            String prior = valueFormats.putIfAbsent(codec, format);
             if (prior != null) {
                 throw new BindingException("same ValueCodec instance registered under multiple formats for type '"
                         + codec.valueClazz().getName() + "'");

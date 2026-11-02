@@ -241,7 +241,7 @@ class TypeRegistryMetadataTest {
     }
 
     static class InstantFieldPojo {
-        @NodeProperty(codecName = "epochMillis")
+        @NodeProperty(valueFormat = "epochMillis")
         Instant createdAt;
     }
 
@@ -249,7 +249,7 @@ class TypeRegistryMetadataTest {
         final Instant createdAt;
 
         @NodeCreator
-        InstantCreatorPojo(@NodeProperty(value = "createdAt", codecName = "epochMillis") Instant createdAt) {
+        InstantCreatorPojo(@NodeProperty(value = "createdAt", valueFormat = "epochMillis") Instant createdAt) {
             this.createdAt = createdAt;
         }
     }
@@ -305,7 +305,7 @@ class TypeRegistryMetadataTest {
         assertEquals(Long.class, fi.valueInfo.rawClazz);
 
         CreatorInfo creatorInfo = TypeRegistry.requireRegisteredPojoInfo(InstantCreatorPojo.class).creatorInfo;
-        assertEquals("epochMillis", creatorInfo.argCodecNames[0]);
+        assertEquals("epochMillis", creatorInfo.argValueFormats[0]);
         assertNotNull(creatorInfo.argValueCodecs[0]);
         assertEquals(Long.class, creatorInfo.argValueCodecs[0].rawClazz);
     }
@@ -369,11 +369,11 @@ class TypeRegistryMetadataTest {
     }
 
     @Test
-    void testCodecPatternResolvesLocalDateCodec() {
+    void testValuePatternResolvesLocalDateCodec() {
         PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(LocalDatePatternPojo.class);
         PropertyInfo fi = pi.propertyLookup.get("date");
         assertNotNull(fi);
-        // codecName is null when only codecPattern is specified (separate attributes)
+        // valueFormat is null when only valuePattern is specified (separate attributes)
         assertNull(fi.valueFormat);
         assertNotNull(fi.valueInfo);
         // Round-trip through the patterned codec
@@ -384,24 +384,24 @@ class TypeRegistryMetadataTest {
     }
 
     @Test
-    void testCodecPatternOnCreatorParam() {
+    void testValuePatternOnCreatorParam() {
         CreatorInfo ci = TypeRegistry.requireRegisteredPojoInfo(LocalDatePatternCreatorPojo.class).creatorInfo;
-        // argCodecNames stores codecName (null when only codecPattern is set)
-        assertNull(ci.argCodecNames[0]);
+        // argValueFormats stores valueFormat (null when only valuePattern is set)
+        assertNull(ci.argValueFormats[0]);
         assertNotNull(ci.argValueCodecs[0]);
         Object raw = ci.argValueCodecs[0].valueToRaw(LocalDate.of(2024, 6, 7));
         assertEquals("2024/06/07", raw);
     }
 
     @Test
-    void testCodecPatternOnNonPatternTypeThrows() {
+    void testValuePatternOnNonPatternTypeThrows() {
         BindingException error = assertThrows(BindingException.class,
                 () -> TypeRegistry.requireRegisteredPojoInfo(InvalidPatternPojo.class));
         assertEquals(BindingException.class, error.getClass());
     }
 
     static class LocalDatePatternPojo {
-        @NodeProperty(codecPattern = "yyyy-MM-dd")
+        @NodeProperty(valuePattern = "yyyy-MM-dd")
         LocalDate date;
     }
 
@@ -409,13 +409,13 @@ class TypeRegistryMetadataTest {
         final LocalDate date;
 
         @NodeCreator
-        LocalDatePatternCreatorPojo(@NodeProperty(value = "date", codecPattern = "yyyy/MM/dd") LocalDate date) {
+        LocalDatePatternCreatorPojo(@NodeProperty(value = "date", valuePattern = "yyyy/MM/dd") LocalDate date) {
             this.date = date;
         }
     }
 
     static class InvalidPatternPojo {
-        @NodeProperty(codecPattern = "yyyy-MM-dd")
+        @NodeProperty(valuePattern = "yyyy-MM-dd")
         String name;
     }
 
@@ -435,7 +435,7 @@ class TypeRegistryMetadataTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void testLocalTimeCodecPattern() {
+    void testLocalTimeValuePattern() {
         ValueInfo base = TypeRegistry.requireRegisteredValueInfo(LocalTime.class, "iso");
         assertTrue(base.codec instanceof PatternedValueCodec);
         // Direct PatternedValueCodec.withPattern() call (raw types for wildcard avoidance)
@@ -465,7 +465,7 @@ class TypeRegistryMetadataTest {
     }
 
     static class LocalTimeFieldPojo {
-        @NodeProperty(codecPattern = "HH:mm:ss")
+        @NodeProperty(valuePattern = "HH:mm:ss")
         LocalTime time;
     }
 

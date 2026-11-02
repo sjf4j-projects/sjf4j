@@ -43,20 +43,20 @@ public @interface NodeProperty {
      * (e.g. {@code "epochMillis"} for {@link java.time.Instant}).
      * The sentinel default means "not configured".
      */
-    String codecName() default CODEC_NAME_UNSET;
+    String valueFormat() default VALUE_FORMAT_UNSET;
 
     /**
-     * Sentinel meaning {@link #codecName()} was not specified.
+     * Sentinel meaning {@link #valueFormat()} was not specified.
      */
-    String CODEC_NAME_UNSET = "\u0000";
+    String VALUE_FORMAT_UNSET = "\u0000";
 
     /**
      * Date/time format pattern for this property or creator parameter.
      * <p>
      * Only applies to types whose value codec implements
      * {@link PatternedValueCodec}.
-     * When specified, takes precedence over {@link #codecName()}.
+     * When specified, takes precedence over {@link #valueFormat()}.
      */
-    String codecPattern() default "";
+    String valuePattern() default "";
 
 }

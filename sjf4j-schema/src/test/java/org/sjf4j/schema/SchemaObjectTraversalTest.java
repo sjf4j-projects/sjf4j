@@ -28,7 +28,7 @@ class SchemaObjectTraversalTest {
     }
 
     static class Times {
-        @NodeProperty(codecName = "epochMillis")
+        @NodeProperty(valueFormat = "epochMillis")
         public Instant epoch = Instant.ofEpochMilli(0);
 
         public Instant iso = Instant.EPOCH;
@@ -60,7 +60,7 @@ class SchemaObjectTraversalTest {
     }
 
     static class Formatted {
-        @NodeProperty(codecPattern = "yyyy/MM/dd")
+        @NodeProperty(valuePattern = "yyyy/MM/dd")
         public LocalDate day = LocalDate.of(2026, 11, 2);
     }
 
@@ -112,7 +112,7 @@ class SchemaObjectTraversalTest {
     }
 
     static class EpochOnly {
-        @NodeProperty(codecName = "epochMillis")
+        @NodeProperty(valueFormat = "epochMillis")
         public Instant epoch = Instant.EPOCH;
     }
 
@@ -131,7 +131,7 @@ class SchemaObjectTraversalTest {
     }
 
     @Test
-    void propertyCodecPatternIsAppliedBeforeStringAssertions() {
+    void propertyValuePatternIsAppliedBeforeStringAssertions() {
         SchemaPlan formatted = schema("{\"properties\":{\"day\":"
                 + "{\"type\":\"string\",\"pattern\":\"^2026/11/02$\"}}}");
         assertTrue(formatted.isValid(new Formatted()));
