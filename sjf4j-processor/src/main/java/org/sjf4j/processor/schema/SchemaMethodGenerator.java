@@ -27,12 +27,13 @@ final class SchemaMethodGenerator {
 
     private final ProcessorContext context;
     private final SchemaResourceResolver resources;
-    private final SchemaFallbackEmitter fallbacks = new SchemaFallbackEmitter();
+    private final SchemaFallbackEmitter fallbacks;
     private int methodSerial;
 
-    SchemaMethodGenerator(ProcessorContext context) {
+    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated) {
         this.context = context;
         this.resources = new SchemaResourceResolver(context);
+        this.fallbacks = new SchemaFallbackEmitter(generated.names());
     }
 
     void emitFallbacks(GeneratedClass generated) {
