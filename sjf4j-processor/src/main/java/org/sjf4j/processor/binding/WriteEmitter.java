@@ -321,6 +321,19 @@ final class WriteEmitter {
                 || backend.backend() == Backend.FASTJSON2;
     }
 
+    String stringHelper() {
+        return names.sharedHelper("writeString");
+    }
+
+    String stringMemberHelper() {
+        return names.sharedHelper("writeStringMember");
+    }
+
+    void prepareStringHelpers() {
+        stringHelper();
+        if (isJackson()) stringMemberHelper();
+    }
+
     boolean needsStringHelper(BindingValue value) {
         return usesSharedStructure()
                 && value.direction() == BindingPlan.Direction.WRITE_TO
@@ -393,7 +406,7 @@ final class WriteEmitter {
                 throw new AssertionError(backend.backend());
         }
         // Native JSON backends pass their existing generator directly.
-        out.beginBlock("private static void _writeString(" + generator
+        out.beginBlock("private static void " + stringHelper() + "(" + generator
                 + " g, String value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
         out.line("g." + writeNull + "();");
@@ -409,7 +422,7 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private void _writeStringMember(" + generator
+            out.beginBlock("private void " + stringMemberHelper() + "(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
             out.beginBlock("if (value == null)");
