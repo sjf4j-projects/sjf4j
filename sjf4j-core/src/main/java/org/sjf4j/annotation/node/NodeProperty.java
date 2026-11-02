@@ -36,6 +36,12 @@ public @interface NodeProperty {
      */
     String[] aliases() default {};
 
+    /** Include this property when reading JSON into a Java object. Binding only. */
+    boolean bindingRead() default true;
+
+    /** Include this property when writing a Java object to JSON. Binding only. */
+    boolean bindingWrite() default true;
+
     /**
      * Named codec variant for this property or creator parameter.
      * <p>
