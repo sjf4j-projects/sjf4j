@@ -234,7 +234,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, generator, nativeGenerator, backend.backend());
+                CodecWriteEmitter.emit(out, child, expression, generator, nativeGenerator, backend.backend(), writes.naming());
                 return;
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
