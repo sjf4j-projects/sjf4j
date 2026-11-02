@@ -94,7 +94,7 @@ class CompiledValidatorOneOfProcessorTest {
     void overlappingDiscriminatorBranchesCannotUseGuardedDispatch() throws Exception {
         // Two branches requiring the same tag cannot be treated as disjoint,
         // even when @OneOfMapping claims different subtype tags.
-        String schema = SCHEMA.replace("\"b\\\"]", "\"a\\\"]");
+        String schema = SCHEMA.replace("\"enum\":[\"b\"]", "\"enum\":[\"a\"]");
         NavigatorTestCompiler.Result result = compile(true, schema, false, false, false, true);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
