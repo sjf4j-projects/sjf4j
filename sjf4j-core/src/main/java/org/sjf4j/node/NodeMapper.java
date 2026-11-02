@@ -8,6 +8,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.NodeKind;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
+import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
@@ -1102,17 +1103,28 @@ public final class NodeMapper {
     private static Object _convertOneOf(Object node, Class<?> toBoxed,
                                         OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, RuntimeContext context) {
         LazyTypeInfo target;
-        // @OneOf chooses a subtype from the raw JSON representation.
-        // A bound value is not raw JSON, even if JsonType.of exposes its scalar shape.
+        if (oneOfInfo.hasDiscriminator && oneOfInfo.scope != OneOf.Scope.CURRENT) {
+            throw new BindingException("oneOf scope '" + oneOfInfo.scope + "' is not supported", ps);
+        }
+
         NodeKind nodeKind = NodeKind.of(node);
-        JsonType jsonType = nodeKind.isValueCodec()
-                ? JsonType.UNKNOWN : JsonType.of(nodeKind);
-
-        if (oneOfInfo.hasDiscriminator) {
-            if (oneOfInfo.scope != OneOf.Scope.CURRENT) {
-                throw new BindingException("oneOf scope '" + oneOfInfo.scope + "' is not supported", ps);
+        if (nodeKind.isValueCodec()) {
+            // An already-bound mapped subtype needs no raw shape/discriminator
+            // selection. Other bound values must not be implicitly encoded.
+            for (OneOfMapping mapping : oneOfInfo.mappings) {
+                if (mapping.type().isInstance(node)) {
+                    return deepCopy
+                            ? _deepCopy(node, mapping.type(), mapping.type(), ps, context)
+                            : node;
+                }
             }
+            if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+            throw new BindingException("oneOf mapping does not support ValueCodec type '"
+                    + node.getClass().getName() + "' for type '" + toBoxed.getName() + "'", ps);
+        }
 
+        JsonType jsonType = JsonType.of(nodeKind);
+        if (oneOfInfo.hasDiscriminator) {
             if (!jsonType.isObject()) {
                 if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
                     return null;
