@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Compile actual validators to exercise collision handling at emission time. */
@@ -40,6 +41,25 @@ class CompiledValidatorNamingTest {
         assertFalse(generated.contains("_property0"), generated);
         assertFalse(generated.contains("_text0_"), generated);
         assertFalse(generated.contains("_schema_M"), generated);
+    }
+
+    @Test
+    void repeatedCompilationProducesIdenticalSource() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Check.java",
+                "package fixture; import org.sjf4j.annotation.schema.*;"
+                + " @CompiledValidator(fallback=false) public interface Check {"
+                + " @ValidJsonSchema(\"{\\\"oneOf\\\":[{\\\"type\\\":\\\"string\\\"},{\\\"type\\\":\\\"number\\\"}]}\")"
+                + " boolean check(Object value);"
+                + " }");
+        NavigatorTestCompiler.Result first =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        NavigatorTestCompiler.Result second =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(first.success, first.diagnostics());
+        assertTrue(second.success, second.diagnostics());
+        assertEquals(first.generatedSource("fixture/Check_Impl.java"),
+                second.generatedSource("fixture/Check_Impl.java"));
     }
 
     @Test
