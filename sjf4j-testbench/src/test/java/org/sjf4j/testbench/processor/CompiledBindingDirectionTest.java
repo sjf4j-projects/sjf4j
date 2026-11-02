@@ -24,6 +24,29 @@ public class CompiledBindingDirectionTest {
         public String name;
     }
 
+    public static class CreatorOnlyOption {
+        private final String token;
+        @org.sjf4j.annotation.node.NodeCreator
+        public CreatorOnlyOption(@NodeProperty(value = "token", bindingWrite = false) String token) {
+            this.token = token;
+        }
+        public String getToken() { return token; }
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON2)
+    public interface CreatorOnlyBinder {
+        @ReadFrom CreatorOnlyOption read(String json) throws IOException;
+        @WriteTo String write(CreatorOnlyOption value) throws IOException;
+    }
+
+    @org.junit.jupiter.api.Test
+    void creatorParameterCanExcludeOnlyBindingOutput() throws Exception {
+        CreatorOnlyBinder binder = CompiledInstances.create(CreatorOnlyBinder.class);
+        CreatorOnlyOption value = binder.read("{\"token\":\"abc\"}");
+        assertEquals("abc", value.getToken());
+        assertFalse(binder.write(value).contains("token"));
+    }
+
     public static class PrivateFieldUser {
         @NodeProperty(bindingWrite = false)
         private String password;
