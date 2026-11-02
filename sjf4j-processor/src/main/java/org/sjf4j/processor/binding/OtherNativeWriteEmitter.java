@@ -15,11 +15,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     private final BackendSpec backend;
     private final BindingNames names;
-    private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
+    private final StructuralWriteEmitter structures;
 
     OtherNativeWriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
         this.names = names;
+        this.structures = new StructuralWriteEmitter(this, names);
     }
 
     private boolean gson() {
