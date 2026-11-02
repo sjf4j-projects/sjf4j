@@ -31,7 +31,7 @@ class CompiledValidatorApplicatorProcessorTest {
         NavigatorTestCompiler.Result result = compile(schema, false);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
-        assertTrue(generated.contains("private static boolean _schema_"), generated);
+        assertTrue(generated.contains("private static boolean _matchesSchema"), generated);
         assertTrue(generated.contains(" || "), generated);
         assertTrue(generated.contains("return false;"), generated);
         assertFalse(generated.contains(".isValid("), generated);
