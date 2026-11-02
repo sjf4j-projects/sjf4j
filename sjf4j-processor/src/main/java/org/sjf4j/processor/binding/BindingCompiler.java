@@ -158,7 +158,9 @@ final class BindingCompiler {
                 || kind == BindingValue.Kind.ONE_OF) {
             // ValueCodecs contribute fields, not private read/write methods.
             // Avoid allocating a misleading helper name for their metadata.
-            if (value.helperRequired() || kind == BindingValue.Kind.ONE_OF) {
+            if ((value.helperRequired() || kind == BindingValue.Kind.ONE_OF)
+                    && !(backend == Backend.FASTJSON2 && direction == BindingPlan.Direction.WRITE_TO)) {
+                // Fastjson2 generates UTF-8/UTF-16-specific methods instead.
                 value.helperName(names.helperMethod(helperSuggestion(direction, type)));
             }
             helpers.add(value);
