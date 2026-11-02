@@ -66,6 +66,16 @@ final class BindingNames {
         return allocated;
     }
 
+    String sharedField(String suggestion) {
+        String key = "field:" + suggestion;
+        String allocated = shared.get(key);
+        if (allocated == null) {
+            allocated = generated.field(suggestion);
+            shared.put(key, allocated);
+        }
+        return allocated;
+    }
+
     String sharedHelper(String suggestion) {
         String allocated = shared.get(suggestion);
         if (allocated == null) {
