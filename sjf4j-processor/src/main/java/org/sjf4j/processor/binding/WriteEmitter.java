@@ -16,6 +16,7 @@ import java.util.Set;
 final class WriteEmitter {
 
     private final BackendSpec backend;
+    private final BindingNames names;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
@@ -23,8 +24,9 @@ final class WriteEmitter {
 
     private final Map<String, String> enumFields = new LinkedHashMap<>();
 
-    WriteEmitter(BackendSpec backend) {
+    WriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
+        this.names = names;
         this.streaming = new StreamingWriteEmitter(backend);
         switch (backend.backend()) {
             case FASTJSON2:
