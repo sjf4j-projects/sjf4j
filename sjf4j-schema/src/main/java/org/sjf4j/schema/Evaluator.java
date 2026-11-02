@@ -206,7 +206,7 @@ public interface Evaluator {
             if (expected != jt) {
                 // JSON Schema compatibility: integer ⊂ number
                 if (expected == JsonType.INTEGER && jt == JsonType.NUMBER) {
-                    Object node = instance.node();
+                    Object node = instance.raw();
                     Number number = Nodes.toNumber(node);
                     return Numbers.isSemanticInteger(number);
                 }
@@ -235,7 +235,7 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
-            Object node = instance.node();
+            Object node = instance.raw();
             if (!Nodes.equals(constValue, node)) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "const",
                         ctx.needsErrorDetail() ? ("expected constant " + Nodes.inspect(constValue) + ", found " + Nodes.inspect(node)) : null);
@@ -263,7 +263,7 @@ public interface Evaluator {
          */
         @Override
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
-            Object node = instance.node();
+            Object node = instance.raw();
             for (Object allowed : enumValues) {
                 if (Nodes.equals(allowed, node)) return true;
             }
@@ -317,7 +317,7 @@ public interface Evaluator {
             if (jt != JsonType.NUMBER && jt != JsonType.INTEGER) {
                 return true;
             }
-            Number node = Nodes.toNumber(instance.node());
+            Number node = Nodes.toNumber(instance.raw());
             double nodeDouble = node.doubleValue();
             if (hasMinimum && nodeDouble < minimum) {
                 ctx.addError(instance, ps, minimumKeywordPs, schemaUri, "minimum",
@@ -377,7 +377,7 @@ public interface Evaluator {
             if (jt != JsonType.NUMBER && jt != JsonType.INTEGER) {
                 return true;
             }
-            Number node = Nodes.toNumber(instance.node());
+            Number node = Nodes.toNumber(instance.raw());
             // A semantic integer is not necessarily representable as long:
             // BigInteger, BigDecimal and even a large integral double may exceed
             // 64 bits. Restrict the remainder fast path to lossless integers.
@@ -452,7 +452,7 @@ public interface Evaluator {
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
 
-            String node = Nodes.toString(instance.node());
+            String node = Nodes.toString(instance.raw());
             int length = SchemaUtil.stringIcuLength(node);
             if (minLength >= 0 && length < minLength) {
                 ctx.addError(instance, ps, minLengthKeywordPs, schemaUri, "minLength",
@@ -491,7 +491,7 @@ public interface Evaluator {
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
 
-            String node = Nodes.toString(instance.node());
+            String node = Nodes.toString(instance.raw());
             if (!pn.matcher(node).find()) {
                 ctx.addError(instance, ps, keywordPs, schemaUri, "pattern",
                         ctx.needsErrorDetail() ? ("expected string matching pattern '" + pattern + "'") : null);
@@ -524,13 +524,29 @@ public interface Evaluator {
         @Override
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
-            String node = Nodes.toString(instance.node());
-            if (assertion || ctx.isStrictFormat()) {
-                if (!formatValidator.validate(node)) {
-                    ctx.addError(instance, ps, keywordPs, schemaUri, "format",
-                            ctx.needsErrorDetail() ? ("expected format " + format + ", found '" + node + "'") : null);
-                    return false;
-                }
+            if (!assertion && !ctx.isStrictFormat()) return true;
+
+            Object node = instance.node();
+            Object raw = instance.raw();
+            boolean valid;
+            // The fast paths are safe even with custom codecs: they apply only
+            // when the encoded JSON text is the Java type's standard spelling.
+            if (instance.converted() && raw instanceof String && "uuid".equals(format)
+                    && node instanceof java.util.UUID && raw.equals(node.toString())) {
+                valid = true;
+            } else if (instance.converted() && raw instanceof String
+                    && node instanceof java.net.URI
+                    && ("uri".equals(format) || "uri-reference".equals(format))
+                    && raw.equals(node.toString())) {
+                valid = FormatValidator.validateUri((java.net.URI) node, "uri".equals(format));
+            } else {
+                valid = formatValidator.validate(Nodes.toString(raw));
+            }
+            if (!valid) {
+                ctx.addError(instance, ps, keywordPs, schemaUri, "format",
+                        ctx.needsErrorDetail() ? ("expected format " + format
+                                + ", found '" + Nodes.toString(raw) + "'") : null);
+                return false;
             }
             return true;
         }
@@ -557,7 +573,7 @@ public interface Evaluator {
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
 
-            String content = Nodes.toString(instance.node());
+            String content = Nodes.toString(instance.raw());
             byte[] decoded = null;
             if (contentEncoding != null) {
                 if (!"base64".equalsIgnoreCase(contentEncoding)) return true;
