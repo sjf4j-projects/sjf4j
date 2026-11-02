@@ -13,11 +13,11 @@ final class BindingEmitter {
     private final boolean fastjson2;
     private boolean byteOrderFieldEmitted;
 
-    BindingEmitter(ProcessorContext context, BackendSpec backend) {
+    BindingEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.fastjson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2;
-        this.reads = new ReadEmitter(context, backend);
-        this.writes = new WriteEmitter(backend);
-        this.helpers = new BindingHelperEmitter(context, reads, writes);
+        this.reads = new ReadEmitter(context, backend, names);
+        this.writes = new WriteEmitter(backend, names);
+        this.helpers = new BindingHelperEmitter(context, reads, writes, names);
     }
 
     void emitMethod(BindingCompiler.CompiledMethod method, GeneratedClass generated) {
