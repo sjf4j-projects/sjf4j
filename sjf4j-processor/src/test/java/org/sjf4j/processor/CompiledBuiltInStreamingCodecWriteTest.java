@@ -51,7 +51,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                     + "public OffsetDateTime offsetDateTime;"
                     + "public OffsetTime offsetTime;"
                     + "public ZonedDateTime zonedDateTime;"
-                    + "@NodeProperty(codecPattern=\"yyyy/MM/dd HH:mm:ss\")"
+                    + "@NodeProperty(valuePattern=\"yyyy/MM/dd HH:mm:ss\")"
                     + "public LocalDateTime patterned;"
                     + "}");
             sources.put("fixture/Binder.java",

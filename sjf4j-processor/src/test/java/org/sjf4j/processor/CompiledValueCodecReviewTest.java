@@ -18,7 +18,7 @@ class CompiledValueCodecReviewTest {
                 "fixture/Bean.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeProperty; "
                 + "import java.time.Instant; public class Bean { "
-                + "@NodeProperty(codecName=\"misspelled\") "
+                + "@NodeProperty(valueFormat=\"misspelled\") "
                 + "public Instant when; }",
                 "fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
@@ -28,7 +28,7 @@ class CompiledValueCodecReviewTest {
         ), CodegenProcessor.class);
 
         assertFalse(result.success, result.diagnostics());
-        assertTrue(result.diagnostics().contains("Unknown @NodeProperty codecName 'misspelled'"),
+        assertTrue(result.diagnostics().contains("Unknown @NodeProperty valueFormat 'misspelled'"),
                 result.diagnostics());
     }
 

@@ -32,8 +32,8 @@ class CompiledValueCodecDiscoveryTest {
                     + "import java.time.Instant; import java.time.LocalDate; "
                     + "import java.util.UUID; import java.util.List; "
                     + "public class Bean { "
-                    + " @NodeProperty(codecName=\"epochMillis\") public Instant when; "
-                    + " @NodeProperty(codecPattern=\"yyyy/MM/dd\") public LocalDate day; "
+                    + " @NodeProperty(valueFormat=\"epochMillis\") public Instant when; "
+                    + " @NodeProperty(valuePattern=\"yyyy/MM/dd\") public LocalDate day; "
                     + " public UUID id; "
                     + " public List<UUID> ids; "
                     + "}");
@@ -155,7 +155,7 @@ class CompiledValueCodecDiscoveryTest {
                 "fixture/Bean.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeProperty; "
                 + "import java.time.Instant; public class Bean { "
-                + "@NodeProperty(codecName=\"alpha\") "
+                + "@NodeProperty(valueFormat=\"alpha\") "
                 + "public Instant when; }",
                 "fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "

@@ -31,7 +31,7 @@ class CompiledCodecRawIOTest {
                     + "import org.sjf4j.annotation.node.NodeProperty;"
                     + "public class Bean {"
                     + " public UUID id; public Instant when;"
-                    + " @NodeProperty(value=\"epoch\",codecName=\"epochMillis\")"
+                    + " @NodeProperty(value=\"epoch\",valueFormat=\"epochMillis\")"
                     + " public Instant epoch;"
                     + " public String suffix = \"tail\";"
                     + "}");

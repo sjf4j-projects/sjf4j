@@ -436,7 +436,7 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.node.NodeProperty;\n"
                         + "public class Bean {\n"
-                        + " @NodeProperty(codecName=\"custom\") public String name;\n"
+                        + " @NodeProperty(valueFormat=\"custom\") public String name;\n"
                         + "}\n");
         sources.put("fixture/Binder.java",
                 "package fixture;\n"
@@ -447,7 +447,7 @@ class CompiledBinderConformanceTest {
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("codecName/codecPattern"),
+        assertTrue(result.diagnostics().contains("valueFormat/valuePattern"),
                 result.diagnostics());
     }
     @Test
