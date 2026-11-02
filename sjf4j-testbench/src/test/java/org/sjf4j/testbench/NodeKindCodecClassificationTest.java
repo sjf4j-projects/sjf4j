@@ -3,6 +3,10 @@ package org.sjf4j.testbench;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
+import org.sjf4j.JsonObject;
+import org.sjf4j.exception.BindingException;
+import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueRegistry;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -46,6 +50,34 @@ class NodeKindCodecClassificationTest {
     public static final class ArrayEncoding {
         @ValueToRaw public List<Object> encode() { throw new AssertionError("unexpected conversion"); }
         @RawToValue public static ArrayEncoding decode(List<Object> raw) { return new ArrayEncoding(); }
+    }
+
+    @NodeValue
+    public static final class InvalidCharacterEncoding {
+        @ValueToRaw public Character encode() { return 'x'; }
+        @RawToValue public static InvalidCharacterEncoding decode(Character raw) {
+            return new InvalidCharacterEncoding();
+        }
+    }
+
+    @NodeValue
+    public static final class InvalidJsonObjectEncoding {
+        @ValueToRaw public JsonObject encode() { return new JsonObject(); }
+        @RawToValue public static InvalidJsonObjectEncoding decode(JsonObject raw) {
+            return new InvalidJsonObjectEncoding();
+        }
+    }
+
+    @Test
+    void codecRegistryRejectsNonWireRawTypes() {
+        assertThrows(BindingException.class, () -> NodeKind.of(new InvalidCharacterEncoding()));
+        assertThrows(BindingException.class, () -> NodeKind.of(new InvalidJsonObjectEncoding()));
+
+        // Direct codec registration follows the same five-shape contract.
+        for (Class<?> raw : new Class<?>[]{Object.class, Character.class, JsonObject.class, String[].class}) {
+            ValueInfo invalid = new ValueInfo(null, Text.class, raw, null, null, null, null);
+            assertThrows(BindingException.class, () -> ValueRegistry.register(invalid, false));
+        }
     }
 
     @Test
