@@ -29,6 +29,7 @@ public final class GeneratedClass {
     private final String simpleName;
     private final String qualifiedName;
     private final String originName;
+    private final GeneratedNames names;
 
     private final List<Member> fields = new ArrayList<>();
     private final List<Member> methods = new ArrayList<>();
@@ -68,6 +69,7 @@ public final class GeneratedClass {
         this.simpleName = binarySimpleName + suffix;
         this.qualifiedName = packageName.isEmpty() ? simpleName : packageName + '.' + simpleName;
         this.originName = origin.getQualifiedName().toString();
+        this.names = new GeneratedNames(context.elements, origin, simpleName);
     }
 
     /*
@@ -121,6 +123,11 @@ public final class GeneratedClass {
 
     public String originName() {
         return originName;
+    }
+
+    /** Identifier allocator shared by contributors to this generated class. */
+    public GeneratedNames names() {
+        return names;
     }
 
     /*
