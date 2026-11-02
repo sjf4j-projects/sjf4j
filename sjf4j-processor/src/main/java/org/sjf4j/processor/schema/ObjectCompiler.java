@@ -259,7 +259,8 @@ final class ObjectCompiler {
         if (raw == null && context.types.isNodeValue(domain)) {
             // Only @NodeValue's own encoder has a statically declared raw type.
             // A named alternative cannot be inferred from that default encoder.
-            if (property.valueFormat() == null && property.valuePattern() == null) {
+            if (property.valuePattern() == null
+                    && (property.valueFormat() == null || property.valueFormat().isEmpty())) {
                 raw = context.types.nodeValueRawType(domain);
             }
         }

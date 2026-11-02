@@ -3,6 +3,9 @@ package org.sjf4j.testbench.schema;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
@@ -24,6 +27,21 @@ public class CompiledValidatorPropertyCodecTest {
         public String standard = "ok";
     }
 
+    @NodeValue
+    public static final class BooleanValue {
+        final boolean state;
+        public BooleanValue(boolean state) { this.state = state; }
+        @ValueToRaw public Boolean toRaw() { return state; }
+        @RawToValue public static BooleanValue fromRaw(Boolean raw) {
+            return new BooleanValue(Boolean.TRUE.equals(raw));
+        }
+    }
+
+    public static final class FlagHolder {
+        @NodeProperty(valueFormat = "")
+        public BooleanValue flag = new BooleanValue(true);
+    }
+
     public static final class GetterWins {
         @NodeProperty(valueFormat = "epochMillis")
         public Instant millis = Instant.ofEpochMilli(2_000);
@@ -40,6 +58,9 @@ public class CompiledValidatorPropertyCodecTest {
 
         @ValidJsonSchema("{\"properties\":{\"millis\":{\"type\":\"number\",\"const\":2000}}}")
         boolean getter(GetterWins value);
+
+        @ValidJsonSchema("{\"properties\":{\"flag\":{\"type\":\"boolean\"}}}")
+        boolean booleanCodec(FlagHolder value);
     }
 
     @CompiledValidator(fallback = false)
@@ -84,6 +105,18 @@ public class CompiledValidatorPropertyCodecTest {
         assertEquals(plan.isValid(times), compiled.valid(times));
         times.millis = null;
         assertEquals(plan.isValid(times), compiled.valid(times));
+    }
+
+    @Test
+    void staticallyCompilesBooleanRawValueCodec() {
+        Compiled validator = CompiledInstances.create(Compiled.class);
+        FlagHolder holder = new FlagHolder();
+        SchemaPlan reference = JsonSchema.fromJson(
+                "{\"properties\":{\"flag\":{\"type\":\"boolean\"}}}").createPlan();
+        assertTrue(reference.isValid(holder));
+        assertTrue(validator.booleanCodec(holder));
+        holder.flag = null;
+        assertEquals(reference.isValid(holder), validator.booleanCodec(holder));
     }
 
     @Test
