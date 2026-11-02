@@ -376,6 +376,9 @@ final class ObjectCompiler {
         org.sjf4j.processor.property.Property property = context.properties.resolve(owner)
                 .get(mappedName == null ? javaName : mappedName);
         if (property == null || property.read() == null || !property.read().isMethod()) return false;
+        // An ignored accessor cannot provide the runtime-visible property.
+        javax.lang.model.element.Element getter = property.read().member();
+        if (getter.getAnnotation(org.sjf4j.annotation.node.NodeIgnore.class) != null) return false;
         String accessor = property.read().memberName();
         if (accessor.equals(javaName)) return true; // record component
         String suffix = javaName.isEmpty() ? javaName
