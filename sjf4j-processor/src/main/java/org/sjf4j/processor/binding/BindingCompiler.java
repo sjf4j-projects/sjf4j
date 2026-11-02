@@ -1148,11 +1148,6 @@ final class BindingCompiler {
         return names;
     }
 
-    private static boolean bindingAllowed(NodeProperty reader, NodeProperty writer, boolean read) {
-        return (reader == null || (read ? reader.bindingRead() : reader.bindingWrite()))
-                && (writer == null || (read ? writer.bindingRead() : writer.bindingWrite()));
-    }
-
     private static boolean conflictingCodecOptions(NodeProperty getter, NodeProperty setter) {
         if (getter == null || setter == null) return false;
         String leftName = NodeProperty.VALUE_FORMAT_UNSET.equals(getter.valueFormat())
