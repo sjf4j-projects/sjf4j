@@ -27,7 +27,7 @@ final class WriteEmitter {
     WriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
         this.names = names;
-        this.streaming = new StreamingWriteEmitter(backend);
+        this.streaming = new StreamingWriteEmitter(backend, names);
         switch (backend.backend()) {
             case FASTJSON2:
                 fastjson2 = new Fastjson2WriteEmitter(this);
@@ -98,6 +98,14 @@ final class WriteEmitter {
         return backend.usesCompiledNames();
     }
 
+    void prepareCompiledNames(BindingValue value) {
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            String hint = BindingNames.fieldType(value.type()) + "_" + BindingNames.upperSnake(property.name());
+            value.preparedName(index++, names.field(value, "prepared:" + (index - 1), hint));
+        }
+    }
+
     void emitCompiledNames(JavaWriter out, BindingValue value) {
         int index = 0;
         for (BindingProperty property : value.properties()) {
@@ -109,7 +117,7 @@ final class WriteEmitter {
     }
 
     static String compiledNameField(BindingValue value, int index) {
-        return value.helperName() + "_name_" + index;
+        return value.preparedName(index);
     }
 
     void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
