@@ -3,12 +3,14 @@ package org.sjf4j.node;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
+import org.sjf4j.InternalAccess;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.IdxConsumer;
@@ -465,6 +467,84 @@ public final class NodeWalker {
             };
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
+    }
+
+
+    /**
+     * Allocation-light object entry cursor for schema-style traversal.
+     * Reuses mutable key/value fields across entries; preserves the explicit
+     * property codec of declared POJO and JOJO members without encoding.
+     * Experimental API.
+     */
+    public static final class ObjectCursor {
+        public String key;
+        public Object value;
+        public ValueInfo valueInfo;
+        private final Object owner;
+        private final PropertyInfo[] properties;
+        private final Iterator<Map.Entry<String, Object>> entries;
+        private int propertyIndex;
+
+        @SuppressWarnings("unchecked")
+        private ObjectCursor(Object node) {
+            owner = node;
+            if (node instanceof Map) {
+                properties = null;
+                entries = ((Map<String, Object>) node).entrySet().iterator();
+                return;
+            }
+            if (node.getClass() == JsonObject.class) {
+                properties = null;
+                entries = ((JsonObject) node).entrySet().iterator();
+                return;
+            }
+            TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
+            if (ti.externalNode != null && ti.externalNode.jsonType(node) == JsonType.OBJECT) {
+                properties = null;
+                entries = ti.externalNode.entrySetInObject(node).iterator();
+                return;
+            }
+            if (ti.pojoInfo != null) {
+                PojoInfo pi = ti.pojoInfo;
+                properties = pi.gettableProperties;
+                if (pi.isJojo) {
+                    Map<String, Object> dynamic = InternalAccess.dynamicMembers((JsonObject) node);
+                    entries = dynamic == null ? null : dynamic.entrySet().iterator();
+                } else {
+                    entries = null;
+                }
+                return;
+            }
+            throw new NodeException("expected object node, but was " + Types.name(node));
+        }
+
+        /** Advances without allocating a per-entry wrapper. */
+        public boolean next() {
+            if (properties != null && propertyIndex < properties.length) {
+                PropertyInfo property = properties[propertyIndex++];
+                key = property.name;
+                value = property.invokeGetter(owner);
+                valueInfo = property.valueInfo;
+                return true;
+            }
+            if (entries != null && entries.hasNext()) {
+                Map.Entry<String, Object> entry = entries.next();
+                key = entry.getKey();
+                value = entry.getValue();
+                valueInfo = null;
+                return true;
+            }
+            key = null;
+            value = null;
+            valueInfo = null;
+            return false;
+        }
+    }
+
+    /** Opens a cursor for one OBNT object node, including declared JOJO fields. */
+    public static ObjectCursor objectCursor(Object node) {
+        Asserts.notNull(node, "node");
+        return new ObjectCursor(node);
     }
 
     /**

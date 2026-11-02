@@ -13,6 +13,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.Nodes;
+import org.sjf4j.JsonObject;
+import org.sjf4j.node.NodeWalker;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,7 +52,22 @@ public class ObjectEntryTraversalBenchmark {
         public String extra04 = "ok";
     }
 
-    @Param({"map", "pojo"})
+    public static class Jojo extends JsonObject {
+        public String name = "Ada";
+        public String status = "active";
+        public String title = "Ada";
+        public String category = "ok";
+        public String metric01 = "20";
+        public String metric02 = "20";
+        public String metric03 = "20";
+        public String metric04 = "20";
+        public String extra01 = "ok";
+        public String extra02 = "ok";
+        public String extra03 = "ok";
+        public String extra04 = "ok";
+    }
+
+    @Param({"map", "pojo", "jojo"})
     public String representation;
 
     @Param({"valid", "firstFailure", "lastFailure", "aggregate"})
@@ -77,6 +94,9 @@ public class ObjectEntryTraversalBenchmark {
             node = map;
         } else if ("pojo".equals(representation)) {
             node = bean;
+        } else if ("jojo".equals(representation)) {
+            node = new Jojo();
+            ((Jojo) node).put("dynamic", "ok");
         } else {
             throw new IllegalArgumentException(representation);
         }
@@ -90,7 +110,8 @@ public class ObjectEntryTraversalBenchmark {
             last = entry.getKey();
             count++;
         }
-        if (count != FIELD_COUNT) throw new IllegalStateException("Expected 12 gettable members: " + count);
+        int expectedCount = FIELD_COUNT + ("jojo".equals(representation) ? 1 : 0);
+        if (count != expectedCount) throw new IllegalStateException("Expected " + expectedCount + " gettable members: " + count);
 
         failFast = !"aggregate".equals(scenario);
         if ("firstFailure".equals(scenario) || "aggregate".equals(scenario)) {
@@ -104,30 +125,31 @@ public class ObjectEntryTraversalBenchmark {
             throw new IllegalArgumentException(scenario);
         }
 
-        long expectedMask = (1L << FIELD_COUNT) - 1;
-        int expectedVisited = FIELD_COUNT;
+        long expectedMask = (1L << expectedCount) - 1;
+        int expectedVisited = expectedCount;
         boolean expectedValid = "valid".equals(scenario);
         if ("firstFailure".equals(scenario)) {
             expectedMask = 0;
             expectedVisited = 1;
         } else if ("lastFailure".equals(scenario)) {
-            expectedMask &= ~(1L << (FIELD_COUNT - 1));
+            expectedMask &= ~(1L << (expectedCount - 1));
         } else if ("aggregate".equals(scenario)) {
             expectedMask &= ~1L;
-            expectedMask &= ~(1L << (FIELD_COUNT - 1));
+            expectedMask &= ~(1L << (expectedCount - 1));
         }
         long entries = entrySet();
         long matches = anyMatch();
-        long observedMask = entries & 0xfffL;
-        long observedVisited = (entries >>> 12) & 0xffL;
-        boolean observedValid = ((entries >>> 20) & 1L) != 0;
-        long observedFailures = entries >>> 24;
+        long observedMask = entries & 0xffffL;
+        long observedVisited = (entries >>> 16) & 0xffL;
+        boolean observedValid = ((entries >>> 24) & 1L) != 0;
+        long observedFailures = entries >>> 32;
         int minFailures = "aggregate".equals(scenario) ? 2 : expectedValid ? 0 : 1;
-        if (entries != matches || observedMask != expectedMask
+        long cursorResult = cursor();
+        if (entries != matches || entries != cursorResult || observedMask != expectedMask
                 || observedVisited != expectedVisited || observedValid != expectedValid
                 || observedFailures < minFailures || (expectedValid && observedFailures != 0)) {
             throw new IllegalStateException(representation + "/" + scenario
-                    + ": entrySet=" + entries + ", anyMatch=" + matches);
+                    + ": entrySet=" + entries + ", anyMatch=" + matches + ", cursor=" + cursorResult);
         }
     }
 
@@ -135,8 +157,10 @@ public class ObjectEntryTraversalBenchmark {
     private void setValue(String key, String value) throws ReflectiveOperationException {
         if (node instanceof Map) {
             ((Map<String, Object>) node).put(key, value);
+        } else if (node instanceof Jojo && "dynamic".equals(key)) {
+            ((Jojo) node).put(key, value);
         } else {
-            Bean.class.getField(key).set(node, value);
+            node.getClass().getField(key).set(node, value);
         }
     }
 
@@ -185,8 +209,8 @@ public class ObjectEntryTraversalBenchmark {
         });
         // The failing entry is visited even when the predicate aborts before incrementing propIdx.
         int visited = propIdx[0] + (aborted ? 1 : 0);
-        return evaluated[0] | ((long) visited << 12)
-                | ((valid[0] && !aborted ? 1L : 0L) << 20) | ((long) failures[0] << 24);
+        return evaluated[0] | ((long) visited << 16)
+                | ((valid[0] && !aborted ? 1L : 0L) << 24) | ((long) failures[0] << 32);
     }
 
     @Benchmark
@@ -233,7 +257,55 @@ public class ObjectEntryTraversalBenchmark {
             }
         }
         // Include successful evaluation indices, traversal length, validity and failure count.
-        return evaluated | ((long) visited << 12) | ((valid ? 1L : 0L) << 20)
-                | ((long) failures << 24);
+        return evaluated | ((long) visited << 16) | ((valid ? 1L : 0L) << 24)
+                | ((long) failures << 32);
+    }
+    @Benchmark
+    public long cursor() {
+        boolean valid = true;
+        int visited = 0;
+        long evaluated = 0;
+        int failures = 0;
+        NodeWalker.ObjectCursor cursor = NodeWalker.objectCursor(node);
+        entries:
+        while (cursor.next()) {
+            String key = cursor.key;
+            Object value = cursor.value;
+            int index = visited++;
+            boolean matched = false;
+            String constraint = properties.get(key);
+            if (constraint != null) {
+                if (constraint.equals(value)) evaluated |= 1L << index;
+                else {
+                    valid = false;
+                    failures++;
+                    if (failFast) break entries;
+                }
+                matched = true;
+            }
+
+            for (int i = 0; i < patterns.length; i++) {
+                if (patterns[i].matcher(key).find()) {
+                    if (patternConstraints[i].equals(value)) evaluated |= 1L << index;
+                    else {
+                        valid = false;
+                        failures++;
+                        if (failFast) break entries;
+                    }
+                    matched = true;
+                }
+            }
+            if (!matched) {
+                if ("ok".equals(value)) evaluated |= 1L << index;
+                else {
+                    valid = false;
+                    failures++;
+                    if (failFast) break entries;
+                }
+            }
+        }
+        // Include successful evaluation indices, traversal length, validity and failure count.
+        return evaluated | ((long) visited << 16) | ((valid ? 1L : 0L) << 24)
+                | ((long) failures << 32);
     }
 }
