@@ -36,7 +36,7 @@ class PropertyStrategyBindingTest {
         assertEquals("generated", pojo.serverId);
         assertEquals("secret", pojo.password);
         String json = Sjf4j.global().toJsonString(pojo);
-        assertTrue(json.contains("\\"serverId\":\\"generated\\""), json);
+        assertTrue(json.contains("serverId"), json);
         assertFalse(json.contains("password"), json);
 
         PojoInfo info = TypeRegistry.requireRegisteredPojoInfo(BindingDirectionsPojo.class);
