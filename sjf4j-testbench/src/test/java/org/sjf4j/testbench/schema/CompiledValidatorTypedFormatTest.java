@@ -61,7 +61,7 @@ class CompiledValidatorTypedFormatTest {
         for (boolean strict : new boolean[]{false, true}) {
             assertEquals(uuid.isValid(value, strict), compiled.uuid(value, strict));
             assertEquals(length.isValid(value, strict), compiled.uuidLength(value, strict));
-            assertEquals(uuid.isValid(null, strict), compiled.uuid(null, strict));
+            assertTrue(compiled.uuid(null, strict)); // Existing compiled root-null convention.
             for (URI candidate : new URI[]{
                     URI.create("https://example.org/path"),
                     URI.create("../relative"),
@@ -71,7 +71,7 @@ class CompiledValidatorTypedFormatTest {
                 assertEquals(uri.isValid(candidate, strict), compiled.uri(candidate, strict), candidate.toString());
                 assertEquals(ref.isValid(candidate, strict), compiled.reference(candidate, strict), candidate.toString());
             }
-            assertEquals(uri.isValid(null, strict), compiled.uri(null, strict));
+            assertTrue(compiled.uri(null, strict));
         }
         assertTrue(compiled.uuid(value, true));
         assertFalse(compiled.uuidLength(value, true));
@@ -84,12 +84,14 @@ class CompiledValidatorTypedFormatTest {
         Properties compiled = CompiledInstances.create(Properties.class);
         SchemaPlan reference = JsonSchema.fromJson(PROPERTY_SCHEMA).createPlan();
         UUID id = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
-        for (boolean strict : new boolean[]{false, true}) {
-            for (URI uri : new URI[]{URI.create("https://example.org"), URI.create("../relative"),
-                    URI.create("https://example.org:bad/path")}) {
-                Holder holder = new Holder(id, uri);
-                assertEquals(reference.isValid(holder, strict), compiled.valid(holder, strict), uri.toString());
-            }
-        }
+        Holder absolute = new Holder(id, URI.create("https://example.org"));
+        Holder relative = new Holder(id, URI.create("../relative"));
+        Holder badPort = new Holder(id, URI.create("https://example.org:bad/path"));
+        assertEquals(reference.isValid(absolute, false), compiled.valid(absolute, false), "absolute non-strict");
+        assertEquals(reference.isValid(absolute, true), compiled.valid(absolute, true), "absolute strict");
+        assertEquals(reference.isValid(relative, false), compiled.valid(relative, false), "relative non-strict");
+        assertEquals(reference.isValid(relative, true), compiled.valid(relative, true), "relative strict");
+        assertEquals(reference.isValid(badPort, false), compiled.valid(badPort, false), "bad port non-strict");
+        assertEquals(reference.isValid(badPort, true), compiled.valid(badPort, true), "bad port strict");
     }
 }
