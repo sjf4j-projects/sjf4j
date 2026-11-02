@@ -117,7 +117,8 @@ final class SchemaEmitter {
                     : check.dynamic
                     ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
-            statements.add(property.value.localType() + " " + local + " = " + access + ";");
+            statements.add((property.codecOwner == null ? property.value.localType() : "Object")
+                    + " " + local + " = " + access + ";");
             String checkedValue = local;
             if (property.codecOwner != null && property.check.kind != SchemaCheck.Kind.PASS) {
                 String codecField = "_codec_" + helperPrefix + "_" + helperCount++;
@@ -126,8 +127,16 @@ final class SchemaEmitter {
                         + property.codecOwner + ".class).getPropertyNoAlias("
                         + literal(property.name) + ").valueInfo;"));
                 checkedValue = local + "_raw";
-                statements.add("Object " + checkedValue + " = " + local
-                        + " == null ? null : " + codecField + ".valueToRaw(" + local + ");");
+                String encodedType = property.value.shape == SchemaValue.Shape.STRING
+                        || property.value.shape == SchemaValue.Shape.NUMBER
+                        || property.value.shape == SchemaValue.Shape.BOOLEAN
+                        ? property.value.type.toString() : "Object";
+                String encoded = codecField + ".valueToRaw(" + local + ")";
+                if (!"Object".equals(encodedType)) {
+                    encoded = "(" + encodedType + ") " + encoded;
+                }
+                statements.add(encodedType + " " + checkedValue + " = " + local
+                        + " == null ? null : " + encoded + ";");
             }
             if (check.dynamic) {
                 String contains = check.jsonObject

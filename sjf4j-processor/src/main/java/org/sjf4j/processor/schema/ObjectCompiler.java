@@ -7,6 +7,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.property.Property;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -175,6 +176,9 @@ final class ObjectCompiler {
         }
 
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
+        // Includes built-in formats; unresolved runtime registrations stay dynamic.
+        CompiledMetadata codecMetadata = dynamic ? null
+                : context.metadata(context.types.typeElement(type));
         int directCount = (typeRequired && propertyMap.isEmpty() ? 1 : 0)
                 + (required != null ? 1 : 0)
                 + (!dependencies.isEmpty() ? 1 : 0)
@@ -195,7 +199,8 @@ final class ObjectCompiler {
             // a codec's raw Map/List is an atomic value, not an OBNT container.
             if (explicitCodec && !supportsCodecProperty(propertySchema)) return null;
             SchemaValue value = explicitCodec
-                    ? SchemaValue.of(context, null) : SchemaValue.of(context, declared);
+                    ? encodedValue(declared, property, codecMetadata)
+                    : SchemaValue.of(context, declared);
             SchemaCheck check = schemaCompiler.compileValue(snapshot, propertySchema, value, uri, depth + 1);
             // A fallback on just the child value loses @NodeProperty codec selection.
             if (explicitCodec && (check == null || check.hasFallback())) return null;
@@ -235,6 +240,39 @@ final class ObjectCompiler {
         SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(uri, keyword);
         if (typeRequired) return new SchemaCheck.Reject(diagnostic);
         return new SchemaCheck.TypeCheck(java.util.Collections.singletonList("null"), diagnostic);
+    }
+
+    /**
+     * Select the raw scalar shape at compile time when the codec declaration
+     * proves it. Unknown/runtime-installed codecs continue through DYNAMIC.
+     * Map/List raw types are never converted into structural SchemaValue shapes.
+     */
+    private SchemaValue encodedValue(TypeMirror domain, Property property, CompiledMetadata metadata) {
+        if (domain == null) return SchemaValue.of(context, null);
+        TypeMirror raw = null;
+        if (metadata != null) {
+            // A pattern always selects the default codec, regardless of valueFormat.
+            String format = property.valuePattern() == null ? property.valueFormat() : null;
+            org.sjf4j.processor.discovery.ValueCodecMetadata codec = metadata.valueCodec(domain, format);
+            if (codec != null) raw = codec.rawType;
+        }
+        if (raw == null && context.types.isNodeValue(domain)) {
+            // Only @NodeValue's own encoder has a statically declared raw type.
+            // A named alternative cannot be inferred from that default encoder.
+            if (property.valueFormat() == null && property.valuePattern() == null) {
+                raw = context.types.nodeValueRawType(domain);
+            }
+        }
+        if (raw != null && !raw.getKind().isPrimitive()) {
+            SchemaValue value = SchemaValue.of(context, raw);
+            if (value.shape == SchemaValue.Shape.STRING
+                    && "java.lang.String".equals(raw.toString())
+                    || value.shape == SchemaValue.Shape.NUMBER
+                    || value.shape == SchemaValue.Shape.BOOLEAN) {
+                return value;
+            }
+        }
+        return SchemaValue.of(context, null);
     }
 
     /**

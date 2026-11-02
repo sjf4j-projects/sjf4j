@@ -103,7 +103,7 @@ public final class PropertyResolver {
             result.put(entry.getKey(), new Property(entry.getKey(),
                     builder.read == null ? null : builder.read.access,
                     builder.write == null ? null : builder.write.access,
-                    builder.explicitCodec));
+                    builder.valueFormat, builder.valuePattern));
         }
 
         Map<String, Property> resolved = Collections.unmodifiableMap(result);
@@ -326,13 +326,25 @@ public final class PropertyResolver {
 
         Candidate read;
         Candidate write;
-        boolean explicitCodec;
+        String valueFormat;
+        String valuePattern;
 
         void recordCodec(Element member) {
             NodeProperty annotation = member.getAnnotation(NodeProperty.class);
-            if (annotation != null && (!NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())
-                    || !annotation.valuePattern().isEmpty())) {
-                explicitCodec = true;
+            if (annotation == null) return;
+            if (!NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())) {
+                if (valueFormat == null) valueFormat = annotation.valueFormat();
+                else if (!valueFormat.equals(annotation.valueFormat())) {
+                    messager.printMessage(Diagnostic.Kind.ERROR,
+                            "conflicting valueFormat for property '" + name + "'", member);
+                }
+            }
+            if (!annotation.valuePattern().isEmpty()) {
+                if (valuePattern == null) valuePattern = annotation.valuePattern();
+                else if (!valuePattern.equals(annotation.valuePattern())) {
+                    messager.printMessage(Diagnostic.Kind.ERROR,
+                            "conflicting valuePattern for property '" + name + "'", member);
+                }
             }
         }
 
