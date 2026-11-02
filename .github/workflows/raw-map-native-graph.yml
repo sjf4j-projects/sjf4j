@@ -1,0 +1,70 @@
+name: Fastjson2 exact native graph JMH
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/RawMapNativeGraphBenchmark.java'
+      - '.github/workflows/raw-map-native-graph.yml'
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Run 2-fork native nested-container equivalence JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" '.*RawMapNativeGraphBenchmark.*' \
+            -f 2 -wi 2 -i 4 -w 300ms -r 400ms -prof gc \
+            -rf json -rff native-graph.json > native-graph.log 2>&1 \
+            || { tail -150 native-graph.log; exit 1; }
+      - name: Report path and allocation comparison
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,os
+          data=json.load(open("native-graph.json"))
+          lookup={
+              (x["benchmark"].split(".")[-1],x["params"]["shape"]):
+                  (x["primaryMetric"]["score"],x["primaryMetric"]["scoreError"],
+                   x["secondaryMetrics"]["gc.alloc.rate.norm"]["score"])
+              for x in data
+          }
+          paths=("nativeLinked","nativeExactTyped","nativeExactRaw","directRaw","compiled")
+          lines=["## Native Fastjson2 exact graph vs SJF4J (JDK17, two forks)", "",
+                 "Values show ns/op (B/op). Native exact paths use LinkedHashMap and ArrayList at every nesting level.",
+                 "",
+                 "| Input | Shape | Native Linked | Native exact typed | Native exact raw | SJF4J direct raw | SJF4J compiled |",
+                 "|---|---|---:|---:|---:|---:|"]
+          for enc in ("String","Utf8"):
+              for shape in ("numbers","strings","user"):
+                  cols=[]
+                  for path in paths:
+                      t,err,b=lookup[(path+enc,shape)]
+                      cols.append(f"{t:.0f} ({b:.0f}B)")
+                  lines.append("| "+enc+" | "+shape+" | "+" | ".join(cols)+" |")
+          lines.append("")
+          report="\n".join(lines)
+          print(report)
+          open("native-graph-summary.md","w").write(report)
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as out: out.write(report)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fastjson2-exact-native-graph
+          path: |
+            native-graph.json
+            native-graph.log
+            native-graph-summary.md
