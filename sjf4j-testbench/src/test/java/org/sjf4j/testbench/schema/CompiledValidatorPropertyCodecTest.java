@@ -17,15 +17,15 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Generated validators must honor the same property codec selections as runtime SchemaPlan. */
 public class CompiledValidatorPropertyCodecTest {
     public static final class Times {
-        @NodeProperty(codecName = "epochMillis")
+        @NodeProperty(valueFormat = "epochMillis")
         public Instant millis = Instant.ofEpochMilli(2_000);
-        @NodeProperty(codecPattern = "yyyy/MM/dd")
+        @NodeProperty(valuePattern = "yyyy/MM/dd")
         public LocalDate day = LocalDate.of(2026, 11, 2);
         public String standard = "ok";
     }
 
     public static final class GetterWins {
-        @NodeProperty(codecName = "epochMillis")
+        @NodeProperty(valueFormat = "epochMillis")
         public Instant millis = Instant.ofEpochMilli(2_000);
         public Instant getMillis() { return millis; }
     }

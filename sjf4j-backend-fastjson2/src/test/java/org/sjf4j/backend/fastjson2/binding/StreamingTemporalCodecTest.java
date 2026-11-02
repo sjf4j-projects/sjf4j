@@ -20,13 +20,13 @@ class StreamingTemporalCodecTest {
         public LocalTime time;
         public LocalDateTime dateTime;
 
-        @NodeProperty(codecPattern = "yyyy/MM/dd")
+        @NodeProperty(valuePattern = "yyyy/MM/dd")
         public LocalDate customDate;
 
-        @NodeProperty(codecPattern = "HH:mm:ss")
+        @NodeProperty(valuePattern = "HH:mm:ss")
         public LocalTime customTime;
 
-        @NodeProperty(codecPattern = "yyyy/MM/dd HH:mm:ss")
+        @NodeProperty(valuePattern = "yyyy/MM/dd HH:mm:ss")
         public LocalDateTime customDateTime;
     }
 

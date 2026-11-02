@@ -178,7 +178,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes
 - Removed `AccessStrategy` and `@NodeBinding(access=...)` in favor of `@NodeBinding(propertyStrategy=PropertyStrategy...)` for property-family discovery.
-- `@NodeProperty.valueFormat` renamed to `@NodeProperty.codecName`
+- `@NodeProperty.valueFormat` renamed to `@NodeProperty.valueFormat`
 - New public APIs: `org.sjf4j.asm.BytecodePath` and `PathCompiler` SPI; old `org.sjf4j.path.CompiledPath` no longer active.
 - Indexed array replacement semantics tightened: `Nodes.setInArray(...)` no longer append when `idx == size`; use `Nodes.putInArray(...)` or explicit append-path for replace-or-append.
 - Removed `ValidationOptions`; `SchemaPlan` and `SchemaValidator` now use explicit boolean parameters for fail-fast and strict-format.
@@ -188,7 +188,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PropertyStrategy` with modes: `BEAN_ONLY`, `FIELD_ONLY`, `BEAN_FIELD`, `FIELD_BEAN`; `BEAN_FIELD` is default.
 - `@NodeIgnore` supports class, field, getter, setter exclusions.
 - `PatternedValueCodec<V,R>` interface and `ValueCodec` for `LocalTime` and `Optional`.
-- `@NodeProperty.codecPattern` for DateTimeFormatter patterns, supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, `ZonedDateTime`.
+- `@NodeProperty.valuePattern` for DateTimeFormatter patterns, supported by `LocalDate`, `LocalDateTime`, `OffsetDateTime`, `ZonedDateTime`.
 - `Nodes.putInArray(node, idx, value)` for explicit replace-or-append.
 - Compiled-path APIs in `org.sjf4j.asm` with ASM accelerator.
 
