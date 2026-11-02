@@ -4,6 +4,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueCodec;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.LazyTypeInfo;
@@ -29,6 +30,9 @@ public final class Instance {
     private Object node;
     private JsonType jsonType;
     private boolean converted;
+    // Only built-in UUID/URI codecs are deferred; other value bindings stay eager.
+    private ValueInfo pendingCodec;
+    private Object formatSource;
     // Lazily cached for POJO, JOJO, and external object traversal.
     private TypeInfo typeInfo;
 
@@ -54,7 +58,17 @@ public final class Instance {
 
     /** Returns the representation evaluated by schema keywords. */
     public Object node() {
+        if (pendingCodec != null) {
+            ValueInfo codec = pendingCodec;
+            node = codec.valueToRaw(node);
+            pendingCodec = null;
+        }
         return node;
+    }
+
+    /** Original typed value when its built-in encoder is known to preserve format semantics. */
+    Object formatSource() {
+        return formatSource;
     }
     /** Returns the JSON-semantic shape of the evaluated representation. */
     public JsonType jsonType() {
@@ -79,6 +93,8 @@ public final class Instance {
         this.node = node;
         this.jsonType = jsonType;
         this.converted = converted;
+        this.pendingCodec = null;
+        this.formatSource = null;
         this.typeInfo = null;
         return reset();
     }
@@ -153,15 +169,7 @@ public final class Instance {
             ti = declaredType != null && declaredType.clazz == clazz
                     ? declaredType.get() : TypeRegistry.registerTypeInfo(clazz);
             if (ti.valueSet != null) {
-                ValueInfo vi = ti.valueSet.defaultInfo;
-                node = vi.valueToRaw(node);
-                JsonType rawType = node == null
-                        ? JsonType.NULL
-                        : vi.rawJsonType;
-                // Map/List raw encodings still belong to an atomic value node.
-                JsonType jsonType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
-                        ? JsonType.UNKNOWN : rawType;
-                return new Instance(node, jsonType, true);
+                return inferValue(node, ti.valueSet.defaultInfo);
             } else if (ti.externalNode != null) {
                 kind = ti.externalNode.nodeKind(node);
             } else if (ti.pojoInfo != null) {
@@ -183,7 +191,21 @@ public final class Instance {
      */
     private static Instance infer(Object node, ValueInfo codec, LazyTypeInfo declaredType, Instance reusedLeaf) {
         if (codec == null || node == null) return infer(node, declaredType, reusedLeaf);
-        Object raw = codec.valueToRaw(node);
+        return inferValue(node, codec);
+    }
+
+    private static Instance inferValue(Object value, ValueInfo codec) {
+        // The precise built-in encoder identity matters: custom codecs and
+        // alternate property formats must retain their original behavior.
+        if (codec.rawJsonType == JsonType.STRING
+                && ((value.getClass() == java.util.UUID.class && codec.codec == ValueCodec.UUID_CODEC)
+                    || (value.getClass() == java.net.URI.class && codec.codec == ValueCodec.URI_CODEC))) {
+            Instance instance = new Instance(value, JsonType.STRING, true);
+            instance.pendingCodec = codec;
+            instance.formatSource = value;
+            return instance;
+        }
+        Object raw = codec.valueToRaw(value);
         JsonType rawType = raw == null ? JsonType.NULL : codec.rawJsonType;
         JsonType logicalType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
                 ? JsonType.UNKNOWN : rawType;
