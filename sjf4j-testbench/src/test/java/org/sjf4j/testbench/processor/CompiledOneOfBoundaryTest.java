@@ -266,7 +266,7 @@ public class CompiledOneOfBoundaryTest {
     void discriminatorAliasCollisionSelectsRuntimeFallback() throws Exception {
         for (java.lang.reflect.Method method : BINDER.getClass().getDeclaredMethods()) {
             assertFalse(method.getReturnType() == AliasValue.class
-                    && method.getName().endsWith("_content"),
+                    && method.getName().startsWith("_read") && method.getName().contains("Content"),
                     "Alias-conflicting OneOf must not emit a compiled subtype reader");
         }
         AliasValue value = assertInstanceOf(AliasValue.class,
@@ -278,7 +278,7 @@ public class CompiledOneOfBoundaryTest {
         boolean compiled = false;
         for (java.lang.reflect.Method method : BINDER.getClass().getDeclaredMethods()) {
             compiled |= method.getReturnType() == FactoryAliasValue.class
-                    && method.getName().endsWith("_content");
+                    && method.getName().startsWith("_read") && method.getName().contains("Content");
         }
         assertTrue(compiled, "String creator discriminator aliases can be bound directly");
 
@@ -292,7 +292,7 @@ public class CompiledOneOfBoundaryTest {
         boolean hasCompiledReader = false;
         for (java.lang.reflect.Method method : BINDER.getClass().getDeclaredMethods()) {
             hasCompiledReader |= method.getReturnType() == FactoryValue.class
-                    && method.getName().endsWith("_content");
+                    && method.getName().startsWith("_read") && method.getName().contains("Content");
         }
         assertTrue(hasCompiledReader, "Nonconflicting factory should remain compiled");
 
