@@ -252,12 +252,15 @@ abstract class SchemaCheck {
         final String staticAccess;
         final SchemaValue value;
         final SchemaCheck check;
+        final String codecOwner;
 
-        PropertyCheck(String name, String staticAccess, SchemaValue value, SchemaCheck check) {
+        PropertyCheck(String name, String staticAccess, SchemaValue value, SchemaCheck check,
+                      String codecOwner) {
             this.name = name;
             this.staticAccess = staticAccess;
             this.value = value;
             this.check = check;
+            this.codecOwner = codecOwner;
         }
     }
 

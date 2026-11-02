@@ -13,11 +13,13 @@ public final class Property {
     private final String name;
     private final PropertyAccess read;
     private final PropertyAccess write;
+    private final boolean explicitCodec;
 
-    Property(String name, PropertyAccess read, PropertyAccess write) {
+    Property(String name, PropertyAccess read, PropertyAccess write, boolean explicitCodec) {
         this.name = Asserts.notNull(name, "name");
         this.read = read;
         this.write = write;
+        this.explicitCodec = explicitCodec;
     }
 
     public String name() {
@@ -30,6 +32,11 @@ public final class Property {
 
     public PropertyAccess write() {
         return write;
+    }
+
+    /** True when any member of the property family selects a named/patterned codec. */
+    public boolean explicitCodec() {
+        return explicitCodec;
     }
 
     public boolean gettable() {

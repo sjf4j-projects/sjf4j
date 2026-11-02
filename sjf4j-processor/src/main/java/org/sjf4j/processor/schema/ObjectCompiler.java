@@ -187,11 +187,22 @@ final class ObjectCompiler {
             String access = property == null ? null
                     : property.read().memberName() + (property.read().isMethod() ? "()" : "");
             String uri = childPointer(rootUri, "properties", name);
-            SchemaValue value = SchemaValue.of(context, declared);
-            SchemaCheck check = schemaCompiler.compileValue(snapshot, propertyMap.getNode(name), value, uri, depth + 1);
+            boolean explicitCodec = property != null && property.explicitCodec();
+            Object propertySchema = propertyMap.getNode(name);
+            // Property-specific codecs override type defaults. Compile scalar
+            // assertions against their raw encoding, not the Java domain type.
+            // Structural keywords must remain on the original parent path:
+            // a codec's raw Map/List is an atomic value, not an OBNT container.
+            if (explicitCodec && !supportsCodecProperty(propertySchema)) return null;
+            SchemaValue value = explicitCodec
+                    ? SchemaValue.of(context, null) : SchemaValue.of(context, declared);
+            SchemaCheck check = schemaCompiler.compileValue(snapshot, propertySchema, value, uri, depth + 1);
+            // A fallback on just the child value loses @NodeProperty codec selection.
+            if (explicitCodec && (check == null || check.hasFallback())) return null;
             if (check == null) check = new SchemaCheck.Fallback(uri);
             else directCount++;
-            properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
+            properties.add(new SchemaCheck.PropertyCheck(name, access, value, check,
+                    explicitCodec ? context.typeUtils.erasure(type).toString() : null));
         }
         if (directCount == 0) return root.containsKey("dependentRequired")
                 ? new SchemaCheck.Pass() : null;
@@ -224,6 +235,41 @@ final class ObjectCompiler {
         SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(uri, keyword);
         if (typeRequired) return new SchemaCheck.Reject(diagnostic);
         return new SchemaCheck.TypeCheck(java.util.Collections.singletonList("null"), diagnostic);
+    }
+
+    /**
+     * A raw encoded value can be inspected with scalar/literal checks.
+     * Object/array applicators on it must be evaluated by the parent SchemaPlan,
+     * which preserves the property's ValueInfo and its atomic leaf semantics.
+     */
+    private static boolean supportsCodecProperty(Object source) {
+        if (source instanceof Boolean) return true;
+        if (JsonType.of(source) != JsonType.OBJECT) return false;
+        JsonObject schema = Nodes.toJsonObject(source);
+        for (String key : schema.keySet()) {
+            if (SchemaCompiler.isAnnotation(key)) continue;
+            switch (key) {
+                case "type":
+                    Object rawType = schema.getNode(key);
+                    if (rawType instanceof String) {
+                        if ("object".equals(rawType) || "array".equals(rawType)) return false;
+                    } else if (JsonType.of(rawType) == JsonType.ARRAY) {
+                        for (int i = 0; i < Nodes.sizeInArray(rawType); i++) {
+                            Object item = Nodes.getInArray(rawType, i);
+                            if (!(item instanceof String) || "object".equals(item)
+                                    || "array".equals(item)) return false;
+                        }
+                    } else return false;
+                    break;
+                case "minLength": case "maxLength": case "pattern": case "format":
+                case "minimum": case "maximum": case "exclusiveMinimum":
+                case "exclusiveMaximum": case "multipleOf":
+                case "const": case "enum":
+                    break;
+                default: return false;
+            }
+        }
+        return true;
     }
 
     /**

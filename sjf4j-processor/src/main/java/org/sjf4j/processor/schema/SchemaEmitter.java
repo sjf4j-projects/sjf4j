@@ -118,6 +118,17 @@ final class SchemaEmitter {
                     ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
             statements.add(property.value.localType() + " " + local + " = " + access + ";");
+            String checkedValue = local;
+            if (property.codecOwner != null && property.check.kind != SchemaCheck.Kind.PASS) {
+                String codecField = "_codec_" + helperPrefix + "_" + helperCount++;
+                generated.addField(out -> out.line("private static final org.sjf4j.value.ValueInfo "
+                        + codecField + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
+                        + property.codecOwner + ".class).getPropertyNoAlias("
+                        + literal(property.name) + ").valueInfo;"));
+                checkedValue = local + "_raw";
+                statements.add("Object " + checkedValue + " = " + local
+                        + " == null ? null : " + codecField + ".valueToRaw(" + local + ");");
+            }
             if (check.dynamic) {
                 String contains = check.jsonObject
                         ? variable + ".containsKey(" + literal(property.name) + ")"
@@ -129,7 +140,7 @@ final class SchemaEmitter {
             String parentPath = instancePath;
             instancePath = "new org.sjf4j.path.PathSegment.Name("
                     + parentPath + ", " + literal(property.name) + ")";
-            emitValue(lines, plan, property.check, property.value, local,
+            emitValue(lines, plan, property.check, property.value, checkedValue,
                     prefix + "SUB_" + index, strictFormat, 0, onFailure);
             instancePath = parentPath;
             for (String line : lines) {
