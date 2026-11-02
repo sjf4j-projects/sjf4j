@@ -61,7 +61,8 @@ public final class PropertyInfo {
     public PropertyInfo(String name, String[] alias, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                         Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                         Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo, MethodHandles.Lookup lookup) {
+                        OneOfInfo oneOfInfo, OneOfInfo explicitOneOfInfo,
+                        String valueFormat, ValueInfo valueInfo, MethodHandles.Lookup lookup) {
         this.name = name;
         this.alias = alias;
         this.publicField = publicField;
@@ -98,7 +99,7 @@ public final class PropertyInfo {
         this.gettable = getterHandle != null || getterLambda != null;
         this.settable = setterHandle != null || setterLambda != null;
 
-        this.parser = PropertyParser.create(name, type, boxed, genericDependent, oneOfInfo,
+        this.parser = PropertyParser.create(name, type, boxed, genericDependent, explicitOneOfInfo,
                 setterHandle, setterLambda, valueInfo, contentType, contentClass, typeInfo, contentTypeInfo, lookup);
     }
 
