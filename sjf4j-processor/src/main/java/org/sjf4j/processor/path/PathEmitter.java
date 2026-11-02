@@ -558,7 +558,7 @@ final class PathEmitter {
             ResolvedGet resolved) {
 
         ExecutableElement method = resolved.plan.method;
-        NameAllocator names = names(method);
+        NameAllocator names = generated.names().locals(method);
 
         out.line("@Override");
         out.beginBlock(methodHeader(method));
@@ -621,7 +621,7 @@ final class PathEmitter {
 
         NavigatorMethodGenerator.PutPlan plan = resolved.plan;
         ExecutableElement method = plan.method;
-        NameAllocator names = names(method);
+        NameAllocator names = generated.names().locals(method);
 
         out.line("@Override");
         out.beginBlock(methodHeader(method));
@@ -671,7 +671,7 @@ final class PathEmitter {
 
         NavigatorMethodGenerator.PutPlan plan = resolved.plan;
         ExecutableElement method = plan.method;
-        NameAllocator names = names(method);
+        NameAllocator names = generated.names().locals(method);
 
         out.line("@Override");
         out.beginBlock(methodHeader(method));
