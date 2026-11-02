@@ -8,7 +8,7 @@ import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,8 +44,24 @@ class SchemaObjectTraversalTest {
         }
     }
 
+    @NodeValue
+    static class EncodedArray {
+        final List<Integer> contents;
+        EncodedArray(List<Integer> contents) { this.contents = contents; }
+        @ValueToRaw public List<Integer> toRaw() { return contents; }
+        @RawToValue public static EncodedArray fromRaw(List<Integer> raw) {
+            return new EncodedArray(raw);
+        }
+    }
+
     static class ValueHolder {
         public EncodedObject wrapped = new EncodedObject("Ada");
+        public EncodedArray array = new EncodedArray(List.of(1, 2));
+    }
+
+    static class Formatted {
+        @NodeProperty(codecPattern = "yyyy/MM/dd")
+        public LocalDate day = LocalDate.of(2026, 11, 2);
     }
 
     static SchemaPlan schema(String json) {
@@ -105,10 +121,22 @@ class SchemaObjectTraversalTest {
         ValueHolder holder = new ValueHolder();
         SchemaPlan mapShape = schema("{\"properties\":{\"wrapped\":{\"type\":\"object\"}}}");
         assertFalse(mapShape.isValid(holder));
-        assertTrue(schema("{\"properties\":{\"wrapped\":{\"type\":\"string\"}}}")
-                .validate(holder).isValid() == false);
+        assertFalse(schema("{\"properties\":{\"wrapped\":{\"type\":\"string\"}}}")
+                .validate(holder).isValid());
         assertTrue(schema("{\"properties\":{\"wrapped\":{\"properties\":{\"name\":false}}}}")
                 .isValid(holder));
+        // Array-shaped raw encodings are also non-traversable value nodes.
+        assertFalse(schema("{\"properties\":{\"array\":{\"type\":\"array\"}}}").isValid(holder));
+        assertTrue(schema("{\"properties\":{\"array\":{\"items\":false}}}").isValid(holder));
+    }
+
+    @Test
+    void propertyCodecPatternIsAppliedBeforeStringAssertions() {
+        SchemaPlan formatted = schema("{\"properties\":{\"day\":"
+                + "{\"type\":\"string\",\"pattern\":\"^2026/11/02$\"}}}");
+        assertTrue(formatted.isValid(new Formatted()));
+        assertFalse(schema("{\"properties\":{\"day\":{\"const\":\"2026-11-02\"}}}")
+                .isValid(new Formatted()));
     }
 
     @Test

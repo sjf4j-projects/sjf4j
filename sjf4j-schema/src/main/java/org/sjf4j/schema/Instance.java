@@ -166,8 +166,9 @@ public final class Instance {
     static Instance infer(Object node, Instance reusedLeaf) {
         Class<?> clazz = node == null ? null : node.getClass();
         NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
+        TypeInfo ti = null;
         if (kind == NodeKind.UNKNOWN) {
-            TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
+            ti = TypeRegistry.registerTypeInfo(clazz);
             if (ti.valueSet != null) {
                 ValueInfo vi = ti.valueSet.defaultInfo;
                 node = vi.valueToRaw(node);
@@ -188,7 +189,9 @@ public final class Instance {
         if (jsonType.isValue() && reusedLeaf != null) {
             return reusedLeaf.reuse(node, jsonType, false);
         }
-        return new Instance(node, jsonType, false);
+        Instance result = new Instance(node, jsonType, false);
+        result.typeInfo = ti;
+        return result;
     }
 
     /**
