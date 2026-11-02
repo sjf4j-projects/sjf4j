@@ -95,7 +95,7 @@ final class BindingCompiler {
     /** Codec selection is part of the value plan, never a backend decision. */
     private BindingValue compileValue(BindingPlan.Direction direction, TypeMirror inputType,
                                       ExecutableElement method, GeneratedClass generated,
-                                      String codecName, String codecPattern) {
+                                      String valueFormat, String valuePattern) {
         if (inputType == null) {
             error(method, generated, "Cannot resolve binding type");
             return null;
@@ -103,16 +103,16 @@ final class BindingCompiler {
 
         TypeMirror type = context.types.concrete(inputType);
         String key = direction.name() + ':' + type.toString()
-                + ':' + codecName + ':' + codecPattern;
+                + ':' + valueFormat + ':' + valuePattern;
         BindingValue existing = cache.get(key);
 
         if (existing != null) return existing;
 
-        boolean explicitCodec = codecName != null || codecPattern != null;
+        boolean explicitCodec = valueFormat != null || valuePattern != null;
         if (explicitCodec && !context.types.isNodeValue(type)
                 && cannotRegisterCodecFor(type)) {
             unsupported(method, generated, type,
-                    "@NodeProperty codecName/codecPattern cannot be applied to native OBNT types");
+                    "@NodeProperty valueFormat/valuePattern cannot be applied to native OBNT types");
             return null;
         }
 
@@ -124,13 +124,13 @@ final class BindingCompiler {
 
         // A discovered codec declaration makes named formats statically
         // checkable. Runtime-only registrations remain dynamically resolved.
-        // A codecPattern overrides codecName and is validated by the codec
+        // A valuePattern overrides valueFormat and is validated by the codec
         // instance when the generated binder initializes.
-        if (kind == BindingValue.Kind.VALUE_CODEC && codecName != null
-                && codecPattern == null && metadata.hasValueCodec(type)
-                && metadata.valueCodec(type, codecName) == null) {
-            error(method, generated, "Unknown @NodeProperty codecName '"
-                    + codecName + "' for type " + type);
+        if (kind == BindingValue.Kind.VALUE_CODEC && valueFormat != null
+                && valuePattern == null && metadata.hasValueCodec(type)
+                && metadata.valueCodec(type, valueFormat) == null) {
+            error(method, generated, "Unknown @NodeProperty valueFormat '"
+                    + valueFormat + "' for type " + type);
             return null;
         }
 
@@ -143,11 +143,11 @@ final class BindingCompiler {
          */
         cache.put(key, value);
         if (kind == BindingValue.Kind.VALUE_CODEC) {
-            value.codecSelection(codecName, codecPattern);
+            value.codecSelection(valueFormat, valuePattern);
             // A format pattern can resolve a different runtime codec; use its
             // declared raw type only when the declared formats are uniform.
             TypeMirror rawType = metadata.stableCodecRawType(type,
-                    codecPattern == null ? codecName : null);
+                    valuePattern == null ? valueFormat : null);
             if (rawType == null && context.types.isNodeValue(type)) {
                 rawType = context.types.nodeValueRawType(type);
             }
@@ -702,8 +702,8 @@ final class BindingCompiler {
     private boolean isInlineStringConstant(VariableElement field) {
         NodeProperty property = field.getAnnotation(NodeProperty.class);
         return property != null && !property.value().isEmpty()
-                && NodeProperty.CODEC_NAME_UNSET.equals(property.codecName())
-                && property.codecPattern().isEmpty()
+                && NodeProperty.VALUE_FORMAT_UNSET.equals(property.valueFormat())
+                && property.valuePattern().isEmpty()
                 && field.getModifiers().contains(Modifier.FINAL)
                 && !field.getModifiers().contains(Modifier.TRANSIENT)
                 && context.types.isSameErasure(field.asType(), stringType)
@@ -863,7 +863,7 @@ final class BindingCompiler {
             }
 
             if (conflictingCodecOptions(readAnnotation, writeAnnotation)) {
-                error(method, generated, "Conflicting @NodeProperty codecName/codecPattern on "
+                error(method, generated, "Conflicting @NodeProperty valueFormat/valuePattern on "
                         + value.type() + "." + property.name());
                 return false;
             }
@@ -872,8 +872,8 @@ final class BindingCompiler {
                             memberOneOf(property.read()) != null ? memberOneOf(property.read())
                                     : memberOneOf(property.write()), method, generated)
                     : compileValue(value.direction(), access.type(), method, generated,
-                            selectedCodecName(readAnnotation, writeAnnotation),
-                            selectedCodecPattern(readAnnotation, writeAnnotation));
+                            selectedValueFormat(readAnnotation, writeAnnotation),
+                            selectedValuePattern(readAnnotation, writeAnnotation));
 
             if (propertyValue == null) return false;
 
@@ -933,8 +933,8 @@ final class BindingCompiler {
                 return false;
             }
             if (override != null && annotation != null
-                    && (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                    || !annotation.codecPattern().isEmpty())) {
+                    && (!NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())
+                    || !annotation.valuePattern().isEmpty())) {
                 error(method, generated, "creator @OneOf cannot be combined with a value codec on "
                         + value.type() + "." + name);
                 return false;
@@ -942,10 +942,10 @@ final class BindingCompiler {
             BindingValue child = override == null
                     ? compileValue(value.direction(), creator.parameterTypes().get(i),
                             method, generated,
-                            annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                                    ? null : annotation.codecName(),
-                            annotation == null || annotation.codecPattern().isEmpty()
-                                    ? null : annotation.codecPattern())
+                            annotation == null || NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())
+                                    ? null : annotation.valueFormat(),
+                            annotation == null || annotation.valuePattern().isEmpty()
+                                    ? null : annotation.valuePattern())
                     : compileCreatorOneOf(value, creator.parameterTypes().get(i), override,
                             i, method, generated);
             if (child == null) return false;
@@ -1021,8 +1021,8 @@ final class BindingCompiler {
                 return false;
             }
             if (override != null && annotation != null
-                    && (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                    || !annotation.codecPattern().isEmpty())) {
+                    && (!NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())
+                    || !annotation.valuePattern().isEmpty())) {
                 error(method, generated, "creator @OneOf cannot be combined with a value codec on "
                         + value.type() + "." + name);
                 return false;
@@ -1030,10 +1030,10 @@ final class BindingCompiler {
             BindingValue child = override == null
                     ? compileValue(value.direction(), creator.parameterTypes().get(i),
                             method, generated,
-                            annotation == null || NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                                    ? null : annotation.codecName(),
-                            annotation == null || annotation.codecPattern().isEmpty()
-                                    ? null : annotation.codecPattern())
+                            annotation == null || NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())
+                                    ? null : annotation.valueFormat(),
+                            annotation == null || annotation.valuePattern().isEmpty()
+                                    ? null : annotation.valuePattern())
                     : compileCreatorOneOf(value, creator.parameterTypes().get(i), override,
                             i, method, generated);
             if (child == null) return false;
@@ -1052,7 +1052,7 @@ final class BindingCompiler {
                     : getter == null ? new String[0] : getter.aliases();
             if (!claimCreatorNames(value, method, generated, claimed, property.name(), aliases)) return false;
             if (conflictingCodecOptions(getter, setter)) {
-                error(method, generated, "Conflicting @NodeProperty codecName/codecPattern on "
+                error(method, generated, "Conflicting @NodeProperty valueFormat/valuePattern on "
                         + value.type() + "." + property.name());
                 return false;
             }
@@ -1061,8 +1061,8 @@ final class BindingCompiler {
                             memberOneOf(property.read()) != null ? memberOneOf(property.read())
                                     : memberOneOf(property.write()), method, generated)
                     : compileValue(value.direction(), property.write().type(),
-                            method, generated, selectedCodecName(getter, setter),
-                            selectedCodecPattern(getter, setter));
+                            method, generated, selectedValueFormat(getter, setter),
+                            selectedValuePattern(getter, setter));
             if (child == null) return false;
             compiled.add(new BindingProperty(property.name(), aliases,
                     property.write(), child, pending++));
@@ -1100,29 +1100,29 @@ final class BindingCompiler {
 
     private static boolean conflictingCodecOptions(NodeProperty getter, NodeProperty setter) {
         if (getter == null || setter == null) return false;
-        String leftName = NodeProperty.CODEC_NAME_UNSET.equals(getter.codecName())
-                ? null : getter.codecName();
-        String rightName = NodeProperty.CODEC_NAME_UNSET.equals(setter.codecName())
-                ? null : setter.codecName();
+        String leftName = NodeProperty.VALUE_FORMAT_UNSET.equals(getter.valueFormat())
+                ? null : getter.valueFormat();
+        String rightName = NodeProperty.VALUE_FORMAT_UNSET.equals(setter.valueFormat())
+                ? null : setter.valueFormat();
         if (leftName != null && rightName != null && !leftName.equals(rightName)) return true;
-        String leftPattern = getter.codecPattern().isEmpty() ? null : getter.codecPattern();
-        String rightPattern = setter.codecPattern().isEmpty() ? null : setter.codecPattern();
+        String leftPattern = getter.valuePattern().isEmpty() ? null : getter.valuePattern();
+        String rightPattern = setter.valuePattern().isEmpty() ? null : setter.valuePattern();
         return leftPattern != null && rightPattern != null && !leftPattern.equals(rightPattern);
     }
 
-    private static String selectedCodecName(NodeProperty getter, NodeProperty setter) {
-        String fromGetter = getter == null || NodeProperty.CODEC_NAME_UNSET.equals(getter.codecName())
-                ? null : getter.codecName();
-        String fromSetter = setter == null || NodeProperty.CODEC_NAME_UNSET.equals(setter.codecName())
-                ? null : setter.codecName();
+    private static String selectedValueFormat(NodeProperty getter, NodeProperty setter) {
+        String fromGetter = getter == null || NodeProperty.VALUE_FORMAT_UNSET.equals(getter.valueFormat())
+                ? null : getter.valueFormat();
+        String fromSetter = setter == null || NodeProperty.VALUE_FORMAT_UNSET.equals(setter.valueFormat())
+                ? null : setter.valueFormat();
         return fromSetter != null ? fromSetter : fromGetter;
     }
 
-    private static String selectedCodecPattern(NodeProperty getter, NodeProperty setter) {
-        String fromGetter = getter == null || getter.codecPattern().isEmpty()
-                ? null : getter.codecPattern();
-        String fromSetter = setter == null || setter.codecPattern().isEmpty()
-                ? null : setter.codecPattern();
+    private static String selectedValuePattern(NodeProperty getter, NodeProperty setter) {
+        String fromGetter = getter == null || getter.valuePattern().isEmpty()
+                ? null : getter.valuePattern();
+        String fromSetter = setter == null || setter.valuePattern().isEmpty()
+                ? null : setter.valuePattern();
         return fromSetter != null ? fromSetter : fromGetter;
     }
 

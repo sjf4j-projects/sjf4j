@@ -773,7 +773,7 @@ final class ReadEmitter {
                 scalarRead = "(" + value.helperName() + ".streamParser != null ? "
                         + value.helperName() + ".streamParser.read(" + parser + ") : "
                         + scalarRead + ")";
-                boolean autoRead = value.codecName() == null && value.codecPattern() == null;
+                boolean autoRead = value.valueFormat() == null && value.valuePattern() == null;
                 if (autoRead) {
                     String set = value.helperName() + "Set";
                     String selected = STREAMING_IO + ".readValueSet(" + parser + ", "

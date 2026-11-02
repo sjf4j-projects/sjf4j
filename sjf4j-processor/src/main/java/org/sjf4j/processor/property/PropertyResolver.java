@@ -330,8 +330,8 @@ public final class PropertyResolver {
 
         void recordCodec(Element member) {
             NodeProperty annotation = member.getAnnotation(NodeProperty.class);
-            if (annotation != null && (!NodeProperty.CODEC_NAME_UNSET.equals(annotation.codecName())
-                    || !annotation.codecPattern().isEmpty())) {
+            if (annotation != null && (!NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())
+                    || !annotation.valuePattern().isEmpty())) {
                 explicitCodec = true;
             }
         }
