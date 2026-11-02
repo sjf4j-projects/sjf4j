@@ -26,8 +26,8 @@ class CompiledValidatorGenericOneOfProcessorTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
-        assertTrue(generated.contains("private static boolean _schema_"), generated);
-        assertTrue(generated.contains("_matches_"), generated);
+        assertTrue(generated.contains("private static boolean _matchesSchema"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
         assertTrue(generated.contains(" > 1) return false;"), generated);
         assertTrue(generated.contains(" != 1) return false;"), generated);
         assertFalse(generated.contains(".isValid("), generated);
