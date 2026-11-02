@@ -29,14 +29,16 @@ final class Fastjson2WriteEmitter {
     }
 
     /** Backend-specific UTF-8/UTF-16 quoted JSON literals, initialized once per Enum. */
-    void emitEnumFields(JavaWriter out, Map<String, String> fields) {
-        for (Map.Entry<String, String> entry : fields.entrySet()) {
+    void emitEnumFields(JavaWriter out, Map<String, BindingValue> fields) {
+        for (Map.Entry<String, BindingValue> entry : fields.entrySet()) {
             String type = entry.getKey();
-            String field = entry.getValue();
+            BindingValue enumValue = entry.getValue();
             for (boolean utf8 : new boolean[]{true, false}) {
                 String suffix = utf8 ? "Utf8" : "Utf16";
                 String elementType = utf8 ? "byte" : "char";
-                String method = field + suffix + "Init";
+                String field = writes.enumField(enumValue, suffix);
+                String method = writes.naming().enumHelper(enumValue.type(), "init:" + suffix,
+                        "init" + BindingNames.simpleType(enumValue.type()) + suffix + "Enum");
                 out.line("private static final " + elementType + "[][] " + field + suffix
                         + " = " + method + "();");
                 out.beginBlock("private static " + elementType + "[][] " + method + "()");
@@ -150,7 +152,8 @@ final class Fastjson2WriteEmitter {
     }
 
     private String fastjsonHelperName(BindingValue value, FastjsonMode mode) {
-        return value.helperName() + mode.suffix;
+        return writes.naming().helper(value, "write:" + mode.suffix,
+                "write" + BindingNames.simpleType(value.type()) + mode.suffix);
     }
 
     private String fastjsonNameExpr(String name, FastjsonMode mode) {
@@ -235,7 +238,7 @@ final class Fastjson2WriteEmitter {
                     out.line("w.writeString(" + expression + ".toString());");
                     return;
                 case ENUM:
-                    String field = writes.enumField(value) + mode.suffix;
+                    String field = writes.enumField(value, mode.suffix);
                     if (mode == FastjsonMode.UTF8) {
                         out.line("w.writeRaw(" + field + "[" + expression + ".ordinal()]);");
                     } else {
@@ -401,7 +404,7 @@ final class Fastjson2WriteEmitter {
                 out.line(raw + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
-                String field = writes.enumField(value) + mode.suffix;
+                String field = writes.enumField(value, mode.suffix);
                 if (mode == FastjsonMode.UTF8) {
                     out.line(raw + ".writeRaw(" + field + "[" + item + ".ordinal()]);");
                 } else {
