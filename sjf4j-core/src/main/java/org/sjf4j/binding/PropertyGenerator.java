@@ -190,7 +190,7 @@ public interface PropertyGenerator {
          */
 
         if (Map.class.isAssignableFrom(fieldBoxed)) {
-            return _createForMap(fieldName, fieldType, getterHandle, getterLambda, contentTypeInfo);
+            return _createForMap(fieldName, getterHandle, getterLambda, contentTypeInfo);
         }
 
         if (fieldBoxed == JsonObject.class) {
@@ -198,7 +198,7 @@ public interface PropertyGenerator {
         }
 
         if (List.class.isAssignableFrom(fieldBoxed)) {
-            return _createForList(fieldName, fieldType, getterHandle, getterLambda, contentTypeInfo);
+            return _createForList(fieldName, getterHandle, getterLambda, contentTypeInfo);
         }
 
         if (JsonArray.class.isAssignableFrom(fieldBoxed)) {
@@ -206,11 +206,11 @@ public interface PropertyGenerator {
         }
 
         if (Set.class.isAssignableFrom(fieldBoxed)) {
-            return _createForSet(fieldName, fieldType, getterHandle, getterLambda, contentTypeInfo);
+            return _createForSet(fieldName, getterHandle, getterLambda, contentTypeInfo);
         }
 
         if (fieldBoxed.isArray()) {
-            return _createForArray(fieldName, fieldBoxed, getterHandle, getterLambda, contentTypeInfo);
+            return _createForArray(fieldName, getterHandle, getterLambda, contentTypeInfo);
         }
 
         return _createForObject(fieldName, fieldBoxed, getterHandle, getterLambda, typeInfo);
@@ -636,11 +636,8 @@ public interface PropertyGenerator {
         };
     }
 
-    static PropertyGenerator _createForMap(String fieldName, Type fieldType, MethodHandle getterHandle,
+    static PropertyGenerator _createForMap(String fieldName, MethodHandle getterHandle,
                                         Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
-        Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
-        Class<?> valueClazz = Types.rawBox(valueType);
-
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -674,11 +671,8 @@ public interface PropertyGenerator {
         };
     }
 
-    static PropertyGenerator _createForList(String fieldName, Type fieldType, MethodHandle getterHandle,
+    static PropertyGenerator _createForList(String fieldName, MethodHandle getterHandle,
                                          Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
-        Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
-        Class<?> elementClazz = Types.rawBox(elementType);
-
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -705,11 +699,8 @@ public interface PropertyGenerator {
         };
     }
 
-    static PropertyGenerator _createForSet(String fieldName, Type fieldType, MethodHandle getterHandle,
+    static PropertyGenerator _createForSet(String fieldName, MethodHandle getterHandle,
                                         Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
-        Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
-        Class<?> elementClazz = Types.rawBox(elementType);
-
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -723,10 +714,8 @@ public interface PropertyGenerator {
         };
     }
 
-    static PropertyGenerator _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
+    static PropertyGenerator _createForArray(String fieldName, MethodHandle getterHandle,
                                           Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
-        Class<?> compClazz = fieldBoxed.getComponentType();
-
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
