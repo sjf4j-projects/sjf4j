@@ -38,6 +38,8 @@ public final class PojoInfo {
     public final PropertyParser[] propertyParsers;
 
     public final PropertyInfo[] gettableProperties;
+    /** Subset emitted by JSON Binding; generic OBNT traversal uses gettableProperties. */
+    public final PropertyInfo[] bindingGettableProperties;
     public final PropertyGenerator[] propertyGenerators;
 
     /** Name matching for argument-based creators and parent-scope OneOf. */
@@ -57,6 +59,7 @@ public final class PojoInfo {
                     PropertyInfo[] settableProperties,
                     PropertyParser[] propertyParsers,
                     PropertyInfo[] gettableProperties,
+                    PropertyInfo[] bindingGettableProperties,
                     PropertyGenerator[] propertyGenerators) {
         this.clazz = clazz;
         this.creatorInfo = creatorInfo;
@@ -75,6 +78,7 @@ public final class PojoInfo {
         this.hasParentScopeOneOf = hasParentScopeOneOf;
         this.propertyLookup = propertyLookup;
         this.gettableProperties = gettableProperties;
+        this.bindingGettableProperties = bindingGettableProperties;
         this.settableProperties = settableProperties;
         this.propertyParsers = propertyParsers;
         this.propertyGenerators = propertyGenerators;
