@@ -18,11 +18,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     private final BackendSpec backend;
     private final WriteEmitter writes;
-    private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
+    private final StructuralWriteEmitter structures;
 
     JacksonWriteEmitter(BackendSpec backend, WriteEmitter writes) {
         this.backend = backend;
         this.writes = writes;
+        this.structures = new StructuralWriteEmitter(this, writes.naming());
     }
 
     /** Cache enum values in the native Jackson serialized-string format. */
