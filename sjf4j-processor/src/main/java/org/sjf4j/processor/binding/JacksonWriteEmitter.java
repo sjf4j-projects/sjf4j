@@ -155,7 +155,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                   String expression) {
-        out.line("_writeStringMember(g, " + WriteEmitter.compiledNameField(owner, index)
+        out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
                 + ".serializedName, " + expression + ");");
     }
 
@@ -241,7 +241,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                         + expression + ", this.context);");
                 return;
             case STRING:
-                out.line("_writeString(" + nativeGenerator + ", " + expression + ");");
+                out.line(writes.stringHelper() + "(" + nativeGenerator + ", " + expression + ");");
                 return;
             case NUMBER:
                 out.line(generator + ".writeNumber(" + expression + ");");
