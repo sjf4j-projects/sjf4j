@@ -42,6 +42,15 @@ public class CompiledValidatorPropertyCodecTest {
         boolean getter(GetterWins value);
     }
 
+    @CompiledValidator(fallback = false)
+    public interface RegisteredCodecRoot {
+        @ValidJsonSchema("{\"type\":\"object\"}")
+        boolean object(Instant value);
+
+        @ValidJsonSchema("{\"type\":\"object\"}")
+        boolean object(LocalDate value);
+    }
+
     @CompiledValidator(fallback = true)
     public interface Fallback {
         @ValidJsonSchema("{\"properties\":{\"millis\":{\"type\":\"object\"}}}")
@@ -50,6 +59,13 @@ public class CompiledValidatorPropertyCodecTest {
         @ValidJsonSchema("{\"properties\":{\"millis\":{\"anyOf\":["
                 + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}")
         boolean complexScalar(Times value);
+    }
+
+    @Test
+    void registeredCodecsDoNotBecomePojoObjectNodes() {
+        RegisteredCodecRoot compiled = CompiledInstances.create(RegisteredCodecRoot.class);
+        assertFalse(compiled.object(Instant.EPOCH));
+        assertFalse(compiled.object(LocalDate.of(2026, 11, 2)));
     }
 
     @Test

@@ -265,8 +265,8 @@ final class ObjectCompiler {
         }
         if (raw != null && !raw.getKind().isPrimitive()) {
             SchemaValue value = SchemaValue.of(context, raw);
-            if (value.shape == SchemaValue.Shape.STRING
-                    && "java.lang.String".equals(raw.toString())
+            if ((value.shape == SchemaValue.Shape.STRING
+                    && "java.lang.String".equals(raw.toString()))
                     || value.shape == SchemaValue.Shape.NUMBER
                     || value.shape == SchemaValue.Shape.BOOLEAN) {
                 return value;
@@ -327,6 +327,12 @@ final class ObjectCompiler {
         // declarations instead of treating them as static POJOs.
         if (kind.isValueCodec()) return true;
         if (kind.isValue() || kind.isArray()) return false;
+        // Compile-time NodeKind detects annotated @NodeValue methods; also
+        // check known @NodeValue codec registry declarations (e.g. Instant).
+        // Otherwise a final codec-backed Java class might be compiled as a POJO.
+        TypeElement registered = context.types.typeElement(type);
+        if (kind == NodeKind.OBJECT_POJO && registered != null
+                && context.metadata(registered).hasValueCodec(type)) return true;
         if (kind != NodeKind.OBJECT_POJO) return true;
         TypeElement owner = context.types.typeElement(type);
         return owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)

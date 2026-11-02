@@ -153,6 +153,31 @@ class CompiledValidatorArchitectureTest {
         assertFalse(generated.contains(".isValid("), generated);
     }
 
+    @Test
+    void staticallyTypedPropertyCodecsAvoidRawShapeDispatch() throws Exception {
+        String model = "package fixture; import java.time.*; "
+                + "import org.sjf4j.annotation.node.NodeProperty; "
+                + "public final class Model { "
+                + "@NodeProperty(valueFormat=\\\"epochMillis\\\") public Instant when; "
+                + "@NodeProperty(valuePattern=\\\"yyyy/MM/dd\\\") public LocalDate day; "
+                + "}";
+        String schema = "{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{"
+                + "\\\"when\\\":{\\\"type\\\":\\\"number\\\",\\\"minimum\\\":1000},"
+                + "\\\"day\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":6}}}";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "boolean valid(Model value); }";
+        NavigatorTestCompiler.Result result = compile(model, validator);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains("java.lang.Long _property0_raw"), generated);
+        assertTrue(generated.contains("java.lang.String _property1_raw"), generated);
+        assertFalse(generated.contains("JsonType.rawOf("), generated);
+        assertFalse(generated.contains("Nodes.toNumber("), generated);
+        assertFalse(generated.contains("Nodes.toString("), generated);
+    }
+
     private static NavigatorTestCompiler.Result compile(String model, String validator) throws Exception {
         return NavigatorTestCompiler.compile(Map.of(
                 "fixture/Model.java", model, "fixture/Check.java", validator),
