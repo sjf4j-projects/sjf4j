@@ -65,6 +65,48 @@ public class SchemaValidationTest {
     }
 
     @Test
+    public void testInstanceRetainsOriginalAndRawForNullValueEncoding() {
+        StringValue value = new StringValue();
+        Instance instance = Instance.infer(value);
+
+        assertSame(value, instance.node());
+        assertTrue(instance.converted());
+        assertNull(instance.raw());
+        assertEquals(JsonType.NULL, instance.jsonType());
+        assertEquals(1, value.encodes);
+
+        assertTrue(JsonSchema.fromJson("{\"type\":\"null\",\"const\":null}").createPlan().isValid(value));
+        assertFalse(JsonSchema.fromJson("{\"type\":\"string\"}").createPlan().isValid(value));
+        assertTrue(JsonSchema.fromJson("{\"enum\":[null]}").createPlan().isValid(value));
+
+        // Reusing the wrapper must never expose a stale converted value.
+        instance.reuse("plain", JsonType.STRING, false);
+        assertEquals("plain", instance.node());
+        assertEquals("plain", instance.raw());
+        assertFalse(instance.converted());
+    }
+
+    @Test
+    public void testEncodedContainerValueIsAtomicForStructureKeywords() {
+        MapValue objectValue = new MapValue();
+        Instance mapInstance = Instance.infer(objectValue);
+        assertSame(objectValue, mapInstance.node());
+        assertEquals(Collections.emptyMap(), mapInstance.raw());
+        assertEquals(JsonType.UNKNOWN, mapInstance.jsonType());
+        assertTrue(mapInstance.converted());
+        assertTrue(JsonSchema.fromJson("{\"const\":{}}").createPlan().isValid(objectValue));
+        assertFalse(JsonSchema.fromJson("{\"type\":\"object\"}").createPlan().isValid(objectValue));
+
+        ListValue listValue = new ListValue();
+        Instance listInstance = Instance.infer(listValue);
+        assertSame(listValue, listInstance.node());
+        assertEquals(Collections.emptyList(), listInstance.raw());
+        assertEquals(JsonType.UNKNOWN, listInstance.jsonType());
+        assertTrue(JsonSchema.fromJson("{\"const\":[]}").createPlan().isValid(listValue));
+        assertFalse(JsonSchema.fromJson("{\"type\":\"array\"}").createPlan().isValid(listValue));
+    }
+
+    @Test
     public void testNumberKeywords() {
         String json =
                 "{\n" +
