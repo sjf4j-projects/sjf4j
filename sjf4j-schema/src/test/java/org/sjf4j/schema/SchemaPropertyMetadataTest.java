@@ -33,7 +33,7 @@ class SchemaPropertyMetadataTest {
         public Address address;
         public List<Address> addresses;
         public Map<String, Address> addressMap;
-        @NodeProperty(codecName = "epochMillis")
+        @NodeProperty(valueFormat = "epochMillis")
         public Instant timestamp;
     }
 

@@ -90,10 +90,11 @@ public class CompiledValidatorValueBindingTest {
         boolean nested(Holder value);
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @Test
     void normalizesObjectAndDeclaredValueBindings() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        for (Map<String, Object> raw : new Map[]{
+        for (Map raw : new Map[]{
                 Map.of("name", "Alice"),
                 Map.of("name", "x"),
                 Map.of("missing", 1),
