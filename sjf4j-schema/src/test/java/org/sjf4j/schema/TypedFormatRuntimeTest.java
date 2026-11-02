@@ -35,12 +35,11 @@ class TypedFormatRuntimeTest {
     }
 
     @Test
-    void uuidCodecRemainsLazyUntilRawValueIsRequired() {
+    void uuidCodecPreservesRawStringAndTypedFormatHint() {
         Instance instance = Instance.infer(UUID_VALUE);
         assertEquals(JsonType.STRING, instance.jsonType());
         assertTrue(instance.converted());
-        assertSame(UUID_VALUE, instance.formatSource());
-        assertEquals(UUID_VALUE.toString(), instance.node());
+        assertSame(UUID_VALUE, instance.originalValue());
         assertEquals(UUID_VALUE.toString(), instance.node());
     }
 
