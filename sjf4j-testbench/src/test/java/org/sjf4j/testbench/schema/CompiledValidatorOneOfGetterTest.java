@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** A Java subtype does not prove which JSON Schema oneOf branch will match. */
-class CompiledValidatorOneOfGetterTest {
+public class CompiledValidatorOneOfGetterTest {
     private static final String SCHEMA =
             "{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"oneOf\":["
             + "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"kind\",\"name\"],"
