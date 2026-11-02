@@ -670,7 +670,8 @@ public final class StreamingIO {
             return readValueCodec(parser, property.valueInfo, context);
         }
 
-        return readNode(parser, type, boxed, null, context);
+        TypeInfo declaredInfo = property.typeInfo == null ? null : property.typeInfo.get();
+        return readNode(parser, type, boxed, declaredInfo, context);
     }
 
 

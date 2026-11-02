@@ -67,7 +67,7 @@ public final class TypeRegistry {
      * @param requirePojo when true, results without object binding are rejected
      */
     public static TypeInfo registerTypeInfo(Class<?> clazz, boolean requirePojo) {
-        if (_fastNoneInfo(clazz)) {
+        if (isFastNoneType(clazz)) {
             if (requirePojo) {
                 throw new BindingException("class '" + Types.name(clazz) + "' is not a POJO");
             }
@@ -143,7 +143,8 @@ public final class TypeRegistry {
         return TypeInfo.NONE;
     }
 
-    private static boolean _fastNoneInfo(Class<?> clazz) {
+    /** Type classes for which the registry always returns {@link TypeInfo#NONE}. */
+    static boolean isFastNoneType(Class<?> clazz) {
         return clazz == null || clazz == Object.class || clazz == String.class || clazz == Boolean.class
                 || Number.class.isAssignableFrom(clazz)
                 || clazz == Map.class || clazz == List.class || clazz == Set.class || clazz.isArray()

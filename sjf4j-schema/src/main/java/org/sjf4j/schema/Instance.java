@@ -1,13 +1,12 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.InternalAccess;
-import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.meta.TypeInfo;
+import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.meta.LazyTypeInfo;
 import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.path.PathSegment;
 
@@ -76,28 +75,6 @@ public final class Instance {
         return info;
     }
 
-    /** Returns the OBNT object-member count without reading POJO getters. */
-    int objectSize() {
-        if (jsonType != JsonType.OBJECT) {
-            throw new NodeException("Type mismatch: objectSize() requires OBJECT node, but was " + jsonType);
-        }
-        if (node instanceof Map) return ((Map<?, ?>) node).size();
-        if (node.getClass() == JsonObject.class) return ((JsonObject) node).size();
-
-        TypeInfo info = typeInfo();
-        PojoInfo pojo = info.pojoInfo;
-        if (pojo != null) {
-            int size = pojo.gettableProperties.length;
-            if (pojo.isJojo) {
-                Map<String, Object> dynamic = InternalAccess.dynamicMembers((JsonObject) node);
-                if (dynamic != null) size += dynamic.size();
-            }
-            return size;
-        }
-        if (info.externalNode != null) return info.externalNode.sizeInObject(node);
-        throw new NodeException("expected object node");
-    }
-
     Instance reuse(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
         this.jsonType = jsonType;
@@ -164,11 +141,17 @@ public final class Instance {
      * atomic value: object and array structural keywords must not traverse it.
      */
     static Instance infer(Object node, Instance reusedLeaf) {
+        return infer(node, null, reusedLeaf);
+    }
+
+    /** Reuses metadata for a matching declared property type without losing runtime polymorphism. */
+    private static Instance infer(Object node, LazyTypeInfo declaredType, Instance reusedLeaf) {
         Class<?> clazz = node == null ? null : node.getClass();
         NodeKind kind = clazz == null ? NodeKind.VALUE_NULL : NodeKind.plainOf(clazz);
         TypeInfo ti = null;
         if (kind == NodeKind.UNKNOWN) {
-            ti = TypeRegistry.registerTypeInfo(clazz);
+            ti = declaredType != null && declaredType.clazz == clazz
+                    ? declaredType.get() : TypeRegistry.registerTypeInfo(clazz);
             if (ti.valueSet != null) {
                 ValueInfo vi = ti.valueSet.defaultInfo;
                 node = vi.valueToRaw(node);
@@ -198,8 +181,8 @@ public final class Instance {
      * Classifies an explicitly codec-bound property. Container-shaped encodings
      * remain atomic value leaves; they cannot become structural Object/Array nodes.
      */
-    private static Instance infer(Object node, ValueInfo codec, Instance reusedLeaf) {
-        if (codec == null || node == null) return infer(node, reusedLeaf);
+    private static Instance infer(Object node, ValueInfo codec, LazyTypeInfo declaredType, Instance reusedLeaf) {
+        if (codec == null || node == null) return infer(node, declaredType, reusedLeaf);
         Object raw = codec.valueToRaw(node);
         JsonType rawType = raw == null ? JsonType.NULL : codec.rawJsonType;
         JsonType logicalType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
@@ -289,8 +272,8 @@ public final class Instance {
         return inferSubByKey(key, subNode, null, reusedLeaf);
     }
 
-    /** Infers a member using its declared codec when present, with cached encoding. */
-    Instance inferSubByKey(String key, Object subNode, ValueInfo codec, Instance reusedLeaf) {
+    /** Infers a declared member using its codec and type metadata, with cached encoding. */
+    Instance inferSubByKey(String key, Object subNode, PropertyInfo property, Instance reusedLeaf) {
         if (jsonType != JsonType.OBJECT)
             throw new NodeException("Type mismatch: inferSubByKey() requires OBJECT node, but was " + jsonType);
         if (subInstanceCache != null) {
@@ -298,7 +281,9 @@ public final class Instance {
             if (subInstance != null) return subInstance.reset();
         }
 
-        Instance subInstance = Instance.infer(subNode, codec, reusedLeaf).bindPathKey(this, key);
+        Instance subInstance = Instance.infer(subNode,
+                property == null ? null : property.valueInfo,
+                property == null ? null : property.typeInfo, reusedLeaf).bindPathKey(this, key);
         if (subInstance.converted) {
             if (subInstanceCache == null) subInstanceCache = new HashMap<>();
             subInstanceCache.put(key, subInstance);
