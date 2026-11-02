@@ -9,6 +9,27 @@ import static org.junit.jupiter.api.Assertions.*;
 class CompiledNavigatorNamingTest {
 
     @Test
+    void repeatedCompilationProducesIdenticalSource() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Item.java",
+                "package fixture; public class Item { public int age; public String name; }");
+        sources.put("fixture/Navigator.java",
+                "package fixture; import java.util.*; import org.sjf4j.annotation.path.*;"
+                + " @CompiledNavigator(fallback=true) public interface Navigator {"
+                + " @FindByPath(\"$[?(@.age > 18)].name\") List<String> adults(List<Item> root);"
+                + " @FindByPath(\"$..name\") List<String> descendants(List<Item> root);"
+                + " }");
+        NavigatorTestCompiler.Result first =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        NavigatorTestCompiler.Result second =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(first.success, first.diagnostics());
+        assertTrue(second.success, second.diagnostics());
+        assertEquals(first.generatedSource("fixture/Navigator_Impl.java"),
+                second.generatedSource("fixture/Navigator_Impl.java"));
+    }
+
+    @Test
     void inheritedFieldNamesDoNotConflictWithGeneratedFindCaches() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Item.java",
