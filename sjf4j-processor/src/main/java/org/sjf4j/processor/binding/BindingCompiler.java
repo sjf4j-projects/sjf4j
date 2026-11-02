@@ -924,12 +924,17 @@ final class BindingCompiler {
         for (int i = 0; i < args.size(); i++) {
             VariableElement arg = args.get(i);
             NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
-            if (annotation != null && !annotation.bindingRead()) {
-                error(method, generated, "creator parameters cannot use bindingRead=false: " + value.type());
+            if (annotation != null && (!annotation.bindingRead() || !annotation.bindingWrite())) {
+                error(method, generated, "creator parameters cannot disable binding directions: " + value.type());
                 return false;
             }
             String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
             String[] aliases = context.annotations.propertyAliases(arg);
+            Property creatorProperty = context.properties.resolve(value.type()).get(name);
+            if (creatorProperty != null && !creatorProperty.bindingRead()) {
+                error(method, generated, "creator-bound property cannot use bindingRead=false: " + value.type() + "." + name);
+                return false;
+            }
             if (name.isEmpty()) {
                 error(method, generated, "Empty record creator property name in " + value.type());
                 return false;
@@ -1025,12 +1030,17 @@ final class BindingCompiler {
         for (int i = 0; i < args.size(); i++) {
             VariableElement arg = args.get(i);
             NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
-            if (annotation != null && !annotation.bindingRead()) {
-                error(method, generated, "creator parameters cannot use bindingRead=false: " + value.type());
+            if (annotation != null && (!annotation.bindingRead() || !annotation.bindingWrite())) {
+                error(method, generated, "creator parameters cannot disable binding directions: " + value.type());
                 return false;
             }
             String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
             String[] aliases = context.annotations.propertyAliases(arg);
+            Property creatorProperty = properties.get(name);
+            if (creatorProperty != null && !creatorProperty.bindingRead()) {
+                error(method, generated, "creator-bound property cannot use bindingRead=false: " + value.type() + "." + name);
+                return false;
+            }
             if (name.isEmpty() || name.matches("arg[0-9]+")
                     && context.annotations.explicitPropertyName(arg) == null) {
                 error(method, generated, "Missing creator parameter name for " + value.type()
