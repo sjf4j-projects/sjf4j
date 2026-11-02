@@ -31,7 +31,7 @@ class CompiledValidatorApplicatorProcessorTest {
         NavigatorTestCompiler.Result result = compile(schema, false);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
-        assertTrue(generated.contains("private static boolean _schema_"), generated);
+        assertTrue(generated.contains("private static boolean _matchesSchema"), generated);
         assertTrue(generated.contains(" || "), generated);
         assertTrue(generated.contains("return false;"), generated);
         assertFalse(generated.contains(".isValid("), generated);
@@ -46,7 +46,7 @@ class CompiledValidatorApplicatorProcessorTest {
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         // The assertion after the constant-false branch must remain in the
         // semantic tree for the diagnostic emitter.
-        assertTrue(generated.contains("_value < 1L"), generated);
+        assertTrue(generated.contains("value < 1L"), generated);
         assertFalse(generated.contains("SchemaPlan"), generated);
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> implementation = loader.loadClass("fixture.Validator_Impl");

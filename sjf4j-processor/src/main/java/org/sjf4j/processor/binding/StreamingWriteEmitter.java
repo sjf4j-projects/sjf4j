@@ -17,9 +17,11 @@ final class StreamingWriteEmitter {
     private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final BindingNames names;
 
-    StreamingWriteEmitter(BackendSpec backend) {
+    StreamingWriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
+        this.names = names;
     }
 
     boolean shouldFallbackRoot(BindingValue value) {
@@ -70,7 +72,8 @@ final class StreamingWriteEmitter {
         }
         int index = 0;
         for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-            String metadata = value.helperName() + "_subtype" + index++ + "_pojoInfo";
+            String metadata = names.field(value, "subtypePojo:" + index++,
+                    BindingNames.fieldType(subtype.type) + "_POJO_INFO");
             if (subtype.compiled == null && !subtype.cachedPojo) continue;
             String type = subtype.type.toString();
             out.beginBlock("if (actualClass == " + type + ".class)");
@@ -172,7 +175,7 @@ final class StreamingWriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, generator, null, backend.backend());
+                CodecWriteEmitter.emit(out, value, expression, generator, null, backend.backend(), names);
                 return;
             case STRING:
                 out.line(generator + ".writeString(" + expression + ");");

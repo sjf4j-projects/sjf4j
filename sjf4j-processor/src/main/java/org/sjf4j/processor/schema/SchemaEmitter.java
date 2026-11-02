@@ -1,6 +1,7 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.NameAllocator;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -18,12 +19,14 @@ final class SchemaEmitter {
     private String instancePath = "org.sjf4j.path.PathSegment.Root.INSTANCE";
     private final GeneratedClass generated;
     private final String helperPrefix;
+    private NameAllocator locals;
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
 
-    SchemaEmitter(GeneratedClass generated, String helperPrefix) {
+    SchemaEmitter(GeneratedClass generated, String helperPrefix, NameAllocator locals) {
         this.generated = generated;
         this.helperPrefix = helperPrefix;
+        this.locals = locals;
     }
 
     private String fail(String action, SchemaCheck.Diagnostic d) {
@@ -80,7 +83,7 @@ final class SchemaEmitter {
                 statements.add("if (!" + contains + ") " + fail(onFailure, check.requiredDiagnostic));
             }
             if (!check.dependentRequired.isEmpty()) {
-                String keys = "_keys_" + helperPrefix + "_" + helperCount++;
+                String keys = locals.newName("keys");
                 statements.add("java.util.Set<String> " + keys + " = "
                         + (check.jsonObject ? variable + ".keySet()"
                         : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ";");
@@ -96,12 +99,13 @@ final class SchemaEmitter {
                 }
             }
             if (check.additionalPropertiesFalse) {
-                statements.add("for (String _key : " + (check.jsonObject ? variable + ".keySet()"
+                String key = locals.newName("key");
+                statements.add("for (String " + key + " : " + (check.jsonObject ? variable + ".keySet()"
                         : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
                 StringBuilder condition = new StringBuilder();
                 for (String allowed : check.allowedNames) {
                     if (condition.length() != 0) condition.append(" && ");
-                    condition.append("!_key.equals(").append(literal(allowed)).append(")");
+                    condition.append("!").append(key).append(".equals(").append(literal(allowed)).append(")");
                 }
                 String unknown = condition.length() == 0 ? "true" : condition.toString();
                 statements.add("    if (" + unknown + ") " + fail(onFailure, check.additionalPropertiesDiagnostic));
@@ -111,7 +115,7 @@ final class SchemaEmitter {
 
         int index = 0;
         for (SchemaCheck.PropertyCheck property : check.properties) {
-            String local = prefix + "_property" + index;
+            String local = locals.newName(property.name);
             String access = check.jsonObject
                     ? variable + ".getNode(" + literal(property.name) + ")"
                     : check.dynamic
@@ -121,12 +125,12 @@ final class SchemaEmitter {
                     + " " + local + " = " + access + ";");
             String checkedValue = local;
             if (property.codecOwner != null && property.check.kind != SchemaCheck.Kind.PASS) {
-                String codecField = "_codec_" + helperPrefix + "_" + helperCount++;
+                String codecField = generated.names().field(property.name.toUpperCase(java.util.Locale.ROOT) + "_CODEC");
                 generated.addField(out -> out.line("private static final org.sjf4j.value.ValueInfo "
                         + codecField + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
                         + property.codecOwner + ".class).getPropertyNoAlias("
                         + literal(property.name) + ").valueInfo;"));
-                checkedValue = local + "_raw";
+                checkedValue = locals.newName("rawValue");
                 String encodedType = property.value.shape == SchemaValue.Shape.STRING
                         || property.value.shape == SchemaValue.Shape.NUMBER
                         || property.value.shape == SchemaValue.Shape.BOOLEAN
@@ -177,9 +181,10 @@ final class SchemaEmitter {
                 if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
                     // Preserve the enclosing instance location across a real
                     // fallback without executing the root SchemaPlan.
+                    String fallbackError = locals.newName("fallbackError");
                     lines.add("try { " + sub.reference() + ".requireValid(" + expression
-                            + ", " + strictFormat + "); } catch (org.sjf4j.schema.ValidationException _fallbackError) {"
-                            + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(_fallbackError, "
+                            + ", " + strictFormat + "); } catch (org.sjf4j.schema.ValidationException " + fallbackError + ") {"
+                            + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(" + fallbackError + ", "
                             + instancePath + "); }");
                 } else {
                     lines.add("if (!" + sub.reference() + ".isValid("
@@ -262,7 +267,7 @@ final class SchemaEmitter {
     private void emitGenericOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
                                   SchemaCheck.GenericOneOfCheck check, SchemaValue value,
                                   String expression, String planName, String strictFormat, String onFailure) {
-        String matches = "_matches_" + planName + "_" + helperCount++;
+        String matches = locals.newName("matchCount");
         lines.add("int " + matches + " = 0;");
         for (SchemaCheck branch : check.branches) {
             if (branch.kind == SchemaCheck.Kind.REJECT) continue;
@@ -347,17 +352,23 @@ final class SchemaEmitter {
                                    SchemaValue value, String expression, String strictFormat) {
         if (branch.kind == SchemaCheck.Kind.PASS) return "true";
         if (branch.kind == SchemaCheck.Kind.REJECT) return "false";
-        String helper = "_schema_" + helperPrefix + "_" + helperCount++;
+        String helper = generated.names().helperMethod("matchesSchema");
         List<String> body = new ArrayList<String>();
-        // Nested boolean branch helpers must retain boolean return semantics.
-        emitValue(body, plan, branch, value, "_value", helper, "_strictFormat", 0,
-                "return false;");
+        // A nested boolean helper owns an independent method-level namespace.
+        NameAllocator parentLocals = locals;
+        locals = generated.names().helperLocals("value", "strictFormat");
+        try {
+            emitValue(body, plan, branch, value, "value", helper, "strictFormat", 0,
+                    "return false;");
+        } finally {
+            locals = parentLocals;
+        }
         boolean alwaysRejects = !body.isEmpty()
                 && "return false;".equals(body.get(body.size() - 1));
         String parameterType = value.type == null ? "Object" : value.type.toString();
         generated.addHelper(out -> {
             out.beginBlock("private static boolean " + helper + "("
-                    + parameterType + " _value, boolean _strictFormat)");
+                    + parameterType + " value, boolean strictFormat)");
             for (String source : body) out.line(source);
             if (!alwaysRejects) out.line("return true;");
             out.endBlock();
@@ -432,7 +443,8 @@ final class SchemaEmitter {
         lines.add("if (" + expression + " == null) " + fail(onFailure, check.diagnostic));
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
-            String typed = "_typed" + depth + "_" + name + "_" + n;
+            String simpleType = subtype.type.substring(subtype.type.lastIndexOf('.') + 1);
+            String typed = locals.newName(Character.toLowerCase(simpleType.charAt(0)) + simpleType.substring(1));
             lines.add((n == 0 ? "if" : "else if") + " ("
                     + expression + ".getClass() == " + subtype.type + ".class) {");
             lines.add("    " + subtype.type + " " + typed
@@ -452,10 +464,11 @@ final class SchemaEmitter {
         } else {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
+                String fallbackError = locals.newName("fallbackError");
                 lines.add("    try { " + full.reference() + ".requireValid("
                         + expression + ", " + strictFormat + "); }"
-                        + " catch (org.sjf4j.schema.ValidationException _fallbackError) {"
-                        + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(_fallbackError, "
+                        + " catch (org.sjf4j.schema.ValidationException " + fallbackError + ") {"
+                        + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(" + fallbackError + ", "
                         + instancePath + "); }");
             } else {
                 lines.add("    if (!" + full.reference()
@@ -469,13 +482,14 @@ final class SchemaEmitter {
                             SchemaValue value, String expression, String planName, int depth,
                             String strictFormat, String onFailure) {
         String text = expression;
-        String temp = "_text" + depth + "_" + planName;
+        String temp;
         if (value.shape == SchemaValue.Shape.STRING) {
             if (value.nullable) lines.add("if (" + expression + " == null) " + fail(onFailure, check.typeDiagnostic));
             if (!"java.lang.String".equals(value.type.toString())
                     && (check.minLength != null || check.maxLength != null
                         || check.choices != null || check.format != null
                         || check.pattern != null)) {
+                temp = locals.newName("text");
                 lines.add("String " + temp + " = "
                         + (value.enumType ? expression + ".name()" : "String.valueOf(" + expression + ")") + ";");
                 text = temp;
@@ -483,18 +497,19 @@ final class SchemaEmitter {
         } else {
             lines.add("if (" + expression + " == null || org.sjf4j.JsonType.rawOf("
                     + expression + ".getClass()) != org.sjf4j.JsonType.STRING) " + fail(onFailure, check.typeDiagnostic));
+            temp = locals.newName("text");
             lines.add("String " + temp + " = org.sjf4j.Nodes.toString(" + expression + ");");
             text = temp;
         }
         if (check.minLength != null || check.maxLength != null) {
-            String length = "_length" + depth + "_" + planName;
+            String length = locals.newName("length");
             lines.add("int " + length + " = " + text
                     + ".codePointCount(0, " + text + ".length());");
             if (check.minLength != null) lines.add("if (" + length + " < " + check.minLength + ") " + fail(onFailure, check.minLengthDiagnostic));
             if (check.maxLength != null) lines.add("if (" + length + " > " + check.maxLength + ") " + fail(onFailure, check.maxLengthDiagnostic));
         }
         if (check.pattern != null) {
-            String holder = "_pattern_" + helperPrefix + "_" + helperCount++;
+            String holder = generated.names().field("PATTERN");
             generated.addHelper(out -> out.line("private static final java.util.regex.Pattern "
                     + holder + " = org.sjf4j.schema.SchemaUtil.compileRegexPattern("
                     + literal(check.pattern) + ", \"pattern\", null, null);"));
@@ -524,7 +539,7 @@ final class SchemaEmitter {
         } else {
             lines.add("if (" + expression + " == null || org.sjf4j.JsonType.rawOf("
                     + expression + ".getClass()) != org.sjf4j.JsonType.NUMBER) " + fail(onFailure, check.typeDiagnostic));
-            number = "_number" + depth + "_" + planName;
+            number = locals.newName("number");
             lines.add("Number " + number + " = org.sjf4j.Nodes.toNumber(" + expression + ");");
         }
         boolean nativeInteger = isNativeInteger(value);
@@ -589,7 +604,7 @@ final class SchemaEmitter {
         String key = number.toString();
         String cached = decimalConstants.get(key);
         if (cached != null) return cached;
-        String field = "_decimal_" + helperPrefix + "_" + helperCount++;
+        String field = generated.names().field("DECIMAL");
         decimalConstants.put(key, field);
         generated.addHelper(out -> out.line("private static final java.math.BigDecimal "
                 + field + " = " + expression + ";"));
@@ -617,16 +632,16 @@ final class SchemaEmitter {
         if (check.items == null) return;
 
         boolean withPath = DIAGNOSTIC_FAILURE.equals(onFailure);
-        String indexVar = "_itemIndex" + depth + "_" + planName;
+        String indexVar = withPath ? locals.newName("index") : null;
         if (withPath) lines.add("int " + indexVar + " = 0;");
-        String itemVar = "_item" + depth + "_" + planName;
+        String itemVar = locals.newName("item");
         TypeMirror itemType = value.itemType();
         if (knownCollection || knownArray) {
             String itemJavaType = itemType == null || itemType.getKind() == TypeKind.WILDCARD
                     ? "Object" : itemType.toString();
             lines.add("for (" + itemJavaType + " " + itemVar + " : " + subject + ") {");
         } else {
-            String iterator = "_iter" + depth + "_" + planName;
+            String iterator = locals.newName("iterator");
             lines.add("java.util.Iterator<Object> " + iterator
                     + " = org.sjf4j.Nodes.iteratorInArray(" + subject + ");");
             lines.add("while (" + iterator + ".hasNext()) {");

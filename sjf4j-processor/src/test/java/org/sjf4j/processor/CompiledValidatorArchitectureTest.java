@@ -46,12 +46,12 @@ class CompiledValidatorArchitectureTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
 
-        assertEquals(1, occurrences(generated, "private static final class PLAN_0 {"), generated);
-        assertFalse(generated.contains("private static final class PLAN_1 {"), generated);
+        assertEquals(1, occurrences(generated, "private static final class SchemaPlan {"), generated);
+        assertFalse(generated.contains("private static final class SchemaPlan2 {"), generated);
         // Both boolean methods now compile the overlapping oneOf branches.
-        assertTrue(generated.contains("private static boolean _schema_"), generated);
-        assertTrue(generated.contains("_matches_"), generated);
-        assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
+        assertTrue(generated.contains("private static boolean _matchesSchema"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
+        assertFalse(generated.contains(" SUBSCHEMA"), generated);
         assertFalse(generated.contains(".isValid("), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
         assertFalse(generated.contains(".ROOT.requireValid("), generated);
@@ -73,7 +73,7 @@ class CompiledValidatorArchitectureTest {
         assertTrue(generated.contains(".codePointCount("), generated);
         assertTrue(generated.contains("CompiledUtil.validationFailure("), generated);
         assertFalse(generated.contains(".ROOT.validate("), generated);
-        assertFalse(generated.contains("private static final class PLAN_"), generated);
+        assertFalse(generated.contains("private static final class SchemaPlan"), generated);
         assertFalse(generated.contains(".ROOT.requireValid("), generated);
         // Unsupported assertions are forbidden by fallback=false.
         // Direct failures create diagnostics without loading SchemaPlan.
@@ -91,15 +91,15 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertEquals(1, occurrences(generated, "private static final class PLAN_0 {"), generated);
-        assertFalse(generated.contains("private static final class PLAN_1 {"), generated);
+        assertEquals(1, occurrences(generated, "private static final class SchemaPlan {"), generated);
+        assertFalse(generated.contains("private static final class SchemaPlan2 {"), generated);
         assertEquals(1, occurrences(generated, "new SchemaRegistry()"), generated);
-        assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
-        assertTrue(generated.contains("_matches_"), generated);
-        assertFalse(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
+        assertFalse(generated.contains(" SUBSCHEMA"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
+        assertFalse(generated.contains("SchemaFallbacks.SchemaPlan.ROOT.validate("), generated);
         // The String-typed method still needs the shared runtime plan; the
         // object-typed methods use compiled access to runtime properties.
-        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
+        assertTrue(generated.contains("SchemaFallbacks.SchemaPlan.ROOT.isValid("), generated);
     }
 
     @Test
@@ -115,7 +115,7 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertFalse(generated.contains("private static final class PLAN_"), generated);
+        assertFalse(generated.contains("private static final class SchemaPlan"), generated);
         assertFalse(generated.contains(".ROOT.isValid("), generated);
         assertEquals(2, occurrences(generated, "codePointCount("), generated);
     }
@@ -149,7 +149,7 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertTrue(generated.contains("_matches_"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains(".isValid("), generated);
     }
 
@@ -171,7 +171,7 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(model, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertTrue(generated.contains("_raw"), generated);
+        assertTrue(generated.contains("rawValue"), generated);
         // The scalar-specific checks must not reclassify raw values at runtime.
         assertFalse(generated.contains("JsonType.rawOf("), generated);
         assertFalse(generated.contains("Nodes.toNumber("), generated);

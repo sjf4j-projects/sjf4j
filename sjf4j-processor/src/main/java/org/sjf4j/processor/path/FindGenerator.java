@@ -33,8 +33,6 @@ public final class FindGenerator {
     private final ProcessorContext context;
     private final TypeSystem types;
 
-    private int filterSeq;
-    private int fallbackSeq;
 
     public FindGenerator(ProcessorContext context) {
         this.context = context;
@@ -801,7 +799,7 @@ public final class FindGenerator {
             TypeMirror elementType,
             VariableElement root) {
 
-        String field = "_sjf4j_find_path_" + fallbackSeq++;
+        String field = generated.names().field("FIND_PATH");
 
         generated.addField(out ->
                 out.line(
@@ -1326,7 +1324,7 @@ public final class FindGenerator {
                 continue;
             }
 
-            String field = "_sjf4j_find_filter_" + filterSeq++;
+            String field = generated.names().field("FIND_FILTER");
             int filterIndex = i;
             fields[i] = field;
 

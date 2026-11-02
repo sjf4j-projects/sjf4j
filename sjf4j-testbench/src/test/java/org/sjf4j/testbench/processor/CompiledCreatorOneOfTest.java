@@ -137,7 +137,8 @@ public class CompiledCreatorOneOfTest {
     @Test
     void jackson2CompilesTheStringCreatorDiscriminatorFastPath() {
         boolean hasCompiledSubtype = java.util.Arrays.stream(JACKSON.getClass().getDeclaredMethods())
-                .anyMatch(method -> method.getName().contains("_subtype0_content"));
+                .anyMatch(method -> (method.getReturnType() == Dog.class || method.getReturnType() == Cat.class)
+                        && method.getName().startsWith("_read") && method.getName().contains("Content"));
         assertTrue(hasCompiledSubtype, "Record subtype should compile without a runtime OneOf subtree");
     }
 

@@ -16,16 +16,18 @@ final class ReadEmitter {
 
     private final ProcessorContext context;
     private final BackendSpec backend;
+    private final BindingNames names;
     private final Jackson2ReadEmitter jackson2;
     private final Fastjson2ReadEmitter fastjson2;
 
-    ReadEmitter(ProcessorContext context, BackendSpec backend) {
+    ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
         this.backend = backend;
+        this.names = names;
         this.jackson2 = backend.backend() == Backend.JACKSON2
                 ? new Jackson2ReadEmitter() : null;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
-                ? new Fastjson2ReadEmitter() : null;
+                ? new Fastjson2ReadEmitter(names) : null;
     }
 
     void registerEnums(BindingValue value) {
@@ -153,7 +155,7 @@ final class ReadEmitter {
 
     /** Compile CURRENT/key OneOf without depending on discriminator position. */
     void emitOneOfReadHelper(JavaWriter out, BindingValue value) {
-        String info = value.helperName() + "_info";
+        String info = names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO");
         out.beginBlock("private " + value.type() + " " + value.helperName()
                 + "(" + backend.parserType() + " parser) throws java.io.IOException");
         out.beginBlock("if (!parser.nextIfObjectStart())");
@@ -175,7 +177,7 @@ final class ReadEmitter {
         out.line("int prefixSize = 0;");
         out.line("int nameIndex;");
         out.beginBlock("while ((nameIndex = parser.nextNameMatch("
-                + value.helperName() + "_discriminator, 0)) != " + NAME_MATCHER + ".OBJECT_END)");
+                + names.field(value, "discriminator", BindingNames.fieldType(value.type()) + "_DISCRIMINATOR_MATCHER") + ", 0)) != " + NAME_MATCHER + ".OBJECT_END)");
         out.beginBlock("if (nameIndex == 0)");
         out.line("Object discriminator = parser.readRaw();");
         out.beginBlock("if (discriminator != null)");
@@ -186,8 +188,9 @@ final class ReadEmitter {
                 out.line("case " + JavaWriter.stringLiteral(when) + ":");
             }
             out.indent();
-            out.line("return " + value.helperName() + "_subtype" + i
-                    + "_content(parser, prefixNames, prefixValues, prefixSize, discriminator);");
+            out.line("return " + names.helper(value, "subtypeContent:" + i,
+                    "read" + BindingNames.simpleType(subtype.type) + "Content")
+                    + "(parser, prefixNames, prefixValues, prefixSize, discriminator);");
             out.dedent();
         }
         out.endBlock(); // switch
@@ -233,8 +236,9 @@ final class ReadEmitter {
     /** Continue parsing after the discriminator; replay only the raw prefix. */
     void emitOneOfSubtypeContent(JavaWriter out, BindingValue owner,
                                  BindingValue subtype, int index) {
-        out.beginBlock("private " + subtype.type() + " " + owner.helperName()
-                + "_subtype" + index + "_content(" + backend.parserType()
+        out.beginBlock("private " + subtype.type() + " " + names.helper(owner,
+                "subtypeContent:" + index, "read" + BindingNames.simpleType(subtype.type()) + "Content")
+                + "(" + backend.parserType()
                 + " parser, String[] prefixNames, Object[] prefixValues, int prefixSize,"
                 + " Object discriminator) throws java.io.IOException");
         emitPojo(out, subtype, true, owner.oneOfKey());
@@ -283,7 +287,8 @@ final class ReadEmitter {
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
                 // readRaw() may return Integer when the selected codec expects Long.
-                String codec = value.helperName();
+                String codec = names.field(value, "valueInfo",
+                        BindingNames.lowerType(value.type()) + "ValueInfo");
                 return "(" + value.type() + ") " + codec + ".rawToValue("
                         + raw + " instanceof Number && Number.class.isAssignableFrom(" + codec + ".rawClazz)"
                         + " ? " + numeric + "to((Number) " + raw + ", " + codec + ".rawClazz)"
@@ -557,8 +562,16 @@ final class ReadEmitter {
         if (!value.ignoredNames().isEmpty()) out.endBlock();
     }
 
+    void prepareHelperNames(BindingValue value) {
+        if (fastjson2 != null && value.creator() == null
+                && (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO)
+                && !value.properties().isEmpty()) {
+            fastjson2.fallbackMethod(value);
+        }
+    }
+
     String matcherFieldName(BindingValue value) {
-        return value.helperName() + "_names";
+        return names.field(value, "matcher", BindingNames.fieldType(value.type()) + "_NAME_MATCHER");
     }
 
     void emitPropertyRead(JavaWriter out, BindingProperty property, String owner, String parser) {
@@ -756,26 +769,27 @@ final class ReadEmitter {
 
             case VALUE_CODEC:
                 String rawReader = codecRawReader(value);
+                String info = names.field(value, "valueInfo", BindingNames.lowerType(value.type()) + "ValueInfo");
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + parser + ", "
-                        + value.helperName() + ", this.context)";
+                        + info + ", this.context)";
                 String scalarRead;
                 if (rawReader == null) {
                     scalarRead = runtimeRead;
                 } else {
                     String rawClass = value.codecRawType().toString();
-                    scalarRead = "(" + value.helperName() + ".rawClazz == "
-                            + rawClass + ".class ? " + value.helperName()
+                    scalarRead = "(" + info + ".rawClazz == "
+                            + rawClass + ".class ? " + info
                             + ".rawToValue(" + parser + "." + rawReader + "()) : "
                             + runtimeRead + ")";
                 }
                 // The selected codec owns its streaming path. Preserve the
                 // existing typed-raw fast path for ordinary ValueCodecs.
-                scalarRead = "(" + value.helperName() + ".streamParser != null ? "
-                        + value.helperName() + ".streamParser.read(" + parser + ") : "
+                scalarRead = "(" + info + ".streamParser != null ? "
+                        + info + ".streamParser.read(" + parser + ") : "
                         + scalarRead + ")";
                 boolean autoRead = value.valueFormat() == null && value.valuePattern() == null;
                 if (autoRead) {
-                    String set = value.helperName() + "Set";
+                    String set = names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet");
                     String selected = STREAMING_IO + ".readValueSet(" + parser + ", "
                             + value.type() + ".class, " + value.type() + ".class, "
                             + set + ", this.context)";
@@ -792,7 +806,7 @@ final class ReadEmitter {
             case ONE_OF:
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
                 return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
-                        + ".readOneOf(" + parser + ", " + value.helperName() + "_info, this.context)";
+                        + ".readOneOf(" + parser + ", " + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", this.context)";
 
             case RAW_MAP:
                 return "(" + value.type() + ") " + parser + ".readRawObject()";

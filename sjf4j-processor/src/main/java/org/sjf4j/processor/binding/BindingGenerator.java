@@ -2,7 +2,6 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
-import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.method.ResolvedMethod;
 
 import javax.lang.model.element.TypeElement;
@@ -45,10 +44,8 @@ public final class BindingGenerator {
 
         List<ResolvedMethod> resolvedMethods = context.methods.abstractMethods(type);
         List<BindingPlan> plans = new ArrayList<BindingPlan>(resolvedMethods.size());
-        NameAllocator names = new NameAllocator();
 
         for (ResolvedMethod resolved : resolvedMethods) {
-            names.reserve(resolved.declaration().getSimpleName().toString());
             BindingPlan plan = methodGenerator.analyze(resolved, generated);
 
             if (plan != null) {
@@ -59,7 +56,7 @@ public final class BindingGenerator {
         if (!generated.isValid()) return;
 
         BindingCompiler compiler = new BindingCompiler(
-                context, names, context.metadata(type), backend.backend());
+                context, generated.names(), context.metadata(type), backend.backend());
         List<BindingCompiler.CompiledMethod> compiled =
                 new ArrayList<BindingCompiler.CompiledMethod>(plans.size());
 
@@ -73,7 +70,7 @@ public final class BindingGenerator {
 
         if (!generated.isValid()) return;
 
-        BindingEmitter emitter = new BindingEmitter(context, backend);
+        BindingEmitter emitter = new BindingEmitter(context, backend, new BindingNames(generated.names()));
 
         for (BindingCompiler.CompiledMethod method : compiled) {
             emitter.emitMethod(method, generated);

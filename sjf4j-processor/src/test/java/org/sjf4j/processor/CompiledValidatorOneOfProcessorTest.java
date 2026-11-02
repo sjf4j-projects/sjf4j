@@ -24,7 +24,7 @@ class CompiledValidatorOneOfProcessorTest {
         assertTrue(generated.contains(".getName()"), generated);
         assertTrue(generated.contains(".getCount()"), generated);
         assertFalse(generated.contains("SUB_0_ITEM.isValid("), generated);
-        assertTrue(generated.contains("_matches_"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
     }
 
     @Test
@@ -38,7 +38,7 @@ class CompiledValidatorOneOfProcessorTest {
                 || generated.contains("getClass() == fixture.A.class"), generated);
         assertTrue(generated.contains("FormatValidator.of(\"email\")"), generated);
         assertFalse(generated.contains(".isValid(value, true)"), generated);
-        assertTrue(generated.contains("_matches_"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
     }
 
     @Test
@@ -47,7 +47,7 @@ class CompiledValidatorOneOfProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertTrue(generated.contains("getClass() =="), generated);
-        assertTrue(generated.contains("_matches_"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains(".isValid("), generated);
     }
 
@@ -57,7 +57,7 @@ class CompiledValidatorOneOfProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertFalse(generated.contains("getClass() =="), generated);
-        assertTrue(generated.contains("_matches_"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains(".isValid("), generated);
     }
 

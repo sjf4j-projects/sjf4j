@@ -16,16 +16,18 @@ import java.util.Set;
 final class WriteEmitter {
 
     private final BackendSpec backend;
+    private final BindingNames names;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
     private final StreamingWriteEmitter streaming;
 
-    private final Map<String, String> enumFields = new LinkedHashMap<>();
+    private final Map<String, BindingValue> enumFields = new LinkedHashMap<>();
 
-    WriteEmitter(BackendSpec backend) {
+    WriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
-        this.streaming = new StreamingWriteEmitter(backend);
+        this.names = names;
+        this.streaming = new StreamingWriteEmitter(backend, names);
         switch (backend.backend()) {
             case FASTJSON2:
                 fastjson2 = new Fastjson2WriteEmitter(this);
@@ -42,7 +44,7 @@ final class WriteEmitter {
             case JSONP:
                 fastjson2 = null;
                 jackson = null;
-                other = new OtherNativeWriteEmitter(backend);
+                other = new OtherNativeWriteEmitter(backend, names);
                 break;
             default:
                 fastjson2 = null;
@@ -63,7 +65,7 @@ final class WriteEmitter {
                 || value.direction() != BindingPlan.Direction.WRITE_TO) return;
         if (value.kind() == BindingValue.Kind.ENUM) {
             String type = value.type().toString();
-            if (!enumFields.containsKey(type)) enumFields.put(type, "_enum_" + enumFields.size());
+            if (!enumFields.containsKey(type)) enumFields.put(type, value);
         }
         for (BindingProperty property : value.properties()) registerEnums(property.value(), seen);
         registerEnums(value.elementValue(), seen);
@@ -72,9 +74,20 @@ final class WriteEmitter {
     }
 
     String enumField(BindingValue value) {
-        String result = enumFields.get(value.type().toString());
-        if (result == null) throw new IllegalStateException("Unregistered Enum: " + value.type());
-        return result;
+        if (!enumFields.containsKey(value.type().toString()))
+            throw new IllegalStateException("Unregistered Enum: " + value.type());
+        return names.enumField(value.type(), "encoded", BindingNames.fieldType(value.type()) + "_ENUM");
+    }
+
+    String enumField(BindingValue value, String mode) {
+        if (!enumFields.containsKey(value.type().toString()))
+            throw new IllegalStateException("Unregistered Enum: " + value.type());
+        return names.enumField(value.type(), "encoded:" + mode,
+                BindingNames.fieldType(value.type()) + "_ENUM_" + BindingNames.upperSnake(mode));
+    }
+
+    BindingNames naming() {
+        return names;
     }
 
     boolean hasEnumFields() { return !enumFields.isEmpty(); }
@@ -96,6 +109,15 @@ final class WriteEmitter {
         return backend.usesCompiledNames();
     }
 
+    void prepareCompiledNames(BindingValue value) {
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            String hint = BindingNames.fieldType(value.type()) + "_" + BindingNames.upperSnake(property.name());
+            int position = index++;
+            value.preparedName(position, names.field(value, "prepared:" + position, hint));
+        }
+    }
+
     void emitCompiledNames(JavaWriter out, BindingValue value) {
         int index = 0;
         for (BindingProperty property : value.properties()) {
@@ -107,7 +129,7 @@ final class WriteEmitter {
     }
 
     static String compiledNameField(BindingValue value, int index) {
-        return value.helperName() + "_name_" + index;
+        return value.preparedName(index);
     }
 
     void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
@@ -299,6 +321,19 @@ final class WriteEmitter {
                 || backend.backend() == Backend.FASTJSON2;
     }
 
+    String stringHelper() {
+        return names.sharedHelper("writeString");
+    }
+
+    String stringMemberHelper() {
+        return names.sharedHelper("writeStringMember");
+    }
+
+    void prepareStringHelpers() {
+        stringHelper();
+        if (isJackson()) stringMemberHelper();
+    }
+
     boolean needsStringHelper(BindingValue value) {
         return usesSharedStructure()
                 && value.direction() == BindingPlan.Direction.WRITE_TO
@@ -371,7 +406,7 @@ final class WriteEmitter {
                 throw new AssertionError(backend.backend());
         }
         // Native JSON backends pass their existing generator directly.
-        out.beginBlock("private static void _writeString(" + generator
+        out.beginBlock("private static void " + stringHelper() + "(" + generator
                 + " g, String value) throws java.io.IOException");
         out.beginBlock("if (value == null)");
         out.line("g." + writeNull + "();");
@@ -387,7 +422,7 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private void _writeStringMember(" + generator
+            out.beginBlock("private void " + stringMemberHelper() + "(" + generator
                     + " g, " + nameType
                     + " name, String value) throws java.io.IOException");
             out.beginBlock("if (value == null)");

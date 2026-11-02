@@ -58,7 +58,7 @@ public final class MappingEmitter {
                             GeneratedClass generated) {
         MappingPlan plan = compiled.plan();
         ExecutableElement method = plan.method();
-        NameAllocator names = names(method);
+        NameAllocator names = generated.names().locals(method);
 
         out.line("@SuppressWarnings({\"unchecked\", \"rawtypes\"})");
         out.line("@Override");
@@ -2912,15 +2912,6 @@ public final class MappingEmitter {
         }
 
         return result.toString();
-    }
-
-    private NameAllocator names(ExecutableElement method) {
-        NameAllocator names = new NameAllocator();
-        for (VariableElement parameter : method.getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
-
-        return names;
     }
 
     private String localType(TypeMirror type) {

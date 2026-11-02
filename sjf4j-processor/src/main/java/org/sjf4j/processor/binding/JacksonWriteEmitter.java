@@ -18,24 +18,28 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     private final BackendSpec backend;
     private final WriteEmitter writes;
-    private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
+    private final StructuralWriteEmitter structures;
 
     JacksonWriteEmitter(BackendSpec backend, WriteEmitter writes) {
         this.backend = backend;
         this.writes = writes;
+        this.structures = new StructuralWriteEmitter(this, writes.naming());
     }
 
     /** Cache enum values in the native Jackson serialized-string format. */
-    void emitEnumFields(JavaWriter out, java.util.Map<String, String> enumFields) {
+    void emitEnumFields(JavaWriter out, java.util.Map<String, BindingValue> enumFields) {
         String encoded = backend.backend() == Backend.JACKSON2
                 ? "com.fasterxml.jackson.core.io.SerializedString"
                 : "tools.jackson.core.io.SerializedString";
-        for (java.util.Map.Entry<String, String> entry : enumFields.entrySet()) {
+        for (java.util.Map.Entry<String, BindingValue> entry : enumFields.entrySet()) {
             String type = entry.getKey();
-            String field = entry.getValue();
+            BindingValue enumValue = entry.getValue();
+            String field = writes.enumField(enumValue);
+            String init = writes.naming().enumHelper(enumValue.type(), "writeInit",
+                    "init" + BindingNames.simpleType(enumValue.type()) + "Enum");
             out.line("private static final " + encoded + "[] " + field
-                    + " = " + field + "Init();");
-            out.beginBlock("private static " + encoded + "[] " + field + "Init()");
+                    + " = " + init + "();");
+            out.beginBlock("private static " + encoded + "[] " + init + "()");
             out.line(type + "[] constants = " + type + ".values();");
             out.line(encoded + "[] result = new " + encoded + "[constants.length];");
             out.beginBlock("for (" + type + " constant : constants)");
@@ -152,7 +156,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                   String expression) {
-        out.line("_writeStringMember(g, " + WriteEmitter.compiledNameField(owner, index)
+        out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
                 + ".serializedName, " + expression + ");");
     }
 
@@ -231,14 +235,14 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, generator, nativeGenerator, backend.backend());
+                CodecWriteEmitter.emit(out, child, expression, generator, nativeGenerator, backend.backend(), writes.naming());
                 return;
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
                         + expression + ", this.context);");
                 return;
             case STRING:
-                out.line("_writeString(" + nativeGenerator + ", " + expression + ");");
+                out.line(writes.stringHelper() + "(" + nativeGenerator + ", " + expression + ");");
                 return;
             case NUMBER:
                 out.line(generator + ".writeNumber(" + expression + ");");

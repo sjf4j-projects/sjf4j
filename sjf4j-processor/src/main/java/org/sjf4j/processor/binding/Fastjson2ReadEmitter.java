@@ -20,6 +20,12 @@ import java.util.Map;
  */
 final class Fastjson2ReadEmitter {
 
+    private final BindingNames names;
+
+    Fastjson2ReadEmitter(BindingNames names) {
+        this.names = names;
+    }
+
     void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads, boolean creator) {
         out.line("com.alibaba.fastjson2.JSONReader raw = parser.rawReader();");
         out.beginBlock("while (!raw.nextIfObjectEnd())");
@@ -41,7 +47,7 @@ final class Fastjson2ReadEmitter {
         if (!rawNames.isEmpty()) {
             // Fastjson2's getRawInt is native-endian. On a big-endian JVM,
             // canonical and aliased property names use the normal hash path.
-            out.beginBlock("if (FASTJSON2_LITTLE_ENDIAN)");
+            out.beginBlock("if (" + names.sharedField("FASTJSON2_LITTLE_ENDIAN") + ")");
             out.beginBlock("switch (raw.getRawInt())");
             for (Map.Entry<Integer, List<BindingProperty>> entry : rawNames.entrySet()) {
                 out.line("case 0x" + Integer.toHexString(entry.getKey()) + ":");
@@ -133,8 +139,8 @@ final class Fastjson2ReadEmitter {
         }
     }
 
-    private static String fallbackMethod(BindingValue value) {
-        return value.helperName() + "_fallback";
+    String fallbackMethod(BindingValue value) {
+        return names.helper(value, "fallback", "read" + BindingNames.simpleType(value.type()) + "Fallback");
     }
 
     private static boolean rawEligible(String name) {
@@ -207,7 +213,7 @@ final class Fastjson2ReadEmitter {
     }
 
 
-    private final Map<String, String> enums = new LinkedHashMap<String, String>();
+    private final Map<String, javax.lang.model.type.TypeMirror> enums = new LinkedHashMap<>();
 
     void register(BindingValue root) {
         Set<BindingValue> seen = Collections.newSetFromMap(
@@ -221,7 +227,7 @@ final class Fastjson2ReadEmitter {
         if (value.kind() == BindingValue.Kind.ENUM) {
             String type = value.type().toString();
             if (!enums.containsKey(type)) {
-                enums.put(type, "_enumRead" + enums.size());
+                enums.put(type, value.type());
             }
         }
         for (BindingProperty property : value.properties()) {
@@ -239,7 +245,9 @@ final class Fastjson2ReadEmitter {
     }
 
     String readExpression(BindingValue value, String parser) {
-        String field = enums.get(value.type().toString());
+        String field = enums.containsKey(value.type().toString())
+                ? names.enumHelper(value.type(), "read", "read" + BindingNames.simpleType(value.type()) + "Enum")
+                : null;
         if (field == null) {
             throw new IllegalStateException("Unregistered compiled Enum: " + value.type());
         }
@@ -247,37 +255,44 @@ final class Fastjson2ReadEmitter {
     }
 
     void emitFields(JavaWriter out) {
-        for (Map.Entry<String, String> entry : enums.entrySet()) {
-            String type = entry.getKey();
-            String field = entry.getValue();
-            out.line("private static final " + type + "[] " + field
-                    + "Ordinals = " + type + ".values();");
-            out.line("private static final " + type + "[] " + field
-                    + "ByHash = " + field + "Ordinals.clone();");
-            out.line("private static final long[] " + field
-                    + "Hashes = new long[" + field + "Ordinals.length];");
+        for (javax.lang.model.type.TypeMirror type : enums.values()) {
+            String rawType = type.toString();
+            String base = BindingNames.fieldType(type);
+            String ordinals = names.enumField(type, "ordinals", base + "_ORDINALS");
+            String byHash = names.enumField(type, "byHash", base + "_BY_HASH");
+            String hashes = names.enumField(type, "hashes", base + "_HASHES");
+            out.line("private static final " + rawType + "[] " + ordinals
+                    + " = " + rawType + ".values();");
+            out.line("private static final " + rawType + "[] " + byHash
+                    + " = " + ordinals + ".clone();");
+            out.line("private static final long[] " + hashes
+                    + " = new long[" + ordinals + ".length];");
             out.beginBlock("static");
-            out.beginBlock("for (int i = 0; i < " + field + "Ordinals.length; i++)");
-            out.line(type + " constant = " + field + "Ordinals[i];");
+            out.beginBlock("for (int i = 0; i < " + ordinals + ".length; i++)");
+            out.line(rawType + " constant = " + ordinals + "[i];");
             out.line("long hash = com.alibaba.fastjson2.util.Fnv.hashCode64(constant.name());");
             out.line("int j = i;");
-            out.beginBlock("while (j > 0 && " + field + "Hashes[j - 1] > hash)");
-            out.line(field + "Hashes[j] = " + field + "Hashes[j - 1];");
-            out.line(field + "ByHash[j] = " + field + "ByHash[j - 1];");
+            out.beginBlock("while (j > 0 && " + hashes + "[j - 1] > hash)");
+            out.line(hashes + "[j] = " + hashes + "[j - 1];");
+            out.line(byHash + "[j] = " + byHash + "[j - 1];");
             out.line("j--;");
             out.endBlock();
-            out.line(field + "Hashes[j] = hash;");
-            out.line(field + "ByHash[j] = constant;");
+            out.line(hashes + "[j] = hash;");
+            out.line(byHash + "[j] = constant;");
             out.endBlock();
             out.endBlock();
         }
     }
 
     void emitHelpers(JavaWriter out) {
-        for (Map.Entry<String, String> entry : enums.entrySet()) {
-            String type = entry.getKey();
-            String field = entry.getValue();
-            out.beginBlock("private static " + type + " " + field
+        for (javax.lang.model.type.TypeMirror enumType : enums.values()) {
+            String type = enumType.toString();
+            String name = BindingNames.fieldType(enumType);
+            String method = names.enumHelper(enumType, "read", "read" + BindingNames.simpleType(enumType) + "Enum");
+            String ordinals = names.enumField(enumType, "ordinals", name + "_ORDINALS");
+            String byHash = names.enumField(enumType, "byHash", name + "_BY_HASH");
+            String hashes = names.enumField(enumType, "hashes", name + "_HASHES");
+            out.beginBlock("private static " + type + " " + method
                     + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Parser parser)"
                     + " throws java.io.IOException");
             out.line("com.alibaba.fastjson2.JSONReader raw = parser.rawReader();");
@@ -286,9 +301,9 @@ final class Fastjson2ReadEmitter {
             out.endBlock();
             out.beginBlock("if (raw.isString())");
             out.line("long hash = raw.readValueHashCode();");
-            out.line("int index = java.util.Arrays.binarySearch(" + field + "Hashes, hash);");
+            out.line("int index = java.util.Arrays.binarySearch(" + hashes + ", hash);");
             out.beginBlock("if (index >= 0)");
-            out.line("return " + field + "ByHash[index];");
+            out.line("return " + byHash + "[index];");
             out.endBlock();
             out.line("throw new IllegalArgumentException("
                     + "\"No enum constant \" + " + type + ".class.getName()"
@@ -296,8 +311,8 @@ final class Fastjson2ReadEmitter {
             out.endBlock();
             out.beginBlock("if (raw.isNumber())");
             out.line("int ordinal = parser.readIntValue();");
-            out.beginBlock("if (ordinal >= 0 && ordinal < " + field + "Ordinals.length)");
-            out.line("return " + field + "Ordinals[ordinal];");
+            out.beginBlock("if (ordinal >= 0 && ordinal < " + ordinals + ".length)");
+            out.line("return " + ordinals + "[ordinal];");
             out.endBlock();
             out.line("throw new org.sjf4j.exception.BindingException("
                     + "\"enum ordinal '\" + ordinal + \"' out of range for type '\""

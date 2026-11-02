@@ -41,9 +41,11 @@ final class StructuralWriteEmitter {
     }
 
     private final Operations ops;
+    private final BindingNames names;
 
-    StructuralWriteEmitter(Operations ops) {
+    StructuralWriteEmitter(Operations ops, BindingNames names) {
         this.ops = ops;
+        this.names = names;
     }
 
     void emitPojo(JavaWriter out, BindingValue value) {
@@ -209,7 +211,8 @@ final class StructuralWriteEmitter {
         if (knownSubtype) out.line("Class<?> actualClass = value.getClass();");
         int index = 0;
         for (BindingValue.OneOfSubtype subtype : value.oneOfSubtypes()) {
-            String metadata = value.helperName() + "_subtype" + index++ + "_pojoInfo";
+            String metadata = names.field(value, "subtypePojo:" + index++,
+                    BindingNames.fieldType(subtype.type) + "_POJO_INFO");
             if (subtype.compiled == null && !subtype.cachedPojo) continue;
             String type = subtype.type.toString();
             out.beginBlock("if (actualClass == " + type + ".class)");

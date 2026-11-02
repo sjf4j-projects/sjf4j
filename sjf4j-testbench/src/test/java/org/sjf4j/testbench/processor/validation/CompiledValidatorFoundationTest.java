@@ -134,7 +134,7 @@ class CompiledValidatorFoundationTest {
     }
 
 
-    // The generated _Impl.java should contain: String _property0 = input.getName();
+    // The generated _Impl.java should use the property name for its local: name = input.getName();
     // followed by a direct codePointCount/minLength/maxLength check.
     @Test
     void directStringValidationMatchesRuntime() {
@@ -197,7 +197,7 @@ class CompiledValidatorFoundationTest {
                 "CompiledValidatorFoundationTest$MixedValidator_Impl.java"));
         assertTrue(mixed.contains("value.getName()"), "direct getter must be emitted");
         assertTrue(mixed.contains("#/properties/tags"), "subschema pointer must be emitted");
-        assertTrue(mixed.contains("Fallback.PLAN_0.SUB_1.isValid("),
+        assertTrue(mixed.contains("SchemaFallbacks.SchemaPlan.SUBSCHEMA") && mixed.contains(".isValid("),
                 "unsupported keyword must use its own cached subschema");
         assertFalse(mixed.contains("new String[]{"), "JSON Schema documents must not be duplicated");
     }

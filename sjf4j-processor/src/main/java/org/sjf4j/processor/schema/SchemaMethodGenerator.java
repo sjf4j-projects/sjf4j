@@ -3,6 +3,7 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.method.ResolvedMethod;
 
 import javax.lang.model.element.Element;
@@ -26,12 +27,13 @@ final class SchemaMethodGenerator {
 
     private final ProcessorContext context;
     private final SchemaResourceResolver resources;
-    private final SchemaFallbackEmitter fallbacks = new SchemaFallbackEmitter();
+    private final SchemaFallbackEmitter fallbacks;
     private int methodSerial;
 
-    SchemaMethodGenerator(ProcessorContext context) {
+    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated) {
         this.context = context;
         this.resources = new SchemaResourceResolver(context);
+        this.fallbacks = new SchemaFallbackEmitter(generated.names());
     }
 
     void emitFallbacks(GeneratedClass generated) {
@@ -94,6 +96,7 @@ final class SchemaMethodGenerator {
                     binding.annotationExpression));
         }
 
+        NameAllocator locals = generated.names().locals(method);
         String type = parameterType.toString();
         String value = method.getParameters().get(0).getSimpleName().toString();
         String strictParam = parameterCount == 2
@@ -131,7 +134,7 @@ final class SchemaMethodGenerator {
         final String failure = isVoid && bound != null
                 ? SchemaEmitter.DIAGNOSTIC_FAILURE : "return false;";
         List<String> emitted = direct == null ? null
-                : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
+                : new SchemaEmitter(generated, "M" + methodSerial++, locals).emitRoot(
                         direct, SchemaValue.of(context, parameterType), value, bound, strictParam,
                         failure);
         if (fallback && emitted == null) {
@@ -141,6 +144,11 @@ final class SchemaMethodGenerator {
         final String falseSchemaUri = bound == null ? null : bound.snapshot.selectedUri.split("#", 2)[0];
         final String literal = booleanLiteral;
         final List<String> checks = emitted;
+        // Allocate before source emission, sharing the method's local scope
+        // with all inlined native checks.
+        final String errors = isResult && plans.size() > 1 ? locals.newName("errors") : null;
+        final String valid = isResult && plans.size() > 1 ? locals.newName("valid") : null;
+        final String resultVar = isResult && plans.size() > 1 ? locals.newName("result") : null;
         generated.addMethod(out -> {
             out.line("@Override");
             out.beginBlock("public " + resultName + " " + method.getSimpleName()
@@ -176,16 +184,16 @@ final class SchemaMethodGenerator {
             } else {
                 // All annotated schemas participate; report all failures in
                 // parent-to-child order instead of stopping at the first failure.
-                out.line("java.util.List<org.sjf4j.schema.ValidationResult.Message> errors = new java.util.ArrayList<>();");
-                out.line("boolean valid = true;");
-                out.line("org.sjf4j.schema.ValidationResult result;");
+                out.line("java.util.List<org.sjf4j.schema.ValidationResult.Message> " + errors + " = new java.util.ArrayList<>();");
+                out.line("boolean " + valid + " = true;");
+                out.line("org.sjf4j.schema.ValidationResult " + resultVar + ";");
                 for (SchemaFallbackEmitter.Plan plan : plans) {
-                    out.line("result = " + plan.rootReference() + ".validate(" + value + ", false, " + strictParam + ");");
-                    out.line("if (!result.isValid()) valid = false;");
-                    out.line("errors.addAll(result.getErrors());");
+                    out.line(resultVar + " = " + plan.rootReference() + ".validate(" + value + ", false, " + strictParam + ");");
+                    out.line("if (!" + resultVar + ".isValid()) " + valid + " = false;");
+                    out.line(errors + ".addAll(" + resultVar + ".getErrors());");
                 }
-                out.line("return errors.isEmpty() && valid ? org.sjf4j.schema.ValidationResult.SUCCESS");
-                out.line("        : new org.sjf4j.schema.ValidationResult(valid, errors);");
+                out.line("return " + errors + ".isEmpty() && " + valid + " ? org.sjf4j.schema.ValidationResult.SUCCESS");
+                out.line("        : new org.sjf4j.schema.ValidationResult(" + valid + ", " + errors + ");");
             }
             out.endBlock();
         });

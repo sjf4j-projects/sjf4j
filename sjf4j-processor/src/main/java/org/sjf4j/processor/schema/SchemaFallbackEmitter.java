@@ -2,6 +2,8 @@ package org.sjf4j.processor.schema;
 
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.GeneratedNames;
+import org.sjf4j.processor.code.NameAllocator;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -15,6 +17,13 @@ import java.util.Map;
 final class SchemaFallbackEmitter {
     private final List<Plan> plans = new ArrayList<Plan>();
     private final Map<String, Plan> bySnapshot = new LinkedHashMap<String, Plan>();
+    private final String fallbackType;
+    private final NameAllocator planTypes = new NameAllocator();
+
+    SchemaFallbackEmitter(GeneratedNames names) {
+        // Reserve the enclosing class once; nested plan names have their own scope.
+        this.fallbackType = names.type("SchemaFallbacks");
+    }
 
     Plan bind(SchemaResourceResolver.Snapshot snapshot, ValidJsonSchema annotation,
               String annotationExpression) {
@@ -23,7 +32,8 @@ final class SchemaFallbackEmitter {
         String key = snapshotKey(snapshot);
         Plan plan = bySnapshot.get(key);
         if (plan == null) {
-            plan = new Plan("PLAN_" + plans.size(), snapshot, annotation, annotationExpression);
+            plan = new Plan(fallbackType, planTypes.newName("SchemaPlan"), snapshot,
+                    annotation, annotationExpression);
             bySnapshot.put(key, plan);
             plans.add(plan);
         }
@@ -32,20 +42,20 @@ final class SchemaFallbackEmitter {
 
     void emit(GeneratedClass generated) {
         generated.addHelper(out -> {
-            out.beginBlock("private static final class Fallback");
+            out.beginBlock("private static final class " + fallbackType);
             for (Plan plan : plans) {
                 if (!plan.used()) continue;
                 out.beginBlock("private static final class " + plan.name);
                 String registry = "REGISTRY";
                 out.line("private static final org.sjf4j.schema.SchemaRegistry " + registry
                         + " = new org.sjf4j.schema.SchemaRegistry();");
-                out.line("static final org.sjf4j.schema.SchemaPlan ROOT = load();");
+                out.line("static final org.sjf4j.schema.SchemaPlan ROOT = _load();");
                 for (Subplan sub : plan.subplans.values()) {
                     out.line("static final org.sjf4j.schema.SchemaPlan " + sub.name
                             + " = " + registry + ".resolve(java.net.URI.create("
                             + SchemaEmitter.javaLiteral(sub.uri) + "));");
                 }
-                out.beginBlock("private static org.sjf4j.schema.SchemaPlan load()");
+                out.beginBlock("private static org.sjf4j.schema.SchemaPlan _load()");
                 out.beginBlock("try");
                 out.line("org.sjf4j.schema.SchemaLoader loader = new org.sjf4j.schema.SchemaLoader.Local(org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR);");
                 for (int i = 0; i < plan.snapshot.uris.length; i++) {
@@ -73,14 +83,18 @@ final class SchemaFallbackEmitter {
 
     static final class Plan {
         private final String name;
+        private final String fallbackType;
+        private final NameAllocator subplanNames = new NameAllocator()
+                .reserve("REGISTRY").reserve("ROOT").reserve("_load");
         final SchemaResourceResolver.Snapshot snapshot;
         private final ValidJsonSchema annotation;
         private final String annotationExpression;
         private final Map<String, Subplan> subplans = new LinkedHashMap<String, Subplan>();
         private boolean rootUsed;
 
-        private Plan(String name, SchemaResourceResolver.Snapshot snapshot,
+        private Plan(String fallbackType, String name, SchemaResourceResolver.Snapshot snapshot,
                      ValidJsonSchema annotation, String annotationExpression) {
+            this.fallbackType = fallbackType;
             this.name = name;
             this.snapshot = snapshot;
             this.annotation = annotation;
@@ -88,7 +102,7 @@ final class SchemaFallbackEmitter {
         }
 
         String rootReference() {
-            return "Fallback." + name + ".ROOT";
+            return fallbackType + "." + name + ".ROOT";
         }
 
         void useRoot() {
@@ -98,7 +112,7 @@ final class SchemaFallbackEmitter {
         Subplan subplan(String uri, String suggestedName) {
             Subplan sub = subplans.get(uri);
             if (sub == null) {
-                sub = new Subplan(this, suggestedName, uri);
+                sub = new Subplan(this, subplanNames.newName("SUBSCHEMA"), uri);
                 subplans.put(uri, sub);
             }
             return sub;
@@ -121,7 +135,7 @@ final class SchemaFallbackEmitter {
         }
 
         String reference() {
-            return "Fallback." + owner.name + "." + name;
+            return owner.fallbackType + "." + owner.name + "." + name;
         }
     }
 
