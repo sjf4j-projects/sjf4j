@@ -732,7 +732,7 @@ public interface Evaluator {
             int propIdx = 0;
             for (PropertyInfo property : pojo.gettableProperties) {
                 boolean valid = evaluateProperty(instance, propIdx++, property.name,
-                        property.invokeGetter(node), property.valueInfo, ps, ctx);
+                        property.invokeGetter(node), property, ps, ctx);
                 result &= valid;
                 if (!valid && ctx.isFailFast()) return false;
             }
@@ -752,13 +752,13 @@ public interface Evaluator {
 
         /** Evaluate a single property without eagerly encoding unvalidated members. */
         private boolean evaluateProperty(Instance instance, int propIdx, String key, Object value,
-                                         ValueInfo codec, PathSegment ps, ValidationContext ctx) {
+                                         PropertyInfo property, PathSegment ps, ValidationContext ctx) {
             boolean matched = false;
             boolean result = true;
             if (properties != null) {
                 SchemaPlan plan = properties.get(key);
                 if (plan != null) {
-                    Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+                    Instance subInstance = instance.inferSubByKey(key, value, property, ctx.reusedLeaf());
                     PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                     boolean subResult = plan.evaluate(subInstance, cps, ctx);
                     if (subResult) instance.markEvaluated(propIdx);
@@ -773,7 +773,7 @@ public interface Evaluator {
                     if (patterns[i].matcher(key).find()) {
                         SchemaPlan plan = patternPlans[i];
                         if (plan != null) {
-                            Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+                            Instance subInstance = instance.inferSubByKey(key, value, property, ctx.reusedLeaf());
                             PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                             boolean subResult = plan.evaluate(subInstance, cps, ctx);
                             if (subResult) instance.markEvaluated(propIdx);
@@ -786,7 +786,7 @@ public interface Evaluator {
             }
 
             if (additionalPropertiesPlan != null && !matched) {
-                Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+                Instance subInstance = instance.inferSubByKey(key, value, property, ctx.reusedLeaf());
                 PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
                 boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
                 if (subResult) instance.markEvaluated(propIdx);
@@ -1636,7 +1636,7 @@ public interface Evaluator {
                 if (!merged.get(propIdx)) {
                     // Avoid invoking getters for properties already evaluated.
                     boolean valid = evaluateProperty(instance, propIdx, property.name,
-                            property.invokeGetter(node), property.valueInfo, ps, ctx);
+                            property.invokeGetter(node), property, ps, ctx);
                     result &= valid;
                     if (!valid && ctx.isFailFast()) return false;
                 }
@@ -1660,8 +1660,8 @@ public interface Evaluator {
         }
 
         private boolean evaluateProperty(Instance instance, int propIdx, String key, Object value,
-                                         ValueInfo codec, PathSegment ps, ValidationContext ctx) {
-            Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+                                         PropertyInfo property, PathSegment ps, ValidationContext ctx) {
+            Instance subInstance = instance.inferSubByKey(key, value, property, ctx.reusedLeaf());
             PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
             boolean valid = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
             if (valid) instance.markEvaluated(propIdx);
