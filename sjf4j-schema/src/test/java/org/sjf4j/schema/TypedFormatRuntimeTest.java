@@ -39,8 +39,8 @@ class TypedFormatRuntimeTest {
         Instance instance = Instance.infer(UUID_VALUE);
         assertEquals(JsonType.STRING, instance.jsonType());
         assertTrue(instance.converted());
-        assertSame(UUID_VALUE, instance.originalValue());
-        assertEquals(UUID_VALUE.toString(), instance.node());
+        assertSame(UUID_VALUE, instance.node());
+        assertEquals(UUID_VALUE.toString(), instance.raw());
     }
 
     @Test
