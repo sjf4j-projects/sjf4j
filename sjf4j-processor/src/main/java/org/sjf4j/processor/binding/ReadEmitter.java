@@ -189,7 +189,7 @@ final class ReadEmitter {
             }
             out.indent();
             out.line("return " + names.helper(value, "subtypeContent:" + i,
-                    "read" + BindingNames.simpleType(subtype.type()) + "Content")
+                    "read" + BindingNames.simpleType(subtype.type) + "Content")
                     + "(parser, prefixNames, prefixValues, prefixSize, discriminator);");
             out.dedent();
         }
@@ -237,7 +237,7 @@ final class ReadEmitter {
     void emitOneOfSubtypeContent(JavaWriter out, BindingValue owner,
                                  BindingValue subtype, int index) {
         out.beginBlock("private " + subtype.type() + " " + names.helper(owner,
-                "subtypeContent:" + index, "read" + BindingNames.simpleType(subtype.type) + "Content")
+                "subtypeContent:" + index, "read" + BindingNames.simpleType(subtype.type()) + "Content")
                 + "(" + backend.parserType()
                 + " parser, String[] prefixNames, Object[] prefixValues, int prefixSize,"
                 + " Object discriminator) throws java.io.IOException");
