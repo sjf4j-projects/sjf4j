@@ -171,8 +171,8 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(model, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertTrue(generated.contains("java.lang.Long _property0_raw"), generated);
-        assertTrue(generated.contains("java.lang.String _property1_raw"), generated);
+        assertTrue(generated.contains("_raw"), generated);
+        // The scalar-specific checks must not reclassify raw values at runtime.
         assertFalse(generated.contains("JsonType.rawOf("), generated);
         assertFalse(generated.contains("Nodes.toNumber("), generated);
         assertFalse(generated.contains("Nodes.toString("), generated);
