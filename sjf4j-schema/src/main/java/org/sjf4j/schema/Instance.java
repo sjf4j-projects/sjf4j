@@ -198,8 +198,8 @@ public final class Instance {
         // The precise built-in encoder identity matters: custom codecs and
         // alternate property formats must retain their original behavior.
         if (codec.rawJsonType == JsonType.STRING
-                && ((value.getClass() == java.util.UUID.class && codec.codec == ValueCodec.UUID_CODEC)
-                    || (value.getClass() == java.net.URI.class && codec.codec == ValueCodec.URI_CODEC))) {
+                && ((value.getClass() == java.util.UUID.class && codec.codec == (Object) ValueCodec.UUID_CODEC)
+                    || (value.getClass() == java.net.URI.class && codec.codec == (Object) ValueCodec.URI_CODEC))) {
             Instance instance = new Instance(value, JsonType.STRING, true);
             instance.pendingCodec = codec;
             instance.formatSource = value;
