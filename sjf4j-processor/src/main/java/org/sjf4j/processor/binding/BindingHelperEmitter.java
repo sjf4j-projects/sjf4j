@@ -54,15 +54,19 @@ final class BindingHelperEmitter {
                 : "org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
                         + value.oneOfOwner() + ".class).propertyLookup.get("
                         + JavaWriter.stringLiteral(value.oneOfProperty()) + ").oneOfInfo";
+        String info = names.field(value, "oneOfInfo",
+                BindingNames.fieldType(value.type()) + "_ONE_OF_INFO");
         generated.addField(out -> out.line(
-                "private static final org.sjf4j.meta.OneOfInfo " + value.helperName()
-                        + "_info = " + source + ";"));
+                "private static final org.sjf4j.meta.OneOfInfo " + info
+                        + " = " + source + ";"));
         if (value.oneOfKey() == null) return;
 
         // Jackson2's compiled discriminator fast path uses SerializedString.
+        String discriminator = names.field(value, "discriminator",
+                BindingNames.fieldType(value.type()) + "_DISCRIMINATOR_MATCHER");
         generated.addField(out -> out.line(
                 "private static final org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher "
-                        + value.helperName() + "_discriminator = new "
+                        + discriminator + " = new "
                         + "org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher("
                         + JavaWriter.stringLiteral(value.oneOfKey()) + ");"));
         generated.addHelper(out -> reads.emitOneOfReadHelper(out, value));
@@ -77,7 +81,8 @@ final class BindingHelperEmitter {
         for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
             BindingValue.OneOfSubtype subtype = value.oneOfSubtypes().get(i);
             if (!subtype.cachedPojo) continue;
-            String name = value.helperName() + "_subtype" + i + "_pojoInfo";
+            String name = names.field(value, "subtypePojo:" + i,
+                    BindingNames.fieldType(subtype.type) + "_POJO_INFO");
             generated.addField(out -> out.line(
                     "private static final org.sjf4j.meta.PojoInfo " + name
                             + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
@@ -91,23 +96,28 @@ final class BindingHelperEmitter {
         boolean autoRead = value.direction() == BindingPlan.Direction.READ_FROM
                 && value.valueFormat() == null && value.valuePattern() == null;
         if (autoRead) {
-            String set = value.helperName() + "Set";
+            String set = names.field(value, "valueSet",
+                    BindingNames.lowerType(value.type()) + "ValueSet");
             generated.addField(out -> out.line("private final org.sjf4j.value.ValueSet " + set + ";"));
             generated.addContextInitializer(out -> out.line(
                     "this." + set + " = org.sjf4j.meta.TypeRegistry.registerTypeInfo("
                             + value.type() + ".class).valueSet;"));
         }
+        String info = names.field(value, "valueInfo",
+                BindingNames.lowerType(value.type()) + "ValueInfo");
         generated.addField(out -> out.line(
-                "private final org.sjf4j.value.ValueInfo " + value.helperName() + ";"));
+                "private final org.sjf4j.value.ValueInfo " + info + ";"));
         if (autoRead) {
             generated.addContextInitializer(out -> out.line(
-                    "this." + value.helperName() + " = this."
-                            + value.helperName() + "Set.selectForRead(this."
-                            + value.helperName() + "Set.defaultInfo.rawJsonType, "
+                    "this." + info + " = this."
+                            + names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet")
+                            + ".selectForRead(this."
+                            + names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet")
+                            + ".defaultInfo.rawJsonType, "
                             + "context.valueFormat(" + value.type() + ".class));"));
         } else {
             generated.addContextInitializer(out -> out.line(
-                    "this." + value.helperName() + " = "
+                    "this." + info + " = "
                             + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
                             + value.type() + ".class, "
                             + (value.valueFormat() == null
@@ -123,8 +133,11 @@ final class BindingHelperEmitter {
     private void emitReadHelper(BindingValue value, GeneratedClass generated) {
         if ((value.kind() == BindingValue.Kind.POJO
                 || value.kind() == BindingValue.Kind.JOJO) && reads.usesNameMatcher()) {
+            reads.matcherFieldName(value);
             generated.addField(out -> reads.emitNameMatcherField(out, value));
         }
+        // Register the Fastjson2 fallback helper before source emission.
+        reads.prepareHelperNames(value);
         generated.addHelper(out -> reads.emitHelper(out, value));
     }
 
