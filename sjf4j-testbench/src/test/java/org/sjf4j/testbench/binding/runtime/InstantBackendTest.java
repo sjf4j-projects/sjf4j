@@ -22,7 +22,7 @@ class InstantBackendTest {
     public static class Timestamps {
         public Instant iso;
 
-        @NodeProperty(codecName = "epochMillis")
+        @NodeProperty(valueFormat = "epochMillis")
         public Instant millis;
     }
 
