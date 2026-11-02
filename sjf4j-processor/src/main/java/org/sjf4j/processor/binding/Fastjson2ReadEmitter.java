@@ -20,6 +20,12 @@ import java.util.Map;
  */
 final class Fastjson2ReadEmitter {
 
+    private final BindingNames names;
+
+    Fastjson2ReadEmitter(BindingNames names) {
+        this.names = names;
+    }
+
     void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads, boolean creator) {
         out.line("com.alibaba.fastjson2.JSONReader raw = parser.rawReader();");
         out.beginBlock("while (!raw.nextIfObjectEnd())");
