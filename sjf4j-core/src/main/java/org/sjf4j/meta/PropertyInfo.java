@@ -62,6 +62,18 @@ public final class PropertyInfo {
     /**
      * Creates property binding metadata and resolves its container element type.
      */
+    /** Backwards-compatible constructor: all properties participate in Binding by default. */
+    public PropertyInfo(String name, String[] alias, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
+                        Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
+                        Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
+                        OneOfInfo explicitOneOfInfo,
+                        String valueFormat, ValueInfo valueInfo, MethodHandles.Lookup lookup) {
+        this(name, alias, publicField, type, genericDependent, boxed,
+                publicGetter, getterHandle, getterLambda,
+                publicSetter, setterHandle, setterLambda,
+                explicitOneOfInfo, valueFormat, valueInfo, lookup, true, true);
+    }
+
     public PropertyInfo(String name, String[] alias, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                         Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                         Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
