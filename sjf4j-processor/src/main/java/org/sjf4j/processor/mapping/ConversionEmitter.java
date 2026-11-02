@@ -168,7 +168,8 @@ public final class ConversionEmitter
         if (importedMapperFields.containsKey(type)) return;
 
         String simple = mapper.getSimpleName().toString();
-        String hint = Character.toLowerCase(simple.charAt(0)) + simple.substring(1) + "Mapper";
+        String hint = Character.toLowerCase(simple.charAt(0)) + simple.substring(1);
+        if (!simple.endsWith("Mapper")) hint += "Mapper";
         importedMapperFields.put(type, generatedNames.field(hint));
     }
 
