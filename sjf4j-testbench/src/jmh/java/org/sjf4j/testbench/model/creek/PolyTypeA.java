@@ -17,6 +17,7 @@
 package org.sjf4j.testbench.model.creek;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -27,15 +28,19 @@ import java.util.UUID;
 @JsonTypeName("poly-a")
 @SuppressWarnings("unused")
 public final class PolyTypeA implements PolyBase {
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     @NodeProperty("@type")
-    public final String type = "poly-a";
+    private final String type = "poly-a";
 
     private final UUID id;
 
     @JsonCreator
     public PolyTypeA(@JsonProperty(value = "id", required = true) final UUID id) {
         this.id = id;
+    }
+
+    public String getType() {
+        return type;
     }
 
     public UUID getId() {

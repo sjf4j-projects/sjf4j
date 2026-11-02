@@ -17,8 +17,10 @@
 package org.sjf4j.testbench.model.creek;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.NodeProperty;
 
 import java.util.Objects;
@@ -26,15 +28,20 @@ import java.util.Objects;
 @JsonTypeName("poly-b")
 @SuppressWarnings("unused")
 public final class PolyTypeB implements PolyBase {
-    @com.fasterxml.jackson.annotation.JsonIgnore
+
+    @JsonIgnore
     @NodeProperty("@type")
-    public final String type = "poly-b";
+    private final String type = "poly-b";
 
     private final double num;
 
     @JsonCreator
     public PolyTypeB(@JsonProperty(value = "num", required = true) final double num) {
         this.num = num;
+    }
+
+    public String getType() {
+        return type;
     }
 
     public double getNum() {

@@ -16,6 +16,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.annotation.binding.Backend;
+import org.sjf4j.annotation.binding.CompiledBinder;
+import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.WriteTo;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
@@ -55,7 +59,6 @@ public class CreekSchemaBenchmark {
     private static final ObjectMapper JACKSON = new ObjectMapper();
 
     private SchemaPlan plan;
-    private CreekValidator compiledValidator;
     private TestModel model;
     private TestModel deserializedModel;
     private Map<String, Object> mapNode;
@@ -77,7 +80,6 @@ public class CreekSchemaBenchmark {
                     .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
         }
 
-        compiledValidator = CompiledInstances.create(CreekValidator.class);
         model = modelState.model;
         jsonBytes = JACKSON.writeValueAsBytes(model);
         deserializedModel = JACKSON.readValue(jsonBytes, TestModel.class);
@@ -88,13 +90,13 @@ public class CreekSchemaBenchmark {
         plan.requireValid(model, false);
         plan.requireValid(deserializedModel, false);
         plan.requireValid(mapNode, false);
-        compiledValidator.requireValid(model);
+        CreekValidator.INSTANCE.requireValid(model);
         // The generated validator checks known polymorphic Java subtypes directly;
         // unknown subtypes and strict format checks retain the SchemaPlan fallback.
-        if (!plan.isValid(model, true) || !compiledValidator.isValid(model, true)
-                || !compiledValidator.isValid(model, false)
-                || !compiledValidator.isValid(deserializedModel)
-                || !compiledValidator.isValid(deserializedModel, false)) {
+        if (!plan.isValid(model, true) || !CreekValidator.INSTANCE.isValid(model, true)
+                || !CreekValidator.INSTANCE.isValid(model, false)
+                || !CreekValidator.INSTANCE.isValid(deserializedModel)
+                || !CreekValidator.INSTANCE.isValid(deserializedModel, false)) {
             throw new IllegalStateException("Compiled Creek validation disagrees with the schema plan");
         }
         if (!model.equals(deserializedModel)
@@ -104,6 +106,17 @@ public class CreekSchemaBenchmark {
         }
     }
 
+    @CompiledBinder(backend = Backend.JACKSON2)
+    public interface CreekBinder {
+        CreekBinder INSTANCE = CompiledInstances.create(CreekBinder.class);
+
+        @ReadFrom
+        TestModel readTestModel(byte[] input) throws IOException;
+
+        @WriteTo
+        byte[] writeTestModel(TestModel input) throws IOException;
+    }
+
     /**
      * Direct root and nested oneOf checks for the known Creek subtypes;
      * unsupported runtime subtypes retain a cached SchemaPlan fallback.
@@ -111,14 +124,18 @@ public class CreekSchemaBenchmark {
      */
     @CompiledValidator(fallback=true)
     public interface CreekValidator {
+        CreekValidator INSTANCE = CompiledInstances.create(CreekValidator.class);
+
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value);
+
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         boolean isValid(TestModel value, boolean strictFormat);
 
         @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
         void requireValid(TestModel value);
     }
+
 
     /** Strict format control matching the generated validator's fallback path. */
     @Benchmark
@@ -129,13 +146,13 @@ public class CreekSchemaBenchmark {
     /** Generated direct Creek checks with the default non-strict format behavior. */
     @Benchmark
     public boolean pojo_isValid_compiled() {
-        return compiledValidator.isValid(model, false);
+        return CreekValidator.INSTANCE.isValid(model, false);
     }
 
     /** Generated direct Creek checks with the default non-strict format behavior. */
     @Benchmark
     public boolean pojo_isValid_compiled_strict() {
-        return compiledValidator.isValid(model, true);
+        return CreekValidator.INSTANCE.isValid(model, true);
     }
 
     @Benchmark
@@ -146,7 +163,7 @@ public class CreekSchemaBenchmark {
     /** Compiled fail-fast checks; failure diagnostics are cold-path only. */
     @Benchmark
     public void pojo_requireValid_compiled() {
-        compiledValidator.requireValid(model);
+        CreekValidator.INSTANCE.requireValid(model);
     }
 
 
@@ -158,10 +175,16 @@ public class CreekSchemaBenchmark {
     }
 
     @Benchmark
+    public TestModel roundtrip_compiled() throws IOException {
+        byte[] bytes = CreekBinder.INSTANCE.writeTestModel(model);
+        return CreekBinder.INSTANCE.readTestModel(bytes);
+    }
+
+    @Benchmark
     public TestModel roundtrip_isValid_compiled() throws IOException {
-        byte[] bytes = JACKSON.writeValueAsBytes(model);
-        TestModel result = JACKSON.readValue(bytes, TestModel.class);
-        if (!compiledValidator.isValid(result)) {
+        byte[] bytes = CreekBinder.INSTANCE.writeTestModel(model);
+        TestModel result = CreekBinder.INSTANCE.readTestModel(bytes);
+        if (!CreekValidator.INSTANCE.isValid(result)) {
             throw new IllegalStateException("compiled round-trip schema validation failed");
         }
         return result;
@@ -187,9 +210,9 @@ public class CreekSchemaBenchmark {
 
     @Benchmark
     public TestModel roundtrip_requireValid_compiled() throws IOException {
-        byte[] bytes = JACKSON.writeValueAsBytes(model);
-        TestModel result = JACKSON.readValue(bytes, TestModel.class);
-        compiledValidator.requireValid(result);
+        byte[] bytes = CreekBinder.INSTANCE.writeTestModel(model);
+        TestModel result = CreekBinder.INSTANCE.readTestModel(bytes);
+        CreekValidator.INSTANCE.requireValid(result);
         return result;
     }
 
