@@ -47,6 +47,9 @@ import java.util.UUID;
  * Such a token has been fetched physically but remains unconsumed logically.</p>
  */
 public final class Jackson3Parser extends StreamingParser {
+    /** Benchmark-only; JIT-constant property set per independent JMH fork. */
+    private static final boolean EXP_SMALL_RAW_MAP = Boolean.getBoolean("sjf4j.test.smallRawMap");
+
 
     private final JsonParser parser;
     private final boolean readerBased;
@@ -620,12 +623,42 @@ public final class Jackson3Parser extends StreamingParser {
     }
 
     private Map<String, Object> _readRawObject() throws IOException {
+        if (EXP_SMALL_RAW_MAP) return _experimentalSmallRawMap();
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
         while ((name = parser.nextName()) != null) {
             value.put(name, readRaw());
         }
         return value;
+    }
+
+    
+    /** Benchmark-only; defer map allocation and size for 0/1/2 entries. */
+    private Map<String, Object> _experimentalSmallRawMap() throws IOException {
+        String n0 = parser.nextName();
+        if (n0 == null) return new LinkedHashMap<>();
+        Object v0 = readRaw();
+        String n1 = parser.nextName();
+        if (n1 == null) {
+            LinkedHashMap<String, Object> m = new LinkedHashMap<>(2);
+            m.put(n0, v0);
+            return m;
+        }
+        Object v1 = readRaw();
+        String n2 = parser.nextName();
+        if (n2 == null) {
+            LinkedHashMap<String, Object> m = new LinkedHashMap<>(4);
+            m.put(n0, v0);
+            m.put(n1, v1);
+            return m;
+        }
+        LinkedHashMap<String, Object> m = new LinkedHashMap<>();
+        m.put(n0, v0);
+        m.put(n1, v1);
+        do {
+            m.put(n2, readRaw());
+        } while ((n2 = parser.nextName()) != null);
+        return m;
     }
 
     private List<Object> _readRawArray() throws IOException {
