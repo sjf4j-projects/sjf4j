@@ -278,7 +278,8 @@ public final class ReflectUtil {
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo, family.valueFormat, resolvedCodec, lookup,
-                    _bindingEnabled(family, true), _bindingEnabled(family, false));
+                    _bindingEnabled(family, true),
+                    _bindingEnabled(family, false) && _creatorBindingWrite(creatorInfo, finalName));
             PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new BindingException("multiple property families resolve to JSON property '" + pi.name +
@@ -551,6 +552,13 @@ public final class ReflectUtil {
         return null;
     }
 
+    private static boolean _creatorBindingWrite(CreatorInfo creator, String name) {
+        if (creator.argsCreator == null) return true;
+        int index = creator.getArgIndexOrAlias(name);
+        if (index < 0) return true;
+        return _bindingEnabled(creator.argsCreator.getParameters()[index], false);
+    }
+
     private static boolean _bindingEnabled(PropertyFamily family, boolean read) {
         return _bindingEnabled(family.field, read)
                 && _bindingEnabled(family.canUseGetter() ? family.getterMethod : null, read)
@@ -808,8 +816,8 @@ public final class ReflectUtil {
             argOneOfInfos = new OneOfInfo[params.length];
             for (int i = 0; i < params.length; i++) {
                 NodeProperty binding = params[i].getAnnotation(NodeProperty.class);
-                if (binding != null && (!binding.bindingRead() || !binding.bindingWrite())) {
-                    throw new BindingException("creator parameters cannot disable binding directions in "
+                if (binding != null && !binding.bindingRead()) {
+                    throw new BindingException("creator parameters cannot use bindingRead=false in "
                             + clazz.getName() + ": argument " + i);
                 }
                 String name = getExplicitName(params[i]);
