@@ -189,7 +189,7 @@ final class ReadEmitter {
             }
             out.indent();
             out.line("return " + names.helper(value, "subtypeContent:" + i,
-                    "read" + BindingNames.simpleType(subtype.type) + "Content")
+                    "read" + BindingNames.simpleType(subtype.type()) + "Content")
                     + "(parser, prefixNames, prefixValues, prefixSize, discriminator);");
             out.dedent();
         }
