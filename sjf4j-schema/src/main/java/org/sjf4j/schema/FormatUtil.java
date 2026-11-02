@@ -60,6 +60,19 @@ final class FormatUtil {
         }
     }
 
+    /**
+     * Validates an already parsed URI without reparsing its serialized value.
+     * Keep the ASCII, authority and port rules identical to the string validator.
+     */
+    static boolean validateUri(URI uri, boolean requireAbsolute) {
+        if (uri == null) return false;
+        String raw = uri.toString();
+        return !raw.isEmpty() && _isAsciiOnly(raw)
+                && !hasUnbracketedIpv6Authority(raw)
+                && (!requireAbsolute || uri.isAbsolute())
+                && _hasValidUriPort(uri.getRawAuthority());
+    }
+
     static boolean validateHostname(String value, boolean allowUnicode) {
         if (value == null || value.isEmpty()) return false;
         String normalized = allowUnicode ? normalizeIdnHostnameSeparators(value) : value;
