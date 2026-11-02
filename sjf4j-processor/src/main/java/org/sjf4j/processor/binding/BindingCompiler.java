@@ -837,6 +837,17 @@ final class BindingCompiler {
             NodeProperty writeAnnotation = property.write() == null ? null
                     : property.write().member().getAnnotation(NodeProperty.class);
 
+            if (value.direction() == BindingPlan.Direction.READ_FROM
+                    ? !bindingAllowed(readAnnotation, writeAnnotation, true)
+                    : !bindingAllowed(readAnnotation, writeAnnotation, false)) {
+                if (value.kind() == BindingValue.Kind.JOJO && value.direction() == BindingPlan.Direction.READ_FROM) {
+                    ignored.add(property.name());
+                    if (writeAnnotation != null) Collections.addAll(ignored, writeAnnotation.aliases());
+                    if (readAnnotation != null) Collections.addAll(ignored, readAnnotation.aliases());
+                }
+                continue;
+            }
+
             boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
 
             String[] aliases = new String[0];
@@ -1053,6 +1064,7 @@ final class BindingCompiler {
             NodeProperty getter = property.read() == null ? null
                     : property.read().member().getAnnotation(NodeProperty.class);
             NodeProperty setter = property.write().member().getAnnotation(NodeProperty.class);
+            if (!bindingAllowed(getter, setter, true)) continue;
             boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
             String[] aliases = setter != null && setter.aliases().length != 0 ? setter.aliases()
                     : getter == null ? new String[0] : getter.aliases();
@@ -1102,6 +1114,11 @@ final class BindingCompiler {
         names[0] = name;
         System.arraycopy(aliases, 0, names, 1, aliases.length);
         return names;
+    }
+
+    private static boolean bindingAllowed(NodeProperty reader, NodeProperty writer, boolean read) {
+        return (reader == null || (read ? reader.bindingRead() : reader.bindingWrite()))
+                && (writer == null || (read ? writer.bindingRead() : writer.bindingWrite()));
     }
 
     private static boolean conflictingCodecOptions(NodeProperty getter, NodeProperty setter) {
