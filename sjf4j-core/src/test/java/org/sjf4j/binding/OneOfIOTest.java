@@ -37,6 +37,10 @@ class OneOfIOTest {
         public Animal pet;
     }
 
+    static class InheritedMappingContainer {
+        public Animal pet;
+    }
+
     @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = {"dog", "hound"}), @OneOfMapping(type = Cat.class, when = "cat")}, discriminatorKey = "kind")
     static class Animal extends JsonObject { public String name; }
     static class Dog extends Animal { public boolean barks; }
@@ -80,6 +84,26 @@ class OneOfIOTest {
         BindingException error = assertThrows(BindingException.class,
                 () -> TypeRegistry.registerTypeInfo(RepeatedAlias.class));
         assertTrue(error.getMessage().contains("duplicated discriminator value 'a'"));
+    }
+
+    @Test
+    void keepsPropertyLevelOneOfSeparateFromTypeLevelOneOf() {
+        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+
+        // "hound" is accepted by Animal's type annotation, not by the
+        // more restrictive mapping declared on Container.pet.
+        InheritedMappingContainer implicit = (InheritedMappingContainer) binder.readNode(
+                "{\"pet\":{\"kind\":\"hound\",\"name\":\"Rex\",\"barks\":true}}",
+                InheritedMappingContainer.class);
+        assertInstanceOf(Dog.class, implicit.pet);
+
+        assertThrows(BindingException.class, () -> binder.readNode(
+                "{\"pet\":{\"kind\":\"hound\",\"name\":\"Rex\"}}", Container.class));
+
+        assertTrue(TypeRegistry.requireRegisteredPojoInfo(InheritedMappingContainer.class)
+                .getPropertyNoAlias("pet").oneOfInfo != null);
+        assertTrue(TypeRegistry.requireRegisteredPojoInfo(Container.class)
+                .getPropertyNoAlias("pet").oneOfInfo != null);
     }
 
     @Test

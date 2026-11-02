@@ -1566,7 +1566,10 @@ public final class NodeMapper {
         } else if (property.valueInfo != null) {
             value = _convertValue(rawValue, fieldRaw, property.valueInfo, deepCopy, ps, context);
         } else {
-            value = _convertSourceChild(rawValue, fieldType, fieldRaw, null,
+            // Generic-dependent fields require the resolved owner type, not the declaration hint.
+            TypeInfo declaredInfo = property.genericDependent || property.typeInfo == null
+                    ? null : property.typeInfo.get();
+            value = _convertSourceChild(rawValue, fieldType, fieldRaw, declaredInfo,
                     deepCopy, ps, context, externalSource);
         }
 

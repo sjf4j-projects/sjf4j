@@ -80,6 +80,8 @@ public interface PropertyParser {
                                  boolean genericDependent, OneOfInfo oneOfInfo,
                                  MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
                                  ValueInfo resolvedValueCodec,
+                                 Type contentType, Class<?> contentBoxed,
+                                 LazyTypeInfo typeInfo, LazyTypeInfo contentTypeInfo,
                                  MethodHandles.Lookup lookup) {
 
         if (setterHandle == null) {
@@ -149,8 +151,8 @@ public interface PropertyParser {
         // ExternalNode builders are reserved for NodeMapper conversions.
 
         if (Map.class.isAssignableFrom(fieldBoxed)) {
-            Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
-            Class<?> valueBoxed = Types.rawBox(valueType);
+            Type valueType = contentType;
+            Class<?> valueBoxed = contentBoxed;
             if ((fieldBoxed == Map.class || fieldBoxed == LinkedHashMap.class)
                     && valueType == Object.class) {
                 return (parser, owner, ownerType, ownerBoxed, context) -> {
@@ -158,9 +160,8 @@ public interface PropertyParser {
                     Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
                 };
             }
-            LazyTypeInfo valueTiRef = new LazyTypeInfo(valueBoxed);
             return (parser, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo valueTi = valueTiRef.get();
+                TypeInfo valueTi = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
                 Object value = StreamingIO.readMap(parser, fieldType, fieldBoxed, valueType, valueBoxed, valueTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -174,8 +175,8 @@ public interface PropertyParser {
         }
 
         if (List.class.isAssignableFrom(fieldBoxed)) {
-            Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
-            Class<?> elementBoxed = Types.rawBox(elementType);
+            Type elementType = contentType;
+            Class<?> elementBoxed = contentBoxed;
             if ((fieldBoxed == List.class || fieldBoxed == ArrayList.class)
                     && elementType == Object.class) {
                 return (parser, owner, ownerType, ownerBoxed, context) -> {
@@ -183,9 +184,8 @@ public interface PropertyParser {
                     Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
                 };
             }
-            LazyTypeInfo elementTiRef = new LazyTypeInfo(elementBoxed);
             return (parser, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo elementTi = elementTiRef.get();
+                TypeInfo elementTi = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
                 Object value = StreamingIO.readList(parser, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -199,11 +199,10 @@ public interface PropertyParser {
         }
 
         if (Set.class.isAssignableFrom(fieldBoxed)) {
-            Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
-            Class<?> elementBoxed = Types.rawBox(elementType);
-            LazyTypeInfo elementTiRef = new LazyTypeInfo(elementBoxed);
+            Type elementType = contentType;
+            Class<?> elementBoxed = contentBoxed;
             return (parser, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo elementTi = elementTiRef.get();
+                TypeInfo elementTi = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
                 Object value = StreamingIO.readSet(parser, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
@@ -211,10 +210,9 @@ public interface PropertyParser {
 
         if (fieldBoxed.isArray()) {
             Class<?> componentClazz = fieldBoxed.getComponentType();
-            Class<?> componentBoxed = Types.box(componentClazz);
-            LazyTypeInfo componentTiRef = new LazyTypeInfo(componentClazz);
+            Class<?> componentBoxed = contentBoxed;
             return (parser, owner, ownerType, ownerBoxed, context) -> {
-                TypeInfo componentTi = componentTiRef.get();
+                TypeInfo componentTi = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
                 Object value = StreamingIO.readArray(parser, fieldType, fieldBoxed, componentClazz, componentBoxed,
                         componentTi, context);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
@@ -298,9 +296,8 @@ public interface PropertyParser {
 
         // Resolve metadata lazily and reuse it for subsequent reads through StreamingIO.
 
-        LazyTypeInfo fieldTiRef = new LazyTypeInfo(fieldBoxed);
         return (parser, owner, ownerType, ownerBoxed, context) -> {
-            TypeInfo fieldTi = fieldTiRef.get();
+            TypeInfo fieldTi = typeInfo == null ? TypeInfo.NONE : typeInfo.get();
             Object value = StreamingIO.readNode(parser, fieldType, fieldBoxed, fieldTi, context);
             Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
         };

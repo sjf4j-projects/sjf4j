@@ -4,6 +4,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Types;
 
 import java.lang.invoke.MethodHandle;
 
@@ -33,7 +34,7 @@ public final class ValueInfo {
         this.runtimeClazz = null;
         this.valueFormat = valueFormat == null ? "" : valueFormat;
         this.valueClazz = valueClazz;
-        this.rawClazz = rawClazz;
+        this.rawClazz = Types.box(rawClazz);
         this.rawJsonType = JsonType.of(NodeKind.plainOf(rawClazz));
         this.codec = (ValueCodec<Object, Object>) codec;
         if (codec instanceof ValueCodec.StreamingValueCodec) {

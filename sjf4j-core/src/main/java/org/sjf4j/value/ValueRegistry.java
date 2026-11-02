@@ -160,8 +160,7 @@ public final class ValueRegistry {
             if (!Modifier.isPublic(modifiers) || !Modifier.isStatic(modifiers)
                     || !Modifier.isFinal(modifiers)
                     || !ValueCodec.class.isAssignableFrom(field.getType())) {
-                throw new BindingException("@NodeValue codec field must be public static final ValueCodec: "
-                        + field);
+                throw new BindingException("@NodeValue codec field must be public static final ValueCodec: " + field);
             }
 
             Type declaredType = field.getGenericType();
@@ -230,9 +229,9 @@ public final class ValueRegistry {
      * Plain NodeKind.isRaw() additionally includes Java scalar types such as
      * Character and Void, which are not valid codec raw declarations.
      */
-    private static boolean supportedCodecRaw(Class<?> raw) {
-        return raw == String.class || Number.class.isAssignableFrom(raw) || raw == Boolean.class 
-                || raw == Map.class || raw == List.class;
+    private static boolean supportedCodecRaw(Class<?> boxed) {
+        return boxed == String.class || Number.class.isAssignableFrom(boxed) || boxed == Boolean.class
+                || boxed == Map.class || boxed == List.class;
     }
 
     private static void validateRegistration(ValueInfo valueInfo) {

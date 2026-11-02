@@ -17,6 +17,15 @@ public final class LazyTypeInfo {
         this.clazz = clazz;
     }
 
+    /**
+     * Creates a lazy metadata reference only for types needing registry analysis.
+     * Returns null for types that {@link TypeRegistry} always classifies as
+     * {@link TypeInfo#NONE}, so callers can keep their scalar/container fast paths.
+     */
+    public static LazyTypeInfo of(Class<?> clazz) {
+        return TypeRegistry.isFastNoneType(clazz) ? null : new LazyTypeInfo(clazz);
+    }
+
     /** Returns the metadata, resolving it at most once in sequential use. */
     public TypeInfo get() {
         TypeInfo ti = typeInfo;
