@@ -105,7 +105,7 @@ public abstract class StreamingGenerator implements Flushable, Closeable {
         BackendCache cache = pojoInfo.backendCache(backend);
         CompiledName[] compiledNames = cache.compiledNames;
         if (compiledNames == null) {
-            PropertyInfo[] properties = pojoInfo.gettableProperties;
+            PropertyInfo[] properties = pojoInfo.bindingGettableProperties;
             compiledNames = new CompiledName[properties.length];
             for (int i = 0; i < properties.length; i++) {
                 compiledNames[i] = createCompiledName(properties[i].name);
