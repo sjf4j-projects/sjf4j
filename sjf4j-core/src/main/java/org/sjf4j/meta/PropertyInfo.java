@@ -34,7 +34,7 @@ public final class PropertyInfo {
 
     /** Container value (Map) or element (List, Set, array) declaration. */
     public final Type contentType;
-    public final Class<?> contentClass;
+    public final Class<?> contentBoxed;
     /** Lazily resolved content class metadata; generic-dependent declarations resolve at runtime. */
     public final LazyTypeInfo contentTypeInfo;
 
@@ -61,7 +61,7 @@ public final class PropertyInfo {
     public PropertyInfo(String name, String[] alias, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                         Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                         Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                        OneOfInfo oneOfInfo, OneOfInfo explicitOneOfInfo,
+                        OneOfInfo explicitOneOfInfo,
                         String valueFormat, ValueInfo valueInfo, MethodHandles.Lookup lookup) {
         this.name = name;
         this.alias = alias;
@@ -69,7 +69,7 @@ public final class PropertyInfo {
         this.type = type;
         this.genericDependent = genericDependent;
         this.boxed = boxed;
-        this.typeInfo = genericDependent ? null : lazyMetadata(boxed);
+        this.typeInfo = genericDependent ? null : LazyTypeInfo.of(boxed);
 
         Type contentType = null;
         if (List.class.isAssignableFrom(this.boxed)) {
@@ -82,8 +82,8 @@ public final class PropertyInfo {
             contentType = this.boxed.getComponentType();
         }
         this.contentType = contentType;
-        this.contentClass = contentType == null ? null : Types.rawBox(contentType);
-        this.contentTypeInfo = genericDependent ? null : lazyMetadata(contentClass);
+        this.contentBoxed = contentType == null ? null : Types.rawBox(contentType);
+        this.contentTypeInfo = genericDependent ? null : LazyTypeInfo.of(contentBoxed);
 
         this.publicGetter = publicGetter;
         this.getterHandle = getterHandle;
@@ -93,26 +93,16 @@ public final class PropertyInfo {
         this.setterHandle = setterHandle;
         this.setterLambda = setterLambda;
 
-        this.oneOfInfo = oneOfInfo;
+        // Expose the effective OneOf mapping while parsing only explicit property-level overrides.
+        this.oneOfInfo = explicitOneOfInfo != null ? explicitOneOfInfo : ReflectUtil.resolveOneOfInfo(boxed);
         this.valueFormat = valueFormat;
         this.valueInfo = valueInfo;
         this.gettable = getterHandle != null || getterLambda != null;
         this.settable = setterHandle != null || setterLambda != null;
 
         this.parser = PropertyParser.create(name, type, boxed, genericDependent, explicitOneOfInfo,
-                setterHandle, setterLambda, valueInfo, contentType, contentClass, typeInfo, contentTypeInfo, lookup);
+                setterHandle, setterLambda, valueInfo, contentType, contentBoxed, typeInfo, contentTypeInfo, lookup);
     }
-
-    /** Avoid unnecessary cached wrappers for directly dispatched scalar and Object types. */
-    private static LazyTypeInfo lazyMetadata(Class<?> clazz) {
-        if (clazz == null || clazz == Object.class || clazz.isPrimitive()
-                || clazz == String.class || clazz == Boolean.class || clazz == Character.class
-                || Number.class.isAssignableFrom(clazz) || Enum.class.isAssignableFrom(clazz)) {
-            return null;
-        }
-        return new LazyTypeInfo(clazz);
-    }
-
 
     /**
      * Invokes this property's getter.
