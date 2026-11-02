@@ -44,7 +44,7 @@ final class WriteEmitter {
             case JSONP:
                 fastjson2 = null;
                 jackson = null;
-                other = new OtherNativeWriteEmitter(backend);
+                other = new OtherNativeWriteEmitter(backend, names);
                 break;
             default:
                 fastjson2 = null;
