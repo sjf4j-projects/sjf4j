@@ -214,7 +214,7 @@ public final class OneOfIO {
                     }
 
                     PropertyInfo fi = pi.creatorMatchProperties[index];
-                    if (fi != null && fi.parser != null) {
+                    if (fi != null && fi.bindingRead && fi.parser != null) {
                         if (state.isCreated()) {
                             fi.parser.parse(parser, state.pojo(), targetClazz, targetClazz, context);
                         } else {
@@ -320,7 +320,7 @@ public final class OneOfIO {
         }
 
         PropertyInfo fi = pi.propertyLookup.get(key);
-        if (fi != null && fi.settable) {
+        if (fi != null && fi.bindingRead && fi.settable) {
             Object value;
             if (fi.oneOfInfo != null) {
                 value = _convertRawOneOf(rawValue, fi.oneOfInfo, context);
