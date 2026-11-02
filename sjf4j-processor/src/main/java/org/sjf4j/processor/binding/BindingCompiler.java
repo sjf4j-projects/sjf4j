@@ -838,8 +838,7 @@ final class BindingCompiler {
                     : property.write().member().getAnnotation(NodeProperty.class);
 
             if (value.direction() == BindingPlan.Direction.READ_FROM
-                    ? !bindingAllowed(readAnnotation, writeAnnotation, true)
-                    : !bindingAllowed(readAnnotation, writeAnnotation, false)) {
+                    ? !property.bindingRead() : !property.bindingWrite()) {
                 if (value.kind() == BindingValue.Kind.JOJO && value.direction() == BindingPlan.Direction.READ_FROM) {
                     ignored.add(property.name());
                     if (writeAnnotation != null) Collections.addAll(ignored, writeAnnotation.aliases());
@@ -1072,7 +1071,7 @@ final class BindingCompiler {
             NodeProperty getter = property.read() == null ? null
                     : property.read().member().getAnnotation(NodeProperty.class);
             NodeProperty setter = property.write().member().getAnnotation(NodeProperty.class);
-            if (!bindingAllowed(getter, setter, true)) continue;
+            if (!property.bindingRead()) continue;
             boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
             String[] aliases = setter != null && setter.aliases().length != 0 ? setter.aliases()
                     : getter == null ? new String[0] : getter.aliases();
