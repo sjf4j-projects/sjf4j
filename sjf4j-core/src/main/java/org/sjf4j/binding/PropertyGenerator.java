@@ -96,6 +96,7 @@ public interface PropertyGenerator {
     static PropertyGenerator create(String fieldName, Type fieldType, Class<?> fieldBoxed,
                                  MethodHandle getterHandle, Function<Object, Object> getterLambda,
                                  ValueInfo resolvedValueCodec,
+                                 LazyTypeInfo typeInfo, LazyTypeInfo contentTypeInfo,
                                  MethodHandles.Lookup lookup) {
         if (getterHandle == null) {
             return null;
@@ -189,7 +190,7 @@ public interface PropertyGenerator {
          */
 
         if (Map.class.isAssignableFrom(fieldBoxed)) {
-            return _createForMap(fieldName, fieldType, getterHandle, getterLambda);
+            return _createForMap(fieldName, fieldType, getterHandle, getterLambda, contentTypeInfo);
         }
 
         if (fieldBoxed == JsonObject.class) {
@@ -197,7 +198,7 @@ public interface PropertyGenerator {
         }
 
         if (List.class.isAssignableFrom(fieldBoxed)) {
-            return _createForList(fieldName, fieldType, getterHandle, getterLambda);
+            return _createForList(fieldName, fieldType, getterHandle, getterLambda, contentTypeInfo);
         }
 
         if (JsonArray.class.isAssignableFrom(fieldBoxed)) {
@@ -205,14 +206,14 @@ public interface PropertyGenerator {
         }
 
         if (Set.class.isAssignableFrom(fieldBoxed)) {
-            return _createForSet(fieldName, fieldType, getterHandle, getterLambda);
+            return _createForSet(fieldName, fieldType, getterHandle, getterLambda, contentTypeInfo);
         }
 
         if (fieldBoxed.isArray()) {
-            return _createForArray(fieldName, fieldBoxed, getterHandle, getterLambda);
+            return _createForArray(fieldName, fieldBoxed, getterHandle, getterLambda, contentTypeInfo);
         }
 
-        return _createForObject(fieldName, fieldBoxed, getterHandle, getterLambda);
+        return _createForObject(fieldName, fieldBoxed, getterHandle, getterLambda, typeInfo);
     }
 
 
@@ -636,10 +637,9 @@ public interface PropertyGenerator {
     }
 
     static PropertyGenerator _createForMap(String fieldName, Type fieldType, MethodHandle getterHandle,
-                                        Function<Object, Object> getterLambda) {
+                                        Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
         Type valueType = Types.resolveTypeArgument(fieldType, Map.class, 1);
         Class<?> valueClazz = Types.rawBox(valueType);
-        LazyTypeInfo typeInfoRef = new LazyTypeInfo(valueClazz);
 
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -647,7 +647,7 @@ public interface PropertyGenerator {
                 return _writeNullValueField(generator, preparedName, context, count);
             }
 
-            TypeInfo typeInfo = typeInfoRef.get();
+            TypeInfo typeInfo = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
             count = _writeName(generator, preparedName, count);
             StreamingIO.writeMap(generator, (Map<?, ?>) value, typeInfo, context);
             return count;
@@ -675,10 +675,9 @@ public interface PropertyGenerator {
     }
 
     static PropertyGenerator _createForList(String fieldName, Type fieldType, MethodHandle getterHandle,
-                                         Function<Object, Object> getterLambda) {
+                                         Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
         Type elementType = Types.resolveTypeArgument(fieldType, List.class, 0);
         Class<?> elementClazz = Types.rawBox(elementType);
-        LazyTypeInfo typeInfoRef = new LazyTypeInfo(elementClazz);
 
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -687,7 +686,7 @@ public interface PropertyGenerator {
             }
             count = _writeName(generator, preparedName, count);
 
-            TypeInfo typeInfo = typeInfoRef.get();
+            TypeInfo typeInfo = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
             StreamingIO.writeList(generator, (List<?>) value, typeInfo, context);
             return count;
         };
@@ -707,10 +706,9 @@ public interface PropertyGenerator {
     }
 
     static PropertyGenerator _createForSet(String fieldName, Type fieldType, MethodHandle getterHandle,
-                                        Function<Object, Object> getterLambda) {
+                                        Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
         Type elementType = Types.resolveTypeArgument(fieldType, Set.class, 0);
         Class<?> elementClazz = Types.rawBox(elementType);
-        LazyTypeInfo typeInfoRef = new LazyTypeInfo(elementClazz);
 
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -719,16 +717,15 @@ public interface PropertyGenerator {
             }
             count = _writeName(generator, preparedName, count);
 
-            TypeInfo typeInfo = typeInfoRef.get();
+            TypeInfo typeInfo = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
             StreamingIO.writeSet(generator, (Set<?>) value, typeInfo, context);
             return count;
         };
     }
 
     static PropertyGenerator _createForArray(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
-                                          Function<Object, Object> getterLambda) {
+                                          Function<Object, Object> getterLambda, LazyTypeInfo contentTypeInfo) {
         Class<?> compClazz = fieldBoxed.getComponentType();
-        LazyTypeInfo typeInfoRef = new LazyTypeInfo(compClazz);
 
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
@@ -737,7 +734,7 @@ public interface PropertyGenerator {
             }
             count = _writeName(generator, preparedName, count);
 
-            TypeInfo typeInfo = compClazz.isPrimitive() ? TypeInfo.NONE : typeInfoRef.get();
+            TypeInfo typeInfo = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
             StreamingIO.writeArray(generator, value, value.getClass(), typeInfo, context);
             return count;
         };
@@ -771,8 +768,7 @@ public interface PropertyGenerator {
     }
 
     static PropertyGenerator _createForObject(String fieldName, Class<?> fieldBoxed, MethodHandle getterHandle,
-                                           Function<Object, Object> getterLambda) {
-        LazyTypeInfo typeInfoRef = new LazyTypeInfo(fieldBoxed);
+                                           Function<Object, Object> getterLambda, LazyTypeInfo typeInfoRef) {
         return (generator, preparedName, owner, context, count) -> {
             Object value = Invokers.invokeGetter(fieldName, getterHandle, getterLambda, owner);
             if (value == null) {
@@ -788,7 +784,7 @@ public interface PropertyGenerator {
              * Subclasses retain normal runtime-polymorphic semantics.
              */
             if (value.getClass() == fieldBoxed) {
-                TypeInfo typeInfo = typeInfoRef.get();
+                TypeInfo typeInfo = typeInfoRef == null ? TypeInfo.NONE : typeInfoRef.get();
 
                 if (typeInfo.pojoInfo != null) {
                     StreamingIO.writePojo(generator, value, typeInfo.pojoInfo, context);
