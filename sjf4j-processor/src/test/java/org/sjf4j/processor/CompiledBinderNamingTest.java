@@ -23,6 +23,8 @@ class CompiledBinderNamingTest {
                     "package fixture; public interface Base {"
                             + " String BEAN_NAME_MATCHER = \"reserved\";"
                             + " String BEAN_NAME = \"reserved\";"
+                            + " String STATUS_ORDINALS = \"reserved\";"
+                            + " String FASTJSON2_LITTLE_ENDIAN = \"reserved\";"
                             + " default void _readBean() {}"
                             + " default void _writeBean() {}"
                             + " default void _writeString() {}"
@@ -56,7 +58,8 @@ class CompiledBinderNamingTest {
             }
             if ("FASTJSON2".equals(backend)) {
                 assertTrue(generated.contains("_readStatusEnum("), backend);
-                assertTrue(generated.contains("STATUS_ORDINALS"), backend);
+                assertTrue(generated.contains("STATUS_ORDINALS2"), backend);
+                assertTrue(generated.contains("FASTJSON2_LITTLE_ENDIAN2"), backend);
             }
         }
     }
