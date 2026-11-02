@@ -96,6 +96,22 @@ public final class PropertyResolver {
             }
         }
 
+        // Private fields can supply binding metadata to a public bean accessor
+        // without becoming directly accessible generated-code properties.
+        for (Element member : elements.getAllMembers(type)) {
+            if (member.getKind() != ElementKind.FIELD
+                    || member.getModifiers().contains(Modifier.PUBLIC)
+                    || member.getModifiers().contains(Modifier.STATIC)
+                    || member.getAnnotation(NodeIgnore.class) != null) continue;
+            NodeProperty options = member.getAnnotation(NodeProperty.class);
+            if (options == null) continue;
+            String javaName = member.getSimpleName().toString();
+            String explicit = annotations.explicitPropertyName(member);
+            Builder family = explicit == null ? builders.get(javaName) : builders.get(explicit);
+            if (family == null) family = builders.get(javaName);
+            if (family != null) family.recordCodec(member);
+        }
+
         Map<String, Property> result = new LinkedHashMap<>(builders.size());
 
         for (Map.Entry<String, Builder> entry : builders.entrySet()) {
