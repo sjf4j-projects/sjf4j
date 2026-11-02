@@ -35,6 +35,7 @@ final class BindingEmitter {
             writes.registerEnums(method.value());
             writes.registerWriteOutput(method.plan().writeOutput());
             if (!stringHelperEmitted && writes.needsStringHelper(method.value())) {
+                writes.prepareStringHelpers();
                 generated.addHelper(out -> writes.emitStringHelper(out));
                 stringHelperEmitted = true;
             }
