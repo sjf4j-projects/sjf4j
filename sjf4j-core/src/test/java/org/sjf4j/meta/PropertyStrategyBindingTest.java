@@ -20,6 +20,32 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PropertyStrategyBindingTest {
 
+    static class BindingDirectionsPojo {
+        @NodeProperty(bindingRead = false)
+        public String serverId = "generated";
+
+        @NodeProperty(bindingWrite = false)
+        public String password;
+    }
+
+    @Test
+    void bindingDirectionsDoNotHideStructuralProperties() {
+        BindingDirectionsPojo pojo = Sjf4j.global().fromJson(
+                "{\"serverId\":\"incoming\",\"password\":\"secret\"}",
+                BindingDirectionsPojo.class);
+        assertEquals("generated", pojo.serverId);
+        assertEquals("secret", pojo.password);
+        String json = Sjf4j.global().toJsonString(pojo);
+        assertTrue(json.contains("\\"serverId\":\\"generated\\""), json);
+        assertFalse(json.contains("password"), json);
+
+        PojoInfo info = TypeRegistry.requireRegisteredPojoInfo(BindingDirectionsPojo.class);
+        assertNotNull(info.propertyLookup.get("password"));
+        assertNotNull(info.propertyLookup.get("serverId"));
+        assertTrue(info.propertyLookup.get("password").settable);
+        assertTrue(info.propertyLookup.get("password").gettable);
+    }
+
     static class DefaultBeanFieldPojo {
         private String name;
         public String getName() {
