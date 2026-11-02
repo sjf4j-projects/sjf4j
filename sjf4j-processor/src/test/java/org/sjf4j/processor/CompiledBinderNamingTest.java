@@ -27,6 +27,7 @@ class CompiledBinderNamingTest {
                             + " String FASTJSON2_LITTLE_ENDIAN = \"reserved\";"
                             + " default void _readBean() {}"
                             + " default void _writeBean() {}"
+                            + " default void _writeBeanUtf16() {}"
                             + " default void _writeString() {}"
                             + " default void _writeStringMember() {}"
                             + " }");
@@ -44,7 +45,11 @@ class CompiledBinderNamingTest {
 
             String generated = result.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("_readBean2("), backend);
-            assertTrue(generated.contains("_writeBean2("), backend);
+            if ("FASTJSON2".equals(backend)) {
+                assertTrue(generated.contains("_writeBeanUtf162("), backend);
+            } else {
+                assertTrue(generated.contains("_writeBean2("), backend);
+            }
             if (!"FASTJSON2".equals(backend)) {
                 assertTrue(generated.contains("_writeString2("), backend);
             }
