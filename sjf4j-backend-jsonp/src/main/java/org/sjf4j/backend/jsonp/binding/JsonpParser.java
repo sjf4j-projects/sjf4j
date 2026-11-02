@@ -24,6 +24,9 @@ import java.util.Map;
  * construction, since its previous position cannot be recovered.</p>
  */
 public final class JsonpParser extends StreamingParser {
+    /** Benchmark-only; JIT-constant property set per independent JMH fork. */
+    private static final boolean EXP_SMALL_RAW_MAP = Boolean.getBoolean("sjf4j.test.smallRawMap");
+
 
     private final JsonParser parser;
     private JsonParser.Event current;
@@ -289,6 +292,7 @@ public final class JsonpParser extends StreamingParser {
     }
 
     private Map<String, Object> _readRawObject() throws IOException {
+        if (EXP_SMALL_RAW_MAP) return _experimentalSmallRawMap();
         advance();
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
@@ -296,6 +300,36 @@ public final class JsonpParser extends StreamingParser {
             value.put(name, readRaw());
         }
         return value;
+    }
+
+    
+    /** Benchmark-only; defer map allocation and size for 0/1/2 entries. */
+    private Map<String, Object> _experimentalSmallRawMap() throws IOException {
+        advance();
+        String n0 = nextName();
+        if (n0 == null) return new LinkedHashMap<>();
+        Object v0 = readRaw();
+        String n1 = nextName();
+        if (n1 == null) {
+            LinkedHashMap<String, Object> m = new LinkedHashMap<>(2);
+            m.put(n0, v0);
+            return m;
+        }
+        Object v1 = readRaw();
+        String n2 = nextName();
+        if (n2 == null) {
+            LinkedHashMap<String, Object> m = new LinkedHashMap<>(4);
+            m.put(n0, v0);
+            m.put(n1, v1);
+            return m;
+        }
+        LinkedHashMap<String, Object> m = new LinkedHashMap<>();
+        m.put(n0, v0);
+        m.put(n1, v1);
+        do {
+            m.put(n2, readRaw());
+        } while ((n2 = nextName()) != null);
+        return m;
     }
 
     private List<Object> _readRawArray() throws IOException {
