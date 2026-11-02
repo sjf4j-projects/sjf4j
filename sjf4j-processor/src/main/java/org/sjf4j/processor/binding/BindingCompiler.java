@@ -14,7 +14,7 @@ import org.sjf4j.processor.creator.CreatorPlan;
 import org.sjf4j.processor.creator.StandardCreatorResolver;
 import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
-import org.sjf4j.processor.code.NameAllocator;
+import org.sjf4j.processor.code.GeneratedNames;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 
@@ -47,7 +47,7 @@ import java.util.Set;
 final class BindingCompiler {
 
     private final ProcessorContext context;
-    private final NameAllocator names;
+    private final GeneratedNames names;
     private final CompiledMetadata metadata;
     private final Backend backend;
     private final StandardCreatorResolver creators;
@@ -60,7 +60,7 @@ final class BindingCompiler {
     private final Map<String, BindingValue> cache = new LinkedHashMap<>();
     private final List<BindingValue> helpers = new ArrayList<>();
 
-    BindingCompiler(ProcessorContext context, NameAllocator names,
+    BindingCompiler(ProcessorContext context, GeneratedNames names,
                     CompiledMetadata metadata, Backend backend) {
         this.context = context;
         this.names = names;
@@ -156,7 +156,7 @@ final class BindingCompiler {
 
         if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC
                 || kind == BindingValue.Kind.ONE_OF) {
-            value.helperName(names.newName(helperSuggestion(direction, type)));
+            value.helperName(names.helperMethod(helperSuggestion(direction, type)));
             helpers.add(value);
         }
 
@@ -771,7 +771,7 @@ final class BindingCompiler {
                                             ExecutableElement method, GeneratedClass generated) {
         TypeMirror type = context.types.concrete(propertyType);
         BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF, false);
-        result.helperName(names.newName(helperSuggestion(owner.direction(), type)));
+        result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
         if (owner.direction() == BindingPlan.Direction.READ_FROM) {
             result.oneOfMember(context.typeUtils.erasure(owner.type()).toString(), property);
             if (!compileOneOfRead(result, annotation, method, generated)) return null;
@@ -986,7 +986,7 @@ final class BindingCompiler {
                                               ExecutableElement method, GeneratedClass generated) {
         TypeMirror type = context.types.concrete(argType);
         BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF, false);
-        result.helperName(names.newName(helperSuggestion(owner.direction(), type)));
+        result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
         result.oneOfCreator(context.typeUtils.erasure(owner.type()).toString(), index);
         if (!compileOneOfRead(result, annotation, method, generated)) return null;
         helpers.add(result);
