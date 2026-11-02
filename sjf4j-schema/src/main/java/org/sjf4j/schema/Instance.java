@@ -1,9 +1,6 @@
 package org.sjf4j.schema;
 
-import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.InternalAccess;
-import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.value.ValueInfo;
@@ -74,28 +71,6 @@ public final class Instance {
             typeInfo = info;
         }
         return info;
-    }
-
-    /** Returns the OBNT object-member count without reading POJO getters. */
-    int objectSize() {
-        if (jsonType != JsonType.OBJECT) {
-            throw new NodeException("Type mismatch: objectSize() requires OBJECT node, but was " + jsonType);
-        }
-        if (node instanceof Map) return ((Map<?, ?>) node).size();
-        if (node.getClass() == JsonObject.class) return ((JsonObject) node).size();
-
-        TypeInfo info = typeInfo();
-        PojoInfo pojo = info.pojoInfo;
-        if (pojo != null) {
-            int size = pojo.gettableProperties.length;
-            if (pojo.isJojo) {
-                Map<String, Object> dynamic = InternalAccess.dynamicMembers((JsonObject) node);
-                if (dynamic != null) size += dynamic.size();
-            }
-            return size;
-        }
-        if (info.externalNode != null) return info.externalNode.sizeInObject(node);
-        throw new NodeException("expected object node");
     }
 
     Instance reuse(Object node, JsonType jsonType, boolean converted) {
