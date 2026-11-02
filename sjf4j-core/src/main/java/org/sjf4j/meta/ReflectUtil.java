@@ -274,7 +274,7 @@ public final class ReflectUtil {
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
-                    family.codecName, resolvedCodec, lookup);
+                    family.oneOfInfo, family.codecName, resolvedCodec, lookup);
             PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new BindingException("multiple property families resolve to JSON property '" + pi.name +
