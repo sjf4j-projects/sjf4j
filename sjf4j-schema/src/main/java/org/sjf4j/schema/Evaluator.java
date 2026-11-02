@@ -524,13 +524,23 @@ public interface Evaluator {
         @Override
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.STRING) return true;
-            String node = Nodes.toString(instance.node());
-            if (assertion || ctx.isStrictFormat()) {
-                if (!formatValidator.validate(node)) {
-                    ctx.addError(instance, ps, keywordPs, schemaUri, "format",
-                            ctx.needsErrorDetail() ? ("expected format " + format + ", found '" + node + "'") : null);
-                    return false;
-                }
+            if (!assertion && !ctx.isStrictFormat()) return true;
+
+            Object source = instance.formatSource();
+            boolean valid;
+            if ("uuid".equals(format) && source instanceof java.util.UUID) {
+                valid = true; // The built-in UUID codec always produces canonical UUID text.
+            } else if (source instanceof java.net.URI
+                    && ("uri".equals(format) || "uri-reference".equals(format))) {
+                valid = FormatValidator.validateUri((java.net.URI) source, "uri".equals(format));
+            } else {
+                valid = formatValidator.validate(Nodes.toString(instance.node()));
+            }
+            if (!valid) {
+                ctx.addError(instance, ps, keywordPs, schemaUri, "format",
+                        ctx.needsErrorDetail() ? ("expected format " + format
+                                + ", found '" + Nodes.toString(instance.node()) + "'") : null);
+                return false;
             }
             return true;
         }
