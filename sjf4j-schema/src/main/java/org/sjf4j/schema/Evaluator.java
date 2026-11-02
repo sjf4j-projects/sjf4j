@@ -1563,7 +1563,7 @@ public interface Evaluator {
             try {
                 if (unevaluatedPropertiesPlan != null && instance.jsonType() == JsonType.OBJECT) {
                     // A fully evaluated object requires neither a second traversal nor getters.
-                    if (!merged.covers(instance.objectSize())) {
+                    if (!merged.covers(NodeWalker.sizeInObject(instance.node()))) {
                         result = evaluateObject(instance, merged, ps, ctx);
                     }
                     if (!result && ctx.isFailFast()) return false;
