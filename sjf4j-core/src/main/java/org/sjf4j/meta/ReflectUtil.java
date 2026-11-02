@@ -269,15 +269,12 @@ public final class ReflectUtil {
                     Invokers.createSetterLambda(lookup, setterHandle, BiConsumer.class, Object.class);
             ValueInfo resolvedCodec = _resolvePatternedValueCodec(boxed, family.codecName, family.codecPattern);
 
-            PropertyParser propertyReader = PropertyParser.create(finalName, type, boxed, genericDependent, family.oneOfInfo,
-                    setterHandle, setterLambda, resolvedCodec, lookup);
             PropertyInfo pi = new PropertyInfo(finalName, family.aliases.toArray(new String[0]), publicField,
                     type, genericDependent, boxed,
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
                     family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
-                    family.codecName, resolvedCodec,
-                    propertyReader);
+                    family.codecName, resolvedCodec, lookup);
             PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new BindingException("multiple property families resolve to JSON property '" + pi.name +
@@ -298,7 +295,8 @@ public final class ReflectUtil {
             }
 
             PropertyGenerator propertyWriter = PropertyGenerator.create(property.name, property.type, property.boxed,
-                    property.getterHandle, property.getterLambda, property.valueInfo, lookup);
+                    property.getterHandle, property.getterLambda, property.valueInfo,
+                    property.typeInfo, property.contentTypeInfo, lookup);
             if (propertyWriter != null) {
                 gettableProperties.add(property);
                 propertyGenerators.add(propertyWriter);
