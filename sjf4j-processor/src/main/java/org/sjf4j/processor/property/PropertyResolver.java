@@ -104,7 +104,8 @@ public final class PropertyResolver {
             result.put(entry.getKey(), new Property(entry.getKey(),
                     builder.read == null ? null : builder.read.access,
                     builder.write == null ? null : builder.write.access,
-                    builder.valueFormat, builder.valuePattern));
+                    builder.valueFormat, builder.valuePattern,
+                    builder.bindingRead, builder.bindingWrite));
         }
 
         Map<String, Property> resolved = Collections.unmodifiableMap(result);
@@ -337,10 +338,14 @@ public final class PropertyResolver {
         Candidate write;
         String valueFormat;
         String valuePattern;
+        boolean bindingRead = true;
+        boolean bindingWrite = true;
 
         void recordCodec(Element member) {
             NodeProperty annotation = member.getAnnotation(NodeProperty.class);
             if (annotation == null) return;
+            bindingRead &= annotation.bindingRead();
+            bindingWrite &= annotation.bindingWrite();
             if (!NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())) {
                 if (valueFormat == null) valueFormat = annotation.valueFormat();
                 else if (!valueFormat.equals(annotation.valueFormat())) {
