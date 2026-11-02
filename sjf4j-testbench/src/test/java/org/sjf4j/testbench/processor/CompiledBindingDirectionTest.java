@@ -45,6 +45,7 @@ public class CompiledBindingDirectionTest {
         CreatorOnlyOption value = binder.read("{\"token\":\"abc\"}");
         assertEquals("abc", value.getToken());
         assertFalse(binder.write(value).contains("token"));
+        assertFalse(org.sjf4j.Sjf4j.global().toJsonString(value).contains("token"));
     }
 
     public static class PrivateFieldUser {
