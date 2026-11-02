@@ -6,6 +6,7 @@ on:
       - '.github/workflows/object-cursor-benchmark.yml'
       - 'sjf4j-core/src/main/java/org/sjf4j/node/NodeWalker.java'
       - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/node/ObjectEntryTraversalBenchmark.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/node/ObjectCursorTraversalOnlyBenchmark.java'
   workflow_dispatch:
 jobs:
   benchmark:
@@ -25,10 +26,10 @@ jobs:
         run: |
           JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
           test -n "$JAR"
-          java -jar "$JAR" 'org.sjf4j.testbench.node.ObjectEntryTraversalBenchmark.(entrySet|cursor)$' -wi 2 -i 4 -f 3 -w 500ms -r 500ms -prof gc -rf text -rff object-cursor-jmh.txt
-          cat object-cursor-jmh.txt
+          java -jar "$JAR" 'org.sjf4j.testbench.node.ObjectCursorTraversalOnlyBenchmark.(entrySet|cursor)$' -wi 2 -i 4 -f 3 -w 500ms -r 500ms -prof gc -rf text -rff object-cursor-traversal-only-jmh.txt
+          cat object-cursor-traversal-only-jmh.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: object-cursor-jmh-jdk17
-          path: object-cursor-jmh.txt
+          name: object-cursor-traversal-only-jmh-jdk17
+          path: object-cursor-traversal-only-jmh.txt
