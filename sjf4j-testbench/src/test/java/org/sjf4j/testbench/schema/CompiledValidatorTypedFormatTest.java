@@ -33,6 +33,8 @@ class CompiledValidatorTypedFormatTest {
         private final UUID id;
         private final URI link;
 
+        public Holder() { this(null, null); }
+
         public Holder(UUID id, URI link) {
             this.id = id;
             this.link = link;
