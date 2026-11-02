@@ -39,7 +39,7 @@ final class Fastjson2WriteEmitter {
                 String field = writes.enumField(enumValue, suffix);
                 String method = writes.naming().enumHelper(enumValue.type(), "init:" + suffix,
                         "init" + BindingNames.simpleType(enumValue.type()) + suffix + "Enum");
-                out.line("private static final " + elementType + "[][] " + field + suffix
+                out.line("private static final " + elementType + "[][] " + field
                         + " = " + method + "();");
                 out.beginBlock("private static " + elementType + "[][] " + method + "()");
                 out.line(type + "[] constants = " + type + ".values();");
@@ -292,7 +292,7 @@ final class Fastjson2WriteEmitter {
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
         } else {
-            StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode));
+            StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode), writes.naming());
              switch (value.kind()) {
                 case POJO:
                 case JOJO:
