@@ -46,6 +46,10 @@ public class CompiledValidatorPropertyCodecTest {
     public interface Fallback {
         @ValidJsonSchema("{\"properties\":{\"millis\":{\"type\":\"object\"}}}")
         boolean structural(Times value);
+
+        @ValidJsonSchema("{\"properties\":{\"millis\":{\"anyOf\":["
+                + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}")
+        boolean complexScalar(Times value);
     }
 
     @Test
@@ -83,5 +87,16 @@ public class CompiledValidatorPropertyCodecTest {
                 "{\"properties\":{\"millis\":{\"type\":\"object\"}}}").createPlan();
         assertFalse(reference.isValid(value));
         assertEquals(reference.isValid(value), compiled.structural(value));
+
+        // This is not directly supported by the explicit-codec scalar compiler.
+        // Falling back on the child Instant would select the ISO default and fail:
+        // fallback must evaluate the parent POJO to retain epochMillis.
+        SchemaPlan complex = JsonSchema.fromJson(
+                "{\"properties\":{\"millis\":{\"anyOf\":["
+                        + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}").createPlan();
+        assertTrue(complex.isValid(value));
+        assertEquals(complex.isValid(value), compiled.complexScalar(value));
+        value.millis = Instant.ofEpochMilli(100);
+        assertEquals(complex.isValid(value), compiled.complexScalar(value));
     }
 }
