@@ -40,6 +40,7 @@ public final class ConversionEmitter
     private final IdentityHashMap<ConverterResolver.Conversion, ConversionCompiler.CompiledConversion> compiled =
             new IdentityHashMap<>();
     private final Map<String, String> importedMapperFields = new LinkedHashMap<>();
+    private org.sjf4j.processor.code.GeneratedNames generatedNames;
 
     public ConversionEmitter(ProcessorContext context, TypeElement mapper,
                              List<MappingPlan> plans, CompiledMetadata metadata) {
@@ -60,6 +61,7 @@ public final class ConversionEmitter
      * conversions.
      */
     public boolean prepare(List<MappingCompiler.CompiledMethod> methods, GeneratedClass generated) {
+        this.generatedNames = generated.names();
         for (MappingCompiler.CompiledMethod method : methods) {
             if (!prepare(method, generated)) return false;
         }
@@ -165,15 +167,9 @@ public final class ConversionEmitter
         String type = mapper.getQualifiedName().toString();
         if (importedMapperFields.containsKey(type)) return;
 
-        String base = "_sjf4j_mapper_" + mapper.getSimpleName();
-        String name = base;
-        int index = 2;
-
-        while (importedMapperFields.containsValue(name)) {
-            name = base + index++;
-        }
-
-        importedMapperFields.put(type, name);
+        String simple = mapper.getSimpleName().toString();
+        String hint = Character.toLowerCase(simple.charAt(0)) + simple.substring(1) + "Mapper";
+        importedMapperFields.put(type, generatedNames.field(hint));
     }
 
     private void registerFields(GeneratedClass generated) {
