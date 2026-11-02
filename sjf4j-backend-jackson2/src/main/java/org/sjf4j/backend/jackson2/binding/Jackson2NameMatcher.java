@@ -39,6 +39,11 @@ public final class Jackson2NameMatcher extends NameMatcher {
      * Native Jackson field traversal for compiled binding. FIELD_NAME stays
      * current so the next Jackson2Parser scalar reader consumes the value.
      * Handles reordered/aliased/unknown fields by the existing fallback map.
+     *
+     * @param parser the Jackson parser positioned before the next field or object end
+     * @param expectedIndex the expected property index, or a negative value if unknown
+     * @return the matched property index, or {@link #OBJECT_END} at the end of the object
+     * @throws IOException if parsing fails or the next token is not a field name or object end
      */
     public int matchNext(JsonParser parser, int expectedIndex) throws IOException {
         if (expectedIndex >= 0 && expectedIndex < serializedNames.length

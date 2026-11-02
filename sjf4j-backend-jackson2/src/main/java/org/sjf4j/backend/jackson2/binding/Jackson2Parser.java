@@ -65,6 +65,8 @@ public final class Jackson2Parser extends StreamingParser {
      * The caller must not switch while a lookahead token is pending.
      * Use native cursor operations for complete structural segments,
      * leaving FIELD_NAME for SJF4J's consuming scalar readers.
+     *
+     * @return the underlying Jackson parser
      */
     public JsonParser nativeParser() {
         if (prefetched) {
@@ -367,6 +369,9 @@ public final class Jackson2Parser extends StreamingParser {
      * Reads a string/null value already advanced by a compiled native array loop.
      * Unlike readString(), no token is advanced or handed through prefetched.
      * Call only when the native parser is positioned on the array element.
+     *
+     * @return the current string value, or {@code null} for JSON null
+     * @throws IOException if the token is not a string or null, or reading fails
      */
     public String readCurrentString() throws IOException {
         JsonToken token = parser.currentToken();
