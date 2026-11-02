@@ -14,10 +14,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     private static final String STREAMING_IO = "org.sjf4j.binding.StreamingIO";
 
     private final BackendSpec backend;
+    private final BindingNames names;
     private final StructuralWriteEmitter structures = new StructuralWriteEmitter(this);
 
-    OtherNativeWriteEmitter(BackendSpec backend) {
+    OtherNativeWriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
+        this.names = names;
     }
 
     private boolean gson() {
@@ -214,7 +216,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend());
+                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), names);
                 return;
             case RUNTIME:
                 writeRuntimeValue(out, expression);
