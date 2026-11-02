@@ -145,6 +145,7 @@ final class BindingHelperEmitter {
         // The streaming-only backend may delegate a whole dynamic graph to Runtime.
         if ((value.kind() == BindingValue.Kind.POJO
                 || value.kind() == BindingValue.Kind.JOJO) && writes.usesCompiledNames()) {
+            writes.prepareCompiledNames(value);
             generated.addField(out -> writes.emitCompiledNames(out, value));
         }
         generated.addHelper(out -> writes.emitHelper(out, value));
