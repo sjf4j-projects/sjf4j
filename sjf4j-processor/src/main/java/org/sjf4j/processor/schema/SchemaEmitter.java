@@ -181,9 +181,10 @@ final class SchemaEmitter {
                 if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
                     // Preserve the enclosing instance location across a real
                     // fallback without executing the root SchemaPlan.
+                    String fallbackError = locals.newName("fallbackError");
                     lines.add("try { " + sub.reference() + ".requireValid(" + expression
-                            + ", " + strictFormat + "); } catch (org.sjf4j.schema.ValidationException _fallbackError) {"
-                            + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(_fallbackError, "
+                            + ", " + strictFormat + "); } catch (org.sjf4j.schema.ValidationException " + fallbackError + ") {"
+                            + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(" + fallbackError + ", "
                             + instancePath + "); }");
                 } else {
                     lines.add("if (!" + sub.reference() + ".isValid("
@@ -463,10 +464,11 @@ final class SchemaEmitter {
         } else {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
+                String fallbackError = locals.newName("fallbackError");
                 lines.add("    try { " + full.reference() + ".requireValid("
                         + expression + ", " + strictFormat + "); }"
-                        + " catch (org.sjf4j.schema.ValidationException _fallbackError) {"
-                        + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(_fallbackError, "
+                        + " catch (org.sjf4j.schema.ValidationException " + fallbackError + ") {"
+                        + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(" + fallbackError + ", "
                         + instancePath + "); }");
             } else {
                 lines.add("    if (!" + full.reference()
