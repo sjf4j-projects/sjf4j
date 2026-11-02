@@ -364,10 +364,14 @@ public interface FilterExpr {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
-            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) > 0;
+            Number left = Nodes.toNumber(a);
+            Number right = Nodes.toNumber(b);
+            return left != null && right != null && Numbers.compare(left, right) > 0;
         }
         if (ajt.isString() && bjt.isString()) {
-            return Nodes.toString(a).compareTo(Nodes.toString(b)) > 0;
+            String left = Nodes.toString(a);
+            String right = Nodes.toString(b);
+            return left != null && right != null && left.compareTo(right) > 0;
         }
         return false;
     }
@@ -380,10 +384,14 @@ public interface FilterExpr {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
-            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) >= 0;
+            Number left = Nodes.toNumber(a);
+            Number right = Nodes.toNumber(b);
+            return left != null && right != null && Numbers.compare(left, right) >= 0;
         }
         if (ajt.isString() && bjt.isString()) {
-            return Nodes.toString(a).compareTo(Nodes.toString(b)) >= 0;
+            String left = Nodes.toString(a);
+            String right = Nodes.toString(b);
+            return left != null && right != null && left.compareTo(right) >= 0;
         }
         return false;
     }
@@ -396,10 +404,14 @@ public interface FilterExpr {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
-            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) < 0;
+            Number left = Nodes.toNumber(a);
+            Number right = Nodes.toNumber(b);
+            return left != null && right != null && Numbers.compare(left, right) < 0;
         }
         if (ajt.isString() && bjt.isString()) {
-            return Nodes.toString(a).compareTo(Nodes.toString(b)) < 0;
+            String left = Nodes.toString(a);
+            String right = Nodes.toString(b);
+            return left != null && right != null && left.compareTo(right) < 0;
         }
         return false;
     }
@@ -412,10 +424,14 @@ public interface FilterExpr {
         JsonType ajt = JsonType.of(a);
         JsonType bjt = JsonType.of(b);
         if (ajt.isNumber() && bjt.isNumber()) {
-            return Numbers.compare(Nodes.toNumber(a), Nodes.toNumber(b)) <= 0;
+            Number left = Nodes.toNumber(a);
+            Number right = Nodes.toNumber(b);
+            return left != null && right != null && Numbers.compare(left, right) <= 0;
         }
         if (ajt.isString() && bjt.isString()) {
-            return Nodes.toString(a).compareTo(Nodes.toString(b)) <= 0;
+            String left = Nodes.toString(a);
+            String right = Nodes.toString(b);
+            return left != null && right != null && left.compareTo(right) <= 0;
         }
         return false;
     }
@@ -431,13 +447,17 @@ public interface FilterExpr {
 
         JsonType ajt = JsonType.of(a);
         if (ajt.isString()) {
-            return p.matcher(Nodes.toString(a)).find();
+            String text = Nodes.toString(a);
+            return text != null && p.matcher(text).find();
         }
 
         // Matches if at least one element in the array matches
         if (ajt.isArray()) {
-            return Nodes.anyMatchInArray(a,
-                    (i, v) -> JsonType.of(v).isString() && p.matcher(Nodes.toString(v)).find());
+            return Nodes.anyMatchInArray(a, (i, v) -> {
+                if (!JsonType.of(v).isString()) return false;
+                String text = Nodes.toString(v);
+                return text != null && p.matcher(text).find();
+            });
         }
 
         return false;
@@ -462,8 +482,14 @@ public interface FilterExpr {
         if (x == null || x == PathExpr.NOTHING) return false;
         JsonType xjt = JsonType.of(x);
         if (xjt.isBoolean()) return Boolean.TRUE.equals(Nodes.toBoolean(x));
-        if (xjt.isNumber()) return Nodes.toDouble(x) != 0;
-        if (xjt.isString()) return !Nodes.toString(x).isEmpty();
+        if (xjt.isNumber()) {
+            Double number = Nodes.toDouble(x);
+            return number != null && number != 0;
+        }
+        if (xjt.isString()) {
+            String text = Nodes.toString(x);
+            return text != null && !text.isEmpty();
+        }
         if (xjt.isArray()) return Nodes.sizeInArray(x) > 0;
         return true;
     }
