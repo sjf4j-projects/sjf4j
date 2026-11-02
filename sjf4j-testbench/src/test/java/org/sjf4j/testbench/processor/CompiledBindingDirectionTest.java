@@ -24,6 +24,24 @@ public class CompiledBindingDirectionTest {
         public String name;
     }
 
+    public record Credential(@NodeProperty(bindingWrite = false) String token, String username) {}
+
+    @CompiledBinder(backend = Backend.JACKSON2)
+    public interface CredentialBinder {
+        @ReadFrom Credential read(String json) throws IOException;
+        @WriteTo String write(Credential value) throws IOException;
+    }
+
+    @org.junit.jupiter.api.Test
+    void recordComponentMayDisableOnlyBindingOutput() throws Exception {
+        CredentialBinder binder = CompiledInstances.create(CredentialBinder.class);
+        Credential value = binder.read("{\"token\":\"abc\",\"username\":\"Ada\"}");
+        assertEquals("abc", value.token());
+        String json = binder.write(value);
+        assertFalse(json.contains("token"), json);
+        assertTrue(json.contains("username"), json);
+    }
+
     public interface Access {
         User read(String source) throws IOException;
         String write(User value) throws IOException;
