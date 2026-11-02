@@ -44,20 +44,35 @@ class PropertyContentTypeInfoTest {
         for (String name : new String[] {"addresses", "uniqueAddresses", "addressMap", "addressArray"}) {
             PropertyInfo property = pojo.getPropertyNoAlias(name);
             assertEquals(Address.class, property.contentType);
-            assertEquals(Address.class, property.contentClass);
+            assertEquals(Address.class, property.contentBoxed);
             assertNotNull(property.contentTypeInfo, name);
             assertSame(addressInfo, property.contentTypeInfo.get(), name);
         }
 
         PropertyInfo nested = pojo.getPropertyNoAlias("nested");
         assertInstanceOf(ParameterizedType.class, nested.contentType);
-        assertEquals(List.class, nested.contentClass);
-        assertEquals(List.class, nested.contentTypeInfo.clazz);
-        assertSame(TypeInfo.NONE, nested.contentTypeInfo.get());
+        assertEquals(List.class, nested.contentBoxed);
+        // List.class has no registered metadata and is handled directly.
+        assertNull(nested.contentTypeInfo);
 
         PropertyInfo scalar = pojo.getPropertyNoAlias("scalar");
         assertNull(scalar.typeInfo);
         assertNull(scalar.contentTypeInfo);
+    }
+
+    @Test
+    void lazyFactoryReusesTypeRegistryFastNoneClassification() {
+        assertNull(LazyTypeInfo.of(null));
+        assertNull(LazyTypeInfo.of(Object.class));
+        assertNull(LazyTypeInfo.of(String.class));
+        assertNull(LazyTypeInfo.of(Integer.class));
+        assertNull(LazyTypeInfo.of(Map.class));
+        assertNull(LazyTypeInfo.of(List.class));
+        assertNull(LazyTypeInfo.of(Address[].class));
+
+        LazyTypeInfo address = LazyTypeInfo.of(Address.class);
+        assertNotNull(address);
+        assertSame(TypeRegistry.registerTypeInfo(Address.class), address.get());
     }
 
     @Test
