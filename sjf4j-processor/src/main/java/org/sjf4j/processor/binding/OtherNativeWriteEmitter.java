@@ -211,12 +211,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
         String method = gson() ? "value" : "write";
         if (child.kind() == BindingValue.Kind.STRING) {
-            out.line(names.sharedHelper("writeString") + "(" + nativeGenerator + ", " + expression + ");");
+            out.line(this.names.sharedHelper("writeString") + "(" + nativeGenerator + ", " + expression + ");");
             return;
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), names);
+                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), this.names);
                 return;
             case RUNTIME:
                 writeRuntimeValue(out, expression);
