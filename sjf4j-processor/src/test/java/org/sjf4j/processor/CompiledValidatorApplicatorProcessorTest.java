@@ -46,7 +46,7 @@ class CompiledValidatorApplicatorProcessorTest {
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         // The assertion after the constant-false branch must remain in the
         // semantic tree for the diagnostic emitter.
-        assertTrue(generated.contains("_value < 1L"), generated);
+        assertTrue(generated.contains("value < 1L"), generated);
         assertFalse(generated.contains("SchemaPlan"), generated);
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> implementation = loader.loadClass("fixture.Validator_Impl");
