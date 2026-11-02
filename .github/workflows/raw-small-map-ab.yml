@@ -1,0 +1,92 @@
+name: Raw tiny Map 0-2 specialization A/B
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-backend-*/src/main/java/**'
+      - 'sjf4j-core/src/main/java/org/sjf4j/binding/simple/SimpleJsonParser.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/RawSmallMapABBenchmark.java'
+      - '.github/workflows/raw-small-map-ab.yml'
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Run same-code A/B/B/A with GC allocation profiling
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          for run in baseline1 specialized1 specialized2 baseline2; do
+            case "$run" in
+              baseline*) enabled=false ;;
+              specialized*) enabled=true ;;
+            esac
+            echo "::group::JMH $run"
+            java -jar "$JAR" '.*RawSmallMapABBenchmark.readCompiled' \
+              -jvmArgsAppend "-Dsjf4j.test.smallRawMap=$enabled" \
+              -wi 1 -i 2 -w 200ms -r 250ms -f 1 -prof gc \
+              -rf json -rff "rawmap-$run.json" \
+              > "rawmap-$run.log" 2>&1 || { tail -120 "rawmap-$run.log"; exit 1; }
+            tail -8 "rawmap-$run.log"
+            echo "::endgroup::"
+          done
+      - name: Compare per-backend shapes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, statistics
+          files = ["baseline1", "specialized1", "specialized2", "baseline2"]
+          runs = {}
+          for name in files:
+              data = json.load(open(f"rawmap-{name}.json"))
+              runs[name] = {
+                  (x["params"]["backend"], x["params"]["shape"], x["params"]["encoding"]): x
+                  for x in data
+              }
+          def number(x, name):
+              if name == "score":
+                  return x["primaryMetric"]["score"]
+              return x.get("secondaryMetrics", {}).get("·gc.alloc.rate.norm", {}).get("score")
+          header = "| Backend | Shape | Baseline ns/op | Specialized ns/op | Delta | Base B/op | Spec B/op |"
+          lines = ["## Same-runner A/B/B/A raw Map experiment", "", 
+                   "Positive delta means specialization is faster. A/B/B/A is paired descriptively; "
+                   "the 1-fork measurements are exploratory.", "", header, "|---|---|---:|---:|---:|---:|---:|"]
+          for backend in ["fastjson2","jackson2","jackson3","gson","jsonp","simple"]:
+              for shape in ["empty","one","two","three","six","nested","user"]:
+                  keys = [(backend,shape,e) for e in ["string","utf8"]]
+                  base = statistics.mean([number(runs[mode][key],"score") 
+                                          for mode in ["baseline1","baseline2"] for key in keys])
+                  spec = statistics.mean([number(runs[mode][key],"score")
+                                          for mode in ["specialized1","specialized2"] for key in keys])
+                  alloc_b = [number(runs[mode][key],"allocation")
+                             for mode in ["baseline1","baseline2"] for key in keys]
+                  alloc_s = [number(runs[mode][key],"allocation")
+                             for mode in ["specialized1","specialized2"] for key in keys]
+                  ab = statistics.mean([v for v in alloc_b if v is not None]) if any(v is not None for v in alloc_b) else float("nan")
+                  a_s = statistics.mean([v for v in alloc_s if v is not None]) if any(v is not None for v in alloc_s) else float("nan")
+                  delta = (base - spec) / base * 100
+                  lines.append(f"| {backend} | {shape} | {base:.1f} | {spec:.1f} | {delta:+.1f}% | {ab:.0f} | {a_s:.0f} |")
+          report = "\n".join(lines) + "\n"
+          print(report)
+          open("rawmap-summary.md","w").write(report)
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as out: out.write(report)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rawmap-small-ab-jdk17
+          path: |
+            rawmap-*.json
+            rawmap-*.log
+            rawmap-summary.md
