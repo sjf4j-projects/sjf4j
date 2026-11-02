@@ -146,7 +146,12 @@ final class ObjectCompiler {
         if (additional != null) {
             if (!(additional instanceof Boolean)) return null;
             if (!dynamic && Boolean.FALSE.equals(additional)
-                    && !propertyMap.keySet().containsAll(javaProperties.keySet())) return null;
+                    && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
+                // A final POJO with a complete known projection necessarily
+                // exposes a property forbidden by additionalProperties=false.
+                return new SchemaCheck.Reject(
+                        SchemaCompiler.diagnostic(rootUri, "additionalProperties"));
+            }
         }
         for (String name : propertyMap.keySet()) {
             if (!dynamic && !javaProperties.containsKey(name) && isRequired(required, name))
