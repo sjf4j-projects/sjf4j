@@ -53,6 +53,10 @@ public final class PropertyInfo {
     public final boolean gettable;
     public final boolean settable;
 
+    /** Binding-only directional visibility; structural property access is unaffected. */
+    public final boolean bindingRead;
+    public final boolean bindingWrite;
+
     public final PropertyParser parser;
 
     /**
@@ -62,8 +66,11 @@ public final class PropertyInfo {
                         Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                         Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
                         OneOfInfo explicitOneOfInfo,
-                        String valueFormat, ValueInfo valueInfo, MethodHandles.Lookup lookup) {
+                        String valueFormat, ValueInfo valueInfo, MethodHandles.Lookup lookup,
+                        boolean bindingRead, boolean bindingWrite) {
         this.name = name;
+        this.bindingRead = bindingRead;
+        this.bindingWrite = bindingWrite;
         this.alias = alias;
         this.publicField = publicField;
         this.type = type;
