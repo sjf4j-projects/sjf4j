@@ -29,7 +29,7 @@ class CompiledValidatorConditionalProcessorTest {
         NavigatorTestCompiler.Result result = compile(schema, false);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
-        assertTrue(generated.contains("private static boolean _schema_"), generated);
+        assertTrue(generated.contains("private static boolean _matchesSchema"), generated);
         assertTrue(generated.contains("} else {"), generated);
         assertTrue(generated.contains("keySetInObject("), generated);
         assertFalse(generated.contains(".isValid("), generated);
