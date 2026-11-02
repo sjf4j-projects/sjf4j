@@ -286,6 +286,7 @@ public final class ReflectUtil {
         List<PropertyInfo> settableProperties = new ArrayList<>(properties.size());
         List<PropertyParser> propertyParsers = new ArrayList<>(properties.size());
         List<PropertyInfo> gettableProperties = new ArrayList<>(properties.size());
+        List<PropertyInfo> bindingGettableProperties = new ArrayList<>(properties.size());
         List<PropertyGenerator> propertyGenerators = new ArrayList<>(properties.size());
         for (PropertyInfo property : properties.values()) {
             // TODO: configuration order
@@ -297,8 +298,9 @@ public final class ReflectUtil {
             PropertyGenerator propertyWriter = PropertyGenerator.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.valueInfo,
                     property.typeInfo, property.contentTypeInfo, lookup);
+            if (property.gettable) gettableProperties.add(property);
             if (property.bindingWrite && propertyWriter != null) {
-                gettableProperties.add(property);
+                bindingGettableProperties.add(property);
                 propertyGenerators.add(propertyWriter);
             }
         }
@@ -317,7 +319,9 @@ public final class ReflectUtil {
 
         return new PojoInfo(clazz, creatorInfo, readDynamic, writeDynamic, propertyLookup,
                 settableProperties.toArray(new PropertyInfo[0]), propertyParsers.toArray(new PropertyParser[0]),
-                gettableProperties.toArray(new PropertyInfo[0]), propertyGenerators.toArray(new PropertyGenerator[0]));
+                gettableProperties.toArray(new PropertyInfo[0]),
+                bindingGettableProperties.toArray(new PropertyInfo[0]),
+                propertyGenerators.toArray(new PropertyGenerator[0]));
     }
 
     private static void _reserveFieldFamilies(Field[] fields, Map<String, PropertyFamily> families) {
