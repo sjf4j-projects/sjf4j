@@ -33,7 +33,7 @@ final class CodecWriteEmitter {
             if (nativeWriter != null && "writeString".equals(method)
                     && (backend == Backend.JACKSON2 || backend == Backend.JACKSON3)) {
                 // The Jackson string helper already writes null values.
-                out.line("_writeString(" + nativeWriter + ", (String) rawValue);");
+                out.line(names.sharedHelper("writeString") + "(" + nativeWriter + ", (String) rawValue);");
             } else {
                 out.beginBlock("if (rawValue == null)");
                 out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
