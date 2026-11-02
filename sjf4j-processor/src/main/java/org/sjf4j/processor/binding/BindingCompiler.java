@@ -156,7 +156,11 @@ final class BindingCompiler {
 
         if (value.helperRequired() || kind == BindingValue.Kind.VALUE_CODEC
                 || kind == BindingValue.Kind.ONE_OF) {
-            value.helperName(names.helperMethod(helperSuggestion(direction, type)));
+            // ValueCodecs contribute fields, not private read/write methods.
+            // Avoid allocating a misleading helper name for their metadata.
+            if (value.helperRequired() || kind == BindingValue.Kind.ONE_OF) {
+                value.helperName(names.helperMethod(helperSuggestion(direction, type)));
+            }
             helpers.add(value);
         }
 
