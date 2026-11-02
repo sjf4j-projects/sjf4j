@@ -129,6 +129,12 @@ public class CreekSchemaBenchmark {
     /** Generated direct Creek checks with the default non-strict format behavior. */
     @Benchmark
     public boolean pojo_isValid_compiled() {
+        return compiledValidator.isValid(model, false);
+    }
+
+    /** Generated direct Creek checks with the default non-strict format behavior. */
+    @Benchmark
+    public boolean pojo_isValid_compiled_strict() {
         return compiledValidator.isValid(model, true);
     }
 

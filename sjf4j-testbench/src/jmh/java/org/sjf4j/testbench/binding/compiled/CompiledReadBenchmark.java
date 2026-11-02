@@ -57,8 +57,8 @@ import java.util.List;
 public class CompiledReadBenchmark {
 
     public static void main(String[] args) throws Exception {
-//        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
-        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*_pojo"});
+        Main.main(new String[]{CompiledReadBenchmark.class.getName()});
+//        Main.main(new String[]{CompiledReadBenchmark.class.getName() + ".*_pojo"});
     }
 
     public static final byte[] JSON_UTF8 = User.JSON_DATA.getBytes(StandardCharsets.UTF_8);
@@ -188,11 +188,9 @@ public class CompiledReadBenchmark {
         checkMap("jackson2 compiled JSON_UTF8", JACKSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkMap("jackson2 runtime JSON_UTF8", JACKSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
         checkEquivalentRawGraph("jackson2 native String", jackson2Map, jackson2_map_string_native());
-        checkEquivalentRawGraph("jackson2 raw String", jackson2Map, jackson2_map_string_raw());
         checkEquivalentRawGraph("jackson2 runtime String", jackson2Map, jackson2_map_string_runtime());
         checkEquivalentRawGraph("jackson2 native UTF-8", jackson2Map, jackson2_map_utf8_native());
         checkEquivalentRawGraph("jackson2 compiled UTF-8", jackson2Map, jackson2_map_utf8_compiled());
-        checkEquivalentRawGraph("jackson2 raw UTF-8", jackson2Map, jackson2_map_utf8_raw());
         checkEquivalentRawGraph("jackson2 runtime UTF-8", jackson2Map, jackson2_map_utf8_runtime());
         checkMap("jackson3 compiled JSON_DATA", JACKSON3_COMPILED.readMap(User.JSON_DATA));
         checkMap("jackson3 runtime JSON_DATA", JACKSON3_RUNTIME.readNode(User.JSON_DATA, Map.class));
@@ -383,26 +381,6 @@ public class CompiledReadBenchmark {
         return JACKSON2_NATIVE.readValue(JSON_UTF8, Map.class);
     }
 
-    @Benchmark
-    public Object jackson2_map_string_raw() throws IOException {
-        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(User.JSON_DATA)) {
-            parser.start();
-            Map<String, Object> value = parser.readRawObject();
-            parser.end();
-            return value;
-        }
-    }
-
-    @Benchmark
-    public Object jackson2_map_utf8_raw() throws IOException {
-        try (StreamingParser parser = JACKSON2_RUNTIME.createParser(JSON_UTF8)) {
-            parser.start();
-            Map<String, Object> value = parser.readRawObject();
-            parser.end();
-            return value;
-        }
-    }
-
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
         @ReadFrom User readPojo(String json) throws IOException;
@@ -412,25 +390,25 @@ public class CompiledReadBenchmark {
     }
 
     // ----- JACKSON3 -----
-    @Benchmark
-    public Object jackson3_pojo_reversed_string_compiled() throws IOException {
-        return JACKSON3_COMPILED.readPojo(JSON_REVERSED);
-    }
-
-    @Benchmark
-    public Object jackson3_pojo_reversed_string_runtime() {
-        return JACKSON3_RUNTIME.readNode(JSON_REVERSED, User.class);
-    }
-
-    @Benchmark
-    public Object jackson3_pojo_reversed_utf8_compiled() throws IOException {
-        return JACKSON3_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
-    }
-
-    @Benchmark
-    public Object jackson3_pojo_reversed_utf8_runtime() {
-        return JACKSON3_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
-    }
+//    @Benchmark
+//    public Object jackson3_pojo_reversed_string_compiled() throws IOException {
+//        return JACKSON3_COMPILED.readPojo(JSON_REVERSED);
+//    }
+//
+//    @Benchmark
+//    public Object jackson3_pojo_reversed_string_runtime() {
+//        return JACKSON3_RUNTIME.readNode(JSON_REVERSED, User.class);
+//    }
+//
+//    @Benchmark
+//    public Object jackson3_pojo_reversed_utf8_compiled() throws IOException {
+//        return JACKSON3_COMPILED.readPojoUtf8(JSON_REVERSED_UTF8);
+//    }
+//
+//    @Benchmark
+//    public Object jackson3_pojo_reversed_utf8_runtime() {
+//        return JACKSON3_RUNTIME.readNode(JSON_REVERSED_UTF8, User.class);
+//    }
 
     @Benchmark
     public Object jackson3_pojo_string_compiled() throws IOException {

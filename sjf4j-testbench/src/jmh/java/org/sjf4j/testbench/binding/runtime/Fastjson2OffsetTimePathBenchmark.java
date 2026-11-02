@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
  * Same Fastjson2 native parser and SJF4J parser lifecycle, comparing
  * the adapter's shared FastOffsetTime path with native readOffsetTime().
  * Both paths use the same JSONReader.Context.
- * Native Fastjson2 v2.0.59 rejects HH:mmZ; this benchmark only uses input
+ * Native Fastjson2 v2.0.66 rejects HH:mmZ; this benchmark only uses input
  * shapes accepted by both implementations. HH:mmZ is tested by the general
  * OffsetTimeBackendBenchmark and OffsetTimeBackendTest.
  */

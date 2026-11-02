@@ -42,7 +42,7 @@ class OffsetDateTimeBackendTest {
                     "2026-10-31T12:34:56.123+05:30",
                     "2026-10-31T12:34:56.123456-07:00",
                     "2026-10-31T12:34:56.123456789Z"}) {
-                // Fastjson2 2.0.59 loses the explicit UTC offset for this minute-only
+                // Fastjson2 2.0.66 loses the explicit UTC offset for this minute-only
                 // ISO timestamp and replaces it with the reader's default time zone.
                 if (binder instanceof Fastjson2Binder && "1970-01-01T00:00Z".equals(value)) {
                     continue;
