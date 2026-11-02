@@ -158,12 +158,12 @@ class CompiledValidatorArchitectureTest {
         String model = "package fixture; import java.time.*; "
                 + "import org.sjf4j.annotation.node.NodeProperty; "
                 + "public final class Model { "
-                + "@NodeProperty(valueFormat=\\\"epochMillis\\\") public Instant when; "
-                + "@NodeProperty(valuePattern=\\\"yyyy/MM/dd\\\") public LocalDate day; "
+                + "@NodeProperty(valueFormat=\"epochMillis\") public Instant when; "
+                + "@NodeProperty(valuePattern=\"yyyy/MM/dd\") public LocalDate day; "
                 + "}";
-        String schema = "{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{"
-                + "\\\"when\\\":{\\\"type\\\":\\\"number\\\",\\\"minimum\\\":1000},"
-                + "\\\"day\\\":{\\\"type\\\":\\\"string\\\",\\\"minLength\\\":6}}}";
+        String schema = "{\"type\":\"object\",\"properties\":{"
+                + "\"when\":{\"type\":\"number\",\"minimum\":1000},"
+                + "\"day\":{\"type\":\"string\",\"minLength\":6}}}";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=false) public interface Check { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
