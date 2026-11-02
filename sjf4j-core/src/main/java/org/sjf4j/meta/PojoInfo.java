@@ -52,6 +52,19 @@ public final class PojoInfo {
     /**
      * Creates object binding metadata.
      */
+    /** Backwards-compatible constructor: structural and Binding output views coincide. */
+    public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
+                    boolean readDynamic, boolean writeDynamic,
+                    Map<String, PropertyInfo> propertyLookup,
+                    PropertyInfo[] settableProperties,
+                    PropertyParser[] propertyParsers,
+                    PropertyInfo[] gettableProperties,
+                    PropertyGenerator[] propertyGenerators) {
+        this(clazz, creatorInfo, readDynamic, writeDynamic, propertyLookup,
+                settableProperties, propertyParsers, gettableProperties,
+                gettableProperties, propertyGenerators);
+    }
+
     public PojoInfo(Class<?> clazz, CreatorInfo creatorInfo,
                     boolean readDynamic,
                     boolean writeDynamic,
