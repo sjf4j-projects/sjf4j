@@ -82,10 +82,26 @@ class CompiledValidatorOneOfProcessorTest {
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertTrue(generated.contains("getClass() =="), generated);
         assertTrue(generated.contains("getKind()"), generated);
+        assertTrue(generated.contains("\"a\".equals("), generated);
+        assertTrue(generated.contains("\"b\".equals("), generated);
         // Two per-subtype branches, plus the generic unknown-subtype path.
         assertTrue(generated.split(java.util.regex.Pattern.quote("getKind()"), -1).length - 1 >= 4, generated);
         assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains(".isValid("), generated);
+    }
+
+    @Test
+    void overlappingDiscriminatorBranchesCannotUseGuardedDispatch() throws Exception {
+        // Two branches requiring the same tag cannot be treated as disjoint,
+        // even when @OneOfMapping claims different subtype tags.
+        String schema = SCHEMA.replace("\"b\\\"]", "\"a\\\"]");
+        NavigatorTestCompiler.Result result = compile(true, schema, false, false, false, true);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertTrue(generated.contains("getClass() =="), generated);
+        assertFalse(generated.contains("\"a\".equals("), generated);
+        assertFalse(generated.contains("\"b\".equals("), generated);
+        assertTrue(generated.contains("matchCount"), generated);
     }
 
     @Test
