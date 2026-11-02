@@ -4,7 +4,6 @@ import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.NodeKind;
 import org.sjf4j.value.ValueInfo;
-import org.sjf4j.value.ValueCodec;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.LazyTypeInfo;
@@ -22,16 +21,16 @@ import java.util.Map;
  * <p>
  * Also carries mutable per-validation state such as evaluated-location marks
  * and recursion-detection stack. Instances are validation-scoped and not
- * thread-safe. A {@code @NodeValue} domain instance is encoded through its value
- * binding before this wrapper is created. Structural schema keywords never
- * descend into a logical value node, even when its raw encoding is a Map/List.
+ * thread-safe. The original node is preserved; a {@code @NodeValue} instance's
+ * encoded representation is available through {@link #raw()}. Structural schema
+ * keywords never descend into a logical value node, even when its raw encoding
+ * is a Map/List.
  */
 public final class Instance {
     private Object node;
+    private Object raw;
     private JsonType jsonType;
     private boolean converted;
-    // Retained only for built-in UUID/URI codecs to avoid reparsing in format checks.
-    private Object originalValue;
     // Lazily cached for POJO, JOJO, and external object traversal.
     private TypeInfo typeInfo;
 
@@ -55,15 +54,16 @@ public final class Instance {
         this.converted = converted;
     }
 
-    /** Returns the representation evaluated by schema keywords. */
+    /** Returns the original Java node, before any value codec conversion. */
     public Object node() {
         return node;
     }
 
-    /** Original built-in scalar value, when its codec is known. */
-    Object originalValue() {
-        return originalValue;
+    /** Returns the JSON representation (which may be null) after value codec conversion. */
+    public Object raw() {
+        return converted ? raw : node;
     }
+
     /** Returns the JSON-semantic shape of the evaluated representation. */
     public JsonType jsonType() {
         return jsonType;
@@ -85,9 +85,9 @@ public final class Instance {
 
     Instance reuse(Object node, JsonType jsonType, boolean converted) {
         this.node = node;
+        this.raw = null;
         this.jsonType = jsonType;
         this.converted = converted;
-        this.originalValue = null;
         this.typeInfo = null;
         return reset();
     }
@@ -188,13 +188,8 @@ public final class Instance {
         JsonType rawType = raw == null ? JsonType.NULL : codec.rawJsonType;
         JsonType logicalType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
                 ? JsonType.UNKNOWN : rawType;
-        Instance instance = new Instance(raw, logicalType, true);
-        // Only the built-in encodings have a proven typed format shortcut.
-        if (raw != null && codec.rawJsonType == JsonType.STRING
-                && ((node.getClass() == java.util.UUID.class && codec.codec == (Object) ValueCodec.UUID_CODEC)
-                    || (node.getClass() == java.net.URI.class && codec.codec == (Object) ValueCodec.URI_CODEC))) {
-            instance.originalValue = node;
-        }
+        Instance instance = new Instance(node, logicalType, true);
+        instance.raw = raw;
         return instance;
     }
 
