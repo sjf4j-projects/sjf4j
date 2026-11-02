@@ -437,9 +437,9 @@ final class SchemaEmitter {
     private void emitOneOf(List<String> lines, SchemaFallbackEmitter.Plan plan,
                            SchemaCheck.OneOfCheck check, SchemaValue value, String expression, String name,
                            String strictFormat, int depth, String onFailure) {
-        // The subtype fast path is valid only for compiler-proven, disjoint
-        // discriminator constants. Unknown classes still evaluate every schema
-        // branch (including overlaps), preferably through compiled predicates.
+        // For each known runtime class, evaluate every potentially matching
+        // schema branch. Constant discriminator proofs may prune branches, but
+        // a Java subtype is never itself proof that oneOf matches exactly once.
         lines.add("if (" + expression + " == null) " + fail(onFailure, check.diagnostic));
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
@@ -449,9 +449,10 @@ final class SchemaEmitter {
                     + expression + ".getClass() == " + subtype.type + ".class) {");
             lines.add("    " + subtype.type + " " + typed
                     + " = (" + subtype.type + ") " + expression + ";");
-            for (String source : emit(subtype.check, typed, plan, strictFormat, typed + "_", onFailure)) {
-                lines.add("    " + source);
-            }
+            List<String> candidateLines = new ArrayList<String>();
+            emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value, typed,
+                    name + "_subtype", strictFormat, onFailure);
+            for (String source : candidateLines) lines.add("    " + source);
             lines.add("}");
             n++;
         }
