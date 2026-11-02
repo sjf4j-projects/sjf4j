@@ -24,6 +24,27 @@ public class CompiledBindingDirectionTest {
         public String name;
     }
 
+    public static class PrivateFieldUser {
+        @NodeProperty(bindingWrite = false)
+        private String password;
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON2)
+    public interface PrivateFieldBinder {
+        @ReadFrom PrivateFieldUser read(String json) throws IOException;
+        @WriteTo String write(PrivateFieldUser value) throws IOException;
+    }
+
+    @org.junit.jupiter.api.Test
+    void privateFieldAnnotationControlsBindingWithoutHidingAccessor() throws Exception {
+        PrivateFieldBinder binder = CompiledInstances.create(PrivateFieldBinder.class);
+        PrivateFieldUser user = binder.read("{\"password\":\"secret\"}");
+        assertEquals("secret", user.getPassword());
+        assertFalse(binder.write(user).contains("password"));
+    }
+
     public record Credential(@NodeProperty(bindingWrite = false) String token, String username) {}
 
     @CompiledBinder(backend = Backend.JACKSON2)
