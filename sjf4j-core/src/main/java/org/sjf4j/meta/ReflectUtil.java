@@ -298,7 +298,7 @@ public final class ReflectUtil {
             PropertyGenerator propertyWriter = PropertyGenerator.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.valueInfo,
                     property.typeInfo, property.contentTypeInfo, lookup);
-            if (property.gettable) gettableProperties.add(property);
+            if (propertyWriter != null) gettableProperties.add(property);
             if (property.bindingWrite && propertyWriter != null) {
                 bindingGettableProperties.add(property);
                 propertyGenerators.add(propertyWriter);
