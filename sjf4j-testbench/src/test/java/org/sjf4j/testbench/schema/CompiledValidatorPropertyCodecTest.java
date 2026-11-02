@@ -21,7 +21,7 @@ public class CompiledValidatorPropertyCodecTest {
         public Instant millis = Instant.ofEpochMilli(2_000);
         @NodeProperty(codecPattern = "yyyy/MM/dd")
         public LocalDate day = LocalDate.of(2026, 11, 2);
-        public Instant standard = Instant.EPOCH;
+        public String standard = "ok";
     }
 
     public static final class GetterWins {
