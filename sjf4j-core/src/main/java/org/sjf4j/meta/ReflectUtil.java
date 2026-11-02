@@ -235,6 +235,10 @@ public final class ReflectUtil {
             // Resolve creator-bound OneOf from the same property family as ordinary
             // fields, including inherited and explicitly renamed fields.
             int creatorArg = creatorInfo.getArgIndexOrAlias(finalName);
+            if (creatorArg >= 0 && !_bindingEnabled(family, true)) {
+                throw new BindingException("creator-bound property cannot use bindingRead=false: "
+                        + clazz.getName() + "." + finalName);
+            }
             if (creatorArg >= 0 && family.oneOfInfo != null) {
                 OneOfInfo member = family.oneOfInfo;
                 if (member.scope != OneOf.Scope.CURRENT) {
@@ -804,8 +808,8 @@ public final class ReflectUtil {
             argOneOfInfos = new OneOfInfo[params.length];
             for (int i = 0; i < params.length; i++) {
                 NodeProperty binding = params[i].getAnnotation(NodeProperty.class);
-                if (binding != null && !binding.bindingRead()) {
-                    throw new BindingException("creator parameters cannot use bindingRead=false in "
+                if (binding != null && (!binding.bindingRead() || !binding.bindingWrite())) {
+                    throw new BindingException("creator parameters cannot disable binding directions in "
                             + clazz.getName() + ": argument " + i);
                 }
                 String name = getExplicitName(params[i]);
