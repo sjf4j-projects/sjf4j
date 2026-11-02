@@ -75,15 +75,15 @@ class CompiledValidatorOneOfProcessorTest {
     void getterDiscriminatorsCompileAllPotentialOneOfBranches() throws Exception {
         // Both subtypes expose exactly the same keys. Without a provable
         // discriminator constant neither branch can be eliminated.
-        String schema = SCHEMA.replace("\\\"count\\\"", "\\\"name\\\"")
-                .replace("\\\"integer\\\",\\\"minimum\\\":1", "\\\"string\\\",\\\"minLength\\\":3");
+        String schema = SCHEMA.replace("count", "name")
+                .replace("integer", "string").replace("minimum", "minLength");
         NavigatorTestCompiler.Result result = compile(true, schema, false, false, false, true);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertTrue(generated.contains("getClass() =="), generated);
         assertTrue(generated.contains("getKind()"), generated);
         // Two per-subtype branches, plus the generic unknown-subtype path.
-        assertTrue(generated.split("getKind\\\\(\\\\)", -1).length - 1 >= 4, generated);
+        assertTrue(generated.split(java.util.regex.Pattern.quote("getKind()"), -1).length - 1 >= 4, generated);
         assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains(".isValid("), generated);
     }
