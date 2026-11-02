@@ -273,7 +273,8 @@ public final class ReflectUtil {
                     type, genericDependent, boxed,
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
-                    family.oneOfInfo, family.valueFormat, resolvedCodec, lookup);
+                    family.oneOfInfo, family.valueFormat, resolvedCodec, lookup,
+                    _bindingEnabled(family, true), _bindingEnabled(family, false));
             PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
                 throw new BindingException("multiple property families resolve to JSON property '" + pi.name +
@@ -288,7 +289,7 @@ public final class ReflectUtil {
         List<PropertyGenerator> propertyGenerators = new ArrayList<>(properties.size());
         for (PropertyInfo property : properties.values()) {
             // TODO: configuration order
-            if (property.parser != null) {
+            if (property.bindingRead && property.parser != null) {
                 settableProperties.add(property);
                 propertyParsers.add(property.parser);
             }
@@ -296,7 +297,7 @@ public final class ReflectUtil {
             PropertyGenerator propertyWriter = PropertyGenerator.create(property.name, property.type, property.boxed,
                     property.getterHandle, property.getterLambda, property.valueInfo,
                     property.typeInfo, property.contentTypeInfo, lookup);
-            if (propertyWriter != null) {
+            if (property.bindingWrite && propertyWriter != null) {
                 gettableProperties.add(property);
                 propertyGenerators.add(propertyWriter);
             }
@@ -540,6 +541,18 @@ public final class ReflectUtil {
             return Strings.decapitalize(name.substring(3));
         }
         return null;
+    }
+
+    private static boolean _bindingEnabled(PropertyFamily family, boolean read) {
+        return _bindingEnabled(family.field, read)
+                && _bindingEnabled(family.canUseGetter() ? family.getterMethod : null, read)
+                && _bindingEnabled(family.canUseSetter() ? family.setterMethod : null, read);
+    }
+
+    private static boolean _bindingEnabled(java.lang.reflect.AnnotatedElement member, boolean read) {
+        if (member == null) return true;
+        NodeProperty property = member.getAnnotation(NodeProperty.class);
+        return property == null || (read ? property.bindingRead() : property.bindingWrite());
     }
 
     private static final class PropertyFamily {
