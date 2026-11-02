@@ -52,6 +52,14 @@ public interface FormatValidator {
         }
     }
 
+    /**
+     * Validates a pre-parsed Java URI for JSON Schema uri / uri-reference.
+     * This still checks ASCII and authority constraints that URI alone does not guarantee.
+     */
+    static boolean validateUri(java.net.URI uri, boolean requireAbsolute) {
+        return FormatUtil.validateUri(uri, requireAbsolute);
+    }
+
     /** Unknown formats are treated as annotations and never fail validation. */
     FormatValidator NOOP = value -> true;
 
