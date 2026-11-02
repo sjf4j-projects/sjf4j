@@ -80,7 +80,7 @@ public interface PropertyParser {
                                  boolean genericDependent, OneOfInfo oneOfInfo,
                                  MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
                                  ValueInfo resolvedValueCodec,
-                                 Type contentType, Class<?> contentClass,
+                                 Type contentType, Class<?> contentBoxed,
                                  LazyTypeInfo typeInfo, LazyTypeInfo contentTypeInfo,
                                  MethodHandles.Lookup lookup) {
 
@@ -152,7 +152,7 @@ public interface PropertyParser {
 
         if (Map.class.isAssignableFrom(fieldBoxed)) {
             Type valueType = contentType;
-            Class<?> valueBoxed = contentClass;
+            Class<?> valueBoxed = contentBoxed;
             if ((fieldBoxed == Map.class || fieldBoxed == LinkedHashMap.class)
                     && valueType == Object.class) {
                 return (parser, owner, ownerType, ownerBoxed, context) -> {
@@ -176,7 +176,7 @@ public interface PropertyParser {
 
         if (List.class.isAssignableFrom(fieldBoxed)) {
             Type elementType = contentType;
-            Class<?> elementBoxed = contentClass;
+            Class<?> elementBoxed = contentBoxed;
             if ((fieldBoxed == List.class || fieldBoxed == ArrayList.class)
                     && elementType == Object.class) {
                 return (parser, owner, ownerType, ownerBoxed, context) -> {
@@ -200,7 +200,7 @@ public interface PropertyParser {
 
         if (Set.class.isAssignableFrom(fieldBoxed)) {
             Type elementType = contentType;
-            Class<?> elementBoxed = contentClass;
+            Class<?> elementBoxed = contentBoxed;
             return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo elementTi = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
                 Object value = StreamingIO.readSet(parser, fieldType, fieldBoxed, elementType, elementBoxed, elementTi, context);
@@ -210,7 +210,7 @@ public interface PropertyParser {
 
         if (fieldBoxed.isArray()) {
             Class<?> componentClazz = fieldBoxed.getComponentType();
-            Class<?> componentBoxed = contentClass;
+            Class<?> componentBoxed = contentBoxed;
             return (parser, owner, ownerType, ownerBoxed, context) -> {
                 TypeInfo componentTi = contentTypeInfo == null ? TypeInfo.NONE : contentTypeInfo.get();
                 Object value = StreamingIO.readArray(parser, fieldType, fieldBoxed, componentClazz, componentBoxed,
