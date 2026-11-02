@@ -2,6 +2,7 @@ package org.sjf4j.processor.property;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.processor.annotation.NodeAnnotations;
 import org.sjf4j.processor.type.TypeSystem;
 import org.sjf4j.util.Asserts;
@@ -121,12 +122,19 @@ public final class PropertyResolver {
         return resolve(owner).get(name);
     }
 
+    private boolean hasNodeIgnore(TypeMirror type) {
+        TypeElement element = types.typeElement(type);
+        return element != null && element.getAnnotation(NodeIgnore.class) != null;
+    }
+
     private void addField(
             Map<String, Builder> builders,
             TypeElement type,
             DeclaredType owner,
             VariableElement field) {
 
+        if (field.getAnnotation(NodeIgnore.class) != null ||
+                hasNodeIgnore(field.asType())) return;
         String javaName = field.getSimpleName().toString();
         String explicitName = annotations.explicitPropertyName(field);
         String propertyName = explicitName == null ? javaName : explicitName;
@@ -151,6 +159,7 @@ public final class PropertyResolver {
             ExecutableElement method) {
 
         ExecutableType resolved = (ExecutableType) typeUtils.asMemberOf(owner, method);
+        if (method.getAnnotation(NodeIgnore.class) != null) return;
         String explicitName = annotations.explicitPropertyName(method);
 
         /*
@@ -163,7 +172,7 @@ public final class PropertyResolver {
          */
         if (method.getParameters().isEmpty()
                 && resolved.getReturnType().getKind()
-                != TypeKind.VOID) {
+                != TypeKind.VOID && !hasNodeIgnore(resolved.getReturnType())) {
 
             String baseName = getterPropertyName(type, method, resolved.getReturnType());
 
@@ -187,7 +196,7 @@ public final class PropertyResolver {
          */
         if (method.getParameters().size() == 1
                 && resolved.getReturnType().getKind()
-                == TypeKind.VOID) {
+                == TypeKind.VOID && !hasNodeIgnore(resolved.getParameterTypes().get(0))) {
 
             String baseName = setterPropertyName(method);
 
