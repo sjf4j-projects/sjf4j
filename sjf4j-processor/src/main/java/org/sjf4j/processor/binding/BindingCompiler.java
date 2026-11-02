@@ -810,6 +810,20 @@ final class BindingCompiler {
         }
 
         Map<String, Property> properties = context.properties.resolve(value.type());
+        Map<String, Boolean> creatorWriteDisabled = new LinkedHashMap<>();
+        if (value.direction() == BindingPlan.Direction.WRITE_TO) {
+            CreatorPlan writeCreator = creators.resolveBinding(value.type(), method, ignored -> {});
+            if (writeCreator != null && writeCreator.executable() != null) {
+                for (VariableElement parameter : writeCreator.executable().getParameters()) {
+                    NodeProperty option = parameter.getAnnotation(NodeProperty.class);
+                    if (option != null && !option.bindingWrite()) {
+                        String name = context.annotations.propertyName(
+                                parameter, parameter.getSimpleName().toString());
+                        creatorWriteDisabled.put(name, true);
+                    }
+                }
+            }
+        }
         List<BindingProperty> compiled = new ArrayList<BindingProperty>(properties.size());
 
         Map<String, String> claimedNames = new LinkedHashMap<>();
@@ -838,7 +852,8 @@ final class BindingCompiler {
                     : property.write().member().getAnnotation(NodeProperty.class);
 
             if (value.direction() == BindingPlan.Direction.READ_FROM
-                    ? !property.bindingRead() : !property.bindingWrite()) {
+                    ? !property.bindingRead()
+                    : (!property.bindingWrite() || creatorWriteDisabled.containsKey(property.name()))) {
                 if (value.kind() == BindingValue.Kind.JOJO && value.direction() == BindingPlan.Direction.READ_FROM) {
                     ignored.add(property.name());
                     if (writeAnnotation != null) Collections.addAll(ignored, writeAnnotation.aliases());
