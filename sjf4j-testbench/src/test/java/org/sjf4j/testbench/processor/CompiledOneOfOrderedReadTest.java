@@ -83,9 +83,9 @@ public class CompiledOneOfOrderedReadTest {
         boolean beta = false;
         boolean gamma = false;
         for (java.lang.reflect.Method method : READER.getClass().getDeclaredMethods()) {
-            alpha |= method.getReturnType() == Alpha.class && method.getName().endsWith("_content");
-            beta |= method.getReturnType() == Beta.class && method.getName().endsWith("_content");
-            gamma |= method.getReturnType() == Gamma.class && method.getName().endsWith("_content");
+            alpha |= method.getReturnType() == Alpha.class && method.getName().startsWith("_read") && method.getName().contains("Content");
+            beta |= method.getReturnType() == Beta.class && method.getName().startsWith("_read") && method.getName().contains("Content");
+            gamma |= method.getReturnType() == Gamma.class && method.getName().startsWith("_read") && method.getName().contains("Content");
         }
         assertTrue(alpha, "Alpha must use a generated OneOf subtype reader");
         assertTrue(beta, "Beta must use a generated OneOf subtype reader");
