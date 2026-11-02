@@ -22,7 +22,7 @@ final class WriteEmitter {
     private final OtherNativeWriteEmitter other;
     private final StreamingWriteEmitter streaming;
 
-    private final Map<String, String> enumFields = new LinkedHashMap<>();
+    private final Map<String, BindingValue> enumFields = new LinkedHashMap<>();
 
     WriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
@@ -65,7 +65,7 @@ final class WriteEmitter {
                 || value.direction() != BindingPlan.Direction.WRITE_TO) return;
         if (value.kind() == BindingValue.Kind.ENUM) {
             String type = value.type().toString();
-            if (!enumFields.containsKey(type)) enumFields.put(type, "_enum_" + enumFields.size());
+            if (!enumFields.containsKey(type)) enumFields.put(type, value);
         }
         for (BindingProperty property : value.properties()) registerEnums(property.value(), seen);
         registerEnums(value.elementValue(), seen);
@@ -74,9 +74,20 @@ final class WriteEmitter {
     }
 
     String enumField(BindingValue value) {
-        String result = enumFields.get(value.type().toString());
-        if (result == null) throw new IllegalStateException("Unregistered Enum: " + value.type());
-        return result;
+        if (!enumFields.containsKey(value.type().toString()))
+            throw new IllegalStateException("Unregistered Enum: " + value.type());
+        return names.enumField(value.type(), "encoded", BindingNames.fieldType(value.type()) + "_ENUM");
+    }
+
+    String enumField(BindingValue value, String mode) {
+        if (!enumFields.containsKey(value.type().toString()))
+            throw new IllegalStateException("Unregistered Enum: " + value.type());
+        return names.enumField(value.type(), "encoded:" + mode,
+                BindingNames.fieldType(value.type()) + "_ENUM_" + BindingNames.upperSnake(mode));
+    }
+
+    BindingNames naming() {
+        return names;
     }
 
     boolean hasEnumFields() { return !enumFields.isEmpty(); }
@@ -102,7 +113,8 @@ final class WriteEmitter {
         int index = 0;
         for (BindingProperty property : value.properties()) {
             String hint = BindingNames.fieldType(value.type()) + "_" + BindingNames.upperSnake(property.name());
-            value.preparedName(index++, names.field(value, "prepared:" + (index - 1), hint));
+            int position = index++;
+            value.preparedName(position, names.field(value, "prepared:" + position, hint));
         }
     }
 
