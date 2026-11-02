@@ -50,6 +50,7 @@ final class BindingValue {
     private final boolean primitive;
 
     private String helperName;
+    private final java.util.Map<Integer, String> preparedNames = new java.util.HashMap<>();
     private String oneOfOwner;
     private String oneOfProperty;
     private int oneOfCreatorIndex = -1;
@@ -115,6 +116,16 @@ final class BindingValue {
 
     void helperName(String helperName) {
         this.helperName = helperName;
+    }
+
+    void preparedName(int index, String name) {
+        preparedNames.put(index, name);
+    }
+
+    String preparedName(int index) {
+        String name = preparedNames.get(index);
+        if (name == null) throw new IllegalStateException("Prepared name not allocated for " + type + "[" + index + "]");
+        return name;
     }
 
     void oneOfMember(String owner, String property) {
