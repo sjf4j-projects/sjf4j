@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package org.sjf4j.util;
+package org.sjf4j.value;
 
 import java.util.Arrays;
 import java.util.UUID;

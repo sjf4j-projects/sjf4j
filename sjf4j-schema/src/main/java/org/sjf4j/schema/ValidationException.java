@@ -31,8 +31,8 @@ public class ValidationException extends SchemaException {
         ValidationResult.Message first = result.getErrors().isEmpty() ? null : result.getErrors().get(0);
         if (first == null) return "Validation failed with 0 error(s)";
         return "Validation failed with " + result.count() + " error(s); first: "
-                + SchemaUtil.formatValidationError(first.getMessage(), first.getInstancePs(),
-                first.getKeywordPs(), first.getSchemaUri(), first.getKeyword());
+                + SchemaUtil.formatValidationError(
+                        first.getMessage(), first.getInstancePs(), first.getKeywordPs(), first.getSchemaUri(), first.getKeyword());
     }
 
     /**

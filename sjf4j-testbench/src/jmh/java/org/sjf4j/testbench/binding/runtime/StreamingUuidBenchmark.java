@@ -9,7 +9,7 @@ import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
-import org.sjf4j.util.FastUuid;
+import org.sjf4j.value.FastUuid;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;

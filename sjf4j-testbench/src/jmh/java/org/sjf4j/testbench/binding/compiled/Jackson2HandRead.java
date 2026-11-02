@@ -6,7 +6,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.io.SerializedString;
 import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.testbench.model.fabien.Clients;
-import org.sjf4j.util.FastUuid;
+import org.sjf4j.value.FastUuid;
 
 import java.io.IOException;
 import java.time.LocalDate;

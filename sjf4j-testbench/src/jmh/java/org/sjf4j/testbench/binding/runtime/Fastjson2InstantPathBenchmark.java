@@ -3,7 +3,7 @@ package org.sjf4j.testbench.binding.runtime;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.binding.StreamingParser;
-import org.sjf4j.util.FastInstant;
+import org.sjf4j.value.FastInstant;
 
 import java.io.IOException;
 import java.time.Instant;

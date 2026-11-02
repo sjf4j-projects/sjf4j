@@ -1,4 +1,4 @@
-package org.sjf4j.util;
+package org.sjf4j.value;
 
 import java.time.DateTimeException;
 import java.time.Instant;

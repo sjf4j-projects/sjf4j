@@ -7,7 +7,7 @@ import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
 import org.sjf4j.util.Types;
-import org.sjf4j.util.FastUuid;
+import org.sjf4j.value.FastUuid;
 
 import java.io.Closeable;
 import java.io.Flushable;

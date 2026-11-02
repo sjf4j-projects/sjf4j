@@ -4,8 +4,6 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.binding.StreamingGenerator;
-import org.sjf4j.util.FastUuid;
-import org.sjf4j.util.FastInstant;
 
 import java.io.File;
 import java.io.IOException;

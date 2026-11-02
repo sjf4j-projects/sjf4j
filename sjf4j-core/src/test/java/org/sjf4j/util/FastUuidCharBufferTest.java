@@ -1,8 +1,7 @@
 package org.sjf4j.util;
 
 import org.junit.jupiter.api.Test;
-
-import java.util.UUID;
+import org.sjf4j.value.FastUuid;
 
 import static org.junit.jupiter.api.Assertions.*;
 

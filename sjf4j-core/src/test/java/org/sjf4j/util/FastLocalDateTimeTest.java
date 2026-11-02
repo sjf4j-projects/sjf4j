@@ -1,6 +1,7 @@
 package org.sjf4j.util;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.value.FastLocalDateTime;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
