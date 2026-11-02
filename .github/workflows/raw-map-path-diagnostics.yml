@@ -1,0 +1,84 @@
+name: Raw Map path diagnostics JMH
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/RawMapPathDiagnosticsBenchmark.java'
+      - '.github/workflows/raw-map-path-diagnostics.yml'
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Run raw path diagnostics with allocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          java -jar "$JAR" '.*RawMapPathDiagnosticsBenchmark.*' \
+            -wi 1 -i 3 -w 200ms -r 350ms -f 1 -prof gc \
+            -rf json -rff raw-map-paths.json > raw-map-paths.log 2>&1 \
+            || { tail -160 raw-map-paths.log; exit 1; }
+          tail -15 raw-map-paths.log
+      - name: Print per-backend comparison
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+          data = json.load(open("raw-map-paths.json"))
+          scores = {}
+          for x in data:
+              name = x["benchmark"].split(".")[-1]
+              shape = x["params"]["shape"]
+              t = x["primaryMetric"]["score"]
+              sm = x.get("secondaryMetrics", {})
+              allocation = sm.get("gc.alloc.rate.norm", {}).get("score", float("nan"))
+              scores[(name,shape)] = (t,allocation)
+          lines = [
+              "## Raw Map: native versus SJF4J paths (JDK 17, Ubuntu)",
+              "",
+              "Elapsed nanoseconds per parse. B/op in parentheses. One fork; exploratory.",
+              "Native-default Gson uses Double numerics, unlike SJF4J. Native-matched uses Numbers.parseNumber.",
+              "",
+              "| Backend | Encoding | Shape | Native Map | Native Linked | Handwritten | Direct raw | Compiled | Runtime |",
+              "|---|---|---|---:|---:|---:|---:|---:|---:|"
+          ]
+          for backend in ("fastjson","gson"):
+              for enc in ("String","Utf8"):
+                  for shape in ("two","numbers","strings","user"):
+                      def fmt(mode):
+                          v = scores.get((backend+mode+enc,shape))
+                          return f"{v[0]:.0f} ({v[1]:.0f}B)" if v else "—"
+                      native = "NativeMap" if backend == "fastjson" else "NativeMatched"
+                      lines.append(f"| {backend} | {enc} | {shape} | {fmt(native)} | {fmt('NativeLinked')} | {fmt('Handwritten')} | {fmt('DirectRaw')} | {fmt('Compiled')} | {fmt('Runtime')} |")
+          lines += ["", "## Gson default vs matched numeric strategy", "",
+                    "| Encoding | Shape | Native default ns | Native matched ns | Default B/op | Matched B/op |",
+                    "|---|---|---:|---:|---:|---:|"]
+          for enc in ("String","Utf8"):
+              for shape in ("two","numbers","strings","user"):
+                  d = scores[("gsonNativeDefault"+enc,shape)]
+                  m = scores[("gsonNativeMatched"+enc,shape)]
+                  lines.append(f"| {enc} | {shape} | {d[0]:.0f} | {m[0]:.0f} | {d[1]:.0f} | {m[1]:.0f} |")
+          result = "\n".join(lines)+"\n"
+          print(result)
+          open("raw-map-paths-summary.md","w").write(result)
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f: f.write(result)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raw-map-paths-jdk17
+          path: |
+            raw-map-paths.json
+            raw-map-paths.log
+            raw-map-paths-summary.md
