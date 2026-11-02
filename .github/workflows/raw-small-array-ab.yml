@@ -1,0 +1,87 @@
+name: Raw 0-2 ArrayList A/B
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Parser.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/compiled/RawSmallArrayABBenchmark.java'
+      - '.github/workflows/raw-small-array-ab.yml'
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Run JMH baseline / specialized / specialized / baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find sjf4j-testbench/build/libs -name '*jmh.jar' -print -quit)"
+          test -n "$JAR"
+          for run in baseline1 specialized1 specialized2 baseline2; do
+            case "$run" in
+              baseline*) enabled=false ;;
+              specialized*) enabled=true ;;
+            esac
+            java -jar "$JAR" '.*RawSmallArrayABBenchmark.*' \
+              -jvmArgsAppend "-Dsjf4j.test.smallRawArray=$enabled" \
+              -wi 1 -i 3 -w 200ms -r 300ms -f 1 -prof gc \
+              -rf json -rff "array-$run.json" > "array-$run.log" 2>&1 \
+              || { tail -130 "array-$run.log"; exit 1; }
+            echo "Completed $run"
+          done
+      - name: Compare against native control drift and allocation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, statistics
+          modes = ("baseline1","specialized1","specialized2","baseline2")
+          runs = {}
+          for mode in modes:
+              items = json.load(open("array-"+mode+".json"))
+              runs[mode] = {
+                  (x["benchmark"].split(".")[-1], x["params"]["shape"], x["params"]["encoding"]): x
+                  for x in items
+              }
+          def scores(mode, method, shape, enc):
+              x = runs[mode][(method,shape,enc)]
+              return x["primaryMetric"]["score"], x["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+          lines = ["## Raw small ArrayList A/B (JDK 17, gc profiler)", "",
+                   "Positive performance delta = specialized faster. Native control should not respond to JVM property.",
+                   "",
+                   "| Shape | Input | Base ns | Spec ns | Delta | Base B/op | Spec B/op | Native control drift |",
+                   "|---|---|---:|---:|---:|---:|---:|---:|"]
+          for shape in ("array0","array1","array2","array3","nested","user"):
+              for enc in ("string","utf8"):
+                  bs=[scores(m,"compiled",shape,enc) for m in ("baseline1","baseline2")]
+                  sp=[scores(m,"compiled",shape,enc) for m in ("specialized1","specialized2")]
+                  nc=[scores(m,"nativeControl",shape,enc) for m in ("baseline1","baseline2")]
+                  ns=[scores(m,"nativeControl",shape,enc) for m in ("specialized1","specialized2")]
+                  b=statistics.mean(x[0] for x in bs)
+                  s=statistics.mean(x[0] for x in sp)
+                  basealloc=statistics.mean(x[1] for x in bs)
+                  specalloc=statistics.mean(x[1] for x in sp)
+                  controlbase=statistics.mean(x[0] for x in nc)
+                  controlspec=statistics.mean(x[0] for x in ns)
+                  lines.append(f"| {shape} | {enc} | {b:.1f} | {s:.1f} | {(b-s)/b*100:+.1f}% | {basealloc:.0f} | {specalloc:.0f} | {(controlbase-controlspec)/controlbase*100:+.1f}% |")
+          report="\n".join(lines)+"\n"
+          print(report)
+          open("array-summary.md","w").write(report)
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as out: out.write(report)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raw-small-array-ab-jdk17
+          path: |
+            array-*.json
+            array-*.log
+            array-summary.md
