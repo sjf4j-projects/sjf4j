@@ -52,23 +52,40 @@ class CompiledValidatorOneOfProcessorTest {
     }
 
     @Test
-    void hiddenNodeMembersDisableSubtypePruning() throws Exception {
+    void hiddenNodeMembersUseDynamicSubtypePredicates() throws Exception {
         NavigatorTestCompiler.Result result = compile(true, SCHEMA, false, false, true);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
-        assertFalse(generated.contains("getClass() =="), generated);
+        assertTrue(generated.contains("getClass() =="), generated);
         assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains(".isValid("), generated);
     }
 
     @Test
-    void nonPublicAnnotatedConstantDoesNotGrantGeneratedJavaAccess() throws Exception {
+    void nonPublicAnnotatedConstantUsesDynamicSubtypePredicates() throws Exception {
         NavigatorTestCompiler.Result result = compile(false);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Validator_Impl.java");
-        assertFalse(generated.contains("getClass() =="), generated);
+        assertTrue(generated.contains("getClass() =="), generated);
         assertFalse(generated.contains(".isValid("), generated);
         assertTrue(generated.contains("keySetInObject("), generated);
+    }
+
+    @Test
+    void getterDiscriminatorsCompileAllPotentialOneOfBranches() throws Exception {
+        // Both subtypes expose exactly the same keys. Without a provable
+        // discriminator constant neither branch can be eliminated.
+        String schema = SCHEMA.replace("\\\"count\\\"", "\\\"name\\\"")
+                .replace("\\\"integer\\\",\\\"minimum\\\":1", "\\\"string\\\",\\\"minLength\\\":3");
+        NavigatorTestCompiler.Result result = compile(true, schema, false, false, false, true);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertTrue(generated.contains("getClass() =="), generated);
+        assertTrue(generated.contains("getKind()"), generated);
+        // Two per-subtype branches, plus the generic unknown-subtype path.
+        assertTrue(generated.split("getKind\\\\(\\\\)", -1).length - 1 >= 4, generated);
+        assertTrue(generated.contains("matchCount"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
     }
 
     private static NavigatorTestCompiler.Result compile(boolean exposed) throws Exception {
@@ -88,6 +105,12 @@ class CompiledValidatorOneOfProcessorTest {
     private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
                                                         boolean strictFormat, boolean fallback,
                                                         boolean hiddenNodeMember) throws Exception {
+        return compile(exposed, schema, strictFormat, fallback, hiddenNodeMember, false);
+    }
+
+    private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
+                                                        boolean strictFormat, boolean fallback,
+                                                        boolean hiddenNodeMember, boolean getterDiscriminator) throws Exception {
         String visibility = exposed ? "public " : "private ";
         Map<String, String> sources = new LinkedHashMap<String, String>();
         sources.put("fixture/Variant.java",
@@ -99,14 +122,17 @@ class CompiledValidatorOneOfProcessorTest {
         sources.put("fixture/A.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class A implements Variant { "
-                + "@NodeProperty(\"kind\") " + visibility + "final String kind = \"a\"; "
+                + (getterDiscriminator ? "@NodeProperty(\"kind\") public String getKind(){return \"a\";} "
+                        : "@NodeProperty(\"kind\") " + visibility + "final String kind = \"a\"; ")
                 + (hiddenNodeMember ? "@NodeIgnore private String hidden = \"x\"; " : "")
                 + "public String getName() {return \"good\";} }");
         sources.put("fixture/B.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class B implements Variant { "
-                + "@NodeProperty(\"kind\") public final String kind = \"b\"; "
-                + "public int getCount() {return 2;} }");
+                + (getterDiscriminator ? "@NodeProperty(\"kind\") public String getKind(){return \"b\";} "
+                        : "@NodeProperty(\"kind\") public final String kind = \"b\"; ")
+                + (getterDiscriminator ? "public String getName(){return \"good\";} " : "")
+                + (getterDiscriminator ? "" : "public int getCount() {return 2;} ") + "}");
         sources.put("fixture/Model.java",
                 "package fixture; import java.util.List; public final class Model { "
                 + "public List<Variant> getItems() { return java.util.Arrays.<Variant>asList(new A(),new B()); }}");
