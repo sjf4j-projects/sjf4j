@@ -211,7 +211,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
         String method = gson() ? "value" : "write";
         if (child.kind() == BindingValue.Kind.STRING) {
-            out.line("_writeString(" + nativeGenerator + ", " + expression + ");");
+            out.line(names.sharedHelper("writeString") + "(" + nativeGenerator + ", " + expression + ");");
             return;
         }
         switch (child.kind()) {
