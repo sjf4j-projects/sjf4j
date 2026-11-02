@@ -1,6 +1,12 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonType;
+import org.sjf4j.JsonObject;
+import org.sjf4j.InternalAccess;
+import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.meta.TypeInfo;
+import org.sjf4j.value.ValueInfo;
 import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.Nodes;
 import org.sjf4j.binding.simple.SimpleJsonParser;
@@ -683,56 +689,109 @@ public interface Evaluator {
          * unevaluatedProperties processing.
          */
         @Override
+        @SuppressWarnings("unchecked")
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             if (instance.jsonType() != JsonType.OBJECT) return true;
 
+            Object node = instance.node();
+            if (node instanceof Map) {
+                return evaluateEntries(instance, ((Map<String, Object>) node).entrySet(), ps, ctx);
+            }
+            if (node.getClass() == JsonObject.class) {
+                return evaluateEntries(instance, ((JsonObject) node).entrySet(), ps, ctx);
+            }
+
+            TypeInfo typeInfo = instance.typeInfo();
+            if (typeInfo.pojoInfo != null) {
+                return evaluatePojo(instance, typeInfo.pojoInfo, ps, ctx);
+            }
+            if (typeInfo.externalNode != null) {
+                return evaluateEntries(instance, typeInfo.externalNode.entrySetInObject(node), ps, ctx);
+            }
+            throw new org.sjf4j.exception.NodeException("expected object node");
+        }
+
+        /** Map, plain JsonObject, and external object members use their native entries. */
+        private boolean evaluateEntries(Instance instance, Iterable<? extends Map.Entry<String, Object>> entries,
+                                        PathSegment ps, ValidationContext ctx) {
             boolean result = true;
             int propIdx = 0;
-            for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(instance.node())) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-                boolean matched = false;
-                if (properties != null) {
-                    SchemaPlan plan = properties.get(key);
-                    if (plan != null) {
-                        Instance subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
-                        PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                        boolean subResult = plan.evaluate(subInstance, cps, ctx);
-                        if (subResult) instance.markEvaluated(propIdx);
-                        result = result && subResult;
-                        if (!subResult && ctx.isFailFast()) return false;
-                        matched = true;
+            for (Map.Entry<String, Object> entry : entries) {
+                boolean valid = evaluateProperty(instance, propIdx++, entry.getKey(), entry.getValue(),
+                        null, ps, ctx);
+                result &= valid;
+                if (!valid && ctx.isFailFast()) return false;
+            }
+            return result;
+        }
+
+        /** POJO/JOJO declared fields are traversed directly, followed by JOJO dynamic members. */
+        private boolean evaluatePojo(Instance instance, PojoInfo pojo, PathSegment ps, ValidationContext ctx) {
+            Object node = instance.node();
+            boolean result = true;
+            int propIdx = 0;
+            for (PropertyInfo property : pojo.gettableProperties) {
+                boolean valid = evaluateProperty(instance, propIdx++, property.name,
+                        property.invokeGetter(node), property.valueInfo, ps, ctx);
+                result &= valid;
+                if (!valid && ctx.isFailFast()) return false;
+            }
+            if (pojo.isJojo) {
+                Map<String, Object> dynamic = InternalAccess.dynamicMembers((JsonObject) node);
+                if (dynamic != null) {
+                    for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
+                        boolean valid = evaluateProperty(instance, propIdx++, entry.getKey(),
+                                entry.getValue(), null, ps, ctx);
+                        result &= valid;
+                        if (!valid && ctx.isFailFast()) return false;
                     }
                 }
+            }
+            return result;
+        }
 
-                if (patterns != null) {
-                    for (int i = 0; i < patterns.length; i++) {
-                        if (patterns[i].matcher(key).find()) {
-                            SchemaPlan plan = patternPlans[i];
-                            if (plan != null) {
-                                Instance subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
-                                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                                boolean subResult = plan.evaluate(subInstance, cps, ctx);
-                                if (subResult) instance.markEvaluated(propIdx);
-                                result = result && subResult;
-                                if (!subResult && ctx.isFailFast()) return false;
-                                matched = true;
-                            }
+        /** Evaluate a single property without eagerly encoding unvalidated members. */
+        private boolean evaluateProperty(Instance instance, int propIdx, String key, Object value,
+                                         ValueInfo codec, PathSegment ps, ValidationContext ctx) {
+            boolean matched = false;
+            boolean result = true;
+            if (properties != null) {
+                SchemaPlan plan = properties.get(key);
+                if (plan != null) {
+                    Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                    boolean subResult = plan.evaluate(subInstance, cps, ctx);
+                    if (subResult) instance.markEvaluated(propIdx);
+                    result &= subResult;
+                    if (!subResult && ctx.isFailFast()) return false;
+                    matched = true;
+                }
+            }
+
+            if (patterns != null) {
+                for (int i = 0; i < patterns.length; i++) {
+                    if (patterns[i].matcher(key).find()) {
+                        SchemaPlan plan = patternPlans[i];
+                        if (plan != null) {
+                            Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+                            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                            boolean subResult = plan.evaluate(subInstance, cps, ctx);
+                            if (subResult) instance.markEvaluated(propIdx);
+                            result &= subResult;
+                            if (!subResult && ctx.isFailFast()) return false;
+                            matched = true;
                         }
                     }
                 }
+            }
 
-                if (additionalPropertiesPlan != null && !matched) {
-                    Instance subInstance = instance.inferSubByKey(key, value, ctx.reusedLeaf());
-                    PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                    boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
-                    if (subResult) instance.markEvaluated(propIdx);
-                    result = result && subResult;
-                    if (!subResult && ctx.isFailFast()) return false;
-                }
-                propIdx++;
-            }//for
-
+            if (additionalPropertiesPlan != null && !matched) {
+                Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+                PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+                boolean subResult = additionalPropertiesPlan.evaluate(subInstance, cps, ctx);
+                if (subResult) instance.markEvaluated(propIdx);
+                result &= subResult;
+            }
             return result;
         }
     }
@@ -1499,28 +1558,19 @@ public interface Evaluator {
         @Override
         public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
             EvaluationBits merged = instance.mergedEvaluated();
-            Object node = instance.node();
             boolean result = true;
 
             try {
                 if (unevaluatedPropertiesPlan != null && instance.jsonType() == JsonType.OBJECT) {
-                    int propIdx = 0;
-                    for (Map.Entry<String, Object> entry : NodeWalker.entrySetInObject(node)) {
-                        String key = entry.getKey();
-                        if (!merged.get(propIdx)) {
-                            Instance subInstance = instance.inferSubByKey(key, entry.getValue(), ctx.reusedLeaf());
-                            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
-                            boolean subResult = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
-                            if (subResult) instance.markEvaluated(propIdx);
-                            result = result && subResult;
-                            if (!subResult && ctx.isFailFast()) return false;
-                        }
-                        propIdx++;
+                    // A fully evaluated object requires neither a second traversal nor getters.
+                    if (!merged.covers(instance.objectSize())) {
+                        result = evaluateObject(instance, merged, ps, ctx);
                     }
+                    if (!result && ctx.isFailFast()) return false;
                 }
 
                 if (unevaluatedItemsPlan != null && instance.jsonType() == JsonType.ARRAY) {
-                    Iterator<Object> it = NodeWalker.iteratorInArray(node);
+                    Iterator<Object> it = NodeWalker.iteratorInArray(instance.node());
                     for (int i = 0; it.hasNext(); i++) {
                         Object subActual = it.next();
                         if (!merged.get(i)) {
@@ -1528,7 +1578,7 @@ public interface Evaluator {
                             PathSegment cps = ps == null ? null : new PathSegment.Index(ps, i);
                             boolean subResult = unevaluatedItemsPlan.evaluate(subInstance, cps, ctx);
                             if (subResult) instance.markEvaluated(i);
-                            result = result && subResult;
+                            result &= subResult;
                             if (!subResult && ctx.isFailFast()) return false;
                         }
                     }
@@ -1539,6 +1589,83 @@ public interface Evaluator {
                 EvaluationBits parentEvaluated = instance.peekEvaluated();
                 if (parentEvaluated != null && curEvaluated != null) parentEvaluated.or(curEvaluated);
             }
+        }
+
+        @SuppressWarnings("unchecked")
+        private boolean evaluateObject(Instance instance, EvaluationBits merged,
+                                       PathSegment ps, ValidationContext ctx) {
+            Object node = instance.node();
+            if (node instanceof Map) {
+                return evaluateEntries(instance, ((Map<String, Object>) node).entrySet(), merged, ps, ctx);
+            }
+            if (node.getClass() == JsonObject.class) {
+                return evaluateEntries(instance, ((JsonObject) node).entrySet(), merged, ps, ctx);
+            }
+            TypeInfo typeInfo = instance.typeInfo();
+            if (typeInfo.pojoInfo != null) {
+                return evaluatePojo(instance, typeInfo.pojoInfo, merged, ps, ctx);
+            }
+            if (typeInfo.externalNode != null) {
+                return evaluateEntries(instance, typeInfo.externalNode.entrySetInObject(node), merged, ps, ctx);
+            }
+            throw new org.sjf4j.exception.NodeException("expected object node");
+        }
+
+        private boolean evaluateEntries(Instance instance, Iterable<? extends Map.Entry<String, Object>> entries,
+                                        EvaluationBits merged, PathSegment ps, ValidationContext ctx) {
+            boolean result = true;
+            int propIdx = 0;
+            for (Map.Entry<String, Object> entry : entries) {
+                if (!merged.get(propIdx)) {
+                    boolean valid = evaluateProperty(instance, propIdx, entry.getKey(), entry.getValue(),
+                            null, ps, ctx);
+                    result &= valid;
+                    if (!valid && ctx.isFailFast()) return false;
+                }
+                propIdx++;
+            }
+            return result;
+        }
+
+        private boolean evaluatePojo(Instance instance, PojoInfo pojo, EvaluationBits merged,
+                                     PathSegment ps, ValidationContext ctx) {
+            Object node = instance.node();
+            boolean result = true;
+            int propIdx = 0;
+            for (PropertyInfo property : pojo.gettableProperties) {
+                if (!merged.get(propIdx)) {
+                    // Avoid invoking getters for properties already evaluated.
+                    boolean valid = evaluateProperty(instance, propIdx, property.name,
+                            property.invokeGetter(node), property.valueInfo, ps, ctx);
+                    result &= valid;
+                    if (!valid && ctx.isFailFast()) return false;
+                }
+                propIdx++;
+            }
+            if (pojo.isJojo) {
+                Map<String, Object> dynamic = InternalAccess.dynamicMembers((JsonObject) node);
+                if (dynamic != null) {
+                    for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
+                        if (!merged.get(propIdx)) {
+                            boolean valid = evaluateProperty(instance, propIdx, entry.getKey(),
+                                    entry.getValue(), null, ps, ctx);
+                            result &= valid;
+                            if (!valid && ctx.isFailFast()) return false;
+                        }
+                        propIdx++;
+                    }
+                }
+            }
+            return result;
+        }
+
+        private boolean evaluateProperty(Instance instance, int propIdx, String key, Object value,
+                                         ValueInfo codec, PathSegment ps, ValidationContext ctx) {
+            Instance subInstance = instance.inferSubByKey(key, value, codec, ctx.reusedLeaf());
+            PathSegment cps = ps == null ? null : new PathSegment.Name(ps, key);
+            boolean valid = unevaluatedPropertiesPlan.evaluate(subInstance, cps, ctx);
+            if (valid) instance.markEvaluated(propIdx);
+            return valid;
         }
     }
 

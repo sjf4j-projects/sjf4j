@@ -39,6 +39,19 @@ final class EvaluationBits {
         }
     }
 
+    /**
+     * Returns true when every location in [0, size) has been evaluated.
+     * No BitSet is allocated for the common <=64-property case.
+     */
+    boolean covers(int size) {
+        if (size <= 0) return true;
+        if (size < 64) {
+            return (mask & ((1L << size) - 1)) == ((1L << size) - 1);
+        }
+        if (mask != -1L) return false;
+        return size == 64 || (overflow != null && overflow.nextClearBit(0) >= size - 64);
+    }
+
     void or(EvaluationBits other) {
         mask |= other.mask;
         if (other.overflow != null) {

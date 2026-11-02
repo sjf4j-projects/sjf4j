@@ -127,7 +127,8 @@ public class FunctionRegistry {
             Object node = target;
             switch (JsonType.of(node)) {
                 case STRING:
-                    return Nodes.toString(node).length();
+                    String text = Nodes.toString(node);
+                    return text == null ? null : text.length();
                 case OBJECT:
                     return Nodes.sizeInObject(node);
                 case ARRAY:
@@ -166,7 +167,8 @@ public class FunctionRegistry {
             }
             switch (JsonType.of(node)) {
                 case STRING:
-                    return IRegexpUtil.match(pattern, Nodes.toString(node));
+                    String text = Nodes.toString(node);
+                    return text != null && IRegexpUtil.match(pattern, text);
             }
             return false;
         }));
@@ -188,7 +190,8 @@ public class FunctionRegistry {
             }
             switch (JsonType.of(node)) {
                 case STRING:
-                    return IRegexpUtil.search(pattern, Nodes.toString(node));
+                    String text = Nodes.toString(node);
+                    return text != null && IRegexpUtil.search(pattern, text);
             }
             return false;
         }));

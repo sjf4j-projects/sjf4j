@@ -418,11 +418,13 @@ public final class Nodes {
             return jtSource.isNull() && jtTarget.isNull();
         }
         if (jtSource.isNumber() && jtTarget.isNumber()) {
-            return Numbers.compare(toNumber(source), toNumber(target)) == 0;
+            Number a = toNumber(source);
+            Number b = toNumber(target);
+            return a == null || b == null ? a == b : Numbers.compare(a, b) == 0;
         } else if (jtSource.isString() && jtTarget.isString()) {
-            return toString(source).equals(toString(target));
+            return Objects.equals(toString(source), toString(target));
         } else if (jtSource.isBoolean() && jtTarget.isBoolean()) {
-            return toBoolean(source).equals(toBoolean(target));
+            return Objects.equals(toBoolean(source), toBoolean(target));
         } else if (jtSource.isObject() && jtTarget.isObject()) {
             if (sizeInObject(source) != sizeInObject(target)) return false;
             return !anyMatchInObject(source, (k, subSource) -> {
@@ -465,11 +467,12 @@ public final class Nodes {
                 return 0;
             case NUMBER:
             case INTEGER:
-                return Numbers.hash(toNumber(node));
+                Number number = toNumber(node);
+                return number == null ? 0 : Numbers.hash(number);
             case STRING:
-                return toString(node).hashCode();
+                return Objects.hashCode(toString(node));
             case BOOLEAN:
-                return toBoolean(node).hashCode();
+                return Objects.hashCode(toBoolean(node));
             case OBJECT:
                 final int[] objectHash = {1};
                 forEachObject(node, (k, v) ->

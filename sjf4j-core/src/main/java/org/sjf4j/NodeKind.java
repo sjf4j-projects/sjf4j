@@ -41,13 +41,15 @@ public enum NodeKind {
     VALUE_BOOLEAN_EXTERNAL,
 
     /**
-     * A logical value node represented through a configured value binding.
-     *
-     * <p>The binding may be a {@link ValueCodec} or {@code @NodeValue}
-     * conversion methods. Its raw OBNT representation may have scalar,
-     * object, or array JSON shape.
+     * Logical value bindings classified by their default raw encoding.
+     * MAP and LIST remain atomic value nodes, not traversable object/array nodes.
+     * A different RuntimeContext format may select another encoding.
      */
-    VALUE_BINDING,
+    VALUE_CODEC_STRING,
+    VALUE_CODEC_NUMBER,
+    VALUE_CODEC_BOOLEAN,
+    VALUE_CODEC_MAP,
+    VALUE_CODEC_LIST,
 
     /** Represents a {@link Map} object. */
     OBJECT_MAP,
@@ -95,7 +97,14 @@ public enum NodeKind {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
         if (ti.valueSet != null) {
-            return NodeKind.VALUE_BINDING;
+            switch (ti.valueSet.defaultInfo.rawJsonType) {
+                case STRING: return VALUE_CODEC_STRING;
+                case NUMBER: return VALUE_CODEC_NUMBER;
+                case BOOLEAN: return VALUE_CODEC_BOOLEAN;
+                case OBJECT: return VALUE_CODEC_MAP;
+                case ARRAY: return VALUE_CODEC_LIST;
+                default: throw new IllegalStateException("unsupported ValueCodec raw JSON type");
+            }
         } else if (ti.oneOfInfo != null) {
             return NodeKind.UNKNOWN;
         } else if (ti.externalNode != null) {
@@ -156,25 +165,34 @@ public enum NodeKind {
     }
 
     public boolean isNumber() {
-        return this == VALUE_NUMBER || this == VALUE_NUMBER_EXTERNAL;
+        return this == VALUE_NUMBER || this == VALUE_NUMBER_EXTERNAL
+                || this == VALUE_CODEC_NUMBER;
     }
 
     public boolean isString() {
         return this == VALUE_STRING || this == VALUE_STRING_CHARACTER
-                || this == VALUE_STRING_ENUM || this == VALUE_STRING_EXTERNAL;
+                || this == VALUE_STRING_ENUM || this == VALUE_STRING_EXTERNAL
+                || this == VALUE_CODEC_STRING;
     }
 
     public boolean isBoolean() {
-        return this == VALUE_BOOLEAN || this == VALUE_BOOLEAN_EXTERNAL;
+        return this == VALUE_BOOLEAN || this == VALUE_BOOLEAN_EXTERNAL
+                || this == VALUE_CODEC_BOOLEAN;
     }
 
     public boolean isNull() {
         return this == VALUE_NULL;
     }
 
+    public boolean isValueCodec() {
+        return this == VALUE_CODEC_STRING || this == VALUE_CODEC_NUMBER
+                || this == VALUE_CODEC_BOOLEAN || this == VALUE_CODEC_MAP
+                || this == VALUE_CODEC_LIST;
+    }
+
     public boolean isValue() {
         return isNumber() || isString() || isBoolean() || isNull()
-                || this == VALUE_BINDING;
+                || this == VALUE_CODEC_MAP || this == VALUE_CODEC_LIST;
     }
 
     public boolean isObject() {

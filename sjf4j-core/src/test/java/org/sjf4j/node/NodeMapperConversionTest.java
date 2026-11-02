@@ -441,9 +441,22 @@ class NodeMapperConversionTest {
                 Map.of("kind", "child"), ValueChoice.class, false, RuntimeContext.EMPTY));
         assertNull(NodeMapper.convert(Map.of("kind", "missing"), NullableValueChoice.class, false, RuntimeContext.EMPTY));
 
-        BindingException valueBinding = assertThrows(BindingException.class,
-                () -> NodeMapper.convert(new EncodedChoice(Map.of("kind", "child")), ValueChoice.class, false, RuntimeContext.EMPTY));
-        assertTrue(valueBinding.getMessage().contains("node must be a JSON object"));
+        EncodedChoice existing = new EncodedChoice(Map.of("kind", "child"));
+        assertSame(existing, NodeMapper.convert(existing, ValueChoice.class, false, RuntimeContext.EMPTY));
+        EncodedChoice copied = (EncodedChoice) NodeMapper.convert(existing, ValueChoice.class, true, RuntimeContext.EMPTY);
+        assertNotSame(existing, copied);
+        assertEquals(existing.raw, copied.raw);
+
+        // Mapping an already-bound subtype does not invoke its encoder or
+        // recheck its serialized discriminator.
+        EncodedChoice throwingEncoder = new EncodedChoice(Map.of("kind", "error"));
+        assertSame(throwingEncoder, NodeMapper.convert(
+                throwingEncoder, ValueChoice.class, false, RuntimeContext.EMPTY));
+
+        BindingException unmatched = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new RawChoice(Map.of("kind", "child")),
+                        ValueChoice.class, false, RuntimeContext.EMPTY));
+        assertTrue(unmatched.getMessage().contains("does not support ValueCodec type"));
         assertNull(NodeMapper.convert(new RawChoice(null), NullableValueChoice.class, false, RuntimeContext.EMPTY));
         BindingException unknown = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(new Object(), ValueChoice.class, false, RuntimeContext.EMPTY));
@@ -453,16 +466,26 @@ class NodeMapperConversionTest {
                 () -> NodeMapper.convert(Collections.singletonList(new RawChoice(Map.of("kind", "error"))),
                         new TypeReference<List<ValueChoice>>() {}.getType(), false, RuntimeContext.EMPTY));
         assertTrue(failure.getMessage().contains("$[0]"));
-        assertTrue(failure.getMessage().contains("node must be a JSON object"));
+        assertTrue(failure.getMessage().contains("does not support ValueCodec type"));
     }
 
     @Test
-    void oneOfMatchesRawShapeButRejectsValueBindingSource() {
+    void oneOfAcceptsAlreadyMappedValueBindingWithoutRawConversion() {
         StringChoice decoded = (StringChoice) NodeMapper.convert("text", ShapeChoice.class, false, RuntimeContext.EMPTY);
         assertEquals("text", decoded.value);
-        BindingException error = assertThrows(BindingException.class,
-                () -> NodeMapper.convert(new StringChoice("text"), ShapeChoice.class, false, RuntimeContext.EMPTY));
-        assertTrue(error.getMessage().contains("jsonType=UNKNOWN"));
+
+        StringChoice existing = new StringChoice("text");
+        assertSame(existing, NodeMapper.convert(existing, ShapeChoice.class, false, RuntimeContext.EMPTY));
+        StringChoice copy = (StringChoice) NodeMapper.convert(existing, ShapeChoice.class, true, RuntimeContext.EMPTY);
+        assertNotSame(existing, copy);
+        assertEquals(existing.value, copy.value);
+
+        // Being String-backed is not sufficient: the concrete type must
+        // actually belong to the @OneOf mapping.
+        BindingException unmatched = assertThrows(BindingException.class,
+                () -> NodeMapper.convert(new UnmappedStringChoice("text"),
+                        ShapeChoice.class, false, RuntimeContext.EMPTY));
+        assertTrue(unmatched.getMessage().contains("does not support ValueCodec type"));
     }
 
     @Test
@@ -934,6 +957,16 @@ class NodeMapperConversionTest {
         @ValueToRaw String encode() { return value; }
         @RawToValue static StringChoice decode(String raw) { return new StringChoice(raw); }
         @ValueCopy StringChoice copy() { return new StringChoice(value); }
+    }
+
+    @NodeValue
+    static class UnmappedStringChoice extends ShapeChoice {
+        final String value;
+        UnmappedStringChoice(String value) { this.value = value; }
+        @ValueToRaw String encode() { return value; }
+        @RawToValue static UnmappedStringChoice decode(String raw) {
+            return new UnmappedStringChoice(raw);
+        }
     }
 
 }

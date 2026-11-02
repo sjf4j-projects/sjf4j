@@ -3,6 +3,12 @@ package org.sjf4j;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.ValueToRaw;
+import org.sjf4j.annotation.node.RawToValue;
+
+import java.util.Map;
+import java.util.List;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -20,6 +26,57 @@ class JsonTypeTest {
 
     static class PolyObj extends JsonObject implements PolymorphicType {}
     static class PolyArr extends JsonArray implements PolymorphicType {}
+
+    @NodeValue
+    static final class ScalarValue {
+        @ValueToRaw public String toRaw() { return "abc"; }
+        @RawToValue public static ScalarValue fromRaw(String raw) { return new ScalarValue(); }
+    }
+
+    @NodeValue
+    static final class NumberValue {
+        @ValueToRaw public Integer toRaw() { return 12; }
+        @RawToValue public static NumberValue fromRaw(Integer raw) { return new NumberValue(); }
+    }
+
+    @NodeValue
+    static final class BooleanValue {
+        @ValueToRaw public Boolean toRaw() { return true; }
+        @RawToValue public static BooleanValue fromRaw(Boolean raw) { return new BooleanValue(); }
+    }
+
+    @NodeValue
+    static final class MapValue {
+        @ValueToRaw public Map<String, Object> toRaw() { return Map.of("name", "Alice"); }
+        @RawToValue public static MapValue fromRaw(Map<String, Object> raw) { return new MapValue(); }
+    }
+
+    @NodeValue
+    static final class ListValue {
+        @ValueToRaw public List<Object> toRaw() { return List.of("abc"); }
+        @RawToValue public static ListValue fromRaw(List<Object> raw) { return new ListValue(); }
+    }
+
+    @Test
+    void classifiesScalarValueBindingsWithoutExposingContainerEncodings() {
+        assertEquals(NodeKind.VALUE_CODEC_STRING, NodeKind.of(new ScalarValue()));
+        assertEquals(NodeKind.VALUE_CODEC_NUMBER, NodeKind.of(new NumberValue()));
+        assertEquals(NodeKind.VALUE_CODEC_BOOLEAN, NodeKind.of(new BooleanValue()));
+        assertEquals(NodeKind.VALUE_CODEC_MAP, NodeKind.of(new MapValue()));
+        assertEquals(NodeKind.VALUE_CODEC_LIST, NodeKind.of(new ListValue()));
+        assertEquals(JsonType.STRING, JsonType.of(new ScalarValue()));
+        assertEquals(JsonType.NUMBER, JsonType.of(new NumberValue()));
+        assertEquals(JsonType.BOOLEAN, JsonType.of(new BooleanValue()));
+        assertEquals(JsonType.UNKNOWN, JsonType.of(new MapValue()));
+        assertEquals(JsonType.UNKNOWN, JsonType.of(new ListValue()));
+        assertEquals(JsonType.STRING, JsonType.of(NodeKind.VALUE_CODEC_STRING));
+        assertEquals(JsonType.NUMBER, JsonType.of(NodeKind.VALUE_CODEC_NUMBER));
+        assertEquals(JsonType.BOOLEAN, JsonType.of(NodeKind.VALUE_CODEC_BOOLEAN));
+        assertEquals(JsonType.UNKNOWN, JsonType.of(NodeKind.VALUE_CODEC_MAP));
+        assertEquals(JsonType.UNKNOWN, JsonType.of(NodeKind.VALUE_CODEC_LIST));
+        assertEquals(JsonType.OBJECT, JsonType.rawOf(MapValue.class));
+        assertEquals(JsonType.ARRAY, JsonType.rawOf(ListValue.class));
+    }
 
     @Test
     void classifiesNodeKindsValuesAndSchemaTypes() {

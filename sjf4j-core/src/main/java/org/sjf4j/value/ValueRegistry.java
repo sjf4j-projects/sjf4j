@@ -225,9 +225,19 @@ public final class ValueRegistry {
         return annotation != null && (annotation.defaultCodec() || annotation.format().isEmpty());
     }
 
+    /**
+     * Codec raw types are restricted to the five supported wire shapes.
+     * Plain NodeKind.isRaw() additionally includes Java scalar types such as
+     * Character and Void, which are not valid codec raw declarations.
+     */
+    private static boolean supportedCodecRaw(Class<?> raw) {
+        return raw == String.class || Number.class.isAssignableFrom(raw) || raw == Boolean.class 
+                || raw == Map.class || raw == List.class;
+    }
+
     private static void validateRegistration(ValueInfo valueInfo) {
         Class<?> rawClazz = Asserts.notNull(valueInfo.rawClazz, "rawClazz");
-        if (rawClazz == Object.class || !NodeKind.plainOf(rawClazz).isRaw()) {
+        if (!supportedCodecRaw(rawClazz)) {
             throw new BindingException("invalid ValueCodec raw type '" + rawClazz.getName() +
                     "': expected a supported String, Number, Boolean, Map, or List type");
         }
@@ -343,7 +353,7 @@ public final class ValueRegistry {
                     (valueToRawHandle.type().parameterCount() - 1) + ", in " + clazz.getName());
         }
         Class<?> valueToRawReturnBoxed = Types.box(valueToRawHandle.type().returnType());
-        if (!NodeKind.plainOf(valueToRawReturnBoxed).isRaw())
+        if (!supportedCodecRaw(valueToRawReturnBoxed))
             throw new BindingException("@" + ValueToRaw.class.getName() + " method return invalid type " +
                     valueToRawReturnBoxed.getName() + " in " + clazz.getName() +
                     ". The return type must be a supported String, Number, Boolean, Map, or List type; " +

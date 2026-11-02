@@ -25,10 +25,8 @@ public enum JsonType {
     UNKNOWN;
 
     /**
-     * Resolves the JSON-semantic shape from a {@link NodeKind}.
-     * <p>
-     * {@link NodeKind#VALUE_BINDING} resolves to {@link #UNKNOWN} because the
-     * configured value binding's raw OBNT representation is not encoded in {@code NodeKind}.
+     * Resolves the logical JSON shape from a {@link NodeKind}.
+     * Codec-backed Map/List values are atomic leaves (UNKNOWN), not OBJECT/ARRAY.
      */
     public static JsonType of(NodeKind nodeKind) {
         switch (nodeKind) {
@@ -49,12 +47,15 @@ public enum JsonType {
             case VALUE_STRING_CHARACTER:
             case VALUE_STRING_ENUM:
             case VALUE_STRING_EXTERNAL:
+            case VALUE_CODEC_STRING:
                 return STRING;
             case VALUE_NUMBER:
             case VALUE_NUMBER_EXTERNAL:
+            case VALUE_CODEC_NUMBER:
                 return NUMBER;
             case VALUE_BOOLEAN:
             case VALUE_BOOLEAN_EXTERNAL:
+            case VALUE_CODEC_BOOLEAN:
                 return BOOLEAN;
             case VALUE_NULL:
                 return NULL;
@@ -64,10 +65,9 @@ public enum JsonType {
     }
 
     /**
-     * Resolves the JSON-semantic shape of an OBNT value.
-     * <p>
-     * A {@code @NodeValue} instance resolves to {@link #UNKNOWN}; use
-     * {@link #rawOf(Class)} to classify its configured raw representation.
+     * Resolves the default logical JSON shape of an OBNT value, without
+     * executing a codec or inspecting RuntimeContext.
+     * Use {@link #rawOf(Class)} for the default raw encoding shape.
      */
     public static JsonType of(Object node) {
         return of(NodeKind.of(node));

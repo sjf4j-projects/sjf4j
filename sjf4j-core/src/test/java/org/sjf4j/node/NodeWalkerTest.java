@@ -243,11 +243,11 @@ class NodeWalkerTest {
         assertEquals(Arrays.asList("$", "$.array"), walkPaths(tree, NodeWalker.WalkTarget.CONTAINER, -1));
         assertEquals(Arrays.asList("$"), walkPaths(tree, NodeWalker.WalkTarget.OBJECT, -1));
         assertEquals(Arrays.asList("$.array"), walkPaths(tree, NodeWalker.WalkTarget.ARRAY, -1));
-        assertEquals(Arrays.asList("$.text", "$.array[0]"), walkPaths(tree, NodeWalker.WalkTarget.STRING, -1));
+        assertEquals(Arrays.asList("$.text", "$.unknown", "$.array[0]"), walkPaths(tree, NodeWalker.WalkTarget.STRING, -1));
         assertEquals(Arrays.asList("$.number"), walkPaths(tree, NodeWalker.WalkTarget.NUMBER, -1));
         assertEquals(Arrays.asList("$.boolean"), walkPaths(tree, NodeWalker.WalkTarget.BOOLEAN, -1));
         assertEquals(Arrays.asList("$.null"), walkPaths(tree, NodeWalker.WalkTarget.NULL, -1));
-        assertEquals(Arrays.asList("$.unknown"), walkPaths(tree, NodeWalker.WalkTarget.UNKNOWN, -1));
+        assertTrue(walkPaths(tree, NodeWalker.WalkTarget.UNKNOWN, -1).isEmpty());
         assertEquals(Arrays.asList("$.text", "$.number", "$.boolean", "$.null", "$.unknown", "$.array[0]"),
                 walkPaths(tree, NodeWalker.WalkTarget.VALUE, -1));
     }
