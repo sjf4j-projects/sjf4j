@@ -26,6 +26,8 @@ import java.util.Map;
 
 /** StreamingParser backed directly by a Fastjson2 {@link JSONReader}. */
 public final class Fastjson2Parser extends StreamingParser {
+    /** Experiment-only switch; true/false in separate JMH forks. */
+    private static final boolean EXP_SMALL_RAW_ARRAY = Boolean.getBoolean("sjf4j.test.smallRawArray");
 
     private final JSONReader reader;
     private Token peeked;
@@ -406,10 +408,37 @@ public final class Fastjson2Parser extends StreamingParser {
 
     private List<Object> _readRawArrayBody() throws IOException {
         reader.next();
+        if (EXP_SMALL_RAW_ARRAY) return _readRawArraySmall();
         List<Object> value = new ArrayList<>();
         while (!reader.nextIfArrayEnd()) {
             value.add(_readRaw());
         }
+        return value;
+    }
+
+    /** Experiment-only 0/1/2-value deferred allocation, same ArrayList semantics. */
+    private List<Object> _readRawArraySmall() throws IOException {
+        if (reader.nextIfArrayEnd()) return new ArrayList<>();
+        Object first = _readRaw();
+        if (reader.nextIfArrayEnd()) {
+            List<Object> value = new ArrayList<>(1);
+            value.add(first);
+            return value;
+        }
+        Object second = _readRaw();
+        if (reader.nextIfArrayEnd()) {
+            List<Object> value = new ArrayList<>(2);
+            value.add(first);
+            value.add(second);
+            return value;
+        }
+        // For >2 elements retain default ArrayList growth semantics.
+        List<Object> value = new ArrayList<>();
+        value.add(first);
+        value.add(second);
+        do {
+            value.add(_readRaw());
+        } while (!reader.nextIfArrayEnd());
         return value;
     }
 
