@@ -113,7 +113,7 @@ final class SchemaMethodGenerator {
                 SchemaCompiler compiler = new SchemaCompiler(context);
                 direct = compiler.compileObject(parameterType, bound.snapshot);
                 if (direct == null) direct = compiler.compileRoot(parameterType, bound.snapshot);
-                if (direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
+                if (isBoolean && direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
                     booleanLiteral = "false";
                     direct = null;
                 }
@@ -129,9 +129,7 @@ final class SchemaMethodGenerator {
         // The same checks serve both APIs; only their failure action differs.
         // Boolean branch helpers (oneOf/anyOf/not/if) still return boolean.
         final String failure = isVoid && bound != null
-                ? "throw new org.sjf4j.schema.ValidationException("
-                    + bound.rootReference() + ".validate(" + value + ", true, " + strictParam + "));"
-                : "return false;";
+                ? SchemaEmitter.DIAGNOSTIC_FAILURE : "return false;";
         List<String> emitted = direct == null ? null
                 : new SchemaEmitter(generated, "M" + methodSerial++).emitRoot(
                         direct, SchemaValue.of(context, parameterType), value, bound, strictParam,
@@ -139,12 +137,8 @@ final class SchemaMethodGenerator {
         if (fallback && emitted == null) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
         }
-        // Valid requireValid calls execute only generated checks. Diagnostics
-        // use the full SchemaPlan lazily, and only after a native check fails.
-        if (isVoid && (emitted != null || "false".equals(booleanLiteral))) {
-            bound.useRoot();
-        }
 
+        final String falseSchemaUri = bound == null ? null : bound.snapshot.selectedUri.split("#", 2)[0];
         final String literal = booleanLiteral;
         final List<String> checks = emitted;
         generated.addMethod(out -> {
@@ -156,7 +150,12 @@ final class SchemaMethodGenerator {
                        isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
             if (literal != null) {
                 if (isVoid) {
-                    if ("false".equals(literal)) out.line(failure);
+                    if ("false".equals(literal)) {
+
+                        out.line("throw org.sjf4j.schema.CompiledUtil.validationFailure("
+                                + "\"false\", " + SchemaEmitter.javaLiteral(falseSchemaUri)
+                                + ", \"\", org.sjf4j.path.PathSegment.Root.INSTANCE);");
+                    }
                 } else {
                     out.line("return " + literal + ";");
                 }

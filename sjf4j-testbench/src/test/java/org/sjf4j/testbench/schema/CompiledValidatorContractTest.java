@@ -139,6 +139,76 @@ class CompiledValidatorContractTest {
         assertFalse(validator.isValid(new Name("x"), true));
     }
 
+    public static final class ArrayHolder {
+        private final java.util.List<String> items;
+        public ArrayHolder(java.util.List<String> items) { this.items = items; }
+        public java.util.List<String> getItems() { return items; }
+    }
+
+    @CompiledValidator(fallback = false)
+    public interface NestedValidator {
+        @ValidJsonSchema("{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\","
+                + "\"items\":{\"oneOf\":[{\"type\":\"string\",\"minLength\":1},"
+                + "{\"type\":\"string\",\"minLength\":2}]}}}}")
+        void requireValid(ArrayHolder value);
+    }
+
+    @CompiledValidator(fallback = false)
+    public interface ConditionalValidator {
+        @ValidJsonSchema("{\"if\":{\"const\":\"x\"},\"then\":{\"const\":\"y\"},"
+                + "\"else\":{\"const\":\"z\"}}")
+        void requireValid(String value);
+    }
+
+    @Test
+    void conditionalFailureReportsSelectedBranch() {
+        ConditionalValidator validator = CompiledInstances.create(ConditionalValidator.class);
+        ValidationException ifTrue = assertThrows(ValidationException.class,
+                () -> validator.requireValid("x"));
+        ValidationException ifFalse = assertThrows(ValidationException.class,
+                () -> validator.requireValid("a"));
+        assertEquals("const", ifTrue.getResult().getLastError().getKeyword());
+        assertEquals("/then/const", ifTrue.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+        assertEquals("/else/const", ifFalse.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+    }
+
+    @CompiledValidator(fallback = true)
+    public interface FallbackValidator {
+        @ValidJsonSchema("{\"type\":\"object\",\"properties\":{\"nested\":{\"type\":\"object\","
+                + "\"patternProperties\":{\"^x\":{\"type\":\"number\"}}}}}")
+        void requireValid(java.util.Map<String, Object> value);
+    }
+
+    @Test
+    void trueFallbackPreservesParentInstancePath() {
+        FallbackValidator validator = CompiledInstances.create(FallbackValidator.class);
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.requireValid(java.util.Map.of("nested",
+                        java.util.Map.of("xName", "not a number"))));
+        assertEquals("/nested/xName", ex.getResult().getLastError().getInstancePs().rootedPointerExpr());
+    }
+
+    @Test
+    void nestedOneOfReportsArrayElementInsteadOfRevalidatingRoot() {
+        NestedValidator validator = CompiledInstances.create(NestedValidator.class);
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.requireValid(new ArrayHolder(java.util.List.of("ok"))));
+        assertEquals("oneOf", ex.getResult().getLastError().getKeyword());
+        assertEquals("/items/0", ex.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/properties/items/items/oneOf",
+                ex.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+    }
+
+    @Test
+    void directApplicatorFailureKeepsKeywordAndPosition() {
+        ApplicatorValidator validator = CompiledInstances.create(ApplicatorValidator.class);
+        ValidationException ex = assertThrows(ValidationException.class,
+                () -> validator.requireOneOf("abcdef"));
+        assertEquals("oneOf", ex.getResult().getLastError().getKeyword());
+        assertEquals("", ex.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/oneOf", ex.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+    }
+
     @Test
     void nativeRequireValidPreservesFullFailureDiagnostics() {
         DirectValidator validator = CompiledInstances.create(DirectValidator.class);
@@ -149,16 +219,14 @@ class CompiledValidatorContractTest {
         ValidationException failure = assertThrows(ValidationException.class,
                 () -> validator.requireValid(new Name("x")));
         assertFalse(failure.getResult().isValid());
-        SchemaPlan reference = JsonSchema.fromJson(
-                Name.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
-        ValidationException expected = assertThrows(ValidationException.class,
-                () -> reference.requireValid(new Name("x"), false));
-        assertEquals(expected.getResult().getErrors().size(),
-                failure.getResult().getErrors().size());
-        assertEquals(expected.getResult().getLastError().getKeyword(),
-                failure.getResult().getLastError().getKeyword());
-        assertEquals(expected.getResult().getLastError().getInstancePs().rootedPointerExpr(),
-                failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        // Compiled POJO access can identify the nested assertion precisely.
+        // Re-running the root runtime plan would instead report UNKNOWN type
+        // for an unregistered raw Java POJO and hide the compiled error.
+        assertEquals(1, failure.getResult().getErrors().size());
+        assertEquals("minLength", failure.getResult().getLastError().getKeyword());
+        assertEquals("/name", failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/properties/name/minLength",
+                failure.getResult().getLastError().getKeywordPs().rootedPointerExpr());
         assertThrows(ValidationException.class,
                 () -> validator.requireValid(new Name("x"), true));
     }

@@ -207,6 +207,7 @@ final class ObjectCompiler {
                 minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
                 maxProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "maxProperties"),
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
+                dependencies.isEmpty() ? null : SchemaCompiler.diagnostic(rootUri, "dependentRequired"),
                 Boolean.FALSE.equals(additional)
                         ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null);
     }
@@ -237,6 +238,10 @@ final class ObjectCompiler {
         NodeKind kind = context.types.nodeKind(type);
         // Scalar and array declarations cannot be treated as dynamic objects;
         // in particular their generated expressions may be primitive values.
+        // A codec-backed value is never a traversable object, even when its
+        // raw encoding is Map/List. Generate a JsonType.of guard for these
+        // declarations instead of treating them as static POJOs.
+        if (kind.isValueCodec()) return true;
         if (kind.isValue() || kind.isArray()) return false;
         if (kind != NodeKind.OBJECT_POJO) return true;
         TypeElement owner = context.types.typeElement(type);

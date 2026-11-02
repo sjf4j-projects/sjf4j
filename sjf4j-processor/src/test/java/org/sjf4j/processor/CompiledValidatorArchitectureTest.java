@@ -71,11 +71,12 @@ class CompiledValidatorArchitectureTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".codePointCount("), generated);
-        assertTrue(generated.contains("throw new ValidationException("), generated);
-        assertTrue(generated.contains(".ROOT.validate("), generated);
+        assertTrue(generated.contains("CompiledUtil.validationFailure("), generated);
+        assertFalse(generated.contains(".ROOT.validate("), generated);
+        assertFalse(generated.contains("private static final class PLAN_"), generated);
         assertFalse(generated.contains(".ROOT.requireValid("), generated);
-        // Unsupported assertions remain forbidden by fallback=false; only
-        // diagnostic reporting of a failed compiled assertion uses SchemaPlan.
+        // Unsupported assertions are forbidden by fallback=false.
+        // Direct failures create diagnostics without loading SchemaPlan.
     }
 
     @Test
@@ -95,7 +96,7 @@ class CompiledValidatorArchitectureTest {
         assertEquals(1, occurrences(generated, "new SchemaRegistry()"), generated);
         assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
         assertTrue(generated.contains("_matches_"), generated);
-        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
+        assertFalse(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
         // The String-typed method still needs the shared runtime plan; the
         // object-typed methods use compiled access to runtime properties.
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);

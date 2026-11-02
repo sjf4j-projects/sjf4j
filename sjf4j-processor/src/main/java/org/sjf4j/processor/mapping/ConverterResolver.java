@@ -725,11 +725,8 @@ public final class ConverterResolver {
         // @NodeValue-declared classes can expose a scalar raw shape without
         // becoming String/Number/Boolean Java representations themselves.
         if (kind == NodeKind.OBJECT_POJO) return types.isNodeValue(type) || metadata.hasValueCodec(type);
-        if (!types.isNodeValue(type)) return false;
-        return kind == NodeKind.UNKNOWN
-                || kind == NodeKind.VALUE_STRING
-                || kind == NodeKind.VALUE_NUMBER
-                || kind == NodeKind.VALUE_BOOLEAN;
+        return types.isNodeValue(type)
+                && (kind.isValueCodec() || kind == NodeKind.UNKNOWN);
     }
 
     private boolean isScalarConversion(TypeMirror source, TypeMirror target) {
@@ -786,38 +783,15 @@ public final class ConverterResolver {
     }
 
     private boolean isStringKind(NodeKind kind) {
-        switch (kind) {
-            case VALUE_STRING:
-            case VALUE_STRING_CHARACTER:
-            case VALUE_STRING_ENUM:
-            case VALUE_STRING_EXTERNAL:
-                return true;
-
-            default:
-                return false;
-        }
+        return kind.isString();
     }
 
     private boolean isNumberKind(NodeKind kind) {
-        switch (kind) {
-            case VALUE_NUMBER:
-            case VALUE_NUMBER_EXTERNAL:
-                return true;
-
-            default:
-                return false;
-        }
+        return kind.isNumber();
     }
 
     private boolean isBooleanKind(NodeKind kind) {
-        switch (kind) {
-            case VALUE_BOOLEAN:
-            case VALUE_BOOLEAN_EXTERNAL:
-                return true;
-
-            default:
-                return false;
-        }
+        return kind.isBoolean();
     }
 
     private boolean isContainerConversion(TypeMirror source, TypeMirror target) {
