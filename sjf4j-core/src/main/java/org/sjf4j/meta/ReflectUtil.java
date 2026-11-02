@@ -799,6 +799,11 @@ public final class ReflectUtil {
             argValueCodecs = new ValueInfo[params.length];
             argOneOfInfos = new OneOfInfo[params.length];
             for (int i = 0; i < params.length; i++) {
+                NodeProperty binding = params[i].getAnnotation(NodeProperty.class);
+                if (binding != null && !binding.bindingRead()) {
+                    throw new BindingException("creator parameters cannot use bindingRead=false in "
+                            + clazz.getName() + ": argument " + i);
+                }
                 String name = getExplicitName(params[i]);
                 if (name == null) {
                     if (params[i].isNamePresent()) {
