@@ -287,7 +287,8 @@ final class ReadEmitter {
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
                 // readRaw() may return Integer when the selected codec expects Long.
-                String codec = value.helperName();
+                String codec = names.field(value, "valueInfo",
+                        BindingNames.lowerType(value.type()) + "ValueInfo");
                 return "(" + value.type() + ") " + codec + ".rawToValue("
                         + raw + " instanceof Number && Number.class.isAssignableFrom(" + codec + ".rawClazz)"
                         + " ? " + numeric + "to((Number) " + raw + ", " + codec + ".rawClazz)"
