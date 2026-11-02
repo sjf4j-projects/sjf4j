@@ -9,7 +9,7 @@ final class CodecWriteEmitter {
     private CodecWriteEmitter() {}
 
     static void emit(JavaWriter out, BindingValue value, String expression,
-                     String generator, String nativeWriter, Backend backend) {
+                     String generator, String nativeWriter, Backend backend, BindingNames names) {
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
         out.beginBlock("if (codecValue == null)");
@@ -17,7 +17,7 @@ final class CodecWriteEmitter {
         out.endBlock(" else {");
         out.indent();
 
-        String info = value.helperName();
+        String info = names.field(value, "valueInfo", BindingNames.lowerType(value.type()) + "ValueInfo");
         out.beginBlock("if (" + info + ".streamGenerator != null)");
         out.line(info + ".streamGenerator.write(" + generator + ", codecValue);");
         out.endBlock(" else {");
