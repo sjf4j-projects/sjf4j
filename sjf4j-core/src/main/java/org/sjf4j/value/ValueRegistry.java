@@ -231,9 +231,8 @@ public final class ValueRegistry {
      * Character and Void, which are not valid codec raw declarations.
      */
     private static boolean supportedCodecRaw(Class<?> raw) {
-        return raw == String.class || Number.class.isAssignableFrom(raw)
-                || raw == Boolean.class || Map.class.isAssignableFrom(raw)
-                || List.class.isAssignableFrom(raw);
+        return raw == String.class || Number.class.isAssignableFrom(raw) || raw == Boolean.class 
+                || raw == Map.class || raw == List.class;
     }
 
     private static void validateRegistration(ValueInfo valueInfo) {
