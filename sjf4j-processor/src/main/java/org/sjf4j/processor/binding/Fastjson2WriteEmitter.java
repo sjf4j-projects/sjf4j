@@ -368,7 +368,7 @@ final class Fastjson2WriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, generator, raw, Backend.FASTJSON2);
+                CodecWriteEmitter.emit(out, value, expression, generator, raw, Backend.FASTJSON2, writes.naming());
                 return;
             case RUNTIME:
             case JSON_OBJECT:
