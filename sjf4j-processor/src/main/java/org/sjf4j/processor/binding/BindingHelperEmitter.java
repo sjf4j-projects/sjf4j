@@ -13,11 +13,13 @@ final class BindingHelperEmitter {
     private final ProcessorContext context;
     private final ReadEmitter reads;
     private final WriteEmitter writes;
+    private final BindingNames names;
 
-    BindingHelperEmitter(ProcessorContext context, ReadEmitter reads, WriteEmitter writes) {
+    BindingHelperEmitter(ProcessorContext context, ReadEmitter reads, WriteEmitter writes, BindingNames names) {
         this.context = context;
         this.reads = reads;
         this.writes = writes;
+        this.names = names;
     }
 
     void emit(BindingValue value, GeneratedClass generated) {
