@@ -1800,18 +1800,6 @@ final class PathEmitter {
         return out.toString();
     }
 
-    private NameAllocator names(
-            ExecutableElement method) {
-
-        NameAllocator names = new NameAllocator();
-
-        for (VariableElement parameter : method.getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
-        }
-
-        return names;
-    }
-
     /*
      * --------------------------------------------------------------
      * Return Values
