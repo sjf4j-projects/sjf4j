@@ -19,6 +19,9 @@ import java.util.Map;
 
 /** StreamingParser backed directly by a Gson {@link JsonReader}. */
 public final class GsonParser extends StreamingParser {
+    /** Benchmark-only; JIT-constant property set per independent JMH fork. */
+    private static final boolean EXP_SMALL_RAW_MAP = Boolean.getBoolean("sjf4j.test.smallRawMap");
+
 
     private final JsonReader reader;
 
@@ -235,6 +238,7 @@ public final class GsonParser extends StreamingParser {
     }
 
     private Map<String, Object> _readRawObject() throws IOException {
+        if (EXP_SMALL_RAW_MAP) return _experimentalSmallRawMap();
         Map<String, Object> value = new LinkedHashMap<>();
         reader.beginObject();
         while (reader.hasNext()) {
@@ -242,6 +246,41 @@ public final class GsonParser extends StreamingParser {
         }
         reader.endObject();
         return value;
+    }
+
+    
+    /** Benchmark-only; defer map allocation and size for 0/1/2 entries. */
+    private Map<String, Object> _experimentalSmallRawMap() throws IOException {
+        reader.beginObject();
+        if (!reader.hasNext()) {
+            reader.endObject();
+            return new LinkedHashMap<>();
+        }
+        String n0 = reader.nextName();
+        Object v0 = readRaw();
+        if (!reader.hasNext()) {
+            reader.endObject();
+            LinkedHashMap<String, Object> m = new LinkedHashMap<>(2);
+            m.put(n0, v0);
+            return m;
+        }
+        String n1 = reader.nextName();
+        Object v1 = readRaw();
+        if (!reader.hasNext()) {
+            reader.endObject();
+            LinkedHashMap<String, Object> m = new LinkedHashMap<>(4);
+            m.put(n0, v0);
+            m.put(n1, v1);
+            return m;
+        }
+        LinkedHashMap<String, Object> m = new LinkedHashMap<>();
+        m.put(n0, v0);
+        m.put(n1, v1);
+        do {
+            m.put(reader.nextName(), readRaw());
+        } while (reader.hasNext());
+        reader.endObject();
+        return m;
     }
 
     private List<Object> _readRawArray() throws IOException {
