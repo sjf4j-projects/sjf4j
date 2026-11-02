@@ -46,7 +46,7 @@ abstract class SchemaCheck {
         return kind == Kind.FALLBACK;
     }
 
-    /** Proven disjoint subtype checks plus a generic branch predicate for unknown classes. */
+    /** Complete typed oneOf branch predicates, with optional runtime-guarded dispatch. */
     static final class OneOfCheck extends SchemaCheck {
         final String uri;
         final List<Subtype> subtypes;
@@ -62,10 +62,22 @@ abstract class SchemaCheck {
 
         static final class Subtype {
             final String type;
-            final ObjectCheck check;
-            Subtype(String type, ObjectCheck check) {
+            final SchemaValue value;
+            final GenericOneOfCheck check;
+            // Present only if the schema proves mutually exclusive discriminator
+            // values and a direct, JSON-visible accessor is available.
+            final String discriminatorAccess;
+            final String discriminatorValue;
+            final int guardedBranch;
+
+            Subtype(String type, SchemaValue value, GenericOneOfCheck check,
+                    String discriminatorAccess, String discriminatorValue, int guardedBranch) {
                 this.type = type;
+                this.value = value;
                 this.check = check;
+                this.discriminatorAccess = discriminatorAccess;
+                this.discriminatorValue = discriminatorValue;
+                this.guardedBranch = guardedBranch;
             }
         }
     }

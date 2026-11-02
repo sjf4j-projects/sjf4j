@@ -20,10 +20,10 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Compiles each schema branch against the declared Java type first. If a
- * discriminator and constant subtype property prove disjointness, also emits
- * specialized checks for the surviving branch/type combinations. Unknown
- * runtime classes use the generic compiled branches when available.
+ * Compiles each schema branch against the declared Java type first.
+ * Known concrete @OneOf subtypes get their own complete oneOf branch set;
+ * provably incompatible constant discriminators prune individual branches.
+ * Unknown runtime classes retain the generic compiled oneOf branch counting.
  */
 final class OneOfCompiler {
     private final ProcessorContext context;
@@ -42,8 +42,10 @@ final class OneOfCompiler {
             if (!key.equals("oneOf") && !SchemaCompiler.isAnnotation(key)) return null;
         }
         SchemaCheck generic = compileGeneric(snapshot, schema, value, uri, depth);
-        SchemaCheck specialized = compileSpecialized(snapshot, schema, value, uri, depth,
-                (SchemaCheck.GenericOneOfCheck) generic);
+        SchemaCheck specialized = generic instanceof SchemaCheck.GenericOneOfCheck
+                ? compileSpecialized(snapshot, schema, value, uri, depth,
+                        (SchemaCheck.GenericOneOfCheck) generic)
+                : null;
         return specialized != null ? specialized : generic;
     }
 
@@ -70,7 +72,7 @@ final class OneOfCompiler {
     private SchemaCheck compileSpecialized(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
                         SchemaValue value, String uri, int depth,
                         SchemaCheck.GenericOneOfCheck generic) {
-        if (value.type == null || depth >= 8) return null;
+        if (value.type == null || depth >= 8 || generic == null) return null;
         TypeElement parent = context.types.typeElement(value.type);
         if (parent == null) return null;
         OneOf mapping = parent.getAnnotation(OneOf.class);
@@ -80,49 +82,86 @@ final class OneOfCompiler {
         Object candidates = schema.getNode("oneOf");
         if (JsonType.of(candidates) != JsonType.ARRAY) return null;
         int count = Nodes.sizeInArray(candidates);
-        if (count < 2 || count != mapping.mappings().length) return null;
+        if (count < 2 || mapping.mappings().length == 0) return null;
 
         String discriminator = mapping.discriminatorKey();
-        List<SchemaCheck.OneOfCheck.Subtype> compiled = new ArrayList<>();
-        Set<String> values = new HashSet<>();
+        // The schema itself (not @OneOfMapping) must prove that exactly one
+        // branch can match any given discriminator. Any unknown/overlapping
+        // branch disables guarded dispatch, not generic oneOf compilation.
+        String[] schemaValues = new String[count];
+        Set<String> distinctValues = new HashSet<>();
+        boolean disjoint = true;
         for (int i = 0; i < count; i++) {
-            String childUri = SchemaCompiler.childUri(uri, "oneOf", i);
-            Object raw = Nodes.getInArray(candidates, i);
-            if (JsonType.of(raw) != JsonType.OBJECT) return null;
-            JsonObject ref = Nodes.toJsonObject(raw);
-            SchemaCompiler.RefTarget target = SchemaCompiler.resolveRef(snapshot, ref, childUri);
-            if (target == null || JsonType.of(target.value) != JsonType.OBJECT) return null;
-            JsonObject branch = Nodes.toJsonObject(target.value);
+            String expected = schemaDiscriminator(snapshot,
+                    Nodes.getInArray(candidates, i),
+                    SchemaCompiler.childUri(uri, "oneOf", i), discriminator);
+            if (expected == null || !distinctValues.add(expected)) {
+                disjoint = false;
+                break;
+            }
+            schemaValues[i] = expected;
+        }
+        List<SchemaCheck.OneOfCheck.Subtype> compiled = new ArrayList<>();
+        Set<String> seenTypes = new HashSet<>();
+        for (OneOfMapping candidate : mapping.mappings()) {
+            TypeMirror subtype = mappedType(candidate);
+            if (subtype == null || !seenTypes.add(subtype.toString())) return null;
+            TypeElement owner = context.types.typeElement(subtype);
+            // Generated code has to reference and cast the exact concrete type.
+            if (owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)
+                    || !owner.getModifiers().contains(Modifier.FINAL)) return null;
+            for (javax.lang.model.element.Element enclosing = owner.getEnclosingElement();
+                    enclosing instanceof TypeElement; enclosing = enclosing.getEnclosingElement()) {
+                if (!enclosing.getModifiers().contains(Modifier.PUBLIC)) return null;
+            }
 
-            String expected = requiredDiscriminator(branch, discriminator);
-            if (expected == null || !values.add(expected)) return null;
-
-            OneOfMapping candidate = null;
-            for (OneOfMapping declared : mapping.mappings()) {
-                if (declared.when().length == 1 && expected.equals(declared.when()[0])) {
-                    if (candidate != null) return null;
-                    candidate = declared;
+            SchemaValue subtypeValue = SchemaValue.of(context, subtype);
+            String constant = publicConstant(subtype, discriminator);
+            List<SchemaCheck> branches = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                String childUri = SchemaCompiler.childUri(uri, "oneOf", i);
+                Object raw = Nodes.getInArray(candidates, i);
+                // Only prune when we can prove the JSON-visible discriminator
+                // is a constant and the branch requires a different value.
+                String expected = constant == null ? null
+                        : schemaDiscriminator(snapshot, raw, childUri, discriminator);
+                if (expected != null && !expected.equals(constant)) {
+                    branches.add(new SchemaCheck.Reject(SchemaCompiler.diagnostic(childUri, "oneOf")));
+                    continue;
+                }
+                SchemaCheck check = compiler.compileValue(snapshot, raw, subtypeValue, childUri, depth + 1);
+                // Never silently drop an uncompiled branch: that would change
+                // oneOf's exactly-one-match semantics.
+                if (check == null || check.hasFallback()) return null;
+                branches.add(check);
+            }
+            String guardAccess = null;
+            String guardValue = null;
+            int guardIndex = -1;
+            if (disjoint && candidate.when().length == 1) {
+                String expected = candidate.when()[0];
+                for (int i = 0; i < count; i++) {
+                    if (!expected.equals(schemaValues[i])) continue;
+                    Property property = context.properties.resolve(subtype).get(discriminator);
+                    if (property != null && property.read() != null && !property.explicitCodec()) {
+                        PropertyAccess access = property.read();
+                        javax.lang.model.element.Element member = access.member();
+                        if (member.getModifiers().contains(Modifier.PUBLIC)
+                                && !member.getModifiers().contains(Modifier.STATIC)
+                                && member.getAnnotation(org.sjf4j.annotation.node.NodeIgnore.class) == null
+                                && "java.lang.String".equals(access.type().toString())) {
+                            guardAccess = access.memberName() + (access.isMethod() ? "()" : "");
+                            guardValue = expected;
+                            guardIndex = i;
+                        }
+                    }
+                    break;
                 }
             }
-            if (candidate == null) return null;
-
-            TypeMirror subtype = mappedType(candidate);
-            if (subtype == null || !expected.equals(publicConstant(subtype, discriminator))) return null;
-            String branchUri = SchemaCompiler.effectiveSchemaUri(target.uri, branch);
-            SchemaCheck candidateCheck =
-                    objects.compileNested(subtype, snapshot, branch, branchUri, depth + 1);
-            if (!(candidateCheck instanceof SchemaCheck.ObjectCheck)) return null;
-            SchemaCheck.ObjectCheck check = (SchemaCheck.ObjectCheck) candidateCheck;
-            // A constant discriminator proves a schema branch only when the
-            // complete runtime-visible projection matches the static POJO
-            // view. Hidden/ignored properties switch to dynamic access, so
-            // those types must retain generic oneOf branch counting.
-            if (check.dynamic) return null;
-            // A surviving branch/type combination must compile completely.
-            // Unmapped runtime types use generic branches (or SchemaPlan if
-            // their declared-type compilation is unavailable).
-            if (check == null || check.hasFallback()) return null;
-            compiled.add(new SchemaCheck.OneOfCheck.Subtype(subtype.toString(), check));
+            compiled.add(new SchemaCheck.OneOfCheck.Subtype(subtype.toString(),
+                    subtypeValue, new SchemaCheck.GenericOneOfCheck(
+                    SchemaCompiler.diagnostic(uri, "oneOf"), branches),
+                    guardAccess, guardValue, guardIndex));
         }
         return new SchemaCheck.OneOfCheck(uri,
                 SchemaCompiler.diagnostic(uri, "oneOf"), compiled, generic);
@@ -146,7 +185,7 @@ final class OneOfCompiler {
             if (!enclosing.getModifiers().contains(Modifier.PUBLIC)) return null;
         }
         Property property = context.properties.resolve(subtype).get(name);
-        if (property == null || property.read() == null) return null;
+        if (property == null || property.read() == null || property.explicitCodec()) return null;
         PropertyAccess access = property.read();
         if (!(access.member() instanceof VariableElement)
                 || !access.member().getModifiers().contains(Modifier.PUBLIC)
@@ -154,6 +193,18 @@ final class OneOfCompiler {
                 || access.member().getModifiers().contains(Modifier.STATIC)) return null;
         Object constant = ((VariableElement) access.member()).getConstantValue();
         return constant instanceof String ? (String) constant : null;
+    }
+
+    private static String schemaDiscriminator(SchemaResourceResolver.Snapshot snapshot,
+                    Object raw, String uri, String discriminator) {
+        if (JsonType.of(raw) != JsonType.OBJECT) return null;
+        JsonObject object = Nodes.toJsonObject(raw);
+        if (object.containsKey("$ref")) {
+            SchemaCompiler.RefTarget target = SchemaCompiler.resolveRef(snapshot, object, uri);
+            if (target == null || JsonType.of(target.value) != JsonType.OBJECT) return null;
+            object = Nodes.toJsonObject(target.value);
+        }
+        return requiredDiscriminator(object, discriminator);
     }
 
     private static String requiredDiscriminator(JsonObject branch, String name) {

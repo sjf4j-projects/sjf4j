@@ -78,6 +78,18 @@ public final class PropertyResolver {
 
         Map<String, Builder> builders = new LinkedHashMap<>();
 
+        // Runtime POJO metadata groups a field and its JavaBean getter into
+        // one property family. Carry the field's @NodeProperty metadata to
+        // its public getter, even when the backing field is private.
+        Map<String, VariableElement> annotatedFields = new LinkedHashMap<>();
+        for (Element member : elements.getAllMembers(type)) {
+            if (member.getKind() == ElementKind.FIELD
+                    && member.getAnnotation(NodeProperty.class) != null
+                    && !member.getModifiers().contains(Modifier.STATIC)) {
+                annotatedFields.putIfAbsent(member.getSimpleName().toString(), (VariableElement) member);
+            }
+        }
+
         for (Element member : elements.getAllMembers(type)) {
             if (jojo && isJsonBaseMember(member)) continue;
 
@@ -91,7 +103,7 @@ public final class PropertyResolver {
             if (member.getKind() == ElementKind.FIELD) {
                 addField(builders, type, declaredOwner, (VariableElement) member);
             } else if (member.getKind() == ElementKind.METHOD) {
-                addMethod(builders, type, declaredOwner, (ExecutableElement) member);
+                addMethod(builders, type, declaredOwner, (ExecutableElement) member, annotatedFields);
             }
         }
 
@@ -148,7 +160,8 @@ public final class PropertyResolver {
             Map<String, Builder> builders,
             TypeElement type,
             DeclaredType owner,
-            ExecutableElement method) {
+            ExecutableElement method,
+            Map<String, VariableElement> annotatedFields) {
 
         ExecutableType resolved = (ExecutableType) typeUtils.asMemberOf(owner, method);
         String explicitName = annotations.explicitPropertyName(method);
@@ -168,10 +181,14 @@ public final class PropertyResolver {
             String baseName = getterPropertyName(type, method, resolved.getReturnType());
 
             if (explicitName != null || baseName != null) {
-                String propertyName = explicitName == null ? baseName : explicitName;
-                int priority = priority(explicitName != null, true);
+                VariableElement backing = baseName == null ? null : annotatedFields.get(baseName);
+                String fieldName = backing == null ? null : annotations.explicitPropertyName(backing);
+                String propertyName = explicitName != null ? explicitName
+                        : fieldName != null ? fieldName : baseName;
+                int priority = priority(explicitName != null || backing != null, true);
 
                 Builder property = builder(builders, propertyName, type);
+                if (backing != null) property.recordCodec(backing);
                 property.recordCodec(method);
                 property.offerRead(new PropertyAccess(method, resolved.getReturnType()), priority);
             }
