@@ -99,7 +99,7 @@ public final class PropertyInfo {
         this.settable = setterHandle != null || setterLambda != null;
 
         this.parser = PropertyParser.create(name, type, boxed, genericDependent, oneOfInfo,
-                setterHandle, setterLambda, valueInfo, typeInfo, contentTypeInfo, lookup);
+                setterHandle, setterLambda, valueInfo, contentType, contentClass, typeInfo, contentTypeInfo, lookup);
     }
 
     /** Avoid unnecessary cached wrappers for directly dispatched scalar and Object types. */
