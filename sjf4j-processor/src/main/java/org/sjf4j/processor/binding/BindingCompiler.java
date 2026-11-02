@@ -924,8 +924,8 @@ final class BindingCompiler {
         for (int i = 0; i < args.size(); i++) {
             VariableElement arg = args.get(i);
             NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
-            if (annotation != null && (!annotation.bindingRead() || !annotation.bindingWrite())) {
-                error(method, generated, "creator parameters cannot disable binding directions: " + value.type());
+            if (annotation != null && !annotation.bindingRead()) {
+                error(method, generated, "creator parameters cannot use bindingRead=false: " + value.type());
                 return false;
             }
             String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
@@ -1030,8 +1030,8 @@ final class BindingCompiler {
         for (int i = 0; i < args.size(); i++) {
             VariableElement arg = args.get(i);
             NodeProperty annotation = arg.getAnnotation(NodeProperty.class);
-            if (annotation != null && (!annotation.bindingRead() || !annotation.bindingWrite())) {
-                error(method, generated, "creator parameters cannot disable binding directions: " + value.type());
+            if (annotation != null && !annotation.bindingRead()) {
+                error(method, generated, "creator parameters cannot use bindingRead=false: " + value.type());
                 return false;
             }
             String name = context.annotations.propertyName(arg, arg.getSimpleName().toString());
