@@ -537,7 +537,7 @@ public final class StreamingIO {
             }
 
             PropertyInfo property = pojoInfo.creatorMatchProperties[index];
-            if (property == null) {
+            if (property == null || !property.bindingRead) {
                 parser.skipNode();
                 continue;
             }
