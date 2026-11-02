@@ -44,6 +44,10 @@ class PropertyStrategyBindingTest {
         assertNotNull(info.propertyLookup.get("serverId"));
         assertTrue(info.propertyLookup.get("password").settable);
         assertTrue(info.propertyLookup.get("password").gettable);
+        assertTrue(Arrays.stream(info.gettableProperties)
+                .anyMatch(property -> property.name.equals("password")));
+        assertFalse(Arrays.stream(info.bindingGettableProperties)
+                .anyMatch(property -> property.name.equals("password")));
     }
 
     static class DefaultBeanFieldPojo {
