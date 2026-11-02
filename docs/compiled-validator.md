@@ -96,10 +96,12 @@ or annotation processing fails. Set `fallback = true` explicitly to allow
 Methods returning `ValidationResult` always use runtime `SchemaPlan.validate`
 for complete diagnostics, and therefore **require `fallback = true`**.
 Otherwise annotation processing reports an explicit error. Unsupported assertions never silently
-fall back to `SchemaPlan`. For `void requireValid`, successfully compiled
-assertions run natively, while a **failed assertion only** invokes the shared
-`SchemaPlan` to materialize the original keyword and instance-path diagnostics.
-No `SchemaPlan` evaluation occurs on the valid fast path. The restriction
+fall back to `SchemaPlan`. For `void requireValid`, compiled assertions emit
+fail-fast guards and construct a single `ValidationResult.Message` with the
+keyword, schema URI/pointer and instance path **only on failure**. They never
+revalidate the root through `SchemaPlan`. Explicitly permitted unsupported
+subtrees use their own `SchemaPlan.requireValid` once. Aggregated
+`ValidationResult` methods continue to use the runtime engine. The restriction
 applies to both return types and keyword combinations, not only to isolated
 keywords.
 
@@ -243,9 +245,13 @@ The root may contain `type:object`, `properties`, `required`,
 | `unevaluatedProperties`, `unevaluatedItems` | No | Yes |
 | Root metadata (`$schema`, `title`, etc.) | Accepted when non-applicative | Yes |
 
-**Conformance boundary:** direct value checks are selected only for known
-native Java value shapes; custom `@NodeValue`/codec types remain on the full
-runtime path. Unsupported properties fall back as whole subtrees, not partial
+**Conformance boundary:** direct scalar checks are fastest for native Java
+shapes. Dynamically typed checks use `JsonType.of(value)`, including the default
+scalar shape of `@NodeValue`/ValueCodec types. Map/List-backed ValueCodecs remain
+opaque leaves (`UNKNOWN`) and are never traversed as structural nodes. Selected
+RuntimeContext formats are not consulted by `JsonType.of()`; validation of
+codec-converted values still uses runtime fallback where direct conversion is
+not supported. Unsupported properties fall back as whole subtrees, not partial
 predicates. Array `items` are traversed recursively: a supported item's
 constraints compile directly; an unsupported subtree uses a cached item plan.
 Local and classpath/file resource JSON Pointer `$ref` targets are resolved

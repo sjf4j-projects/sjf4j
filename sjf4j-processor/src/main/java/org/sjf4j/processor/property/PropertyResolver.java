@@ -1,6 +1,7 @@
 package org.sjf4j.processor.property;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.processor.annotation.NodeAnnotations;
 import org.sjf4j.processor.type.TypeSystem;
 import org.sjf4j.util.Asserts;
@@ -101,7 +102,8 @@ public final class PropertyResolver {
 
             result.put(entry.getKey(), new Property(entry.getKey(),
                     builder.read == null ? null : builder.read.access,
-                    builder.write == null ? null : builder.write.access));
+                    builder.write == null ? null : builder.write.access,
+                    builder.valueFormat, builder.valuePattern));
         }
 
         Map<String, Property> resolved = Collections.unmodifiableMap(result);
@@ -132,8 +134,9 @@ public final class PropertyResolver {
         TypeMirror fieldType = typeUtils.asMemberOf(owner, field);
         PropertyAccess access = new PropertyAccess(field, fieldType);
 
-        builder(builders, propertyName, type)
-                .offerRead(access, priority);
+        Builder property = builder(builders, propertyName, type);
+        property.recordCodec(field);
+        property.offerRead(access, priority);
 
         if (!field.getModifiers().contains(Modifier.FINAL)) {
             builder(builders, propertyName, type)
@@ -168,8 +171,9 @@ public final class PropertyResolver {
                 String propertyName = explicitName == null ? baseName : explicitName;
                 int priority = priority(explicitName != null, true);
 
-                builder(builders, propertyName, type)
-                        .offerRead(new PropertyAccess(method, resolved.getReturnType()), priority);
+                Builder property = builder(builders, propertyName, type);
+                property.recordCodec(method);
+                property.offerRead(new PropertyAccess(method, resolved.getReturnType()), priority);
             }
         }
 
@@ -191,9 +195,10 @@ public final class PropertyResolver {
                 String propertyName = explicitName == null ? baseName : explicitName;
                 int priority = priority(explicitName != null, true);
 
-                builder(builders, propertyName, type)
-                        .offerWrite(new PropertyAccess(method, resolved.getParameterTypes().get(0)),
-                                priority);
+                Builder property = builder(builders, propertyName, type);
+                property.recordCodec(method);
+                property.offerWrite(new PropertyAccess(method, resolved.getParameterTypes().get(0)),
+                        priority);
             }
         }
     }
@@ -321,6 +326,27 @@ public final class PropertyResolver {
 
         Candidate read;
         Candidate write;
+        String valueFormat;
+        String valuePattern;
+
+        void recordCodec(Element member) {
+            NodeProperty annotation = member.getAnnotation(NodeProperty.class);
+            if (annotation == null) return;
+            if (!NodeProperty.VALUE_FORMAT_UNSET.equals(annotation.valueFormat())) {
+                if (valueFormat == null) valueFormat = annotation.valueFormat();
+                else if (!valueFormat.equals(annotation.valueFormat())) {
+                    messager.printMessage(Diagnostic.Kind.ERROR,
+                            "conflicting valueFormat for property '" + name + "'", member);
+                }
+            }
+            if (!annotation.valuePattern().isEmpty()) {
+                if (valuePattern == null) valuePattern = annotation.valuePattern();
+                else if (!valuePattern.equals(annotation.valuePattern())) {
+                    messager.printMessage(Diagnostic.Kind.ERROR,
+                            "conflicting valuePattern for property '" + name + "'", member);
+                }
+            }
+        }
 
         Builder(TypeElement owner, String name) {
             this.owner = owner;

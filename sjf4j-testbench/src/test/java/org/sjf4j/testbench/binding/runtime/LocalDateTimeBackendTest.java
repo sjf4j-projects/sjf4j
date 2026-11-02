@@ -21,10 +21,10 @@ class LocalDateTimeBackendTest {
     public static class Times {
         public LocalDateTime iso;
 
-        @NodeProperty(codecPattern = "yyyy/MM/dd HH.mm.ss")
+        @NodeProperty(valuePattern = "yyyy/MM/dd HH.mm.ss")
         public LocalDateTime custom;
 
-        @NodeProperty(codecName = "iso", codecPattern = "dd-MM-yyyy HH:mm")
+        @NodeProperty(valueFormat = "iso", valuePattern = "dd-MM-yyyy HH:mm")
         public LocalDateTime patternOverridesFormat;
     }
 

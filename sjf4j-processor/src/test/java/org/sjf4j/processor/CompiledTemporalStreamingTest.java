@@ -46,14 +46,14 @@ class CompiledTemporalStreamingTest {
                             + " public LocalDate date;"
                             + " public LocalTime time;"
                             + " public LocalDateTime dateTime;"
-                            + " @NodeProperty(codecPattern=\"yyyy/MM/dd\") public LocalDate patternDate;"
+                            + " @NodeProperty(valuePattern=\"yyyy/MM/dd\") public LocalDate patternDate;"
                             + " public Instant instant;"
                             + " public OffsetDateTime offsetDateTime;"
                             + " public ZonedDateTime zonedDateTime;"
                             + " public OffsetTime offsetTime;"
                             + " public java.util.Date legacyDate;"
                             + " public java.util.Calendar calendar;"
-                            + " @NodeProperty(codecPattern=\"yyyy/MM/dd HH:mm:ssXXX\")"
+                            + " @NodeProperty(valuePattern=\"yyyy/MM/dd HH:mm:ssXXX\")"
                             + " public OffsetDateTime patternOffset;"
                             + "}");
             sources.put("fixture/Binder.java",

@@ -21,7 +21,7 @@ class OffsetDateTimeBackendTest {
     public static class Values {
         public OffsetDateTime timestamp;
 
-        @NodeProperty(codecPattern = "yyyy/MM/dd HH:mm:ss XXX")
+        @NodeProperty(valuePattern = "yyyy/MM/dd HH:mm:ss XXX")
         public OffsetDateTime custom;
     }
 

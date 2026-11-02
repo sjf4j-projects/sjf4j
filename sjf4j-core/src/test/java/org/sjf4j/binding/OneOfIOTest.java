@@ -439,8 +439,8 @@ class OneOfIOTest {
     }
     @OneOf(mappings = {@OneOfMapping(type = CodecDog.class, when = "dog")}, discriminatorKey = "kind")
     static class CodecAnimal extends JsonObject {
-        @NodeProperty(codecName = "epochMillis") public Instant createdAt;
-        @NodeProperty(codecName = "") public NullCode marker;
+        @NodeProperty(valueFormat = "epochMillis") public Instant createdAt;
+        @NodeProperty(valueFormat = "") public NullCode marker;
     }
     static class CodecDog extends CodecAnimal {}
     @NodeValue

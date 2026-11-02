@@ -7,6 +7,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.property.Property;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -175,6 +176,9 @@ final class ObjectCompiler {
         }
 
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
+        // Includes built-in formats; unresolved runtime registrations stay dynamic.
+        CompiledMetadata codecMetadata = dynamic ? null
+                : context.metadata(context.types.typeElement(type));
         int directCount = (typeRequired && propertyMap.isEmpty() ? 1 : 0)
                 + (required != null ? 1 : 0)
                 + (!dependencies.isEmpty() ? 1 : 0)
@@ -187,11 +191,23 @@ final class ObjectCompiler {
             String access = property == null ? null
                     : property.read().memberName() + (property.read().isMethod() ? "()" : "");
             String uri = childPointer(rootUri, "properties", name);
-            SchemaValue value = SchemaValue.of(context, declared);
-            SchemaCheck check = schemaCompiler.compileValue(snapshot, propertyMap.getNode(name), value, uri, depth + 1);
+            boolean explicitCodec = property != null && property.explicitCodec();
+            Object propertySchema = propertyMap.getNode(name);
+            // Property-specific codecs override type defaults. Compile scalar
+            // assertions against their raw encoding, not the Java domain type.
+            // Structural keywords must remain on the original parent path:
+            // a codec's raw Map/List is an atomic value, not an OBNT container.
+            if (explicitCodec && !supportsCodecProperty(propertySchema)) return null;
+            SchemaValue value = explicitCodec
+                    ? encodedValue(declared, property, codecMetadata)
+                    : SchemaValue.of(context, declared);
+            SchemaCheck check = schemaCompiler.compileValue(snapshot, propertySchema, value, uri, depth + 1);
+            // A fallback on just the child value loses @NodeProperty codec selection.
+            if (explicitCodec && (check == null || check.hasFallback())) return null;
             if (check == null) check = new SchemaCheck.Fallback(uri);
             else directCount++;
-            properties.add(new SchemaCheck.PropertyCheck(name, access, value, check));
+            properties.add(new SchemaCheck.PropertyCheck(name, access, value, check,
+                    explicitCodec ? context.typeUtils.erasure(type).toString() : null));
         }
         if (directCount == 0) return root.containsKey("dependentRequired")
                 ? new SchemaCheck.Pass() : null;
@@ -207,6 +223,7 @@ final class ObjectCompiler {
                 minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
                 maxProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "maxProperties"),
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
+                dependencies.isEmpty() ? null : SchemaCompiler.diagnostic(rootUri, "dependentRequired"),
                 Boolean.FALSE.equals(additional)
                         ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null);
     }
@@ -226,6 +243,75 @@ final class ObjectCompiler {
     }
 
     /**
+     * Select the raw scalar shape at compile time when the codec declaration
+     * proves it. Unknown/runtime-installed codecs continue through DYNAMIC.
+     * Map/List raw types are never converted into structural SchemaValue shapes.
+     */
+    private SchemaValue encodedValue(TypeMirror domain, Property property, CompiledMetadata metadata) {
+        if (domain == null) return SchemaValue.of(context, null);
+        TypeMirror raw = null;
+        if (metadata != null) {
+            // A pattern always selects the default codec, regardless of valueFormat.
+            String format = property.valuePattern() == null ? property.valueFormat() : null;
+            org.sjf4j.processor.discovery.ValueCodecMetadata codec = metadata.valueCodec(domain, format);
+            if (codec != null) raw = codec.rawType;
+        }
+        if (raw == null && context.types.isNodeValue(domain)) {
+            // Only @NodeValue's own encoder has a statically declared raw type.
+            // A named alternative cannot be inferred from that default encoder.
+            if (property.valuePattern() == null
+                    && (property.valueFormat() == null || property.valueFormat().isEmpty())) {
+                raw = context.types.nodeValueRawType(domain);
+            }
+        }
+        if (raw != null && !raw.getKind().isPrimitive()) {
+            SchemaValue value = SchemaValue.of(context, raw);
+            if ((value.shape == SchemaValue.Shape.STRING
+                    && "java.lang.String".equals(raw.toString()))
+                    || value.shape == SchemaValue.Shape.NUMBER
+                    || value.shape == SchemaValue.Shape.BOOLEAN) {
+                return value;
+            }
+        }
+        return SchemaValue.of(context, null);
+    }
+
+    /**
+     * A raw encoded value can be inspected with scalar/literal checks.
+     * Object/array applicators on it must be evaluated by the parent SchemaPlan,
+     * which preserves the property's ValueInfo and its atomic leaf semantics.
+     */
+    private static boolean supportsCodecProperty(Object source) {
+        if (source instanceof Boolean) return true;
+        if (JsonType.of(source) != JsonType.OBJECT) return false;
+        JsonObject schema = Nodes.toJsonObject(source);
+        for (String key : schema.keySet()) {
+            if (SchemaCompiler.isAnnotation(key)) continue;
+            switch (key) {
+                case "type":
+                    Object rawType = schema.getNode(key);
+                    if (rawType instanceof String) {
+                        if ("object".equals(rawType) || "array".equals(rawType)) return false;
+                    } else if (JsonType.of(rawType) == JsonType.ARRAY) {
+                        for (int i = 0; i < Nodes.sizeInArray(rawType); i++) {
+                            Object item = Nodes.getInArray(rawType, i);
+                            if (!(item instanceof String) || "object".equals(item)
+                                    || "array".equals(item)) return false;
+                        }
+                    } else return false;
+                    break;
+                case "minLength": case "maxLength": case "pattern": case "format":
+                case "minimum": case "maximum": case "exclusiveMinimum":
+                case "exclusiveMaximum": case "multipleOf":
+                case "const": case "enum":
+                    break;
+                default: return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Only a public final POJO with an unambiguous public projection can use
      * static property access. Everything else uses Nodes, including interfaces,
      * extensible classes, maps and Object-typed values. Dynamic access is not
@@ -237,7 +323,17 @@ final class ObjectCompiler {
         NodeKind kind = context.types.nodeKind(type);
         // Scalar and array declarations cannot be treated as dynamic objects;
         // in particular their generated expressions may be primitive values.
+        // A codec-backed value is never a traversable object, even when its
+        // raw encoding is Map/List. Generate a JsonType.of guard for these
+        // declarations instead of treating them as static POJOs.
+        if (kind.isValueCodec()) return true;
         if (kind.isValue() || kind.isArray()) return false;
+        // Compile-time NodeKind detects annotated @NodeValue methods; also
+        // check known @NodeValue codec registry declarations (e.g. Instant).
+        // Otherwise a final codec-backed Java class might be compiled as a POJO.
+        TypeElement registered = context.types.typeElement(type);
+        if (kind == NodeKind.OBJECT_POJO && registered != null
+                && context.metadata(registered).hasValueCodec(type)) return true;
         if (kind != NodeKind.OBJECT_POJO) return true;
         TypeElement owner = context.types.typeElement(type);
         return owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)

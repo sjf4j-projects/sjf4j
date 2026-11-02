@@ -36,13 +36,13 @@ public final class CreatorInfo {
     public final boolean[] argGenericDependent;
     /** Lazy metadata for concrete Class arguments; null for generic argument types. */
     public final LazyTypeInfo[] argTypeInfos;
-    public final String[] argCodecNames;
+    public final String[] argValueFormats;
     public final ValueInfo[] argValueCodecs;
     /** Explicit polymorphic mapping for each creator argument; null means use declared type metadata. */
     public final OneOfInfo[] argOneOfInfos;
     public final Map<String, Integer> argIndexes;
     public final Map<String, String> aliasMap;
-    public final boolean hasCodecNameBinding;
+    public final boolean hasValueFormatBinding;
 
     /**
      * Creates creator metadata for an object type.
@@ -52,7 +52,7 @@ public final class CreatorInfo {
                        Function1 argsCreatorLambda1, Function2 argsCreatorLambda2,
                        Function3 argsCreatorLambda3, Function4 argsCreatorLambda4, Function5 argsCreatorLambda5,
                        String[] argNames, Type[] argTypes,
-                       String[] argCodecNames, ValueInfo[] argValueCodecs, OneOfInfo[] argOneOfInfos,
+                       String[] argValueFormats, ValueInfo[] argValueCodecs, OneOfInfo[] argOneOfInfos,
                        Map<String, Integer> argIndexes,
                        Map<String, String> aliasMap) {
         this.clazz = clazz;
@@ -81,21 +81,21 @@ public final class CreatorInfo {
                 }
             }
         }
-        this.argCodecNames = argCodecNames;
+        this.argValueFormats = argValueFormats;
         this.argValueCodecs = argValueCodecs;
         this.argOneOfInfos = argOneOfInfos;
         this.argIndexes = argIndexes;
         this.aliasMap = aliasMap;
-        boolean hasCodecNameBinding = false;
+        boolean hasValueFormatBinding = false;
         if (argValueCodecs != null) {
             for (ValueInfo vci : argValueCodecs) {
                 if (vci != null) {
-                    hasCodecNameBinding = true;
+                    hasValueFormatBinding = true;
                     break;
                 }
             }
         }
-        this.hasCodecNameBinding = hasCodecNameBinding;
+        this.hasValueFormatBinding = hasValueFormatBinding;
     }
 
     /**

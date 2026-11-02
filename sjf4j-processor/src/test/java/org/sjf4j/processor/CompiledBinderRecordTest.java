@@ -129,7 +129,7 @@ class CompiledBinderRecordTest {
             sources.put("fixture/Epoch.java",
                     "package fixture; import java.time.Instant; "
                             + "import org.sjf4j.annotation.node.NodeProperty; "
-                            + "public record Epoch(@NodeProperty(codecName=\"epochMillis\") Instant at, "
+                            + "public record Epoch(@NodeProperty(valueFormat=\"epochMillis\") Instant at, "
                             + "long value) {}");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "

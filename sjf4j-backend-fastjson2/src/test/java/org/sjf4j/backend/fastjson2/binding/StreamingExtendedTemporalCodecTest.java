@@ -26,10 +26,10 @@ class StreamingExtendedTemporalCodecTest {
         public Date date;
         public Calendar calendar;
 
-        @NodeProperty(codecPattern = "yyyy/MM/dd HH:mm:ssXXX")
+        @NodeProperty(valuePattern = "yyyy/MM/dd HH:mm:ssXXX")
         public OffsetDateTime patternedOffset;
 
-        @NodeProperty(codecPattern = "HH:mm:ssXXX")
+        @NodeProperty(valuePattern = "HH:mm:ssXXX")
         public OffsetTime patternedOffsetTime;
     }
 

@@ -52,6 +52,14 @@ public class CompiledValidatorValueBindingTest {
         public static ListValue fromRaw(List<Object> raw) { return new ListValue(); }
     }
 
+    @NodeValue
+    public static final class StringValue {
+        private final String raw;
+        public StringValue(String raw) { this.raw = raw; }
+        @ValueToRaw public String toRaw() { return raw; }
+        @RawToValue public static StringValue fromRaw(String raw) { return new StringValue(raw); }
+    }
+
     @NodeObject
     public static class Holder {
         private Object items;
@@ -74,16 +82,18 @@ public class CompiledValidatorValueBindingTest {
         @ValidJsonSchema("{\"type\":\"array\",\"minItems\":1}")
         boolean array(Object value);
 
+        @ValidJsonSchema("{\"type\":\"string\"}")
+        boolean string(Object value);
+
         @ValidJsonSchema("{\"type\":\"object\",\"properties\":"
                 + "{\"items\":{\"type\":\"array\",\"minItems\":1}}}")
         boolean nested(Holder value);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     @Test
     void normalizesObjectAndDeclaredValueBindings() {
         Validator compiled = CompiledInstances.create(Validator.class);
-        for (Map raw : new Map[]{
+        for (Map<String, Object> raw : new Map[]{
                 Map.of("name", "Alice"),
                 Map.of("name", "x"),
                 Map.of("missing", 1),
@@ -111,6 +121,10 @@ public class CompiledValidatorValueBindingTest {
         assertEquals(true, compiled.untypedRequired(wrapped));
         assertEquals(true, compiled.untypedRequired(missing));
         assertEquals(false, compiled.untypedRequired(Map.of("missing", 1)));
+
+        assertEquals(JsonType.STRING, JsonType.of(new StringValue("abc")));
+        assertEquals(true, compiled.string(new StringValue("abc")));
+        assertEquals(false, compiled.string(new MapValue(Map.of("name", "Alice"))));
 
         ListValue listValue = new ListValue();
         assertEquals(true, compiled.array(List.of("abc")));

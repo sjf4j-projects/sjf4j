@@ -788,20 +788,18 @@ public final class TypeSystem {
 
         switch (kind) {
             case VALUE_STRING:
-            case VALUE_STRING_CHARACTER:
-            case VALUE_STRING_ENUM:
-                return NodeKind.VALUE_STRING;
-
+                return NodeKind.VALUE_CODEC_STRING;
             case VALUE_NUMBER:
-                return NodeKind.VALUE_NUMBER;
-
+                return NodeKind.VALUE_CODEC_NUMBER;
             case VALUE_BOOLEAN:
-                return NodeKind.VALUE_BOOLEAN;
-
-            case VALUE_NULL:
-                return NodeKind.VALUE_NULL;
-
+                return NodeKind.VALUE_CODEC_BOOLEAN;
+            case OBJECT_MAP:
+                return NodeKind.VALUE_CODEC_MAP;
+            case ARRAY_LIST:
+                return NodeKind.VALUE_CODEC_LIST;
             default:
+                // Unsupported @ValueToRaw declarations are rejected by the
+                // runtime registry; preserve UNKNOWN for unresolved annotations.
                 return NodeKind.UNKNOWN;
         }
     }

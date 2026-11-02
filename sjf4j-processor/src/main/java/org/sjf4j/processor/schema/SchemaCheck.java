@@ -182,6 +182,7 @@ abstract class SchemaCheck {
         final Diagnostic minPropertiesDiagnostic;
         final Diagnostic maxPropertiesDiagnostic;
         final Diagnostic requiredDiagnostic;
+        final Diagnostic dependentRequiredDiagnostic;
         final Diagnostic additionalPropertiesDiagnostic;
         final int staticPropertyCount;
         final List<String> allowedNames;
@@ -196,7 +197,7 @@ abstract class SchemaCheck {
                     List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
                     Diagnostic typeDiagnostic, Diagnostic minPropertiesDiagnostic,
                     Diagnostic maxPropertiesDiagnostic, Diagnostic requiredDiagnostic,
-                    Diagnostic additionalPropertiesDiagnostic) {
+                    Diagnostic dependentRequiredDiagnostic, Diagnostic additionalPropertiesDiagnostic) {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
             this.jsonObject = jsonObject;
@@ -208,6 +209,7 @@ abstract class SchemaCheck {
             this.minPropertiesDiagnostic = minPropertiesDiagnostic;
             this.maxPropertiesDiagnostic = maxPropertiesDiagnostic;
             this.requiredDiagnostic = requiredDiagnostic;
+            this.dependentRequiredDiagnostic = dependentRequiredDiagnostic;
             this.additionalPropertiesDiagnostic = additionalPropertiesDiagnostic;
             this.staticPropertyCount = staticPropertyCount;
             this.allowedNames = Collections.unmodifiableList(new ArrayList<String>(allowedNames));
@@ -250,12 +252,15 @@ abstract class SchemaCheck {
         final String staticAccess;
         final SchemaValue value;
         final SchemaCheck check;
+        final String codecOwner;
 
-        PropertyCheck(String name, String staticAccess, SchemaValue value, SchemaCheck check) {
+        PropertyCheck(String name, String staticAccess, SchemaValue value, SchemaCheck check,
+                      String codecOwner) {
             this.name = name;
             this.staticAccess = staticAccess;
             this.value = value;
             this.check = check;
+            this.codecOwner = codecOwner;
         }
     }
 

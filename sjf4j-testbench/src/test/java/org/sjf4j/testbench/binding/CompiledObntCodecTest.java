@@ -181,8 +181,8 @@ class CompiledObntCodecTest {
 
     public static class CodecPojo {
         public long id;
-        @NodeProperty(codecName = "epochMillis") public Instant when;
-        @NodeProperty(codecPattern = "yyyy/MM/dd") public LocalDate date;
+        @NodeProperty(valueFormat = "epochMillis") public Instant when;
+        @NodeProperty(valuePattern = "yyyy/MM/dd") public LocalDate date;
         public Token token;
         public List<Token> tokens;
     }

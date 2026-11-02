@@ -293,8 +293,8 @@ public class CompiledObntCodecBenchmark {
 
     public static class CodecPojo {
         public long id;
-        @NodeProperty(codecName = "epochMillis") public Instant when;
-        @NodeProperty(codecPattern = "yyyy/MM/dd") public LocalDate day;
+        @NodeProperty(valueFormat = "epochMillis") public Instant when;
+        @NodeProperty(valuePattern = "yyyy/MM/dd") public LocalDate day;
         public Token token;
         public List<Token> tokens;
     }

@@ -21,11 +21,11 @@ class LocalDateBackendTest {
     public static class PatternDates {
         public LocalDate iso;
 
-        @NodeProperty(codecPattern = "dd/MM/yyyy")
+        @NodeProperty(valuePattern = "dd/MM/yyyy")
         public LocalDate custom;
 
         // Explicit patterns override explicitly named ISO codecs.
-        @NodeProperty(codecName = "iso", codecPattern = "yyyy/MM/dd")
+        @NodeProperty(valueFormat = "iso", valuePattern = "yyyy/MM/dd")
         public LocalDate patternOverridesFormat;
     }
 

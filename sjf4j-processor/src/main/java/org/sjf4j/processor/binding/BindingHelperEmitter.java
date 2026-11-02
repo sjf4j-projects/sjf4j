@@ -85,9 +85,9 @@ final class BindingHelperEmitter {
 
     private void emitCodecMetadata(BindingValue value, GeneratedClass generated) {
         // Unconstrained reads select a Codec according to the incoming JSON type.
-        // Explicit codecName and codecPattern remain strict.
+        // Explicit valueFormat and valuePattern remain strict.
         boolean autoRead = value.direction() == BindingPlan.Direction.READ_FROM
-                && value.codecName() == null && value.codecPattern() == null;
+                && value.valueFormat() == null && value.valuePattern() == null;
         if (autoRead) {
             String set = value.helperName() + "Set";
             generated.addField(out -> out.line("private final org.sjf4j.value.ValueSet " + set + ";"));
@@ -108,12 +108,12 @@ final class BindingHelperEmitter {
                     "this." + value.helperName() + " = "
                             + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
                             + value.type() + ".class, "
-                            + (value.codecName() == null
+                            + (value.valueFormat() == null
                                     ? "context.valueFormat(" + value.type() + ".class)"
-                                    : JavaWriter.stringLiteral(value.codecName()))
+                                    : JavaWriter.stringLiteral(value.valueFormat()))
                             + ", "
-                            + (value.codecPattern() == null ? "null"
-                                    : JavaWriter.stringLiteral(value.codecPattern()))
+                            + (value.valuePattern() == null ? "null"
+                                    : JavaWriter.stringLiteral(value.valuePattern()))
                             + ");"));
         }
     }

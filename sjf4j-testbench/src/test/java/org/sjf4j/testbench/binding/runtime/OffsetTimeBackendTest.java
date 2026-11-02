@@ -21,7 +21,7 @@ class OffsetTimeBackendTest {
     public static class Times {
         public OffsetTime iso;
 
-        @NodeProperty(codecPattern = "HH.mm.ss XXX")
+        @NodeProperty(valuePattern = "HH.mm.ss XXX")
         public OffsetTime custom;
     }
 

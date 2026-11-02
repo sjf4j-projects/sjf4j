@@ -71,11 +71,12 @@ class CompiledValidatorArchitectureTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".codePointCount("), generated);
-        assertTrue(generated.contains("throw new ValidationException("), generated);
-        assertTrue(generated.contains(".ROOT.validate("), generated);
+        assertTrue(generated.contains("CompiledUtil.validationFailure("), generated);
+        assertFalse(generated.contains(".ROOT.validate("), generated);
+        assertFalse(generated.contains("private static final class PLAN_"), generated);
         assertFalse(generated.contains(".ROOT.requireValid("), generated);
-        // Unsupported assertions remain forbidden by fallback=false; only
-        // diagnostic reporting of a failed compiled assertion uses SchemaPlan.
+        // Unsupported assertions are forbidden by fallback=false.
+        // Direct failures create diagnostics without loading SchemaPlan.
     }
 
     @Test
@@ -95,7 +96,7 @@ class CompiledValidatorArchitectureTest {
         assertEquals(1, occurrences(generated, "new SchemaRegistry()"), generated);
         assertFalse(generated.contains("static final SchemaPlan SUB_"), generated);
         assertTrue(generated.contains("_matches_"), generated);
-        assertTrue(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
+        assertFalse(generated.contains("Fallback.PLAN_0.ROOT.validate("), generated);
         // The String-typed method still needs the shared runtime plan; the
         // object-typed methods use compiled access to runtime properties.
         assertTrue(generated.contains("Fallback.PLAN_0.ROOT.isValid("), generated);
@@ -150,6 +151,31 @@ class CompiledValidatorArchitectureTest {
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains("_matches_"), generated);
         assertFalse(generated.contains(".isValid("), generated);
+    }
+
+    @Test
+    void staticallyTypedPropertyCodecsAvoidRawShapeDispatch() throws Exception {
+        String model = "package fixture; import java.time.*; "
+                + "import org.sjf4j.annotation.node.NodeProperty; "
+                + "public final class Model { "
+                + "@NodeProperty(valueFormat=\"epochMillis\") public Instant when; "
+                + "@NodeProperty(valuePattern=\"yyyy/MM/dd\") public LocalDate day; "
+                + "}";
+        String schema = "{\"type\":\"object\",\"properties\":{"
+                + "\"when\":{\"type\":\"number\",\"minimum\":1000},"
+                + "\"day\":{\"type\":\"string\",\"minLength\":6}}}";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "boolean valid(Model value); }";
+        NavigatorTestCompiler.Result result = compile(model, validator);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertTrue(generated.contains("_raw"), generated);
+        // The scalar-specific checks must not reclassify raw values at runtime.
+        assertFalse(generated.contains("JsonType.rawOf("), generated);
+        assertFalse(generated.contains("Nodes.toNumber("), generated);
+        assertFalse(generated.contains("Nodes.toString("), generated);
     }
 
     private static NavigatorTestCompiler.Result compile(String model, String validator) throws Exception {
