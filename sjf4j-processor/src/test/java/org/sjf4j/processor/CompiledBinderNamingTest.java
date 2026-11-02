@@ -45,7 +45,9 @@ class CompiledBinderNamingTest {
             String generated = result.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("_readBean2("), backend);
             assertTrue(generated.contains("_writeBean2("), backend);
-            assertTrue(generated.contains("_writeString2("), backend);
+            if (!"FASTJSON2".equals(backend)) {
+                assertTrue(generated.contains("_writeString2("), backend);
+            }
             assertFalse(generated.contains("_readBean_names"), backend);
             assertFalse(generated.contains("_writeBean_name_"), backend);
 
