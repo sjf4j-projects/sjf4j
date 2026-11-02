@@ -59,6 +59,17 @@ class ValueRegistryTest {
     }
 
     @Test
+    void rejectsNonWireRawTypes() {
+        for (Class<?> raw : new Class<?>[]{
+                Character.class, Void.class, Object.class, String[].class
+        }) {
+            ValueInfo valueInfo = new ValueInfo(null, ConstructorValue.class, raw,
+                    null, null, null, null);
+            assertThrows(BindingException.class, () -> ValueRegistry.register(valueInfo, false));
+        }
+    }
+
+    @Test
     void registersOptionalCodecAsANodeValue() {
         ValueRegistry.registerByCodec(new OptionalStringCodec(), null, false);
 

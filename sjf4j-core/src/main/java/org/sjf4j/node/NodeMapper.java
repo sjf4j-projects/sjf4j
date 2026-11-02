@@ -1102,7 +1102,11 @@ public final class NodeMapper {
     private static Object _convertOneOf(Object node, Class<?> toBoxed,
                                         OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, RuntimeContext context) {
         LazyTypeInfo target;
-        JsonType jsonType = JsonType.of(node);
+        // @OneOf chooses a subtype from the raw JSON representation.
+        // A bound value is not raw JSON, even if JsonType.of exposes its scalar shape.
+        NodeKind nodeKind = NodeKind.of(node);
+        JsonType jsonType = nodeKind.isValueCodec()
+                ? JsonType.UNKNOWN : JsonType.of(nodeKind);
 
         if (oneOfInfo.hasDiscriminator) {
             if (oneOfInfo.scope != OneOf.Scope.CURRENT) {

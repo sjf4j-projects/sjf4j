@@ -132,19 +132,14 @@ public final class Instance {
             TypeInfo ti = TypeRegistry.registerTypeInfo(clazz);
             if (ti.valueSet != null) {
                 ValueInfo vi = ti.valueSet.defaultInfo;
-                if (vi != null) {
-                    node = vi.valueToRaw(node);
-                    JsonType rawType = node == null
-                            ? JsonType.NULL
-                            : JsonType.of(NodeKind.plainOf(vi.rawClazz));
-                    // @NodeValue is a leaf in OBNT, even if it serializes as a
-                    // Map or List. UNKNOWN prevents all structural evaluators
-                    // from treating the raw encoding as a traversable node.
-                    JsonType jsonType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
-                            ? JsonType.UNKNOWN : rawType;
-                    return new Instance(node, jsonType, true);
-                }
-                kind = NodeKind.VALUE_BINDING;
+                node = vi.valueToRaw(node);
+                JsonType rawType = node == null
+                        ? JsonType.NULL
+                        : vi.rawJsonType;
+                // Map/List raw encodings still belong to an atomic value node.
+                JsonType jsonType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
+                        ? JsonType.UNKNOWN : rawType;
+                return new Instance(node, jsonType, true);
             } else if (ti.externalNode != null) {
                 kind = ti.externalNode.nodeKind(node);
             } else if (ti.pojoInfo != null) {

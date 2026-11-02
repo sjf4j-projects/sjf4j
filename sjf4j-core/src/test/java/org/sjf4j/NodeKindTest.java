@@ -47,6 +47,12 @@ class NodeKindTest {
         assertEquals(NodeKind.ARRAY_SET, NodeKind.plainOf(Collections.singleton("x").getClass()));
         assertEquals(NodeKind.UNKNOWN, NodeKind.plainOf(Object.class));
         assertTrue(NodeKind.UNKNOWN.isUnknown());
+        assertTrue(NodeKind.VALUE_CODEC_STRING.isValueCodec());
+        assertTrue(NodeKind.VALUE_CODEC_MAP.isValue());
+        assertTrue(NodeKind.VALUE_CODEC_LIST.isValue());
+        assertFalse(NodeKind.VALUE_CODEC_MAP.isObject());
+        assertFalse(NodeKind.VALUE_CODEC_LIST.isArray());
+        assertFalse(NodeKind.VALUE_CODEC_MAP.isRaw());
         assertTrue(NodeKind.VALUE_STRING.isRaw());
         assertTrue(NodeKind.OBJECT_MAP.isRaw());
         assertFalse(NodeKind.OBJECT_POJO.isRaw());
@@ -56,7 +62,7 @@ class NodeKindTest {
     void classifiesManagedValues() {
         assertEquals(NodeKind.VALUE_NULL, NodeKind.of(null));
         assertEquals(NodeKind.OBJECT_POJO, NodeKind.of(new PlainPojo()));
-        assertEquals(NodeKind.VALUE_BINDING, NodeKind.of(URI.create("https://example.com")));
+        assertEquals(NodeKind.VALUE_CODEC_STRING, NodeKind.of(URI.create("https://example.com")));
     }
 
 }
