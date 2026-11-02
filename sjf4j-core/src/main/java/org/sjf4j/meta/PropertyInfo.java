@@ -7,6 +7,7 @@ import org.sjf4j.util.Types;
 import org.sjf4j.value.ValueInfo;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -28,11 +29,14 @@ public final class PropertyInfo {
     public final Type type;
     public final boolean genericDependent;
     public final Class<?> boxed;
+    /** Lazily resolved declared type metadata, when runtime registration is useful. */
+    public final LazyTypeInfo typeInfo;
 
-    public final Type argType;
-    public final Class<?> argClazz;
-    public final Class<?> argBoxed;
-    public final OneOfInfo argOneOfInfo;
+    /** Container value (Map) or element (List, Set, array) declaration. */
+    public final Type contentType;
+    public final Class<?> contentClass;
+    /** Lazily resolved content class metadata; generic-dependent declarations resolve at runtime. */
+    public final LazyTypeInfo contentTypeInfo;
 
     public final Method publicGetter;
     public final MethodHandle getterHandle;
@@ -57,33 +61,28 @@ public final class PropertyInfo {
     public PropertyInfo(String name, String[] alias, Field publicField, Type type, boolean genericDependent, Class<?> boxed,
                         Method publicGetter, MethodHandle getterHandle, Function<Object, Object> getterLambda,
                         Method publicSetter, MethodHandle setterHandle, BiConsumer<Object, Object> setterLambda,
-                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo, PropertyParser parser) {
+                        OneOfInfo oneOfInfo, String valueFormat, ValueInfo valueInfo, MethodHandles.Lookup lookup) {
         this.name = name;
         this.alias = alias;
         this.publicField = publicField;
         this.type = type;
         this.genericDependent = genericDependent;
         this.boxed = boxed;
+        this.typeInfo = genericDependent ? null : lazyMetadata(boxed);
 
-        Type argType = null;
-        Class<?> argClazz = null;
+        Type contentType = null;
         if (List.class.isAssignableFrom(this.boxed)) {
-            argType = Types.resolveTypeArgument(type, List.class, 0);
-            argClazz = Types.rawBox(argType);
+            contentType = Types.resolveTypeArgument(type, List.class, 0);
         } else if (Set.class.isAssignableFrom(this.boxed)) {
-            argType = Types.resolveTypeArgument(type, Set.class, 0);
-            argClazz = Types.rawBox(argType);
+            contentType = Types.resolveTypeArgument(type, Set.class, 0);
         } else if (Map.class.isAssignableFrom(this.boxed)) {
-            argType = Types.resolveTypeArgument(type, Map.class, 1);
-            argClazz = Types.rawBox(argType);
+            contentType = Types.resolveTypeArgument(type, Map.class, 1);
         } else if (this.boxed.isArray()) {
-            argType = this.boxed.getComponentType();
-            argClazz = Types.box((Class<?>) argType);
+            contentType = this.boxed.getComponentType();
         }
-        this.argType = argType;
-        this.argClazz = argClazz;
-        this.argBoxed = Types.rawBox(argClazz);
-        this.argOneOfInfo = argBoxed == null ? null : ReflectUtil.resolveOneOfInfo(argBoxed);
+        this.contentType = contentType;
+        this.contentClass = contentType == null ? null : Types.rawBox(contentType);
+        this.contentTypeInfo = genericDependent ? null : lazyMetadata(contentClass);
 
         this.publicGetter = publicGetter;
         this.getterHandle = getterHandle;
@@ -99,7 +98,18 @@ public final class PropertyInfo {
         this.gettable = getterHandle != null || getterLambda != null;
         this.settable = setterHandle != null || setterLambda != null;
 
-        this.parser = parser;
+        this.parser = PropertyParser.create(name, type, boxed, genericDependent, oneOfInfo,
+                setterHandle, setterLambda, valueInfo, typeInfo, contentTypeInfo, lookup);
+    }
+
+    /** Avoid unnecessary cached wrappers for directly dispatched scalar and Object types. */
+    private static LazyTypeInfo lazyMetadata(Class<?> clazz) {
+        if (clazz == null || clazz == Object.class || clazz.isPrimitive()
+                || clazz == String.class || clazz == Boolean.class || clazz == Character.class
+                || Number.class.isAssignableFrom(clazz) || Enum.class.isAssignableFrom(clazz)) {
+            return null;
+        }
+        return new LazyTypeInfo(clazz);
     }
 
 
