@@ -30,9 +30,8 @@ public final class Instance {
     private Object node;
     private JsonType jsonType;
     private boolean converted;
-    // Only built-in UUID/URI codecs are deferred; other value bindings stay eager.
-    private ValueInfo pendingCodec;
-    private Object formatSource;
+    // Retained only for built-in UUID/URI codecs to avoid reparsing in format checks.
+    private Object originalValue;
     // Lazily cached for POJO, JOJO, and external object traversal.
     private TypeInfo typeInfo;
 
@@ -58,17 +57,12 @@ public final class Instance {
 
     /** Returns the representation evaluated by schema keywords. */
     public Object node() {
-        if (pendingCodec != null) {
-            ValueInfo codec = pendingCodec;
-            node = codec.valueToRaw(node);
-            pendingCodec = null;
-        }
         return node;
     }
 
-    /** Original typed value when its built-in encoder is known to preserve format semantics. */
-    Object formatSource() {
-        return formatSource;
+    /** Original built-in scalar value, when its codec is known. */
+    Object originalValue() {
+        return originalValue;
     }
     /** Returns the JSON-semantic shape of the evaluated representation. */
     public JsonType jsonType() {
@@ -93,8 +87,7 @@ public final class Instance {
         this.node = node;
         this.jsonType = jsonType;
         this.converted = converted;
-        this.pendingCodec = null;
-        this.formatSource = null;
+        this.originalValue = null;
         this.typeInfo = null;
         return reset();
     }
@@ -169,7 +162,7 @@ public final class Instance {
             ti = declaredType != null && declaredType.clazz == clazz
                     ? declaredType.get() : TypeRegistry.registerTypeInfo(clazz);
             if (ti.valueSet != null) {
-                return inferValue(node, ti.valueSet.defaultInfo);
+                return infer(node, ti.valueSet.defaultInfo, declaredType, reusedLeaf);
             } else if (ti.externalNode != null) {
                 kind = ti.externalNode.nodeKind(node);
             } else if (ti.pojoInfo != null) {
@@ -191,25 +184,18 @@ public final class Instance {
      */
     private static Instance infer(Object node, ValueInfo codec, LazyTypeInfo declaredType, Instance reusedLeaf) {
         if (codec == null || node == null) return infer(node, declaredType, reusedLeaf);
-        return inferValue(node, codec);
-    }
-
-    private static Instance inferValue(Object value, ValueInfo codec) {
-        // The precise built-in encoder identity matters: custom codecs and
-        // alternate property formats must retain their original behavior.
-        if (codec.rawJsonType == JsonType.STRING
-                && ((value.getClass() == java.util.UUID.class && codec.codec == (Object) ValueCodec.UUID_CODEC)
-                    || (value.getClass() == java.net.URI.class && codec.codec == (Object) ValueCodec.URI_CODEC))) {
-            Instance instance = new Instance(value, JsonType.STRING, true);
-            instance.pendingCodec = codec;
-            instance.formatSource = value;
-            return instance;
-        }
-        Object raw = codec.valueToRaw(value);
+        Object raw = codec.valueToRaw(node);
         JsonType rawType = raw == null ? JsonType.NULL : codec.rawJsonType;
         JsonType logicalType = rawType == JsonType.OBJECT || rawType == JsonType.ARRAY
                 ? JsonType.UNKNOWN : rawType;
-        return new Instance(raw, logicalType, true);
+        Instance instance = new Instance(raw, logicalType, true);
+        // Only the built-in encodings have a proven typed format shortcut.
+        if (raw != null && codec.rawJsonType == JsonType.STRING
+                && ((node.getClass() == java.util.UUID.class && codec.codec == (Object) ValueCodec.UUID_CODEC)
+                    || (node.getClass() == java.net.URI.class && codec.codec == (Object) ValueCodec.URI_CODEC))) {
+            instance.originalValue = node;
+        }
+        return instance;
     }
 
     /**
