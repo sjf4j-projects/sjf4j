@@ -58,7 +58,7 @@ public final class MappingEmitter {
                             GeneratedClass generated) {
         MappingPlan plan = compiled.plan();
         ExecutableElement method = plan.method();
-        NameAllocator names = names(method);
+        NameAllocator names = generated.names().locals(method);
 
         out.line("@SuppressWarnings({\"unchecked\", \"rawtypes\"})");
         out.line("@Override");
