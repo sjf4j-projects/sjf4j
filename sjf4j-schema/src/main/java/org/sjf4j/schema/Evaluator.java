@@ -6,7 +6,6 @@ import org.sjf4j.InternalAccess;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.TypeInfo;
-import org.sjf4j.value.ValueInfo;
 import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.Nodes;
 import org.sjf4j.binding.simple.SimpleJsonParser;
