@@ -16,16 +16,18 @@ final class ReadEmitter {
 
     private final ProcessorContext context;
     private final BackendSpec backend;
+    private final BindingNames names;
     private final Jackson2ReadEmitter jackson2;
     private final Fastjson2ReadEmitter fastjson2;
 
-    ReadEmitter(ProcessorContext context, BackendSpec backend) {
+    ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
         this.backend = backend;
+        this.names = names;
         this.jackson2 = backend.backend() == Backend.JACKSON2
                 ? new Jackson2ReadEmitter() : null;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
-                ? new Fastjson2ReadEmitter() : null;
+                ? new Fastjson2ReadEmitter(names) : null;
     }
 
     void registerEnums(BindingValue value) {
