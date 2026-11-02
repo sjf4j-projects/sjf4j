@@ -47,7 +47,7 @@ final class Fastjson2ReadEmitter {
         if (!rawNames.isEmpty()) {
             // Fastjson2's getRawInt is native-endian. On a big-endian JVM,
             // canonical and aliased property names use the normal hash path.
-            out.beginBlock("if (FASTJSON2_LITTLE_ENDIAN)");
+            out.beginBlock("if (" + names.sharedField("FASTJSON2_LITTLE_ENDIAN") + ")");
             out.beginBlock("switch (raw.getRawInt())");
             for (Map.Entry<Integer, List<BindingProperty>> entry : rawNames.entrySet()) {
                 out.line("case 0x" + Integer.toHexString(entry.getKey()) + ":");
