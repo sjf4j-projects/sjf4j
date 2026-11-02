@@ -26,13 +26,13 @@ public class CompiledValidatorOneOfGetterTest {
             + "\"name\":{\"type\":\"string\",\"minLength\":2}}},"
             + "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"kind\",\"name\"],"
             + "\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"b\"]},"
-            + "\"name\":{\"type\":\"string\",\"minLength\":3}}}]}}}";
+            + "\"name\":{\"type\":\"string\",\"minLength\":3}}}]}}}}";
 
     private static final String OVERLAPPING_SCHEMA =
             "{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"oneOf\":["
             + "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"enum\":[\"a\"]}}},"
             + "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"enum\":[\"a\",\"b\"]}}}"
-            + "]}}}";
+            + "]}}}}";
 
     @OneOf(discriminatorKey = "kind", mappings = {
             @OneOfMapping(type = A.class, when = "a"),
