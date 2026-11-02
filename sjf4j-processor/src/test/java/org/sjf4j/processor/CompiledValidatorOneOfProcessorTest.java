@@ -99,6 +99,19 @@ class CompiledValidatorOneOfProcessorTest {
         assertFalse(generated.contains(".isValid("), generated);
     }
 
+    @Test
+    void privateBackingFieldRenamesPublicGetterToDiscriminatorKey() throws Exception {
+        String schema = SCHEMA.replace("kind", "@type");
+        NavigatorTestCompiler.Result result = compile(true, schema, false, false,
+                false, true, true, "@type");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertTrue(generated.contains("getClass() =="), generated);
+        assertTrue(generated.contains("getKind()"), generated);
+        assertTrue(generated.contains("matchCount"), generated);
+        assertFalse(generated.contains(".isValid("), generated);
+    }
+
     private static NavigatorTestCompiler.Result compile(boolean exposed) throws Exception {
         return compile(exposed, SCHEMA, false);
     }
@@ -129,18 +142,26 @@ class CompiledValidatorOneOfProcessorTest {
                                                         boolean strictFormat, boolean fallback,
                                                         boolean hiddenNodeMember, boolean getterDiscriminator,
                                                         boolean privateBacking) throws Exception {
+        return compile(exposed, schema, strictFormat, fallback, hiddenNodeMember,
+                getterDiscriminator, privateBacking, "kind");
+    }
+
+    private static NavigatorTestCompiler.Result compile(boolean exposed, String schema,
+                                                        boolean strictFormat, boolean fallback,
+                                                        boolean hiddenNodeMember, boolean getterDiscriminator,
+                                                        boolean privateBacking, String discriminatorName) throws Exception {
         String visibility = exposed ? "public " : "private ";
         Map<String, String> sources = new LinkedHashMap<String, String>();
         sources.put("fixture/Variant.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
-                + "@OneOf(discriminatorKey=\"kind\", mappings={"
+                + "@OneOf(discriminatorKey=\"" + discriminatorName + "\", mappings={"
                 + "@OneOfMapping(type=A.class,when=\"a\"),"
                 + "@OneOfMapping(type=B.class,when=\"b\")}) "
                 + "public interface Variant {}");
         sources.put("fixture/A.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class A implements Variant { "
-                + (privateBacking ? "@NodeProperty(\"kind\") private final String kind = \"a\"; "
+                + (privateBacking ? "@NodeProperty(\"" + discriminatorName + "\") private final String kind = \"a\"; "
                         + "public String getKind(){return kind;} "
                         : getterDiscriminator ? "@NodeProperty(\"kind\") public String getKind(){return \"a\";} "
                         : "@NodeProperty(\"kind\") " + visibility + "final String kind = \"a\"; ")
@@ -149,7 +170,7 @@ class CompiledValidatorOneOfProcessorTest {
         sources.put("fixture/B.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class B implements Variant { "
-                + (privateBacking ? "@NodeProperty(\"kind\") private final String kind = \"b\"; "
+                + (privateBacking ? "@NodeProperty(\"" + discriminatorName + "\") private final String kind = \"b\"; "
                         + "public String getKind(){return kind;} "
                         : getterDiscriminator ? "@NodeProperty(\"kind\") public String getKind(){return \"b\";} "
                         : "@NodeProperty(\"kind\") public final String kind = \"b\"; ")
