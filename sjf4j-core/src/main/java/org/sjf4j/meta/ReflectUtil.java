@@ -273,7 +273,6 @@ public final class ReflectUtil {
                     type, genericDependent, boxed,
                     family.getterMethod, getterHandle, getterLambda,
                     family.setterMethod, setterHandle, setterLambda,
-                    family.oneOfInfo != null ? family.oneOfInfo : resolveOneOfInfo(boxed),
                     family.oneOfInfo, family.codecName, resolvedCodec, lookup);
             PropertyInfo oldPi = properties.putIfAbsent(pi.name, pi);
             if (oldPi != null) {
