@@ -470,12 +470,16 @@ final class SchemaEmitter {
                             String strictFormat, String onFailure) {
         String text = expression;
         String temp = "_text" + depth + "_" + planName;
+        boolean uuidFormat = value.uuidType && "uuid".equals(check.format);
+        boolean uriFormat = value.uriType
+                && ("uri".equals(check.format) || "uri-reference".equals(check.format));
+        boolean stringRequired = check.minLength != null || check.maxLength != null
+                || check.choices != null || check.pattern != null
+                || (check.format != null && !uuidFormat && !uriFormat);
         if (value.shape == SchemaValue.Shape.STRING) {
             if (value.nullable) lines.add("if (" + expression + " == null) " + fail(onFailure, check.typeDiagnostic));
             if (!"java.lang.String".equals(value.type.toString())
-                    && (check.minLength != null || check.maxLength != null
-                        || check.choices != null || check.format != null
-                        || check.pattern != null)) {
+                    && stringRequired) {
                 lines.add("String " + temp + " = "
                         + (value.enumType ? expression + ".name()" : "String.valueOf(" + expression + ")") + ";");
                 text = temp;
@@ -501,8 +505,18 @@ final class SchemaEmitter {
             lines.add("if (!" + holder + ".matcher(" + text + ").find()) " + fail(onFailure, check.patternDiagnostic));
         }
         if (check.format != null && !"false".equals(strictFormat)) {
-            lines.add("if (" + strictFormat + " && !org.sjf4j.schema.FormatValidator.of("
-                    + literal(check.format) + ").validate(" + text + ")) " + fail(onFailure, check.formatDiagnostic));
+            if (uuidFormat) {
+                // A UUID's standard Java representation always satisfies format: uuid.
+            } else if (uriFormat) {
+                lines.add("if (" + strictFormat
+                        + " && !org.sjf4j.schema.FormatValidator.validateUri(" + expression
+                        + ", " + "uri".equals(check.format) + ")) "
+                        + fail(onFailure, check.formatDiagnostic));
+            } else {
+                lines.add("if (" + strictFormat + " && !org.sjf4j.schema.FormatValidator.of("
+                        + literal(check.format) + ").validate(" + text + ")) "
+                        + fail(onFailure, check.formatDiagnostic));
+            }
         }
         if (check.choices != null) {
             StringBuilder condition = new StringBuilder();
