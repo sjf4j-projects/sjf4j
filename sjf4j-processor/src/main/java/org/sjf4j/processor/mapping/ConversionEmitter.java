@@ -17,6 +17,8 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import java.io.IOException;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -40,6 +42,11 @@ public final class ConversionEmitter
     private final IdentityHashMap<ConverterResolver.Conversion, ConversionCompiler.CompiledConversion> compiled =
             new IdentityHashMap<>();
     private final Map<String, String> importedMapperFields = new LinkedHashMap<>();
+    private final List<ConversionCompiler.CompiledConversion> preparedConversions = new ArrayList<>();
+    private final IdentityHashMap<ConversionCompiler.CompiledConversion, String> signatures =
+            new IdentityHashMap<>();
+    private final Map<String, SharedConversion> sharedConversions = new LinkedHashMap<>();
+    private String emittingShared;
     private org.sjf4j.processor.code.GeneratedNames generatedNames;
 
     public ConversionEmitter(ProcessorContext context, TypeElement mapper,
@@ -67,6 +74,7 @@ public final class ConversionEmitter
         }
 
         registerFields(generated);
+        prepareSharedHelpers(generated);
         return true;
     }
 
@@ -100,6 +108,7 @@ public final class ConversionEmitter
         if (resolved == null) return false;
 
         compiled.put(conversion, resolved);
+        preparedConversions.add(resolved);
         inspect(resolved);
 
         return true;
@@ -187,6 +196,129 @@ public final class ConversionEmitter
 
     /*
      * --------------------------------------------------------------
+     * Shared structural conversions
+     * --------------------------------------------------------------
+     */
+
+    /**
+     * Share only repeated structural conversions in this generated mapper.
+     * Comparing their canonical emitted bodies, in addition to source and
+     * target types, preserves method-specific creator and converter choices.
+     * Trivial scalars and container loops remain inlined.
+     */
+    private void prepareSharedHelpers(GeneratedClass generated) {
+        Map<String, SharedConversion> candidates = new LinkedHashMap<>();
+
+        for (ConversionCompiler.CompiledConversion conversion : preparedConversions) {
+            collectShared(conversion, candidates);
+        }
+
+        for (SharedConversion candidate : candidates.values()) {
+            if (candidate.occurrences < 2) continue;
+            String type = candidate.conversion.targetType().toString();
+            int generic = type.indexOf('<');
+            if (generic >= 0) type = type.substring(0, generic);
+            int separator = Math.max(type.lastIndexOf('.'), type.lastIndexOf('$'));
+            String simple = type.substring(separator + 1).replace("[]", "Array");
+            candidate.name = generated.names().helperMethod("map" + simple);
+            sharedConversions.put(candidate.signature, candidate);
+        }
+
+        for (SharedConversion helper : sharedConversions.values()) {
+            generated.addHelper(out -> {
+                out.beginBlock("private " + localType(helper.conversion.targetType())
+                        + " " + helper.name + "(" + localType(helper.conversion.sourceType())
+                        + " source)");
+                NameAllocator locals = generated.names().helperLocals("source");
+                String previous = emittingShared;
+                emittingShared = helper.signature;
+                try {
+                    String result = emitStructural(out, locals, helper.conversion, "source");
+                    out.line("return " + result + ";");
+                } finally {
+                    emittingShared = previous;
+                }
+                out.endBlock();
+            });
+        }
+    }
+
+    private void collectShared(ConversionCompiler.CompiledConversion conversion,
+                               Map<String, SharedConversion> candidates) {
+        if (conversion == null) return;
+
+        if (conversion.kind() == ConversionCompiler.CompiledConversion.Kind.STRUCTURAL) {
+            String signature = semanticSignature(conversion);
+            SharedConversion shared = candidates.get(signature);
+            if (shared == null) {
+                shared = new SharedConversion(signature, conversion);
+                candidates.put(signature, shared);
+            }
+            shared.occurrences++;
+        }
+
+        switch (conversion.kind()) {
+            case CONTAINER:
+                collectShared(conversion.elementConversion(), candidates);
+                break;
+            case MAP:
+                collectShared(conversion.keyConversion(), candidates);
+                collectShared(conversion.valueConversion(), candidates);
+                break;
+            case STRUCTURAL:
+                for (ConversionCompiler.StructuralArgument argument : conversion.arguments()) {
+                    collectShared(argument.conversion(), candidates);
+                }
+                for (ConversionCompiler.StructuralProperty property : conversion.properties()) {
+                    collectShared(property.conversion(), candidates);
+                }
+                ConversionCompiler.DynamicObjectPlan dynamic = conversion.dynamicObject();
+                if (dynamic != null) {
+                    collectShared(dynamic.valueConversion(), candidates);
+                    for (ConversionCompiler.DynamicProperty property : dynamic.properties()) {
+                        collectShared(property.conversion(), candidates);
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    /** Exact source equivalence is stricter than a type-pair cache key. */
+    private String semanticSignature(ConversionCompiler.CompiledConversion conversion) {
+        String existing = signatures.get(conversion);
+        if (existing != null) return existing;
+
+        StringWriter source = new StringWriter();
+        try (JavaWriter out = new JavaWriter(source, "", "_Signature")) {
+            NameAllocator locals = new NameAllocator().reserve("source");
+            String result = emitStructural(out, locals, conversion, "source");
+            out.line("return " + result + ";");
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot render structural conversion signature", e);
+        }
+
+        String signature = conversion.sourceType() + " -> "
+                + conversion.targetType() + "\n" + source;
+        signatures.put(conversion, signature);
+        return signature;
+    }
+
+    private static final class SharedConversion {
+        final String signature;
+        final ConversionCompiler.CompiledConversion conversion;
+        int occurrences;
+        String name;
+
+        SharedConversion(String signature, ConversionCompiler.CompiledConversion conversion) {
+            this.signature = signature;
+            this.conversion = conversion;
+        }
+    }
+
+    /*
+     * --------------------------------------------------------------
      * Emit
      * --------------------------------------------------------------
      */
@@ -268,6 +400,19 @@ public final class ConversionEmitter
 
     private String emit(JavaWriter out, NameAllocator names,
                         ConversionCompiler.CompiledConversion conversion, String source) {
+
+        if (conversion.kind() == ConversionCompiler.CompiledConversion.Kind.STRUCTURAL) {
+            String signature = signatures.get(conversion);
+            SharedConversion helper = signature == null ? null : sharedConversions.get(signature);
+            if (helper != null && !signature.equals(emittingShared)) {
+                // Preserve the original single-evaluation semantics: callers may
+                // use the returned expression in both guards and assignments.
+                String result = names.newName("converted");
+                out.line(localType(conversion.targetType()) + " " + result
+                        + " = " + helper.name + "(" + source + ");");
+                return result;
+            }
+        }
 
         switch (conversion.kind()) {
             case DIRECT:
