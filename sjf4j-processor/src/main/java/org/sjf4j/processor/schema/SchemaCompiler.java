@@ -109,6 +109,7 @@ final class SchemaCompiler {
                     break;
                 case "items": case "prefixItems": case "uniqueItems":
                 case "minItems": case "maxItems":
+                case "contains": case "minContains": case "maxContains":
                     array.put(keyword, schema.getNode(keyword));
                     break;
                 case "properties": case "patternProperties": case "propertyNames":
