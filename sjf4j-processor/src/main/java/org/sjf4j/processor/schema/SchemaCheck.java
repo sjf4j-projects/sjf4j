@@ -272,11 +272,11 @@ abstract class SchemaCheck {
 
     /** Pattern match is a separate assertion and also marks local coverage for additionalProperties. */
     static final class PatternProperty {
-        final String pattern;
+        final String javaPattern;
         final SchemaCheck check;
 
-        PatternProperty(String pattern, SchemaCheck check) {
-            this.pattern = pattern;
+        PatternProperty(String javaPattern, SchemaCheck check) {
+            this.javaPattern = javaPattern;
             this.check = check;
         }
     }
