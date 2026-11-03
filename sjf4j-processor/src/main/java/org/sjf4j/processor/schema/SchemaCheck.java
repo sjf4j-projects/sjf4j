@@ -151,11 +151,13 @@ abstract class SchemaCheck {
      */
     static final class TypeGuard extends SchemaCheck {
         final String jsonType;
+        final SchemaValue value;
         final SchemaCheck child;
 
-        TypeGuard(String jsonType, SchemaCheck child) {
+        TypeGuard(String jsonType, SchemaValue value, SchemaCheck child) {
             super(Kind.TYPE_GUARD);
             this.jsonType = jsonType;
+            this.value = value;
             this.child = child;
         }
 
