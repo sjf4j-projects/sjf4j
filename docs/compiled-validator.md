@@ -372,8 +372,8 @@ The official test-suite download, runtime test and compiled test are owned by
 # Pin a revision for repeatable local testing (updates the cache if necessary):
 ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=<40-character-SHA>
 
-# Explicitly check the newest upstream main revision:
-./gradlew :sjf4j-testbench:refreshOfficialSchemaTests
+# Check for the newest upstream main revision and update the cache if necessary:
+./gradlew :sjf4j-testbench:downloadOfficialSchemaTests
 ```
 
 `generateOfficialCompiledCases` produces one independent interface per
@@ -418,21 +418,12 @@ coverage categories in the **same** runner; they are not separate Gradle tasks.
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated -PofficialCompiledProbeDirect=true
 ```
 
-At that pinned upstream revision, the mandatory files are classified as follows:
-
-| Category | Files | Schema groups | Assertions |
-| --- | ---: | ---: | ---: |
-| `phase2` = basic + scalar + object | 26 | 138 | 609 |
-| `phase3` = array + applicator | 15 | 169 | 525 |
-| `unevaluated` (subset of phase3) | 2 | 73 | 200 |
-| `reference` | 5 | 77 | 164 |
-| **All mandatory files** | **46** | **384** | **1,298** |
-
-Available category values: `all`, `phase2`, `phase3`, `basic`,
-`scalar`, `object`, `array`, `applicator`, `unevaluated`, `reference`.
-The default is `all`. A pinned upstream revision is checked against the
-known Phase 2/3 case counts; other revisions use manifest-derived counts
-and the complete mandatory file inventory check.
+The case categories `phase2` (basic, scalar, object), `phase3`
+(array, applicator), `unevaluated`, and `reference` remain available
+for local diagnostics. The default `all` runs every mandatory file found
+in the downloaded suite, including newly introduced official files. There is
+no hardcoded upstream SHA, file count, schema group count, or assertion count;
+coverage is verified against the generated index and actual official files.
 
 The generated per-group interfaces still offer both
 `@CompiledValidator(fallback=false)` and `fallback=true`.
@@ -470,12 +461,12 @@ also requires one explicit download to restore the official tests.
 `publish`, `publishToMavenLocal` and `publishToMavenCentral` (including
 individual Maven publication upload tasks) depend on
 `officialPublishGate`, across published modules, not just
-`:sjf4j-schema`. The gate executes
-`refreshOfficialSchemaTests` **first**, resolving upstream `main`
-regardless of a local pinned `-PjsonSchemaSuiteRef`, then regenerates
-bindings when required and runs the full official runtime and compiled
-tests. A failing or unavailable upstream refresh, failed compilation, or
-failed test blocks publication. This applies even if the cache was already
+`:sjf4j-schema`. The gate invokes `downloadOfficialSchemaTests` **first** to check upstream
+`main` and reuse the cached ZIP if the revision is unchanged, then
+regenerates bindings as required and runs the full official Runtime and
+Compiled suites. Supplying a pinned `-PjsonSchemaSuiteRef` while publishing
+is rejected; it cannot bypass the latest-suite requirement.
+A failed upstream check, compilation error, or test failure blocks publication. This applies even if the cache was already
 present.
 
 To run **Compiled** directly as an IntelliJ *Application*, open
