@@ -262,6 +262,7 @@ val generateOfficialCompiledCases by tasks.registering {
         // SchemaRegistry indexes those identities; neither javac nor fallback fetches HTTP.
         val registryDir = JsonOutput.toJson(
             officialSchemaSuiteDir.get().asFile.resolve("remotes").toURI().toString())
+        val registryBaseUri = JsonOutput.toJson("http://localhost:1234/")
         javaDir.mkdirs()
         resourceDir.mkdirs()
 
@@ -304,7 +305,7 @@ val generateOfficialCompiledCases by tasks.registering {
                         "import org.sjf4j.annotation.schema.CompiledValidator;",
                         "import org.sjf4j.annotation.schema.ValidJsonSchema;",
                         "",
-                        "@CompiledValidator(fallback = $fallback, registryDir = $registryDir)",
+                        "@CompiledValidator(fallback = $fallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
                         "public interface $variant {",
                         "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
                         "    boolean valid(Object value);",
