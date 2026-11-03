@@ -177,7 +177,7 @@ final class WriteEmitter {
                     default:
                         throw new AssertionError(plan.writeOutput());
                 }
-                BindingSource.endOverride(out);
+                BindingSource.endOverride(out, plan);
                 return;
             }
         }
@@ -189,7 +189,7 @@ final class WriteEmitter {
                     || plan.writeOutput() == BindingPlan.WriteOutput.OUTPUT_STREAM
                     ? BindingSource.parameterName(plan, 1) : null;
             fastjson2.emitMethod(out, compiled.value(), source, target, plan.writeOutput(), names);
-            BindingSource.endOverride(out);
+            BindingSource.endOverride(out, plan);
             return;
         }
 
@@ -212,7 +212,7 @@ final class WriteEmitter {
                 throw new AssertionError(plan.writeOutput());
         }
 
-        BindingSource.endOverride(out);
+        BindingSource.endOverride(out, plan);
     }
 
     private void emitStringMethod(JavaWriter out, BindingValue value, String source,

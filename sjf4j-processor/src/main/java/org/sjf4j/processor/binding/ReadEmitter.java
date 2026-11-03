@@ -58,7 +58,7 @@ final class ReadEmitter {
         emitReadBody(out, plan, value, parser, names);
         out.endBlock();
 
-        BindingSource.endOverride(out);
+        BindingSource.endOverride(out, plan);
     }
 
     private void emitReadBody(JavaWriter out, BindingPlan plan, BindingValue value,

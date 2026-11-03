@@ -11,15 +11,16 @@ import java.lang.annotation.Target;
  *
  * <p>The format and backend are fixed for one generated binder interface.
  * Binding operations are declared with {@link ReadFrom} and {@link WriteTo}.
- * Each abstract method must have exactly one of these annotations and declare
- * {@link java.io.IOException} or a supertype. The interface itself cannot be
+ * Each abstract method must have exactly one of these annotations.
+ * Binding failures, including I/O errors, are reported as unchecked
+ * {@link org.sjf4j.exception.BindingException}. The interface itself cannot be
  * generic; inherited abstract methods must resolve to concrete types.</p>
  *
  * <pre>{@code
  * @CompiledBinder
  * interface UserJson {
- *     @ReadFrom User read(String json) throws IOException;
- *     @WriteTo String write(User user) throws IOException;
+ *     @ReadFrom User read(String json);
+ *     @WriteTo String write(User user);
  * }
  * }</pre>
  *
