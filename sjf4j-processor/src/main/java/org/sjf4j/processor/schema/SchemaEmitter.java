@@ -176,7 +176,7 @@ final class SchemaEmitter {
                 lines.add("if (org.sjf4j.JsonType.of(" + expression
                         + ") == org.sjf4j.JsonType." + guard.jsonType + ") {");
                 List<String> guarded = new ArrayList<String>();
-                emitValue(guarded, plan, guard.child, value, expression,
+                emitValue(guarded, plan, guard.child, guard.value, expression,
                         planName + "_", strictFormat, depth, onFailure);
                 for (String statement : guarded) lines.add("    " + statement);
                 lines.add("}");
