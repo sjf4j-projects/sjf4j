@@ -1,4 +1,4 @@
-package org.sjf4j.testbench.schema;
+package org.sjf4j.testbench.schema.official;
 
 
 import org.junit.jupiter.api.Test;
@@ -51,13 +51,12 @@ public final class OfficialRuntimeTest {
 
     }
 
+    // Publication and everyday-build conformance: all required cases, no optional/ subtree.
     @Test
     public void testDraft7() throws Exception {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
         loadRemotes(registry, locatePath("remotes"));
         runTestDir(registry, locatePath("tests/draft7"), false, true);
-        runTestDir(registry, locatePath("tests/draft7/optional"), false, true);
-        runTestDir(registry, locatePath("tests/draft7/optional/format"), true, false);
     }
 
     @Test
@@ -65,8 +64,6 @@ public final class OfficialRuntimeTest {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
         loadRemotes(registry, locatePath("remotes"));
         runTestDir(registry, locatePath("tests/draft2019-09"), false, true);
-        runTestDir(registry, locatePath("tests/draft2019-09/optional"), false, true);
-        runTestDir(registry, locatePath("tests/draft2019-09/optional/format"), true, false);
     }
 
     @Test
@@ -74,8 +71,6 @@ public final class OfficialRuntimeTest {
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
         loadRemotes(registry, locatePath("remotes"));
         runTestDir(registry, locatePath("tests/draft2020-12"), false,true);
-        runTestDir(registry, locatePath("tests/draft2020-12/optional"), false, true);
-        runTestDir(registry, locatePath("tests/draft2020-12/optional/format"), true,false);
     }
 
 

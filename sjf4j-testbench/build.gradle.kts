@@ -1,6 +1,6 @@
 import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
-import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
-import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import org.gradle.api.tasks.testing.Test
 import java.io.BufferedInputStream
 import java.net.URI
@@ -132,39 +132,43 @@ fun jsonSchemaTestSuiteSha(ref: String): String {
         ?: throw GradleException("Failed to resolve JSON-Schema-Test-Suite revision: $ref")
 }
 
-val downloadOfficialSchemaTests by tasks.registering {
-    group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Downloads the latest official JSON Schema test suite into build/."
-    outputs.dir(officialSchemaSuiteDir)
-    outputs.upToDateWhen { false }
+// Explicit download/refresh tasks check the upstream revision on every invocation,
+// but skip the archive download when the complete local cache is already current.
+// Ordinary builds never depend on these network tasks.
+fun updateOfficialSuite(ref: String) {
+    val sha = jsonSchemaTestSuiteSha(ref)
+    val outDir = officialSchemaSuiteDir.get().asFile
+    val revisionFile = outDir.resolve("OFFICIAL_TEST_SUITE_REV")
+    val validCache = revisionFile.isFile
+        && revisionFile.readText().lineSequence().any { it.trim() == "revision: $sha" }
+        && outDir.resolve("tests/draft2020-12").isDirectory
+        && outDir.resolve("remotes").isDirectory
+    if (validCache) {
+        logger.lifecycle("Official JSON Schema suite already at $sha; reusing local cache")
+        return
+    }
 
-    doLast {
-        val ref = providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get()
-        val sha = jsonSchemaTestSuiteSha(ref)
-        val outDir = officialSchemaSuiteDir.get().asFile
-        delete(outDir)
-        outDir.mkdirs()
-
-        val outRoot = outDir.canonicalFile.toPath()
-        val zipUrl = "https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/zip/$sha"
-        var copied = 0
-
+    val zipUrl = "https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/zip/$sha"
+    val staging = outDir.parentFile.resolve("suite-downloading")
+    delete(staging)
+    staging.mkdirs()
+    val outRoot = staging.canonicalFile.toPath()
+    var copied = 0
+    try {
         ZipInputStream(BufferedInputStream(githubStream(zipUrl))).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 val name = entry.name.replace('\\', '/')
                 val rootEnd = name.indexOf('/')
                 if (rootEnd < 0) continue
-
                 val relative = name.substring(rootEnd + 1)
                 if (!relative.startsWith("tests/") && !relative.startsWith("remotes/")) continue
 
-                val target = outDir.resolve(relative)
+                val target = staging.resolve(relative)
                 val targetPath = target.canonicalFile.toPath()
                 if (!targetPath.startsWith(outRoot)) {
                     throw GradleException("Unsafe path in JSON-Schema-Test-Suite zip: $name")
                 }
-
                 if (entry.isDirectory) {
                     target.mkdirs()
                 } else {
@@ -175,19 +179,47 @@ val downloadOfficialSchemaTests by tasks.registering {
                 zip.closeEntry()
             }
         }
-
-        outDir.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
+        require(staging.resolve("tests/draft2020-12").isDirectory
+                && staging.resolve("remotes").isDirectory) {
+            "Downloaded suite $sha is missing tests/draft2020-12 or remotes"
+        }
+        staging.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
             "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\n" +
-                    "ref: $ref\n" +
-                    "revision: $sha\n"
+                "ref: $ref\n" +
+                "revision: $sha\n"
         )
-        logger.lifecycle("Downloaded JSON-Schema-Test-Suite $sha ($copied files) to $outDir")
+        // A failed network download leaves the previous complete suite untouched.
+        delete(outDir)
+        if (!staging.renameTo(outDir)) {
+            staging.copyRecursively(outDir, overwrite = true)
+            delete(staging)
+        }
+    } catch (e: Exception) {
+        delete(staging)
+        throw e
+    }
+    logger.lifecycle("Downloaded JSON-Schema-Test-Suite $sha ($copied files) to $outDir")
+}
+
+val downloadOfficialSchemaTests by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Checks the requested upstream revision, downloading only when the cached SHA differs."
+    outputs.dir(officialSchemaSuiteDir)
+    // Always resolve the remote revision on explicit invocation.
+    outputs.upToDateWhen { false }
+    doLast {
+        updateOfficialSuite(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get())
     }
 }
 
-val officialLatestTest by tasks.registering(Test::class) {
+val cachedOfficialSuiteExists = {
+    officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12").isDirectory &&
+        officialSchemaSuiteDir.get().asFile.resolve("OFFICIAL_TEST_SUITE_REV").isFile
+}
+
+val officialRuntimeTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs OfficialRuntimeTest against the latest JSON-Schema-Test-Suite from GitHub."
+    description = "Runs OfficialRuntimeTest against the locally cached JSON Schema suite."
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -196,36 +228,157 @@ val officialLatestTest by tasks.registering(Test::class) {
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
-    dependsOn(downloadOfficialSchemaTests)
+    onlyIf("local official JSON Schema suite has been downloaded") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
 
+// When a publication also schedules a download, run it before checking the suite.
+// mustRunAfter alone never invokes a network task during an ordinary build.
+officialRuntimeTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
+
+
+/**
+ * Generate one independent annotated interface per official schema group.
+ * Sources are compiled by OfficialCompiledTest with javac in isolated batches:
+ * an unsupported schema must not prevent other official cases from running.
+ */
+val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/officialCompiled")
+val generateOfficialCompiledCases by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Generates source bindings for every non-optional Draft 2020-12 schema group."
+    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.dir(officialCompiledGeneratedDir)
+
+    doLast {
+        val input = officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12")
+        val output = officialCompiledGeneratedDir.get().asFile
+        delete(output)
+
+        val packageName = "org.sjf4j.testbench.schema.official.generated"
+        val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
+        val resourceDir = output.resolve("resources/official")
+        javaDir.mkdirs()
+        resourceDir.mkdirs()
+
+        val files = requireNotNull(input.listFiles())
+            .filter { it.isFile && it.extension == "json" }
+            .sortedBy { it.name }
+        require(files.isNotEmpty()) { "No official Draft 2020-12 JSON files at $input" }
+
+        val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
+        var groupCount = 0
+        var testCount = 0
+        for (file in files) {
+            val groups = JsonSlurper().parse(file) as? List<*>
+                ?: throw GradleException("Invalid official test file: $file")
+            val stem = file.nameWithoutExtension
+            val classStem = stem.split(Regex("[^a-zA-Z0-9]+"))
+                .filter { it.isNotEmpty() }
+                .joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
+            for ((groupIndex, raw) in groups.withIndex()) {
+                val group = raw as? Map<*, *>
+                    ?: throw GradleException("Invalid official group: $file #$groupIndex")
+                require(group.containsKey("schema")) { "Missing schema in $file #$groupIndex" }
+                val tests = group["tests"] as? List<*>
+                    ?: throw GradleException("Missing tests in $file #$groupIndex")
+                val index = groupIndex.toString().padStart(3, '0')
+                val className = "Official" + classStem + "G" + index
+                val schemaPath = stem + "/" + index + ".json"
+                val schemaFile = resourceDir.resolve(schemaPath)
+                schemaFile.parentFile.mkdirs()
+                schemaFile.writeText(JsonOutput.toJson(group["schema"]), Charsets.UTF_8)
+
+                // Compile both variants independently: fallback=true for conformance
+                // and fallback=false to measure genuinely direct compilation.
+                for (direct in listOf(false, true)) {
+                    val variant = if (direct) className + "Direct" else className
+                    val fallback = !direct
+                    val source = listOf(
+                        "package $packageName;",
+                        "",
+                        "import org.sjf4j.annotation.schema.CompiledValidator;",
+                        "import org.sjf4j.annotation.schema.ValidJsonSchema;",
+                        "",
+                        "@CompiledValidator(fallback = $fallback)",
+                        "public interface $variant {",
+                        "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
+                        "    boolean valid(Object value);",
+                        "}"
+                    ).joinToString("\n", postfix = "\n")
+                    javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
+                }
+                manifest.append(file.name).append('\t').append(groupIndex)
+                    .append('\t').append(className).append('\t').append(tests.size).append('\n')
+                groupCount++
+                testCount += tests.size
+            }
+        }
+        output.resolve("index.tsv").writeText(manifest.toString(), Charsets.UTF_8)
+        output.resolve("counts.properties").writeText(
+            "files=" + files.size + "\ngroups=" + groupCount + "\ntests=" + testCount + "\n",
+            Charsets.UTF_8
+        )
+        logger.lifecycle(
+            "Generated official Draft 2020-12 bindings: " +
+                files.size + " files, " + groupCount + " schema groups, " + testCount + " assertions"
+        )
+    }
+}
+
+// Generated bindings must match the latest downloaded suite when publishing.
+generateOfficialCompiledCases.configure { mustRunAfter(downloadOfficialSchemaTests) }
+
 val officialCompiledTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs selected official JSON Schema cases against CompiledValidator."
+    description = "Runs all non-optional Draft 2020-12 cases using isolated CompiledValidator compilation."
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     include("**/OfficialCompiledTest.class")
+    // Runtime SchemaPlan fallback must resolve the same generated classpath resources as javac.
+    classpath = classpath + files(officialCompiledGeneratedDir.map { it.dir("resources") })
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
+    // Optional local narrowing; full mandatory suite remains the default for build/publish.
+    systemProperty("sjf4j.schema.officialCategory",
+        providers.gradleProperty("officialCompiledCategory").orElse("all").get())
+    systemProperty("sjf4j.schema.officialProbeDirect",
+        providers.gradleProperty("officialCompiledProbeDirect").orElse("false").get())
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
-    dependsOn(downloadOfficialSchemaTests)
+    dependsOn(generateOfficialCompiledCases)
+    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
 
-// Keep schema publication gated by the official conformance suite.
-project(":sjf4j-schema").tasks.withType<PublishToMavenRepository>().configureEach {
-    dependsOn(officialLatestTest)
+// Normal build/check: use the suite already cached on disk, never access GitHub.
+// First checkout with no cached suite simply SKIPs these tasks. The release gate
+// below always refreshes, so no publication can silently omit the official suite.
+tasks.named("check") {
+    dependsOn(officialRuntimeTest, officialCompiledTest)
 }
-project(":sjf4j-schema").tasks.withType<PublishToMavenLocal>().configureEach {
-    dependsOn(officialLatestTest)
-}
-project(":sjf4j-schema").tasks.matching { it.name == "publish" || it.name == "publishToMavenLocal" }
-    .configureEach {
-        dependsOn(officialLatestTest)
+
+// Release gate covers runtime and full compiled Draft 2020-12 official cases.
+// Publication invokes the downloader; normal build/check never invokes it.
+val officialPublishGate by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Refreshes upstream main and runs all required official runtime and compiled tests before publishing."
+    dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest)
+    doLast {
+        check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
+        // A pinned local SHA may be used for debugging, never for a publication.
+        check(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get() == "main") {
+            "Publication requires latest upstream main; remove -PjsonSchemaSuiteRef"
+        }
+        check(providers.gradleProperty("officialCompiledCategory").orElse("all").get() == "all") {
+            "Publication requires all mandatory official compiled cases; remove -PofficialCompiledCategory"
+        }
     }
+}
+officialCompiledTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
 
 tasks.named("build") {
     dependsOn(tasks.named("jmhJar"))
@@ -237,12 +390,12 @@ val coverageProjects = listOf(":sjf4j-core", ":sjf4j-schema")
 evaluationDependsOn(":sjf4j-schema")
 val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
-    layout.buildDirectory.file("jacoco/officialLatestTest.exec") +
+    layout.buildDirectory.file("jacoco/officialRuntimeTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
 tasks.jacocoTestReport {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialLatestTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
     executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
@@ -251,7 +404,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialLatestTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
     executionData(coverageExecFiles)
     violationRules {
         rule {
