@@ -55,8 +55,8 @@ public class SchemaRegistry {
      * Indexes a root schema by its declared canonical URI or retrieval URI.
      * <p>
      * For object schemas this may reuse or populate the schema's root
-     * retrieval-URI metadata before the schema is compiled. A boolean schema
-     * has no resource URI and is not indexed.
+     * retrieval-URI metadata before the schema is compiled. Boolean schemas
+     * with an explicit retrieval URI are indexed as ready-to-use plans.
      */
     public void index(JsonSchema schema) {
         index(null, schema);
@@ -69,6 +69,7 @@ public class SchemaRegistry {
      * delayed compilation and order-independent loading of referenced schemas.
      * The provided retrieval URI is written back to the root {@link ObjectSchema}
      * so later compilation can resolve a relative root {@code $id}.
+     * Boolean resources are stored directly as plans when a retrieval URI is supplied.
      *
      * @throws SchemaException if no URI is available, the URI is not absolute,
      *                         or it conflicts with another resource
@@ -76,6 +77,7 @@ public class SchemaRegistry {
     public void index(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
+            _indexBoolean(retrievalUri, (BooleanSchema) schema, false);
             return;
         }
 
@@ -105,11 +107,12 @@ public class SchemaRegistry {
      * Unlike {@link #index(URI, JsonSchema)}, duplicate target mappings are a
      * no-op instead of a conflict. The check is local to this registry; global
      * built-in schemas remain fallback-only and do not block local indexing.
-     * A boolean schema is not indexed.
+     * Boolean resources with a retrieval URI are indexed as plans.
      */
     public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
+            _indexBoolean(retrievalUri, (BooleanSchema) schema, true);
             return;
         }
 
@@ -151,7 +154,11 @@ public class SchemaRegistry {
     public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
-            return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
+            if (retrievalUri == null) {
+                return SchemaPlan.of(null, PathSegment.Root.INSTANCE, (BooleanSchema) schema);
+            }
+            _indexBoolean(retrievalUri, (BooleanSchema) schema, false);
+            return byIdPlans.get(SchemaUtil.normalizeUriKey(retrievalUri));
         }
 
         ObjectSchema os = (ObjectSchema) schema;
@@ -168,6 +175,25 @@ public class SchemaRegistry {
         return SchemaPlanner.buildAndPutPlan(os, this);
     }
 
+
+    /** Indexes an explicitly located boolean resource for direct and $ref resolution. */
+    private void _indexBoolean(URI retrievalUri, BooleanSchema schema, boolean ifAbsent) {
+        // An inline boolean schema with no retrieval URI remains an independent plan.
+        if (retrievalUri == null) return;
+        _checkUri(retrievalUri);
+        String id = SchemaUtil.normalizeUriKey(retrievalUri);
+        if (ifAbsent && (byIdPlans.containsKey(id) || byIdSchemas.containsKey(id))) return;
+        if (byIdSchemas.containsKey(id)) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
+        }
+        SchemaPlan plan = SchemaPlan.of(retrievalUri, PathSegment.Root.INSTANCE, schema);
+        SchemaPlan existing = byIdPlans.putIfAbsent(id, plan);
+        if (existing != null && (!existing.booleanSchema || existing.booleanValue != schema.booleanValue())) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
+        }
+    }
 
     /**
      * Registers one URI mapping after validation checks.
