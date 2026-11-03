@@ -41,4 +41,12 @@ public @interface CompiledValidator {
      */
     String registryDir() default "";
 
+    /**
+     * Optional absolute URI base for resources in registryDir, ending in '/'.
+     * Each local file is indexed at this base plus its path relative to registryDir.
+     * Without it, files use their local file: retrieval URIs. This supports
+     * preloaded remote schemas that have no $id, without fetching over HTTP.
+     */
+    String registryBaseUri() default "";
+
 }

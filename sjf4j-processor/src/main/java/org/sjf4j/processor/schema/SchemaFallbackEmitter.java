@@ -20,9 +20,11 @@ final class SchemaFallbackEmitter {
     private final String fallbackType;
     private final NameAllocator planTypes = new NameAllocator();
     private final String registryDir;
+    private final String registryBaseUri;
 
-    SchemaFallbackEmitter(GeneratedNames names, String registryDir) {
+    SchemaFallbackEmitter(GeneratedNames names, String registryDir, String registryBaseUri) {
         this.registryDir = registryDir.trim();
+        this.registryBaseUri = registryBaseUri.trim();
         // Reserve the enclosing class once; nested plan names have their own scope.
         this.fallbackType = names.type("SchemaFallbacks");
     }
@@ -71,8 +73,14 @@ final class SchemaFallbackEmitter {
                     }
                 }
                 if (!registryDir.isEmpty()) {
-                    out.line(registry + ".indexDir(java.net.URI.create("
-                            + SchemaEmitter.javaLiteral(registryDir) + "));");
+                    if (registryBaseUri.isEmpty()) {
+                        out.line(registry + ".indexDir(java.net.URI.create("
+                                + SchemaEmitter.javaLiteral(registryDir) + "));");
+                    } else {
+                        out.line(registry + ".indexDir(java.net.URI.create("
+                                + SchemaEmitter.javaLiteral(registryDir) + "), java.net.URI.create("
+                                + SchemaEmitter.javaLiteral(registryBaseUri) + "));");
+                    }
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("
                         + SchemaEmitter.javaLiteral(plan.snapshot.selectedUri) + "));");

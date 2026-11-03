@@ -54,22 +54,30 @@ final class SchemaResourceResolver {
 
     private final ProcessorContext context;
     private final String registryDir;
+    private final String registryBaseUri;
     private final Map<String, SchemaRegistry> registryCache;
 
-    SchemaResourceResolver(ProcessorContext context, String registryDir,
+    SchemaResourceResolver(ProcessorContext context, String registryDir, String registryBaseUri,
                            Map<String, SchemaRegistry> registryCache) {
         this.context = context;
         this.registryDir = registryDir.trim();
+        this.registryBaseUri = registryBaseUri.trim();
         this.registryCache = registryCache;
     }
 
-    /** Pre-register every directory resource exactly once per processing run. */
+    /** Pre-register each directory/base combination once per processing run. */
     private SchemaRegistry registry() {
-        SchemaRegistry cached = registryCache.get(registryDir);
+        String key = registryDir + "\u0000" + registryBaseUri;
+        SchemaRegistry cached = registryCache.get(key);
         if (cached == null) {
             cached = new SchemaRegistry();
-            if (!registryDir.isEmpty()) cached.indexDir(URI.create(registryDir));
-            registryCache.put(registryDir, cached);
+            if (!registryDir.isEmpty()) {
+                cached.indexDir(URI.create(registryDir),
+                        registryBaseUri.isEmpty() ? null : URI.create(registryBaseUri));
+            } else if (!registryBaseUri.isEmpty()) {
+                throw new IllegalArgumentException("registryBaseUri requires registryDir");
+            }
+            registryCache.put(key, cached);
         }
         return SchemaRegistry.copyOf(cached);
     }

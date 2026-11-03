@@ -145,20 +145,37 @@ public class SchemaRegistry {
     }
 
     /**
-     * Recursively pre-registers all .json resources under a file-system directory.
-     * Uses SchemaLoader for parsing and the existing indexIfAbsent semantics,
-     * preserving previously indexed roots and canonical $id aliases.
-     * Plans remain lazy until resolve() is invoked.
+     * Recursively indexes JSON Schemas in a file-system directory, using file: retrieval
+     * URIs for schemas without $id. Plans remain lazy until resolve() is invoked.
      *
      * @param directory a file: URI or working-directory-relative directory URI ending in '/'
      */
     public void indexDir(URI directory) {
+        indexDir(directory, null);
+    }
+
+    /**
+     * Indexes a local directory under a logical base URI.
+     * For example, directory/file.json is indexed as baseUri.resolve("file.json").
+     * The schema's own $id, when present, is still its canonical URI. This is
+     * useful for preloaded remote resources without $id; no network I/O occurs.
+     *
+     * @param directory a local directory containing .json schemas
+     * @param baseUri absolute directory URI ending in '/', or null to use local file: URIs
+     */
+    public void indexDir(URI directory, URI baseUri) {
         SchemaLoader.Local loader = new SchemaLoader.Local(directory);
-        URI base = loader.baseUri();
-        if (!"file".equalsIgnoreCase(base.getScheme())) {
-            throw new IllegalArgumentException("schema registry directory must use a file: URI: " + base);
+        URI directoryUri = loader.baseUri();
+        URI effectiveBaseUri = baseUri == null ? directoryUri : baseUri;
+        if (!effectiveBaseUri.isAbsolute() || !effectiveBaseUri.toString().endsWith("/")
+                || effectiveBaseUri.getRawQuery() != null || effectiveBaseUri.getRawFragment() != null) {
+            throw new IllegalArgumentException("schema registry base URI must be an absolute directory URI: "
+                    + effectiveBaseUri);
         }
-        Path root = Paths.get(base);
+        if (!"file".equalsIgnoreCase(directoryUri.getScheme())) {
+            throw new IllegalArgumentException("schema registry directory must use a file: URI: " + directoryUri);
+        }
+        Path root = Paths.get(directoryUri);
         if (!Files.isDirectory(root)) {
             throw new IllegalArgumentException("schema registry directory not found: " + root);
         }
@@ -172,11 +189,12 @@ public class SchemaRegistry {
                         if (schema == null) {
                             throw new IllegalArgumentException("schema registry resource not found: " + uri);
                         }
-                        indexIfAbsent(uri, schema);
+                        URI relative = root.toUri().relativize(uri);
+                        indexIfAbsent(effectiveBaseUri.resolve(relative), schema);
                     });
         } catch (IOException e) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
-                    "failed to index schema registry directory", PathSegment.Root.INSTANCE, base), e);
+                    "failed to index schema registry directory", PathSegment.Root.INSTANCE, directoryUri), e);
         }
     }
 
