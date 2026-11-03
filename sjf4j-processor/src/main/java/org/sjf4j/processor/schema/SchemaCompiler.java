@@ -110,8 +110,9 @@ final class SchemaCompiler {
                 case "items": case "minItems": case "maxItems":
                     array.put(keyword, schema.getNode(keyword));
                     break;
-                case "properties": case "required": case "additionalProperties":
-                case "minProperties": case "maxProperties": case "dependentRequired":
+                case "properties": case "patternProperties": case "required":
+                case "additionalProperties": case "minProperties": case "maxProperties":
+                case "dependentRequired":
                     object.put(keyword, schema.getNode(keyword));
                     break;
                 default:

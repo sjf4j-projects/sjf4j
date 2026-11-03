@@ -208,6 +208,9 @@ abstract class SchemaCheck {
         final boolean jsonObject;
         final boolean typeRequired;
         final boolean additionalPropertiesFalse;
+        final SchemaCheck additionalPropertiesCheck;
+        final List<PatternProperty> patternProperties;
+        final SchemaValue elementValue;
         final Integer minProperties;
         final Integer maxProperties;
         final Diagnostic typeDiagnostic;
@@ -223,7 +226,8 @@ abstract class SchemaCheck {
         final List<PropertyCheck> properties;
 
         ObjectCheck(boolean dynamic, boolean jsonObject, boolean typeRequired,
-                    boolean additionalPropertiesFalse,
+                    boolean additionalPropertiesFalse, SchemaCheck additionalPropertiesCheck,
+                    List<PatternProperty> patternProperties, SchemaValue elementValue,
                     Integer minProperties, Integer maxProperties, int staticPropertyCount,
                     List<String> allowedNames, List<Required> required,
                     List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
@@ -235,6 +239,9 @@ abstract class SchemaCheck {
             this.jsonObject = jsonObject;
             this.typeRequired = typeRequired;
             this.additionalPropertiesFalse = additionalPropertiesFalse;
+            this.additionalPropertiesCheck = additionalPropertiesCheck;
+            this.patternProperties = Collections.unmodifiableList(new ArrayList<PatternProperty>(patternProperties));
+            this.elementValue = elementValue;
             this.minProperties = minProperties;
             this.maxProperties = maxProperties;
             this.typeDiagnostic = typeDiagnostic;
@@ -252,10 +259,25 @@ abstract class SchemaCheck {
 
         @Override
         boolean hasFallback() {
+            if (additionalPropertiesCheck != null && additionalPropertiesCheck.hasFallback()) return true;
+            for (PatternProperty pattern : patternProperties) {
+                if (pattern.check.hasFallback()) return true;
+            }
             for (PropertyCheck property : properties) {
                 if (property.check.hasFallback()) return true;
             }
             return false;
+        }
+    }
+
+    /** Pattern match is a separate assertion and also marks local coverage for additionalProperties. */
+    static final class PatternProperty {
+        final String javaPattern;
+        final SchemaCheck check;
+
+        PatternProperty(String javaPattern, SchemaCheck check) {
+            this.javaPattern = javaPattern;
+            this.check = check;
         }
     }
 
