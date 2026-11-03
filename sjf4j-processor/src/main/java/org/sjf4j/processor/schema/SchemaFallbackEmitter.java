@@ -71,11 +71,8 @@ final class SchemaFallbackEmitter {
                     }
                 }
                 if (!registryDir.isEmpty()) {
-                    out.line("org.sjf4j.schema.SchemaLoader.Local registryLoader = new org.sjf4j.schema.SchemaLoader.Local(java.net.URI.create("
+                    out.line(registry + ".indexDir(java.net.URI.create("
                             + SchemaEmitter.javaLiteral(registryDir) + "));");
-                    out.beginBlock("for (java.net.URI uri : registryLoader.listDirectory())");
-                    out.line(registry + ".indexIfAbsent(uri, registryLoader.load(uri));");
-                    out.endBlock();
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("
                         + SchemaEmitter.javaLiteral(plan.snapshot.selectedUri) + "));");
