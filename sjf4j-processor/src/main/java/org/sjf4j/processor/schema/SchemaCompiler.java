@@ -144,25 +144,25 @@ final class SchemaCompiler {
             if (literal == null) return null;
             checks.add(literal);
         }
-        if (!strings.isEmpty() && !primitiveCannotMatch(value, "STRING")) {
+        if (!strings.isEmpty()) {
             SchemaValue stringValue = conditionalValue(value, "STRING");
             SchemaCheck check = scalars.compile(strings, stringValue, "string", uri);
             if (check == null) return null;
             checks.add(new SchemaCheck.ShapeGuard("STRING", stringValue, check));
         }
-        if (!numbers.isEmpty() && !primitiveCannotMatch(value, "NUMBER")) {
+        if (!numbers.isEmpty()) {
             SchemaValue numberValue = conditionalValue(value, "NUMBER");
             SchemaCheck check = scalars.compile(numbers, numberValue, "number", uri);
             if (check == null) return null;
             checks.add(new SchemaCheck.ShapeGuard("NUMBER", numberValue, check));
         }
-        if (!array.isEmpty() && !primitiveCannotMatch(value, "ARRAY")) {
+        if (!array.isEmpty()) {
             SchemaValue arrayValue = conditionalValue(value, "ARRAY");
             SchemaCheck check = arrays.compile(snapshot, array, arrayValue, uri, depth);
             if (check == null) return null;
             checks.add(new SchemaCheck.ShapeGuard("ARRAY", arrayValue, check));
         }
-        if (!object.isEmpty() && !primitiveCannotMatch(value, "OBJECT")) {
+        if (!object.isEmpty()) {
             // ObjectCompiler chooses POJO field reads or Nodes traversal.
             // This is a code-generation choice, never a schema fallback.
             TypeMirror objectType = value.type;
@@ -184,12 +184,6 @@ final class SchemaCompiler {
      * Preserve known static shape fast paths; for Java scalar types that cannot
      * be the target shape, generate the generic expression behind the guard.
      */
-    private static boolean primitiveCannotMatch(SchemaValue value, String jsonType) {
-        if (value.type == null || !value.type.getKind().isPrimitive()) return false;
-        return !("STRING".equals(jsonType) && value.shape == SchemaValue.Shape.STRING)
-                && !("NUMBER".equals(jsonType) && value.shape == SchemaValue.Shape.NUMBER);
-    }
-
     private SchemaValue conditionalValue(SchemaValue value, String jsonType) {
         boolean matching = ("STRING".equals(jsonType) && value.shape == SchemaValue.Shape.STRING)
                 || ("NUMBER".equals(jsonType) && value.shape == SchemaValue.Shape.NUMBER)
