@@ -120,7 +120,7 @@ final class SchemaEmitter {
                         String element = locals.newName("element");
                         statements.add("        Object " + element + " = " + (check.jsonObject
                                 ? variable + ".getNode(" + key + ")"
-                                : "org.sjf4j.Nodes.getInObject(" + variable + ", " + key + ")") + ";");
+                                : "org.sjf4j.schema.CompiledUtil.objectPropertyValue(" + variable + ", " + key + ")") + ";");
                         String previousPath = instancePath;
                         instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
                         List<String> children = new ArrayList<String>();
@@ -140,7 +140,7 @@ final class SchemaEmitter {
                     statements.add("    if (!" + covered + ") {");
                     statements.add("        Object " + element + " = " + (check.jsonObject
                             ? variable + ".getNode(" + key + ")"
-                            : "org.sjf4j.Nodes.getInObject(" + variable + ", " + key + ")") + ";");
+                            : "org.sjf4j.schema.CompiledUtil.objectPropertyValue(" + variable + ", " + key + ")") + ";");
                     String previousPath = instancePath;
                     instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
                     List<String> children = new ArrayList<String>();
@@ -160,7 +160,7 @@ final class SchemaEmitter {
             String access = check.jsonObject
                     ? variable + ".getNode(" + literal(property.name) + ")"
                     : check.dynamic
-                    ? "org.sjf4j.Nodes.getInObject(" + variable + ", " + literal(property.name) + ")"
+                    ? "org.sjf4j.schema.CompiledUtil.objectPropertyValue(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
             statements.add((property.codecOwner == null ? property.value.localType() : "Object")
                     + " " + local + " = " + access + ";");
