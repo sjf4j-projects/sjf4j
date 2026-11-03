@@ -51,7 +51,7 @@ class SchemaPlanTest {
         assertTrue(truePlan.isValid("anything"));
         assertEquals(truePlan, registry.resolve(trueUri));
 
-        registry.index(wrapperUri, JsonSchema.fromJson("{\\"$ref\\":\\"false.json\\"}"));
+        registry.index(wrapperUri, JsonSchema.fromJson("{\"$ref\":\"false.json\"}"));
         assertFalse(registry.resolve(wrapperUri).isValid("anything"));
 
         registry.indexIfAbsent(falseUri, BooleanSchema.TRUE);
