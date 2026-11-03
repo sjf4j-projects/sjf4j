@@ -171,6 +171,16 @@ final class SchemaEmitter {
             case TYPE:
                 emitType(lines, (SchemaCheck.TypeCheck) check, value, expression, onFailure);
                 return;
+            case TYPE_GUARD:
+                SchemaCheck.TypeGuard guard = (SchemaCheck.TypeGuard) check;
+                lines.add("if (org.sjf4j.JsonType.of(" + expression
+                        + ") == org.sjf4j.JsonType." + guard.jsonType + ") {");
+                List<String> guarded = new ArrayList<String>();
+                emitValue(guarded, plan, guard.child, value, expression,
+                        planName + "_", strictFormat, depth, onFailure);
+                for (String statement : guarded) lines.add("    " + statement);
+                lines.add("}");
+                return;
             case FALLBACK:
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
                         ((SchemaCheck.Fallback) check).uri, planName);
