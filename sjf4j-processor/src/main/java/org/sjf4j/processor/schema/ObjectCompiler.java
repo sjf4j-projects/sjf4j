@@ -211,6 +211,8 @@ final class ObjectCompiler {
             if (explicitCodec && (check == null || check.hasFallback())) return null;
             if (check == null) check = new SchemaCheck.Fallback(uri);
             else directCount++;
+            // A trivially valid subschema has no assertions to emit or property to read.
+            if (check.kind == SchemaCheck.Kind.PASS) continue;
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check,
                     explicitCodec ? context.typeUtils.erasure(type).toString() : null));
         }
