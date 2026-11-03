@@ -1,0 +1,4 @@
+# Explicitly unsupported Draft 2020-12 schema groups.
+# One key per line: <file.json>#<zero-based groupIndex>
+# Entries must correspond to schemas that fail @CompiledValidator(fallback=false).
+# A direct probe verifies that none of these exceptions have become unnecessary.
