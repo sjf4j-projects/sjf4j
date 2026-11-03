@@ -9,7 +9,7 @@ import java.util.List;
  * fallback field names appear here. Source generation belongs to SchemaEmitter.
  */
 abstract class SchemaCheck {
-    enum Kind { TYPE, OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, IF_THEN_ELSE, LITERAL, ALL, PASS, REJECT, FALLBACK }
+    enum Kind { TYPE, TYPE_GUARD, OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, IF_THEN_ELSE, LITERAL, ALL, PASS, REJECT, FALLBACK }
 
     final Kind kind;
     final Diagnostic diagnostic;
@@ -142,6 +142,26 @@ abstract class SchemaCheck {
             super(Kind.TYPE, diagnostic);
             this.types = Collections.unmodifiableList(new ArrayList<String>(types));
         }
+    }
+
+    /**
+     * JSON Schema keywords without an explicit type constrain only their
+     * corresponding JSON shape. Nonmatching instance shapes are valid.
+     * This is independent of whether the Java representation is POJO or OBNT.
+     */
+    static final class TypeGuard extends SchemaCheck {
+        final String jsonType;
+        final SchemaValue value;
+        final SchemaCheck child;
+
+        TypeGuard(String jsonType, SchemaValue value, SchemaCheck child) {
+            super(Kind.TYPE_GUARD);
+            this.jsonType = jsonType;
+            this.value = value;
+            this.child = child;
+        }
+
+        @Override boolean hasFallback() { return child.hasFallback(); }
     }
 
     static final class Reject extends SchemaCheck {
