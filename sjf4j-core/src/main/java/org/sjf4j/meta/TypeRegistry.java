@@ -83,7 +83,7 @@ public final class TypeRegistry {
         }
 
         // Concrete Java containers take precedence over external adapters.
-        // Map/List/Set interfaces have already returned NONE via _fastNoneInfo.
+        // Map/List/Set interfaces have already returned NONE via isFastNoneType().
         ContainerInfo ci = ReflectUtil.analyzeContainer(clazz);
         if (ci != null) {
             // Map/List classification wins. Cache a native builder adapter only

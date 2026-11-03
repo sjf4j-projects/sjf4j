@@ -5,26 +5,26 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.FastStringReader;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Numbers;
-import java.time.OffsetDateTime;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import org.sjf4j.value.FastOffsetDateTime;
 import org.sjf4j.value.FastInstant;
+import org.sjf4j.value.FastLocalDate;
 import org.sjf4j.value.FastLocalDateTime;
 import org.sjf4j.value.FastLocalTime;
+import org.sjf4j.value.FastOffsetDateTime;
 import org.sjf4j.value.FastOffsetTime;
-import java.time.OffsetTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
-import org.sjf4j.value.FastLocalDate;
-import org.sjf4j.path.PathSegment;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -312,10 +312,6 @@ public final class SimpleJsonParser extends StreamingParser {
         }
     }
 
-    /**
-     * Reads scalar as number.
-     */
-
     @Override
     public LocalTime readLocalTime() throws IOException {
         if (nextIfNull()) return null;
@@ -508,6 +504,7 @@ public final class SimpleJsonParser extends StreamingParser {
         }
     }
 
+    /** Reads scalar as number. */
     @Override
     public Number readNumber() throws IOException {
         if (nextIfNull()) return null;
@@ -694,17 +691,18 @@ public final class SimpleJsonParser extends StreamingParser {
     private int pos = 0;
     private Token bufferedToken = null;
     private int[] containerStateStack = new int[8];
-    // The path to each open container.  Entries are primitive/string values so
+    // The path to each open container. Skipped names use reusable builders;
     // ordinary successful reads do not allocate PathSegment chains.
     private int[] pathKindStack = new int[8]; // 0 root, 1 name, 2 index
     private int[] pathIndexStack = new int[8];
-    private String[] pathNameStack = new String[8];
+    private Object[] pathNameStack = new Object[8];
+    private StringBuilder[] skippedNames = new StringBuilder[8];
     private int depth = 0;
     private String pendingName;
     private int activePathDepth;
     private int activePathKind;
     private int activePathIndex;
-    private String activePathName;
+    private Object activePathName;
 
     // Object: first name, value after name, name/end after value. Array values
     // use their index while waiting for a value and -(index + 4) after one.
@@ -718,15 +716,18 @@ public final class SimpleJsonParser extends StreamingParser {
             int[] nextState = new int[nextSize];
             int[] nextKind = new int[nextSize];
             int[] nextIndex = new int[nextSize];
-            String[] nextName = new String[nextSize];
+            Object[] nextName = new Object[nextSize];
+            StringBuilder[] nextSkippedNames = new StringBuilder[nextSize];
             System.arraycopy(containerStateStack, 0, nextState, 0, containerStateStack.length);
             System.arraycopy(pathKindStack, 0, nextKind, 0, pathKindStack.length);
             System.arraycopy(pathIndexStack, 0, nextIndex, 0, pathIndexStack.length);
             System.arraycopy(pathNameStack, 0, nextName, 0, pathNameStack.length);
+            System.arraycopy(skippedNames, 0, nextSkippedNames, 0, skippedNames.length);
             containerStateStack = nextState;
             pathKindStack = nextKind;
             pathIndexStack = nextIndex;
             pathNameStack = nextName;
+            skippedNames = nextSkippedNames;
         }
         containerStateStack[depth] = object ? OBJECT_FIRST_NAME : 0;
         pathKindStack[depth] = activePathKind;
@@ -750,7 +751,7 @@ public final class SimpleJsonParser extends StreamingParser {
         activePathName = null;
     }
 
-    private void _activateNamePath(String name) {
+    private void _activateNamePath(Object name) {
         activePathDepth = depth;
         activePathKind = 1;
         activePathName = name;
@@ -998,7 +999,8 @@ public final class SimpleJsonParser extends StreamingParser {
             if (c == '\\') {
                 StringBuilder sb = new StringBuilder();
                 sb.append(inputBuffer, start, inputPos - start - 1);
-                return _readStringSlow(sb, c);
+                _readStringSlow(sb, c);
+                return sb.toString();
             }
             if (c < 0x20) throw _error("unescaped control character in string", c);
         }
@@ -1006,14 +1008,40 @@ public final class SimpleJsonParser extends StreamingParser {
         // The closing quote or a later escape may be in the next input chunk.
         StringBuilder sb = new StringBuilder();
         sb.append(inputBuffer, start, inputPos - start);
-        return _readStringSlow(sb, -1);
+        _readStringSlow(sb, -1);
+        return sb.toString();
     }
 
-    private String _readStringSlow(StringBuilder sb, int c) throws IOException {
+    /** Decodes a skipped object name without creating a String on each field. */
+    private void _readSkippedName(StringBuilder name) throws IOException {
+        name.setLength(0);
+        int quote = _read();
+        if (quote != '"') throw _error("expected '\"'", quote);
+
+        int start = inputPos;
+        while (inputPos < inputLimit) {
+            int c = _read();
+            if (c == '"') {
+                name.append(inputBuffer, start, inputPos - start - 1);
+                return;
+            }
+            if (c == '\\') {
+                name.append(inputBuffer, start, inputPos - start - 1);
+                _readStringSlow(name, c);
+                return;
+            }
+            if (c < 0x20) throw _error("unescaped control character in string", c);
+        }
+
+        name.append(inputBuffer, start, inputPos - start);
+        _readStringSlow(name, -1);
+    }
+
+    private void _readStringSlow(StringBuilder sb, int c) throws IOException {
         while (true) {
             if (c == -1) c = _read();
             if (c == -1) break;
-            if (c == '"') return sb.toString();
+            if (c == '"') return;
             if (c == '\\') {
                 int e = _read();
                 if (e == -1) throw _error("unexpected EOF after escape '\\'", e);
@@ -1215,10 +1243,10 @@ public final class SimpleJsonParser extends StreamingParser {
     private PathSegment _path() {
         PathSegment path = PathSegment.Root.INSTANCE;
         for (int i = 0; i < activePathDepth; i++) {
-            if (pathKindStack[i] == 1) path = new PathSegment.Name(path, pathNameStack[i]);
+            if (pathKindStack[i] == 1) path = new PathSegment.Name(path, pathNameStack[i].toString());
             else if (pathKindStack[i] == 2) path = new PathSegment.Index(path, pathIndexStack[i]);
         }
-        if (activePathKind == 1) return new PathSegment.Name(path, activePathName);
+        if (activePathKind == 1) return new PathSegment.Name(path, activePathName.toString());
         if (activePathKind == 2) return new PathSegment.Index(path, activePathIndex);
         return path;
     }
@@ -1339,7 +1367,9 @@ public final class SimpleJsonParser extends StreamingParser {
             _skipWhitespace();
             _activateContainerPath();
             if (_peek() != '"') throw _error("expected '\"' for object key", _peek());
-            String key = _readString();
+            StringBuilder key = skippedNames[depth - 1];
+            if (key == null) skippedNames[depth - 1] = key = new StringBuilder(32);
+            _readSkippedName(key);
             _activateNamePath(key);
             _skipWhitespace();
             c = _read();

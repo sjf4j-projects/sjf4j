@@ -14,17 +14,17 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.meta.CreatorInfo;
 import org.sjf4j.meta.CreatorState;
-import org.sjf4j.meta.PropertyInfo;
-import org.sjf4j.util.Numbers;
-import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.meta.LazyTypeInfo;
+import org.sjf4j.meta.OneOfInfo;
 import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.TypeInfo;
 import org.sjf4j.meta.TypeRegistry;
-import org.sjf4j.util.Types;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Strings;
+import org.sjf4j.util.Types;
 import org.sjf4j.value.ValueInfo;
 
 import java.lang.reflect.Array;
@@ -751,22 +751,6 @@ public final class NodeMapper {
         Asserts.notNull(clazz, "clazz");
         return (T) _adapt(node, clazz, true, context);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     /*
      * --------------------------------------------------------------

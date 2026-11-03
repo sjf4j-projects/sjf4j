@@ -453,22 +453,6 @@ public final class Numbers {
         return new BigDecimal(number.toString()).stripTrailingZeros();
     }
 
-//    /**
-//     * Compares two numbers with cross-type numeric semantics.
-//     */
-//    public static int compare(Number source, Number target) {
-//        Asserts.notNull(source, "source");
-//        Asserts.notNull(target, "target");
-//        if (isIntegralType(source) && isIntegralType(target)) {
-//            if (source instanceof BigInteger || target instanceof BigInteger) {
-//                return toBigInteger(source).compareTo(toBigInteger(target));
-//            }
-//            return Long.compare(source.longValue(), target.longValue());
-//        }
-//        return toBigDecimal(source).compareTo(toBigDecimal(target));
-//    }
-
-
     /**
      * Compares two numbers using cross-type numeric semantics.
      */

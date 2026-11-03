@@ -911,25 +911,6 @@ public class JsonPath {
      * --------------------------------------------------------------
      */
 
-//    /**
-//     * Finds all matching values for this path.
-//     * <p>
-//     * The returned list is empty when there is no match. Explicit null matches
-//     * are retained as null elements; missing locations are omitted.
-//     */
-//    public List<Object> find(Object container) {
-//        Asserts.notNull(container, "container");
-//        if (singleGet) {
-//            List<Object> result = new ArrayList<>(1);
-//            Object value = _findOne(container, 1, segments.length);
-//            if (value != MISSING) result.add(value);
-//            return result;
-//        }
-//        List<Object> result = new ArrayList<>();
-//        _findAll(container, container, 1, segments.length, result, Function.identity(), new NodeWalker.Access());
-//        return result;
-//    }
-
     /**
      * Finds and converts all matches using strict conversion.
      */

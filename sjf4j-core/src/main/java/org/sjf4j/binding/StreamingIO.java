@@ -93,8 +93,8 @@ public final class StreamingIO {
             /*
              * Scalars.
              *
-             * Primitive targets use the non-null Value variant directly.
-             * Boxed/reference targets use the nullable variant.
+             * Primitive and boxed targets share the boxed dispatch below;
+             * the scalar readers used here are nullable.
              */
 
             if (boxed == String.class) {

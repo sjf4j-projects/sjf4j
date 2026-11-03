@@ -397,6 +397,36 @@ class SimpleJsonParserTest {
     }
 
     @Test
+    void skippedNamesRetainDecodedNestedPathsAcrossBuffers() throws Exception {
+        String longName = "n".repeat(8200);
+        String json = "{\"unused\":0,\"a\\u0062\":{\"ignored\":true,\""
+                + longName + "\":{\"last\":[1,1e]}}}";
+        for (boolean direct : new boolean[]{false, true}) {
+            SimpleJsonParser parser = direct
+                    ? new SimpleJsonParser(json)
+                    : new SimpleJsonParser(new StringReader(json));
+            try {
+                BindingException error = assertThrows(BindingException.class, parser::skipNode);
+                assertEquals("$.ab." + longName + ".last[1]",
+                        error.getPathSegment().rootedPathExpr());
+            } finally {
+                parser.close();
+            }
+        }
+    }
+
+    @Test
+    void skippedNameStillRejectsInvalidEscapeAtContainingObject() throws Exception {
+        SimpleJsonParser parser = new SimpleJsonParser("{\"a\":{\"bad\\q\":1}}");
+        try {
+            BindingException error = assertThrows(BindingException.class, parser::skipNode);
+            assertEquals("$.a", error.getPathSegment().rootedPathExpr());
+        } finally {
+            parser.close();
+        }
+    }
+
+    @Test
     void skipNextRejectsMalformedNumbersAtTheirNestedPath() {
         for (String value : new String[]{"01", "-", "1.", "1e", "1e+", "1x"}) {
             assertSkippedValueFailsAtB(value);

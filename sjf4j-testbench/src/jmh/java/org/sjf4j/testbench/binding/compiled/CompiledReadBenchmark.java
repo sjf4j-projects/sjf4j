@@ -38,7 +38,7 @@ import java.util.List;
  * is included in the measurements.
  *
  * native: backend-native Map/List binding for the same logical target type.
- * Fastjson2 uses JSONReader.read(Map.class)/read(List.class).
+ * Fastjson2 uses JSONReader.read(Object.class)/read(List.class).
  * native_reader: Gson has no byte[] decoding API; it receives a UTF-8 Reader.
  * native_tree: JSON-P returns JsonValue, NOT a Java Map or POJO; compare separately.
  * No Simple native baseline exists.
@@ -103,7 +103,7 @@ public class CompiledReadBenchmark {
 
     private static String reverseFields(String input) {
         try {
-            Object root = JACKSON2_NATIVE.readValue(input, Map.class);
+            Object root = JACKSON2_NATIVE.readValue(input, Object.class);
             return JACKSON2_NATIVE.writeValueAsString(reverseObjectFields(root));
         } catch (IOException e) {
             throw new ExceptionInInitializerError(e);
@@ -184,18 +184,18 @@ public class CompiledReadBenchmark {
         Object jackson3Map = JACKSON3_COMPILED.readMap(User.JSON_DATA);
         Object map = FASTJSON2_COMPILED.readMap(User.JSON_DATA);
         checkMap("jackson2 compiled JSON_DATA", JACKSON2_COMPILED.readMap(User.JSON_DATA));
-        checkMap("jackson2 runtime JSON_DATA", JACKSON2_RUNTIME.readNode(User.JSON_DATA, Map.class));
+        checkMap("jackson2 runtime JSON_DATA", JACKSON2_RUNTIME.readNode(User.JSON_DATA, Object.class));
         checkMap("jackson2 compiled JSON_UTF8", JACKSON2_COMPILED.readMapUtf8(JSON_UTF8));
-        checkMap("jackson2 runtime JSON_UTF8", JACKSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkMap("jackson2 runtime JSON_UTF8", JACKSON2_RUNTIME.readNode(JSON_UTF8, Object.class));
         checkEquivalentRawGraph("jackson2 native String", jackson2Map, jackson2_map_string_native());
         checkEquivalentRawGraph("jackson2 runtime String", jackson2Map, jackson2_map_string_runtime());
         checkEquivalentRawGraph("jackson2 native UTF-8", jackson2Map, jackson2_map_utf8_native());
         checkEquivalentRawGraph("jackson2 compiled UTF-8", jackson2Map, jackson2_map_utf8_compiled());
         checkEquivalentRawGraph("jackson2 runtime UTF-8", jackson2Map, jackson2_map_utf8_runtime());
         checkMap("jackson3 compiled JSON_DATA", JACKSON3_COMPILED.readMap(User.JSON_DATA));
-        checkMap("jackson3 runtime JSON_DATA", JACKSON3_RUNTIME.readNode(User.JSON_DATA, Map.class));
+        checkMap("jackson3 runtime JSON_DATA", JACKSON3_RUNTIME.readNode(User.JSON_DATA, Object.class));
         checkMap("jackson3 compiled JSON_UTF8", JACKSON3_COMPILED.readMapUtf8(JSON_UTF8));
-        checkMap("jackson3 runtime JSON_UTF8", JACKSON3_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkMap("jackson3 runtime JSON_UTF8", JACKSON3_RUNTIME.readNode(JSON_UTF8, Object.class));
         checkEquivalentRawGraph("jackson3 native String", jackson3Map, jackson3_map_string_native());
         checkEquivalentRawGraph("jackson3 raw String", jackson3Map, jackson3_map_string_raw());
         checkEquivalentRawGraph("jackson3 runtime String", jackson3Map, jackson3_map_string_runtime());
@@ -204,29 +204,29 @@ public class CompiledReadBenchmark {
         checkEquivalentRawGraph("jackson3 raw UTF-8", jackson3Map, jackson3_map_utf8_raw());
         checkEquivalentRawGraph("jackson3 runtime UTF-8", jackson3Map, jackson3_map_utf8_runtime());
         checkMap("gson compiled JSON_DATA", GSON_COMPILED.readMap(User.JSON_DATA));
-        checkMap("gson runtime JSON_DATA", GSON_RUNTIME.readNode(User.JSON_DATA, Map.class));
+        checkMap("gson runtime JSON_DATA", GSON_RUNTIME.readNode(User.JSON_DATA, Object.class));
         checkMap("gson compiled JSON_UTF8", GSON_COMPILED.readMapUtf8(JSON_UTF8));
-        checkMap("gson runtime JSON_UTF8", GSON_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkMap("gson runtime JSON_UTF8", GSON_RUNTIME.readNode(JSON_UTF8, Object.class));
         checkMap("fastjson2 compiled JSON_DATA", FASTJSON2_COMPILED.readMap(User.JSON_DATA));
-        checkMap("fastjson2 runtime JSON_DATA", FASTJSON2_RUNTIME.readNode(User.JSON_DATA, Map.class));
+        checkMap("fastjson2 runtime JSON_DATA", FASTJSON2_RUNTIME.readNode(User.JSON_DATA, Object.class));
         checkMap("fastjson2 compiled JSON_UTF8", FASTJSON2_COMPILED.readMapUtf8(JSON_UTF8));
-        checkMap("fastjson2 runtime JSON_UTF8", FASTJSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkMap("fastjson2 runtime JSON_UTF8", FASTJSON2_RUNTIME.readNode(JSON_UTF8, Object.class));
         checkEquivalentRawGraph("fastjson2 map String native", map, fastjson2_map_string_native());
         checkEquivalentRawGraph("fastjson2 map UTF-8 native", map, fastjson2_map_utf8_native());
         checkEquivalentRawGraph("fastjson2 map String runtime", map,
-                FASTJSON2_RUNTIME.readNode(User.JSON_DATA, Map.class));
+                FASTJSON2_RUNTIME.readNode(User.JSON_DATA, Object.class));
         checkEquivalentRawGraph("fastjson2 map UTF-8 compiled", map,
                 FASTJSON2_COMPILED.readMapUtf8(JSON_UTF8));
         checkEquivalentRawGraph("fastjson2 map UTF-8 runtime", map,
-                FASTJSON2_RUNTIME.readNode(JSON_UTF8, Map.class));
+                FASTJSON2_RUNTIME.readNode(JSON_UTF8, Object.class));
         checkMap("jsonp compiled JSON_DATA", JSONP_COMPILED.readMap(User.JSON_DATA));
-        checkMap("jsonp runtime JSON_DATA", JSONP_RUNTIME.readNode(User.JSON_DATA, Map.class));
+        checkMap("jsonp runtime JSON_DATA", JSONP_RUNTIME.readNode(User.JSON_DATA, Object.class));
         checkMap("jsonp compiled JSON_UTF8", JSONP_COMPILED.readMapUtf8(JSON_UTF8));
-        checkMap("jsonp runtime JSON_UTF8", JSONP_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkMap("jsonp runtime JSON_UTF8", JSONP_RUNTIME.readNode(JSON_UTF8, Object.class));
         checkMap("simple compiled JSON_DATA", SIMPLE_COMPILED.readMap(User.JSON_DATA));
-        checkMap("simple runtime JSON_DATA", SIMPLE_RUNTIME.readNode(User.JSON_DATA, Map.class));
+        checkMap("simple runtime JSON_DATA", SIMPLE_RUNTIME.readNode(User.JSON_DATA, Object.class));
         checkMap("simple compiled JSON_UTF8", SIMPLE_COMPILED.readMapUtf8(JSON_UTF8));
-        checkMap("simple runtime JSON_UTF8", SIMPLE_RUNTIME.readNode(JSON_UTF8, Map.class));
+        checkMap("simple runtime JSON_UTF8", SIMPLE_RUNTIME.readNode(JSON_UTF8, Object.class));
         checkMap("jackson2 native string", jackson2_map_string_native());
         checkMap("jackson2 native utf8", jackson2_map_utf8_native());
         checkMap("jackson3 native string", jackson3_map_string_native());
@@ -358,12 +358,12 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson2_map_string_runtime() {
-        return JACKSON2_RUNTIME.readNode(User.JSON_DATA, Map.class);
+        return JACKSON2_RUNTIME.readNode(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
     public Object jackson2_map_string_native() throws Exception {
-        return JACKSON2_NATIVE.readValue(User.JSON_DATA, Map.class);
+        return JACKSON2_NATIVE.readValue(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
@@ -373,12 +373,12 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson2_map_utf8_runtime() {
-        return JACKSON2_RUNTIME.readNode(JSON_UTF8, Map.class);
+        return JACKSON2_RUNTIME.readNode(JSON_UTF8, Object.class);
     }
 
     @Benchmark
     public Object jackson2_map_utf8_native() throws Exception {
-        return JACKSON2_NATIVE.readValue(JSON_UTF8, Map.class);
+        return JACKSON2_NATIVE.readValue(JSON_UTF8, Object.class);
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
@@ -457,12 +457,12 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson3_map_string_runtime() {
-        return JACKSON3_RUNTIME.readNode(User.JSON_DATA, Map.class);
+        return JACKSON3_RUNTIME.readNode(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
     public Object jackson3_map_string_native() throws Exception {
-        return JACKSON3_NATIVE.readValue(User.JSON_DATA, Map.class);
+        return JACKSON3_NATIVE.readValue(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
@@ -472,12 +472,12 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jackson3_map_utf8_runtime() {
-        return JACKSON3_RUNTIME.readNode(JSON_UTF8, Map.class);
+        return JACKSON3_RUNTIME.readNode(JSON_UTF8, Object.class);
     }
 
     @Benchmark
     public Object jackson3_map_utf8_native() throws Exception {
-        return JACKSON3_NATIVE.readValue(JSON_UTF8, Map.class);
+        return JACKSON3_NATIVE.readValue(JSON_UTF8, Object.class);
     }
 
     @Benchmark
@@ -503,7 +503,8 @@ public class CompiledReadBenchmark {
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3CompiledBinder {
         @ReadFrom User readPojo(String json) throws IOException;
-        @ReadFrom User readPojoUtf8(byte[] json) throws IOException;        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
+        @ReadFrom User readPojoUtf8(byte[] json) throws IOException;
+        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
         @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
 
     }
@@ -547,12 +548,12 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object gson_map_string_runtime() {
-        return GSON_RUNTIME.readNode(User.JSON_DATA, Map.class);
+        return GSON_RUNTIME.readNode(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
     public Object gson_map_string_native() throws Exception {
-        return GSON_NATIVE.fromJson(User.JSON_DATA, Map.class);
+        return GSON_NATIVE.fromJson(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
@@ -562,13 +563,13 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object gson_map_utf8_runtime() {
-        return GSON_RUNTIME.readNode(JSON_UTF8, Map.class);
+        return GSON_RUNTIME.readNode(JSON_UTF8, Object.class);
     }
 
     @Benchmark
     public Object gson_map_utf8_native_reader() throws Exception {
         return GSON_NATIVE.fromJson(new InputStreamReader(
-                new ByteArrayInputStream(JSON_UTF8), StandardCharsets.UTF_8), Map.class);
+                new ByteArrayInputStream(JSON_UTF8), StandardCharsets.UTF_8), Object.class);
     }
 
     @CompiledBinder(backend = Backend.GSON)
@@ -637,7 +638,7 @@ public class CompiledReadBenchmark {
     @Benchmark
     public Object fastjson2_map_string_native() {
         try (JSONReader reader = JSONReader.of(User.JSON_DATA, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.read(Map.class);
+            return reader.read(Object.class);
         }
     }
 
@@ -648,13 +649,13 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object fastjson2_map_string_runtime() {
-        return FASTJSON2_RUNTIME.readNode(User.JSON_DATA, Map.class);
+        return FASTJSON2_RUNTIME.readNode(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
     public Object fastjson2_map_utf8_native() {
         try (JSONReader reader = JSONReader.of(JSON_UTF8, FASTJSON2_NATIVE_CONTEXT)) {
-            return reader.read(Map.class);
+            return reader.read(Object.class);
         }
     }
 
@@ -665,7 +666,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object fastjson2_map_utf8_runtime() {
-        return FASTJSON2_RUNTIME.readNode(JSON_UTF8, Map.class);
+        return FASTJSON2_RUNTIME.readNode(JSON_UTF8, Object.class);
     }
 
     @CompiledBinder(backend = Backend.FASTJSON2)
@@ -706,7 +707,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jsonp_map_string_runtime() {
-        return JSONP_RUNTIME.readNode(User.JSON_DATA, Map.class);
+        return JSONP_RUNTIME.readNode(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
@@ -716,7 +717,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object jsonp_map_utf8_runtime() {
-        return JSONP_RUNTIME.readNode(JSON_UTF8, Map.class);
+        return JSONP_RUNTIME.readNode(JSON_UTF8, Object.class);
     }
 
     @CompiledBinder(backend = Backend.JSONP)
@@ -755,7 +756,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object simple_map_string_runtime() {
-        return SIMPLE_RUNTIME.readNode(User.JSON_DATA, Map.class);
+        return SIMPLE_RUNTIME.readNode(User.JSON_DATA, Object.class);
     }
 
     @Benchmark
@@ -765,7 +766,7 @@ public class CompiledReadBenchmark {
 
     @Benchmark
     public Object simple_map_utf8_runtime() {
-        return SIMPLE_RUNTIME.readNode(JSON_UTF8, Map.class);
+        return SIMPLE_RUNTIME.readNode(JSON_UTF8, Object.class);
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
