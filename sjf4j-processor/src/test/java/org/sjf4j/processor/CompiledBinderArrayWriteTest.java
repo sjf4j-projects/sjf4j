@@ -41,11 +41,11 @@ class CompiledBinderArrayWriteTest {
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
-                            + "@WriteTo void writeModel(ArrayModel value, java.io.OutputStream out) throws java.io.IOException; "
-                            + "@WriteTo String writeNames(String[] value) throws java.io.IOException; "
-                            + "@WriteTo String writeBytes(byte[] value) throws java.io.IOException; "
-                            + "@WriteTo String writeChars(char[] value) throws java.io.IOException; "
-                            + "@WriteTo byte[] writeClients(Client[] value) throws java.io.IOException; "
+                            + "@Write void writeModel(ArrayModel value, java.io.OutputStream out) throws java.io.IOException; "
+                            + "@Write String writeNames(String[] value) throws java.io.IOException; "
+                            + "@Write String writeBytes(byte[] value) throws java.io.IOException; "
+                            + "@Write String writeChars(char[] value) throws java.io.IOException; "
+                            + "@Write byte[] writeClients(Client[] value) throws java.io.IOException; "
                             + "}");
             NavigatorTestCompiler.Result result =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -119,7 +119,7 @@ class CompiledBinderArrayWriteTest {
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                         + "@CompiledBinder(backend=Backend.JACKSON2) public interface Binder { "
-                        + "@WriteTo String write(Object[] values) throws java.io.IOException; }");
+                        + "@Write String write(Object[] values) throws java.io.IOException; }");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());

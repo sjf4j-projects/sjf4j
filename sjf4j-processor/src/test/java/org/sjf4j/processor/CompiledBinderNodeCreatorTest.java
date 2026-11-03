@@ -48,9 +48,9 @@ class CompiledBinderNodeCreatorTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
-                            + "@ReadFrom Person person(String json) throws java.io.IOException; "
-                            + "@ReadFrom FactoryBean factory(String json) throws java.io.IOException; "
-                            + "@WriteTo String writePerson(Person value) throws java.io.IOException; }");
+                            + "@Read Person person(String json) throws java.io.IOException; "
+                            + "@Read FactoryBean factory(String json) throws java.io.IOException; "
+                            + "@Write String writePerson(Person value) throws java.io.IOException; }");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -119,9 +119,9 @@ class CompiledBinderNodeCreatorTest {
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
-                            + "@ReadFrom PackageBean bean(String json) throws java.io.IOException; "
-                            + "@ReadFrom Normalized normalized(String json) throws java.io.IOException; "
-                            + "@ReadFrom Alternate alternate(String json) throws java.io.IOException; }");
+                            + "@Read PackageBean bean(String json) throws java.io.IOException; "
+                            + "@Read Normalized normalized(String json) throws java.io.IOException; "
+                            + "@Read Alternate alternate(String json) throws java.io.IOException; }");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
@@ -153,7 +153,7 @@ class CompiledBinderNodeCreatorTest {
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                         + "@CompiledBinder(backend=Backend.SIMPLE) interface Binder { "
-                        + "@ReadFrom Duplicate read(String json) throws java.io.IOException; }");
+                        + "@Read Duplicate read(String json) throws java.io.IOException; }");
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(compiled.success);

@@ -51,8 +51,8 @@ class CompiledJacksonUnifiedWriteTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
-                    + " @WriteTo String write(Model value) throws java.io.IOException; "
-                    + " @WriteTo String writeList(java.util.List<String> value) throws java.io.IOException; "
+                    + " @Write String write(Model value) throws java.io.IOException; "
+                    + " @Write String writeList(java.util.List<String> value) throws java.io.IOException; "
                     + "}");
 
             NavigatorTestCompiler.Result compiled =

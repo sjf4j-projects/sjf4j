@@ -32,10 +32,10 @@ class CompiledBinderRecordTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
-                            + "@ReadFrom Event read(String source) throws java.io.IOException; "
-                            + "@ReadFrom Event readBytes(byte[] source) throws java.io.IOException; "
-                            + "@ReadFrom java.util.List<Event> readList(String source) throws java.io.IOException; "
-                            + "@WriteTo String write(Event event) throws java.io.IOException; }");
+                            + "@Read Event read(String source) throws java.io.IOException; "
+                            + "@Read Event readBytes(byte[] source) throws java.io.IOException; "
+                            + "@Read java.util.List<Event> readList(String source) throws java.io.IOException; "
+                            + "@Write String write(Event event) throws java.io.IOException; }");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -107,7 +107,7 @@ class CompiledBinderRecordTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
-                            + "@ReadFrom Wide read(String source) throws java.io.IOException; }");
+                            + "@Read Wide read(String source) throws java.io.IOException; }");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
@@ -135,7 +135,7 @@ class CompiledBinderRecordTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
-                            + "@ReadFrom Epoch read(String source) throws java.io.IOException; }");
+                            + "@Read Epoch read(String source) throws java.io.IOException; }");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

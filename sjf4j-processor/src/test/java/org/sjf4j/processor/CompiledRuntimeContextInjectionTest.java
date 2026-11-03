@@ -47,9 +47,9 @@ class CompiledRuntimeContextInjectionTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@ReadFrom Token read(String json) throws IOException; "
-                + "@WriteTo String write(Token token) throws IOException; "
-                + "@WriteTo String writeBean(Bean bean) throws IOException; }");
+                + "@Read Token read(String json) throws IOException; "
+                + "@Write String write(Token token) throws IOException; "
+                + "@Write String writeBean(Bean bean) throws IOException; }");
         sources.put("fixture/Bean.java",
                 "package fixture; public class Bean { public String name = \"x\"; public String empty; }");
 
@@ -147,8 +147,8 @@ class CompiledRuntimeContextInjectionTest {
                     + "import org.sjf4j.annotation.binding.*; "
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
-                    + "@ReadFrom Bean read(String json) throws IOException; "
-                    + "@WriteTo String write(Bean bean) throws IOException; }"
+                    + "@Read Bean read(String json) throws IOException; "
+                    + "@Write String write(Bean bean) throws IOException; }"
             ), CodegenProcessor.class);
             if (!compiled.success) System.err.println(backend + ": " + compiled.diagnostics());
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());

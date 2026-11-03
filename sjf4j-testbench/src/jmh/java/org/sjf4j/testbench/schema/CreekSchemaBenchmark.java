@@ -18,8 +18,8 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
@@ -110,10 +110,10 @@ public class CreekSchemaBenchmark {
     public interface CreekBinder {
         CreekBinder INSTANCE = CompiledInstances.create(CreekBinder.class);
 
-        @ReadFrom
+        @Read
         TestModel readTestModel(byte[] input) throws IOException;
 
-        @WriteTo
+        @Write
         byte[] writeTestModel(TestModel input) throws IOException;
     }
 

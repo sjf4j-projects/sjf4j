@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.NodeProperty;
 
 import java.io.IOException;
@@ -28,8 +28,8 @@ public class CompiledJackson3NameMatchTest {
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Reader {
-        @ReadFrom User fromString(String json) throws IOException;
-        @ReadFrom User fromUtf8(byte[] json) throws IOException;
+        @Read User fromString(String json) throws IOException;
+        @Read User fromUtf8(byte[] json) throws IOException;
     }
 
     @Test

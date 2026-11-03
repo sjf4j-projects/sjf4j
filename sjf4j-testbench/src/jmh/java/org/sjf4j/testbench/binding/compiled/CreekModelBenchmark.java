@@ -21,8 +21,8 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.testbench.model.creek.ModelState;
@@ -206,13 +206,13 @@ public class CreekModelBenchmark {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2CreekBinder {
-        @ReadFrom TestModel read(String json) throws IOException;
-        @WriteTo String write(TestModel model) throws IOException;
+        @Read TestModel read(String json) throws IOException;
+        @Write String write(TestModel model) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CreekBinder {
-        @ReadFrom TestModel read(String json) throws IOException;
-        @WriteTo String write(TestModel model) throws IOException;
+        @Read TestModel read(String json) throws IOException;
+        @Write String write(TestModel model) throws IOException;
     }
 }

@@ -58,10 +58,10 @@ class CompiledBuiltInStreamingCodecWriteTest {
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder {"
-                    + "@WriteTo String write(Bean bean) throws java.io.IOException;"
-                    + "@WriteTo String writeUuid(java.util.UUID uuid) throws java.io.IOException;"
-                    + "@WriteTo String writeDateTime(java.time.LocalDateTime value) throws java.io.IOException;"
-                    + "@WriteTo String writeUri(java.net.URI uri) throws java.io.IOException;"
+                    + "@Write String write(Bean bean) throws java.io.IOException;"
+                    + "@Write String writeUuid(java.util.UUID uuid) throws java.io.IOException;"
+                    + "@Write String writeDateTime(java.time.LocalDateTime value) throws java.io.IOException;"
+                    + "@Write String writeUri(java.net.URI uri) throws java.io.IOException;"
                     + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

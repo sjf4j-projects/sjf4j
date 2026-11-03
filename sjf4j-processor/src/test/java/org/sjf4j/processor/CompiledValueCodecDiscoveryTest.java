@@ -41,8 +41,8 @@ class CompiledValueCodecDiscoveryTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                     + "import java.io.IOException; "
                     + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
-                    + " @ReadFrom Bean read(String json) throws IOException; "
-                    + " @WriteTo String write(Bean value) throws IOException; "
+                    + " @Read Bean read(String json) throws IOException; "
+                    + " @Write String write(Bean value) throws IOException; "
                     + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -92,8 +92,8 @@ class CompiledValueCodecDiscoveryTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @ReadFrom Money read(String json) throws IOException; "
-                + " @WriteTo String write(Money value) throws IOException; }");
+                + " @Read Money read(String json) throws IOException; "
+                + " @Write String write(Money value) throws IOException; }");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -120,8 +120,8 @@ class CompiledValueCodecDiscoveryTest {
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "import java.io.IOException; ";
         String body = "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @ReadFrom ClasspathRegistries.Money read(String json) throws IOException; "
-                + " @WriteTo String write(ClasspathRegistries.Money value) throws IOException; }";
+                + " @Read ClasspathRegistries.Money read(String json) throws IOException; "
+                + " @Write String write(ClasspathRegistries.Money value) throws IOException; }";
 
         NavigatorTestCompiler.Result missing = NavigatorTestCompiler.compile(
                 Map.of("fixture/Binder.java", base + body), CodegenProcessor.class);
@@ -163,7 +163,7 @@ class CompiledValueCodecDiscoveryTest {
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "@BindingOptions(registries={ClasspathRegistries.First.class, ClasspathRegistries.Second.class}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@ReadFrom Bean read(String source) throws IOException; }"),
+                + "@Read Bean read(String source) throws IOException; }"),
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");

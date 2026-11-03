@@ -61,12 +61,12 @@ class CompiledTemporalStreamingTest {
                             + "import org.sjf4j.annotation.binding.*;"
                             + "@CompiledBinder(backend=Backend." + backend + ")"
                             + "public interface Binder {"
-                            + " @ReadFrom Bean readString(String json) throws java.io.IOException;"
-                            + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;"
-                            + " @WriteTo String writeString(Bean value) throws java.io.IOException;"
-                            + " @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;"
-                            + " @ReadFrom LocalDateTime readTime(String json) throws java.io.IOException;"
-                            + " @WriteTo String writeTime(LocalDateTime value) throws java.io.IOException;"
+                            + " @Read Bean readString(String json) throws java.io.IOException;"
+                            + " @Read Bean readBytes(byte[] json) throws java.io.IOException;"
+                            + " @Write String writeString(Bean value) throws java.io.IOException;"
+                            + " @Write byte[] writeBytes(Bean value) throws java.io.IOException;"
+                            + " @Read LocalDateTime readTime(String json) throws java.io.IOException;"
+                            + " @Write String writeTime(LocalDateTime value) throws java.io.IOException;"
                             + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

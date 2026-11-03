@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
@@ -112,26 +112,26 @@ public class CompiledCreatorOneOfTest {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface JacksonReader {
-        @ReadFrom RecordZoo readRecord(String json) throws IOException;
-        @ReadFrom RecordZoo readRecord(byte[] json) throws IOException;
-        @ReadFrom ConstructorZoo readConstructor(String json) throws IOException;
-        @ReadFrom FieldZoo readField(String json) throws IOException;
-        @ReadFrom FactoryZoo readFactory(String json) throws IOException;
-        @ReadFrom InheritedZoo readInherited(String json) throws IOException;
-        @ReadFrom PathZoo readPath(String json) throws IOException;
-        @ReadFrom ShapeZoo readShape(String json) throws IOException;
-        @ReadFrom NullableZoo readNullable(String json) throws IOException;
+        @Read RecordZoo readRecord(String json) throws IOException;
+        @Read RecordZoo readRecord(byte[] json) throws IOException;
+        @Read ConstructorZoo readConstructor(String json) throws IOException;
+        @Read FieldZoo readField(String json) throws IOException;
+        @Read FactoryZoo readFactory(String json) throws IOException;
+        @Read InheritedZoo readInherited(String json) throws IOException;
+        @Read PathZoo readPath(String json) throws IOException;
+        @Read ShapeZoo readShape(String json) throws IOException;
+        @Read NullableZoo readNullable(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleReader {
-        @ReadFrom RecordZoo readRecord(String json) throws IOException;
-        @ReadFrom ConstructorZoo readConstructor(String json) throws IOException;
-        @ReadFrom FieldZoo readField(String json) throws IOException;
-        @ReadFrom FactoryZoo readFactory(String json) throws IOException;
-        @ReadFrom InheritedZoo readInherited(String json) throws IOException;
-        @ReadFrom PathZoo readPath(String json) throws IOException;
-        @ReadFrom ShapeZoo readShape(String json) throws IOException;
+        @Read RecordZoo readRecord(String json) throws IOException;
+        @Read ConstructorZoo readConstructor(String json) throws IOException;
+        @Read FieldZoo readField(String json) throws IOException;
+        @Read FactoryZoo readFactory(String json) throws IOException;
+        @Read InheritedZoo readInherited(String json) throws IOException;
+        @Read PathZoo readPath(String json) throws IOException;
+        @Read ShapeZoo readShape(String json) throws IOException;
     }
 
     @Test

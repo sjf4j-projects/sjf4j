@@ -39,8 +39,8 @@ class CompiledFastjson2MixedWriterTest {
                     "package fixture;\n"
                             + "import org.sjf4j.annotation.binding.*;\n"
                             + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
-                            + " @WriteTo void write(Clients value, java.io.OutputStream out) throws java.io.IOException;\n"
-                            + (streamOnly ? "" : " @WriteTo String writeString(Clients value) throws java.io.IOException;\n")
+                            + " @Write void write(Clients value, java.io.OutputStream out) throws java.io.IOException;\n"
+                            + (streamOnly ? "" : " @Write String writeString(Clients value) throws java.io.IOException;\n")
                             + "}\n");
 
             NavigatorTestCompiler.Result result =

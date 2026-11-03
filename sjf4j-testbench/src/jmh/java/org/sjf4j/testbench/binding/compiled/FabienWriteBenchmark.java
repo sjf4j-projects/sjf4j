@@ -20,7 +20,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.testbench.model.fabien.Clients;
 import org.sjf4j.testbench.model.fabien.Users;
@@ -153,7 +153,7 @@ public class FabienWriteBenchmark {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface FabienCompiled {
-        @WriteTo void write(Users value, OutputStream output) throws IOException;
-        @WriteTo void write(Clients value, OutputStream output) throws IOException;
+        @Write void write(Users value, OutputStream output) throws IOException;
+        @Write void write(Clients value, OutputStream output) throws IOException;
     }
 }

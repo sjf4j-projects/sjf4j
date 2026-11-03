@@ -39,9 +39,9 @@ class CompiledEnumWriteTest {
                     + "@CompiledBinder(backend=Backend." + backend
                     + (backend.equals("SNAKE") ? ", format=BindingFormat.YAML" : "")
                     + ") public interface Binder { "
-                    + "@WriteTo String write(Model value) throws java.io.IOException; "
-                    + "@WriteTo String writeEnum(State value) throws java.io.IOException; "
-                    + "@WriteTo byte[] writeBytes(Model value) throws java.io.IOException; "
+                    + "@Write String write(Model value) throws java.io.IOException; "
+                    + "@Write String writeEnum(State value) throws java.io.IOException; "
+                    + "@Write byte[] writeBytes(Model value) throws java.io.IOException; "
                     + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

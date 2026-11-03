@@ -15,7 +15,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.testbench.model.User;
 
@@ -152,7 +152,7 @@ public class SimplePojoReadOrderBenchmark {
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiledBinder {
 
-        @ReadFrom
+        @Read
         User read(String json) throws IOException;
     }
 }

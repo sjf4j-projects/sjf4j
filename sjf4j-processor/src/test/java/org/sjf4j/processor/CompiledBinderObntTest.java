@@ -50,14 +50,14 @@ class CompiledBinderObntTest {
                             + "import org.sjf4j.JsonArray;\n"
                             + "@CompiledBinder(backend=Backend." + backend + ")\n"
                             + "public interface Binder {\n"
-                            + "  @ReadFrom Model read(String json) throws java.io.IOException;\n"
-                            + "  @ReadFrom ClosedModel readClosed(String json) throws java.io.IOException;\n"
-                            + "  @WriteTo String writeClosed(ClosedModel value) throws java.io.IOException;\n"
-                            + "  @WriteTo String write(Model value) throws java.io.IOException;\n"
-                            + "  @ReadFrom JsonObject readObject(String json) throws java.io.IOException;\n"
-                            + "  @WriteTo String writeObject(JsonObject value) throws java.io.IOException;\n"
-                            + "  @ReadFrom JsonArray readArray(String json) throws java.io.IOException;\n"
-                            + "  @WriteTo String writeArray(JsonArray value) throws java.io.IOException;\n"
+                            + "  @Read Model read(String json) throws java.io.IOException;\n"
+                            + "  @Read ClosedModel readClosed(String json) throws java.io.IOException;\n"
+                            + "  @Write String writeClosed(ClosedModel value) throws java.io.IOException;\n"
+                            + "  @Write String write(Model value) throws java.io.IOException;\n"
+                            + "  @Read JsonObject readObject(String json) throws java.io.IOException;\n"
+                            + "  @Write String writeObject(JsonObject value) throws java.io.IOException;\n"
+                            + "  @Read JsonArray readArray(String json) throws java.io.IOException;\n"
+                            + "  @Write String writeArray(JsonArray value) throws java.io.IOException;\n"
                             + "}\n");
             NavigatorTestCompiler.Result result =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -143,10 +143,10 @@ class CompiledBinderObntTest {
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.SNAKE, format=BindingFormat.YAML)\n"
                         + "public interface Binder {\n"
-                        + "  @ReadFrom Tree read(String yaml) throws java.io.IOException;\n"
-                        + "  @WriteTo String write(Tree value) throws java.io.IOException;\n"
-                        + "  @ReadFrom org.sjf4j.JsonArray readArray(String yaml) throws java.io.IOException;\n"
-                        + "  @WriteTo String writeArray(org.sjf4j.JsonArray value) throws java.io.IOException;\n"
+                        + "  @Read Tree read(String yaml) throws java.io.IOException;\n"
+                        + "  @Write String write(Tree value) throws java.io.IOException;\n"
+                        + "  @Read org.sjf4j.JsonArray readArray(String yaml) throws java.io.IOException;\n"
+                        + "  @Write String writeArray(org.sjf4j.JsonArray value) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

@@ -30,12 +30,12 @@ class CompiledFastjson2EnumReadTest {
         sources.put("fixture/Binder.java", "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
-                + "@ReadFrom Choice readEnum(String json) throws java.io.IOException; "
-                + "@ReadFrom Choice readEnumBytes(byte[] json) throws java.io.IOException; "
-                + "@ReadFrom Model readModel(String json) throws java.io.IOException; "
-                + "@ReadFrom Model readModelBytes(byte[] json) throws java.io.IOException; "
-                + "@ReadFrom java.util.List<Choice> readList(String json) throws java.io.IOException; "
-                + "@ReadFrom java.util.Map<String,Choice> readMap(String json) throws java.io.IOException; "
+                + "@Read Choice readEnum(String json) throws java.io.IOException; "
+                + "@Read Choice readEnumBytes(byte[] json) throws java.io.IOException; "
+                + "@Read Model readModel(String json) throws java.io.IOException; "
+                + "@Read Model readModelBytes(byte[] json) throws java.io.IOException; "
+                + "@Read java.util.List<Choice> readList(String json) throws java.io.IOException; "
+                + "@Read java.util.Map<String,Choice> readMap(String json) throws java.io.IOException; "
                 + "}");
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

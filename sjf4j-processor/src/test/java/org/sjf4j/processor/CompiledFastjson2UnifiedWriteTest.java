@@ -49,11 +49,11 @@ class CompiledFastjson2UnifiedWriteTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) "
                 + "public interface Binder { "
-                + " @WriteTo String write(Model value) throws java.io.IOException; "
-                + " @WriteTo byte[] writeBytes(Model value) throws java.io.IOException; "
-                + " @WriteTo void writeToStream(Model value, java.io.OutputStream out) throws java.io.IOException; "
-                + " @WriteTo void writeToWriter(Model value, java.io.Writer out) throws java.io.IOException; "
-                + " @WriteTo String writeList(java.util.List<String> value) throws java.io.IOException; "
+                + " @Write String write(Model value) throws java.io.IOException; "
+                + " @Write byte[] writeBytes(Model value) throws java.io.IOException; "
+                + " @Write void writeToStream(Model value, java.io.OutputStream out) throws java.io.IOException; "
+                + " @Write void writeToWriter(Model value, java.io.Writer out) throws java.io.IOException; "
+                + " @Write String writeList(java.util.List<String> value) throws java.io.IOException; "
                 + "}");
 
         NavigatorTestCompiler.Result compiled =

@@ -17,7 +17,7 @@ This release substantially redesigns the internal architecture, expands the comp
 
 ### Added
 
-- **Compiled Binding** — Introduced `@CompiledBinder`, `@ReadFrom`, and `@WriteTo` for generating high-performance JSON and YAML readers and writers at compile time.
+- **Compiled Binding** — Introduced `@CompiledBinder`, `@Read`, and `@Write` for generating high-performance JSON and YAML readers and writers at compile time.
 - **Compiled JSON Schema Validation** — Introduced `@CompiledValidator` with direct validation code generation, fail-fast execution, and configurable runtime fallback.
 - **Extensible Value Modeling** — Added `@NodeValue`, enhanced `ValueCodec` registration, and support for multiple JSON representations of custom scalar types.
 - **Native JSON Node Integration** — Added extensible adapters for Jackson 2/3, Gson, and JSON-P native node models.

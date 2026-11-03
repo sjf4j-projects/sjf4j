@@ -8,8 +8,8 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
@@ -741,118 +741,118 @@ public class CompiledBinderTest {
 
     public interface BinderContract {
 
-        @ReadFrom
+        @Read
         List<Object> readRawList(String input);
 
-        @ReadFrom
+        @Read
         ArrayList<Object> readRawArrayList(String input);
 
-        @ReadFrom
+        @Read
         RawListHolder readRawListHolder(String input);
 
-        @ReadFrom
+        @Read
         int readInt(String input);
 
-        @ReadFrom
+        @Read
         String readString(String input);
 
-        @WriteTo
+        @Write
         String writeString(String value);
 
-        @WriteTo
+        @Write
         byte[] writeStringUtf8(String value);
 
-        @ReadFrom
+        @Read
         Role readRole(String input);
 
-        @WriteTo
+        @Write
         String writeRole(Role value);
 
-        @ReadFrom
+        @Read
         BigDecimal readDecimal(String input);
 
-        @WriteTo
+        @Write
         String writeDecimal(BigDecimal value);
 
-        @ReadFrom
+        @Read
         Person readPerson(String input);
 
-        @ReadFrom
+        @Read
         Person readPerson(byte[] input);
 
-        @ReadFrom
+        @Read
         Person readPerson(Reader input);
 
-        @ReadFrom
+        @Read
         Person[] readPersonArray(Reader input);
 
-        @ReadFrom
+        @Read
         List<Person> readPersonList(Reader input);
 
-        @ReadFrom
+        @Read
         Person readPerson(InputStream input);
 
-        @WriteTo
+        @Write
         String writePerson(Person value);
 
-        @WriteTo
+        @Write
         byte[] writePersonBytes(Person value);
 
-        @WriteTo
+        @Write
         void writePerson(Person value, Writer output);
 
-        @WriteTo
+        @Write
         void writePerson(Person value, OutputStream output);
 
-        @ReadFrom
+        @Read
         List<Integer> readNumbers(String input);
 
-        @WriteTo
+        @Write
         String writeNumbers(List<Integer> values);
 
-        @WriteTo
+        @Write
         byte[] writeNumbersUtf8(List<Integer> values);
 
-        @WriteTo
+        @Write
         String writeStrings(List<String> values);
 
-        @WriteTo
+        @Write
         byte[] writeStringsUtf8(List<String> values);
 
-        @ReadFrom
+        @Read
         Map<String, Address> readAddresses(String input);
 
-        @ReadFrom
+        @Read
         Map<String, Object> readObjectMap(String input);
 
-        @ReadFrom
+        @Read
         LinkedHashMap<String, Object> readLinkedObjectMap(String input);
 
-        @ReadFrom
+        @Read
         Map<String, Integer> readIntegerMap(String input);
 
-        @WriteTo
+        @Write
         String writeObjectMap(Map<String, Object> value);
 
-        @WriteTo
+        @Write
         byte[] writeObjectMapBytes(Map<String, Object> value);
 
-        @WriteTo
+        @Write
         void writeObjectMap(Map<String, Object> value, Writer output);
 
-        @WriteTo
+        @Write
         void writeObjectMap(Map<String, Object> value, OutputStream output);
 
-        @ReadFrom
+        @Read
         ObjectHolder readObjectHolder(String input);
 
-        @WriteTo
+        @Write
         String writeAddresses(Map<String, Address> values);
 
-        @ReadFrom
+        @Read
         Object readAny(String input) throws IOException;
 
-        @WriteTo
+        @Write
         String writeAny(Object value) throws IOException;
     }
 
@@ -870,10 +870,10 @@ public class CompiledBinderTest {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface FastjsonPackedNameBinder {
-        @WriteTo
+        @Write
         String writeString(PackedNames value) throws IOException;
 
-        @WriteTo
+        @Write
         byte[] writeUtf8(PackedNames value) throws IOException;
     }
 

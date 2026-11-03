@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
@@ -74,7 +74,7 @@ public class CompiledOneOfOrderedReadTest {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Reader {
-        @ReadFrom Variant read(String json) throws IOException;
+        @Read Variant read(String json) throws IOException;
     }
 
     @Test

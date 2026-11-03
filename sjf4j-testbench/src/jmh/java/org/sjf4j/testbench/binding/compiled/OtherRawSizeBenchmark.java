@@ -6,7 +6,7 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jsonp.binding.JsonpBinder;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
@@ -113,19 +113,19 @@ public class OtherRawSizeBenchmark {
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonCompiled {
-        @ReadFrom Map<String, Object> map(String input) throws IOException;
-        @ReadFrom List<Object> list(String input) throws IOException;
+        @Read Map<String, Object> map(String input) throws IOException;
+        @Read List<Object> list(String input) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpCompiled {
-        @ReadFrom Map<String, Object> map(String input) throws IOException;
-        @ReadFrom List<Object> list(String input) throws IOException;
+        @Read Map<String, Object> map(String input) throws IOException;
+        @Read List<Object> list(String input) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiled {
-        @ReadFrom Map<String, Object> map(String input) throws IOException;
-        @ReadFrom List<Object> list(String input) throws IOException;
+        @Read Map<String, Object> map(String input) throws IOException;
+        @Read List<Object> list(String input) throws IOException;
     }
 }

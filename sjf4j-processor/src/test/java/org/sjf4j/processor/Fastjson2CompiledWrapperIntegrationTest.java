@@ -44,10 +44,10 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "package fixture; import java.io.*; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
-                + "@WriteTo void getterToWriter(FailingGetter value, Writer output) throws IOException; "
-                + "@WriteTo void getterToStream(FailingGetter value, OutputStream output) throws IOException; "
-                + "@WriteTo void codecToWriter(FailingCodec value, Writer output) throws IOException; "
-                + "@WriteTo void codecToStream(FailingCodec value, OutputStream output) throws IOException; }"
+                + "@Write void getterToWriter(FailingGetter value, Writer output) throws IOException; "
+                + "@Write void getterToStream(FailingGetter value, OutputStream output) throws IOException; "
+                + "@Write void codecToWriter(FailingCodec value, Writer output) throws IOException; "
+                + "@Write void codecToStream(FailingCodec value, OutputStream output) throws IOException; }"
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
 
@@ -118,12 +118,12 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "package fixture; import java.io.*; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
-                + "@ReadFrom Bean read(String json) throws IOException; "
-                + "@WriteTo String write(Bean bean) throws IOException; "
-                + "@WriteTo byte[] writeBytes(Bean bean) throws IOException; "
-                + "@WriteTo void toWriter(Bean bean, Writer output) throws IOException; "
-                + "@WriteTo void toStream(Bean bean, OutputStream output) throws IOException; "
-                + "@WriteTo String writeGetter(GetterBean bean) throws IOException; }"
+                + "@Read Bean read(String json) throws IOException; "
+                + "@Write String write(Bean bean) throws IOException; "
+                + "@Write byte[] writeBytes(Bean bean) throws IOException; "
+                + "@Write void toWriter(Bean bean, Writer output) throws IOException; "
+                + "@Write void toStream(Bean bean, OutputStream output) throws IOException; "
+                + "@Write String writeGetter(GetterBean bean) throws IOException; }"
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
 

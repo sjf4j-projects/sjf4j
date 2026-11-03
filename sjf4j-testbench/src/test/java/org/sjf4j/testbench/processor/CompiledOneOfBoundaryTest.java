@@ -8,7 +8,7 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
@@ -165,11 +165,11 @@ public class CompiledOneOfBoundaryTest {
     @CompiledBinder(backend = Backend.JACKSON2)
     @BindingOptions(registries = {CodecRegistry.class})
     public interface Reader {
-        @ReadFrom NumericChoice readNumeric(String json) throws IOException;
-        @ReadFrom OptionalChoice readOptional(String json) throws IOException;
-        @ReadFrom AliasChoice readAlias(String json) throws IOException;
-        @ReadFrom FactoryAliasChoice readFactoryAlias(String json) throws IOException;
-        @ReadFrom FactoryChoice readFactory(String json) throws IOException;
+        @Read NumericChoice readNumeric(String json) throws IOException;
+        @Read OptionalChoice readOptional(String json) throws IOException;
+        @Read AliasChoice readAlias(String json) throws IOException;
+        @Read FactoryAliasChoice readFactoryAlias(String json) throws IOException;
+        @Read FactoryChoice readFactory(String json) throws IOException;
     }
 
     static {

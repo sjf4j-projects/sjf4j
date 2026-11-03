@@ -4,8 +4,8 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.binding.Binder;
 
 import java.io.IOException;
@@ -203,13 +203,13 @@ public class CompiledUuidBenchmark {
     public interface SimpleCompiled extends UuidCompiled {}
 
     public interface UuidCompiled {
-        @ReadFrom UUID readRootString(String json) throws IOException;
-        @ReadFrom UUID readRootUtf8(byte[] json) throws IOException;
-        @WriteTo String writeRootString(UUID value) throws IOException;
-        @WriteTo byte[] writeRootUtf8(UUID value) throws IOException;
-        @ReadFrom UuidPojo readPojoString(String json) throws IOException;
-        @ReadFrom UuidPojo readPojoUtf8(byte[] json) throws IOException;
-        @WriteTo String writePojoString(UuidPojo value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(UuidPojo value) throws IOException;
+        @Read UUID readRootString(String json) throws IOException;
+        @Read UUID readRootUtf8(byte[] json) throws IOException;
+        @Write String writeRootString(UUID value) throws IOException;
+        @Write byte[] writeRootUtf8(UUID value) throws IOException;
+        @Read UuidPojo readPojoString(String json) throws IOException;
+        @Read UuidPojo readPojoUtf8(byte[] json) throws IOException;
+        @Write String writePojoString(UuidPojo value) throws IOException;
+        @Write byte[] writePojoUtf8(UuidPojo value) throws IOException;
     }
 }

@@ -28,7 +28,7 @@ class CompiledBackendInjectionTest {
                 "package fixture; import java.io.IOException; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
-                + "@WriteTo String write(Bean value) throws IOException; }"
+                + "@Write String write(Bean value) throws IOException; }"
         ), CodegenProcessor.class);
     }
 
@@ -115,8 +115,8 @@ class CompiledBackendInjectionTest {
                 "package fixture; import java.io.IOException; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.JACKSON2) public interface Binder { "
-                + "@WriteTo String write(Bean bean) throws IOException; "
-                + "@ReadFrom Bean read(String json) throws IOException; }"
+                + "@Write String write(Bean bean) throws IOException; "
+                + "@Read Bean read(String json) throws IOException; }"
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.exception.BindingException;
 
 import java.io.IOException;
@@ -86,10 +86,10 @@ class Jackson2NativeStringContainersTest {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface NativeStringBinder {
-        @ReadFrom String[] readArray(byte[] json) throws IOException;
-        @ReadFrom List<String> readList(byte[] json) throws IOException;
-        @ReadFrom Set<String> readSet(byte[] json) throws IOException;
-        @ReadFrom List<List<String>> readNested(byte[] json) throws IOException;
-        @ReadFrom StringHolder readHolder(byte[] json) throws IOException;
+        @Read String[] readArray(byte[] json) throws IOException;
+        @Read List<String> readList(byte[] json) throws IOException;
+        @Read Set<String> readSet(byte[] json) throws IOException;
+        @Read List<List<String>> readNested(byte[] json) throws IOException;
+        @Read StringHolder readHolder(byte[] json) throws IOException;
     }
 }

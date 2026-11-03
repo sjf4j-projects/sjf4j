@@ -19,9 +19,9 @@ class CompiledStreamingListWriteTest {
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @WriteTo String list(java.util.List<String> value) throws java.io.IOException; "
-                + " @WriteTo String linked(java.util.LinkedList<String> value) throws java.io.IOException; "
-                + " @WriteTo String set(java.util.Set<String> value) throws java.io.IOException; "
+                + " @Write String list(java.util.List<String> value) throws java.io.IOException; "
+                + " @Write String linked(java.util.LinkedList<String> value) throws java.io.IOException; "
+                + " @Write String set(java.util.Set<String> value) throws java.io.IOException; "
                 + "}");
         sources.put("fixture/NoGetList.java",
                 "package fixture; public final class NoGetList extends java.util.LinkedList<String> { "

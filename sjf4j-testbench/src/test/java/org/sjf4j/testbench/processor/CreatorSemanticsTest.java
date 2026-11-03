@@ -9,8 +9,8 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -216,10 +216,10 @@ public class CreatorSemanticsTest {
     }
 
     public interface CreatorBinder {
-        @ReadFrom CreatorUserRecord readRecord(String json) throws IOException;
-        @ReadFrom CreatorUserRecord readRecord(byte[] json) throws IOException;
-        @WriteTo String writeRecord(CreatorUserRecord value) throws IOException;
-        @ReadFrom CreatorBean readBean(String json) throws IOException;
+        @Read CreatorUserRecord readRecord(String json) throws IOException;
+        @Read CreatorUserRecord readRecord(byte[] json) throws IOException;
+        @Write String writeRecord(CreatorUserRecord value) throws IOException;
+        @Read CreatorBean readBean(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)

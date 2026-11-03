@@ -5,8 +5,8 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,32 +40,32 @@ public class CompiledEnumBindingTest {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2EnumBinder {
-        @ReadFrom Status readEnum(String json) throws IOException;
-        @ReadFrom Status readEnumBytes(byte[] json) throws IOException;
-        @ReadFrom Payload readPojo(String json) throws IOException;
-        @ReadFrom Payload readPojoBytes(byte[] json) throws IOException;
-        @WriteTo String writePojo(Payload value) throws IOException;
-        @WriteTo byte[] writePojoBytes(Payload value) throws IOException;
+        @Read Status readEnum(String json) throws IOException;
+        @Read Status readEnumBytes(byte[] json) throws IOException;
+        @Read Payload readPojo(String json) throws IOException;
+        @Read Payload readPojoBytes(byte[] json) throws IOException;
+        @Write String writePojo(Payload value) throws IOException;
+        @Write byte[] writePojoBytes(Payload value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2EnumBinder {
-        @ReadFrom Status readEnum(String json) throws IOException;
-        @ReadFrom Status readEnumBytes(byte[] json) throws IOException;
-        @ReadFrom Payload readPojo(String json) throws IOException;
-        @ReadFrom Payload readPojoBytes(byte[] json) throws IOException;
-        @WriteTo String writePojo(Payload value) throws IOException;
-        @WriteTo byte[] writePojoBytes(Payload value) throws IOException;
+        @Read Status readEnum(String json) throws IOException;
+        @Read Status readEnumBytes(byte[] json) throws IOException;
+        @Read Payload readPojo(String json) throws IOException;
+        @Read Payload readPojoBytes(byte[] json) throws IOException;
+        @Write String writePojo(Payload value) throws IOException;
+        @Write byte[] writePojoBytes(Payload value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3EnumBinder {
-        @ReadFrom Status readEnum(String json) throws IOException;
-        @ReadFrom Status readEnumBytes(byte[] json) throws IOException;
-        @ReadFrom Payload readPojo(String json) throws IOException;
-        @ReadFrom Payload readPojoBytes(byte[] json) throws IOException;
-        @WriteTo String writePojo(Payload value) throws IOException;
-        @WriteTo byte[] writePojoBytes(Payload value) throws IOException;
+        @Read Status readEnum(String json) throws IOException;
+        @Read Status readEnumBytes(byte[] json) throws IOException;
+        @Read Payload readPojo(String json) throws IOException;
+        @Read Payload readPojoBytes(byte[] json) throws IOException;
+        @Write String writePojo(Payload value) throws IOException;
+        @Write byte[] writePojoBytes(Payload value) throws IOException;
     }
 
     @FunctionalInterface
