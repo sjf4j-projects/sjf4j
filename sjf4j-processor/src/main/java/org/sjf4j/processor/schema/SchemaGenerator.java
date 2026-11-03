@@ -36,7 +36,7 @@ public final class SchemaGenerator {
         CompiledValidator options = iface.getAnnotation(CompiledValidator.class);
         // A fresh method generator per interface preserves plan sharing within
         // that interface without leaking metadata across generated classes.
-        SchemaMethodGenerator methods = new SchemaMethodGenerator(context, generated);
+        SchemaMethodGenerator methods = new SchemaMethodGenerator(context, generated, options.registryDir());
         for (ResolvedMethod method : context.methods.abstractMethods(iface)) {
             methods.generate(method, generated, options.fallback());
         }
