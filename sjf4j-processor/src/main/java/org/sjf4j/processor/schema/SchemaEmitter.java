@@ -171,8 +171,8 @@ final class SchemaEmitter {
             case TYPE:
                 emitType(lines, (SchemaCheck.TypeCheck) check, value, expression, onFailure);
                 return;
-            case TYPE_GUARD:
-                SchemaCheck.TypeGuard guard = (SchemaCheck.TypeGuard) check;
+            case SHAPE_GUARD:
+                SchemaCheck.ShapeGuard guard = (SchemaCheck.ShapeGuard) check;
                 lines.add("if (org.sjf4j.JsonType.of(" + expression
                         + ") == org.sjf4j.JsonType." + guard.jsonType + ") {");
                 List<String> guarded = new ArrayList<String>();
