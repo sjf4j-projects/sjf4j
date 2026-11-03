@@ -148,19 +148,19 @@ final class SchemaCompiler {
             SchemaValue stringValue = conditionalValue(value, "STRING");
             SchemaCheck check = scalars.compile(strings, stringValue, "string", uri);
             if (check == null) return null;
-            checks.add(new SchemaCheck.TypeGuard("STRING", stringValue, check));
+            checks.add(new SchemaCheck.ShapeGuard("STRING", stringValue, check));
         }
         if (!numbers.isEmpty() && !primitiveCannotMatch(value, "NUMBER")) {
             SchemaValue numberValue = conditionalValue(value, "NUMBER");
             SchemaCheck check = scalars.compile(numbers, numberValue, "number", uri);
             if (check == null) return null;
-            checks.add(new SchemaCheck.TypeGuard("NUMBER", numberValue, check));
+            checks.add(new SchemaCheck.ShapeGuard("NUMBER", numberValue, check));
         }
         if (!array.isEmpty() && !primitiveCannotMatch(value, "ARRAY")) {
             SchemaValue arrayValue = conditionalValue(value, "ARRAY");
             SchemaCheck check = arrays.compile(snapshot, array, arrayValue, uri, depth);
             if (check == null) return null;
-            checks.add(new SchemaCheck.TypeGuard("ARRAY", arrayValue, check));
+            checks.add(new SchemaCheck.ShapeGuard("ARRAY", arrayValue, check));
         }
         if (!object.isEmpty() && !primitiveCannotMatch(value, "OBJECT")) {
             // ObjectCompiler chooses POJO field reads or Nodes traversal.
@@ -173,7 +173,7 @@ final class SchemaCompiler {
             }
             SchemaCheck check = objects.compileNested(objectType, snapshot, object, uri, depth);
             if (check == null) return null;
-            checks.add(new SchemaCheck.TypeGuard("OBJECT", value, check));
+            checks.add(new SchemaCheck.ShapeGuard("OBJECT", value, check));
         }
         if (checks.isEmpty()) return new SchemaCheck.Pass();
         return checks.size() == 1 ? checks.get(0) : new SchemaCheck.AllCheck(checks);
