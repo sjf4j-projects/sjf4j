@@ -344,7 +344,8 @@ val officialCompiledPhase2Test by tasks.registering(Test::class) {
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
-    systemProperty("sjf4j.schema.officialCategory", "phase2")
+    systemProperty("sjf4j.schema.officialCategory",
+        providers.gradleProperty("officialCompiledCategory").orElse("phase2").get())
     systemProperty("sjf4j.schema.officialProbeDirect", "true")
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
