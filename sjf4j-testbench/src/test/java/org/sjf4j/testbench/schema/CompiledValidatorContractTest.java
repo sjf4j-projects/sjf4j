@@ -98,8 +98,8 @@ class CompiledValidatorContractTest {
                 Person.class.getAnnotation(ValidJsonSchema.class).value()).createPlan();
         assertEquals(reference.isValid(badEmail, false), validator.isValid(badEmail, false));
         assertEquals(reference.isValid(badEmail, true), validator.isValid(badEmail, true));
-        assertTrue(validator.isValid(null));
-        assertTrue(validator.isValid(null, false));
+        assertFalse(validator.isValid(null));
+        assertFalse(validator.isValid(null, false));
     }
 
     @Test
@@ -109,7 +109,7 @@ class CompiledValidatorContractTest {
         assertDoesNotThrow(() -> validator.requireValid(badEmail));
         assertThrows(ValidationException.class, () -> validator.requireValid(badEmail, true));
         assertDoesNotThrow(() -> validator.requireValid(badEmail, false));
-        assertDoesNotThrow(() -> validator.requireValid(null));
+        assertThrows(ValidationException.class, () -> validator.requireValid(null));
     }
 
     @Test
@@ -127,7 +127,8 @@ class CompiledValidatorContractTest {
         assertFalse(lenient.isValid());
         assertEquals(1, lenient.getErrors().size(), () -> lenient.toString());
         assertEquals(lenient.getErrors().size(), validator.validate(invalid, false).getErrors().size());
-        assertSame(ValidationResult.SUCCESS, validator.validate(null));
+        assertFalse(validator.validate(null).isValid());
+        assertEquals("type", validator.validate(null).getLastError().getKeyword());
     }
 
     @Test
@@ -137,6 +138,99 @@ class CompiledValidatorContractTest {
         assertTrue(validator.isValid(new Name("ok"), false));
         assertFalse(validator.isValid(new Name("x")));
         assertFalse(validator.isValid(new Name("x"), true));
+    }
+
+    @CompiledValidator(fallback = false)
+    public interface NullSchemaValidator {
+        @ValidJsonSchema("false")
+        boolean falseSchema(Object value);
+
+        @ValidJsonSchema("true")
+        boolean trueSchema(Object value);
+
+        @ValidJsonSchema("{\"type\":\"null\"}")
+        boolean nullType(Object value);
+
+        @ValidJsonSchema("{\"type\":\"string\"}")
+        boolean stringType(Object value);
+
+        @ValidJsonSchema("{\"const\":null}")
+        boolean nullConst(Object value);
+
+        @ValidJsonSchema("{\"enum\":[null,\"ok\"]}")
+        boolean nullEnum(Object value);
+
+        @ValidJsonSchema("{\"not\":{\"type\":\"null\"}}")
+        boolean notNull(Object value);
+
+        @ValidJsonSchema("{\"required\":[\"name\"]}")
+        boolean objectOnlyRequired(Object value);
+
+        @ValidJsonSchema("{\"type\":\"object\",\"required\":[\"name\"]}")
+        boolean typedRequired(Object value);
+
+        @ValidJsonSchema("{\"type\":\"object\"}")
+        boolean staticObjectType(Name value);
+
+        @ValidJsonSchema("{\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}")
+        boolean staticObjectProperties(Name value);
+
+        @ValidJsonSchema("{\"required\":[\"missing\"]}")
+        boolean staticMissingRequired(Name value);
+
+        @ValidJsonSchema("{\"type\":\"object\",\"required\":[\"missing\"]}")
+        boolean staticTypedMissingRequired(Name value);
+
+        @ValidJsonSchema("{\"properties\":{},\"additionalProperties\":false}")
+        boolean staticAdditionalProperties(Name value);
+
+        @ValidJsonSchema("{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}")
+        boolean staticTypedAdditionalProperties(Name value);
+
+        @ValidJsonSchema("false")
+        void requireFalse(Object value);
+
+        @ValidJsonSchema("true")
+        void requireTrue(Object value);
+
+        @ValidJsonSchema("{\"type\":\"object\"}")
+        void requireObject(Name value);
+    }
+
+    @Test
+    void nullIsValidatedAgainstCompiledSchemaRatherThanSkipped() {
+        NullSchemaValidator validator = CompiledInstances.create(NullSchemaValidator.class);
+
+        assertFalse(validator.falseSchema(null));
+        assertTrue(validator.trueSchema(null));
+        assertTrue(validator.nullType(null));
+        assertFalse(validator.nullType("text"));
+        assertFalse(validator.stringType(null));
+        assertTrue(validator.nullConst(null));
+        assertFalse(validator.nullConst("text"));
+        assertTrue(validator.nullEnum(null));
+        assertFalse(validator.notNull(null));
+        assertTrue(validator.notNull("text"));
+
+        // Object-only keywords are ignored by a null instance unless an
+        // explicit object type is required.
+        assertTrue(validator.objectOnlyRequired(null));
+        assertFalse(validator.typedRequired(null));
+        assertTrue(validator.typedRequired(java.util.Map.of("name", "ok")));
+
+        // The static POJO fast path has the same null/type applicability rules.
+        assertFalse(validator.staticObjectType(null));
+        assertTrue(validator.staticObjectProperties(null));
+        assertTrue(validator.staticMissingRequired(null));
+        assertFalse(validator.staticMissingRequired(new Name("ok")));
+        assertFalse(validator.staticTypedMissingRequired(null));
+        assertTrue(validator.staticAdditionalProperties(null));
+        assertFalse(validator.staticAdditionalProperties(new Name("ok")));
+        assertFalse(validator.staticTypedAdditionalProperties(null));
+
+        assertThrows(ValidationException.class, () -> validator.requireFalse(null));
+        assertDoesNotThrow(() -> validator.requireTrue(null));
+        assertThrows(ValidationException.class, () -> validator.requireObject(null));
     }
 
     public static final class ArrayHolder {
@@ -214,7 +308,7 @@ class CompiledValidatorContractTest {
         DirectValidator validator = CompiledInstances.create(DirectValidator.class);
         assertDoesNotThrow(() -> validator.requireValid(new Name("good")));
         assertDoesNotThrow(() -> validator.requireValid(new Name("good"), true));
-        assertDoesNotThrow(() -> validator.requireValid(null));
+        assertThrows(ValidationException.class, () -> validator.requireValid(null));
 
         ValidationException failure = assertThrows(ValidationException.class,
                 () -> validator.requireValid(new Name("x")));

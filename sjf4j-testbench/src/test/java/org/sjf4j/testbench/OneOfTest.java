@@ -12,6 +12,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOfMapping;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+
 @Slf4j
 public class OneOfTest {
 
@@ -50,14 +53,19 @@ public class OneOfTest {
         String json1 = "{\"cmd\": \"start\", \"version\": 1}";
         BaseRequest req1 = Sjf4j.global().fromJson(json1, BaseRequest.class);
         log.info("class={}, req1={}", req1.getClass().getName(), req1);
+        assertEquals(1, assertInstanceOf(StartRequest.class, req1).getVersion());
 
         String json2 = "{\"cmd\": \"dialect\", \"dialect\": \"2020-12\"}";
         BaseRequest req2 = Sjf4j.global().fromJson(json2, BaseRequest.class);
         log.info("class={}, req2={}", req2.getClass().getName(), req2);
+        assertEquals("2020-12", assertInstanceOf(DialectRequest.class, req2).getDialect());
 
         String json3 = "{\"cmd\": \"run\", \"seq\": 12345, \"case\": {\"description\": \"none\"}}";
         BaseRequest req3 = Sjf4j.global().fromJson(json3, BaseRequest.class);
         log.info("class={}, req3={}", req3.getClass().getName(), req3);
+        RunRequest run = assertInstanceOf(RunRequest.class, req3);
+        assertEquals(12345, ((Number) run.getSeq()).intValue());
+        assertEquals("none", run.getTestCase().description());
     }
 
 }

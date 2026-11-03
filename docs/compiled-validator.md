@@ -28,7 +28,7 @@ The method's **return type** determines its behavior:
 
 Methods take one value argument and optionally a primitive `boolean strictFormat`. The default is `false` (format-annotation semantics). Additional arguments and type variables are unsupported.
 
-**Null semantics:** a Java `null` root value is skipped and considered valid; this differs from validating JSON `null` with `SchemaPlan`. An object property explicitly set to `null` is **present**, so it satisfies `required` even when its value schema rejects null.
+**Null semantics:** a Java `null` root value represents the JSON `null` instance and is validated against the schema, just like `SchemaPlan`: `false` and `{"type":"object"}` reject it, while `true` and `{"type":"null"}` accept it. Object-only keywords such as `required` do not apply to a null instance unless an enclosing schema requires the object type. An object property explicitly set to `null` is **present**, so it satisfies `required` even when its value schema rejects null.
 
 `@ValidJsonSchema` may appear on the method, value parameter, or value type (and ancestors); that is also the lookup precedence. Inline `value` takes precedence over `ref`. Resources support `classpath:/`, `file:/`, and resolvable JSON Pointer fragments. With neither `value` nor `ref`, conventional schema-file lookup applies.
 
