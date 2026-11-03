@@ -5,6 +5,7 @@ import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.method.ResolvedMethod;
+import org.sjf4j.schema.JsonSchema;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -14,8 +15,10 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Compiles and emits individual methods of a compiled validator.
@@ -30,9 +33,10 @@ final class SchemaMethodGenerator {
     private final SchemaFallbackEmitter fallbacks;
     private int methodSerial;
 
-    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated, String registryDir) {
+    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated, String registryDir,
+                          Map<String, Map<URI, JsonSchema>> registryCache) {
         this.context = context;
-        this.resources = new SchemaResourceResolver(context, registryDir);
+        this.resources = new SchemaResourceResolver(context, registryDir, registryCache);
         this.fallbacks = new SchemaFallbackEmitter(generated.names(), registryDir);
     }
 
