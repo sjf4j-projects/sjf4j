@@ -18,6 +18,18 @@ UserValidator validator = CompiledInstances.create(UserValidator.class);
 boolean valid = validator.isValid(user);
 ```
 
+To preload an entire set of referenced schemas at annotation-processing time, specify an optional file-system **registry directory**:
+
+```java
+@CompiledValidator(fallback = true, registryDir = "file:/path/to/schemas/")
+public interface ExternalValidator {
+    @ValidJsonSchema(ref = "classpath:/schemas/strict.json")
+    boolean isValid(Object value);
+}
+```
+
+All `.json` files under `registryDir` are discovered recursively and loaded once per generated interface; `SchemaRegistry.index()` registers their retrieval URIs and canonical `$id` aliases before resolving references. An indexed schema is not compiled into a `SchemaPlan` until needed. The default `registryDir = ""` preserves existing behavior. File-system directories are supported (absolute `file:` URI or working-directory-relative path ending in `/`); classpath directory enumeration and automatic HTTP fetching are deliberately unsupported. Runtime fallback must be able to read the **same directory** after deployment; fully direct validators do not need it at runtime. Gradle incremental builds must track this directory as an input.
+
 The method's **return type** determines its behavior:
 
 | Return type | Behavior |
