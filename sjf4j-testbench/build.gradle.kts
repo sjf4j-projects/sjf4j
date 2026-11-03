@@ -1,7 +1,6 @@
 import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
-import java.util.Locale
 import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.tasks.testing.Test
