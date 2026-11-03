@@ -186,9 +186,9 @@ fun updateOfficialSuite(ref: String) {
             "Downloaded suite $sha is missing tests/draft2020-12 or remotes"
         }
         staging.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
-            "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\\n" +
-                "ref: $ref\\n" +
-                "revision: $sha\\n"
+            "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\n" +
+                "ref: $ref\n" +
+                "revision: $sha\n"
         )
         // A failed network download leaves the previous complete suite untouched.
         delete(outDir)
