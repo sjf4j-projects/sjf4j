@@ -92,7 +92,7 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated -PofficialCompiledProbeDirect=true
 ```
 
-`officialCompiledTest` includes **all non-optional Draft 2020-12 cases** by default. The generated validators use `fallback = false`; only groups explicitly listed in `sjf4j-testbench/official-compiled-fallback-groups.txt` use `fallback = true`. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/<category>/`:
+`officialCompiledTest` includes **all non-optional Draft 2020-12 cases** by default. The generated validators default to `fallback = false`; only groups manually allowlisted in `OfficialCompiledTest.fallbackGroups()` run with `fallback = true`. Each group's fallback selection is owned by that Java test class, not a separate config file. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/<category>/`:
 
 - `summary.json`: overall and category counts
 - `groups.json`, `gaps.json`: compilation mode and unresolved groups
