@@ -8,94 +8,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Added compiled binding generation with `@ReadFrom` and `@WriteTo` annotations for custom property read/write methods.
-- Added `@CompiledBinder` format and backend selection with automatic JSON backend resolution.
-- Added `Format`, `BinderProvider`, and `BinderFactory` for ServiceLoader-discovered streaming binders. Jackson 3/2, Gson, Fastjson2, JSON-P, and SnakeYAML backends now publish providers with deterministic priority selection and explicit backend-configuration factories.
 
-### Changed
-- Fixed external conversion of JOJOs without dynamic members and clarified JSON-P native-node source/target behavior.
-- Updated JSON-P streaming bindings and optimized structured property serialization; Jackson 2 benchmarks now include Blackbird comparisons.
-- Aligned streaming backends with the current reader/writer APIs, added primitive-array binding paths, and improved SnakeYAML JSON-compatible validation.
-- Improved typed serialization for map, collection, and array property values.
-- Fixed serialization of runtime-subclass arrays and optimized Fastjson2 compiled property names for UTF-8 output.
+## [1.5.0] - 2026.11.03
 
-### Breaking Changes
-- Renamed `JsonObject.dynamicProperties()` and `InternalAccess.dynamicProperties(...)` to `dynamicMembers(...)`. Update callers and recompile generated binders/mappers against the new API; old binaries are not compatible.
-- Updated streaming reader/writer APIs and backend adapters; custom implementations must migrate to the current token, read, write, and direct-output methods.
-- Renamed `NodeKind.VALUE_CODEC` to `VALUE_BINDING` and `JsonType.isValue()` to `isScalar()`; value bindings may now represent scalar, object, or array JSON shapes.
-- Removed the generic `JsonException`; use the specialized `NodeException`, `BindingException`, `MappingException`, `PatchException`, and `PathException` types instead.
-- Moved Jackson 2 streaming binding classes from `org.sjf4j.backend.jackson3.binding` to `org.sjf4j.backend.jackson2.binding`; update imports accordingly.
-- Moved node binding annotations from `org.sjf4j.annotation.binding` to `org.sjf4j.annotation.node` and renamed `@NodeBinding` to `@NodeObject`.
-- Moved `ValueCodec`, `ValueInfo`, `ValueRegistry`, and `PatternedValueCodec` from `org.sjf4j.node` to `org.sjf4j.value`; update imports and public metadata references accordingly.
-- Renamed `ValueCodec` and `ValueCodecInfo` to `ValueCodec` and `ValueInfo`; update codec imports and public metadata references accordingly.
-- Renamed `ExternalNode.rootType()` to `nodeType()` and removed `ExternalNodeRegistry.init()`; external-node providers are now loaded during registry class initialization.
-- Replaced `StreamingWriter.PropertyName` with `CompiledName`; custom backends must implement prepared-name writing with the new type.
-- Replaced manual `ExternalRegistry.register(...)` registration with `ServiceLoader`-discovered `ExternalProvider` implementations; external node integrations must publish a service provider.
-- Added `nextCharValue()` to `StreamingReader` and `writeCharValue(char)` to `StreamingWriter`; custom streaming backend implementations must implement these methods.
-- Renamed `org.sjf4j.binding.FieldReader` to `PropertyReader`; update streaming binding references accordingly.
-- Renamed `org.sjf4j.node.PropertyInfo` to `PropertyInfo`; update imports and public metadata references accordingly.
-- Renamed `org.sjf4j.node.ObjectInfo` to `PojoInfo`; update imports and public metadata references accordingly.
-- Renamed `JsonArray.elementType()` to `elementClass()`; update typed `JsonArray` subclasses accordingly.
-- Renamed the core Gradle module and published artifact from `sjf4j` to `sjf4j-core`; update project dependencies accordingly.
-- Replaced `TypeRegistry` map, list, and set container factory overloads accepting `(Class, boolean)` with capacity-aware `(Class, int, boolean)` overloads.
-- Moved compiled mapping annotations (including JDBC annotations) to `org.sjf4j.annotation.mapping`, compiled path annotations to `org.sjf4j.annotation.path`, and their processor generators to `org.sjf4j.processor.mapping` and `org.sjf4j.processor.path`.
-- JSONPath parser whitespace now follows RFC 9535 exactly where whitespace is syntactically recognized (bracket selectors, filter grammar, and function-argument separators): only SP, HTAB, LF, and CR are accepted. Extended dot-name syntax and JSON Pointer semantics are unchanged.
-- Renamed `@MapperOptions` to `@MappingOptions`.
-- Renamed `CompiledNodes.instanceOf()` to `CompiledInstances.of()` and moved it from `org.sjf4j.compiled` to `org.sjf4j`.
-- Renamed `@CompiledPath` to `@CompiledNavigator`.
-- Renamed `@JdbcMapperOptions` to `@JdbcMappingOptions`.
-- Renamed `StreamingBinder` to `Binder` and `BindingFactory` to `BinderFactory`. Removed `JsonBinder`, `YamlBinder`, `NodeBinder`, and `SimpleNodeBinder`; use `Binder` for streaming formats and `ObjectMapper` for direct structural conversion. Custom providers and writers must update their `Binder` types and be recompiled, because the changed method descriptors are not binary compatible.
-- Moved `Nodes`, `NodeStream`, `NodeKind`, and `TypeReference` from `org.sjf4j.node` to `org.sjf4j`.
-- Moved runtime bytecode-path APIs (`BytecodePath`, `FallbackBytecodePath`, `PathCompiler`, and `BytecodeCompilers`) from `org.sjf4j.compiled` to `org.sjf4j.bytecode`, including the `PathCompiler` service-provider contract.
-- Renamed `org.sjf4j.util.StringBuilderWriter` to `org.sjf4j.binding.FastStringWriter`.
-- Removed the deprecated runtime mapper public APIs (`org.sjf4j.mapper.NodeMapper`, `ObjectMapperBuilder`, and `Sjf4j.nodeMapperBuilder(...)`) from the published `sjf4j-core` artifact. Use annotation mapping with `@CompiledMapper` instead; the previous implementation remains incubator-only.
-- Renamed the Gson integration module and artifact from `sjf4j-integration-gson` to `sjf4j-backend-gson`, and moved its public classes to `org.sjf4j.backend.gson` packages.
-- Removed the built-in `Optional` codec; `Optional` may still be used through an explicitly registered `ValueCodec`.
-- Removed support for `Object.class` as a `ValueCodec` raw type; codecs must declare a fixed supported raw type.
-- Removed the `org.sjf4j.facade` package and its backend-specific facade APIs; use the corresponding `Binder` implementations and backend integration packages instead.
+SJF4J 1.5.0 is a major architectural overhaul focused on **unified structural processing, high-performance streaming binding, and compile-time code generation**.
+
+This release substantially redesigns the internal architecture, expands the compiled programming model, improves performance across supported JSON backends, and introduces several breaking API changes.
 
 ### Added
-- Added the `@CompiledBinder` annotation marker.
-- Added the `sjf4j-backend-fastjson2` artifact with Fastjson2 streaming reader and writer bindings.
-- Added the `sjf4j-backend-jackson2` artifact with Jackson 2 streaming reader and writer bindings.
-- Added structural traversal and access operations to `ExternalNode` and built-in ServiceLoader discovery for Gson native nodes.
-- Added ServiceLoader-discovered mutable native-node adapters for Jackson 2 and Jackson 3, with traversal, conversion, access, and mutation support.
-- Added setup-time `ExternalNode` classifiers for integrating external JSON node models with `NodeKind` and `JsonType` detection.
-- Added the `sjf4j` aggregate artifact, which transitively includes `sjf4j-core` and `sjf4j-schema`.
-- Added JSON, YAML, and node binding interfaces plus a reusable `FastStringReader`.
-- Added the `sjf4j-backend-gson` artifact with Gson streaming reader and writer bindings.
-- Added domain-specific mapping, node, patch, and path exception types.
-- Added `@CompiledMapper` source support for Jackson 2/3 and Gson native JSON nodes, including object, array, typed-map, indexed-path, nested-object, and explicit native-node converter mappings.
-- Added a protected `JsonObject(PojoInfo)` constructor for JOJOs that precompute metadata and pass it to `super(...)` on performance-sensitive construction paths.
-- Added conditional null/container-end probes and primitive-value fast paths to `StreamingReader` and its built-in backend readers.
-- Added a built-in `Charset` value codec.
+
+- **Compiled Binding** — Introduced `@CompiledBinder`, `@ReadFrom`, and `@WriteTo` for generating high-performance JSON and YAML readers and writers at compile time.
+- **Compiled JSON Schema Validation** — Introduced `@CompiledValidator` with direct validation code generation, fail-fast execution, and configurable runtime fallback.
+- **Extensible Value Modeling** — Added `@NodeValue`, enhanced `ValueCodec` registration, and support for multiple JSON representations of custom scalar types.
+- **Native JSON Node Integration** — Added extensible adapters for Jackson 2/3, Gson, and JSON-P native node models.
+- **Enhanced Polymorphic Binding** — Expanded `@OneOf` support across runtime and compiled binding, including discriminator-based subtype resolution.
 
 ### Changed
-- Expanded compiled mapper container updates with root collections, maps, arrays, and explicit array/object policies.
-- Added computed multi-source JDBC mappings and improved JDBC target-path and typed-getter handling.
-- Refactored the NodeValue module.
-- Renamed public node-value metadata members from `hasValueCodecs()`/`valueCodec` to `isNodeValue()`/`codec` and streamlined shared streaming serialization dispatch.
-- Optimized streaming POJO serialization with backend-prepared field names and specialized scalar field writers.
-- Improved simple node binder conversion with creator-state handling, value-codec deep copies, read-only property skipping, and capacity-aware standard collection targets.
-- Optimized streaming POJO binding and writing with precomputed specialized field accessors.
-- Gson streaming binders now create configured writers and honor the `RuntimeContext` null-serialization policy.
-- Renamed the internal Java 17 test and benchmark Gradle module from `sjf4j-jdk17-test` to `sjf4j-testbench`.
-- Optimized the built-in JSON reader with buffered input and allocation-conscious primitive number parsing.
-- Optimized JSON Pointer and JSONPath syntax parsing to reduce temporary allocations for common selectors, slices, and unions.
-- `StreamingReader.endDocument()` now verifies that the root value was consumed and no trailing input remains.
-- Improved generated `@CompiledMapper` mappings from `JsonObject` with direct scalar and nested-container access.
-- Improved numeric conversion range errors and preserve overflowing floating-point literals as `BigDecimal` values.
+
+- **Modular Architecture** — Reorganized SJF4J into a lightweight core, dedicated backend modules, JSON Schema, and annotation processor modules. The `sjf4j` artifact remains available as an aggregate dependency.
+- **Unified Streaming Architecture** — Redesigned the reader, writer, and binder abstractions with consistent behavior across Jackson 2/3, Fastjson2, Gson, JSON-P, SnakeYAML, and the built-in JSON backend.
+- **OBNT Improvements** — Refined node classification, property metadata, value codecs, and traversal semantics across POJOs, JOJOs, collections, and external nodes.
+- **Compile-Time Processing** — Extensively refactored and enhanced `@CompiledMapper`, `@CompiledJdbcMapper`, and `@CompiledNavigator`, alongside the new compiled binding and validation capabilities.
+- **JSON Schema Engine** — Refactored schema loading, reference resolution, validation contexts, and diagnostics, with improved correctness and more efficient validation execution.
+
+### Performance
+
+- Significantly optimized runtime and compiled JSON binding through backend-specific fast paths, native parser integration, and specialized generated code.
+- Reduced allocations and redundant conversions through optimized property matching, metadata caching, reusable buffers, and direct container processing.
+- Improved serialization and deserialization of collections, polymorphic objects, value codecs, and common Java temporal types.
+- Expanded JMH benchmarks and regression coverage across multiple JSON backends and representative workloads.
 
 ### Fixed
-- Fixed simple JSON streaming reader and writer failures to consistently report `BindingException` errors.
-- Fixed generic type-argument resolution through parameterized intermediate superclasses.
-- Fixed URL value decoding to accept URI-compliant URLs before converting them to `URL` values.
-- Fixed Jackson 2 exclusive reads to close their parsers while leaving caller-provided readers and input streams open.
-- Fixed simple JSON parsing and JSON Schema `contentMediaType: application/json` validation to reject malformed delimiters, literals, numbers, escapes, surrogate pairs, trailing content, and invalid base64-decoded UTF-8.
-- Fixed Jackson 3 discriminator-based `OneOf` binding to preserve the parser cursor for following object properties.
-- Fixed streaming serialization to apply value codecs registered for a value's parent class or interface.
 
+- Improved JSONPath RFC 9535 compliance and parsing consistency.
+- Fixed numerous edge cases in polymorphic binding, custom value codecs, generic types, and native JSON node handling.
+- Improved JSON Schema validation correctness, particularly around references, compound schemas, property evaluation, and error reporting.
+- Strengthened JSON parsing, numeric precision, Unicode handling, and cross-backend consistency.
+
+### Breaking Changes
+
+This release includes substantial source and binary compatibility changes:
+
+- Reorganized public packages and artifacts, including the extraction of `sjf4j-core` and dedicated backend modules.
+- Renamed and reorganized several public annotations and APIs, including `@CompiledPath` → `@CompiledNavigator`, `@NodeBinding` → `@NodeObject`, and `CompiledNodes` → `CompiledInstances`.
+- Redesigned streaming binding interfaces, backend provider contracts, and node/value metadata APIs.
+- Removed legacy facade APIs, deprecated runtime mapping APIs, and several obsolete abstractions.
+- Replaced the generic `JsonException` with more specific exception types.
+
+**Migration:** Applications upgrading from 1.3.3 should review imports, module dependencies, custom codecs, 
+and backend integrations. Previously generated compiled implementations must be regenerated and recompiled against 1.5.0.
 
 
 ## [1.3.3] - 2026.08.13

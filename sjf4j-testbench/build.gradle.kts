@@ -1,4 +1,10 @@
 import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
+import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
+import org.gradle.api.tasks.testing.Test
+import java.io.BufferedInputStream
+import java.net.URI
+import java.util.zip.ZipInputStream
 
 plugins {
     id("java-library")
@@ -98,10 +104,128 @@ tasks.named<JavaCompile>("compileJmhJava") {
 
 tasks.test {
     useJUnitPlatform()
+    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class")
     jvmArgs(
         "-Xshare:off"
     )
 }
+
+/////////////////////
+/// Official JSON Schema Test Suite
+
+val officialSchemaSuiteDir = layout.buildDirectory.dir("official-json-schema-tests/suite")
+
+fun githubStream(url: String) = URI(url).toURL().openConnection().apply {
+    setRequestProperty("User-Agent", "sjf4j-gradle")
+    connectTimeout = 30_000
+    readTimeout = 120_000
+}.getInputStream()
+
+fun jsonSchemaTestSuiteSha(ref: String): String {
+    if (Regex("[0-9a-fA-F]{40}").matches(ref)) return ref.lowercase()
+    val api = "https://api.github.com/repos/json-schema-org/JSON-Schema-Test-Suite/commits/$ref"
+    val json = githubStream(api).bufferedReader(Charsets.UTF_8).use { it.readText() }
+    return Regex("\"sha\"\\s*:\\s*\"([0-9a-f]{40})\"")
+        .find(json)
+        ?.groupValues
+        ?.get(1)
+        ?: throw GradleException("Failed to resolve JSON-Schema-Test-Suite revision: $ref")
+}
+
+val downloadOfficialSchemaTests by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Downloads the latest official JSON Schema test suite into build/."
+    outputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val ref = providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get()
+        val sha = jsonSchemaTestSuiteSha(ref)
+        val outDir = officialSchemaSuiteDir.get().asFile
+        delete(outDir)
+        outDir.mkdirs()
+
+        val outRoot = outDir.canonicalFile.toPath()
+        val zipUrl = "https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/zip/$sha"
+        var copied = 0
+
+        ZipInputStream(BufferedInputStream(githubStream(zipUrl))).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                val name = entry.name.replace('\\', '/')
+                val rootEnd = name.indexOf('/')
+                if (rootEnd < 0) continue
+
+                val relative = name.substring(rootEnd + 1)
+                if (!relative.startsWith("tests/") && !relative.startsWith("remotes/")) continue
+
+                val target = outDir.resolve(relative)
+                val targetPath = target.canonicalFile.toPath()
+                if (!targetPath.startsWith(outRoot)) {
+                    throw GradleException("Unsafe path in JSON-Schema-Test-Suite zip: $name")
+                }
+
+                if (entry.isDirectory) {
+                    target.mkdirs()
+                } else {
+                    target.parentFile.mkdirs()
+                    target.outputStream().use { output -> zip.copyTo(output) }
+                    copied++
+                }
+                zip.closeEntry()
+            }
+        }
+
+        outDir.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
+            "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\n" +
+                    "ref: $ref\n" +
+                    "revision: $sha\n"
+        )
+        logger.lifecycle("Downloaded JSON-Schema-Test-Suite $sha ($copied files) to $outDir")
+    }
+}
+
+val officialLatestTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs OfficialRuntimeTest against the latest JSON-Schema-Test-Suite from GitHub."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    include("**/OfficialRuntimeTest.class")
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    jvmArgs("-Xshare:off")
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    dependsOn(downloadOfficialSchemaTests)
+    shouldRunAfter(tasks.test)
+}
+
+val officialCompiledTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs selected official JSON Schema cases against CompiledValidator."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    include("**/OfficialCompiledTest.class")
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    jvmArgs("-Xshare:off")
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    dependsOn(downloadOfficialSchemaTests)
+    shouldRunAfter(tasks.test)
+}
+
+// Keep schema publication gated by the official conformance suite.
+project(":sjf4j-schema").tasks.withType<PublishToMavenRepository>().configureEach {
+    dependsOn(officialLatestTest)
+}
+project(":sjf4j-schema").tasks.withType<PublishToMavenLocal>().configureEach {
+    dependsOn(officialLatestTest)
+}
+project(":sjf4j-schema").tasks.matching { it.name == "publish" || it.name == "publishToMavenLocal" }
+    .configureEach {
+        dependsOn(officialLatestTest)
+    }
 
 tasks.named("build") {
     dependsOn(tasks.named("jmhJar"))
@@ -109,17 +233,16 @@ tasks.named("build") {
 
 //////////////////
 // jacoco
-val coverageProjects = listOf(":sjf4j-core", ":sjf4j-asm", ":sjf4j-schema")
+val coverageProjects = listOf(":sjf4j-core", ":sjf4j-schema")
 evaluationDependsOn(":sjf4j-schema")
-val schemaOfficialLatestTest = project(":sjf4j-schema").tasks.named("officialLatestTest")
 val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
-    project(":sjf4j-schema").layout.buildDirectory.file("jacoco/officialLatestTest.exec") +
+    layout.buildDirectory.file("jacoco/officialLatestTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
 tasks.jacocoTestReport {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + schemaOfficialLatestTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialLatestTest)
     executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
@@ -128,7 +251,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + schemaOfficialLatestTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialLatestTest)
     executionData(coverageExecFiles)
     violationRules {
         rule {

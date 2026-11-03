@@ -1,10 +1,16 @@
-package org.sjf4j.schema;
+package org.sjf4j.testbench.schema;
 
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Sjf4j;
+import org.sjf4j.schema.JsonSchema;
+import org.sjf4j.schema.ObjectSchema;
+import org.sjf4j.schema.SchemaDialect;
+import org.sjf4j.schema.SchemaPlan;
+import org.sjf4j.schema.SchemaRegistry;
+import org.sjf4j.schema.ValidationResult;
 
 import java.net.URI;
 import java.nio.file.Files;
@@ -16,7 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class OfficialTest {
+public final class OfficialRuntimeTest {
 
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
@@ -24,7 +30,7 @@ public final class OfficialTest {
 
     public static void main(String[] args) throws Exception {
         if (args.length > 1) {
-            throw new IllegalArgumentException("Usage: OfficialTest [<JSON-Schema-Test-Suite root>]");
+            throw new IllegalArgumentException("Usage: OfficialRuntimeTest [<JSON-Schema-Test-Suite root>]");
         }
         Path root = locateTestRoot(args.length == 0 ? null : args[0]);
 
@@ -97,11 +103,11 @@ public final class OfficialTest {
         if (Files.isDirectory(moduleRoot)) {
             return moduleRoot;
         }
-        Path repositoryRoot = Paths.get("sjf4j-schema", "build", SUITE_DIRECTORY);
+        Path repositoryRoot = Paths.get("sjf4j-testbench", "build", SUITE_DIRECTORY);
         if (Files.isDirectory(repositoryRoot)) {
             return repositoryRoot;
         }
-        throw new IllegalStateException("Official JSON Schema test suite not found. Run ./gradlew :sjf4j-schema:downloadOfficialSchemaTests, " +
+        throw new IllegalStateException("Official JSON Schema test suite not found. Run ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests, " +
                 "or supply -D" + TEST_ROOT_PROPERTY + "=<suite-root> or a <suite-root> main argument.");
     }
 

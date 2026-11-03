@@ -48,7 +48,8 @@ import java.util.concurrent.TimeUnit;
 public class FabienReadBenchmark {
 
     public static void main(String[] args) throws IOException {
-        Main.main(new String[]{FabienReadBenchmark.class.getName()});
+//        Main.main(new String[]{FabienReadBenchmark.class.getName()});
+        Main.main(new String[]{FabienReadBenchmark.class.getName() + ".*map"});
     }
 
     // SJF4J preserves the JSON offset; Jackson's default normalizes it to UTC.
@@ -134,6 +135,14 @@ public class FabienReadBenchmark {
         }
     }
 
+
+    @CompiledBinder(backend = Backend.JACKSON2)
+    public interface FabienCompiled {
+        @ReadFrom Users readUsers(byte[] json) throws IOException;
+        @ReadFrom Clients readClients(byte[] json) throws IOException;
+    }
+
+
     @Benchmark
     public Users users_jackson2_native() throws IOException {
         return NATIVE.readValue(usersJson, Users.class);
@@ -153,6 +162,7 @@ public class FabienReadBenchmark {
     public Users users_jackson2_compiled() throws IOException {
         return COMPILED.readUsers(usersJson);
     }
+
 
     @Benchmark
     public Clients clients_jackson2_native() throws IOException {
@@ -179,24 +189,26 @@ public class FabienReadBenchmark {
         return Jackson2HandRead.readClients(HAND_FACTORY, clientsJson);
     }
 
-//    @Benchmark
-//    public Clients clients_jackson2_handwritten_jdk_uuid() throws IOException {
-//        return Jackson2HandRead.readClientsWithJdkUuid(HAND_FACTORY, clientsJson);
-//    }
-//
-//    @Benchmark
-//    public Clients clients_jackson2_handwritten_wrapped_scalars() throws IOException {
-//        return Jackson2HandRead.readClientsWithWrappedScalars(HAND_FACTORY, clientsJson);
-//    }
-//
-//    @Benchmark
-//    public Clients clients_jackson2_handwritten_wrapped_arrays() throws IOException {
-//        return Jackson2HandRead.readClientsWithWrappedArrays(HAND_FACTORY, clientsJson);
-//    }
 
-    @CompiledBinder(backend = Backend.JACKSON2)
-    public interface FabienCompiled {
-        @ReadFrom Users readUsers(byte[] json) throws IOException;
-        @ReadFrom Clients readClients(byte[] json) throws IOException;
+    @Benchmark
+    public Object users_map_jackson2_native() throws IOException {
+        return NATIVE.readValue(usersJson, Object.class);
     }
+
+    @Benchmark
+    public Object users_map_jackson2_runtime() {
+        return RUNTIME.readNode(usersJson, Object.class);
+    }
+
+    @Benchmark
+    public Object clients_map_jackson2_native() throws IOException {
+        return NATIVE.readValue(clientsJson, Object.class);
+    }
+
+    @Benchmark
+    public Object clients_map_jackson2_runtime() {
+        return RUNTIME.readNode(clientsJson, Object.class);
+    }
+
+
 }
