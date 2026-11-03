@@ -49,6 +49,14 @@ final class ScalarCompiler {
     }
 
     private SchemaCheck literalChecks(JsonObject schema, SchemaCheck first, String schemaUri) {
+        // enum: [] rejects every JSON value, independent of other checks.
+        // Emit a terminal reject rather than an unconditional return false
+        // followed by the method generator's return true (unreachable code).
+        Object enumValue = schema.getNode("enum");
+        if (schema.containsKey("enum") && JsonType.of(enumValue) == JsonType.ARRAY
+                && Nodes.sizeInArray(enumValue) == 0) {
+            return new SchemaCheck.Reject(SchemaCompiler.diagnostic(schemaUri, "enum"));
+        }
         List<SchemaCheck> checks = new ArrayList<SchemaCheck>();
         if (schema.containsKey("const")) {
             SchemaCheck.LiteralCheck check = literals(schema.getNode("const"), false,
