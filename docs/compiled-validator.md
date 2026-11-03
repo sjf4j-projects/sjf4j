@@ -403,6 +403,12 @@ The `optional/` tree is excluded from both enumeration and the test runner.
 # The recommended local command for phase 2:
 ./gradlew :sjf4j-testbench:officialCompiledPhase2Test \
   -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+
+# To execute a smaller phase-2 wave, select one official-file cohort:
+./gradlew :sjf4j-testbench:officialCompiledPhase2Test \
+  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057 \
+  -PofficialCompiledCategory=object
+# Other values: basic, scalar. Default: phase2 (all three).
 ```
 
 For that pinned upstream revision, the Phase 2 target is **26 official files,
