@@ -30,10 +30,10 @@ final class SchemaMethodGenerator {
     private final SchemaFallbackEmitter fallbacks;
     private int methodSerial;
 
-    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated) {
+    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated, String registryDir) {
         this.context = context;
-        this.resources = new SchemaResourceResolver(context);
-        this.fallbacks = new SchemaFallbackEmitter(generated.names());
+        this.resources = new SchemaResourceResolver(context, registryDir);
+        this.fallbacks = new SchemaFallbackEmitter(generated.names(), registryDir);
     }
 
     void emitFallbacks(GeneratedClass generated) {
