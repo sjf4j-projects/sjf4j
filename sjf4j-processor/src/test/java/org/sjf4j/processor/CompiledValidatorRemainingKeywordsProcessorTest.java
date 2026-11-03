@@ -58,7 +58,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     @Test
     void unsupportedKeywordStillRejectsFallbackFalse() throws Exception {
         for (String schema : new String[]{
-                "{\"type\":\"string\",\"contentSchema\":true}",
+                "{\"type\":\"string\",\"unevaluatedProperties\":false}",
                 "{\"type\":\"number\",\"unevaluatedItems\":false}",
                 "{\"type\":\"object\",\"unevaluatedProperties\":false}"
         }) {
