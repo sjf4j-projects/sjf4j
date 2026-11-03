@@ -172,6 +172,18 @@ class CompiledValidatorKeywordTest {
         @ValidJsonSchema("{\"properties\":{\"text\":{\"minLength\":2},"
                 + "\"decimal\":{\"minimum\":2},\"matrix\":{\"maxItems\":2}}}")
         boolean nestedObnt(Object value);
+        @ValidJsonSchema("{\"type\":\"string\",\"minimum\":2,\"maxLength\":3}")
+        boolean independentType(Object value);
+        @ValidJsonSchema("{\"type\":[\"string\",\"number\"],\"minLength\":2,\"minimum\":2}")
+        boolean unionAndKeywords(Object value);
+        @ValidJsonSchema("{\"properties\":{\"a\":{\"minimum\":2}},\"minLength\":2}")
+        boolean objectAndString(Object value);
+        @ValidJsonSchema("{\"items\":{\"minimum\":2},\"maxLength\":3}")
+        boolean arrayAndString(Object value);
+        @ValidJsonSchema("{\"type\":\"number\",\"minLength\":2}")
+        boolean numberWithStringKeyword(Object value);
+        @ValidJsonSchema("{\"const\":2,\"minimum\":1}")
+        boolean literalAndNumber(Object value);
     }
 
     @CompiledValidator(fallback = false)
@@ -290,6 +302,40 @@ class CompiledValidatorKeywordTest {
         assertTrue(compiled.nestedObnt(new JsonObject(obnt)));
         obnt.put("matrix", List.of(1, 2, 3));
         assertFalse(compiled.nestedObnt(new JsonObject(obnt)));
+    }
+
+    @Test
+    void typeIsJustAnotherIndependentAssertion() {
+        UntypedDirect validator = CompiledInstances.create(UntypedDirect.class);
+
+        assertTrue(validator.independentType("abc"));
+        assertFalse(validator.independentType("abcd"));
+        assertFalse(validator.independentType("a"));
+        assertFalse(validator.independentType(2)); // type:string, not minimum.
+        assertFalse(validator.independentType(null));
+
+        assertTrue(validator.unionAndKeywords("abc"));
+        assertFalse(validator.unionAndKeywords("a"));
+        assertTrue(validator.unionAndKeywords(3));
+        assertFalse(validator.unionAndKeywords(1));
+        assertFalse(validator.unionAndKeywords(List.of(2)));
+
+        assertTrue(validator.objectAndString(Map.of("a", 2)));
+        assertFalse(validator.objectAndString(Map.of("a", 1)));
+        assertTrue(validator.objectAndString("abcd"));
+        assertFalse(validator.objectAndString("a"));
+
+        assertTrue(validator.arrayAndString(List.of(2, 3)));
+        assertFalse(validator.arrayAndString(List.of(1, 3)));
+        assertFalse(validator.arrayAndString("abcd"));
+        assertTrue(validator.arrayAndString("abc"));
+        assertTrue(validator.arrayAndString(Map.of("value", 1)));
+
+        assertTrue(validator.numberWithStringKeyword(5));
+        assertFalse(validator.numberWithStringKeyword("abc"));
+        assertTrue(validator.literalAndNumber(2));
+        assertFalse(validator.literalAndNumber(1));
+        assertFalse(validator.literalAndNumber("2"));
     }
 
     @Test
