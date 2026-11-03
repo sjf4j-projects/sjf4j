@@ -58,7 +58,8 @@ public final class OfficialCompiledTest {
 
     private static Set<String> fallbackGroups() {
         Set<String> groups = new LinkedHashSet<>();
-        fallback(groups, "additionalProperties.json", 0, 1, 2, 3, 5, 6, 7, 8);
+        // #7 still needs propertyNames; #8 still needs dependentSchemas.
+        fallback(groups, "additionalProperties.json", 7, 8);
         fallback(groups, "anchor.json", 0, 1, 2, 3);
         fallback(groups, "const.json", 1, 2, 6, 7, 8, 9);
         fallback(groups, "contains.json", 0, 1, 2, 3, 4, 5, 6);
@@ -72,7 +73,6 @@ public final class OfficialCompiledTest {
         fallback(groups, "maxContains.json", 0, 1, 2, 3, 4);
         fallback(groups, "minContains.json", 0, 1, 2, 3, 4, 5, 6, 7);
         fallback(groups, "not.json", 8);
-        fallback(groups, "patternProperties.json", 0, 1, 2, 3, 4, 5);
         fallback(groups, "prefixItems.json", 0, 1, 2, 3);
         fallback(groups, "properties.json", 1);
         fallback(groups, "propertyNames.json", 0, 1, 2, 3, 4, 5);
