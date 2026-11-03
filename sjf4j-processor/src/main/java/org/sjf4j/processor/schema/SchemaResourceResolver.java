@@ -54,32 +54,24 @@ final class SchemaResourceResolver {
 
     private final ProcessorContext context;
     private final String registryDir;
-    private final Map<String, Map<URI, JsonSchema>> registryCache;
+    private final Map<String, SchemaRegistry> registryCache;
 
     SchemaResourceResolver(ProcessorContext context, String registryDir,
-                           Map<String, Map<URI, JsonSchema>> registryCache) {
+                           Map<String, SchemaRegistry> registryCache) {
         this.context = context;
         this.registryDir = registryDir.trim();
         this.registryCache = registryCache;
     }
 
-    /** Load and parse every registry resource once per annotation-processing run. */
-    private Map<URI, JsonSchema> registrySchemas() {
-        Map<URI, JsonSchema> schemas = registryCache.get(registryDir);
-        if (schemas != null) return schemas;
-        schemas = new LinkedHashMap<URI, JsonSchema>();
-        if (!registryDir.isEmpty()) {
-            SchemaLoader.Local loader = new SchemaLoader.Local(URI.create(registryDir));
-            for (URI uri : loader.listDirectory()) {
-                JsonSchema schema = loader.load(uri);
-                if (schema == null) {
-                    throw new IllegalArgumentException("schema registry resource not found: " + uri);
-                }
-                schemas.put(uri, schema);
-            }
+    /** Pre-register every directory resource exactly once per processing run. */
+    private SchemaRegistry registry() {
+        SchemaRegistry cached = registryCache.get(registryDir);
+        if (cached == null) {
+            cached = new SchemaRegistry();
+            if (!registryDir.isEmpty()) cached.indexDir(URI.create(registryDir));
+            registryCache.put(registryDir, cached);
         }
-        registryCache.put(registryDir, schemas);
-        return schemas;
+        return SchemaRegistry.copyOf(cached);
     }
 
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName,
@@ -130,15 +122,11 @@ final class SchemaResourceResolver {
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri);
-        // Index the complete directory before resolving any reference. Registry
-        // owns canonical $id aliases, $ref and dynamic-anchor resolution.
-        // Local root resources take precedence if the directory repeats an $id.
-        SchemaRegistry registry = new SchemaRegistry();
+        // Directory resources are indexed once, prior to root resolution.
+        // Each method gets a registry copy so roots cannot leak between methods.
+        SchemaRegistry registry = registry();
         for (int i = 0; i < snapshot.uris.length; i++) {
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
-        }
-        for (Map.Entry<URI, JsonSchema> entry : registrySchemas().entrySet()) {
-            registry.indexIfAbsent(entry.getKey(), entry.getValue());
         }
         // Boolean resources are now indexed alongside object resources, so the
         // selected URI must always resolve during annotation processing.
