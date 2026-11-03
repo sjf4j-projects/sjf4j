@@ -534,7 +534,17 @@ final class SchemaEmitter {
             if (literal == null) expected = "null";
             else if (literal instanceof String) expected = javaLiteral((String) literal);
             else if (literal instanceof Boolean) expected = ((Boolean) literal) ? "Boolean.TRUE" : "Boolean.FALSE";
-            else expected = decimalConstantRef((Number) literal);
+            else if (literal instanceof Number) expected = decimalConstantRef((Number) literal);
+            else {
+                // Decode each immutable schema literal once per generated validator.
+                // JSON equality remains Nodes.equals (not Java Map/List equals).
+                String field = generated.names().field("JSON_LITERAL");
+                String json = new org.sjf4j.binding.simple.SimpleJsonBinder().writeNodeAsString(literal);
+                generated.addField(out -> out.line("private static final Object " + field
+                        + " = new org.sjf4j.binding.simple.SimpleJsonBinder().readNode("
+                        + javaLiteral(json) + ", Object.class);"));
+                expected = field;
+            }
             disjunction.append("org.sjf4j.Nodes.equals(").append(expected).append(", ")
                     .append(expression).append(")");
         }
