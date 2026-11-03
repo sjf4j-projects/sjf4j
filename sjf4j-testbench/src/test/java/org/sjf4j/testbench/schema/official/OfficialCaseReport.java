@@ -18,7 +18,6 @@ final class OfficialCaseReport {
         final Set<String> files = new LinkedHashSet<>();
         final Set<String> directGroups = new LinkedHashSet<>();
         final Set<String> fallbackGroups = new LinkedHashSet<>();
-        final Set<String> unprobedGroups = new LinkedHashSet<>();
         final Set<String> blockedGroups = new LinkedHashSet<>();
         int groups;
         int expectedTests;
@@ -113,7 +112,6 @@ final class OfficialCaseReport {
         switch (mode) {
             case "DIRECT": c.directGroups.add(spec.key()); break;
             case "FALLBACK": c.fallbackGroups.add(spec.key()); break;
-            case "UNPROBED": c.unprobedGroups.add(spec.key()); break;
             case "COMPILE_ERROR": c.blockedGroups.add(spec.key()); break;
             default: throw new IllegalArgumentException("Unknown mode " + mode);
         }
@@ -153,7 +151,7 @@ final class OfficialCaseReport {
         }
 
         Map<String, Object> categoryRows = new LinkedHashMap<>();
-        int directGroups = 0, fallbackGroups = 0, blockedGroups = 0, unprobedGroups = 0;
+        int directGroups = 0, fallbackGroups = 0, blockedGroups = 0;
         for (Map.Entry<String, CategoryStats> entry : categories.entrySet()) {
             CategoryStats c = entry.getValue();
             Map<String, Object> row = new LinkedHashMap<>();
@@ -166,12 +164,10 @@ final class OfficialCaseReport {
             row.put("executionErrors", c.executionErrors);
             row.put("directGroups", c.directGroups.size());
             row.put("fallbackGroups", c.fallbackGroups.size());
-            row.put("unprobedGroups", c.unprobedGroups.size());
             row.put("blockedGroups", c.blockedGroups.size());
             categoryRows.put(entry.getKey(), row);
             directGroups += c.directGroups.size();
             fallbackGroups += c.fallbackGroups.size();
-            unprobedGroups += c.unprobedGroups.size();
             blockedGroups += c.blockedGroups.size();
         }
 
@@ -190,7 +186,6 @@ final class OfficialCaseReport {
         summary.put("unaccounted", expectedTests - details.size());
         summary.put("directGroups", directGroups);
         summary.put("fallbackGroups", fallbackGroups);
-        summary.put("unprobedGroups", unprobedGroups);
         summary.put("blockedGroups", blockedGroups);
         summary.put("categories", categoryRows);
         summary.put("files", files);
@@ -215,10 +210,10 @@ final class OfficialCaseReport {
 
         System.out.printf(
                 "Official Compiled [%s]: %d/%d passed, %d failed, %d compile-blocked, "
-                        + "%d execution errors; groups direct=%d fallback=%d unprobed=%d blocked=%d; "
+                        + "%d execution errors; groups direct=%d fallback=%d blocked=%d; "
                         + "%d of %d assertions accounted for%n",
                 selection, passed, expectedTests, failed, compileErrors, executionErrors,
-                directGroups, fallbackGroups, unprobedGroups, blockedGroups,
+                directGroups, fallbackGroups, blockedGroups,
                 details.size(), expectedTests);
     }
 
