@@ -94,17 +94,62 @@ final class SchemaEmitter {
                             + ") && (" + missing + ")) " + fail(onFailure, check.dependentRequiredDiagnostic));
                 }
             }
-            if (check.additionalPropertiesFalse) {
+            // Coverage belongs only to sibling properties and patternProperties.
+            // Applicators and dependentSchemas do not contribute to this set.
+            if (check.additionalPropertiesFalse || check.additionalPropertiesCheck != null
+                    || !check.patternProperties.isEmpty()) {
                 String key = locals.newName("key");
+                String covered = locals.newName("covered");
                 statements.add("for (String " + key + " : " + (check.jsonObject ? variable + ".keySet()"
                         : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
-                StringBuilder condition = new StringBuilder();
+                StringBuilder named = new StringBuilder();
                 for (String allowed : check.allowedNames) {
-                    if (condition.length() != 0) condition.append(" && ");
-                    condition.append("!").append(key).append(".equals(").append(literal(allowed)).append(")");
+                    if (named.length() != 0) named.append(" || ");
+                    named.append(key).append(".equals(").append(literal(allowed)).append(")");
                 }
-                String unknown = condition.length() == 0 ? "true" : condition.toString();
-                statements.add("    if (" + unknown + ") " + fail(onFailure, check.additionalPropertiesDiagnostic));
+                statements.add("    boolean " + covered + " = "
+                        + (named.length() == 0 ? "false" : named.toString()) + ";");
+                int patternIndex = 0;
+                for (SchemaCheck.PatternProperty pattern : check.patternProperties) {
+                    String regex = generated.names().field("PROPERTY_PATTERN");
+                    generated.addField(out -> out.line("private static final java.util.regex.Pattern "
+                            + regex + " = java.util.regex.Pattern.compile(" + literal(pattern.pattern) + ");"));
+                    statements.add("    if (" + regex + ".matcher(" + key + ").find()) {");
+                    statements.add("        " + covered + " = true;");
+                    if (pattern.check.kind != SchemaCheck.Kind.PASS) {
+                        String element = locals.newName("element");
+                        statements.add("        Object " + element + " = " + (check.jsonObject
+                                ? variable + ".getNode(" + key + ")"
+                                : "org.sjf4j.Nodes.getInObject(" + variable + ", " + key + ")") + ";");
+                        String previousPath = instancePath;
+                        instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
+                        List<String> children = new ArrayList<String>();
+                        emitValue(children, plan, pattern.check, check.elementValue, element,
+                                prefix + "PATTERN_" + patternIndex, strictFormat, 0, onFailure);
+                        instancePath = previousPath;
+                        for (String statement : children) statements.add("        " + statement);
+                    }
+                    statements.add("    }");
+                    patternIndex++;
+                }
+                if (check.additionalPropertiesFalse) {
+                    statements.add("    if (!" + covered + ") " + fail(onFailure, check.additionalPropertiesDiagnostic));
+                } else if (check.additionalPropertiesCheck != null
+                        && check.additionalPropertiesCheck.kind != SchemaCheck.Kind.PASS) {
+                    String element = locals.newName("additional");
+                    statements.add("    if (!" + covered + ") {");
+                    statements.add("        Object " + element + " = " + (check.jsonObject
+                            ? variable + ".getNode(" + key + ")"
+                            : "org.sjf4j.Nodes.getInObject(" + variable + ", " + key + ")") + ";");
+                    String previousPath = instancePath;
+                    instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
+                    List<String> children = new ArrayList<String>();
+                    emitValue(children, plan, check.additionalPropertiesCheck, check.elementValue,
+                            element, prefix + "ADDITIONAL", strictFormat, 0, onFailure);
+                    instancePath = previousPath;
+                    for (String statement : children) statements.add("        " + statement);
+                    statements.add("    }");
+                }
                 statements.add("}");
             }
         }
