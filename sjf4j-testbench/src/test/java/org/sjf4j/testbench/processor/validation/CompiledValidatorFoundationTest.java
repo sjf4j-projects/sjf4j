@@ -21,7 +21,7 @@ class CompiledValidatorFoundationTest {
         assertTrue(validator.isValid(good), () -> "compiled=" + validator.validate(good) + " runtime=" + new org.sjf4j.schema.SchemaValidator().validate(good));
         assertFalse(validator.isValid(shortName));
         assertFalse(validator.isValid(badLevel));
-        assertTrue(validator.isValid(null));
+        assertFalse(validator.isValid(null));
 
         assertFalse(validator.validate(shortName).isValid());
         assertFalse(validator.validate(badLevel).isValid());
@@ -47,7 +47,7 @@ class CompiledValidatorFoundationTest {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
         assertTrue(validator.text("abcd"));
         assertFalse(validator.text("a"));
-        assertTrue(validator.text(null));
+        assertFalse(validator.text(null));
     }
 
     @Test
@@ -72,7 +72,7 @@ class CompiledValidatorFoundationTest {
         assertFalse(validator.fromFragment("x"));
         assertFalse(validator.fromFragment("abc"));
         assertTrue(validator.fromFragment("abcd"));
-        assertTrue(validator.fromFragment(null)); // SchemaValidator null handling
+        assertFalse(validator.fromFragment(null)); // null is not a JSON string
         assertTrue(validator.fromPayloadFragment(new Payload("valid")));
         assertFalse(validator.fromPayloadFragment(new Payload("x")));
     }
@@ -97,9 +97,18 @@ class CompiledValidatorFoundationTest {
         assertTrue(validator.validateBooleanTrueResource("value").isValid());
         assertFalse(validator.validateBooleanRef("value").isValid());
 
-        assertTrue(validator.validateInlineFalse(null).isValid());
+        assertFalse(validator.validateInlineFalse(null).isValid());
+        assertFalse(validator.validateBooleanFalseResource(null).isValid());
+        assertFalse(validator.validateBooleanRef(null).isValid());
+        assertTrue(validator.validateInlineTrue(null).isValid());
+        assertTrue(validator.validateBooleanTrueResource(null).isValid());
+        assertFalse(validator.fromBooleanRoot(null));
+        assertFalse(validator.fromBooleanRef(null));
+        assertTrue(validator.fromBooleanTrue(null));
         assertThrows(ValidationException.class, () -> validator.requireBooleanFalse("value"));
+        assertThrows(ValidationException.class, () -> validator.requireBooleanFalse(null));
         validator.requireBooleanTrue("value");
+        validator.requireBooleanTrue(null);
     }
 
     @Test
