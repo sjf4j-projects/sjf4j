@@ -51,23 +51,102 @@ public final class OfficialCompiledTest {
     private String revision;
     private String selection;
 
+    // Only the standalone main entrypoint uses these filters. JUnit continues
+    // to execute every mandatory example in the selected category.
+    private String mainCategory;
+    private String mainFile;
+    private int mainGroup = -1;
+    private int mainCase = -1;
+
+    /**
+     * Standalone IntelliJ entrypoint (run the test class as an Application).
+     *
+     * <p>Arguments: [category [file.json [groupIndex [testIndex]]]].
+     * Category defaults to "all"; available categories include phase2, phase3,
+     * basic, scalar, object, array, applicator, unevaluated, reference.
+     * Requires an existing local suite and generated bindings (Gradle's
+     * downloadOfficialSchemaTests + generateOfficialCompiledCases once).
+     */
+    public static void main(String[] args) throws Exception {
+        if (args.length > 4) {
+            throw new IllegalArgumentException(
+                    "Usage: OfficialCompiledTest [category [file.json [groupIndex [testIndex]]]]");
+        }
+        OfficialCompiledTest instance = new OfficialCompiledTest();
+        instance.mainCategory = args.length > 0 ? args[0] : "all";
+        if (args.length > 1) {
+            instance.mainFile = args[1];
+            if (!instance.mainFile.endsWith(".json")) {
+                throw new IllegalArgumentException("Expected an official file ending in .json: "
+                        + instance.mainFile);
+            }
+        }
+        if (args.length > 2) instance.mainGroup = Integer.parseInt(args[2]);
+        if (args.length > 3) instance.mainCase = Integer.parseInt(args[3]);
+        if (instance.mainGroup < -1 || instance.mainCase < -1) {
+            throw new IllegalArgumentException("Group and test indexes must be nonnegative");
+        }
+
+        int[] counts = new int[2]; // executed, failed
+        try {
+            try (Stream<DynamicNode> nodes = instance.draft2020_12()) {
+                nodes.forEach(node -> executeMainNode(node, counts, ""));
+            }
+        } finally {
+            instance.writeReport();
+        }
+        System.out.printf("OfficialCompiledTest.main: %d executed, %d failed%n",
+                counts[0], counts[1]);
+        if (counts[1] > 0) {
+            throw new AssertionError(counts[1] + " official compiled case(s) failed");
+        }
+    }
+
+    private static void executeMainNode(DynamicNode node, int[] counts, String prefix) {
+        String label = prefix.isEmpty() ? node.getDisplayName()
+                : prefix + " / " + node.getDisplayName();
+        if (node instanceof DynamicTest) {
+            counts[0]++;
+            try {
+                ((DynamicTest) node).getExecutable().execute();
+            } catch (Throwable e) {
+                counts[1]++;
+                System.err.println("FAIL " + label + ": " + e);
+            }
+        } else if (node instanceof DynamicContainer) {
+            try (Stream<? extends DynamicNode> children = ((DynamicContainer) node).getChildren()) {
+                children.forEach(child -> executeMainNode(child, counts, label));
+            }
+        }
+    }
+
+    private static Path localBuildPath(String suffix) {
+        Path module = Paths.get("build").resolve(suffix);
+        if (Files.exists(module)) return module;
+        Path repository = Paths.get("sjf4j-testbench", "build").resolve(suffix);
+        return Files.exists(repository) ? repository : module;
+    }
+
     @TestFactory
     Stream<DynamicNode> draft2020_12() throws Exception {
         Path suiteRoot = Paths.get(System.getProperty(TEST_ROOT,
-                "build/official-json-schema-tests/suite"));
+                localBuildPath("official-json-schema-tests/suite").toString()));
         Path generated = Paths.get(System.getProperty(GENERATED_ROOT,
-                "build/generated/officialCompiled"));
+                localBuildPath("generated/officialCompiled").toString()));
         Path officialDir = suiteRoot.resolve(DIALECT_DIR);
         if (!Files.isDirectory(officialDir)) {
             throw new IllegalStateException("Official suite missing: " + officialDir);
         }
 
-        selection = OfficialCaseCategory.selection(System.getProperty(SELECTION, "all"));
+        selection = OfficialCaseCategory.selection(mainCategory == null
+                ? System.getProperty(SELECTION, "all") : mainCategory);
         List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated);
         List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
         for (OfficialCaseRunner.Spec spec : allSpecs) {
-            if (!OfficialCaseCategory.selected(selection, spec.file)) continue;
+            if (!OfficialCaseCategory.selected(selection, spec.file)
+                    || (mainFile != null && !mainFile.equals(spec.file))
+                    || (mainGroup >= 0 && mainGroup != spec.group)) continue;
             specs.add(spec);
             byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
         }
@@ -88,8 +167,11 @@ public final class OfficialCompiledTest {
         java.util.Set<String> indexedFiles = new java.util.LinkedHashSet<>();
         for (OfficialCaseRunner.Spec spec : allSpecs) indexedFiles.add(spec.file);
         assertEquals(upstreamFiles, indexedFiles, "Official compiled manifest does not cover every file");
-        jsonFiles.removeIf(p -> !OfficialCaseCategory.selected(selection,
-                p.getFileName().toString()));
+        jsonFiles.removeIf(p -> !byFile.containsKey(p.getFileName().toString()));
+        if (specs.isEmpty()) {
+            throw new IllegalArgumentException("No official cases matched: category="
+                    + selection + ", file=" + mainFile + ", group=" + mainGroup);
+        }
         assertEquals(jsonFiles.size(), byFile.size(), "Selected official file coverage mismatch");
 
         Properties totals = new Properties();
@@ -101,16 +183,19 @@ public final class OfficialCompiledTest {
         assertEquals(allSpecs.size(), Integer.parseInt(totals.getProperty("groups")));
 
         List<DynamicNode> fileNodes = new ArrayList<>();
+        Map<String, Integer> selectedCounts = new LinkedHashMap<>();
         int assertions = 0;
         for (Path file : jsonFiles) {
             String fileName = file.getFileName().toString();
             JsonArray groups = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonArray.class);
             List<OfficialCaseRunner.Spec> fileSpecs = byFile.get(fileName);
-            assertEquals(groups.size(), fileSpecs.size(), fileName + ": group coverage mismatch");
+            if (mainGroup < 0) {
+                assertEquals(groups.size(), fileSpecs.size(), fileName + ": group coverage mismatch");
+            }
             List<DynamicNode> groupNodes = new ArrayList<>();
-            for (int i = 0; i < fileSpecs.size(); i++) {
-                OfficialCaseRunner.Spec spec = fileSpecs.get(i);
-                assertEquals(i, spec.group, fileName + ": missing or reordered group");
+            for (OfficialCaseRunner.Spec spec : fileSpecs) {
+                int i = spec.group;
+                assertTrue(i < groups.size(), spec.key() + ": group not present");
                 JsonObject group = groups.getJsonObject(i);
                 Object officialSchema = group.getNode("schema");
                 String stem = fileName.substring(0, fileName.length() - ".json".length());
@@ -124,9 +209,16 @@ public final class OfficialCompiledTest {
                 String groupDescription = group.getString("description", "");
                 JsonArray examples = group.getJsonArray("tests");
                 assertEquals(examples.size(), spec.tests, spec.key() + ": test count changed");
-                assertions += examples.size();
+                if (mainCase >= examples.size()) {
+                    throw new IllegalArgumentException(spec.key()
+                            + ": test index does not exist: " + mainCase);
+                }
+                int selected = mainCase >= 0 ? 1 : examples.size();
+                assertions += selected;
+                selectedCounts.put(spec.key(), selected);
                 List<DynamicNode> tests = new ArrayList<>();
                 for (int j = 0; j < examples.size(); j++) {
+                    if (mainCase >= 0 && j != mainCase) continue;
                     JsonObject example = examples.getJsonObject(j);
                     Object data = example.get("data"); // Never skip JSON null.
                     boolean expected = example.getBoolean("valid");
@@ -172,7 +264,8 @@ public final class OfficialCompiledTest {
                 "Generated manifest assertion count differs from official files");
         revision = Files.readString(suiteRoot.resolve("OFFICIAL_TEST_SUITE_REV"),
                 StandardCharsets.UTF_8).trim();
-        if (revision.contains(PHASE2_BASELINE_SHA)) {
+        if (mainFile == null && mainGroup < 0 && mainCase < 0
+                && revision.contains(PHASE2_BASELINE_SHA)) {
             // Pin category totals as well as the manifest. These checks must detect
             // missing/reordered official cases, not assume every new upstream revision
             // has the same group counts as the pinned fixture.
@@ -197,10 +290,11 @@ public final class OfficialCompiledTest {
                     break;
             }
         }
-        reportDir = Paths.get("build/reports/officialCompiled").resolve(selection);
-        report = new OfficialCaseReport(selection, specs, assertions);
+        Path moduleBuild = generated.getParent().getParent();
+        reportDir = moduleBuild.resolve("reports/officialCompiled").resolve(selection);
+        report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
         runner = new OfficialCaseRunner(generated,
-                Paths.get("build/officialCompiled/compile").resolve(selection));
+                moduleBuild.resolve("officialCompiled/compile").resolve(selection));
         runner.compileAll(specs, Boolean.parseBoolean(System.getProperty(PROBE_DIRECT, "false")));
         return fileNodes.stream();
     }
