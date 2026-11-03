@@ -28,7 +28,7 @@ public interface ExternalValidator {
 }
 ```
 
-All `.json` files under `registryDir` are discovered recursively and loaded once per annotation-processing run; `SchemaRegistry.index()` registers their retrieval URIs and canonical `$id` aliases before resolving references. An indexed schema is not compiled into a `SchemaPlan` until needed. The default `registryDir = ""` preserves existing behavior. File-system directories are supported (absolute `file:` URI or working-directory-relative path ending in `/`); classpath directory enumeration and automatic HTTP fetching are deliberately unsupported. Runtime fallback must be able to read the **same directory** after deployment; fully direct validators do not need it at runtime. Gradle incremental builds must track this directory as an input.
+The processor calls `SchemaRegistry.indexDir()` once per directory in an annotation-processing run. The registry recursively indexes all `.json` files using `SchemaLoader.Local.load()`, preserving retrieval URIs and canonical `$id` aliases before resolving references. An indexed schema is not compiled into a `SchemaPlan` until needed. The default `registryDir = ""` preserves existing behavior. File-system directories are supported (absolute `file:` URI or working-directory-relative path ending in `/`); classpath directory enumeration and automatic HTTP fetching are deliberately unsupported. Runtime fallback must be able to read the **same directory** after deployment; fully direct validators do not need it at runtime. Gradle incremental builds must track this directory as an input.
 
 The method's **return type** determines its behavior:
 
