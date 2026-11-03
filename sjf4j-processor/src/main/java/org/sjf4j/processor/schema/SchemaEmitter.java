@@ -437,12 +437,13 @@ final class SchemaEmitter {
         // branches mutually exclusive, check the actual JSON-visible property
         // before executing just the matching branch; otherwise count every
         // potentially matching oneOf branch for this concrete Java type.
-        lines.add("if (" + expression + " == null) " + fail(onFailure, check.diagnostic));
+        // Null must participate in the generic oneOf branch count: an explicit
+        // null branch can match, and multiple matching branches must still fail.
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
             String simpleType = subtype.type.substring(subtype.type.lastIndexOf('.') + 1);
             String typed = locals.newName(Character.toLowerCase(simpleType.charAt(0)) + simpleType.substring(1));
-            lines.add((n == 0 ? "if" : "else if") + " ("
+            lines.add((n == 0 ? "if" : "else if") + " (" + expression + " != null && "
                     + expression + ".getClass() == " + subtype.type + ".class) {");
             lines.add("    " + subtype.type + " " + typed
                     + " = (" + subtype.type + ") " + expression + ";");
