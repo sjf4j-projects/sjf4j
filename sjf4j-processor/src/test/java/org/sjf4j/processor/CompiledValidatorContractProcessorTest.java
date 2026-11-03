@@ -125,7 +125,7 @@ class CompiledValidatorContractProcessorTest {
     @Test
     void unsupportedKeywordRequiresFallbackEvenWhenJavaShapeCannotMatch() throws Exception {
         // Capability depends on schema semantics, not the Java method parameter.
-        String schema = "{\"contains\":{\"type\":\"number\"}}";
+        String schema = "{\"unevaluatedItems\":false}";
         for (String type : new String[]{"String", "int", "Model"}) {
             String source = "package fixture; import org.sjf4j.annotation.schema.*; "
                     + "@CompiledValidator(fallback=false) public interface Check { "
