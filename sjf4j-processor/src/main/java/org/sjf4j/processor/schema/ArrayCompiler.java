@@ -27,7 +27,9 @@ final class ArrayCompiler {
         for (String key : schema.keySet()) {
             if (!key.equals("items") && !key.equals("prefixItems")
                     && !key.equals("minItems") && !key.equals("maxItems")
-                    && !key.equals("uniqueItems") && !SchemaCompiler.isAnnotation(key)) return null;
+                    && !key.equals("uniqueItems") && !key.equals("contains")
+                    && !key.equals("minContains") && !key.equals("maxContains")
+                    && !SchemaCompiler.isAnnotation(key)) return null;
         }
         Integer min = schema.getInt("minItems");
         Integer max = schema.getInt("maxItems");
@@ -59,10 +61,47 @@ final class ArrayCompiler {
                     itemValue, itemUri, depth + 1);
             if (itemCheck == null) itemCheck = new SchemaCheck.Fallback(itemUri);
         }
+        // minContains/maxContains are ignored in the absence of contains.
+        // With contains, a missing minContains means at least one match.
+        SchemaCheck containsCheck = null;
+        int minContains = 1;
+        Integer maxContains = null;
+        if (schema.containsKey("contains")) {
+            Object minRaw = schema.getNode("minContains");
+            Object maxRaw = schema.getNode("maxContains");
+            if (schema.containsKey("minContains")) {
+                minContains = nonNegativeInteger(minRaw);
+                if (minContains < 0) return null;
+            }
+            if (schema.containsKey("maxContains")) {
+                int upper = nonNegativeInteger(maxRaw);
+                if (upper < 0) return null;
+                maxContains = upper;
+            }
+            String containsUri = SchemaCompiler.keywordUri(schemaUri, "contains");
+            containsCheck = schemaCompiler.compileValue(snapshot, schema.getNode("contains"),
+                    itemValue, containsUri, depth + 1);
+            if (containsCheck == null) containsCheck = new SchemaCheck.Fallback(containsUri);
+        }
         return new SchemaCheck.ArrayCheck(min, max, prefixChecks, itemCheck, itemValue, unique,
+                containsCheck, minContains, maxContains,
+                SchemaCompiler.diagnostic(schemaUri,
+                        schema.containsKey("minContains") ? "minContains" : "contains"),
+                maxContains == null ? null : SchemaCompiler.diagnostic(schemaUri, "maxContains"),
                 SchemaCompiler.diagnostic(schemaUri, "type"),
                 min == null ? null : SchemaCompiler.diagnostic(schemaUri, "minItems"),
                 max == null ? null : SchemaCompiler.diagnostic(schemaUri, "maxItems"),
                 unique ? SchemaCompiler.diagnostic(schemaUri, "uniqueItems") : null);
+    }
+
+    private static int nonNegativeInteger(Object value) {
+        if (!(value instanceof Number)) return -1;
+        try {
+            java.math.BigDecimal decimal = new java.math.BigDecimal(value.toString());
+            return decimal.scale() <= 0 || decimal.stripTrailingZeros().scale() <= 0
+                    ? decimal.intValueExact() : -1;
+        } catch (NumberFormatException | ArithmeticException ex) {
+            return -1;
+        }
     }
 }
