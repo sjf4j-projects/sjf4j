@@ -362,12 +362,20 @@ The official test-suite download, runtime test and compiled test are owned by
 `sjf4j-testbench/build/official-json-schema-tests/suite` rather than checked in.
 
 ```bash
+# Run once to populate local build/ from upstream main:
 ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests
-./gradlew :sjf4j-testbench:officialLatestTest
-./gradlew :sjf4j-testbench:officialCompiledSmokeTest
+
+# Then offline (no GitHub access) using the cached suite:
+./gradlew :sjf4j-testbench:officialRuntimeTest
 ./gradlew :sjf4j-testbench:officialCompiledTest
-# Reproduce a particular upstream snapshot:
-./gradlew :sjf4j-testbench:officialCompiledTest -PjsonSchemaSuiteRef=<40-character-SHA>
+./gradlew :sjf4j-testbench:officialCompiledPhase2Test
+./gradlew :sjf4j-testbench:officialCompiledPhase3Test
+
+# Pin a revision for repeatable local testing (updates the cache if necessary):
+./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=<40-character-SHA>
+
+# Explicitly check the newest upstream main revision:
+./gradlew :sjf4j-testbench:refreshOfficialSchemaTests
 ```
 
 `generateOfficialCompiledCases` produces one independent interface per
@@ -495,3 +503,74 @@ The generated reports are diagnostic: a green runtime/fallback suite
 does **not** imply fully compiled support, and a direct compilation failure
 does **not** count as an implementation fix. Production bug fixes are
 deliberately deferred to a later stage.
+
+
+### Suite cache, local build, publishing and IntelliJ main
+
+The **suite downloader is not a dependency of everyday tests or build**.
+`downloadOfficialSchemaTests` resolves the requested revision (by default
+upstream `main`) when **explicitly invoked**. If the local
+`OFFICIAL_TEST_SUITE_REV` SHA matches the requested revision and the expected
+fixture directories exist, it **does not fetch/extract the ZIP again**.
+A 40-character `-PjsonSchemaSuiteRef` avoids even the revision lookup.
+Otherwise it downloads into a staging folder before replacing the cache.
+
+`./gradlew build` (from the repository root) runs the subprojects'
+`build` tasks. In `:sjf4j-testbench:check` we include
+`officialRuntimeTest` and the **full** `officialCompiledTest`.
+Both use the locally cached suite, and compiled bindings are generated only
+when missing or out-of-date. There is **no network request** during build.
+On a fresh checkout without a local suite, these official test tasks are
+marked **SKIPPED**: use the explicit download task once to opt into them.
+Gradle `clean` deletes this build-directory cache, so a subsequent build
+also requires one explicit download to restore the official tests.
+
+`publish`, `publishToMavenLocal` and `publishToMavenCentral` (including
+individual Maven publication upload tasks) depend on
+`officialPublishGate`, across published modules, not just
+`:sjf4j-schema`. The gate executes
+`refreshOfficialSchemaTests` **first**, resolving upstream `main`
+regardless of a local pinned `-PjsonSchemaSuiteRef`, then regenerates
+bindings when required and runs the full official runtime and compiled
+tests. A failing or unavailable upstream refresh, failed compilation, or
+failed test blocks publication. This applies even if the cache was already
+present.
+
+To run **Compiled** directly as an IntelliJ *Application*, open
+`org.sjf4j.testbench.schema.official.OfficialCompiledTest` under
+`sjf4j-testbench/src/test/java` and run its `public static void main`.
+The entrypoint accepts positional arguments:
+
+```text
+OfficialCompiledTest [category [file.json [groupIndex [testIndex]]]]
+```
+
+Examples in IntelliJ's **Program arguments**:
+
+```text
+phase3
+unevaluated
+phase3 unevaluatedItems.json 0
+phase3 unevaluatedItems.json 0 1
+```
+
+It automatically locates the suite and generated resources when the working
+directory is either the repository root or `sjf4j-testbench`. It uses the
+production annotation processor via the JDK's `JavaCompiler`, probes direct
+compilation by default, and writes reports under
+`sjf4j-testbench/build/reports/officialCompiled/<category>/`.
+No network traffic or Gradle invocation takes place inside `main`.
+
+**First-time setup for IntelliJ main:**
+
+```bash
+./gradlew :sjf4j-testbench:downloadOfficialSchemaTests
+./gradlew :sjf4j-testbench:generateOfficialCompiledCases
+```
+
+`OfficialRuntimeTest` also retains its `main(String[])` entrypoint.
+By default it runs mandatory Draft 2020-12 runtime cases from the same
+cached directory; its sole optional argument overrides the suite root.
+
+Neither entrypoint auto-downloads or changes the official fixtures.
+
