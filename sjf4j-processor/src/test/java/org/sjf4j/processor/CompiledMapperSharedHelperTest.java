@@ -141,6 +141,60 @@ class CompiledMapperSharedHelperTest {
         }
     }
 
+    @Test
+    void sharedMapKeyConversionIsEvaluatedOnceForConditionalUpdates() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/SourceKey.java",
+                "package fixture; public class SourceKey { public String id; }");
+        sources.put("fixture/TargetKey.java",
+                "package fixture; public class TargetKey { "
+                        + "public static int created; public String id; "
+                        + "public TargetKey() { created++; } "
+                        + "public boolean equals(Object other) { "
+                        + "return other instanceof TargetKey "
+                        + "&& java.util.Objects.equals(id, ((TargetKey) other).id); } "
+                        + "public int hashCode() { return java.util.Objects.hashCode(id); } }");
+        sources.put("fixture/Mapper.java",
+                "package fixture; import java.util.Map; "
+                        + "import org.sjf4j.annotation.mapping.*; "
+                        + "@CompiledMapper public interface Mapper { "
+                        + "@MappingOptions(objects=ObjectPolicy.PUT_IF_PRESENT) "
+                        + "void updateFirst(Map<TargetKey,String> target, Map<SourceKey,String> source); "
+                        + "@MappingOptions(objects=ObjectPolicy.PUT_IF_PRESENT) "
+                        + "void updateSecond(Map<TargetKey,String> target, Map<SourceKey,String> source); "
+                        + "}");
+
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Mapper_Impl.java");
+        assertEquals(3, occurrences(generated, "_mapTargetKey("), generated);
+
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> sourceKeyType = loader.loadClass("fixture.SourceKey");
+            Class<?> targetKeyType = loader.loadClass("fixture.TargetKey");
+            Class<?> mapperType = loader.loadClass("fixture.Mapper_Impl");
+            Object mapper = mapperType.getConstructor().newInstance();
+            Object sourceKey = sourceKeyType.getConstructor().newInstance();
+            sourceKeyType.getField("id").set(sourceKey, "k");
+            Object targetKey = targetKeyType.getConstructor().newInstance();
+            targetKeyType.getField("id").set(targetKey, "k");
+
+            Map<Object, String> source = new LinkedHashMap<>();
+            source.put(sourceKey, "new");
+            Map<Object, String> target = new LinkedHashMap<>();
+            target.put(targetKey, "old");
+
+            for (String method : new String[]{"updateFirst", "updateSecond"}) {
+                int before = targetKeyType.getField("created").getInt(null);
+                mapperType.getMethod(method, Map.class, Map.class).invoke(mapper, target, source);
+                assertEquals("new", target.get(targetKey));
+                assertEquals(before + 1, targetKeyType.getField("created").getInt(null),
+                        "converted key must be materialized once for " + method);
+            }
+        }
+    }
+
     private static int occurrences(String text, String needle) {
         int count = 0;
         for (int index = 0; (index = text.indexOf(needle, index)) >= 0; index += needle.length()) {
