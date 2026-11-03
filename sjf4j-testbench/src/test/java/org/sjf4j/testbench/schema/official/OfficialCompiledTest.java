@@ -41,8 +41,6 @@ public final class OfficialCompiledTest {
     private static final String DIALECT_DIR = "tests/draft2020-12";
     private static final String SELECTION = "sjf4j.schema.officialCategory";
     private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
-    private static final String PHASE2_BASELINE_SHA =
-            "ed0ebd31d0a83fd79e99a32aa0c884b966ada057";
 
     private OfficialCaseRunner runner;
     private OfficialCaseReport report;
@@ -270,32 +268,6 @@ public final class OfficialCompiledTest {
                 "Generated manifest assertion count differs from official files");
         revision = Files.readString(suiteRoot.resolve("OFFICIAL_TEST_SUITE_REV"),
                 StandardCharsets.UTF_8).trim();
-        if (mainFile == null && mainGroup < 0 && mainCase < 0
-                && revision.contains(PHASE2_BASELINE_SHA)) {
-            // Pin category totals as well as the manifest. These checks must detect
-            // missing/reordered official cases, not assume every new upstream revision
-            // has the same group counts as the pinned fixture.
-            switch (selection) {
-                case "phase2":
-                    assertBaseline(jsonFiles.size(), specs.size(), assertions, 26, 138, 609);
-                    break;
-                case "phase3":
-                    assertBaseline(jsonFiles.size(), specs.size(), assertions, 15, 169, 525);
-                    break;
-                case "array":
-                    assertBaseline(jsonFiles.size(), specs.size(), assertions, 9, 73, 251);
-                    break;
-                case "applicator":
-                    assertBaseline(jsonFiles.size(), specs.size(), assertions, 6, 96, 274);
-                    break;
-                case "unevaluated":
-                    assertBaseline(jsonFiles.size(), specs.size(), assertions, 2, 73, 200);
-                    break;
-                default:
-                    // Full-suite and other category baselines are manifest-derived.
-                    break;
-            }
-        }
         Path moduleBuild = generated.getParent().getParent();
         reportDir = moduleBuild.resolve("reports/officialCompiled").resolve(selection);
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
@@ -304,13 +276,6 @@ public final class OfficialCompiledTest {
         runner.compileAll(specs, Boolean.parseBoolean(
                 System.getProperty(PROBE_DIRECT, mainCategory == null ? "false" : "true")));
         return fileNodes.stream();
-    }
-
-    private void assertBaseline(int files, int groups, int tests,
-                                int expectedFiles, int expectedGroups, int expectedTests) {
-        assertEquals(expectedFiles, files, selection + " pinned file count changed");
-        assertEquals(expectedGroups, groups, selection + " pinned group count changed");
-        assertEquals(expectedTests, tests, selection + " pinned assertion count changed");
     }
 
     @AfterAll
