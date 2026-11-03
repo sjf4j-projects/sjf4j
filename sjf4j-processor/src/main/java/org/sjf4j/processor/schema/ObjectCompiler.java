@@ -73,16 +73,18 @@ final class ObjectCompiler {
         JsonObject patternMap = rawPatterns == null ? new JsonObject() : Nodes.toJsonObject(rawPatterns);
         List<SchemaCheck.PatternProperty> patternChecks = new ArrayList<SchemaCheck.PatternProperty>();
         for (String expression : patternMap.keySet()) {
+            String javaPattern;
             try {
-                java.util.regex.Pattern.compile(expression);
-            } catch (java.util.regex.PatternSyntaxException ex) {
-                // Do not assume Java and ECMA-262 regex syntax are identical.
+                javaPattern = org.sjf4j.schema.SchemaUtil.compileRegexPattern(
+                        expression, "patternProperties", org.sjf4j.path.PathSegment.Root.INSTANCE,
+                        java.net.URI.create("sjf4j:/compiled")).pattern();
+            } catch (RuntimeException ex) {
                 return null;
             }
             SchemaCheck patternCheck = schemaCompiler.compileValue(snapshot, patternMap.getNode(expression),
                     SchemaValue.of(context, null), childPointer(rootUri, "patternProperties", expression), depth + 1);
             if (patternCheck == null || patternCheck.hasFallback()) return null;
-            patternChecks.add(new SchemaCheck.PatternProperty(expression, patternCheck));
+            patternChecks.add(new SchemaCheck.PatternProperty(javaPattern, patternCheck));
         }
         Map<String, Property> javaProperties = dynamic ? java.util.Collections.emptyMap()
                 : context.properties.resolve(type);
