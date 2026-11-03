@@ -39,12 +39,17 @@ public final class OfficialCompiledTest {
     private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
     private static final String GENERATED_ROOT = "sjf4j.schema.officialGeneratedRoot";
     private static final String DIALECT_DIR = "tests/draft2020-12";
+    private static final String SELECTION = "sjf4j.schema.officialCategory";
+    private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
+    private static final String PHASE2_BASELINE_SHA =
+            "ed0ebd31d0a83fd79e99a32aa0c884b966ada057";
 
     private OfficialCaseRunner runner;
     private OfficialCaseReport report;
     private int expectedTests;
     private Path reportDir;
     private String revision;
+    private String selection;
 
     @TestFactory
     Stream<DynamicNode> draft2020_12() throws Exception {
@@ -57,9 +62,13 @@ public final class OfficialCompiledTest {
             throw new IllegalStateException("Official suite missing: " + officialDir);
         }
 
-        List<OfficialCaseRunner.Spec> specs = OfficialCaseRunner.readIndex(generated);
+        selection = OfficialCaseCategory.selection(System.getProperty(SELECTION, "all"));
+        List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated);
+        List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
-        for (OfficialCaseRunner.Spec spec : specs) {
+        for (OfficialCaseRunner.Spec spec : allSpecs) {
+            if (!OfficialCaseCategory.selected(selection, spec.file)) continue;
+            specs.add(spec);
             byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
         }
 
@@ -70,20 +79,25 @@ public final class OfficialCompiledTest {
                     .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                     .toList();
         }
-        // The generator must cover exactly the official root files, never optional/.
-        assertEquals(jsonFiles.size(), byFile.size(), "Official file coverage mismatch");
-        for (Path file : jsonFiles) {
-            assertTrue(byFile.containsKey(file.getFileName().toString()),
-                    "Missing official compiled file: " + file.getFileName());
-        }
+        // Check the entire upstream inventory before filtering: unknown mandatory
+        // official files must never silently disappear from a phase's coverage.
+        java.util.Set<String> upstreamFiles = new java.util.LinkedHashSet<>();
+        for (Path file : jsonFiles) upstreamFiles.add(file.getFileName().toString());
+        OfficialCaseCategory.assertComplete(upstreamFiles);
+        java.util.Set<String> indexedFiles = new java.util.LinkedHashSet<>();
+        for (OfficialCaseRunner.Spec spec : allSpecs) indexedFiles.add(spec.file);
+        assertEquals(upstreamFiles, indexedFiles, "Official compiled manifest does not cover every file");
+        jsonFiles.removeIf(p -> !OfficialCaseCategory.selected(selection,
+                p.getFileName().toString()));
+        assertEquals(jsonFiles.size(), byFile.size(), "Selected official file coverage mismatch");
 
         Properties totals = new Properties();
         try (java.io.Reader reader = Files.newBufferedReader(
                 generated.resolve("counts.properties"), StandardCharsets.UTF_8)) {
             totals.load(reader);
         }
-        assertEquals(jsonFiles.size(), Integer.parseInt(totals.getProperty("files")));
-        assertEquals(specs.size(), Integer.parseInt(totals.getProperty("groups")));
+        assertEquals(upstreamFiles.size(), Integer.parseInt(totals.getProperty("files")));
+        assertEquals(allSpecs.size(), Integer.parseInt(totals.getProperty("groups")));
 
         List<DynamicNode> fileNodes = new ArrayList<>();
         int assertions = 0;
@@ -106,6 +120,7 @@ public final class OfficialCompiledTest {
                 assertTrue(Nodes.equals(officialSchema, generatedSchema),
                         fileName + " #" + i + ": generated schema differs from upstream");
 
+                String groupDescription = group.getString("description", "");
                 JsonArray examples = group.getJsonArray("tests");
                 assertEquals(examples.size(), spec.tests, spec.key() + ": test count changed");
                 assertions += examples.size();
@@ -120,41 +135,52 @@ public final class OfficialCompiledTest {
                             + " - " + description;
                     tests.add(DynamicTest.dynamicTest(label, () -> {
                         String compilationError = runner.compilationError(spec);
+                        String mode = runner.compilationMode(spec);
+                        String directError = runner.directCompilationError(spec);
                         if (compilationError != null) {
-                            report.record(spec, testIndex, description, expected,
-                                    null, "COMPILE_ERROR", compilationError);
+                            report.record(spec, groupDescription, testIndex, description, expected,
+                                    null, "COMPILE_ERROR", mode, directError, compilationError);
                             fail(spec.key() + ": " + compilationError);
                         }
                         final boolean actual;
                         try {
                             actual = runner.validate(spec, data);
                         } catch (Throwable e) {
-                            report.record(spec, testIndex, description, expected,
-                                    null, "EXEC_ERROR", e.toString());
+                            report.record(spec, groupDescription, testIndex, description, expected,
+                                    null, "EXEC_ERROR", mode, directError, e.toString());
                             throw e;
                         }
-                        report.record(spec, testIndex, description, expected, actual,
-                                expected == actual ? "PASS" : "FAIL", null);
+                        report.record(spec, groupDescription, testIndex, description,
+                                expected, actual, expected == actual ? "PASS" : "FAIL",
+                                mode, directError, null);
                         assertEquals(expected, actual, spec.key() + " / " + description);
                     }));
                 }
                 groupNodes.add(DynamicContainer.dynamicContainer(
                         "group" + String.format(java.util.Locale.ROOT, "%03d", i)
-                                + " - " + group.getString("description", ""),
+                                + " - " + groupDescription,
                         tests.stream()));
             }
             fileNodes.add(DynamicContainer.dynamicContainer(fileName, groupNodes.stream()));
         }
 
         expectedTests = assertions;
-        assertEquals(assertions, Integer.parseInt(totals.getProperty("tests")),
+        int indexedAssertions = 0;
+        for (OfficialCaseRunner.Spec spec : allSpecs) indexedAssertions += spec.tests;
+        assertEquals(indexedAssertions, Integer.parseInt(totals.getProperty("tests")),
                 "Generated manifest assertion count differs from official files");
         revision = Files.readString(suiteRoot.resolve("OFFICIAL_TEST_SUITE_REV"),
                 StandardCharsets.UTF_8).trim();
-        reportDir = Paths.get("build/reports/officialCompiled");
-        report = new OfficialCaseReport(jsonFiles.size(), specs.size(), assertions);
-        runner = new OfficialCaseRunner(generated, Paths.get("build/officialCompiled/compile"));
-        runner.compileAll(specs);
+        if ("phase2".equals(selection) && revision.contains(PHASE2_BASELINE_SHA)) {
+            assertEquals(26, jsonFiles.size(), "Phase 2 baseline file count changed");
+            assertEquals(138, specs.size(), "Phase 2 baseline schema group count changed");
+            assertEquals(609, assertions, "Phase 2 baseline assertion count changed");
+        }
+        reportDir = Paths.get("build/reports/officialCompiled").resolve(selection);
+        report = new OfficialCaseReport(selection, specs, assertions);
+        runner = new OfficialCaseRunner(generated,
+                Paths.get("build/officialCompiled/compile").resolve(selection));
+        runner.compileAll(specs, Boolean.parseBoolean(System.getProperty(PROBE_DIRECT, "false")));
         return fileNodes.stream();
     }
 
