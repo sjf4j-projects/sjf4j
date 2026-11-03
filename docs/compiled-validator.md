@@ -92,13 +92,13 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated -PofficialCompiledProbeDirect=true
 ```
 
-`officialCompiledTest` includes **all non-optional Draft 2020-12 cases** by default. It generates independent validator bindings, isolates javac failures by schema group, and records every test (including JSON null) in `sjf4j-testbench/build/reports/officialCompiled/<category>/`:
+`officialCompiledTest` includes **all non-optional Draft 2020-12 cases** by default. The generated validators use `fallback = false`; only groups explicitly listed in `sjf4j-testbench/official-compiled-fallback-groups.txt` use `fallback = true`. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/<category>/`:
 
 - `summary.json`: overall and category counts
 - `groups.json`, `gaps.json`: compilation mode and unresolved groups
 - `details.json`: individual assertions
 
-Categories include `all` (default), `basic`, `scalar`, `object`, `array`, `applicator`, `unevaluated`, `reference`, `phase2`, and `phase3`. The last two are filters, **not separate Gradle tasks**. When direct probing is disabled, compilation mode is reported as `UNPROBED`.
+Categories include `all` (default), `basic`, `scalar`, `object`, `array`, `applicator`, `unevaluated`, `reference`, `phase2`, and `phase3`. The last two are filters, **not separate Gradle tasks**. Reports label each group `DIRECT` or `FALLBACK` according to its explicit setting; `COMPILE_ERROR` identifies an unallowlisted unsupported schema or other compile failure. With `-PofficialCompiledProbeDirect=true`, every listed fallback group is also compiled with `fallback=false`, and a stale allowance that now compiles directly fails the test.
 
 ### IntelliJ main
 
