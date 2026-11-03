@@ -353,3 +353,40 @@ To compile and test:
 ```bash
 ./gradlew :sjf4j-processor:test :sjf4j-testbench:test :sjf4j-testbench:jmhJar
 ```
+
+
+## Official Draft 2020-12 compiled conformance harness
+
+The official test-suite download, runtime test and compiled test are owned by
+`sjf4j-testbench`. The downloaded upstream suite is kept under
+`sjf4j-testbench/build/official-json-schema-tests/suite` rather than checked in.
+
+```bash
+./gradlew :sjf4j-testbench:downloadOfficialSchemaTests
+./gradlew :sjf4j-testbench:officialLatestTest
+./gradlew :sjf4j-testbench:officialCompiledSmokeTest
+./gradlew :sjf4j-testbench:officialCompiledTest
+# Reproduce a particular upstream snapshot:
+./gradlew :sjf4j-testbench:officialCompiledTest -PjsonSchemaSuiteRef=<40-character-SHA>
+```
+
+`generateOfficialCompiledCases` produces one independent interface per
+non-optional Draft 2020-12 schema group, plus an unchanged test-to-group index,
+under `build/generated/officialCompiled/`. Generated schema resources and
+interfaces are build artifacts, not hand-maintained or checked in. All top-level
+`tests/draft2020-12/*.json` files are discovered; `optional/` is excluded.
+
+`OfficialCompiledTest` uses javac and the production `CodegenProcessor` to
+compile each schema binding, initially batching by upstream file and recursively
+splitting any failed batch. It runs one JUnit dynamic test per original instance
+and never skips JSON `null`. A group that cannot compile is reported as
+`COMPILE_ERROR` for all its examples, rather than aborting discovery or
+silently passing. Runtime execution errors and assertion mismatches are likewise
+recorded without changing application code. The reports are written to
+`build/reports/officialCompiled/{summary,details}.json`, including the suite
+revision, total examples, per-file counts and unaccounted count.
+
+This first-stage harness tests **conformance using `fallback=true`** and
+records compilation blockers. It does not yet determine whether compiled
+methods are direct, partially falling back, or wholly falling back. Those
+classifications and any production fixes are separate follow-up work.
