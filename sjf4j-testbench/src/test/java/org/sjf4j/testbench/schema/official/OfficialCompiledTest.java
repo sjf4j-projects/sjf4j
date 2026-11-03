@@ -39,22 +39,12 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public final class OfficialCompiledTest {
-    private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
-    private static final String GENERATED_ROOT = "sjf4j.schema.officialGeneratedRoot";
-    private static final String DIALECT_DIR = "tests/draft2020-12";
-    private static final String SELECTION = "sjf4j.schema.officialCategory";
-    private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
 
-    /**
-     * Explicit exceptions for official schema groups that cannot yet
-     * compile with fallback=false. New groups are always direct by default.
-     *
-     * <p>Add an entry only after checking the direct javac diagnostic and
-     * confirming the missing compiler support. Do not auto-populate this list.
-     * Existing entries were initially collected by a direct-compile probe;
-     * they still need individual review before being considered permanent.
-     */
-    private static final Set<String> FALLBACK_GROUPS = fallbackGroups();
+    public static void main(String[] args) throws Exception {
+//        doMain(args);
+        doMain(new String[]{"all", "boolean_schema.json", "1", "4"});
+    }
+
 
     private static Set<String> fallbackGroups() {
         Set<String> groups = new LinkedHashSet<>();
@@ -100,6 +90,25 @@ public final class OfficialCompiledTest {
         return Collections.unmodifiableSet(groups);
     }
 
+
+
+    private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
+    private static final String GENERATED_ROOT = "sjf4j.schema.officialGeneratedRoot";
+    private static final String DIALECT_DIR = "tests/draft2020-12";
+    private static final String SELECTION = "sjf4j.schema.officialCategory";
+    private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
+
+    /**
+     * Explicit exceptions for official schema groups that cannot yet
+     * compile with fallback=false. New groups are always direct by default.
+     *
+     * <p>Add an entry only after checking the direct javac diagnostic and
+     * confirming the missing compiler support. Do not auto-populate this list.
+     * Existing entries were initially collected by a direct-compile probe;
+     * they still need individual review before being considered permanent.
+     */
+    private static final Set<String> FALLBACK_GROUPS = fallbackGroups();
+
     private static void fallback(Set<String> groups, String file, int... indices) {
         for (int index : indices) {
             String key = file + "#" + index;
@@ -122,11 +131,6 @@ public final class OfficialCompiledTest {
     private String mainFile;
     private int mainGroup = -1;
     private int mainCase = -1;
-
-    public static void main(String[] args) throws Exception {
-//        doMain(args);
-        doMain(new String[]{"all", "boolean_schema.json", "1", "4"});
-    }
 
     /**
      * Standalone IntelliJ entrypoint (run the test class as an Application).
