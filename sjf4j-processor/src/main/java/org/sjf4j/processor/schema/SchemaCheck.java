@@ -210,6 +210,7 @@ abstract class SchemaCheck {
         final boolean additionalPropertiesFalse;
         final SchemaCheck additionalPropertiesCheck;
         final List<PatternProperty> patternProperties;
+        final SchemaValue elementValue;
         final Integer minProperties;
         final Integer maxProperties;
         final Diagnostic typeDiagnostic;
@@ -226,7 +227,7 @@ abstract class SchemaCheck {
 
         ObjectCheck(boolean dynamic, boolean jsonObject, boolean typeRequired,
                     boolean additionalPropertiesFalse, SchemaCheck additionalPropertiesCheck,
-                    List<PatternProperty> patternProperties,
+                    List<PatternProperty> patternProperties, SchemaValue elementValue,
                     Integer minProperties, Integer maxProperties, int staticPropertyCount,
                     List<String> allowedNames, List<Required> required,
                     List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
@@ -240,6 +241,7 @@ abstract class SchemaCheck {
             this.additionalPropertiesFalse = additionalPropertiesFalse;
             this.additionalPropertiesCheck = additionalPropertiesCheck;
             this.patternProperties = Collections.unmodifiableList(new ArrayList<PatternProperty>(patternProperties));
+            this.elementValue = elementValue;
             this.minProperties = minProperties;
             this.maxProperties = maxProperties;
             this.typeDiagnostic = typeDiagnostic;
