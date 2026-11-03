@@ -87,6 +87,22 @@ class CompiledValidatorFoundationTest {
     }
 
     @Test
+    void booleanSchemaFallbackReturnsDiagnosticsForInlineAndReferencedResources() {
+        PersonValidator validator = CompiledInstances.create(PersonValidator.class);
+
+        assertFalse(validator.validateInlineFalse("value").isValid());
+        assertEquals("false", validator.validateInlineFalse("value").getLastError().getKeyword());
+        assertTrue(validator.validateInlineTrue("value").isValid());
+        assertFalse(validator.validateBooleanFalseResource("value").isValid());
+        assertTrue(validator.validateBooleanTrueResource("value").isValid());
+        assertFalse(validator.validateBooleanRef("value").isValid());
+
+        assertTrue(validator.validateInlineFalse(null).isValid());
+        assertThrows(ValidationException.class, () -> validator.requireBooleanFalse("value"));
+        validator.requireBooleanTrue("value");
+    }
+
+    @Test
     void usesRuntimeAcronymSnakeCaseConvention() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
         assertTrue(validator.convention(new HTTPRequest("abcd")));
@@ -267,6 +283,27 @@ class CompiledValidatorFoundationTest {
 
         @ValidJsonSchema(ref = "compiled-validator-defs.json#/$defs/valid")
         boolean fromPayloadFragment(Payload payload);
+
+        @ValidJsonSchema("false")
+        ValidationResult validateInlineFalse(Object value);
+
+        @ValidJsonSchema("true")
+        ValidationResult validateInlineTrue(Object value);
+
+        @ValidJsonSchema(ref = "compiled-validator-false.json")
+        ValidationResult validateBooleanFalseResource(Object value);
+
+        @ValidJsonSchema(ref = "compiled-validator-true.json")
+        ValidationResult validateBooleanTrueResource(Object value);
+
+        @ValidJsonSchema(ref = "compiled-validator-boolean-root.json")
+        ValidationResult validateBooleanRef(Object value);
+
+        @ValidJsonSchema(ref = "compiled-validator-false.json")
+        void requireBooleanFalse(Object value);
+
+        @ValidJsonSchema(ref = "compiled-validator-true.json")
+        void requireBooleanTrue(Object value);
 
         @ValidJsonSchema(ref = "compiled-validator-boolean-root.json")
         boolean fromBooleanRef(Object value);

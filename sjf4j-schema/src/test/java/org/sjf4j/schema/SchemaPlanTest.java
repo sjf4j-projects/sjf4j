@@ -35,6 +35,49 @@ class SchemaPlanTest {
     }
 
     @Test
+    void booleanResourcesCanBeIndexedResolvedAndReferencedByUri() {
+        URI falseUri = URI.create("https://example.test/schemas/false.json");
+        URI trueUri = URI.create("https://example.test/schemas/true.json");
+        URI wrapperUri = URI.create("https://example.test/schemas/wrapper.json");
+        SchemaRegistry registry = new SchemaRegistry();
+
+        registry.index(falseUri, BooleanSchema.FALSE);
+        SchemaPlan falsePlan = registry.resolve(falseUri);
+        assertFalse(falsePlan.isValid("anything"));
+        assertFalse(falsePlan.validate("anything").isValid());
+        assertEquals(falseUri, falsePlan.schemaUri);
+
+        SchemaPlan truePlan = registry.register(trueUri, BooleanSchema.TRUE);
+        assertTrue(truePlan.isValid("anything"));
+        assertEquals(truePlan, registry.resolve(trueUri));
+
+        registry.index(wrapperUri, JsonSchema.fromJson("{\"$ref\":\"false.json\"}"));
+        assertFalse(registry.resolve(wrapperUri).isValid("anything"));
+
+        registry.indexIfAbsent(falseUri, BooleanSchema.TRUE);
+        assertFalse(registry.resolve(falseUri).isValid("anything"));
+        assertThrows(SchemaException.class, () -> registry.index(falseUri, BooleanSchema.TRUE));
+        assertThrows(SchemaException.class, () -> registry.index(falseUri, JsonSchema.fromJson("{}")));
+    }
+
+    @Test
+    void registerRejectsBooleanAndObjectUriCollisionsInBothOrders() {
+        URI uri = URI.create("https://example.test/schemas/collision.json");
+
+        SchemaRegistry booleanFirst = new SchemaRegistry();
+        booleanFirst.index(uri, BooleanSchema.TRUE);
+        assertThrows(SchemaException.class, () -> booleanFirst.register(
+                uri, JsonSchema.fromJson("{\"type\":\"string\"}")));
+        assertTrue(booleanFirst.resolve(uri).isValid(123));
+
+        SchemaRegistry objectFirst = new SchemaRegistry();
+        objectFirst.register(uri, JsonSchema.fromJson("{\"type\":\"string\"}"));
+        assertThrows(SchemaException.class, () -> objectFirst.register(uri, BooleanSchema.TRUE));
+        assertFalse(objectFirst.resolve(uri).isValid(123));
+        assertTrue(objectFirst.resolve(uri).isValid("text"));
+    }
+
+    @Test
     void planStrictFormatDefaultCanBeOverriddenDirectly() {
         SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
 
