@@ -119,8 +119,7 @@ final class BindingSource {
         for (Element enclosing = element.getEnclosingElement();
              enclosing instanceof TypeElement; enclosing = enclosing.getEnclosingElement()) {
             int dot = name.lastIndexOf('.');
-            name = name.substring(0, dot) + '}
- + name.substring(dot + 1);
+            name = name.substring(0, dot) + '$' + name.substring(dot + 1);
         }
 
         List<? extends TypeMirror> arguments = declared.getTypeArguments();
