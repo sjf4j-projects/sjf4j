@@ -381,6 +381,9 @@ val officialPublishGate by tasks.registering {
     dependsOn(refreshOfficialSchemaTests, officialRuntimeTest, officialCompiledTest)
     doLast {
         check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
+        check(providers.gradleProperty("officialCompiledCategory").orElse("all").get() == "all") {
+            "Publication requires all mandatory official compiled cases; remove -PofficialCompiledCategory"
+        }
     }
 }
 officialCompiledTest.configure { mustRunAfter(refreshOfficialSchemaTests) }
