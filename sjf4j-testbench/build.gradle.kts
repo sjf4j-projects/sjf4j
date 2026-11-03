@@ -243,11 +243,13 @@ officialRuntimeTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
  * an unsupported schema must not prevent other official cases from running.
  */
 val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/officialCompiled")
+val officialCompiledFallbackGroups = layout.projectDirectory.file("official-compiled-fallback-groups.txt")
 val generateOfficialCompiledCases by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Generates source bindings for every non-optional Draft 2020-12 schema group."
     onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     inputs.dir(officialSchemaSuiteDir)
+    inputs.file(officialCompiledFallbackGroups)
     outputs.dir(officialCompiledGeneratedDir)
 
     doLast {
@@ -271,7 +273,12 @@ val generateOfficialCompiledCases by tasks.registering {
             .sortedBy { it.name }
         require(files.isNotEmpty()) { "No official Draft 2020-12 JSON files at $input" }
 
-        val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
+        val fallbackLines = officialCompiledFallbackGroups.asFile.readLines(Charsets.UTF_8)
+            .map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
+        val fallbackGroups = fallbackLines.toSet()
+        require(fallbackLines.size == fallbackGroups.size) { "Duplicate official compiled fallback group" }
+        val availableGroups = mutableSetOf<String>()
+        val manifest = StringBuilder("file\tgroup\tclass\ttests\tfallback\n")
         var groupCount = 0
         var testCount = 0
         for (file in files) {
@@ -289,23 +296,26 @@ val generateOfficialCompiledCases by tasks.registering {
                     ?: throw GradleException("Missing tests in $file #$groupIndex")
                 val index = groupIndex.toString().padStart(3, '0')
                 val className = "Official" + classStem + "G" + index
+                val key = "${file.name}#${groupIndex}"
+                availableGroups.add(key)
+                val fallback = key in fallbackGroups
                 val schemaPath = stem + "/" + index + ".json"
                 val schemaFile = resourceDir.resolve(schemaPath)
                 schemaFile.parentFile.mkdirs()
                 schemaFile.writeText(JsonOutput.toJson(group["schema"]), Charsets.UTF_8)
 
-                // Compile both variants independently: fallback=true for conformance
-                // and fallback=false to measure genuinely direct compilation.
-                for (direct in listOf(false, true)) {
+                // Direct compilation is the default. Only explicitly allowlisted
+                // groups use runtime fallback; these also get a direct probe variant.
+                for (direct in if (fallback) listOf(false, true) else listOf(false)) {
                     val variant = if (direct) className + "Direct" else className
-                    val fallback = !direct
+                    val allowFallback = fallback && !direct
                     val source = listOf(
                         "package $packageName;",
                         "",
                         "import org.sjf4j.annotation.schema.CompiledValidator;",
                         "import org.sjf4j.annotation.schema.ValidJsonSchema;",
                         "",
-                        "@CompiledValidator(fallback = $fallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
+                        "@CompiledValidator(fallback = $allowFallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
                         "public interface $variant {",
                         "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
                         "    boolean valid(Object value);",
@@ -314,10 +324,14 @@ val generateOfficialCompiledCases by tasks.registering {
                     javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
                 }
                 manifest.append(file.name).append('\t').append(groupIndex)
-                    .append('\t').append(className).append('\t').append(tests.size).append('\n')
+                    .append('\t').append(className).append('\t').append(tests.size)
+                    .append('\t').append(fallback).append('\n')
                 groupCount++
                 testCount += tests.size
             }
+        }
+        require(availableGroups.containsAll(fallbackGroups)) {
+            "Stale official compiled fallback groups: " + (fallbackGroups - availableGroups)
         }
         output.resolve("index.tsv").writeText(manifest.toString(), Charsets.UTF_8)
         output.resolve("counts.properties").writeText(
@@ -326,7 +340,8 @@ val generateOfficialCompiledCases by tasks.registering {
         )
         logger.lifecycle(
             "Generated official Draft 2020-12 bindings: " +
-                files.size + " files, " + groupCount + " schema groups, " + testCount + " assertions"
+                files.size + " files, " + groupCount + " schema groups, " + testCount +
+                " assertions, " + fallbackGroups.size + " explicit fallback groups"
         )
     }
 }
