@@ -41,7 +41,7 @@ class CompiledValidatorGenericOneOfProcessorTest {
                 "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=false) public interface Validator { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(
-                    "{\"oneOf\":[{\"type\":\"string\",\"contentEncoding\":\"base64\"},"
+                    "{\"oneOf\":[{\"type\":\"string\",\"unevaluatedItems\":false},"
                     + "{\"const\":\"ok\"}]}") + ") "
                 + "boolean valid(String value); }");
         NavigatorTestCompiler.Result result =
