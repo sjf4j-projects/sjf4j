@@ -1,4 +1,7 @@
 import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.util.Locale
 import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.tasks.testing.Test
@@ -200,18 +203,104 @@ val officialLatestTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.test)
 }
 
+
+/**
+ * Generate one independent annotated interface per official schema group.
+ * Sources are compiled by OfficialCompiledTest with javac in isolated batches:
+ * an unsupported schema must not prevent other official cases from running.
+ */
+val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/officialCompiled")
+val generateOfficialCompiledCases by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Generates source bindings for every non-optional Draft 2020-12 schema group."
+    dependsOn(downloadOfficialSchemaTests)
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.dir(officialCompiledGeneratedDir)
+
+    doLast {
+        val input = officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12")
+        val output = officialCompiledGeneratedDir.get().asFile
+        delete(output)
+
+        val packageName = "org.sjf4j.testbench.schema.official.generated"
+        val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
+        val resourceDir = output.resolve("resources/official")
+        javaDir.mkdirs()
+        resourceDir.mkdirs()
+
+        val files = requireNotNull(input.listFiles())
+            .filter { it.isFile && it.extension == "json" }
+            .sortedBy { it.name }
+        require(files.isNotEmpty()) { "No official Draft 2020-12 JSON files at $input" }
+
+        val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
+        var groupCount = 0
+        var testCount = 0
+        for (file in files) {
+            val groups = JsonSlurper().parse(file) as? List<*>
+                ?: throw GradleException("Invalid official test file: $file")
+            val stem = file.nameWithoutExtension
+            val classStem = stem.split(Regex("[^a-zA-Z0-9]+"))
+                .filter { it.isNotEmpty() }
+                .joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
+            for ((groupIndex, raw) in groups.withIndex()) {
+                val group = raw as? Map<*, *>
+                    ?: throw GradleException("Invalid official group: $file #$groupIndex")
+                require(group.containsKey("schema")) { "Missing schema in $file #$groupIndex" }
+                val tests = group["tests"] as? List<*>
+                    ?: throw GradleException("Missing tests in $file #$groupIndex")
+                val index = groupIndex.toString().padStart(3, '0')
+                val className = "Official" + classStem + "G" + index
+                val schemaPath = stem + "/" + index + ".json"
+                val schemaFile = resourceDir.resolve(schemaPath)
+                schemaFile.parentFile.mkdirs()
+                schemaFile.writeText(JsonOutput.toJson(group["schema"]), Charsets.UTF_8)
+
+                val source = listOf(
+                    "package $packageName;",
+                    "",
+                    "import org.sjf4j.annotation.schema.CompiledValidator;",
+                    "import org.sjf4j.annotation.schema.ValidJsonSchema;",
+                    "",
+                    "@CompiledValidator(fallback = true)",
+                    "public interface $className {",
+                    "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
+                    "    boolean valid(Object value);",
+                    "}"
+                ).joinToString("\n", postfix = "\n")
+                javaDir.resolve("$className.java").writeText(source, Charsets.UTF_8)
+                manifest.append(file.name).append('\t').append(groupIndex)
+                    .append('\t').append(className).append('\t').append(tests.size).append('\n')
+                groupCount++
+                testCount += tests.size
+            }
+        }
+        output.resolve("index.tsv").writeText(manifest.toString(), Charsets.UTF_8)
+        output.resolve("counts.properties").writeText(
+            "files=" + files.size + "\ngroups=" + groupCount + "\ntests=" + testCount + "\n",
+            Charsets.UTF_8
+        )
+        logger.lifecycle(
+            "Generated official Draft 2020-12 bindings: " +
+                files.size + " files, " + groupCount + " schema groups, " + testCount + " assertions"
+        )
+    }
+}
+
 val officialCompiledTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs selected official JSON Schema cases against CompiledValidator."
+    description = "Runs all non-optional Draft 2020-12 cases using isolated CompiledValidator compilation."
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     include("**/OfficialCompiledTest.class")
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
-    dependsOn(downloadOfficialSchemaTests)
+    dependsOn(generateOfficialCompiledCases)
     shouldRunAfter(tasks.test)
 }
 
