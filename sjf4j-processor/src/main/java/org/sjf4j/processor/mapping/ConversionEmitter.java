@@ -405,7 +405,12 @@ public final class ConversionEmitter
             String signature = signatures.get(conversion);
             SharedConversion helper = signature == null ? null : sharedConversions.get(signature);
             if (helper != null && !signature.equals(emittingShared)) {
-                return helper.name + "(" + source + ")";
+                // Preserve the original single-evaluation semantics: callers may
+                // use the returned expression in both guards and assignments.
+                String result = names.newName("converted");
+                out.line(localType(conversion.targetType()) + " " + result
+                        + " = " + helper.name + "(" + source + ");");
+                return result;
             }
         }
 
