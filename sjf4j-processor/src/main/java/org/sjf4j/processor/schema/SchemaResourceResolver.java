@@ -109,19 +109,12 @@ final class SchemaResourceResolver {
         // Resolve the full graph now; unresolved refs and invalid keywords must
         // fail annotation processing instead of being deferred until execution.
         SchemaRegistry registry = new SchemaRegistry();
-        boolean hasBooleanResource = false;
         for (int i = 0; i < snapshot.uris.length; i++) {
-            JsonSchema document = JsonSchema.fromJson(snapshot.documents[i]);
-            if (document instanceof org.sjf4j.schema.ObjectSchema) {
-                registry.index(URI.create(snapshot.uris[i]), document);
-            } else {
-                hasBooleanResource = true;
-            }
+            registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
-        // Boolean document references cannot be indexed with the existing public
-        // registry API. Keep their compile-time syntax validation, while leaving
-        // complete reference resolution to the existing runtime machinery.
-        if (!hasBooleanResource && registry.resolve(URI.create(snapshot.selectedUri)) == null) {
+        // Boolean resources are now indexed alongside object resources, so the
+        // selected URI must always resolve during annotation processing.
+        if (registry.resolve(URI.create(snapshot.selectedUri)) == null) {
             throw new IllegalArgumentException("unresolved selected schema: " + snapshot.selectedUri);
         }
         return snapshot;
