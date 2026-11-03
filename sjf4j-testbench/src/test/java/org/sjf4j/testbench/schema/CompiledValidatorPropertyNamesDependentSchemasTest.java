@@ -5,12 +5,15 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
+import org.sjf4j.schema.ValidationException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Independent object keyword semantics without runtime SchemaPlan fallback. */
 public class CompiledValidatorPropertyNamesDependentSchemasTest {
@@ -43,6 +46,9 @@ public class CompiledValidatorPropertyNamesDependentSchemasTest {
 
         @ValidJsonSchema("{\"propertyNames\":{\"maxLength\":3}}")
         boolean pojoName(Bean value);
+
+        @ValidJsonSchema("{\"propertyNames\":{\"maxLength\":3}}")
+        void requireValidNames(Object value);
     }
 
     public static final class Bean {
@@ -105,6 +111,18 @@ public class CompiledValidatorPropertyNamesDependentSchemasTest {
         assertFalse(v.noCoverageFromDependencies(Map.of("bar", 1)));
         assertFalse(v.noCoverageFromDependencies(Map.of("foo2", 1, "bar", 1)));
         assertTrue(v.noCoverageFromDependencies(Map.of("foo2", 1)));
+    }
+
+    @Test
+    void propertyNameFailureUsesParentKeywordAndNamePath() {
+        Checks validator = CompiledInstances.create(Checks.class);
+        ValidationException failure = assertThrows(ValidationException.class,
+                () -> validator.requireValidNames(Map.of("tooLong", 1)));
+        assertEquals("propertyNames", failure.getResult().getLastError().getKeyword());
+        assertEquals("/tooLong",
+                failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/propertyNames",
+                failure.getResult().getLastError().getKeywordPs().rootedPointerExpr());
     }
 
     @Test
