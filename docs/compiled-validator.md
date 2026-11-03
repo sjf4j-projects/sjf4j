@@ -383,10 +383,54 @@ and never skips JSON `null`. A group that cannot compile is reported as
 `COMPILE_ERROR` for all its examples, rather than aborting discovery or
 silently passing. Runtime execution errors and assertion mismatches are likewise
 recorded without changing application code. The reports are written to
-`build/reports/officialCompiled/{summary,details}.json`, including the suite
+`build/reports/officialCompiled/all/{summary,groups,gaps,details}.json`, including the suite
 revision, total examples, per-file counts and unaccounted count.
 
 This first-stage harness tests **conformance using `fallback=true`** and
 records compilation blockers. It does not yet determine whether compiled
 methods are direct, partially falling back, or wholly falling back. Those
 classifications and any production fixes are separate follow-up work.
+
+
+### Phase 2: basic, scalar and object official cases
+
+The explicit file inventory separates the 46 mandatory root files into BASIC,
+SCALAR, OBJECT, ARRAY, APPLICATOR and REFERENCE. An upstream change that adds
+or removes a mandatory file fails discovery until the inventory is updated.
+The `optional/` tree is excluded from both enumeration and the test runner.
+
+```bash
+# The recommended local command for phase 2:
+./gradlew :sjf4j-testbench:officialCompiledPhase2Test \
+  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+```
+
+For that pinned upstream revision, the Phase 2 target is **26 official files,
+138 schema groups, and 609 assertions** (75/370 BASIC, 18/64 SCALAR,
+45/175 OBJECT). These counts are asserted automatically when running with
+the pinned revision; other upstream revisions use manifest-derived counts.
+The generator continues to enumerate **all** mandatory files, but the
+phase-specific JUnit runner compiles and executes only the selected files.
+
+Two variants of each binding are generated:
+`@CompiledValidator(fallback=false)` and
+`@CompiledValidator(fallback=true)`. Phase 2 first attempts direct-only
+compilation in isolated javac batches. If direct compilation fails, only
+that schema group is retried with fallback allowed. A passing direct-only
+group is actually executed through the direct implementation, not a runtime
+plan, providing a real compiled-path correctness check.
+
+Outputs are written under `build/reports/officialCompiled/phase2/`:
+
+- `summary.json`: counts, compilation modes and outcome totals by category
+- `groups.json`: one row per schema group with direct-compile diagnostics
+- `gaps.json`: groups that require fallback, fail compilation or fail execution
+- `details.json`: one row per official assertion, including JSON null
+
+`DIRECT` means the `fallback=false` interface compiled successfully.
+`FALLBACK` means direct compilation failed but the `fallback=true`
+interface compiled. This does **not** distinguish partial from full fallback.
+`COMPILE_ERROR` means neither variant was loadable. The `all` task
+does not run the direct probe by default and reports `UNPROBED` instead
+of guessing direct support. Source changes to fix conformance bugs are
+deliberately outside this test-harness stage.
