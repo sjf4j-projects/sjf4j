@@ -149,32 +149,36 @@ final class SchemaCompiler {
             if (literal == null) return null;
             checks.add(literal);
         }
-        if (!strings.isEmpty()) {
-            SchemaCheck check = scalars.compile(strings, conditionalValue(value, "STRING"), "string", uri);
+        if (!strings.isEmpty() && !primitiveCannotMatch(value, "STRING")) {
+            SchemaValue stringValue = conditionalValue(value, "STRING");
+            SchemaCheck check = scalars.compile(strings, stringValue, "string", uri);
             if (check == null) return null;
-            checks.add(new SchemaCheck.TypeGuard("STRING",
-                    conditionalValue(value, "STRING"), check));
+            checks.add(new SchemaCheck.TypeGuard("STRING", stringValue, check));
         }
-        if (!numbers.isEmpty()) {
+        if (!numbers.isEmpty() && !primitiveCannotMatch(value, "NUMBER")) {
             SchemaValue numberValue = conditionalValue(value, "NUMBER");
             SchemaCheck check = scalars.compile(numbers, numberValue, "number", uri);
             if (check == null) return null;
             checks.add(new SchemaCheck.TypeGuard("NUMBER", numberValue, check));
         }
-        if (!array.isEmpty()) {
+        if (!array.isEmpty() && !primitiveCannotMatch(value, "ARRAY")) {
             SchemaValue arrayValue = conditionalValue(value, "ARRAY");
             SchemaCheck check = arrays.compile(snapshot, array, arrayValue, uri, depth);
             if (check == null) return null;
             checks.add(new SchemaCheck.TypeGuard("ARRAY", arrayValue, check));
         }
-        if (!object.isEmpty()) {
-            // A primitive is provably never a JSON object; other input shapes
-            // stay eligible for a semantic JsonType check (including codecs).
-            if (value.type == null || !value.type.getKind().isPrimitive()) {
-                SchemaCheck check = objects.compileNested(value.type, snapshot, object, uri, depth);
-                if (check == null) return null;
-                checks.add(new SchemaCheck.TypeGuard("OBJECT", value, check));
+        if (!object.isEmpty() && !primitiveCannotMatch(value, "OBJECT")) {
+            // ObjectCompiler chooses POJO field reads or Nodes traversal.
+            // This is a code-generation choice, never a schema fallback.
+            TypeMirror objectType = value.type;
+            if (value.shape == SchemaValue.Shape.STRING
+                    || value.shape == SchemaValue.Shape.NUMBER
+                    || value.shape == SchemaValue.Shape.BOOLEAN || value.isArrayLike()) {
+                objectType = null;
             }
+            SchemaCheck check = objects.compileNested(objectType, snapshot, object, uri, depth);
+            if (check == null) return null;
+            checks.add(new SchemaCheck.TypeGuard("OBJECT", value, check));
         }
         if (checks.isEmpty()) return new SchemaCheck.Pass();
         return checks.size() == 1 ? checks.get(0) : new SchemaCheck.AllCheck(checks);
@@ -185,6 +189,12 @@ final class SchemaCompiler {
      * Preserve known static shape fast paths; for Java scalar types that cannot
      * be the target shape, generate the generic expression behind the guard.
      */
+    private static boolean primitiveCannotMatch(SchemaValue value, String jsonType) {
+        if (value.type == null || !value.type.getKind().isPrimitive()) return false;
+        return !("STRING".equals(jsonType) && value.shape == SchemaValue.Shape.STRING)
+                && !("NUMBER".equals(jsonType) && value.shape == SchemaValue.Shape.NUMBER);
+    }
+
     private SchemaValue conditionalValue(SchemaValue value, String jsonType) {
         boolean matching = ("STRING".equals(jsonType) && value.shape == SchemaValue.Shape.STRING)
                 || ("NUMBER".equals(jsonType) && value.shape == SchemaValue.Shape.NUMBER)
