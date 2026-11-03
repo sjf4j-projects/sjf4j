@@ -169,8 +169,7 @@ final class SchemaCompiler {
             SchemaCheck semantic = objects.compileNested(null, snapshot, object, uri, depth);
             if (semantic == null) return null;
             SchemaCheck check = semantic;
-            if (!semantic.hasFallback() && value.type != null
-                    && value.shape == SchemaValue.Shape.OBJECT) {
+            if (value.type != null && value.shape == SchemaValue.Shape.OBJECT) {
                 // Only after schema coverage succeeds may we select faster
                 // static POJO access. If it is unsafe, retain Nodes traversal.
                 SchemaCheck optimized = objects.compileNested(value.type, snapshot, object, uri, depth);
