@@ -123,6 +123,24 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void unsupportedKeywordRequiresFallbackEvenWhenJavaShapeCannotMatch() throws Exception {
+        // Capability depends on schema semantics, not the Java method parameter.
+        String schema = "{\"contains\":{\"type\":\"number\"}}";
+        for (String type : new String[]{"String", "int", "Model"}) {
+            String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                    + "@CompiledValidator(fallback=false) public interface Check { "
+                    + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema)
+                    + ") boolean valid(" + type + " value); }";
+            NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Model.java", MODEL, "fixture/Check.java", source),
+                    CodegenProcessor.class);
+            assertFalse(result.success, type + "\n" + result.diagnostics());
+            assertTrue(result.diagnostics().contains("cannot fully compile"),
+                    type + "\n" + result.diagnostics());
+        }
+    }
+
+    @Test
     void rejectsUnsupportedRequireValidWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
