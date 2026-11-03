@@ -932,6 +932,13 @@ public class JsonArray extends JsonContainer {
      */
     public void addAll(Object node) {
         if (node == null) return;
+        // Traversing a live JsonArray while appending to it would never terminate.
+        if (node == this) {
+            if (dynamicElements == null) return;
+            Object[] snapshot = dynamicElements.toArray();
+            for (Object value : snapshot) add(value);
+            return;
+        }
         Nodes.forEachArray(node, (i, value) -> add(value));
     }
 
