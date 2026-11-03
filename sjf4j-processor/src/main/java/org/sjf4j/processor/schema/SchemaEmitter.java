@@ -71,6 +71,40 @@ final class SchemaEmitter {
             }
         }
         if (check.dynamic) {
+            // propertyNames is an independent assertion over each key string.
+            // No property value is read, and no name is marked as covered.
+            if (check.propertyNamesCheck != null
+                    && check.propertyNamesCheck.kind != SchemaCheck.Kind.PASS) {
+                String key = locals.newName("propertyName");
+                statements.add("for (String " + key + " : " + (check.jsonObject
+                        ? variable + ".keySet()"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
+                String previousPath = instancePath;
+                instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
+                List<String> nameChecks = new ArrayList<String>();
+                emitValue(nameChecks, plan, check.propertyNamesCheck, check.elementValue,
+                        key, prefix + "PROPERTY_NAME", strictFormat, 0, onFailure);
+                instancePath = previousPath;
+                for (String statement : nameChecks) statements.add("    " + statement);
+                statements.add("}");
+            }
+            // Each dependentSchemas branch checks the containing object, not
+            // its trigger value. Local additionalProperties coverage is untouched.
+            if (!check.dependentSchemas.isEmpty()) {
+                String names = locals.newName("presentNames");
+                statements.add("java.util.Set<String> " + names + " = "
+                        + (check.jsonObject ? variable + ".keySet()"
+                        : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ";");
+                int branch = 0;
+                for (SchemaCheck.DependentSchema dependency : check.dependentSchemas) {
+                    statements.add("if (" + names + ".contains(" + literal(dependency.trigger) + ")) {");
+                    List<String> nested = new ArrayList<String>();
+                    emitValue(nested, plan, dependency.check, check.elementValue, variable,
+                            prefix + "DEPENDENT_SCHEMA_" + branch++, strictFormat, 0, onFailure);
+                    for (String statement : nested) statements.add("    " + statement);
+                    statements.add("}");
+                }
+            }
             for (SchemaCheck.Required required : check.required) {
                 String contains = check.jsonObject
                         ? variable + ".containsKey(" + literal(required.name) + ")"
