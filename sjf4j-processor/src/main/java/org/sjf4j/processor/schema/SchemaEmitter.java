@@ -750,7 +750,7 @@ final class SchemaEmitter {
     private void emitArray(List<String> lines, SchemaFallbackEmitter.Plan plan,
                            SchemaCheck.ArrayCheck check, SchemaValue value, String expression,
                            String planName, String strictFormat, int depth,
-                            String onFailure) {
+                           String onFailure) {
         boolean knownCollection = value.shape == SchemaValue.Shape.COLLECTION;
         boolean knownArray = value.shape == SchemaValue.Shape.ARRAY;
         String subject = expression;
@@ -765,11 +765,24 @@ final class SchemaEmitter {
                 : "org.sjf4j.Nodes.sizeInArray(" + subject + ")";
         if (check.minItems != null) lines.add("if (" + size + " < " + check.minItems + ") " + fail(onFailure, check.minItemsDiagnostic));
         if (check.maxItems != null) lines.add("if (" + size + " > " + check.maxItems + ") " + fail(onFailure, check.maxItemsDiagnostic));
-        if (check.items == null) return;
+        if (check.uniqueItems) {
+            lines.add("if (org.sjf4j.schema.CompiledUtil.hasDuplicateItems(" + subject
+                    + ")) " + fail(onFailure, check.uniqueItemsDiagnostic));
+        }
+        // prefixItems constrains only its declared indices; items applies to
+        // the remaining indices in this *same* schema, not sibling applicators.
+        boolean hasPrefixChecks = false;
+        for (SchemaCheck prefix : check.prefixItems) {
+            if (prefix.kind != SchemaCheck.Kind.PASS) {
+                hasPrefixChecks = true;
+                break;
+            }
+        }
+        boolean hasItems = check.items != null && check.items.kind != SchemaCheck.Kind.PASS;
+        if (!hasPrefixChecks && !hasItems) return;
 
-        boolean withPath = DIAGNOSTIC_FAILURE.equals(onFailure);
-        String indexVar = withPath ? locals.newName("index") : null;
-        if (withPath) lines.add("int " + indexVar + " = 0;");
+        String indexVar = locals.newName("index");
+        lines.add("int " + indexVar + " = 0;");
         String itemVar = locals.newName("item");
         TypeMirror itemType = value.itemType();
         if (knownCollection || knownArray) {
@@ -783,15 +796,34 @@ final class SchemaEmitter {
             lines.add("while (" + iterator + ".hasNext()) {");
             lines.add("    Object " + itemVar + " = " + iterator + ".next();");
         }
-        List<String> childLines = new ArrayList<String>();
         String parentPath = instancePath;
-        if (withPath) instancePath = "new org.sjf4j.path.PathSegment.Index("
-                + parentPath + ", " + indexVar + ")";
-        emitValue(childLines, plan, check.items, check.itemValue, itemVar,
-                planName + "_ITEM", strictFormat, depth + 1, onFailure);
+        if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
+            instancePath = "new org.sjf4j.path.PathSegment.Index(" + parentPath
+                    + ", " + indexVar + ")";
+        }
+        for (int i = 0; i < check.prefixItems.size(); i++) {
+            SchemaCheck prefix = check.prefixItems.get(i);
+            if (prefix.kind == SchemaCheck.Kind.PASS) continue;
+            lines.add("    if (" + indexVar + " == " + i + ") {");
+            List<String> child = new ArrayList<String>();
+            emitValue(child, plan, prefix, check.itemValue, itemVar,
+                    planName + "_PREFIX_" + i, strictFormat, depth + 1, onFailure);
+            for (String statement : child) lines.add("        " + statement);
+            lines.add("    }");
+        }
+        if (hasItems) {
+            boolean afterPrefix = !check.prefixItems.isEmpty();
+            if (afterPrefix) {
+                lines.add("    if (" + indexVar + " >= " + check.prefixItems.size() + ") {");
+            }
+            List<String> child = new ArrayList<String>();
+            emitValue(child, plan, check.items, check.itemValue, itemVar,
+                    planName + "_ITEM", strictFormat, depth + 1, onFailure);
+            for (String statement : child) lines.add((afterPrefix ? "        " : "    ") + statement);
+            if (afterPrefix) lines.add("    }");
+        }
         instancePath = parentPath;
-        for (String line : childLines) lines.add("    " + line);
-        if (withPath) lines.add("    " + indexVar + "++;");
+        lines.add("    " + indexVar + "++;");
         lines.add("}");
     }
 
