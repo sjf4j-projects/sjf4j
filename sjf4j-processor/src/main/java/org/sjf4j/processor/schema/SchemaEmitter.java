@@ -41,13 +41,9 @@ final class SchemaEmitter {
     List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
                           SchemaFallbackEmitter.Plan plan, String strictFormat,
                           String onFailure) {
-        // A dynamic root can contain a non-object even when its schema has
-        // object-only keywords. Keep the fast path for known object types, but
-        // emit the shape/applicability guard for Object-typed roots.
-        if (check.kind == SchemaCheck.Kind.OBJECT
-                && !((SchemaCheck.ObjectCheck) check).dynamic) {
-            return emit((SchemaCheck.ObjectCheck) check, variable, plan, strictFormat, onFailure);
-        }
+        // Root and nested checks share the same null/type applicability rules.
+        // Static POJOs must reject null for type:object and skip object-only
+        // keywords on null when no object type is required.
         List<String> lines = new ArrayList<String>();
         emitValue(lines, plan, check, value, variable, helperPrefix, strictFormat, 0, onFailure);
         return lines;
