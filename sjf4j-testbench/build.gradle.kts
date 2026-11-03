@@ -327,6 +327,32 @@ val officialCompiledTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.test)
 }
 
+/**
+ * Phase 2: basic semantics, scalar constraints and object keywords.
+ *
+ * The direct-only variant is compiled first. Unsupported cases automatically
+ * retry with fallback=true, without editing official expected outcomes.
+ */
+val officialCompiledPhase2Test by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs the basic, scalar and object official Draft 2020-12 cases with direct-compilation probes."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath +
+        files(officialCompiledGeneratedDir.map { it.dir("resources") })
+    include("**/OfficialCompiledTest.class")
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
+    systemProperty("sjf4j.schema.officialCategory", "phase2")
+    systemProperty("sjf4j.schema.officialProbeDirect", "true")
+    jvmArgs("-Xshare:off")
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    dependsOn(generateOfficialCompiledCases)
+    shouldRunAfter(tasks.test)
+}
+
 // Keep schema publication gated by the official conformance suite.
 project(":sjf4j-schema").tasks.withType<PublishToMavenRepository>().configureEach {
     dependsOn(officialLatestTest)
