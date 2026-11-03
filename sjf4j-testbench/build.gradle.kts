@@ -256,19 +256,25 @@ val generateOfficialCompiledCases by tasks.registering {
                 schemaFile.parentFile.mkdirs()
                 schemaFile.writeText(JsonOutput.toJson(group["schema"]), Charsets.UTF_8)
 
-                val source = listOf(
-                    "package $packageName;",
-                    "",
-                    "import org.sjf4j.annotation.schema.CompiledValidator;",
-                    "import org.sjf4j.annotation.schema.ValidJsonSchema;",
-                    "",
-                    "@CompiledValidator(fallback = true)",
-                    "public interface $className {",
-                    "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
-                    "    boolean valid(Object value);",
-                    "}"
-                ).joinToString("\n", postfix = "\n")
-                javaDir.resolve("$className.java").writeText(source, Charsets.UTF_8)
+                // Compile both variants independently: fallback=true for conformance
+                // and fallback=false to measure genuinely direct compilation.
+                for (direct in listOf(false, true)) {
+                    val variant = if (direct) className + "Direct" else className
+                    val fallback = !direct
+                    val source = listOf(
+                        "package $packageName;",
+                        "",
+                        "import org.sjf4j.annotation.schema.CompiledValidator;",
+                        "import org.sjf4j.annotation.schema.ValidJsonSchema;",
+                        "",
+                        "@CompiledValidator(fallback = $fallback)",
+                        "public interface $variant {",
+                        "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
+                        "    boolean valid(Object value);",
+                        "}"
+                    ).joinToString("\n", postfix = "\n")
+                    javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
+                }
                 manifest.append(file.name).append('\t').append(groupIndex)
                     .append('\t').append(className).append('\t').append(tests.size).append('\n')
                 groupCount++
