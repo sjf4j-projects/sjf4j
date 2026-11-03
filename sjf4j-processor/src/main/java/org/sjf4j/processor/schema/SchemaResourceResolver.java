@@ -54,17 +54,20 @@ final class SchemaResourceResolver {
 
     private final ProcessorContext context;
     private final String registryDir;
-    private Map<URI, JsonSchema> registrySchemas;
+    private final Map<String, Map<URI, JsonSchema>> registryCache;
 
-    SchemaResourceResolver(ProcessorContext context, String registryDir) {
+    SchemaResourceResolver(ProcessorContext context, String registryDir,
+                           Map<String, Map<URI, JsonSchema>> registryCache) {
         this.context = context;
         this.registryDir = registryDir.trim();
+        this.registryCache = registryCache;
     }
 
-    /** Load and parse every registry resource once per compiled interface. */
+    /** Load and parse every registry resource once per annotation-processing run. */
     private Map<URI, JsonSchema> registrySchemas() {
-        if (registrySchemas != null) return registrySchemas;
-        Map<URI, JsonSchema> schemas = new LinkedHashMap<URI, JsonSchema>();
+        Map<URI, JsonSchema> schemas = registryCache.get(registryDir);
+        if (schemas != null) return schemas;
+        schemas = new LinkedHashMap<URI, JsonSchema>();
         if (!registryDir.isEmpty()) {
             SchemaLoader.Local loader = new SchemaLoader.Local(URI.create(registryDir));
             for (URI uri : loader.listDirectory()) {
@@ -75,7 +78,7 @@ final class SchemaResourceResolver {
                 schemas.put(uri, schema);
             }
         }
-        registrySchemas = schemas;
+        registryCache.put(registryDir, schemas);
         return schemas;
     }
 
