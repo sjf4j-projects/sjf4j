@@ -310,6 +310,8 @@ val officialCompiledTest by tasks.registering(Test::class) {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     include("**/OfficialCompiledTest.class")
+    // Runtime SchemaPlan fallback must resolve the same generated classpath resources as javac.
+    classpath = classpath + files(officialCompiledGeneratedDir.map { it.dir("resources") })
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
