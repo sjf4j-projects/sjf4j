@@ -100,6 +100,25 @@ public interface FilterExpr {
         }
 
         /**
+         * A query in a logical context tests whether it selects any node,
+         * regardless of that node's JSON value (including false, zero, and null).
+         */
+        @Override
+        public boolean evalTruth(Object rootNode, Object currentNode) {
+            Object container = path.rooted() ? rootNode : currentNode;
+            if (path.singleGet) {
+                return path._findOne(container, 1, path.length()) != JsonPath.MISSING;
+            }
+            if (container == null) return false;
+            // Function paths are SJF4J extensions: they evaluate a value,
+            // unlike ordinary JSONPath queries, which yield node lists.
+            if (path.tail() instanceof PathSegment.Function) {
+                return truth(path._eval(container));
+            }
+            return !((List<?>) path._eval(container)).isEmpty();
+        }
+
+        /**
          * Returns source-like path rendering.
          */
         @Override
@@ -128,8 +147,7 @@ public interface FilterExpr {
          */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
-            Object v = unary.eval(rootNode, currentNode);
-            return truth == truth(v);
+            return truth == unary.evalTruth(rootNode, currentNode);
         }
 
         /**
@@ -169,18 +187,34 @@ public interface FilterExpr {
          */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
-            Object a = left.eval(rootNode, currentNode);
-            switch (op) {
-                case AND:
-                    return truth(a) && truth(right.eval(rootNode, currentNode));
-                case OR:
-                    return truth(a) || truth(right.eval(rootNode, currentNode));
+            if (op == Op.AND) {
+                return left.evalTruth(rootNode, currentNode)
+                        && right.evalTruth(rootNode, currentNode);
+            }
+            if (op == Op.OR) {
+                return left.evalTruth(rootNode, currentNode)
+                        || right.evalTruth(rootNode, currentNode);
             }
 
+            Object a = left.eval(rootNode, currentNode);
             Object b = right.eval(rootNode, currentNode);
             _requireScalarFunctionResult(left, a);
             _requireScalarFunctionResult(right, b);
-            if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) return false;
+            if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) {
+                // RFC 9535: Nothing equals Nothing, but not a present JSON
+                // value. Ordering is false; <= and >= include equality.
+                boolean bothMissing = a == PathExpr.NOTHING && b == PathExpr.NOTHING;
+                switch (op) {
+                    case EQ:
+                    case LE:
+                    case GE:
+                        return bothMissing;
+                    case NE:
+                        return !bothMissing;
+                    default:
+                        return false;
+                }
+            }
             switch (op) {
                 case EQ: return eq(a, b);
                 case NE: return !eq(a, b);
