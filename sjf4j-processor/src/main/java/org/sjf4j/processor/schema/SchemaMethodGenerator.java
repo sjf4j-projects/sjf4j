@@ -153,9 +153,8 @@ final class SchemaMethodGenerator {
             out.line("@Override");
             out.beginBlock("public " + resultName + " " + method.getSimpleName()
                     + "(" + parameterDeclaration + ")");
-            if (!parameterType.getKind().isPrimitive()) out.line("if (" + value + " == null) "
-                    + (isBoolean ? "return true;" :
-                       isVoid ? "return;" : "return org.sjf4j.schema.ValidationResult.SUCCESS;"));
+            // Null is a JSON instance. The schema, not an unconditional shortcut,
+            // decides whether it is valid for all three validator contracts.
             if (literal != null) {
                 if (isVoid) {
                     if ("false".equals(literal)) {
