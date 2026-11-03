@@ -213,6 +213,11 @@ public class SchemaRegistry {
     private void _putSchema(URI uri, ObjectSchema schema) {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
+        SchemaPlan indexed = byIdPlans.get(id);
+        if (indexed != null && indexed.booleanSchema) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                    "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
+        }
         ObjectSchema old = byIdSchemas.putIfAbsent(id, schema);
         if (old != null && old != schema) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
