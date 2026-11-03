@@ -32,4 +32,13 @@ public @interface CompiledValidator {
     /** Whether unsupported checks and ValidationResult methods may use SchemaPlan at runtime. */
     boolean fallback() default false;
 
+    /**
+     * Optional file-system directory containing pre-registered JSON Schemas.
+     * Every .json file is indexed at compile time before reference resolution.
+     * The same directory must be accessible when runtime fallback is used.
+     * Accepts a file: directory URI or a working-directory-relative path ending in '/'.
+     * Classpath directory enumeration and HTTP fetching are not supported.
+     */
+    String registryDir() default "";
+
 }
