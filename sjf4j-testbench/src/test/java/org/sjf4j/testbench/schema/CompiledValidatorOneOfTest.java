@@ -147,4 +147,46 @@ public class CompiledValidatorOneOfTest {
             caseIndex++;
         }
     }
+    @CompiledValidator(fallback = false)
+    public interface RootNullOneOfValidator {
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"null\"},{\"type\":\"object\"}]}")
+        boolean nullOrObject(Variant value);
+
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"null\"},{\"type\":\"object\"}]}")
+        void requireNullOrObject(Variant value);
+
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"null\"},{\"type\":\"null\"}]}")
+        boolean twoNullBranches(Variant value);
+
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"null\"},{\"type\":\"null\"}]}")
+        void requireExactlyOneNull(Variant value);
+
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"object\"},{\"type\":\"object\"}]}")
+        boolean twoObjectBranches(Variant value);
+
+        @ValidJsonSchema("{\"oneOf\":[{\"type\":\"object\"},{\"type\":\"object\"}]}")
+        void requireExactlyOneObject(Variant value);
+    }
+
+    @Test
+    void specializedRootOneOfCountsMatchingBranchesForNull() {
+        RootNullOneOfValidator compiled = CompiledInstances.create(RootNullOneOfValidator.class);
+        SchemaPlan nullOrObject = JsonSchema.fromJson(
+                "{\"oneOf\":[{\"type\":\"null\"},{\"type\":\"object\"}]}").createPlan();
+
+        assertTrue(nullOrObject.isValid(null));
+        assertEquals(nullOrObject.isValid(null), compiled.nullOrObject(null));
+        assertDoesNotThrow(() -> compiled.requireNullOrObject(null));
+        assertTrue(compiled.nullOrObject(new A("valid")));
+        assertTrue(compiled.nullOrObject(new B(2)));
+
+        // Exactly-one semantics: null matches both null branches and no object branches.
+        assertFalse(compiled.twoNullBranches(null));
+        assertThrows(org.sjf4j.schema.ValidationException.class,
+                () -> compiled.requireExactlyOneNull(null));
+        assertFalse(compiled.twoObjectBranches(null));
+        assertThrows(org.sjf4j.schema.ValidationException.class,
+                () -> compiled.requireExactlyOneObject(null));
+    }
+
 }
