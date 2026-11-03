@@ -167,13 +167,6 @@ final class ObjectCompiler {
             String uri = childPointer(rootUri, "properties", name);
             boolean explicitCodec = property != null && property.explicitCodec();
             Object propertySchema = propertyMap.getNode(name);
-            // A quoted/encoded property name combined with an embedded $ref
-            // requires fragment-scope handling that this direct resolver does
-            // not yet guarantee. Do not partially compile this schema: let
-            // the complete runtime plan resolve the JSON Pointer correctly.
-            // This depends solely on schema syntax, not POJO vs OBNT access.
-            if (uri.indexOf('%') >= 0 && JsonType.of(propertySchema) == JsonType.OBJECT
-                    && Nodes.toJsonObject(propertySchema).containsKey("$ref")) return null;
             // Property-specific codecs override type defaults. Compile scalar
             // assertions against their raw encoding, not the Java domain type.
             // Structural keywords must remain on the original parent path:
@@ -185,11 +178,6 @@ final class ObjectCompiler {
             SchemaCheck check = schemaCompiler.compileValue(snapshot, propertySchema, value, uri, depth + 1);
             // A fallback on just the child value loses @NodeProperty codec selection.
             if (explicitCodec && (check == null || check.hasFallback())) return null;
-            // Runtime fragment reconstruction does not yet support every
-            // percent-encoded property pointer. Keep the complete schema plan
-            // when a localized fallback would require such a fragment. This
-            // decision depends on the schema location, never the Java type.
-            if ((check == null || check.hasFallback()) && uri.indexOf('%') >= 0) return null;
             if (check == null) check = new SchemaCheck.Fallback(uri);
             else directCount++;
             // A trivially valid subschema has no assertions to emit or property to read.
