@@ -66,7 +66,7 @@ class CompiledValidatorConditionalProcessorTest {
     @Test
     void unsupportedConditionOrSelectedBranchRequiresFallback() throws Exception {
         for (String schema : new String[]{
-                "{\"if\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^x\"}},"
+                "{\"if\":{\"type\":\"object\",\"unevaluatedProperties\":false},"
                         + "\"then\":{\"required\":[\"x\"]}}",
                 "{\"if\":true,\"then\":{\"required\":[\"x\"]},"
                         + "\"unevaluatedProperties\":false}"
