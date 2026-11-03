@@ -59,9 +59,7 @@ public final class OfficialCompiledTest {
     private static Set<String> fallbackGroups() {
         Set<String> groups = new LinkedHashSet<>();
         fallback(groups, "additionalProperties.json", 0, 1, 2, 3, 5, 6, 7, 8);
-        fallback(groups, "allOf.json", 2, 11);
         fallback(groups, "anchor.json", 0, 1, 2, 3);
-        fallback(groups, "anyOf.json", 0, 1);
         fallback(groups, "const.json", 1, 2, 6, 7, 8, 9);
         fallback(groups, "contains.json", 0, 1, 2, 3, 4, 5, 6);
         fallback(groups, "content.json", 0, 1, 2, 3);
@@ -70,13 +68,11 @@ public final class OfficialCompiledTest {
         fallback(groups, "dynamicRef.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20);
         fallback(groups, "enum.json", 1, 6, 8, 10, 12);
         fallback(groups, "format.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18);
-        fallback(groups, "if-then-else.json", 3, 4, 5, 9);
         fallback(groups, "infinite-loop-detection.json", 0);
         fallback(groups, "items.json", 0, 1, 2, 3, 5, 6, 7, 8, 9);
         fallback(groups, "maxContains.json", 0, 1, 2, 3, 4);
         fallback(groups, "minContains.json", 0, 1, 2, 3, 4, 5, 6, 7);
         fallback(groups, "not.json", 8);
-        fallback(groups, "oneOf.json", 0, 1);
         fallback(groups, "patternProperties.json", 0, 1, 2, 3, 4, 5);
         fallback(groups, "prefixItems.json", 0, 1, 2, 3);
         fallback(groups, "properties.json", 1);
