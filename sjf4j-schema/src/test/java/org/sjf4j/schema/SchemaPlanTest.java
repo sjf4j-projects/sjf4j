@@ -61,6 +61,23 @@ class SchemaPlanTest {
     }
 
     @Test
+    void registerRejectsBooleanAndObjectUriCollisionsInBothOrders() {
+        URI uri = URI.create("https://example.test/schemas/collision.json");
+
+        SchemaRegistry booleanFirst = new SchemaRegistry();
+        booleanFirst.index(uri, BooleanSchema.TRUE);
+        assertThrows(SchemaException.class, () -> booleanFirst.register(
+                uri, JsonSchema.fromJson("{\"type\":\"string\"}")));
+        assertTrue(booleanFirst.resolve(uri).isValid(123));
+
+        SchemaRegistry objectFirst = new SchemaRegistry();
+        objectFirst.register(uri, JsonSchema.fromJson("{\"type\":\"string\"}"));
+        assertThrows(SchemaException.class, () -> objectFirst.register(uri, BooleanSchema.TRUE));
+        assertFalse(objectFirst.resolve(uri).isValid(123));
+        assertTrue(objectFirst.resolve(uri).isValid("text"));
+    }
+
+    @Test
     void planStrictFormatDefaultCanBeOverriddenDirectly() {
         SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
 
