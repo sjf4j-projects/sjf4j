@@ -173,13 +173,26 @@ final class SchemaEmitter {
                 return;
             case SHAPE_GUARD:
                 SchemaCheck.ShapeGuard guard = (SchemaCheck.ShapeGuard) check;
-                lines.add("if (org.sjf4j.JsonType.of(" + expression
-                        + ") == org.sjf4j.JsonType." + guard.jsonType + ") {");
+                // A known Java projection is only an emission fast path; it
+                // never determines whether a schema keyword can compile.
+                boolean knownShape = ("OBJECT".equals(guard.jsonType) && value.shape == SchemaValue.Shape.OBJECT)
+                        || ("STRING".equals(guard.jsonType) && value.shape == SchemaValue.Shape.STRING)
+                        || ("NUMBER".equals(guard.jsonType) && value.shape == SchemaValue.Shape.NUMBER)
+                        || ("ARRAY".equals(guard.jsonType) && value.isArrayLike());
+                String condition = knownShape
+                        ? (value.nullable ? expression + " != null" : "true")
+                        : "org.sjf4j.JsonType.of(" + expression
+                          + ") == org.sjf4j.JsonType." + guard.jsonType;
                 List<String> guarded = new ArrayList<String>();
                 emitValue(guarded, plan, guard.child, guard.value, expression,
                         planName + "_", strictFormat, depth, onFailure);
-                for (String statement : guarded) lines.add("    " + statement);
-                lines.add("}");
+                if ("true".equals(condition)) {
+                    lines.addAll(guarded);
+                } else {
+                    lines.add("if (" + condition + ") {");
+                    for (String statement : guarded) lines.add("    " + statement);
+                    lines.add("}");
+                }
                 return;
             case FALLBACK:
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
@@ -399,6 +412,7 @@ final class SchemaEmitter {
                 String known = value.shape == SchemaValue.Shape.STRING ? "STRING"
                         : value.shape == SchemaValue.Shape.NUMBER ? "NUMBER"
                         : value.shape == SchemaValue.Shape.BOOLEAN ? "BOOLEAN"
+                        : value.shape == SchemaValue.Shape.OBJECT ? "OBJECT"
                         : value.isArrayLike() ? "ARRAY" : null;
                 String shape;
                 if (known != null) {
