@@ -270,7 +270,8 @@ final class ObjectCompiler {
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
                 dependencies.isEmpty() ? null : SchemaCompiler.diagnostic(rootUri, "dependentRequired"),
                 Boolean.FALSE.equals(additional)
-                        ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null);
+                        ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null,
+                propertyNamesCheck == null ? null : SchemaCompiler.diagnostic(rootUri, "propertyNames"));
     }
 
     /**
