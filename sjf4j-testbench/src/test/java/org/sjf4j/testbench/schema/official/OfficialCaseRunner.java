@@ -20,10 +20,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Compiles generated official schema bindings through the production annotation processor.
@@ -104,6 +106,15 @@ final class OfficialCaseRunner implements AutoCloseable {
     }
 
     void compileAll(List<Spec> specs) throws IOException {
+        // A previous run may have written partially generated classes/sources.
+        // Never allow stale output to make a failed batch appear compilable.
+        if (Files.exists(workRoot)) {
+            try (Stream<Path> paths = Files.walk(workRoot)) {
+                for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+                    Files.delete(path);
+                }
+            }
+        }
         Files.createDirectories(workRoot);
         if (compiler == null) {
             for (Spec spec : specs) {
