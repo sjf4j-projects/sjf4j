@@ -113,7 +113,7 @@ final class SchemaEmitter {
                 for (SchemaCheck.PatternProperty pattern : check.patternProperties) {
                     String regex = generated.names().field("PROPERTY_PATTERN");
                     generated.addField(out -> out.line("private static final java.util.regex.Pattern "
-                            + regex + " = java.util.regex.Pattern.compile(" + literal(pattern.pattern) + ");"));
+                            + regex + " = java.util.regex.Pattern.compile(" + literal(pattern.javaPattern) + ");"));
                     statements.add("    if (" + regex + ".matcher(" + key + ").find()) {");
                     statements.add("        " + covered + " = true;");
                     if (pattern.check.kind != SchemaCheck.Kind.PASS) {
