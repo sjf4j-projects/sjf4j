@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
@@ -83,9 +84,22 @@ public class CompiledBinderTest {
         };
         BindingException read = assertThrows(BindingException.class,
                 () -> binder.readPerson(input));
-        assertEquals("failed to read node as '" + Person.class.getCanonicalName() + "'",
+        assertEquals("failed to read node as '" + Person.class.getName() + "'",
                 read.getMessage());
         assertSame(readFailure, read.getCause());
+
+        BindingException readArray = assertThrows(BindingException.class,
+                () -> binder.readPersonArray(input));
+        assertEquals("failed to read node as '" + Person[].class.getTypeName() + "'",
+                readArray.getMessage());
+        assertSame(readFailure, readArray.getCause());
+
+        BindingException readList = assertThrows(BindingException.class,
+                () -> binder.readPersonList(input));
+        String listTypeName = new TypeReference<List<Person>>() {}.getType().getTypeName();
+        assertEquals("failed to read node as '" + listTypeName + "'",
+                readList.getMessage());
+        assertSame(readFailure, readList.getCause());
 
         IOException writeFailure = new IOException("write failed");
         Writer output = new Writer() {
@@ -768,6 +782,12 @@ public class CompiledBinderTest {
 
         @ReadFrom
         Person readPerson(Reader input);
+
+        @ReadFrom
+        Person[] readPersonArray(Reader input);
+
+        @ReadFrom
+        List<Person> readPersonList(Reader input);
 
         @ReadFrom
         Person readPerson(InputStream input);

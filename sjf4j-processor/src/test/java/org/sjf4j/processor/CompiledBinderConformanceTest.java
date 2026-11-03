@@ -54,10 +54,10 @@ class CompiledBinderConformanceTest {
         NavigatorTestCompiler.Result result = compile(backend, yaml);
         assertTrue(result.success, backend + ": " + result.diagnostics());
         String generated = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("catch (org.sjf4j.exception.BindingException failure2)"), backend);
+        assertTrue(generated.contains("catch (BindingException failure2)"), backend);
         assertTrue(generated.contains("failed to read node as 'fixture.Bean'"), backend);
         assertTrue(generated.contains("failed to write node type '"), backend);
-        assertTrue(generated.contains("org.sjf4j.util.Asserts.notNull(context, \"context\")"), backend);
+        assertTrue(generated.contains("Asserts.notNull(context, \"context\")"), backend);
         assertFalse(generated.contains("Objects.requireNonNull"), backend);
         if (!"FASTJSON2".equals(backend)) {
             assertTrue(generated.contains("PooledStringWriter"), backend);

@@ -1,6 +1,7 @@
 package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.BindingException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.URLClassLoader;
@@ -101,11 +102,15 @@ class CompiledFastjson2EnumReadTest {
             for (String invalid : new String[]{"\"NO_MATCH\"", "\"\"", "\"1\""}) {
                 InvocationTargetException error = assertThrows(InvocationTargetException.class,
                         () -> fromString.invoke(binder, invalid), invalid);
-                assertInstanceOf(IllegalArgumentException.class, error.getCause(), invalid);
+                BindingException failure = assertInstanceOf(BindingException.class, error.getCause(), invalid);
+                assertInstanceOf(IllegalArgumentException.class, failure.getCause(), invalid);
             }
             InvocationTargetException ordinalError = assertThrows(InvocationTargetException.class,
                     () -> fromString.invoke(binder, "100"));
-            assertTrue(ordinalError.getCause().getMessage().contains("out of range"));
+            BindingException ordinalFailure =
+                    assertInstanceOf(BindingException.class, ordinalError.getCause());
+            assertInstanceOf(IllegalArgumentException.class, ordinalFailure.getCause());
+            assertTrue(ordinalFailure.getCause().getMessage().contains("out of range"));
         }
     }
 

@@ -2,6 +2,7 @@ package org.sjf4j.testbench.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.ReadFrom;
@@ -119,7 +120,9 @@ public class CompiledEnumBindingTest {
         assertSame(Status.中文, scalar.read("\"\\u4e2d\\u6587\""), backend);
         assertSame(Status.ACTIVE, scalar.read("1"), backend);
         assertNull(scalar.read("null"), backend);
-        assertThrows(IllegalArgumentException.class, () -> scalar.read("\"UNKNOWN\""), backend);
+        BindingException invalidEnum = assertThrows(BindingException.class,
+                () -> scalar.read("\"UNKNOWN\""), backend);
+        assertInstanceOf(IllegalArgumentException.class, invalidEnum.getCause(), backend);
 
         String json = "{\"state\":\"OVERRIDE\","
                 + "\"values\":[\"A\",null,\"中文\",2],"
