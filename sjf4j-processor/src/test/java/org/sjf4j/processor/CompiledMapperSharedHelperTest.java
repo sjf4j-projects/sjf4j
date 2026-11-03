@@ -83,6 +83,64 @@ class CompiledMapperSharedHelperTest {
         }
     }
 
+    @Test
+    void sharedConversionIsEvaluatedOnceWhenNullsAreIgnored() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Address.java",
+                "package fixture; public class Address { public String city; }");
+        sources.put("fixture/AddressDto.java",
+                "package fixture; public class AddressDto { "
+                        + "public static int created; public String city; "
+                        + "public AddressDto() { created++; } }");
+        sources.put("fixture/Source.java",
+                "package fixture; public class Source { public Address address; }");
+        sources.put("fixture/Target.java",
+                "package fixture; public class Target { public AddressDto address; }");
+        sources.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.*; "
+                        + "@CompiledMapper "
+                        + "@MappingCreator(targetType=AddressDto.class, creator=\"this::newAddress\") "
+                        + "public interface Mapper { "
+                        + "@MappingOptions(nulls=NullValuePolicy.IGNORE) Target first(Source source); "
+                        + "@MappingOptions(nulls=NullValuePolicy.IGNORE) Target second(Source source); "
+                        + "default AddressDto newAddress() { return new AddressDto(); } }");
+
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+
+        String generated = result.generatedSource("fixture/Mapper_Impl.java");
+        assertEquals(3, occurrences(generated, "_mapAddressDto("), generated);
+
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> sourceType = loader.loadClass("fixture.Source");
+            Class<?> addressType = loader.loadClass("fixture.Address");
+            Class<?> targetType = loader.loadClass("fixture.Target");
+            Class<?> dtoType = loader.loadClass("fixture.AddressDto");
+            Class<?> mapperType = loader.loadClass("fixture.Mapper_Impl");
+            Object mapper = mapperType.getConstructor().newInstance();
+            Object source = sourceType.getConstructor().newInstance();
+            Object address = addressType.getConstructor().newInstance();
+            addressType.getField("city").set(address, "Tokyo");
+            sourceType.getField("address").set(source, address);
+
+            for (String name : new String[]{"first", "second"}) {
+                int before = dtoType.getField("created").getInt(null);
+                Object target = mapperType.getMethod(name, sourceType).invoke(mapper, source);
+                Object mapped = targetType.getField("address").get(target);
+                assertNotNull(mapped);
+                assertEquals("Tokyo", dtoType.getField("city").get(mapped));
+                assertEquals(before + 1, dtoType.getField("created").getInt(null),
+                        "shared mapper helper should execute only once for " + name);
+            }
+
+            sourceType.getField("address").set(source, null);
+            Object empty = mapperType.getMethod("first", sourceType).invoke(mapper, source);
+            assertNull(targetType.getField("address").get(empty));
+            assertEquals(2, dtoType.getField("created").getInt(null));
+        }
+    }
+
     private static int occurrences(String text, String needle) {
         int count = 0;
         for (int index = 0; (index = text.indexOf(needle, index)) >= 0; index += needle.length()) {
