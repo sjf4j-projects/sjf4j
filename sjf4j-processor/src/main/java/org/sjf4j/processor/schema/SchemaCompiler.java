@@ -174,7 +174,12 @@ final class SchemaCompiler {
                 // Only after schema coverage succeeds may we select faster
                 // static POJO access. If it is unsafe, retain Nodes traversal.
                 SchemaCheck optimized = objects.compileNested(value.type, snapshot, object, uri, depth);
-                if (optimized != null && !optimized.hasFallback()) check = optimized;
+                // A localized fallback is still a compiled semantic check.
+                // Keep it when selecting direct POJO getters; never erase
+                // unsupported child constraints because of representation.
+                if (optimized != null && optimized.hasFallback() == semantic.hasFallback()) {
+                    check = optimized;
+                }
             }
             checks.add(new SchemaCheck.ShapeGuard("OBJECT", value, check));
         }
