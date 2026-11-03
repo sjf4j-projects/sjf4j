@@ -53,9 +53,30 @@ final class SchemaResourceResolver {
     }
 
     private final ProcessorContext context;
+    private final String registryDir;
+    private Map<URI, JsonSchema> registrySchemas;
 
-    SchemaResourceResolver(ProcessorContext context) {
+    SchemaResourceResolver(ProcessorContext context, String registryDir) {
         this.context = context;
+        this.registryDir = registryDir.trim();
+    }
+
+    /** Load and parse every registry resource once per compiled interface. */
+    private Map<URI, JsonSchema> registrySchemas() {
+        if (registrySchemas != null) return registrySchemas;
+        Map<URI, JsonSchema> schemas = new LinkedHashMap<URI, JsonSchema>();
+        if (!registryDir.isEmpty()) {
+            SchemaLoader.Local loader = new SchemaLoader.Local(URI.create(registryDir));
+            for (URI uri : loader.listDirectory()) {
+                JsonSchema schema = loader.load(uri);
+                if (schema == null) {
+                    throw new IllegalArgumentException("schema registry resource not found: " + uri);
+                }
+                schemas.put(uri, schema);
+            }
+        }
+        registrySchemas = schemas;
+        return schemas;
     }
 
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName,
@@ -106,11 +127,15 @@ final class SchemaResourceResolver {
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri);
-        // Resolve the full graph now; unresolved refs and invalid keywords must
-        // fail annotation processing instead of being deferred until execution.
+        // Index the complete directory before resolving any reference. Registry
+        // owns canonical $id aliases, $ref and dynamic-anchor resolution.
+        // Local root resources take precedence if the directory repeats an $id.
         SchemaRegistry registry = new SchemaRegistry();
         for (int i = 0; i < snapshot.uris.length; i++) {
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
+        }
+        for (Map.Entry<URI, JsonSchema> entry : registrySchemas().entrySet()) {
+            registry.indexIfAbsent(entry.getKey(), entry.getValue());
         }
         // Boolean resources are now indexed alongside object resources, so the
         // selected URI must always resolve during annotation processing.
