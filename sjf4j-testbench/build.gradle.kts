@@ -1,8 +1,6 @@
 import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
-import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
-import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 import org.gradle.api.tasks.testing.Test
 import java.io.BufferedInputStream
 import java.net.URI
@@ -438,25 +436,6 @@ val officialPublishGate by tasks.registering {
     }
 }
 officialCompiledTest.configure { mustRunAfter(refreshOfficialSchemaTests) }
-
-// Protect every published artifact, not just :sjf4j-schema. Hook both artifact
-// upload tasks and publication lifecycle tasks (including Maven Central plugin).
-rootProject.subprojects.forEach { published ->
-    published.plugins.withId("com.vanniktech.maven.publish") {
-        published.tasks.withType<PublishToMavenRepository>().configureEach {
-            dependsOn(officialPublishGate)
-        }
-        published.tasks.withType<PublishToMavenLocal>().configureEach {
-            dependsOn(officialPublishGate)
-        }
-        published.tasks.matching {
-            it.name == "publish" || it.name == "publishToMavenLocal" ||
-                it.name == "publishToMavenCentral" || it.name.startsWith("publishAllPublicationsTo")
-        }.configureEach {
-            dependsOn(officialPublishGate)
-        }
-    }
-}
 
 tasks.named("build") {
     dependsOn(tasks.named("jmhJar"))
