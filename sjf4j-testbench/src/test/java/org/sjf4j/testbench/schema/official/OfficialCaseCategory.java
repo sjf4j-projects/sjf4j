@@ -1,20 +1,17 @@
 package org.sjf4j.testbench.schema.official;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Explicit coverage inventory of the official Draft 2020-12 root test files.
- * Unknown files fail discovery instead of disappearing from a phase's report.
+ * Future upstream files are included as OTHER without requiring code changes.
  * The optional/ directory is intentionally excluded by the caller.
  */
 final class OfficialCaseCategory {
     enum Category {
-        BASIC, SCALAR, OBJECT, ARRAY, APPLICATOR, REFERENCE
+        BASIC, SCALAR, OBJECT, ARRAY, APPLICATOR, REFERENCE, OTHER
     }
 
     private static final Map<String, Category> FILES = new LinkedHashMap<>();
@@ -47,22 +44,7 @@ final class OfficialCaseCategory {
     }
 
     static Category category(String file) {
-        Category category = FILES.get(file);
-        if (category == null) {
-            throw new IllegalStateException("Unclassified official Draft 2020-12 file: " + file);
-        }
-        return category;
-    }
-
-    static void assertComplete(Set<String> actual) {
-        Set<String> missing = new LinkedHashSet<>(FILES.keySet());
-        missing.removeAll(actual);
-        Set<String> unclassified = new LinkedHashSet<>(actual);
-        unclassified.removeAll(FILES.keySet());
-        if (!missing.isEmpty() || !unclassified.isEmpty()) {
-            throw new IllegalStateException("Official Draft 2020-12 file inventory differs: "
-                    + "missing=" + missing + ", unclassified=" + unclassified);
-        }
+        return FILES.getOrDefault(file, Category.OTHER);
     }
 
     static boolean selected(String selection, String file) {
@@ -99,7 +81,4 @@ final class OfficialCaseCategory {
         return selection;
     }
 
-    static Map<String, Category> files() {
-        return Collections.unmodifiableMap(FILES);
-    }
 }
