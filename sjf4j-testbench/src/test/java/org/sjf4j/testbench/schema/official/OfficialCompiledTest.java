@@ -17,6 +17,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +44,70 @@ public final class OfficialCompiledTest {
     private static final String DIALECT_DIR = "tests/draft2020-12";
     private static final String SELECTION = "sjf4j.schema.officialCategory";
     private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
+
+    /**
+     * Explicit exceptions for official schema groups that cannot yet
+     * compile with fallback=false. New groups are always direct by default.
+     *
+     * <p>Add an entry only after checking the direct javac diagnostic and
+     * confirming the missing compiler support. Do not auto-populate this list.
+     * Existing entries were initially collected by a direct-compile probe;
+     * they still need individual review before being considered permanent.
+     */
+    private static final Set<String> FALLBACK_GROUPS = fallbackGroups();
+
+    private static Set<String> fallbackGroups() {
+        Set<String> groups = new LinkedHashSet<>();
+        fallback(groups, "additionalProperties.json", 0, 1, 2, 3, 5, 6, 7, 8);
+        fallback(groups, "allOf.json", 2, 11);
+        fallback(groups, "anchor.json", 0, 1, 2, 3);
+        fallback(groups, "anyOf.json", 0, 1);
+        fallback(groups, "const.json", 1, 2, 6, 7, 8, 9);
+        fallback(groups, "contains.json", 0, 1, 2, 3, 4, 5, 6);
+        fallback(groups, "content.json", 0, 1, 2, 3);
+        fallback(groups, "defs.json", 0);
+        fallback(groups, "dependentSchemas.json", 0, 1, 2, 3);
+        fallback(groups, "dynamicRef.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20);
+        fallback(groups, "enum.json", 1, 6, 8, 10, 12);
+        fallback(groups, "exclusiveMaximum.json", 0);
+        fallback(groups, "exclusiveMinimum.json", 0);
+        fallback(groups, "format.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18);
+        fallback(groups, "if-then-else.json", 3, 4, 5, 9);
+        fallback(groups, "infinite-loop-detection.json", 0);
+        fallback(groups, "items.json", 0, 1, 2, 3, 5, 6, 7, 8, 9);
+        fallback(groups, "maxContains.json", 0, 1, 2, 3, 4);
+        fallback(groups, "maxItems.json", 0, 1);
+        fallback(groups, "maxLength.json", 0, 1);
+        fallback(groups, "maximum.json", 0, 1);
+        fallback(groups, "minContains.json", 0, 1, 2, 3, 4, 5, 6, 7);
+        fallback(groups, "minItems.json", 0, 1);
+        fallback(groups, "minLength.json", 0, 1);
+        fallback(groups, "minimum.json", 0, 1);
+        fallback(groups, "multipleOf.json", 0, 1, 2);
+        fallback(groups, "not.json", 8);
+        fallback(groups, "oneOf.json", 0, 1);
+        fallback(groups, "pattern.json", 0, 1);
+        fallback(groups, "patternProperties.json", 0, 1, 2, 3, 4, 5);
+        fallback(groups, "prefixItems.json", 0, 1, 2, 3);
+        fallback(groups, "properties.json", 1);
+        fallback(groups, "propertyNames.json", 0, 1, 2, 3, 4, 5);
+        fallback(groups, "ref.json", 0, 2, 5, 6, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34);
+        fallback(groups, "refRemote.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14);
+        fallback(groups, "unevaluatedItems.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28);
+        fallback(groups, "unevaluatedProperties.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43);
+        fallback(groups, "uniqueItems.json", 0, 1, 2, 3, 4, 5);
+        fallback(groups, "vocabulary.json", 0);
+        return Collections.unmodifiableSet(groups);
+    }
+
+    private static void fallback(Set<String> groups, String file, int... indices) {
+        for (int index : indices) {
+            String key = file + "#" + index;
+            if (index < 0 || !groups.add(key)) {
+                throw new IllegalArgumentException("Invalid or duplicate fallback group: " + key);
+            }
+        }
+    }
 
     private OfficialCaseRunner runner;
     private OfficialCaseReport report;
@@ -149,7 +216,7 @@ public final class OfficialCompiledTest {
 
         selection = OfficialCaseCategory.selection(mainCategory == null
                 ? System.getProperty(SELECTION, "all") : mainCategory);
-        List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated);
+        List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated, FALLBACK_GROUPS);
         List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
         for (OfficialCaseRunner.Spec spec : allSpecs) {

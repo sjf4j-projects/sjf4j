@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -44,7 +45,6 @@ final class OfficialCaseRunner implements AutoCloseable {
     private final Map<String, String> directFailures = new LinkedHashMap<>();
     private final List<URLClassLoader> classLoaders = new ArrayList<>();
     private int batchSerial;
-    private boolean probeEnabled;
 
     OfficialCaseRunner(Path generatedRoot, Path workRoot) {
         this.generatedRoot = generatedRoot;
@@ -56,12 +56,14 @@ final class OfficialCaseRunner implements AutoCloseable {
         final int group;
         final String className;
         final int tests;
+        final boolean fallback;
 
-        Spec(String file, int group, String className, int tests) {
+        Spec(String file, int group, String className, int tests, boolean fallback) {
             this.file = file;
             this.group = group;
             this.className = className;
             this.tests = tests;
+            this.fallback = fallback;
         }
 
         String key() {
@@ -86,7 +88,7 @@ final class OfficialCaseRunner implements AutoCloseable {
         }
     }
 
-    static List<Spec> readIndex(Path generatedRoot) throws IOException {
+    static List<Spec> readIndex(Path generatedRoot, Set<String> fallbackGroups) throws IOException {
         List<String> lines = Files.readAllLines(generatedRoot.resolve("index.tsv"), StandardCharsets.UTF_8);
         if (lines.isEmpty() || !"file\tgroup\tclass\ttests".equals(lines.get(0))) {
             throw new IllegalStateException("Invalid official compiled cases index");
@@ -97,8 +99,9 @@ final class OfficialCaseRunner implements AutoCloseable {
             if (lines.get(i).isEmpty()) continue;
             String[] cells = lines.get(i).split("\t", -1);
             if (cells.length != 4) throw new IllegalStateException("Invalid index line " + (i + 1));
+            String key = cells[0] + "#" + cells[1];
             Spec spec = new Spec(cells[0], Integer.parseInt(cells[1]),
-                    cells[2], Integer.parseInt(cells[3]));
+                    cells[2], Integer.parseInt(cells[3]), fallbackGroups.contains(key));
             if (spec.group < 0 || spec.tests < 1 || !spec.file.endsWith(".json")
                     || !spec.className.matches("[A-Za-z][A-Za-z0-9]*")
                     || seen.putIfAbsent(spec.key(), true) != null) {
@@ -106,11 +109,15 @@ final class OfficialCaseRunner implements AutoCloseable {
             }
             cases.add(spec);
         }
+        if (!seen.keySet().containsAll(fallbackGroups)) {
+            Set<String> missing = new java.util.LinkedHashSet<>(fallbackGroups);
+            missing.removeAll(seen.keySet());
+            throw new IllegalStateException("Unknown explicit fallback groups: " + missing);
+        }
         return cases;
     }
 
     void compileAll(List<Spec> specs, boolean probeDirect) throws IOException {
-        probeEnabled = probeDirect;
         // A previous run may have written partially generated classes/sources.
         // Never allow stale output to make a failed batch appear compilable.
         if (Files.exists(workRoot)) {
@@ -127,31 +134,41 @@ final class OfficialCaseRunner implements AutoCloseable {
             }
             return;
         }
+        // Compile the fallback=false binding by default. Explicit exceptions
+        // are chosen by OfficialCompiledTest, not inferred from javac failures.
         Map<String, List<Spec>> byFile = new LinkedHashMap<>();
         for (Spec spec : specs) {
             byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
         }
-        if (probeDirect) {
-            Map<String, Outcome> direct = new LinkedHashMap<>();
-            for (List<Spec> batch : byFile.values()) {
-                compileBatch(batch, true, direct);
-            }
-            byFile.clear();
-            for (Spec spec : specs) {
-                Outcome probe = direct.get(spec.key());
-                if (probe == null) {
-                    throw new IllegalStateException("Missing direct compilation result: " + spec.key());
-                }
-                if (probe.invoker != null) {
-                    outcomes.put(spec.key(), probe);
-                } else {
-                    directFailures.put(spec.key(), probe.error);
-                    byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
-                }
-            }
-        }
         for (List<Spec> batch : byFile.values()) {
             compileBatch(batch, false, outcomes);
+        }
+        if (probeDirect) {
+            // Verify that each explicitly allowed fallback is still necessary.
+            Map<String, List<Spec>> fallbackByFile = new LinkedHashMap<>();
+            for (Spec spec : specs) {
+                if (spec.fallback) {
+                    fallbackByFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
+                }
+            }
+            Map<String, Outcome> direct = new LinkedHashMap<>();
+            for (List<Spec> batch : fallbackByFile.values()) {
+                compileBatch(batch, true, direct);
+            }
+            for (Spec spec : specs) {
+                if (!spec.fallback) continue;
+                Outcome probe = direct.get(spec.key());
+                if (probe == null) {
+                    throw new IllegalStateException("Missing direct compilation probe: " + spec.key());
+                }
+                if (probe.invoker != null) {
+                    outcomes.put(spec.key(), new Outcome(null,
+                            "Stale explicit fallback: schema now compiles with fallback=false: "
+                                    + spec.key(), "COMPILE_ERROR"));
+                } else {
+                    directFailures.put(spec.key(), probe.error);
+                }
+            }
         }
         if (outcomes.size() != specs.size()) {
             throw new IllegalStateException("Compiled case accounting mismatch: "
@@ -199,7 +216,7 @@ final class OfficialCaseRunner implements AutoCloseable {
             for (Spec spec : batch) {
                 sources.add(generatedRoot.resolve("java")
                         .resolve(PACKAGE.replace('.', '/'))
-                        .resolve(spec.className + (direct ? "Direct" : "") + ".java").toFile());
+                        .resolve(spec.className + (spec.fallback && !direct ? "Fallback" : "") + ".java").toFile());
             }
             String classpath = System.getProperty("sjf4j.schema.officialCompilerClasspath",
                     System.getProperty("java.class.path"));
@@ -248,7 +265,7 @@ final class OfficialCaseRunner implements AutoCloseable {
         for (Spec spec : batch) {
             try {
                 Class<?> type = Class.forName(PACKAGE + "." + spec.className
-                        + (direct ? "Direct" : ""), true, loader);
+                        + (spec.fallback && !direct ? "Fallback" : ""), true, loader);
                 @SuppressWarnings({"rawtypes", "unchecked"})
                 Object validator = CompiledInstances.create((Class) type);
                 Method method = type.getMethod("valid", Object.class);
@@ -261,7 +278,7 @@ final class OfficialCaseRunner implements AutoCloseable {
                         if (cause instanceof Exception) throw (Exception) cause;
                         throw new IllegalStateException(cause);
                     }
-                }, null, direct ? "DIRECT" : probeEnabled ? "FALLBACK" : "UNPROBED"));
+                }, null, direct || !spec.fallback ? "DIRECT" : "FALLBACK"));
             } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
                 destination.put(spec.key(), new Outcome(null,
                         "Generated validator load failed: " + e, "COMPILE_ERROR"));

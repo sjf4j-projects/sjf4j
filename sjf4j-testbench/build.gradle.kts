@@ -294,18 +294,17 @@ val generateOfficialCompiledCases by tasks.registering {
                 schemaFile.parentFile.mkdirs()
                 schemaFile.writeText(JsonOutput.toJson(group["schema"]), Charsets.UTF_8)
 
-                // Compile both variants independently: fallback=true for conformance
-                // and fallback=false to measure genuinely direct compilation.
-                for (direct in listOf(false, true)) {
-                    val variant = if (direct) className + "Direct" else className
-                    val fallback = !direct
+                // Generate both variants without selecting fallback here. The test
+                // class decides which groups may use the fallback variant.
+                for (allowFallback in listOf(false, true)) {
+                    val variant = if (allowFallback) className + "Fallback" else className
                     val source = listOf(
                         "package $packageName;",
                         "",
                         "import org.sjf4j.annotation.schema.CompiledValidator;",
                         "import org.sjf4j.annotation.schema.ValidJsonSchema;",
                         "",
-                        "@CompiledValidator(fallback = $fallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
+                        "@CompiledValidator(fallback = $allowFallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
                         "public interface $variant {",
                         "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
                         "    boolean valid(Object value);",
@@ -326,7 +325,8 @@ val generateOfficialCompiledCases by tasks.registering {
         )
         logger.lifecycle(
             "Generated official Draft 2020-12 bindings: " +
-                files.size + " files, " + groupCount + " schema groups, " + testCount + " assertions"
+                files.size + " files, " + groupCount + " schema groups, " + testCount +
+                " assertions"
         )
     }
 }

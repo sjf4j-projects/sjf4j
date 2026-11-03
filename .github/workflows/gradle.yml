@@ -43,6 +43,9 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    - name: Verify official compiled direct coverage and fallback allowlist
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledProbeDirect=true
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
