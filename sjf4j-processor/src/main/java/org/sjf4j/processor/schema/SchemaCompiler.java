@@ -93,7 +93,7 @@ final class SchemaCompiler {
         }
         // Format is an assertion under the format-assertion vocabulary, even
         // when strictFormat=false. Only optimize known annotation-default dialects.
-        if (schema.containsKey("format") && !canCompileFormat(snapshot)) return null;
+        if (schema.containsKey("format") && !canCompileStandardDialect(snapshot)) return null;
         Object typeKeyword = schema.getNode("type");
         if (typeKeyword != null && JsonType.of(typeKeyword) == JsonType.ARRAY) {
             return compileUnionType(schema, value, schemaUri);
@@ -172,6 +172,10 @@ final class SchemaCompiler {
             family = current;
         }
         if (family == null) return null;
+        // Validation keywords are not necessarily assertions under an
+        // application-defined metaschema (e.g. one omitting validation vocab).
+        // Defer unknown vocabularies to the dialect-aware runtime plan.
+        if (!canCompileStandardDialect(snapshot)) return null;
 
         // Keep the original schema immutable. Adding type here is a compiler
         // internal device; TypeGuard preserves the actual untyped semantics.
@@ -473,7 +477,7 @@ final class SchemaCompiler {
         return null;
     }
 
-    private static boolean canCompileFormat(SchemaResourceResolver.Snapshot snapshot) {
+    private static boolean canCompileStandardDialect(SchemaResourceResolver.Snapshot snapshot) {
         for (String source : snapshot.documents) {
             if (source.contains("\"format-assertion\"") || source.contains("\"$vocabulary\""))
                 return false;
