@@ -440,3 +440,58 @@ interface compiled. This does **not** distinguish partial from full fallback.
 does not run the direct probe by default and reports `UNPROBED` instead
 of guessing direct support. Source changes to fix conformance bugs are
 deliberately outside this test-harness stage.
+
+
+### Phase 3: arrays, applicators and evaluated-location behavior
+
+Run the full mandatory Phase 3 cohort at the pinned official revision:
+
+```bash
+./gradlew :sjf4j-testbench:officialCompiledPhase3Test \
+  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+```
+
+This executes **15 files, 169 schema groups and 525 official assertions**,
+excluding all `optional/` files. The fixed upstream revision is checked for
+the following exact group and assertion counts:
+
+| Select `-PofficialCompiledCategory` | Official files | Schema groups | Tests |
+| --- | ---: | ---: | ---: |
+| `phase3` (default) | 15 | 169 | 525 |
+| `array` | 9 | 73 | 251 |
+| `applicator` | 6 | 96 | 274 |
+| `unevaluated` | 2 | 73 | 200 |
+
+To run one wave only:
+
+```bash
+./gradlew :sjf4j-testbench:officialCompiledPhase3Test \
+  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057 \
+  -PofficialCompiledCategory=unevaluated
+```
+
+The array cohort includes `items`, `prefixItems`, `minItems`,
+`maxItems`, `uniqueItems`, `contains`, `minContains`,
+`maxContains` and `unevaluatedItems`. The applicator cohort includes
+`allOf`, `anyOf`, `oneOf`, `not`, `if-then-else` and
+`unevaluatedProperties`. Each official schema group is compiled with the
+production annotation processor and each example is executed unchanged,
+including `null`.
+
+The direct-only probe remains enabled in Phase 3. This is particularly useful
+for distinguishing directly emitted predicates from groups that require
+`SchemaPlan` for evaluated-location bookkeeping, without changing or
+silently excluding a failed official case. An unsupported `fallback=false`
+compilation does **not** fail the entire suite before its `fallback=true`
+variant is tested. A failure in both variants is recorded as
+`COMPILE_ERROR`, and an assertion mismatch is recorded as `FAIL`.
+
+Look at `sjf4j-testbench/build/reports/officialCompiled/phase3/` for
+`summary.json`, `groups.json`, `gaps.json`, and `details.json`.
+Sub-wave output uses its selection as the directory name (for example,
+`officialCompiled/unevaluated/`).
+
+The generated reports are diagnostic: a green runtime/fallback suite
+does **not** imply fully compiled support, and a direct compilation failure
+does **not** count as an implementation fix. Production bug fixes are
+deliberately deferred to a later stage.
