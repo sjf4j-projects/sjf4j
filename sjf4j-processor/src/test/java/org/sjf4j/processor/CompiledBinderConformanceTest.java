@@ -38,14 +38,14 @@ class CompiledBinderConformanceTest {
                         + "@CompiledBinder(backend=Backend." + backend
                         + (yaml ? ", format=BindingFormat.YAML" : "") + ")\n"
                         + "public interface Binder {\n"
-                        + "  @ReadFrom Bean read(String source) throws java.io.IOException;\n"
-                        + "  @ReadFrom Bean readBytes(byte[] source) throws java.io.IOException;\n"
-                        + "  @ReadFrom Bean readReader(java.io.Reader source) throws java.io.IOException;\n"
-                        + "  @ReadFrom Bean readStream(java.io.InputStream source) throws java.io.IOException;\n"
-                        + "  @WriteTo String write(Bean value) throws java.io.IOException;\n"
-                        + "  @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\n"
-                        + "  @WriteTo void writeWriter(Bean value,java.io.Writer output) throws java.io.IOException;\n"
-                        + "  @WriteTo void writeStream(Bean value,java.io.OutputStream output) throws java.io.IOException;\n"
+                        + "  @ReadFrom Bean read(String source);\n"
+                        + "  @ReadFrom Bean readBytes(byte[] source);\n"
+                        + "  @ReadFrom Bean readReader(java.io.Reader source);\n"
+                        + "  @ReadFrom Bean readStream(java.io.InputStream source);\n"
+                        + "  @WriteTo String write(Bean failure);\n"
+                        + "  @WriteTo byte[] writeBytes(Bean value);\n"
+                        + "  @WriteTo void writeWriter(Bean value,java.io.Writer output);\n"
+                        + "  @WriteTo void writeStream(Bean value,java.io.OutputStream output);\n"
                         + "}\n");
         return NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
     }
@@ -54,6 +54,11 @@ class CompiledBinderConformanceTest {
         NavigatorTestCompiler.Result result = compile(backend, yaml);
         assertTrue(result.success, backend + ": " + result.diagnostics());
         String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("catch (org.sjf4j.exception.BindingException failure2)"), backend);
+        assertTrue(generated.contains("failed to read node as 'fixture.Bean'"), backend);
+        assertTrue(generated.contains("failed to write node type '"), backend);
+        assertTrue(generated.contains("org.sjf4j.util.Asserts.notNull(context, \"context\")"), backend);
+        assertFalse(generated.contains("Objects.requireNonNull"), backend);
         if (!"FASTJSON2".equals(backend)) {
             assertTrue(generated.contains("PooledStringWriter"), backend);
             assertFalse(generated.contains("FastStringWriter"), backend);
