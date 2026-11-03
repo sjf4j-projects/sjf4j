@@ -178,6 +178,11 @@ final class ObjectCompiler {
             SchemaCheck check = schemaCompiler.compileValue(snapshot, propertySchema, value, uri, depth + 1);
             // A fallback on just the child value loses @NodeProperty codec selection.
             if (explicitCodec && (check == null || check.hasFallback())) return null;
+            // Runtime fragment reconstruction does not yet support every
+            // percent-encoded property pointer. Keep the complete schema plan
+            // when a localized fallback would require such a fragment. This
+            // decision depends on the schema location, never the Java type.
+            if ((check == null || check.hasFallback()) && uri.indexOf('%') >= 0) return null;
             if (check == null) check = new SchemaCheck.Fallback(uri);
             else directCount++;
             // A trivially valid subschema has no assertions to emit or property to read.
