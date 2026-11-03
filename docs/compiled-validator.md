@@ -407,7 +407,7 @@ coverage categories in the **same** runner; they are not separate Gradle tasks.
 
 ```bash
 # Once per local checkout, or to select a known upstream revision:
-./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=<40-character-commit-sha>
 
 # Entire mandatory suite (default), offline using the cached revision:
 ./gradlew :sjf4j-testbench:officialCompiledTest
