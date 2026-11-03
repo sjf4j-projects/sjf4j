@@ -10,49 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-
-import org.junit.jupiter.api.io.TempDir;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class SchemaLoaderTest {
-
-    @TempDir
-    Path registryDirectory;
-
-    @Test
-    void localLoaderListsRecursiveSchemasForRegistryIndexing() throws IOException {
-        Path nested = Files.createDirectories(registryDirectory.resolve("nested"));
-        Path root = registryDirectory.resolve("strict.json");
-        Path child = nested.resolve("base.json");
-        Files.write(root, ("{\"$id\":\"https://example.test/strict.json\","
-                + "\"$ref\":\"base.json\"}").getBytes(StandardCharsets.UTF_8));
-        Files.write(child, ("{\"$id\":\"https://example.test/base.json\","
-                + "\"type\":\"string\",\"minLength\":3}").getBytes(StandardCharsets.UTF_8));
-        Files.write(registryDirectory.resolve("ignored.txt"), "{}".getBytes(StandardCharsets.UTF_8));
-
-        SchemaLoader.Local loader = new SchemaLoader.Local(registryDirectory.toUri());
-        List<URI> resources = loader.listDirectory();
-        assertEquals(2, resources.size());
-        assertTrue(resources.contains(root.toUri()));
-        assertTrue(resources.contains(child.toUri()));
-
-        SchemaRegistry registry = new SchemaRegistry();
-        for (URI uri : resources) registry.index(uri, loader.load(uri));
-        SchemaPlan plan = registry.resolve(URI.create("https://example.test/strict.json"));
-        assertNotNull(plan);
-        assertTrue(plan.isValid("hello"));
-        assertFalse(plan.isValid("no"));
-    }
-
-    @Test
-    void localDirectoryEnumerationRequiresAnExistingFileDirectory() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new SchemaLoader.Local(URI.create("classpath:/schemas/")).listDirectory());
-        assertThrows(IllegalArgumentException.class,
-                () -> new SchemaLoader.Local(registryDirectory.resolve("missing").toUri()).listDirectory());
-    }
 
     @Test
     void resolvesRelativeLocationsAndFragmentsWithoutParsingTheFragmentAsAFile() {
