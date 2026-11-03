@@ -106,8 +106,7 @@ tasks.named<JavaCompile>("compileJmhJava") {
 
 tasks.test {
     useJUnitPlatform()
-    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class",
-        "**/OfficialCompiledSmokeTest.class")
+    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class")
     jvmArgs(
         "-Xshare:off"
     )
@@ -259,7 +258,7 @@ val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/official
 val generateOfficialCompiledCases by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Generates source bindings for every non-optional Draft 2020-12 schema group."
-    dependsOn(downloadOfficialSchemaTests)
+    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     inputs.dir(officialSchemaSuiteDir)
     outputs.dir(officialCompiledGeneratedDir)
 
@@ -339,20 +338,9 @@ val generateOfficialCompiledCases by tasks.registering {
     }
 }
 
-val officialCompiledSmokeTest by tasks.registering(Test::class) {
-    group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs the 19 original hand-selected official CompiledValidator smoke groups."
-    useJUnitPlatform()
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
-    include("**/OfficialCompiledSmokeTest.class")
-    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
-    jvmArgs("-Xshare:off")
-    inputs.dir(officialSchemaSuiteDir)
-    outputs.upToDateWhen { false }
-    dependsOn(downloadOfficialSchemaTests)
-    shouldRunAfter(tasks.test)
-}
+// A publish refresh must finish before annotation-processing input resources
+// are checked or refreshed. Daily builds do not include the refresh task.
+generateOfficialCompiledCases.configure { mustRunAfter(refreshOfficialSchemaTests) }
 
 val officialCompiledTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -370,6 +358,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
     dependsOn(generateOfficialCompiledCases)
+    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
 
@@ -397,6 +386,7 @@ val officialCompiledPhase2Test by tasks.registering(Test::class) {
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
     dependsOn(generateOfficialCompiledCases)
+    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
 
@@ -425,20 +415,48 @@ val officialCompiledPhase3Test by tasks.registering(Test::class) {
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
     dependsOn(generateOfficialCompiledCases)
+    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
 
-// Keep schema publication gated by the official conformance suite.
-project(":sjf4j-schema").tasks.withType<PublishToMavenRepository>().configureEach {
-    dependsOn(officialLatestTest)
+// Normal build/check: use the suite already cached on disk, never access GitHub.
+// First checkout with no cached suite simply SKIPs these tasks. The release gate
+// below always refreshes, so no publication can silently omit the official suite.
+tasks.named("check") {
+    dependsOn(officialRuntimeTest, officialCompiledTest)
 }
-project(":sjf4j-schema").tasks.withType<PublishToMavenLocal>().configureEach {
-    dependsOn(officialLatestTest)
-}
-project(":sjf4j-schema").tasks.matching { it.name == "publish" || it.name == "publishToMavenLocal" }
-    .configureEach {
-        dependsOn(officialLatestTest)
+
+// Release gate covers runtime and full compiled Draft 2020-12 official cases.
+// The refresh task resolves upstream main afresh even if a pinned -P ref was used
+// for a previous local run. Both test tasks run after the refresh.
+val officialPublishGate by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Refreshes upstream main and runs all required official runtime and compiled tests before publishing."
+    dependsOn(refreshOfficialSchemaTests, officialRuntimeTest, officialCompiledTest)
+    doLast {
+        check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
     }
+}
+officialCompiledTest.configure { mustRunAfter(refreshOfficialSchemaTests) }
+
+// Protect every published artifact, not just :sjf4j-schema. Hook both artifact
+// upload tasks and publication lifecycle tasks (including Maven Central plugin).
+rootProject.subprojects.forEach { published ->
+    published.plugins.withId("com.vanniktech.maven.publish") {
+        published.tasks.withType<PublishToMavenRepository>().configureEach {
+            dependsOn(officialPublishGate)
+        }
+        published.tasks.withType<PublishToMavenLocal>().configureEach {
+            dependsOn(officialPublishGate)
+        }
+        published.tasks.matching {
+            it.name == "publish" || it.name == "publishToMavenLocal" ||
+                it.name == "publishToMavenCentral" || it.name.startsWith("publishAllPublicationsTo")
+        }.configureEach {
+            dependsOn(officialPublishGate)
+        }
+    }
+}
 
 tasks.named("build") {
     dependsOn(tasks.named("jmhJar"))
@@ -450,12 +468,12 @@ val coverageProjects = listOf(":sjf4j-core", ":sjf4j-schema")
 evaluationDependsOn(":sjf4j-schema")
 val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
-    layout.buildDirectory.file("jacoco/officialLatestTest.exec") +
+    layout.buildDirectory.file("jacoco/officialRuntimeTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
 tasks.jacocoTestReport {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialLatestTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
     executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
@@ -464,7 +482,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialLatestTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
     executionData(coverageExecFiles)
     violationRules {
         rule {
