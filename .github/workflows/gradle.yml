@@ -43,6 +43,32 @@ jobs:
     - name: Run tests with coverage
       run: ./gradlew :sjf4j-processor:test :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification
 
+    - name: Probe direct official compiled schemas
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledProbeDirect=true
+
+    - name: Report direct-compile gaps
+      if: ${{ always() }}
+      run: |
+        python3 - <<'PY'
+        import json
+        from pathlib import Path
+        path = Path("sjf4j-testbench/build/reports/officialCompiled/all/groups.json")
+        if not path.exists():
+            print("Direct-probe groups.json not found")
+            raise SystemExit(0)
+        groups = json.loads(path.read_text())
+        fallback = [g for g in groups if g.get("mode") == "FALLBACK"]
+        blocked = [g for g in groups if g.get("mode") == "COMPILE_ERROR"]
+        direct = [g for g in groups if g.get("mode") == "DIRECT"]
+        print(f"Direct: {len(direct)} | fallback needed: {len(fallback)} | blocked: {len(blocked)}")
+        print("FALLBACK_GROUPS_BEGIN")
+        for g in fallback:
+            print(f"{g['file']}#{g['group']}")
+        print("FALLBACK_GROUPS_END")
+        for g in blocked:
+            print(f"COMPILE_BLOCKED {g['file']}#{g['group']}: {g.get('directDiagnostic', '')}")
+        PY
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
