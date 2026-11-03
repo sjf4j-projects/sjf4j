@@ -63,7 +63,8 @@ class CompiledValidatorTypedFormatTest {
         for (boolean strict : new boolean[]{false, true}) {
             assertEquals(uuid.isValid(value, strict), compiled.uuid(value, strict));
             assertEquals(length.isValid(value, strict), compiled.uuidLength(value, strict));
-            assertTrue(compiled.uuid(null, strict)); // Existing compiled root-null convention.
+            assertFalse(compiled.uuid(null, strict));
+            assertEquals(uuid.isValid(null, strict), compiled.uuid(null, strict));
             for (URI candidate : new URI[]{
                     URI.create("https://example.org/path"),
                     URI.create("../relative"),
@@ -73,7 +74,10 @@ class CompiledValidatorTypedFormatTest {
                 assertEquals(uri.isValid(candidate, strict), compiled.uri(candidate, strict), candidate.toString());
                 assertEquals(ref.isValid(candidate, strict), compiled.reference(candidate, strict), candidate.toString());
             }
-            assertTrue(compiled.uri(null, strict));
+            assertFalse(compiled.uri(null, strict));
+            assertEquals(uri.isValid(null, strict), compiled.uri(null, strict));
+            assertEquals(ref.isValid(null, strict), compiled.reference(null, strict));
+            assertEquals(length.isValid(null, strict), compiled.uuidLength(null, strict));
         }
         assertTrue(compiled.uuid(value, true));
         assertFalse(compiled.uuidLength(value, true));
