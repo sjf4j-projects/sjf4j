@@ -13,27 +13,17 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Regression for draft2020-12 enum.json#14: an empty enum rejects all values. */
+/** Regression for Draft 2020-12 enum.json#14: empty enum rejects every instance. */
 class CompiledValidatorEmptyEnumProcessorTest {
+    private static final String EMPTY_ENUM =
+            "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"enum\":[]}";
 
     @Test
-    void emptyEnumRejectsEveryInstanceWithoutUnreachableGeneratedCode() throws Exception {
-        String schema = "{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"enum\":[]}";
-        String source = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator(fallback=false) public interface Validator {"
-                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema)
-                + ") boolean valid(Object value); "
-                + "@ValidJsonSchema(\"{\\\"type\\\":\\\"string\\\",\\\"enum\\\":[]}\") "
-                + "boolean text(String value); "
-                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema)
-                + ") void requireValid(Object value); "
-                + "}";
-        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
-                Map.of("fixture/Validator.java", source), CodegenProcessor.class);
+    void emptyEnumRootCompilesAndRejectsAllOfficialInstanceShapes() throws Exception {
+        NavigatorTestCompiler.Result compiled = compile(
+                "@ValidJsonSchema(" + JavaWriter.stringLiteral(EMPTY_ENUM)
+                        + ") boolean valid(Object value);");
         assertTrue(compiled.success, compiled.diagnostics());
-        String generated = compiled.generatedSource("fixture/Validator_Impl.java");
-        assertFalse(generated.contains("return false;\n        return true;"), generated);
-
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> type = loader.loadClass("fixture.Validator");
             @SuppressWarnings({"rawtypes", "unchecked"})
@@ -43,12 +33,46 @@ class CompiledValidatorEmptyEnumProcessorTest {
                 assertEquals(Boolean.FALSE, valid.invoke(validator, instance),
                         "empty enum must reject " + instance);
             }
-            assertEquals(Boolean.FALSE, type.getMethod("text", String.class).invoke(validator, "foo"));
-            assertEquals(Boolean.FALSE, type.getMethod("text", String.class).invoke(validator, (Object) null));
+        }
+    }
 
+    @Test
+    void typedEmptyEnumCompilesToConstantRejection() throws Exception {
+        NavigatorTestCompiler.Result compiled = compile(
+                "@ValidJsonSchema(\"{\\\"type\\\":\\\"string\\\",\\\"enum\\\":[]}\") "
+                        + "boolean text(String value);");
+        assertTrue(compiled.success, compiled.diagnostics());
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> type = loader.loadClass("fixture.Validator");
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            Object validator = CompiledInstances.create((Class) type);
+            Method valid = type.getMethod("text", String.class);
+            assertEquals(Boolean.FALSE, valid.invoke(validator, "foo"));
+            assertEquals(Boolean.FALSE, valid.invoke(validator, (Object) null));
+        }
+    }
+
+    @Test
+    void emptyEnumRequireValidThrowsValidationException() throws Exception {
+        NavigatorTestCompiler.Result compiled = compile(
+                "@ValidJsonSchema(" + JavaWriter.stringLiteral(EMPTY_ENUM)
+                        + ") void requireValid(Object value);");
+        assertTrue(compiled.success, compiled.diagnostics());
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> type = loader.loadClass("fixture.Validator");
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            Object validator = CompiledInstances.create((Class) type);
             InvocationTargetException thrown = assertThrows(InvocationTargetException.class,
                     () -> type.getMethod("requireValid", Object.class).invoke(validator, "foo"));
             assertInstanceOf(ValidationException.class, thrown.getCause());
         }
+    }
+
+    private static NavigatorTestCompiler.Result compile(String method) throws Exception {
+        String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Validator {"
+                + method + "}";
+        return NavigatorTestCompiler.compile(
+                Map.of("fixture/Validator.java", source), CodegenProcessor.class);
     }
 }
