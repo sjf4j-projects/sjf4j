@@ -41,6 +41,7 @@ final class OfficialCaseRunner implements AutoCloseable {
     private final Path workRoot;
     private final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     private final Map<String, Outcome> outcomes = new LinkedHashMap<>();
+    private final Map<String, String> directFailures = new LinkedHashMap<>();
     private final List<URLClassLoader> classLoaders = new ArrayList<>();
     private int batchSerial;
 
@@ -75,10 +76,12 @@ final class OfficialCaseRunner implements AutoCloseable {
     private static final class Outcome {
         final Invoker invoker;
         final String error;
+        final String mode;
 
-        Outcome(Invoker invoker, String error) {
+        Outcome(Invoker invoker, String error, String mode) {
             this.invoker = invoker;
             this.error = error;
+            this.mode = mode;
         }
     }
 
@@ -105,7 +108,7 @@ final class OfficialCaseRunner implements AutoCloseable {
         return cases;
     }
 
-    void compileAll(List<Spec> specs) throws IOException {
+    void compileAll(List<Spec> specs, boolean probeDirect) throws IOException {
         // A previous run may have written partially generated classes/sources.
         // Never allow stale output to make a failed batch appear compilable.
         if (Files.exists(workRoot)) {
@@ -118,7 +121,7 @@ final class OfficialCaseRunner implements AutoCloseable {
         Files.createDirectories(workRoot);
         if (compiler == null) {
             for (Spec spec : specs) {
-                outcomes.put(spec.key(), new Outcome(null, "JDK compiler unavailable: run with a JDK"));
+                outcomes.put(spec.key(), new Outcome(null, "JDK compiler unavailable: run with a JDK", "COMPILE_ERROR"));
             }
             return;
         }
@@ -126,8 +129,27 @@ final class OfficialCaseRunner implements AutoCloseable {
         for (Spec spec : specs) {
             byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
         }
+        if (probeDirect) {
+            Map<String, Outcome> direct = new LinkedHashMap<>();
+            for (List<Spec> batch : byFile.values()) {
+                compileBatch(batch, true, direct);
+            }
+            byFile.clear();
+            for (Spec spec : specs) {
+                Outcome probe = direct.get(spec.key());
+                if (probe == null) {
+                    throw new IllegalStateException("Missing direct compilation result: " + spec.key());
+                }
+                if (probe.invoker != null) {
+                    outcomes.put(spec.key(), probe);
+                } else {
+                    directFailures.put(spec.key(), probe.error);
+                    byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
+                }
+            }
+        }
         for (List<Spec> batch : byFile.values()) {
-            compileBatch(batch);
+            compileBatch(batch, false, outcomes);
         }
         if (outcomes.size() != specs.size()) {
             throw new IllegalStateException("Compiled case accounting mismatch: "
@@ -141,6 +163,16 @@ final class OfficialCaseRunner implements AutoCloseable {
         return outcome.error;
     }
 
+    String compilationMode(Spec spec) {
+        Outcome result = outcomes.get(spec.key());
+        if (result == null) throw new IllegalStateException("Unknown case " + spec.key());
+        return result.mode;
+    }
+
+    String directCompilationError(Spec spec) {
+        return directFailures.get(spec.key());
+    }
+
     boolean validate(Spec spec, Object data) throws Exception {
         Outcome outcome = outcomes.get(spec.key());
         if (outcome == null || outcome.invoker == null) {
@@ -149,7 +181,8 @@ final class OfficialCaseRunner implements AutoCloseable {
         return outcome.invoker.validate(data);
     }
 
-    private void compileBatch(List<Spec> batch) throws IOException {
+    private void compileBatch(List<Spec> batch, boolean direct,
+                              Map<String, Outcome> destination) throws IOException {
         if (batch.isEmpty()) return;
         Path dir = workRoot.resolve(String.format(Locale.ROOT, "batch-%05d", ++batchSerial));
         Path classes = dir.resolve("classes");
@@ -164,7 +197,7 @@ final class OfficialCaseRunner implements AutoCloseable {
             for (Spec spec : batch) {
                 sources.add(generatedRoot.resolve("java")
                         .resolve(PACKAGE.replace('.', '/'))
-                        .resolve(spec.className + ".java").toFile());
+                        .resolve(spec.className + (direct ? "Direct" : "") + ".java").toFile());
             }
             String classpath = System.getProperty("sjf4j.schema.officialCompilerClasspath",
                     System.getProperty("java.class.path"));
@@ -181,16 +214,16 @@ final class OfficialCaseRunner implements AutoCloseable {
         } catch (RuntimeException | LinkageError e) {
             // Processor exceptions are also isolated, not allowed to abort the whole suite.
             if (batch.size() > 1) {
-                split(batch);
+                split(batch, direct, destination);
                 return;
             }
-            outcomes.put(batch.get(0).key(), new Outcome(null, e.toString()));
+            destination.put(batch.get(0).key(), new Outcome(null, e.toString(), "COMPILE_ERROR"));
             return;
         }
 
         if (!compiled) {
             if (batch.size() > 1) {
-                split(batch);
+                split(batch, direct, destination);
                 return;
             }
             StringBuilder error = new StringBuilder();
@@ -200,8 +233,9 @@ final class OfficialCaseRunner implements AutoCloseable {
                 error.append(d.getMessage(Locale.ROOT));
                 if (error.length() > 3000) break;
             }
-            outcomes.put(batch.get(0).key(), new Outcome(null,
-                    error.length() == 0 ? "javac failed without error diagnostics" : error.toString()));
+            destination.put(batch.get(0).key(), new Outcome(null,
+                    error.length() == 0 ? "javac failed without error diagnostics" : error.toString(),
+                    "COMPILE_ERROR"));
             return;
         }
 
@@ -211,11 +245,12 @@ final class OfficialCaseRunner implements AutoCloseable {
         classLoaders.add(loader);
         for (Spec spec : batch) {
             try {
-                Class<?> type = Class.forName(PACKAGE + "." + spec.className, true, loader);
+                Class<?> type = Class.forName(PACKAGE + "." + spec.className
+                        + (direct ? "Direct" : ""), true, loader);
                 @SuppressWarnings({"rawtypes", "unchecked"})
                 Object validator = CompiledInstances.create((Class) type);
                 Method method = type.getMethod("valid", Object.class);
-                outcomes.put(spec.key(), new Outcome(value -> {
+                destination.put(spec.key(), new Outcome(value -> {
                     try {
                         return (Boolean) method.invoke(validator, value);
                     } catch (InvocationTargetException e) {
@@ -224,17 +259,19 @@ final class OfficialCaseRunner implements AutoCloseable {
                         if (cause instanceof Exception) throw (Exception) cause;
                         throw new IllegalStateException(cause);
                     }
-                }, null));
+                }, null, direct ? "DIRECT" : "FALLBACK"));
             } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
-                outcomes.put(spec.key(), new Outcome(null, "Generated validator load failed: " + e));
+                destination.put(spec.key(), new Outcome(null,
+                        "Generated validator load failed: " + e, "COMPILE_ERROR"));
             }
         }
     }
 
-    private void split(List<Spec> batch) throws IOException {
+    private void split(List<Spec> batch, boolean direct,
+                       Map<String, Outcome> destination) throws IOException {
         int midpoint = batch.size() / 2;
-        compileBatch(batch.subList(0, midpoint));
-        compileBatch(batch.subList(midpoint, batch.size()));
+        compileBatch(batch.subList(0, midpoint), direct, destination);
+        compileBatch(batch.subList(midpoint, batch.size()), direct, destination);
     }
 
     @Override
