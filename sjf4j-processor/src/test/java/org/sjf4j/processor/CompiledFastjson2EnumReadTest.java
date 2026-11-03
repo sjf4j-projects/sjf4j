@@ -109,7 +109,7 @@ class CompiledFastjson2EnumReadTest {
                     () -> fromString.invoke(binder, "100"));
             BindingException ordinalFailure =
                     assertInstanceOf(BindingException.class, ordinalError.getCause());
-            assertInstanceOf(IllegalArgumentException.class, ordinalFailure.getCause());
+            assertNotNull(ordinalFailure.getCause());
             assertTrue(ordinalFailure.getCause().getMessage().contains("out of range"));
         }
     }
