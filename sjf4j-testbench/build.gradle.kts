@@ -107,7 +107,8 @@ tasks.named<JavaCompile>("compileJmhJava") {
 
 tasks.test {
     useJUnitPlatform()
-    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class")
+    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class",
+        "**/OfficialCompiledSmokeTest.class")
     jvmArgs(
         "-Xshare:off"
     )
@@ -285,6 +286,21 @@ val generateOfficialCompiledCases by tasks.registering {
                 files.size + " files, " + groupCount + " schema groups, " + testCount + " assertions"
         )
     }
+}
+
+val officialCompiledSmokeTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs the 19 original hand-selected official CompiledValidator smoke groups."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    include("**/OfficialCompiledSmokeTest.class")
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    jvmArgs("-Xshare:off")
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    dependsOn(downloadOfficialSchemaTests)
+    shouldRunAfter(tasks.test)
 }
 
 val officialCompiledTest by tasks.registering(Test::class) {
