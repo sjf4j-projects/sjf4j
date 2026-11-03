@@ -86,6 +86,12 @@ public final class OfficialCompiledTest {
         if (instance.mainGroup < -1 || instance.mainCase < -1) {
             throw new IllegalArgumentException("Group and test indexes must be nonnegative");
         }
+        if (instance.mainGroup >= 0 && instance.mainFile == null) {
+            throw new IllegalArgumentException("Specify file.json before groupIndex");
+        }
+        if (instance.mainCase >= 0 && instance.mainGroup < 0) {
+            throw new IllegalArgumentException("Specify groupIndex before testIndex");
+        }
 
         int[] counts = new int[2]; // executed, failed
         try {
@@ -295,7 +301,8 @@ public final class OfficialCompiledTest {
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
         runner = new OfficialCaseRunner(generated,
                 moduleBuild.resolve("officialCompiled/compile").resolve(selection));
-        runner.compileAll(specs, Boolean.parseBoolean(System.getProperty(PROBE_DIRECT, "false")));
+        runner.compileAll(specs, Boolean.parseBoolean(
+                System.getProperty(PROBE_DIRECT, mainCategory == null ? "false" : "true")));
         return fileNodes.stream();
     }
 
