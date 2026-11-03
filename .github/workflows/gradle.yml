@@ -46,26 +46,6 @@ jobs:
     - name: Verify official compiled direct coverage and fallback allowlist
       run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledProbeDirect=true
 
-    - name: Diagnose official conformance errors
-      if: ${{ failure() }}
-      run: |
-        python3 - <<'PY'
-        from pathlib import Path
-        import xml.etree.ElementTree as ET
-        paths = list(Path("sjf4j-testbench/build/test-results").rglob("TEST-*.xml"))
-        print("JUnit result XML files:", len(paths))
-        printed = 0
-        for path in paths:
-            for case in ET.parse(path).getroot().iter("testcase"):
-                failure = case.find("failure")
-                if failure is None: continue
-                print("FAILED", path.name, case.attrib.get("name"))
-                print("DETAILS", (failure.text or failure.attrib.get("message", ""))[:12000])
-                printed += 1
-                if printed >= 2: break
-            if printed >= 2: break
-        PY
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
