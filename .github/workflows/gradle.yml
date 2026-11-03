@@ -46,26 +46,6 @@ jobs:
     - name: Verify official compiled direct coverage and fallback allowlist
       run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledProbeDirect=true
 
-    - name: Diagnose official compiled failures
-      if: ${{ failure() }}
-      run: |
-        python3 - <<'PY'
-        from pathlib import Path
-        import xml.etree.ElementTree as ET
-        for path in Path("sjf4j-testbench/build/test-results/officialCompiledTest").glob("TEST-*.xml"):
-            seen = set()
-            for case in ET.parse(path).getroot().iter("testcase"):
-                fail = case.find("failure")
-                if fail is None: continue
-                label = case.attrib.get("name", "")
-                family = label.split(" > group")[0]
-                if family in seen: continue
-                seen.add(family)
-                print("FAILED", label)
-                print((fail.text or fail.attrib.get("message",""))[:4500])
-                if len(seen) >= 5: break
-        PY
-
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
