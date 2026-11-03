@@ -46,7 +46,7 @@ public final class OfficialCompiledTest {
     private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
 
     /**
-     * Explicitly reviewed exceptions for official schema groups that cannot yet
+     * Explicit exceptions for official schema groups that cannot yet
      * compile with fallback=false. New groups are always direct by default.
      *
      * <p>Add an entry only after checking the direct javac diagnostic and
