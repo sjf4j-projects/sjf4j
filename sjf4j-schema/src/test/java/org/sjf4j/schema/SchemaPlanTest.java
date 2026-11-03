@@ -35,6 +35,31 @@ class SchemaPlanTest {
     }
 
     @Test
+    void booleanResourcesCanBeIndexedResolvedAndReferencedByUri() {
+        URI falseUri = URI.create("https://example.test/schemas/false.json");
+        URI trueUri = URI.create("https://example.test/schemas/true.json");
+        URI wrapperUri = URI.create("https://example.test/schemas/wrapper.json");
+        SchemaRegistry registry = new SchemaRegistry();
+
+        registry.index(falseUri, BooleanSchema.FALSE);
+        SchemaPlan falsePlan = registry.resolve(falseUri);
+        assertFalse(falsePlan.isValid("anything"));
+        assertFalse(falsePlan.validate("anything").isValid());
+        assertEquals(falseUri, falsePlan.schemaUri);
+
+        SchemaPlan truePlan = registry.register(trueUri, BooleanSchema.TRUE);
+        assertTrue(truePlan.isValid("anything"));
+        assertEquals(truePlan, registry.resolve(trueUri));
+
+        registry.index(wrapperUri, JsonSchema.fromJson("{\\"$ref\\":\\"false.json\\"}"));
+        assertFalse(registry.resolve(wrapperUri).isValid("anything"));
+
+        registry.indexIfAbsent(falseUri, BooleanSchema.TRUE);
+        assertFalse(registry.resolve(falseUri).isValid("anything"));
+        assertThrows(SchemaException.class, () -> registry.index(falseUri, BooleanSchema.TRUE));
+    }
+
+    @Test
     void planStrictFormatDefaultCanBeOverriddenDirectly() {
         SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
 
