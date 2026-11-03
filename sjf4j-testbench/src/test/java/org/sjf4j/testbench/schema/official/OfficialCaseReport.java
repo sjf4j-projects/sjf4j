@@ -36,11 +36,14 @@ final class OfficialCaseReport {
     private final int expectedFiles;
     private final int expectedGroups;
     private final int expectedTests;
+    private final Map<String, Integer> selectedTestCounts;
 
-    OfficialCaseReport(String selection, List<OfficialCaseRunner.Spec> specs, int expectedTests) {
+    OfficialCaseReport(String selection, List<OfficialCaseRunner.Spec> specs, int expectedTests,
+                       Map<String, Integer> selectedTestCounts) {
         this.selection = selection;
         this.expectedTests = expectedTests;
         this.expectedGroups = specs.size();
+        this.selectedTestCounts = new LinkedHashMap<>(selectedTestCounts);
         Set<String> files = new LinkedHashSet<>();
         int total = 0;
         for (OfficialCaseRunner.Spec spec : specs) {
@@ -48,9 +51,14 @@ final class OfficialCaseReport {
             String category = OfficialCaseCategory.category(spec.file).name();
             CategoryStats c = categories.computeIfAbsent(category, ignored -> new CategoryStats());
             c.files.add(spec.file);
+            int count = this.selectedTestCounts.getOrDefault(spec.key(), 0);
+            if (count < 1 || count > spec.tests) {
+                throw new IllegalArgumentException("Invalid selected test count for " + spec.key()
+                        + ": " + count);
+            }
             c.groups++;
-            c.expectedTests += spec.tests;
-            total += spec.tests;
+            c.expectedTests += count;
+            total += count;
         }
         if (total != expectedTests) {
             throw new IllegalArgumentException("Manifest count mismatch: "
@@ -89,7 +97,7 @@ final class OfficialCaseReport {
             group.put("group", spec.group);
             group.put("description", groupDescription);
             group.put("mode", mode);
-            group.put("tests", spec.tests);
+            group.put("tests", selectedTestCounts.get(spec.key()));
             group.put("passed", 0);
             group.put("failed", 0);
             group.put("compileErrors", 0);
