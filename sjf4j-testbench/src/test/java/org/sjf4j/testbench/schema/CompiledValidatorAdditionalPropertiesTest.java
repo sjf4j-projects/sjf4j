@@ -3,9 +3,11 @@ package org.sjf4j.testbench.schema;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,6 +40,17 @@ public class CompiledValidatorAdditionalPropertiesTest {
         @ValidJsonSchema("{\"properties\":{\"label\":{}},"
                 + "\"additionalProperties\":{\"type\":\"boolean\"}}")
         boolean pojo(Bean value);
+
+        @ValidJsonSchema("{\"additionalProperties\":{\"type\":\"number\",\"minimum\":1000}}")
+        boolean codecAdditional(CodecBean value);
+
+        @ValidJsonSchema("{\"patternProperties\":{\"^mil\":{\"type\":\"number\",\"minimum\":1000}}}")
+        boolean codecPattern(CodecBean value);
+    }
+
+    public static final class CodecBean {
+        @NodeProperty(valueFormat = "epochMillis")
+        public Instant millis = Instant.ofEpochMilli(2_000);
     }
 
     public static final class Bean {
@@ -76,6 +89,20 @@ public class CompiledValidatorAdditionalPropertiesTest {
 
         assertFalse(check.noCoverageFromAllOf(Map.of("foo", 1, "bar", true)));
         assertTrue(check.noCoverageFromAllOf(Map.of("foo", true, "bar", true)));
+    }
+
+    @Test
+    void dynamicPropertyChecksRespectPojoValueFormats() {
+        Checks check = CompiledInstances.create(Checks.class);
+        CodecBean value = new CodecBean();
+        assertTrue(check.codecAdditional(value));
+        assertTrue(check.codecPattern(value));
+        value.millis = Instant.ofEpochMilli(100);
+        assertFalse(check.codecAdditional(value));
+        assertFalse(check.codecPattern(value));
+        value.millis = null;
+        assertTrue(check.codecAdditional(value)); // null does not match number.
+        assertTrue(check.codecPattern(value));
     }
 
     @Test
