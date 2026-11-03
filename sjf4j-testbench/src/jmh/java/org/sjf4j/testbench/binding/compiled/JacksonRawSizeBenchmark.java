@@ -87,6 +87,13 @@ public class JacksonRawSizeBenchmark {
         verify(list, JACKSON3_COMPILED.list(arrayUtf8));
         verify(list, JACKSON3_RUNTIME.readNode(arrayJson, List.class));
         verify(list, JACKSON3_RUNTIME.readNode(arrayUtf8, List.class));
+
+        // Exercise the actual untyped Object.class path, which goes through
+        // Jackson3Parser.readRaw() rather than the Map/List target entry points.
+        verify(JACKSON3_NATIVE.readValue(objectUtf8, Object.class),
+                JACKSON3_RUNTIME.readNode(objectUtf8, Object.class));
+        verify(JACKSON3_NATIVE.readValue(arrayUtf8, Object.class),
+                JACKSON3_RUNTIME.readNode(arrayUtf8, Object.class));
     }
 
     private static void verify(Object expected, Object actual) {
@@ -122,6 +129,11 @@ public class JacksonRawSizeBenchmark {
     @Benchmark public Object jackson3_list_utf8_native() throws Exception { return JACKSON3_NATIVE.readValue(arrayUtf8, List.class); }
     @Benchmark public Object jackson3_list_utf8_compiled() throws IOException { return JACKSON3_COMPILED.list(arrayUtf8); }
     @Benchmark public Object jackson3_list_utf8_runtime() { return JACKSON3_RUNTIME.readNode(arrayUtf8, List.class); }
+
+    @Benchmark public Object jackson3_raw_object_utf8_native() throws Exception { return JACKSON3_NATIVE.readValue(objectUtf8, Object.class); }
+    @Benchmark public Object jackson3_raw_object_utf8_runtime() { return JACKSON3_RUNTIME.readNode(objectUtf8, Object.class); }
+    @Benchmark public Object jackson3_raw_array_utf8_native() throws Exception { return JACKSON3_NATIVE.readValue(arrayUtf8, Object.class); }
+    @Benchmark public Object jackson3_raw_array_utf8_runtime() { return JACKSON3_RUNTIME.readNode(arrayUtf8, Object.class); }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Compiled {
