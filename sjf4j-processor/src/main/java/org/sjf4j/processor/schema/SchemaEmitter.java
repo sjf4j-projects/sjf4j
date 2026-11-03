@@ -769,6 +769,44 @@ final class SchemaEmitter {
             lines.add("if (org.sjf4j.schema.CompiledUtil.hasDuplicateItems(" + subject
                     + ")) " + fail(onFailure, check.uniqueItemsDiagnostic));
         }
+        // contains probes each item independently and counts matches. Failed
+        // child probes are not assertion errors: only the aggregate contains /
+        // minContains / maxContains constraint can fail at the array location.
+        // This loop is independent of positional items/prefixItems evaluation.
+        if (check.contains != null) {
+            String matches = locals.newName("matches");
+            lines.add("int " + matches + " = 0;");
+            if (check.contains.kind == SchemaCheck.Kind.PASS) {
+                lines.add(matches + " = " + size + ";");
+            } else if (check.contains.kind != SchemaCheck.Kind.REJECT) {
+                String candidate = locals.newName("candidate");
+                TypeMirror candidateType = value.itemType();
+                String test = branchPredicate(plan, check.contains, check.itemValue,
+                        candidate, strictFormat);
+                if (knownCollection || knownArray) {
+                    String javaType = candidateType == null
+                            || candidateType.getKind() == TypeKind.WILDCARD
+                            ? "Object" : candidateType.toString();
+                    lines.add("for (" + javaType + " " + candidate + " : " + subject + ") {");
+                    lines.add("    if (" + test + ") " + matches + "++;");
+                    lines.add("}");
+                } else {
+                    String iterator = locals.newName("containsIterator");
+                    lines.add("java.util.Iterator<Object> " + iterator
+                            + " = org.sjf4j.Nodes.iteratorInArray(" + subject + ");");
+                    lines.add("while (" + iterator + ".hasNext()) {");
+                    lines.add("    Object " + candidate + " = " + iterator + ".next();");
+                    lines.add("    if (" + test + ") " + matches + "++;");
+                    lines.add("}");
+                }
+            }
+            lines.add("if (" + matches + " < " + check.minContains + ") "
+                    + fail(onFailure, check.minContainsDiagnostic));
+            if (check.maxContains != null) {
+                lines.add("if (" + matches + " > " + check.maxContains + ") "
+                        + fail(onFailure, check.maxContainsDiagnostic));
+            }
+        }
         // prefixItems constrains only its declared indices; items applies to
         // the remaining indices in this *same* schema, not sibling applicators.
         boolean hasPrefixChecks = false;
