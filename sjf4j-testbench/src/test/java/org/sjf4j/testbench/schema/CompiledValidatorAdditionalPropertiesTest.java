@@ -101,8 +101,8 @@ public class CompiledValidatorAdditionalPropertiesTest {
         assertFalse(check.codecAdditional(value));
         assertFalse(check.codecPattern(value));
         value.millis = null;
-        assertTrue(check.codecAdditional(value)); // null does not match number.
-        assertTrue(check.codecPattern(value));
+        assertFalse(check.codecAdditional(value)); // explicit type:number rejects null.
+        assertFalse(check.codecPattern(value));
     }
 
     @Test
