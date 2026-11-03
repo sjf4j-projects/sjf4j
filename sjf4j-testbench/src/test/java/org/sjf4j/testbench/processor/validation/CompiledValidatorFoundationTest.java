@@ -135,7 +135,8 @@ class CompiledValidatorFoundationTest {
         assertEquals(runtime.isValid(good, true), compiled.test(good));
         assertEquals(runtime.isValid(shortName, true), compiled.test(shortName));
         assertEquals(runtime.isValid(badLevel, true), compiled.test(badLevel));
-        assertTrue(compiled.test(null));
+        assertFalse(compiled.test(null));
+        assertEquals(runtime.isValid(null, true), compiled.test(null));
     }
 
     private static final String FAST_SCHEMA = "{\"type\":\"object\",\"required\":[\"name\"],"
@@ -167,7 +168,7 @@ class CompiledValidatorFoundationTest {
         assertTrue(validator.valid(new DirectBean("Alice")));
         assertFalse(validator.valid(new DirectBean("x")));
         assertFalse(validator.valid(new DirectBean(null)));
-        assertTrue(validator.valid(null));
+        assertFalse(validator.valid(null));
     }
 
     public static final class DirectBean {
