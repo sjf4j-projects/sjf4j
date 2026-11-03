@@ -400,107 +400,54 @@ methods are direct, partially falling back, or wholly falling back. Those
 classifications and any production fixes are separate follow-up work.
 
 
-### Phase 2: basic, scalar and object official cases
+### Official compiled test selection
 
-The explicit file inventory separates the 46 mandatory root files into BASIC,
-SCALAR, OBJECT, ARRAY, APPLICATOR and REFERENCE. An upstream change that adds
-or removes a mandatory file fails discovery until the inventory is updated.
-The `optional/` tree is excluded from both enumeration and the test runner.
-
-```bash
-# Set the exact upstream fixture once (no ZIP download if already cached).
-./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
-# Then run locally without any network access.
-./gradlew :sjf4j-testbench:officialCompiledPhase2Test
-
-# To execute a smaller phase-2 wave, select one official-file cohort:
-./gradlew :sjf4j-testbench:officialCompiledPhase2Test -PofficialCompiledCategory=object
-# Other values: basic, scalar. Default: phase2 (all three).
-```
-
-For that pinned upstream revision, the Phase 2 target is **26 official files,
-138 schema groups, and 609 assertions** (75/370 BASIC, 18/64 SCALAR,
-45/175 OBJECT). These counts are asserted automatically when running with
-the pinned revision; other upstream revisions use manifest-derived counts.
-The generator continues to enumerate **all** mandatory files, but the
-phase-specific JUnit runner compiles and executes only the selected files.
-
-Two variants of each binding are generated:
-`@CompiledValidator(fallback=false)` and
-`@CompiledValidator(fallback=true)`. Phase 2 first attempts direct-only
-compilation in isolated javac batches. If direct compilation fails, only
-that schema group is retried with fallback allowed. A passing direct-only
-group is actually executed through the direct implementation, not a runtime
-plan, providing a real compiled-path correctness check.
-
-Outputs are written under `build/reports/officialCompiled/phase2/`:
-
-- `summary.json`: counts, compilation modes and outcome totals by category
-- `groups.json`: one row per schema group with direct-compile diagnostics
-- `gaps.json`: groups that require fallback, fail compilation or fail execution
-- `details.json`: one row per official assertion, including JSON null
-
-`DIRECT` means the `fallback=false` interface compiled successfully.
-`FALLBACK` means direct compilation failed but the `fallback=true`
-interface compiled. This does **not** distinguish partial from full fallback.
-`COMPILE_ERROR` means neither variant was loadable. The `all` task
-does not run the direct probe by default and reports `UNPROBED` instead
-of guessing direct support. Source changes to fix conformance bugs are
-deliberately outside this test-harness stage.
-
-
-### Phase 3: arrays, applicators and evaluated-location behavior
-
-Run the full mandatory Phase 3 cohort using a pinned official revision:
+Only **one Gradle test task** executes official compiled cases:
+`officialCompiledTest`. It runs every mandatory Draft 2020-12 case by default
+(the `optional/` subtree is excluded). Phase 2 and Phase 3 represent
+coverage categories in the **same** runner; they are not separate Gradle tasks.
 
 ```bash
+# Once per local checkout, or to select a known upstream revision:
 ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
-./gradlew :sjf4j-testbench:officialCompiledPhase3Test
+
+# Entire mandatory suite (default), offline using the cached revision:
+./gradlew :sjf4j-testbench:officialCompiledTest
+
+# Optional focused debugging with direct-only compilation probes:
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=phase2 -PofficialCompiledProbeDirect=true
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=phase3 -PofficialCompiledProbeDirect=true
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated -PofficialCompiledProbeDirect=true
 ```
 
-This executes **15 files, 169 schema groups and 525 official assertions**,
-excluding all `optional/` files. The fixed upstream revision is checked for
-the following exact group and assertion counts:
+At that pinned upstream revision, the mandatory files are classified as follows:
 
-| Select `-PofficialCompiledCategory` | Official files | Schema groups | Tests |
+| Category | Files | Schema groups | Assertions |
 | --- | ---: | ---: | ---: |
-| `phase3` (default) | 15 | 169 | 525 |
-| `array` | 9 | 73 | 251 |
-| `applicator` | 6 | 96 | 274 |
-| `unevaluated` | 2 | 73 | 200 |
+| `phase2` = basic + scalar + object | 26 | 138 | 609 |
+| `phase3` = array + applicator | 15 | 169 | 525 |
+| `unevaluated` (subset of phase3) | 2 | 73 | 200 |
+| `reference` | 5 | 77 | 164 |
+| **All mandatory files** | **46** | **384** | **1,298** |
 
-To run one wave only:
+Available category values: `all`, `phase2`, `phase3`, `basic`,
+`scalar`, `object`, `array`, `applicator`, `unevaluated`, `reference`.
+The default is `all`. A pinned upstream revision is checked against the
+known Phase 2/3 case counts; other revisions use manifest-derived counts
+and the complete mandatory file inventory check.
 
-```bash
-./gradlew :sjf4j-testbench:officialCompiledPhase3Test -PofficialCompiledCategory=unevaluated
-```
+The generated per-group interfaces still offer both
+`@CompiledValidator(fallback=false)` and `fallback=true`.
+Set `-PofficialCompiledProbeDirect=true` to try direct compilation first;
+unsupported groups are retried with fallback enabled and their direct
+diagnostics are retained. Without the probe, execution uses `fallback=true`
+and the report marks groups `UNPROBED`, not `DIRECT`.
 
-The array cohort includes `items`, `prefixItems`, `minItems`,
-`maxItems`, `uniqueItems`, `contains`, `minContains`,
-`maxContains` and `unevaluatedItems`. The applicator cohort includes
-`allOf`, `anyOf`, `oneOf`, `not`, `if-then-else` and
-`unevaluatedProperties`. Each official schema group is compiled with the
-production annotation processor and each example is executed unchanged,
-including `null`.
-
-The direct-only probe remains enabled in Phase 3. This is particularly useful
-for distinguishing directly emitted predicates from groups that require
-`SchemaPlan` for evaluated-location bookkeeping, without changing or
-silently excluding a failed official case. An unsupported `fallback=false`
-compilation does **not** fail the entire suite before its `fallback=true`
-variant is tested. A failure in both variants is recorded as
-`COMPILE_ERROR`, and an assertion mismatch is recorded as `FAIL`.
-
-Look at `sjf4j-testbench/build/reports/officialCompiled/phase3/` for
+Results are written to
+`sjf4j-testbench/build/reports/officialCompiled/<category>/`:
 `summary.json`, `groups.json`, `gaps.json`, and `details.json`.
-Sub-wave output uses its selection as the directory name (for example,
-`officialCompiled/unevaluated/`).
-
-The generated reports are diagnostic: a green runtime/fallback suite
-does **not** imply fully compiled support, and a direct compilation failure
-does **not** count as an implementation fix. Production bug fixes are
-deliberately deferred to a later stage.
-
+Individual official assertions, including JSON null, are always recorded.
+A green fallback run does not imply fully direct-compiled support.
 
 ### Suite cache, local build, publishing and IntelliJ main
 
