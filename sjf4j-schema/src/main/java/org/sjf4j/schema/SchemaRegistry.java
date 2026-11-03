@@ -4,6 +4,11 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -136,6 +141,42 @@ public class SchemaRegistry {
         if (retrievalUri != null && !SchemaUtil.normalizeUriKey(retrievalUri)
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
+        }
+    }
+
+    /**
+     * Recursively pre-registers all .json resources under a file-system directory.
+     * Uses SchemaLoader for parsing and the existing indexIfAbsent semantics,
+     * preserving previously indexed roots and canonical $id aliases.
+     * Plans remain lazy until resolve() is invoked.
+     *
+     * @param directory a file: URI or working-directory-relative directory URI ending in '/'
+     */
+    public void indexDir(URI directory) {
+        SchemaLoader.Local loader = new SchemaLoader.Local(directory);
+        URI base = loader.baseUri();
+        if (!"file".equalsIgnoreCase(base.getScheme())) {
+            throw new IllegalArgumentException("schema registry directory must use a file: URI: " + base);
+        }
+        Path root = Paths.get(base);
+        if (!Files.isDirectory(root)) {
+            throw new IllegalArgumentException("schema registry directory not found: " + root);
+        }
+        try (Stream<Path> paths = Files.walk(root)) {
+            paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .sorted()
+                    .forEach(path -> {
+                        URI uri = path.toUri();
+                        JsonSchema schema = loader.load(uri);
+                        if (schema == null) {
+                            throw new IllegalArgumentException("schema registry resource not found: " + uri);
+                        }
+                        indexIfAbsent(uri, schema);
+                    });
+        } catch (IOException e) {
+            throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+                    "failed to index schema registry directory", PathSegment.Root.INSTANCE, base), e);
         }
     }
 

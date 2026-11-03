@@ -4,8 +4,11 @@ import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
+import org.sjf4j.schema.SchemaRegistry;
 
 import javax.lang.model.element.TypeElement;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Generates implementations of {@code @CompiledValidator} interfaces.
@@ -17,6 +20,8 @@ import javax.lang.model.element.TypeElement;
 public final class SchemaGenerator {
 
     private final ProcessorContext context;
+    // One directory load per annotation-processing run, shared by interfaces.
+    private final Map<String, SchemaRegistry> registryCache = new LinkedHashMap<>();
 
     public SchemaGenerator(ProcessorContext context) {
         this.context = context;
@@ -36,7 +41,8 @@ public final class SchemaGenerator {
         CompiledValidator options = iface.getAnnotation(CompiledValidator.class);
         // A fresh method generator per interface preserves plan sharing within
         // that interface without leaking metadata across generated classes.
-        SchemaMethodGenerator methods = new SchemaMethodGenerator(context, generated);
+        SchemaMethodGenerator methods = new SchemaMethodGenerator(
+                context, generated, options.registryDir(), registryCache);
         for (ResolvedMethod method : context.methods.abstractMethods(iface)) {
             methods.generate(method, generated, options.fallback());
         }

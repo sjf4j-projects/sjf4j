@@ -258,6 +258,10 @@ val generateOfficialCompiledCases by tasks.registering {
         val packageName = "org.sjf4j.testbench.schema.official.generated"
         val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
         val resourceDir = output.resolve("resources/official")
+        // The official remotes are local files with canonical HTTP $id values.
+        // SchemaRegistry indexes those identities; neither javac nor fallback fetches HTTP.
+        val registryDir = JsonOutput.toJson(
+            officialSchemaSuiteDir.get().asFile.resolve("remotes").toURI().toString())
         javaDir.mkdirs()
         resourceDir.mkdirs()
 
@@ -300,7 +304,7 @@ val generateOfficialCompiledCases by tasks.registering {
                         "import org.sjf4j.annotation.schema.CompiledValidator;",
                         "import org.sjf4j.annotation.schema.ValidJsonSchema;",
                         "",
-                        "@CompiledValidator(fallback = $fallback)",
+                        "@CompiledValidator(fallback = $fallback, registryDir = $registryDir)",
                         "public interface $variant {",
                         "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
                         "    boolean valid(Object value);",

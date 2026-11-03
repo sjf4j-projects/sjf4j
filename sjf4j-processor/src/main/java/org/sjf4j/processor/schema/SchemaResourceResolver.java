@@ -53,9 +53,25 @@ final class SchemaResourceResolver {
     }
 
     private final ProcessorContext context;
+    private final String registryDir;
+    private final Map<String, SchemaRegistry> registryCache;
 
-    SchemaResourceResolver(ProcessorContext context) {
+    SchemaResourceResolver(ProcessorContext context, String registryDir,
+                           Map<String, SchemaRegistry> registryCache) {
         this.context = context;
+        this.registryDir = registryDir.trim();
+        this.registryCache = registryCache;
+    }
+
+    /** Pre-register every directory resource exactly once per processing run. */
+    private SchemaRegistry registry() {
+        SchemaRegistry cached = registryCache.get(registryDir);
+        if (cached == null) {
+            cached = new SchemaRegistry();
+            if (!registryDir.isEmpty()) cached.indexDir(URI.create(registryDir));
+            registryCache.put(registryDir, cached);
+        }
+        return SchemaRegistry.copyOf(cached);
     }
 
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName,
@@ -106,9 +122,9 @@ final class SchemaResourceResolver {
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri);
-        // Resolve the full graph now; unresolved refs and invalid keywords must
-        // fail annotation processing instead of being deferred until execution.
-        SchemaRegistry registry = new SchemaRegistry();
+        // Directory resources are indexed once, prior to root resolution.
+        // Each method gets a registry copy so roots cannot leak between methods.
+        SchemaRegistry registry = registry();
         for (int i = 0; i < snapshot.uris.length; i++) {
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
