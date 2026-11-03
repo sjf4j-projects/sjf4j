@@ -354,6 +354,34 @@ val officialCompiledPhase2Test by tasks.registering(Test::class) {
     shouldRunAfter(tasks.test)
 }
 
+/**
+ * Phase 3: mandatory Draft 2020-12 array and applicator/evaluation keywords.
+ *
+ * Use -PofficialCompiledCategory=array|applicator|unevaluated for an isolated
+ * wave; default is phase3 and includes both array and applicator files.
+ * The same direct-only / fallback-allowed probe is used as in phase 2.
+ */
+val officialCompiledPhase3Test by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs Draft 2020-12 array and applicator official cases, including evaluated-location tests."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath +
+        files(officialCompiledGeneratedDir.map { it.dir("resources") })
+    include("**/OfficialCompiledTest.class")
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
+    systemProperty("sjf4j.schema.officialCategory",
+        providers.gradleProperty("officialCompiledCategory").orElse("phase3").get())
+    systemProperty("sjf4j.schema.officialProbeDirect", "true")
+    jvmArgs("-Xshare:off")
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    dependsOn(generateOfficialCompiledCases)
+    shouldRunAfter(tasks.test)
+}
+
 // Keep schema publication gated by the official conformance suite.
 project(":sjf4j-schema").tasks.withType<PublishToMavenRepository>().configureEach {
     dependsOn(officialLatestTest)
