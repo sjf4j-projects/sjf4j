@@ -74,10 +74,11 @@ public final class OfficialCompiledTest {
 
         List<Path> jsonFiles;
         try (Stream<Path> entries = Files.list(officialDir)) {
-            jsonFiles = entries.filter(p -> p.getFileName().toString().endsWith(".json"))
+            jsonFiles = new ArrayList<>(entries
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
                     .filter(Files::isRegularFile)
                     .sorted(Comparator.comparing(p -> p.getFileName().toString()))
-                    .toList();
+                    .toList());
         }
         // Check the entire upstream inventory before filtering: unknown mandatory
         // official files must never silently disappear from a phase's coverage.
