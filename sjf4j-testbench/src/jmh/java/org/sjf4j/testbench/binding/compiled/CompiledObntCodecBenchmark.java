@@ -66,14 +66,14 @@ public class CompiledObntCodecBenchmark {
     public String backend;
 
     private Binder<?, ?> runtime;
-    private Read<CodecPojo> readCodec;
-    private Write<CodecPojo> writeCodec;
-    private Read<DynamicJojo> readJojo;
-    private Write<DynamicJojo> writeJojo;
-    private Read<JsonObject> readObject;
-    private Write<JsonObject> writeObject;
-    private Read<JsonArray> readArray;
-    private Write<JsonArray> writeArray;
+    private ReadOperation<CodecPojo> readCodec;
+    private WriteOperation<CodecPojo> writeCodec;
+    private ReadOperation<DynamicJojo> readJojo;
+    private WriteOperation<DynamicJojo> writeJojo;
+    private ReadOperation<JsonObject> readObject;
+    private WriteOperation<JsonObject> writeObject;
+    private ReadOperation<JsonArray> readArray;
+    private WriteOperation<JsonArray> writeArray;
 
     private CodecPojo codecValue;
     private DynamicJojo jojoValue;
@@ -81,12 +81,12 @@ public class CompiledObntCodecBenchmark {
     private JsonArray arrayValue;
 
     @FunctionalInterface
-    private interface Read<T> {
+    private interface ReadOperation<T> {
         T apply(String json) throws IOException;
     }
 
     @FunctionalInterface
-    private interface Write<T> {
+    private interface WriteOperation<T> {
         String apply(T value) throws IOException;
     }
 
