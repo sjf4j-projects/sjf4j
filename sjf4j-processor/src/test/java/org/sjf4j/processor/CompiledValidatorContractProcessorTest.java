@@ -116,7 +116,7 @@ class CompiledValidatorContractProcessorTest {
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
                                 "{\"type\":\"object\",\"required\":[\"name\"],"
-                                + "\"patternProperties\":{\"^x\":true}}") + ") "
+                                + "\"propertyNames\":{\"pattern\":\"^x\"}}") + ") "
                         + "boolean valid(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
@@ -145,7 +145,7 @@ class CompiledValidatorContractProcessorTest {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
-                                "{\"type\":\"object\",\"patternProperties\":{\"^x\":true}}") + ") "
+                                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^x\"}}") + ") "
                         + "void requireValid(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
@@ -175,7 +175,7 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void defaultFallbackRejectsUnsupportedChecks() throws Exception {
-        String schema = "{\"patternProperties\":{\"^x\":true}}";
+        String schema = "{\"propertyNames\":{\"pattern\":\"^x\"}}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
