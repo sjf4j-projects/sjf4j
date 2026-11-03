@@ -81,11 +81,11 @@ final class SchemaEmitter {
                         : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
                 String previousPath = instancePath;
                 instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
-                List<String> nameChecks = new ArrayList<String>();
-                emitValue(nameChecks, plan, check.propertyNamesCheck, check.elementValue,
-                        key, prefix + "PROPERTY_NAME", strictFormat, 0, onFailure);
+                String validName = branchPredicate(plan, check.propertyNamesCheck,
+                        check.elementValue, key, strictFormat);
+                statements.add("    if (!(" + validName + ")) "
+                        + fail(onFailure, check.propertyNamesDiagnostic));
                 instancePath = previousPath;
-                for (String statement : nameChecks) statements.add("    " + statement);
                 statements.add("}");
             }
             // Each dependentSchemas branch checks the containing object, not
