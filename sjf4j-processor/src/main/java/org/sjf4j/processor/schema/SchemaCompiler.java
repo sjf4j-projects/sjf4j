@@ -65,6 +65,15 @@ final class SchemaCompiler {
             return compileValue(snapshot, target.value, value, target.uri, depth + 1);
         }
         schemaUri = effectiveSchemaUri(schemaUri, schema);
+        // Empty and annotation-only schemas are always valid, regardless of value shape.
+        boolean assertionsOnly = false;
+        for (String key : schema.keySet()) {
+            if (!isAnnotation(key)) {
+                assertionsOnly = true;
+                break;
+            }
+        }
+        if (!assertionsOnly) return new SchemaCheck.Pass();
         if (schema.containsKey("oneOf") || schema.containsKey("allOf")
                 || schema.containsKey("anyOf") || schema.containsKey("not")
                 || schema.containsKey("if") || schema.containsKey("then")
