@@ -407,28 +407,37 @@ abstract class SchemaCheck {
     static final class ArrayCheck extends SchemaCheck {
         final Integer minItems;
         final Integer maxItems;
+        final List<SchemaCheck> prefixItems;
         final SchemaCheck items;
         final SchemaValue itemValue;
+        final boolean uniqueItems;
         final Diagnostic typeDiagnostic;
         final Diagnostic minItemsDiagnostic;
         final Diagnostic maxItemsDiagnostic;
+        final Diagnostic uniqueItemsDiagnostic;
 
-        ArrayCheck(Integer minItems, Integer maxItems, SchemaCheck items, SchemaValue itemValue,
+        ArrayCheck(Integer minItems, Integer maxItems, List<SchemaCheck> prefixItems,
+                   SchemaCheck items, SchemaValue itemValue, boolean uniqueItems,
                    Diagnostic typeDiagnostic, Diagnostic minItemsDiagnostic,
-                   Diagnostic maxItemsDiagnostic) {
+                   Diagnostic maxItemsDiagnostic, Diagnostic uniqueItemsDiagnostic) {
             super(Kind.ARRAY);
             this.minItems = minItems;
             this.maxItems = maxItems;
+            this.prefixItems = Collections.unmodifiableList(new ArrayList<SchemaCheck>(prefixItems));
             this.items = items;
             this.itemValue = itemValue;
+            this.uniqueItems = uniqueItems;
             this.typeDiagnostic = typeDiagnostic;
             this.minItemsDiagnostic = minItemsDiagnostic;
             this.maxItemsDiagnostic = maxItemsDiagnostic;
+            this.uniqueItemsDiagnostic = uniqueItemsDiagnostic;
         }
 
         @Override
         boolean hasFallback() {
-            return items != null && items.hasFallback();
+            if (items != null && items.hasFallback()) return true;
+            for (SchemaCheck prefix : prefixItems) if (prefix.hasFallback()) return true;
+            return false;
         }
     }
 }
