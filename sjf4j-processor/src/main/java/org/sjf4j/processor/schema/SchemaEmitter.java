@@ -248,7 +248,11 @@ final class SchemaEmitter {
                 // Logical @NodeValue instances remain leaves even if their
                 // serialized raw representation is a Map or List. Never unwrap
                 // them to traverse the raw encoding as an object.
-                boolean unknownShape = object.dynamic;
+                // Dynamic Nodes traversal does not imply an unknown JSON
+                // shape: a final POJO may still be a known object even when
+                // direct field access is unavailable.
+                boolean unknownShape = object.dynamic
+                        && value.shape != SchemaValue.Shape.OBJECT;
                 if (object.typeRequired) {
                     if (unknownShape) {
                         lines.add("if (org.sjf4j.JsonType.of(" + expression
