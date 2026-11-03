@@ -93,6 +93,14 @@ final class SchemaCompiler {
 
         for (String keyword : schema.keySet()) {
             if (isAnnotation(keyword)) continue;
+            // In the standard Draft 2020-12 Content vocabulary these keywords
+            // are annotations, not validation assertions. Never assume that
+            // semantic role for an unverified custom dialect/vocabulary.
+            if (keyword.equals("contentEncoding") || keyword.equals("contentMediaType")
+                    || keyword.equals("contentSchema")) {
+                if (!canCompileStandardDialect(snapshot)) return null;
+                continue;
+            }
             switch (keyword) {
                 case "type":
                     types.put(keyword, schema.getNode(keyword));
