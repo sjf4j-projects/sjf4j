@@ -74,6 +74,17 @@ final class SchemaCompiler {
             }
         }
         if (!hasAssertions) return new SchemaCheck.Pass();
+
+        // An empty enum rejects every JSON instance, irrespective of its type,
+        // other constraints or the statically known Java value shape.
+        // Compile it as a terminal Reject to avoid emitting an unconditional
+        // return false followed by the generated method's return true.
+        Object enumValue = schema.getNode("enum");
+        if (schema.containsKey("enum") && JsonType.of(enumValue) == JsonType.ARRAY
+                && Nodes.sizeInArray(enumValue) == 0) {
+            return new SchemaCheck.Reject(diagnostic(schemaUri, "enum"));
+        }
+
         if (schema.containsKey("oneOf") || schema.containsKey("allOf")
                 || schema.containsKey("anyOf") || schema.containsKey("not")
                 || schema.containsKey("if") || schema.containsKey("then")
