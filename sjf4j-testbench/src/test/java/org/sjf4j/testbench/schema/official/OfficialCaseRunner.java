@@ -44,6 +44,7 @@ final class OfficialCaseRunner implements AutoCloseable {
     private final Map<String, String> directFailures = new LinkedHashMap<>();
     private final List<URLClassLoader> classLoaders = new ArrayList<>();
     private int batchSerial;
+    private boolean probeEnabled;
 
     OfficialCaseRunner(Path generatedRoot, Path workRoot) {
         this.generatedRoot = generatedRoot;
@@ -109,6 +110,7 @@ final class OfficialCaseRunner implements AutoCloseable {
     }
 
     void compileAll(List<Spec> specs, boolean probeDirect) throws IOException {
+        probeEnabled = probeDirect;
         // A previous run may have written partially generated classes/sources.
         // Never allow stale output to make a failed batch appear compilable.
         if (Files.exists(workRoot)) {
@@ -259,7 +261,7 @@ final class OfficialCaseRunner implements AutoCloseable {
                         if (cause instanceof Exception) throw (Exception) cause;
                         throw new IllegalStateException(cause);
                     }
-                }, null, direct ? "DIRECT" : "FALLBACK"));
+                }, null, direct ? "DIRECT" : probeEnabled ? "FALLBACK" : "UNPROBED"));
             } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
                 destination.put(spec.key(), new Outcome(null,
                         "Generated validator load failed: " + e, "COMPILE_ERROR"));
