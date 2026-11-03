@@ -46,7 +46,8 @@ class SchemaRegistryDirectoryTest {
                 "{\"type\":\"integer\"}".getBytes(StandardCharsets.UTF_8));
         Files.write(draft.resolve("alias.json"),
                 ("{\"$id\":\"https://schemas.example/alias\","
-                        + "\"$ref\":\"integer.json\"}").getBytes(StandardCharsets.UTF_8));
+                        + "\"$ref\":\"http://localhost:1234/draft2020-12/integer.json\"}")
+                        .getBytes(StandardCharsets.UTF_8));
 
         SchemaRegistry registry = new SchemaRegistry();
         URI remote = URI.create("http://localhost:1234/");
@@ -58,6 +59,9 @@ class SchemaRegistryDirectoryTest {
         assertNotNull(integer);
         assertTrue(integer.isValid(1));
         assertFalse(integer.isValid("a"));
+        SchemaPlan alias = registry.resolve(URI.create("https://schemas.example/alias"));
+        assertTrue(alias.isValid(1));
+        assertFalse(alias.isValid("a"));
     }
 
     @Test
