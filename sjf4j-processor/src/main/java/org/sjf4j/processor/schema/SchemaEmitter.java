@@ -179,6 +179,10 @@ final class SchemaEmitter {
                         || ("STRING".equals(guard.jsonType) && value.shape == SchemaValue.Shape.STRING)
                         || ("NUMBER".equals(guard.jsonType) && value.shape == SchemaValue.Shape.NUMBER)
                         || ("ARRAY".equals(guard.jsonType) && value.isArrayLike());
+                // Even when this Java value cannot have the required shape,
+                // the schema was fully analyzed before we fold away emission.
+                // Avoid unreachable primitive code such as value.getClass().
+                if (!knownShape && value.type != null && value.type.getKind().isPrimitive()) return;
                 String condition = knownShape
                         ? (value.nullable ? expression + " != null" : "true")
                         : "org.sjf4j.JsonType.of(" + expression
