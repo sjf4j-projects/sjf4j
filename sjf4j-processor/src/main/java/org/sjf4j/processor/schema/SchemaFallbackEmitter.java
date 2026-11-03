@@ -19,8 +19,10 @@ final class SchemaFallbackEmitter {
     private final Map<String, Plan> bySnapshot = new LinkedHashMap<String, Plan>();
     private final String fallbackType;
     private final NameAllocator planTypes = new NameAllocator();
+    private final String registryDir;
 
-    SchemaFallbackEmitter(GeneratedNames names) {
+    SchemaFallbackEmitter(GeneratedNames names, String registryDir) {
+        this.registryDir = registryDir.trim();
         // Reserve the enclosing class once; nested plan names have their own scope.
         this.fallbackType = names.type("SchemaFallbacks");
     }
@@ -67,6 +69,13 @@ final class SchemaFallbackEmitter {
                     } else {
                         out.line(registry + ".index(" + uri + ", loader.load(" + uri + "));");
                     }
+                }
+                if (!registryDir.isEmpty()) {
+                    out.line("org.sjf4j.schema.SchemaLoader.Local registryLoader = new org.sjf4j.schema.SchemaLoader.Local(java.net.URI.create("
+                            + SchemaEmitter.javaLiteral(registryDir) + "));");
+                    out.beginBlock("for (java.net.URI uri : registryLoader.listDirectory())");
+                    out.line(registry + ".indexIfAbsent(uri, registryLoader.load(uri));");
+                    out.endBlock();
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("
                         + SchemaEmitter.javaLiteral(plan.snapshot.selectedUri) + "));");
