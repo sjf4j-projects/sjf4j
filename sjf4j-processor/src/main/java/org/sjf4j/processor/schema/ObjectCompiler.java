@@ -4,7 +4,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -28,35 +27,6 @@ final class ObjectCompiler {
     ObjectCompiler(ProcessorContext context, SchemaCompiler schemaCompiler) {
         this.context = context;
         this.schemaCompiler = schemaCompiler;
-    }
-
-    SchemaCheck compile(TypeMirror type,
-                                           SchemaResourceResolver.Snapshot snapshot) {
-        NodeKind nodeKind = context.types.nodeKind(type);
-        // A non-final declared type cannot prove the runtime object's property set.
-        // Such values use Nodes for access, without falling back to SchemaPlan.
-        boolean dynamic = useDynamicAccess(type);
-        if (!dynamic && nodeKind != NodeKind.OBJECT_POJO) return null;
-
-        Object parsed = Sjf4j.global().fromJson(snapshot.documents[0]);
-        if (JsonType.of(parsed) != JsonType.OBJECT) return null;
-        JsonObject root = Nodes.toJsonObject(parsed);
-        String rootUri = snapshot.uris[0];
-        if (!snapshot.selectedUri.equals(snapshot.uris[0])) {
-            SchemaCompiler.RefTarget selected = SchemaCompiler.resolveRef(snapshot,
-                    JsonObject.of("$ref", snapshot.selectedUri), snapshot.uris[0]);
-            if (selected == null || JsonType.of(selected.value) != JsonType.OBJECT) return null;
-            root = Nodes.toJsonObject(selected.value);
-            rootUri = selected.uri;
-        }
-        if (root.containsKey("$ref")) {
-            SchemaCompiler.RefTarget target = SchemaCompiler.resolveRef(snapshot, root, snapshot.selectedUri);
-            if (target == null || JsonType.of(target.value) != JsonType.OBJECT) return null;
-            root = Nodes.toJsonObject(target.value);
-            rootUri = target.uri;
-        }
-        rootUri = SchemaCompiler.effectiveSchemaUri(rootUri, root);
-        return compileResolved(type, snapshot, root, rootUri, 0);
     }
 
     /** Compiles a concrete nested object without changing root schema selection. */
