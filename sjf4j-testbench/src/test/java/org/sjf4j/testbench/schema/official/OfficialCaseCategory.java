@@ -73,6 +73,11 @@ final class OfficialCaseCategory {
             case "phase2":
                 return category == Category.BASIC
                         || category == Category.SCALAR || category == Category.OBJECT;
+            case "phase3":
+                return category == Category.ARRAY || category == Category.APPLICATOR;
+            case "unevaluated":
+                return "unevaluatedItems.json".equals(file)
+                        || "unevaluatedProperties.json".equals(file);
             case "basic":
             case "scalar":
             case "object":
@@ -87,8 +92,8 @@ final class OfficialCaseCategory {
 
     static String selection(String value) {
         String selection = value == null ? "all" : value.trim().toLowerCase(java.util.Locale.ROOT);
-        if (!Arrays.asList("all", "phase2", "basic", "scalar", "object",
-                "array", "applicator", "reference").contains(selection)) {
+        if (!Arrays.asList("all", "phase2", "phase3", "basic", "scalar", "object",
+                "array", "applicator", "unevaluated", "reference").contains(selection)) {
             throw new IllegalArgumentException("Invalid official compiled category: " + value);
         }
         return selection;
