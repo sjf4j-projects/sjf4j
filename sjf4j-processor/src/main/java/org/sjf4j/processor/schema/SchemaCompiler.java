@@ -30,11 +30,6 @@ final class SchemaCompiler {
         this.oneOf = new OneOfCompiler(context, objects, this);
     }
 
-    SchemaCheck compileObject(TypeMirror type,
-                                          SchemaResourceResolver.Snapshot snapshot) {
-        return objects.compile(type, snapshot);
-    }
-
     /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
     SchemaCheck compileRoot(TypeMirror type, SchemaResourceResolver.Snapshot snapshot) {
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
@@ -65,84 +60,147 @@ final class SchemaCompiler {
             return compileValue(snapshot, target.value, value, target.uri, depth + 1);
         }
         schemaUri = effectiveSchemaUri(schemaUri, schema);
-        // Empty and annotation-only schemas are always valid, regardless of value shape.
-        boolean hasAssertions = false;
-        for (String key : schema.keySet()) {
-            if (!isAnnotation(key)) {
-                hasAssertions = true;
-                break;
-            }
-        }
-        if (!hasAssertions) return new SchemaCheck.Pass();
-
-        // An empty enum rejects every JSON instance, irrespective of its type,
-        // other constraints or the statically known Java value shape.
-        // Compile it as a terminal Reject to avoid emitting an unconditional
-        // return false followed by the generated method's return true.
-        Object enumValue = schema.getNode("enum");
-        if (schema.containsKey("enum") && JsonType.of(enumValue) == JsonType.ARRAY
-                && Nodes.sizeInArray(enumValue) == 0) {
-            return new SchemaCheck.Reject(diagnostic(schemaUri, "enum"));
-        }
-
+        // No keyword, including type, selects a compilation strategy for
+        // other keywords. Applicators compile their child schemas recursively;
+        // the sibling assertions are compiled by the same keyword dispatcher.
         if (schema.containsKey("oneOf") || schema.containsKey("allOf")
                 || schema.containsKey("anyOf") || schema.containsKey("not")
                 || schema.containsKey("if") || schema.containsKey("then")
                 || schema.containsKey("else")) {
             return compileApplicators(snapshot, schema, value, schemaUri, depth);
         }
-        // Format is an assertion under the format-assertion vocabulary, even
-        // when strictFormat=false. Only optimize known annotation-default dialects.
-        if (schema.containsKey("format") && !canCompileFormat(snapshot)) return null;
-        Object typeKeyword = schema.getNode("type");
-        if (typeKeyword != null && JsonType.of(typeKeyword) == JsonType.ARRAY) {
-            return compileUnionType(schema, value, schemaUri);
-        }
-        String kind = schema.getString("type");
-        if ("boolean".equals(kind) || "null".equals(kind)) {
-            return compileUnionType(schema, value, schemaUri);
-        }
-        if (kind == null) {
-            if (schema.containsKey("properties") || schema.containsKey("required")
-                    || schema.containsKey("additionalProperties")
-                    || schema.containsKey("minProperties") || schema.containsKey("maxProperties")
-                    || schema.containsKey("dependentRequired")) {
-                if (value.shape == SchemaValue.Shape.STRING
-                        || value.shape == SchemaValue.Shape.NUMBER
-                        || value.shape == SchemaValue.Shape.BOOLEAN
-                        || value.isArrayLike()) {
-                    // Object-specific keywords are ignored on non-objects.
-                    for (String key : schema.keySet()) {
-                        if (!key.equals("properties") && !key.equals("required")
-                                && !key.equals("additionalProperties")
-                                && !key.equals("minProperties") && !key.equals("maxProperties")
-                                && !key.equals("dependentRequired") && !isAnnotation(key))
-                            return null;
-                    }
-                    return new SchemaCheck.Pass();
-                }
-                return objects.compileNested(value.type, snapshot, schema, schemaUri, depth);
-            }
-            return scalars.compileLiteralsOnly(schema, value, schemaUri);
-        }
-        if ("string".equals(kind) || "number".equals(kind) || "integer".equals(kind)) {
-            return scalars.compile(schema, value, kind, schemaUri);
-        }
-        if ("array".equals(kind)) {
-            return arrays.compile(snapshot, schema, value, schemaUri, depth);
-        }
-        if ("object".equals(kind)) {
-            return objects.compileNested(value.type, snapshot, schema, schemaUri, depth);
-        }
-        return null;
+        return compileKeywords(snapshot, schema, value, schemaUri, depth);
     }
 
-    /** Single boolean/null types and type unions with optional scalar literals. */
-    private SchemaCheck compileUnionType(JsonObject schema, SchemaValue value, String schemaUri) {
-        for (String key : schema.keySet()) {
-            if (!key.equals("type") && !key.equals("const") && !key.equals("enum")
-                    && !isAnnotation(key)) return null;
+    /**
+     * Compile each assertion family independently, then conjunct the results.
+     * A type keyword is just another independent assertion: it neither enables
+     * nor disables string, numeric, array, or object keywords.
+     *
+     * A few object/array keywords share a semantic evaluation scope (e.g.
+     * additionalProperties needs the local properties coverage). The family
+     * compilers preserve that scope; they do not depend on a type assertion.
+     */
+    private SchemaCheck compileKeywords(SchemaResourceResolver.Snapshot snapshot,
+                                        JsonObject schema, SchemaValue value,
+                                        String uri, int depth) {
+        JsonObject types = new JsonObject();
+        JsonObject literals = new JsonObject();
+        JsonObject strings = new JsonObject();
+        JsonObject numbers = new JsonObject();
+        JsonObject array = new JsonObject();
+        JsonObject object = new JsonObject();
+
+        for (String keyword : schema.keySet()) {
+            if (isAnnotation(keyword)) continue;
+            switch (keyword) {
+                case "type":
+                    types.put(keyword, schema.getNode(keyword));
+                    break;
+                case "const": case "enum":
+                    literals.put(keyword, schema.getNode(keyword));
+                    break;
+                case "minLength": case "maxLength": case "pattern": case "format":
+                    strings.put(keyword, schema.getNode(keyword));
+                    break;
+                case "minimum": case "maximum": case "exclusiveMinimum":
+                case "exclusiveMaximum": case "multipleOf":
+                    numbers.put(keyword, schema.getNode(keyword));
+                    break;
+                case "items": case "minItems": case "maxItems":
+                    array.put(keyword, schema.getNode(keyword));
+                    break;
+                case "properties": case "required": case "additionalProperties":
+                case "minProperties": case "maxProperties": case "dependentRequired":
+                    object.put(keyword, schema.getNode(keyword));
+                    break;
+                default:
+                    // Never omit an unsupported keyword while compiling others.
+                    return null;
+            }
         }
+        if (types.isEmpty() && literals.isEmpty() && strings.isEmpty()
+                && numbers.isEmpty() && array.isEmpty() && object.isEmpty()) {
+            return new SchemaCheck.Pass();
+        }
+
+        // Custom vocabularies can redefine whether a keyword is an assertion.
+        // A syntactically compilable keyword is not necessarily active.
+        if (!canCompileStandardDialect(snapshot)) return null;
+
+        List<SchemaCheck> checks = new ArrayList<SchemaCheck>();
+        if (!types.isEmpty()) {
+            SchemaCheck typeCheck = compileUnionType(types, value, uri);
+            if (typeCheck == null) return null;
+            checks.add(typeCheck);
+        }
+        if (!literals.isEmpty()) {
+            Object enumValue = literals.getNode("enum");
+            if (literals.containsKey("enum") && JsonType.of(enumValue) == JsonType.ARRAY
+                    && Nodes.sizeInArray(enumValue) == 0) {
+                return new SchemaCheck.Reject(diagnostic(uri, "enum"));
+            }
+            SchemaCheck literal = scalars.compileLiteralsOnly(literals, value, uri);
+            if (literal == null) return null;
+            checks.add(literal);
+        }
+        if (!strings.isEmpty()) {
+            SchemaValue stringValue = conditionalValue(value, "STRING");
+            SchemaCheck check = scalars.compile(strings, stringValue, "string", uri);
+            if (check == null) return null;
+            checks.add(new SchemaCheck.ShapeGuard("STRING", stringValue, check));
+        }
+        if (!numbers.isEmpty()) {
+            SchemaValue numberValue = conditionalValue(value, "NUMBER");
+            SchemaCheck check = scalars.compile(numbers, numberValue, "number", uri);
+            if (check == null) return null;
+            checks.add(new SchemaCheck.ShapeGuard("NUMBER", numberValue, check));
+        }
+        if (!array.isEmpty()) {
+            SchemaValue arrayValue = conditionalValue(value, "ARRAY");
+            SchemaCheck check = arrays.compile(snapshot, array, arrayValue, uri, depth);
+            if (check == null) return null;
+            checks.add(new SchemaCheck.ShapeGuard("ARRAY", arrayValue, check));
+        }
+        if (!object.isEmpty()) {
+            // Analyze the entire object-keyword scope with a representation-
+            // neutral value first. A final POJO's missing or constant property
+            // must not hide a schema feature that the compiler cannot handle.
+            SchemaCheck semantic = objects.compileNested(null, snapshot, object, uri, depth);
+            if (semantic == null) return null;
+            SchemaCheck check = semantic;
+            if (value.type != null && value.shape == SchemaValue.Shape.OBJECT) {
+                // Only after schema coverage succeeds may we select faster
+                // static POJO access. If it is unsafe, retain Nodes traversal.
+                SchemaCheck optimized = objects.compileNested(value.type, snapshot, object, uri, depth);
+                // A localized fallback is still a compiled semantic check.
+                // Keep it when selecting direct POJO getters; never erase
+                // unsupported child constraints because of representation.
+                if (optimized != null && optimized.hasFallback() == semantic.hasFallback()) {
+                    check = optimized;
+                }
+            }
+            checks.add(new SchemaCheck.ShapeGuard("OBJECT", value, check));
+        }
+        if (checks.isEmpty()) return new SchemaCheck.Pass();
+        return checks.size() == 1 ? checks.get(0) : new SchemaCheck.AllCheck(checks);
+    }
+
+    /**
+     * Instance applicability is a JSON-semantic test, not a Schema declaration.
+     * Preserve known static shape fast paths; for Java scalar types that cannot
+     * be the target shape, generate the generic expression behind the guard.
+     */
+    private SchemaValue conditionalValue(SchemaValue value, String jsonType) {
+        boolean matching = ("STRING".equals(jsonType) && value.shape == SchemaValue.Shape.STRING)
+                || ("NUMBER".equals(jsonType) && value.shape == SchemaValue.Shape.NUMBER)
+                || ("ARRAY".equals(jsonType) && value.isArrayLike());
+        return matching ? value : SchemaValue.of(context, null);
+    }
+
+    /** Compile only the type keyword; every other assertion is independent. */
+    private SchemaCheck compileUnionType(JsonObject schema, SchemaValue value, String schemaUri) {
+        if (schema.size() != 1 || !schema.containsKey("type")) return null;
         Object raw = schema.getNode("type");
         List<String> types = new ArrayList<String>();
         if (raw instanceof String) {
@@ -162,17 +220,7 @@ final class SchemaCompiler {
                 return null;
             }
         }
-        SchemaCheck check = new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
-        if (!schema.containsKey("const") && !schema.containsKey("enum")) return check;
-        JsonObject literals = new JsonObject();
-        if (schema.containsKey("const")) literals.put("const", schema.getNode("const"));
-        if (schema.containsKey("enum")) literals.put("enum", schema.getNode("enum"));
-        SchemaCheck literal = scalars.compileLiteralsOnly(literals, value, schemaUri);
-        if (literal == null) return null;
-        List<SchemaCheck> all = new ArrayList<SchemaCheck>();
-        all.add(check);
-        all.add(literal);
-        return new SchemaCheck.AllCheck(all);
+        return new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
     }
 
     /**
@@ -416,7 +464,7 @@ final class SchemaCompiler {
         return null;
     }
 
-    private static boolean canCompileFormat(SchemaResourceResolver.Snapshot snapshot) {
+    private static boolean canCompileStandardDialect(SchemaResourceResolver.Snapshot snapshot) {
         for (String source : snapshot.documents) {
             if (source.contains("\"format-assertion\"") || source.contains("\"$vocabulary\""))
                 return false;

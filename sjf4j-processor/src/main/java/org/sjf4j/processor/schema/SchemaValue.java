@@ -1,8 +1,10 @@
 package org.sjf4j.processor.schema;
 
+import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -15,7 +17,7 @@ import java.util.List;
  * whether a JSON shape can be handled natively; expressions are emitted later.
  */
 final class SchemaValue {
-    enum Shape { STRING, NUMBER, BOOLEAN, COLLECTION, ARRAY, DYNAMIC, OTHER }
+    enum Shape { OBJECT, STRING, NUMBER, BOOLEAN, COLLECTION, ARRAY, DYNAMIC, OTHER }
 
     final TypeMirror type;
     final Shape shape;
@@ -69,6 +71,19 @@ final class SchemaValue {
         TypeElement element = context.types.typeElement(type);
         if (element != null && element.getKind() == ElementKind.ENUM) {
             return new SchemaValue(type, Shape.STRING, true);
+        }
+        NodeKind kind = context.types.nodeKind(type);
+        if (kind.isObject()) {
+            // The JSON shape is statically fixed for structural Map/JOJO and
+            // final POJO types. Non-final POJOs or codec-backed domain objects
+            // may change shape at runtime, so keep them dynamic.
+            if (kind != NodeKind.OBJECT_POJO) {
+                return new SchemaValue(type, Shape.OBJECT, false);
+            }
+            if (element != null && element.getModifiers().contains(Modifier.FINAL)
+                    && !context.metadata(element).hasValueCodec(type)) {
+                return new SchemaValue(type, Shape.OBJECT, false);
+            }
         }
         return new SchemaValue(type, Shape.OTHER, false);
     }

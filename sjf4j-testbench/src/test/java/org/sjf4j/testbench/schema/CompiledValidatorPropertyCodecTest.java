@@ -61,6 +61,12 @@ public class CompiledValidatorPropertyCodecTest {
 
         @ValidJsonSchema("{\"properties\":{\"flag\":{\"type\":\"boolean\"}}}")
         boolean booleanCodec(FlagHolder value);
+
+        // Schema applicators still operate on the single property-selected
+        // raw scalar value; they must not re-read it through a default codec.
+        @ValidJsonSchema("{\"properties\":{\"millis\":{\"anyOf\":["
+                + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}")
+        boolean scalarApplicator(Times value);
     }
 
     @CompiledValidator(fallback = false)
@@ -126,6 +132,22 @@ public class CompiledValidatorPropertyCodecTest {
         assertTrue(compiled.getter(value));
         value.millis = Instant.ofEpochMilli(42);
         assertFalse(compiled.getter(value));
+    }
+
+    @Test
+    void scalarApplicatorCompilesDirectlyWithPropertyCodec() {
+        Compiled compiled = CompiledInstances.create(Compiled.class);
+        SchemaPlan reference = JsonSchema.fromJson(
+                "{\"properties\":{\"millis\":{\"anyOf\":["
+                + "{\"type\":\"number\",\"minimum\":1000},{\"type\":\"null\"}]}}}").createPlan();
+        Times value = new Times();
+        assertTrue(compiled.scalarApplicator(value));
+        assertEquals(reference.isValid(value), compiled.scalarApplicator(value));
+        value.millis = Instant.ofEpochMilli(100);
+        assertFalse(compiled.scalarApplicator(value));
+        assertEquals(reference.isValid(value), compiled.scalarApplicator(value));
+        value.millis = null;
+        assertEquals(reference.isValid(value), compiled.scalarApplicator(value));
     }
 
     @Test

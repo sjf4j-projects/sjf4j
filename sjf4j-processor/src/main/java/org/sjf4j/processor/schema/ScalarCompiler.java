@@ -37,10 +37,6 @@ final class ScalarCompiler {
     }
 
     SchemaCheck compileLiteralsOnly(JsonObject schema, SchemaValue value, String schemaUri) {
-        if (value.shape != SchemaValue.Shape.STRING
-                && value.shape != SchemaValue.Shape.NUMBER
-                && value.shape != SchemaValue.Shape.DYNAMIC
-                && value.shape != SchemaValue.Shape.BOOLEAN) return null;
         for (String key : schema.keySet()) {
             if (!key.equals("const") && !key.equals("enum") && !SchemaCompiler.isAnnotation(key))
                 return null;

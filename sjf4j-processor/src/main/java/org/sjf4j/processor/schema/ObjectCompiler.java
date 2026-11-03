@@ -4,7 +4,6 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
-import org.sjf4j.Sjf4j;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -28,35 +27,6 @@ final class ObjectCompiler {
     ObjectCompiler(ProcessorContext context, SchemaCompiler schemaCompiler) {
         this.context = context;
         this.schemaCompiler = schemaCompiler;
-    }
-
-    SchemaCheck compile(TypeMirror type,
-                                           SchemaResourceResolver.Snapshot snapshot) {
-        NodeKind nodeKind = context.types.nodeKind(type);
-        // A non-final declared type cannot prove the runtime object's property set.
-        // Such values use Nodes for access, without falling back to SchemaPlan.
-        boolean dynamic = useDynamicAccess(type);
-        if (!dynamic && nodeKind != NodeKind.OBJECT_POJO) return null;
-
-        Object parsed = Sjf4j.global().fromJson(snapshot.documents[0]);
-        if (JsonType.of(parsed) != JsonType.OBJECT) return null;
-        JsonObject root = Nodes.toJsonObject(parsed);
-        String rootUri = snapshot.uris[0];
-        if (!snapshot.selectedUri.equals(snapshot.uris[0])) {
-            SchemaCompiler.RefTarget selected = SchemaCompiler.resolveRef(snapshot,
-                    JsonObject.of("$ref", snapshot.selectedUri), snapshot.uris[0]);
-            if (selected == null || JsonType.of(selected.value) != JsonType.OBJECT) return null;
-            root = Nodes.toJsonObject(selected.value);
-            rootUri = selected.uri;
-        }
-        if (root.containsKey("$ref")) {
-            SchemaCompiler.RefTarget target = SchemaCompiler.resolveRef(snapshot, root, snapshot.selectedUri);
-            if (target == null || JsonType.of(target.value) != JsonType.OBJECT) return null;
-            root = Nodes.toJsonObject(target.value);
-            rootUri = target.uri;
-        }
-        rootUri = SchemaCompiler.effectiveSchemaUri(rootUri, root);
-        return compileResolved(type, snapshot, root, rootUri, 0);
     }
 
     /** Compiles a concrete nested object without changing root schema selection. */
@@ -215,8 +185,9 @@ final class ObjectCompiler {
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check,
                     explicitCodec ? context.typeUtils.erasure(type).toString() : null));
         }
-        if (directCount == 0) return root.containsKey("dependentRequired")
-                ? new SchemaCheck.Pass() : null;
+        // A child requiring fallback must remain visible even when no direct
+        // checks were emitted. It is never a trivially valid object schema.
+        if (directCount == 0 && properties.isEmpty()) return new SchemaCheck.Pass();
         // JOJO inherits the public JsonObject operations, so generated code
         // can bypass generic Nodes dispatch while preserving dynamic keys.
         boolean jsonObject = dynamic && type != null && (context.types.nodeKind(type) == NodeKind.OBJECT_JSON_OBJECT
@@ -283,9 +254,9 @@ final class ObjectCompiler {
     }
 
     /**
-     * A raw encoded value can be inspected with scalar/literal checks.
-     * Object/array applicators on it must be evaluated by the parent SchemaPlan,
-     * which preserves the property's ValueInfo and its atomic leaf semantics.
+     * A raw encoded value can be inspected with scalar/literal checks and
+     * applicators whose branches remain scalar-only. Object/array traversal
+     * would violate the atomic @NodeValue semantics and is not permitted.
      */
     private static boolean supportsCodecProperty(Object source) {
         if (source instanceof Boolean) return true;
@@ -310,6 +281,16 @@ final class ObjectCompiler {
                 case "minimum": case "maximum": case "exclusiveMinimum":
                 case "exclusiveMaximum": case "multipleOf":
                 case "const": case "enum":
+                    break;
+                case "allOf": case "anyOf": case "oneOf":
+                    Object branches = schema.getNode(key);
+                    if (JsonType.of(branches) != JsonType.ARRAY) return false;
+                    for (int i = 0; i < Nodes.sizeInArray(branches); i++) {
+                        if (!supportsCodecProperty(Nodes.getInArray(branches, i))) return false;
+                    }
+                    break;
+                case "not": case "if": case "then": case "else":
+                    if (!supportsCodecProperty(schema.getNode(key))) return false;
                     break;
                 default: return false;
             }
@@ -393,7 +374,19 @@ final class ObjectCompiler {
 
     private static String childPointer(String base, String keyword, String name) {
         return base + (base.contains("#") ? "/" : "#/")
-                + pointerEscape(keyword) + "/" + pointerEscape(name);
+                + pointerEscape(keyword) + "/" + encodeFragmentSegment(pointerEscape(name));
+    }
+
+    /** URI-encode a JSON Pointer segment without changing its RFC 6901 escaping. */
+    private static String encodeFragmentSegment(String segment) {
+        try {
+            // URI's multi-argument constructor escapes quotes, whitespace and
+            // reserved percent signs; toASCIIString also encodes non-ASCII.
+            return new java.net.URI(null, null, "/" + segment, null)
+                    .toASCIIString().substring(1);
+        } catch (java.net.URISyntaxException ex) {
+            throw new IllegalArgumentException("Invalid schema property name", ex);
+        }
     }
 
     private static boolean isRequired(Object required, String key) {
