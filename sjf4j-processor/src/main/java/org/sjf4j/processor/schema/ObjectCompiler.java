@@ -185,7 +185,9 @@ final class ObjectCompiler {
             properties.add(new SchemaCheck.PropertyCheck(name, access, value, check,
                     explicitCodec ? context.typeUtils.erasure(type).toString() : null));
         }
-        if (directCount == 0) return new SchemaCheck.Pass();
+        // A child requiring fallback must remain visible even when no direct
+        // checks were emitted. It is never a trivially valid object schema.
+        if (directCount == 0 && properties.isEmpty()) return new SchemaCheck.Pass();
         // JOJO inherits the public JsonObject operations, so generated code
         // can bypass generic Nodes dispatch while preserving dynamic keys.
         boolean jsonObject = dynamic && type != null && (context.types.nodeKind(type) == NodeKind.OBJECT_JSON_OBJECT
