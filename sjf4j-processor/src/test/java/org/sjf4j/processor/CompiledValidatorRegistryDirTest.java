@@ -6,7 +6,6 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.processor.code.JavaWriter;
 
 import java.lang.reflect.Method;
-import java.net.URI;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -57,7 +56,8 @@ class CompiledValidatorRegistryDirTest {
 
     @Test
     void missingRegistryDirectoryReportsCompilationError() throws Exception {
-        String missing = registryDir.resolve("missing").toUri().toString();
+        // Path.toUri() omits the trailing slash for a directory that does not exist.
+        String missing = registryDir.resolve("missing").toUri().toString() + "/";
         NavigatorTestCompiler.Result result =
                 compile("{\"$ref\":\"https://example.test/base.json\"}", missing);
         assertFalse(result.success);
