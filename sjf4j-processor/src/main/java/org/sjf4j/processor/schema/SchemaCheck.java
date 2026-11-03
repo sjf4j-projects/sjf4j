@@ -411,6 +411,11 @@ abstract class SchemaCheck {
         final SchemaCheck items;
         final SchemaValue itemValue;
         final boolean uniqueItems;
+        final SchemaCheck contains;
+        final int minContains;
+        final Integer maxContains;
+        final Diagnostic minContainsDiagnostic;
+        final Diagnostic maxContainsDiagnostic;
         final Diagnostic typeDiagnostic;
         final Diagnostic minItemsDiagnostic;
         final Diagnostic maxItemsDiagnostic;
@@ -418,6 +423,8 @@ abstract class SchemaCheck {
 
         ArrayCheck(Integer minItems, Integer maxItems, List<SchemaCheck> prefixItems,
                    SchemaCheck items, SchemaValue itemValue, boolean uniqueItems,
+                   SchemaCheck contains, int minContains, Integer maxContains,
+                   Diagnostic minContainsDiagnostic, Diagnostic maxContainsDiagnostic,
                    Diagnostic typeDiagnostic, Diagnostic minItemsDiagnostic,
                    Diagnostic maxItemsDiagnostic, Diagnostic uniqueItemsDiagnostic) {
             super(Kind.ARRAY);
@@ -427,6 +434,11 @@ abstract class SchemaCheck {
             this.items = items;
             this.itemValue = itemValue;
             this.uniqueItems = uniqueItems;
+            this.contains = contains;
+            this.minContains = minContains;
+            this.maxContains = maxContains;
+            this.minContainsDiagnostic = minContainsDiagnostic;
+            this.maxContainsDiagnostic = maxContainsDiagnostic;
             this.typeDiagnostic = typeDiagnostic;
             this.minItemsDiagnostic = minItemsDiagnostic;
             this.maxItemsDiagnostic = maxItemsDiagnostic;
@@ -435,6 +447,7 @@ abstract class SchemaCheck {
 
         @Override
         boolean hasFallback() {
+            if (contains != null && contains.hasFallback()) return true;
             if (items != null && items.hasFallback()) return true;
             for (SchemaCheck prefix : prefixItems) if (prefix.hasFallback()) return true;
             return false;
