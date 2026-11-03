@@ -221,6 +221,7 @@ abstract class SchemaCheck {
         final Diagnostic requiredDiagnostic;
         final Diagnostic dependentRequiredDiagnostic;
         final Diagnostic additionalPropertiesDiagnostic;
+        final Diagnostic propertyNamesDiagnostic;
         final int staticPropertyCount;
         final List<String> allowedNames;
         final List<Required> required;
@@ -236,7 +237,8 @@ abstract class SchemaCheck {
                     List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
                     Diagnostic typeDiagnostic, Diagnostic minPropertiesDiagnostic,
                     Diagnostic maxPropertiesDiagnostic, Diagnostic requiredDiagnostic,
-                    Diagnostic dependentRequiredDiagnostic, Diagnostic additionalPropertiesDiagnostic) {
+                    Diagnostic dependentRequiredDiagnostic, Diagnostic additionalPropertiesDiagnostic,
+                    Diagnostic propertyNamesDiagnostic) {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
             this.jsonObject = jsonObject;
@@ -255,6 +257,7 @@ abstract class SchemaCheck {
             this.requiredDiagnostic = requiredDiagnostic;
             this.dependentRequiredDiagnostic = dependentRequiredDiagnostic;
             this.additionalPropertiesDiagnostic = additionalPropertiesDiagnostic;
+            this.propertyNamesDiagnostic = propertyNamesDiagnostic;
             this.staticPropertyCount = staticPropertyCount;
             this.allowedNames = Collections.unmodifiableList(new ArrayList<String>(allowedNames));
             this.required = Collections.unmodifiableList(new ArrayList<Required>(required));
