@@ -40,6 +40,27 @@ class SchemaRegistryDirectoryTest {
     }
 
     @Test
+    void indexDirCanRegisterIdlessRemoteSchemasWithRetrievalBase() throws IOException {
+        Path draft = Files.createDirectories(registryDirectory.resolve("draft2020-12"));
+        Files.write(draft.resolve("integer.json"),
+                "{\"type\":\"integer\"}".getBytes(StandardCharsets.UTF_8));
+        Files.write(draft.resolve("alias.json"),
+                ("{\"$id\":\"https://schemas.example/alias\","
+                        + "\"$ref\":\"integer.json\"}").getBytes(StandardCharsets.UTF_8));
+
+        SchemaRegistry registry = new SchemaRegistry();
+        URI remote = URI.create("http://localhost:1234/");
+        registry.indexDir(registryDirectory.toUri(), remote);
+
+        assertTrue(registry.contains(remote.resolve("draft2020-12/integer.json")));
+        assertTrue(registry.contains(URI.create("https://schemas.example/alias")));
+        SchemaPlan integer = registry.resolve(remote.resolve("draft2020-12/integer.json"));
+        assertNotNull(integer);
+        assertTrue(integer.isValid(1));
+        assertFalse(integer.isValid("a"));
+    }
+
+    @Test
     void indexDirPreservesExistingRegistryEntries() throws IOException {
         Files.write(registryDirectory.resolve("existing.json"),
                 "{\"$id\":\"https://example.test/existing.json\",\"type\":\"number\"}"
