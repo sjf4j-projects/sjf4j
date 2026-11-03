@@ -135,39 +135,43 @@ fun jsonSchemaTestSuiteSha(ref: String): String {
         ?: throw GradleException("Failed to resolve JSON-Schema-Test-Suite revision: $ref")
 }
 
-val downloadOfficialSchemaTests by tasks.registering {
-    group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Downloads the latest official JSON Schema test suite into build/."
-    outputs.dir(officialSchemaSuiteDir)
-    outputs.upToDateWhen { false }
+// Explicit download/refresh tasks check the upstream revision on every invocation,
+// but skip the archive download when the complete local cache is already current.
+// Ordinary builds never depend on these network tasks.
+fun updateOfficialSuite(ref: String) {
+    val sha = jsonSchemaTestSuiteSha(ref)
+    val outDir = officialSchemaSuiteDir.get().asFile
+    val revisionFile = outDir.resolve("OFFICIAL_TEST_SUITE_REV")
+    val validCache = revisionFile.isFile
+        && revisionFile.readText().lineSequence().any { it.trim() == "revision: $sha" }
+        && outDir.resolve("tests/draft2020-12").isDirectory
+        && outDir.resolve("remotes").isDirectory
+    if (validCache) {
+        logger.lifecycle("Official JSON Schema suite already at $sha; reusing local cache")
+        return
+    }
 
-    doLast {
-        val ref = providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get()
-        val sha = jsonSchemaTestSuiteSha(ref)
-        val outDir = officialSchemaSuiteDir.get().asFile
-        delete(outDir)
-        outDir.mkdirs()
-
-        val outRoot = outDir.canonicalFile.toPath()
-        val zipUrl = "https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/zip/$sha"
-        var copied = 0
-
+    val zipUrl = "https://codeload.github.com/json-schema-org/JSON-Schema-Test-Suite/zip/$sha"
+    val staging = outDir.parentFile.resolve("suite-downloading")
+    delete(staging)
+    staging.mkdirs()
+    val outRoot = staging.canonicalFile.toPath()
+    var copied = 0
+    try {
         ZipInputStream(BufferedInputStream(githubStream(zipUrl))).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
                 val name = entry.name.replace('\\', '/')
                 val rootEnd = name.indexOf('/')
                 if (rootEnd < 0) continue
-
                 val relative = name.substring(rootEnd + 1)
                 if (!relative.startsWith("tests/") && !relative.startsWith("remotes/")) continue
 
-                val target = outDir.resolve(relative)
+                val target = staging.resolve(relative)
                 val targetPath = target.canonicalFile.toPath()
                 if (!targetPath.startsWith(outRoot)) {
                     throw GradleException("Unsafe path in JSON-Schema-Test-Suite zip: $name")
                 }
-
                 if (entry.isDirectory) {
                     target.mkdirs()
                 } else {
@@ -178,19 +182,58 @@ val downloadOfficialSchemaTests by tasks.registering {
                 zip.closeEntry()
             }
         }
-
-        outDir.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
-            "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\n" +
-                    "ref: $ref\n" +
-                    "revision: $sha\n"
+        require(staging.resolve("tests/draft2020-12").isDirectory
+                && staging.resolve("remotes").isDirectory) {
+            "Downloaded suite $sha is missing tests/draft2020-12 or remotes"
+        }
+        staging.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
+            "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\\n" +
+                "ref: $ref\\n" +
+                "revision: $sha\\n"
         )
-        logger.lifecycle("Downloaded JSON-Schema-Test-Suite $sha ($copied files) to $outDir")
+        // A failed network download leaves the previous complete suite untouched.
+        delete(outDir)
+        if (!staging.renameTo(outDir)) {
+            staging.copyRecursively(outDir, overwrite = true)
+            delete(staging)
+        }
+    } catch (e: Exception) {
+        delete(staging)
+        throw e
+    }
+    logger.lifecycle("Downloaded JSON-Schema-Test-Suite $sha ($copied files) to $outDir")
+}
+
+val downloadOfficialSchemaTests by tasks.registering {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Checks the requested upstream revision, downloading only when the cached SHA differs."
+    outputs.dir(officialSchemaSuiteDir)
+    // Always resolve the remote revision on explicit invocation.
+    outputs.upToDateWhen { false }
+    doLast {
+        updateOfficialSuite(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get())
     }
 }
 
-val officialLatestTest by tasks.registering(Test::class) {
+val refreshOfficialSchemaTests by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs OfficialRuntimeTest against the latest JSON-Schema-Test-Suite from GitHub."
+    description = "Always checks upstream main for publication; only downloads when the revision changed."
+    outputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    doLast {
+        // Intentionally ignore -PjsonSchemaSuiteRef: publication must use upstream main.
+        updateOfficialSuite("main")
+    }
+}
+
+val cachedOfficialSuiteExists = {
+    officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12").isDirectory &&
+        officialSchemaSuiteDir.get().asFile.resolve("OFFICIAL_TEST_SUITE_REV").isFile
+}
+
+val officialRuntimeTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs OfficialRuntimeTest against the locally cached JSON Schema suite."
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -199,9 +242,12 @@ val officialLatestTest by tasks.registering(Test::class) {
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
-    dependsOn(downloadOfficialSchemaTests)
+    onlyIf("local official JSON Schema suite has been downloaded") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
+
+// Always run runtime cases after a publication refresh when both are scheduled.
+officialRuntimeTest.configure { mustRunAfter(refreshOfficialSchemaTests) }
 
 
 /**
