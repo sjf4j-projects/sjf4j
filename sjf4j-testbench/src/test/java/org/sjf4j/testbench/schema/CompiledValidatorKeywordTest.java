@@ -150,6 +150,30 @@ class CompiledValidatorKeywordTest {
         public boolean isActive() { return active; }
     }
 
+    /**
+     * Untyped JSON Schema keywords must ignore unrelated JSON shapes, for
+     * POJO and OBNT input alike. No SchemaPlan fallback is permitted.
+     */
+    @CompiledValidator(fallback = false)
+    public interface UntypedDirect {
+        @ValidJsonSchema("{\"minLength\":2,\"maxLength\":4}")
+        boolean length(Object value);
+        @ValidJsonSchema("{\"pattern\":\"^a+$\"}")
+        boolean pattern(Object value);
+        @ValidJsonSchema("{\"minimum\":1.1,\"maximum\":3,\"multipleOf\":0.5}")
+        boolean number(Object value);
+        @ValidJsonSchema("{\"exclusiveMinimum\":1,\"exclusiveMaximum\":3}")
+        boolean exclusive(Object value);
+        @ValidJsonSchema("{\"minItems\":1,\"maxItems\":2}")
+        boolean count(Object value);
+        @ValidJsonSchema("{\"properties\":{\"text\":{\"minLength\":2},"
+                + "\"decimal\":{\"minimum\":2},\"matrix\":{\"maxItems\":2}}}")
+        boolean nestedPojo(Values value);
+        @ValidJsonSchema("{\"properties\":{\"text\":{\"minLength\":2},"
+                + "\"decimal\":{\"minimum\":2},\"matrix\":{\"maxItems\":2}}}")
+        boolean nestedObnt(Object value);
+    }
+
     @CompiledValidator(fallback = false)
     public interface PrimitiveRequired {
         @ValidJsonSchema(PRIMITIVE_REQUIRED) boolean valid(PrimitiveModel model);
@@ -221,6 +245,51 @@ class CompiledValidatorKeywordTest {
         assertFalse(v.arrays(value("aa", BigDecimal.ONE, 2,
                 List.of(List.of("aa"), List.of("bb"), List.of("cc")))));
         assertTrue(v.arrays(value("aa", BigDecimal.ONE, 2, List.of(List.of("aa", "bb")))));
+    }
+
+    @Test
+    void untypedConstraintsAreShapeConditionalOnPojoAndObnt() {
+        UntypedDirect compiled = CompiledInstances.create(UntypedDirect.class);
+
+        assertTrue(compiled.length("abc"));
+        assertFalse(compiled.length("a"));
+        assertFalse(compiled.length("abcde"));
+        assertTrue(compiled.length(123));
+        assertTrue(compiled.length(null));
+        assertTrue(compiled.length(Map.of("text", "a")));
+        assertTrue(compiled.length(new JsonObject()));
+        assertTrue(compiled.length("𝄞a")); // Unicode code points, not UTF-16 code units.
+
+        assertTrue(compiled.pattern("aa"));
+        assertFalse(compiled.pattern("ab"));
+        assertTrue(compiled.pattern(List.of(1, 2)));
+
+        assertTrue(compiled.number(new BigDecimal("1.5")));
+        assertFalse(compiled.number(new BigDecimal("1.1")));
+        assertFalse(compiled.number(new BigDecimal("3.5")));
+        assertTrue(compiled.number("not a number"));
+        assertTrue(compiled.number(null));
+        assertTrue(compiled.exclusive(2));
+        assertFalse(compiled.exclusive(1));
+        assertFalse(compiled.exclusive(3));
+        assertTrue(compiled.exclusive(false));
+
+        assertTrue(compiled.count(List.of(1)));
+        assertFalse(compiled.count(List.of()));
+        assertFalse(compiled.count(List.of(1, 2, 3)));
+        assertTrue(compiled.count(Map.of("a", 1)));
+        assertTrue(compiled.count(null));
+
+        assertTrue(compiled.nestedPojo(value("abcd", BigDecimal.valueOf(2), 1, List.of(List.of("aa")))));
+        assertFalse(compiled.nestedPojo(value("a", BigDecimal.valueOf(2), 1, List.of())));
+        assertFalse(compiled.nestedPojo(value("abc", BigDecimal.ONE, 1, List.of())));
+        Map<String, Object> obnt = new LinkedHashMap<>();
+        obnt.put("text", "abc");
+        obnt.put("decimal", 2);
+        obnt.put("matrix", List.of(1));
+        assertTrue(compiled.nestedObnt(new JsonObject(obnt)));
+        obnt.put("matrix", List.of(1, 2, 3));
+        assertFalse(compiled.nestedObnt(new JsonObject(obnt)));
     }
 
     @Test
