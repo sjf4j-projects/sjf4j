@@ -11,6 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Loads a complete JSON Schema document from a retrieval URI.
@@ -88,6 +92,33 @@ public interface SchemaLoader {
 
         public URI baseUri() {
             return baseUri;
+        }
+
+        /**
+         * Lists every JSON Schema resource under a file-system directory.
+         * Directory discovery is separate from loading and registry indexing:
+         * callers use {@link #load(URI)} and {@link SchemaRegistry#index(URI, JsonSchema)}.
+         * Classpath directory enumeration is intentionally unsupported.
+         */
+        public List<URI> listDirectory() {
+            if (!"file".equalsIgnoreCase(baseUri.getScheme())) {
+                throw new IllegalArgumentException(
+                        "schema registry directory must use a file: URI: " + baseUri);
+            }
+            Path root = Paths.get(baseUri);
+            if (!Files.isDirectory(root)) {
+                throw new IllegalArgumentException("schema registry directory not found: " + root);
+            }
+            try (Stream<Path> paths = Files.walk(root)) {
+                return paths.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".json"))
+                        .sorted()
+                        .map(Path::toUri)
+                        .collect(Collectors.toList());
+            } catch (IOException e) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+                        "failed to list schema registry directory", PathSegment.Root.INSTANCE, baseUri), e);
+            }
         }
 
         /** Resolves a relative reference against the configured schema directory. */
