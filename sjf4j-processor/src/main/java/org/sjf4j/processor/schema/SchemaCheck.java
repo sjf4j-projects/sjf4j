@@ -210,6 +210,8 @@ abstract class SchemaCheck {
         final boolean additionalPropertiesFalse;
         final SchemaCheck additionalPropertiesCheck;
         final List<PatternProperty> patternProperties;
+        final SchemaCheck propertyNamesCheck;
+        final List<DependentSchema> dependentSchemas;
         final SchemaValue elementValue;
         final Integer minProperties;
         final Integer maxProperties;
@@ -227,7 +229,8 @@ abstract class SchemaCheck {
 
         ObjectCheck(boolean dynamic, boolean jsonObject, boolean typeRequired,
                     boolean additionalPropertiesFalse, SchemaCheck additionalPropertiesCheck,
-                    List<PatternProperty> patternProperties, SchemaValue elementValue,
+                    List<PatternProperty> patternProperties, SchemaCheck propertyNamesCheck,
+                    List<DependentSchema> dependentSchemas, SchemaValue elementValue,
                     Integer minProperties, Integer maxProperties, int staticPropertyCount,
                     List<String> allowedNames, List<Required> required,
                     List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
@@ -241,6 +244,8 @@ abstract class SchemaCheck {
             this.additionalPropertiesFalse = additionalPropertiesFalse;
             this.additionalPropertiesCheck = additionalPropertiesCheck;
             this.patternProperties = Collections.unmodifiableList(new ArrayList<PatternProperty>(patternProperties));
+            this.propertyNamesCheck = propertyNamesCheck;
+            this.dependentSchemas = Collections.unmodifiableList(new ArrayList<DependentSchema>(dependentSchemas));
             this.elementValue = elementValue;
             this.minProperties = minProperties;
             this.maxProperties = maxProperties;
@@ -260,6 +265,10 @@ abstract class SchemaCheck {
         @Override
         boolean hasFallback() {
             if (additionalPropertiesCheck != null && additionalPropertiesCheck.hasFallback()) return true;
+            if (propertyNamesCheck != null && propertyNamesCheck.hasFallback()) return true;
+            for (DependentSchema dependency : dependentSchemas) {
+                if (dependency.check.hasFallback()) return true;
+            }
             for (PatternProperty pattern : patternProperties) {
                 if (pattern.check.hasFallback()) return true;
             }
@@ -267,6 +276,17 @@ abstract class SchemaCheck {
                 if (property.check.hasFallback()) return true;
             }
             return false;
+        }
+    }
+
+    /** Triggers a child schema against the entire containing object, never the property value. */
+    static final class DependentSchema {
+        final String trigger;
+        final SchemaCheck check;
+
+        DependentSchema(String trigger, SchemaCheck check) {
+            this.trigger = trigger;
+            this.check = check;
         }
     }
 
