@@ -299,8 +299,8 @@ public final class ConversionEmitter
             throw new IllegalStateException("Cannot render structural conversion signature", e);
         }
 
-        String signature = conversion.sourceType() + "\u0000"
-                + conversion.targetType() + "\u0000" + source;
+        String signature = conversion.sourceType() + " -> "
+                + conversion.targetType() + "\n" + source;
         signatures.put(conversion, signature);
         return signature;
     }
