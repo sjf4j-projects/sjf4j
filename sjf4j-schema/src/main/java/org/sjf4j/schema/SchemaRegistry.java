@@ -145,16 +145,33 @@ public class SchemaRegistry {
     }
 
     /**
-     * Recursively pre-registers all .json resources under a file-system directory.
-     * Uses SchemaLoader for parsing and the existing indexIfAbsent semantics,
-     * preserving previously indexed roots and canonical $id aliases.
-     * Plans remain lazy until resolve() is invoked.
+     * Recursively indexes JSON Schemas in a file-system directory, using file: retrieval
+     * URIs for schemas without $id. Plans remain lazy until resolve() is invoked.
      *
      * @param directory a file: URI or working-directory-relative directory URI ending in '/'
      */
     public void indexDir(URI directory) {
+        indexDir(directory, null);
+    }
+
+    /**
+     * Indexes a local directory under a logical retrieval URI base.
+     * For example, directory/file.json is indexed as retrievalBase.resolve("file.json").
+     * The schema's own $id, when present, is still its canonical URI. This is
+     * useful for preloaded remote resources without $id; no network I/O occurs.
+     *
+     * @param directory a local directory containing .json schemas
+     * @param retrievalBase absolute directory URI ending in '/', or null to use local file: URIs
+     */
+    public void indexDir(URI directory, URI retrievalBase) {
         SchemaLoader.Local loader = new SchemaLoader.Local(directory);
         URI base = loader.baseUri();
+        URI registeredBase = retrievalBase == null ? base : retrievalBase;
+        if (!registeredBase.isAbsolute() || !registeredBase.toString().endsWith("/")
+                || registeredBase.getRawQuery() != null || registeredBase.getRawFragment() != null) {
+            throw new IllegalArgumentException("schema registry retrieval base must be an absolute directory URI: "
+                    + registeredBase);
+        }
         if (!"file".equalsIgnoreCase(base.getScheme())) {
             throw new IllegalArgumentException("schema registry directory must use a file: URI: " + base);
         }
@@ -172,7 +189,8 @@ public class SchemaRegistry {
                         if (schema == null) {
                             throw new IllegalArgumentException("schema registry resource not found: " + uri);
                         }
-                        indexIfAbsent(uri, schema);
+                        URI relative = root.toUri().relativize(uri);
+                        indexIfAbsent(registeredBase.resolve(relative), schema);
                     });
         } catch (IOException e) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
