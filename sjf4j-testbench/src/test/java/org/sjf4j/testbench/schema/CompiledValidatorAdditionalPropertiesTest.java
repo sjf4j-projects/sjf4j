@@ -43,6 +43,7 @@ public class CompiledValidatorAdditionalPropertiesTest {
     public static final class Bean {
         public String label;
         public Object flag;
+        public Bean() {}
         public Bean(String label, Object flag) {
             this.label = label;
             this.flag = flag;
@@ -70,7 +71,8 @@ public class CompiledValidatorAdditionalPropertiesTest {
         assertTrue(check.intersectingKeywords(Map.of("foo", "good", "extra", true)));
         assertFalse(check.intersectingKeywords(Map.of("foo", "hi")));
         assertFalse(check.intersectingKeywords(Map.of("foobar", 2)));
-        assertTrue(check.intersectingKeywords(Map.of("other", true)));
+        assertFalse(check.intersectingKeywords(Map.of("other", true))); // "o" matches: pattern value must be a string.
+        assertTrue(check.intersectingKeywords(Map.of("bar", true)));
 
         assertFalse(check.noCoverageFromAllOf(Map.of("foo", 1, "bar", true)));
         assertTrue(check.noCoverageFromAllOf(Map.of("foo", true, "bar", true)));
