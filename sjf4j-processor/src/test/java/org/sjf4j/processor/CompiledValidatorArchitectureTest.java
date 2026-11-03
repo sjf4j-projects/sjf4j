@@ -97,9 +97,9 @@ class CompiledValidatorArchitectureTest {
         assertFalse(generated.contains(" SUBSCHEMA"), generated);
         assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains("SchemaFallbacks.SchemaPlan.ROOT.validate("), generated);
-        // The String-typed method still needs the shared runtime plan; the
-        // object-typed methods use compiled access to runtime properties.
-        assertTrue(generated.contains("SchemaFallbacks.SchemaPlan.ROOT.isValid("), generated);
+        // Compile all assertion keywords regardless of the input's Java
+        // representation: the String method rejects type:object directly.
+        assertFalse(generated.contains("SchemaFallbacks.SchemaPlan.ROOT.isValid("), generated);
     }
 
     @Test
