@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -44,7 +45,6 @@ final class OfficialCaseRunner implements AutoCloseable {
     private final Map<String, String> directFailures = new LinkedHashMap<>();
     private final List<URLClassLoader> classLoaders = new ArrayList<>();
     private int batchSerial;
-
 
     OfficialCaseRunner(Path generatedRoot, Path workRoot) {
         this.generatedRoot = generatedRoot;
@@ -88,9 +88,9 @@ final class OfficialCaseRunner implements AutoCloseable {
         }
     }
 
-    static List<Spec> readIndex(Path generatedRoot) throws IOException {
+    static List<Spec> readIndex(Path generatedRoot, Set<String> fallbackGroups) throws IOException {
         List<String> lines = Files.readAllLines(generatedRoot.resolve("index.tsv"), StandardCharsets.UTF_8);
-        if (lines.isEmpty() || !"file\tgroup\tclass\ttests\tfallback".equals(lines.get(0))) {
+        if (lines.isEmpty() || !"file\tgroup\tclass\ttests".equals(lines.get(0))) {
             throw new IllegalStateException("Invalid official compiled cases index");
         }
         List<Spec> cases = new ArrayList<>();
@@ -98,11 +98,10 @@ final class OfficialCaseRunner implements AutoCloseable {
         for (int i = 1; i < lines.size(); i++) {
             if (lines.get(i).isEmpty()) continue;
             String[] cells = lines.get(i).split("\t", -1);
-            if (cells.length != 5 || (!"true".equals(cells[4]) && !"false".equals(cells[4]))) {
-                throw new IllegalStateException("Invalid index line " + (i + 1));
-            }
+            if (cells.length != 4) throw new IllegalStateException("Invalid index line " + (i + 1));
+            String key = cells[0] + "#" + cells[1];
             Spec spec = new Spec(cells[0], Integer.parseInt(cells[1]),
-                    cells[2], Integer.parseInt(cells[3]), Boolean.parseBoolean(cells[4]));
+                    cells[2], Integer.parseInt(cells[3]), fallbackGroups.contains(key));
             if (spec.group < 0 || spec.tests < 1 || !spec.file.endsWith(".json")
                     || !spec.className.matches("[A-Za-z][A-Za-z0-9]*")
                     || seen.putIfAbsent(spec.key(), true) != null) {
@@ -110,11 +109,15 @@ final class OfficialCaseRunner implements AutoCloseable {
             }
             cases.add(spec);
         }
+        if (!seen.keySet().containsAll(fallbackGroups)) {
+            Set<String> missing = new java.util.LinkedHashSet<>(fallbackGroups);
+            missing.removeAll(seen.keySet());
+            throw new IllegalStateException("Unknown explicit fallback groups: " + missing);
+        }
         return cases;
     }
 
     void compileAll(List<Spec> specs, boolean probeDirect) throws IOException {
-
         // A previous run may have written partially generated classes/sources.
         // Never allow stale output to make a failed batch appear compilable.
         if (Files.exists(workRoot)) {
@@ -131,9 +134,8 @@ final class OfficialCaseRunner implements AutoCloseable {
             }
             return;
         }
-        // Default: compile the fallback=false binding. Unsupported groups are
-        // explicitly allowlisted in the generated manifest; a javac failure never
-        // triggers an implicit fallback retry.
+        // Compile the fallback=false binding by default. Explicit exceptions
+        // are chosen by OfficialCompiledTest, not inferred from javac failures.
         Map<String, List<Spec>> byFile = new LinkedHashMap<>();
         for (Spec spec : specs) {
             byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
@@ -214,7 +216,7 @@ final class OfficialCaseRunner implements AutoCloseable {
             for (Spec spec : batch) {
                 sources.add(generatedRoot.resolve("java")
                         .resolve(PACKAGE.replace('.', '/'))
-                        .resolve(spec.className + (direct ? "Direct" : "") + ".java").toFile());
+                        .resolve(spec.className + (spec.fallback && !direct ? "Fallback" : "") + ".java").toFile());
             }
             String classpath = System.getProperty("sjf4j.schema.officialCompilerClasspath",
                     System.getProperty("java.class.path"));
@@ -263,7 +265,7 @@ final class OfficialCaseRunner implements AutoCloseable {
         for (Spec spec : batch) {
             try {
                 Class<?> type = Class.forName(PACKAGE + "." + spec.className
-                        + (direct ? "Direct" : ""), true, loader);
+                        + (spec.fallback && !direct ? "Fallback" : ""), true, loader);
                 @SuppressWarnings({"rawtypes", "unchecked"})
                 Object validator = CompiledInstances.create((Class) type);
                 Method method = type.getMethod("valid", Object.class);
