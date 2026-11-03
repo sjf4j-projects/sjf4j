@@ -66,14 +66,14 @@ public class CompiledObntCodecBenchmark {
     public String backend;
 
     private Binder<?, ?> runtime;
-    private Read<CodecPojo> readCodec;
-    private Write<CodecPojo> writeCodec;
-    private Read<DynamicJojo> readJojo;
-    private Write<DynamicJojo> writeJojo;
-    private Read<JsonObject> readObject;
-    private Write<JsonObject> writeObject;
-    private Read<JsonArray> readArray;
-    private Write<JsonArray> writeArray;
+    private ReadInterface<CodecPojo> readInterfaceCodec;
+    private WriteInterface<CodecPojo> writeInterfaceCodec;
+    private ReadInterface<DynamicJojo> readInterfaceJojo;
+    private WriteInterface<DynamicJojo> writeInterfaceJojo;
+    private ReadInterface<JsonObject> readInterfaceObject;
+    private WriteInterface<JsonObject> writeInterfaceObject;
+    private ReadInterface<JsonArray> readInterfaceArray;
+    private WriteInterface<JsonArray> writeInterfaceArray;
 
     private CodecPojo codecValue;
     private DynamicJojo jojoValue;
@@ -81,13 +81,13 @@ public class CompiledObntCodecBenchmark {
     private JsonArray arrayValue;
 
     @FunctionalInterface
-    private interface Read<T> {
-        T apply(String json) throws IOException;
+    private interface ReadInterface<T> {
+        T apply(String json);
     }
 
     @FunctionalInterface
-    private interface Write<T> {
-        String apply(T value) throws IOException;
+    private interface WriteInterface<T> {
+        String apply(T value);
     }
 
     @Setup(Level.Trial)
@@ -96,89 +96,89 @@ public class CompiledObntCodecBenchmark {
             case "fastjson2": {
                 Fastjson2Compiled compiled = CompiledInstances.create(Fastjson2Compiled.class);
                 runtime = new org.sjf4j.backend.fastjson2.binding.Fastjson2Binder();
-                readCodec = compiled::readCodec;
-                writeCodec = compiled::writeCodec;
-                readJojo = compiled::readJojo;
-                writeJojo = compiled::writeJojo;
-                readObject = compiled::readObject;
-                writeObject = compiled::writeObject;
-                readArray = compiled::readArray;
-                writeArray = compiled::writeArray;
+                readInterfaceCodec = compiled::readCodec;
+                writeInterfaceCodec = compiled::writeCodec;
+                readInterfaceJojo = compiled::readJojo;
+                writeInterfaceJojo = compiled::writeJojo;
+                readInterfaceObject = compiled::readObject;
+                writeInterfaceObject = compiled::writeObject;
+                readInterfaceArray = compiled::readArray;
+                writeInterfaceArray = compiled::writeArray;
                 break;
             }
             case "jackson2": {
                 Jackson2Compiled compiled = CompiledInstances.create(Jackson2Compiled.class);
                 runtime = new org.sjf4j.backend.jackson2.binding.Jackson2Binder();
-                readCodec = compiled::readCodec;
-                writeCodec = compiled::writeCodec;
-                readJojo = compiled::readJojo;
-                writeJojo = compiled::writeJojo;
-                readObject = compiled::readObject;
-                writeObject = compiled::writeObject;
-                readArray = compiled::readArray;
-                writeArray = compiled::writeArray;
+                readInterfaceCodec = compiled::readCodec;
+                writeInterfaceCodec = compiled::writeCodec;
+                readInterfaceJojo = compiled::readJojo;
+                writeInterfaceJojo = compiled::writeJojo;
+                readInterfaceObject = compiled::readObject;
+                writeInterfaceObject = compiled::writeObject;
+                readInterfaceArray = compiled::readArray;
+                writeInterfaceArray = compiled::writeArray;
                 break;
             }
             case "jackson3": {
                 Jackson3Compiled compiled = CompiledInstances.create(Jackson3Compiled.class);
                 runtime = new org.sjf4j.backend.jackson3.binding.Jackson3Binder();
-                readCodec = compiled::readCodec;
-                writeCodec = compiled::writeCodec;
-                readJojo = compiled::readJojo;
-                writeJojo = compiled::writeJojo;
-                readObject = compiled::readObject;
-                writeObject = compiled::writeObject;
-                readArray = compiled::readArray;
-                writeArray = compiled::writeArray;
+                readInterfaceCodec = compiled::readCodec;
+                writeInterfaceCodec = compiled::writeCodec;
+                readInterfaceJojo = compiled::readJojo;
+                writeInterfaceJojo = compiled::writeJojo;
+                readInterfaceObject = compiled::readObject;
+                writeInterfaceObject = compiled::writeObject;
+                readInterfaceArray = compiled::readArray;
+                writeInterfaceArray = compiled::writeArray;
                 break;
             }
             case "gson": {
                 GsonCompiled compiled = CompiledInstances.create(GsonCompiled.class);
                 runtime = new org.sjf4j.backend.gson.binding.GsonBinder();
-                readCodec = compiled::readCodec;
-                writeCodec = compiled::writeCodec;
-                readJojo = compiled::readJojo;
-                writeJojo = compiled::writeJojo;
-                readObject = compiled::readObject;
-                writeObject = compiled::writeObject;
-                readArray = compiled::readArray;
-                writeArray = compiled::writeArray;
+                readInterfaceCodec = compiled::readCodec;
+                writeInterfaceCodec = compiled::writeCodec;
+                readInterfaceJojo = compiled::readJojo;
+                writeInterfaceJojo = compiled::writeJojo;
+                readInterfaceObject = compiled::readObject;
+                writeInterfaceObject = compiled::writeObject;
+                readInterfaceArray = compiled::readArray;
+                writeInterfaceArray = compiled::writeArray;
                 break;
             }
             case "jsonp": {
                 JsonpCompiled compiled = CompiledInstances.create(JsonpCompiled.class);
                 runtime = new org.sjf4j.backend.jsonp.binding.JsonpBinder();
-                readCodec = compiled::readCodec;
-                writeCodec = compiled::writeCodec;
-                readJojo = compiled::readJojo;
-                writeJojo = compiled::writeJojo;
-                readObject = compiled::readObject;
-                writeObject = compiled::writeObject;
-                readArray = compiled::readArray;
-                writeArray = compiled::writeArray;
+                readInterfaceCodec = compiled::readCodec;
+                writeInterfaceCodec = compiled::writeCodec;
+                readInterfaceJojo = compiled::readJojo;
+                writeInterfaceJojo = compiled::writeJojo;
+                readInterfaceObject = compiled::readObject;
+                writeInterfaceObject = compiled::writeObject;
+                readInterfaceArray = compiled::readArray;
+                writeInterfaceArray = compiled::writeArray;
                 break;
             }
             case "simple": {
                 SimpleCompiled compiled = CompiledInstances.create(SimpleCompiled.class);
                 runtime = new org.sjf4j.binding.simple.SimpleJsonBinder();
-                readCodec = compiled::readCodec;
-                writeCodec = compiled::writeCodec;
-                readJojo = compiled::readJojo;
-                writeJojo = compiled::writeJojo;
-                readObject = compiled::readObject;
-                writeObject = compiled::writeObject;
-                readArray = compiled::readArray;
-                writeArray = compiled::writeArray;
+                readInterfaceCodec = compiled::readCodec;
+                writeInterfaceCodec = compiled::writeCodec;
+                readInterfaceJojo = compiled::readJojo;
+                writeInterfaceJojo = compiled::writeJojo;
+                readInterfaceObject = compiled::readObject;
+                writeInterfaceObject = compiled::writeObject;
+                readInterfaceArray = compiled::readArray;
+                writeInterfaceArray = compiled::writeArray;
                 break;
             }
             default:
                 throw new IllegalArgumentException(backend);
         }
 
-        codecValue = readCodec.apply(CODEC_JSON);
-        jojoValue = readJojo.apply(JOJO_JSON);
-        objectValue = readObject.apply(OBJECT_JSON);
-        arrayValue = readArray.apply(ARRAY_JSON);
+        codecValue = readInterfaceCodec.apply(CODEC_JSON);
+        jojoValue = readInterfaceJojo.apply(JOJO_JSON);
+        objectValue = readInterfaceObject.apply(OBJECT_JSON);
+        arrayValue = readInterfaceArray.apply(ARRAY_JSON);
 
         // Verify read results and full-document writes, outside the measured path.
         if (codecValue.id != 11 || codecValue.when.toEpochMilli() != 1700000000123L
@@ -197,16 +197,16 @@ public class CompiledObntCodecBenchmark {
         if (objectValue.size() != 3 || arrayValue.size() != 4) {
             throw new IllegalStateException(backend + ": incorrect compiled JSON wrappers");
         }
-        verify("codec compiled", CODEC_JSON, writeCodec.apply(codecValue));
+        verify("codec compiled", CODEC_JSON, writeInterfaceCodec.apply(codecValue));
         verify("codec runtime", CODEC_JSON, runtime.writeNodeAsString(
                 runtime.readNode(CODEC_JSON, CodecPojo.class)));
-        verify("jojo compiled", JOJO_JSON, writeJojo.apply(jojoValue));
+        verify("jojo compiled", JOJO_JSON, writeInterfaceJojo.apply(jojoValue));
         verify("jojo runtime", JOJO_JSON, runtime.writeNodeAsString(
                 runtime.readNode(JOJO_JSON, DynamicJojo.class)));
-        verify("object compiled", OBJECT_JSON, writeObject.apply(objectValue));
+        verify("object compiled", OBJECT_JSON, writeInterfaceObject.apply(objectValue));
         verify("object runtime", OBJECT_JSON, runtime.writeNodeAsString(
                 runtime.readNode(OBJECT_JSON, JsonObject.class)));
-        verify("array compiled", ARRAY_JSON, writeArray.apply(arrayValue));
+        verify("array compiled", ARRAY_JSON, writeInterfaceArray.apply(arrayValue));
         verify("array runtime", ARRAY_JSON, runtime.writeNodeAsString(
                 runtime.readNode(ARRAY_JSON, JsonArray.class)));
     }
@@ -222,13 +222,13 @@ public class CompiledObntCodecBenchmark {
     // Codec: annotated value, named Instant codec, patterned LocalDate codec,
     // and value codecs inside a typed List.
     @Benchmark public CodecPojo codec_read_compiled() throws IOException {
-        return readCodec.apply(CODEC_JSON);
+        return readInterfaceCodec.apply(CODEC_JSON);
     }
     @Benchmark public Object codec_read_runtime() {
         return runtime.readNode(CODEC_JSON, CodecPojo.class);
     }
     @Benchmark public String codec_write_compiled() throws IOException {
-        return writeCodec.apply(codecValue);
+        return writeInterfaceCodec.apply(codecValue);
     }
     @Benchmark public String codec_write_runtime() {
         return runtime.writeNodeAsString(codecValue);
@@ -236,13 +236,13 @@ public class CompiledObntCodecBenchmark {
 
     // JOJO: declared fields plus unknown object and JSON null.
     @Benchmark public DynamicJojo jojo_read_compiled() throws IOException {
-        return readJojo.apply(JOJO_JSON);
+        return readInterfaceJojo.apply(JOJO_JSON);
     }
     @Benchmark public Object jojo_read_runtime() {
         return runtime.readNode(JOJO_JSON, DynamicJojo.class);
     }
     @Benchmark public String jojo_write_compiled() throws IOException {
-        return writeJojo.apply(jojoValue);
+        return writeInterfaceJojo.apply(jojoValue);
     }
     @Benchmark public String jojo_write_runtime() {
         return runtime.writeNodeAsString(jojoValue);
@@ -250,25 +250,25 @@ public class CompiledObntCodecBenchmark {
 
     // Unstructured wrappers: no declared POJO field to optimize.
     @Benchmark public JsonObject object_read_compiled() throws IOException {
-        return readObject.apply(OBJECT_JSON);
+        return readInterfaceObject.apply(OBJECT_JSON);
     }
     @Benchmark public Object object_read_runtime() {
         return runtime.readNode(OBJECT_JSON, JsonObject.class);
     }
     @Benchmark public String object_write_compiled() throws IOException {
-        return writeObject.apply(objectValue);
+        return writeInterfaceObject.apply(objectValue);
     }
     @Benchmark public String object_write_runtime() {
         return runtime.writeNodeAsString(objectValue);
     }
     @Benchmark public JsonArray array_read_compiled() throws IOException {
-        return readArray.apply(ARRAY_JSON);
+        return readInterfaceArray.apply(ARRAY_JSON);
     }
     @Benchmark public Object array_read_runtime() {
         return runtime.readNode(ARRAY_JSON, JsonArray.class);
     }
     @Benchmark public String array_write_compiled() throws IOException {
-        return writeArray.apply(arrayValue);
+        return writeInterfaceArray.apply(arrayValue);
     }
     @Benchmark public String array_write_runtime() {
         return runtime.writeNodeAsString(arrayValue);
@@ -308,73 +308,91 @@ public class CompiledObntCodecBenchmark {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2Compiled {
-        @Read CodecPojo readCodec(String json) throws IOException;
-        @Write String writeCodec(CodecPojo value) throws IOException;
-        @Read DynamicJojo readJojo(String json) throws IOException;
-        @Write String writeJojo(DynamicJojo value) throws IOException;
-        @Read JsonObject readObject(String json) throws IOException;
-        @Write String writeObject(JsonObject value) throws IOException;
-        @Read JsonArray readArray(String json) throws IOException;
-        @Write String writeArray(JsonArray value) throws IOException;
+        @Read CodecPojo readCodec(String json);
+        @Write String writeCodec(CodecPojo value);
+        @Read DynamicJojo readJojo(String json);
+        @Write String writeJojo(DynamicJojo value);
+        @Read JsonObject readObject(String json);
+        @Write String writeObject(JsonObject value);
+        @Read JsonArray readArray(String json);
+        @Write String writeArray(JsonArray value);
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Compiled {
-        @Read CodecPojo readCodec(String json) throws IOException;
-        @Write String writeCodec(CodecPojo value) throws IOException;
-        @Read DynamicJojo readJojo(String json) throws IOException;
-        @Write String writeJojo(DynamicJojo value) throws IOException;
-        @Read JsonObject readObject(String json) throws IOException;
-        @Write String writeObject(JsonObject value) throws IOException;
-        @Read JsonArray readArray(String json) throws IOException;
-        @Write String writeArray(JsonArray value) throws IOException;
+        @Read CodecPojo readCodec(String json);
+        @Write String writeCodec(CodecPojo value);
+        @Read DynamicJojo readJojo(String json);
+        @Write String writeJojo(DynamicJojo value);
+        @Read JsonObject readObject(String json);
+        @Write
+        String writeObject(JsonObject value);
+        @Read JsonArray readArray(String json);
+        @Write
+        String writeArray(JsonArray value);
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Compiled {
-        @Read CodecPojo readCodec(String json) throws IOException;
-        @Write String writeCodec(CodecPojo value) throws IOException;
-        @Read DynamicJojo readJojo(String json) throws IOException;
-        @Write String writeJojo(DynamicJojo value) throws IOException;
-        @Read JsonObject readObject(String json) throws IOException;
-        @Write String writeObject(JsonObject value) throws IOException;
-        @Read JsonArray readArray(String json) throws IOException;
-        @Write String writeArray(JsonArray value) throws IOException;
+        @Read CodecPojo readCodec(String json);
+        @Write
+        String writeCodec(CodecPojo value);
+        @Read DynamicJojo readJojo(String json);
+        @Write
+        String writeJojo(DynamicJojo value);
+        @Read JsonObject readObject(String json);
+        @Write
+        String writeObject(JsonObject value);
+        @Read JsonArray readArray(String json);
+        @Write
+        String writeArray(JsonArray value);
     }
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonCompiled {
-        @Read CodecPojo readCodec(String json) throws IOException;
-        @Write String writeCodec(CodecPojo value) throws IOException;
-        @Read DynamicJojo readJojo(String json) throws IOException;
-        @Write String writeJojo(DynamicJojo value) throws IOException;
-        @Read JsonObject readObject(String json) throws IOException;
-        @Write String writeObject(JsonObject value) throws IOException;
-        @Read JsonArray readArray(String json) throws IOException;
-        @Write String writeArray(JsonArray value) throws IOException;
+        @Read CodecPojo readCodec(String json);
+        @Write
+        String writeCodec(CodecPojo value);
+        @Read DynamicJojo readJojo(String json);
+        @Write
+        String writeJojo(DynamicJojo value);
+        @Read JsonObject readObject(String json);
+        @Write
+        String writeObject(JsonObject value);
+        @Read JsonArray readArray(String json);
+        @Write
+        String writeArray(JsonArray value);
     }
 
     @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpCompiled {
-        @Read CodecPojo readCodec(String json) throws IOException;
-        @Write String writeCodec(CodecPojo value) throws IOException;
-        @Read DynamicJojo readJojo(String json) throws IOException;
-        @Write String writeJojo(DynamicJojo value) throws IOException;
-        @Read JsonObject readObject(String json) throws IOException;
-        @Write String writeObject(JsonObject value) throws IOException;
-        @Read JsonArray readArray(String json) throws IOException;
-        @Write String writeArray(JsonArray value) throws IOException;
+        @Read CodecPojo readCodec(String json);
+        @Write
+        String writeCodec(CodecPojo value);
+        @Read DynamicJojo readJojo(String json);
+        @Write
+        String writeJojo(DynamicJojo value);
+        @Read JsonObject readObject(String json);
+        @Write
+        String writeObject(JsonObject value);
+        @Read JsonArray readArray(String json);
+        @Write
+        String writeArray(JsonArray value);
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiled {
-        @Read CodecPojo readCodec(String json) throws IOException;
-        @Write String writeCodec(CodecPojo value) throws IOException;
-        @Read DynamicJojo readJojo(String json) throws IOException;
-        @Write String writeJojo(DynamicJojo value) throws IOException;
-        @Read JsonObject readObject(String json) throws IOException;
-        @Write String writeObject(JsonObject value) throws IOException;
-        @Read JsonArray readArray(String json) throws IOException;
-        @Write String writeArray(JsonArray value) throws IOException;
+        @Read CodecPojo readCodec(String json);
+        @Write
+        String writeCodec(CodecPojo value);
+        @Read DynamicJojo readJojo(String json);
+        @Write
+        String writeJojo(DynamicJojo value);
+        @Read JsonObject readObject(String json);
+        @Write
+        String writeObject(JsonObject value);
+        @Read JsonArray readArray(String json);
+        @Write
+        String writeArray(JsonArray value);
     }
 }
