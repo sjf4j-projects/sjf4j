@@ -4,10 +4,9 @@ import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
-import org.sjf4j.schema.JsonSchema;
+import org.sjf4j.schema.SchemaRegistry;
 
 import javax.lang.model.element.TypeElement;
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -22,7 +21,7 @@ public final class SchemaGenerator {
 
     private final ProcessorContext context;
     // One directory load per annotation-processing run, shared by interfaces.
-    private final Map<String, Map<URI, JsonSchema>> registryCache = new LinkedHashMap<>();
+    private final Map<String, SchemaRegistry> registryCache = new LinkedHashMap<>();
 
     public SchemaGenerator(ProcessorContext context) {
         this.context = context;
