@@ -364,7 +364,19 @@ final class ObjectCompiler {
 
     private static String childPointer(String base, String keyword, String name) {
         return base + (base.contains("#") ? "/" : "#/")
-                + pointerEscape(keyword) + "/" + pointerEscape(name);
+                + pointerEscape(keyword) + "/" + encodeFragmentSegment(pointerEscape(name));
+    }
+
+    /** URI-encode a JSON Pointer segment without changing its RFC 6901 escaping. */
+    private static String encodeFragmentSegment(String segment) {
+        try {
+            // URI's multi-argument constructor escapes quotes, whitespace and
+            // reserved percent signs; toASCIIString also encodes non-ASCII.
+            return new java.net.URI(null, null, "/" + segment, null)
+                    .toASCIIString().substring(1);
+        } catch (java.net.URISyntaxException ex) {
+            throw new IllegalArgumentException("Invalid schema property name", ex);
+        }
     }
 
     private static boolean isRequired(Object required, String key) {
