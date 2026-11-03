@@ -212,17 +212,6 @@ val downloadOfficialSchemaTests by tasks.registering {
     }
 }
 
-val refreshOfficialSchemaTests by tasks.registering {
-    group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Always checks upstream main for publication; only downloads when the revision changed."
-    outputs.dir(officialSchemaSuiteDir)
-    outputs.upToDateWhen { false }
-    doLast {
-        // Intentionally ignore -PjsonSchemaSuiteRef: publication must use upstream main.
-        updateOfficialSuite("main")
-    }
-}
-
 val cachedOfficialSuiteExists = {
     officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12").isDirectory &&
         officialSchemaSuiteDir.get().asFile.resolve("OFFICIAL_TEST_SUITE_REV").isFile
@@ -243,8 +232,9 @@ val officialRuntimeTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.test)
 }
 
-// Always run runtime cases after a publication refresh when both are scheduled.
-officialRuntimeTest.configure { mustRunAfter(refreshOfficialSchemaTests) }
+// When a publication also schedules a download, run it before checking the suite.
+// mustRunAfter alone never invokes a network task during an ordinary build.
+officialRuntimeTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
 
 
 /**
@@ -336,9 +326,8 @@ val generateOfficialCompiledCases by tasks.registering {
     }
 }
 
-// A publish refresh must finish before annotation-processing input resources
-// are checked or refreshed. Daily builds do not include the refresh task.
-generateOfficialCompiledCases.configure { mustRunAfter(refreshOfficialSchemaTests) }
+// Generated bindings must match the latest downloaded suite when publishing.
+generateOfficialCompiledCases.configure { mustRunAfter(downloadOfficialSchemaTests) }
 
 val officialCompiledTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -373,20 +362,23 @@ tasks.named("check") {
 }
 
 // Release gate covers runtime and full compiled Draft 2020-12 official cases.
-// The refresh task resolves upstream main afresh even if a pinned -P ref was used
-// for a previous local run. Both test tasks run after the refresh.
+// Publication invokes the downloader; normal build/check never invokes it.
 val officialPublishGate by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Refreshes upstream main and runs all required official runtime and compiled tests before publishing."
-    dependsOn(refreshOfficialSchemaTests, officialRuntimeTest, officialCompiledTest)
+    dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest)
     doLast {
         check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
+        // A pinned local SHA may be used for debugging, never for a publication.
+        check(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get() == "main") {
+            "Publication requires latest upstream main; remove -PjsonSchemaSuiteRef"
+        }
         check(providers.gradleProperty("officialCompiledCategory").orElse("all").get() == "all") {
             "Publication requires all mandatory official compiled cases; remove -PofficialCompiledCategory"
         }
     }
 }
-officialCompiledTest.configure { mustRunAfter(refreshOfficialSchemaTests) }
+officialCompiledTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
 
 tasks.named("build") {
     dependsOn(tasks.named("jmhJar"))
