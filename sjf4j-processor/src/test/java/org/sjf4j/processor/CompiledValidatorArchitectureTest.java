@@ -80,7 +80,7 @@ class CompiledValidatorArchitectureTest {
     }
 
     @Test
-    void sharesFallbackAcrossDistinctAnnotationsAndJavaTypesForSameResource() throws Exception {
+    void compilesSharedResourceForDifferentParameterTypesWithoutFallback() throws Exception {
         String ref = "@ValidJsonSchema(ref = \"classpath:/schema/compiled-validator-shared-fallback.json\") ";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=true) public interface Check { "
@@ -91,14 +91,13 @@ class CompiledValidatorArchitectureTest {
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertEquals(1, occurrences(generated, "private static final class SchemaPlan {"), generated);
-        assertFalse(generated.contains("private static final class SchemaPlan2 {"), generated);
-        assertEquals(1, occurrences(generated, "new SchemaRegistry()"), generated);
+        // Type:object rejects the String-typed input directly, independently
+        // of the sibling object keywords; no runtime SchemaPlan is needed.
+        assertFalse(generated.contains("private static final class SchemaPlan"), generated);
+        assertFalse(generated.contains("new SchemaRegistry()"), generated);
         assertFalse(generated.contains(" SUBSCHEMA"), generated);
         assertTrue(generated.contains("matchCount"), generated);
         assertFalse(generated.contains("SchemaFallbacks.SchemaPlan.ROOT.validate("), generated);
-        // Compile all assertion keywords regardless of the input's Java
-        // representation: the String method rejects type:object directly.
         assertFalse(generated.contains("SchemaFallbacks.SchemaPlan.ROOT.isValid("), generated);
     }
 
