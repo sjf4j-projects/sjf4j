@@ -41,13 +41,9 @@ final class SchemaEmitter {
     List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
                           SchemaFallbackEmitter.Plan plan, String strictFormat,
                           String onFailure) {
-        // A dynamic root can contain a non-object even when its schema has
-        // object-only keywords. Keep the fast path for known object types, but
-        // emit the shape/applicability guard for Object-typed roots.
-        if (check.kind == SchemaCheck.Kind.OBJECT
-                && !((SchemaCheck.ObjectCheck) check).dynamic) {
-            return emit((SchemaCheck.ObjectCheck) check, variable, plan, strictFormat, onFailure);
-        }
+        // Root and nested checks share the same null/type applicability rules.
+        // Static POJOs must reject null for type:object and skip object-only
+        // keywords on null when no object type is required.
         List<String> lines = new ArrayList<String>();
         emitValue(lines, plan, check, value, variable, helperPrefix, strictFormat, 0, onFailure);
         return lines;
@@ -441,12 +437,13 @@ final class SchemaEmitter {
         // branches mutually exclusive, check the actual JSON-visible property
         // before executing just the matching branch; otherwise count every
         // potentially matching oneOf branch for this concrete Java type.
-        lines.add("if (" + expression + " == null) " + fail(onFailure, check.diagnostic));
+        // Null must participate in the generic oneOf branch count: an explicit
+        // null branch can match, and multiple matching branches must still fail.
         int n = 0;
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
             String simpleType = subtype.type.substring(subtype.type.lastIndexOf('.') + 1);
             String typed = locals.newName(Character.toLowerCase(simpleType.charAt(0)) + simpleType.substring(1));
-            lines.add((n == 0 ? "if" : "else if") + " ("
+            lines.add((n == 0 ? "if" : "else if") + " (" + expression + " != null && "
                     + expression + ".getClass() == " + subtype.type + ".class) {");
             lines.add("    " + subtype.type + " " + typed
                     + " = (" + subtype.type + ") " + expression + ";");
