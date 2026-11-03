@@ -254,9 +254,9 @@ final class ObjectCompiler {
     }
 
     /**
-     * A raw encoded value can be inspected with scalar/literal checks.
-     * Object/array applicators on it must be evaluated by the parent SchemaPlan,
-     * which preserves the property's ValueInfo and its atomic leaf semantics.
+     * A raw encoded value can be inspected with scalar/literal checks and
+     * applicators whose branches remain scalar-only. Object/array traversal
+     * would violate the atomic @NodeValue semantics and is not permitted.
      */
     private static boolean supportsCodecProperty(Object source) {
         if (source instanceof Boolean) return true;
@@ -281,6 +281,16 @@ final class ObjectCompiler {
                 case "minimum": case "maximum": case "exclusiveMinimum":
                 case "exclusiveMaximum": case "multipleOf":
                 case "const": case "enum":
+                    break;
+                case "allOf": case "anyOf": case "oneOf":
+                    Object branches = schema.getNode(key);
+                    if (JsonType.of(branches) != JsonType.ARRAY) return false;
+                    for (int i = 0; i < Nodes.sizeInArray(branches); i++) {
+                        if (!supportsCodecProperty(Nodes.getInArray(branches, i))) return false;
+                    }
+                    break;
+                case "not": case "if": case "then": case "else":
+                    if (!supportsCodecProperty(schema.getNode(key))) return false;
                     break;
                 default: return false;
             }
