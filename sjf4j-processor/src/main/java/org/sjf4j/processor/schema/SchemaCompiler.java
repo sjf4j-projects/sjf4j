@@ -123,6 +123,8 @@ final class SchemaCompiler {
                 }
                 return objects.compileNested(value.type, snapshot, schema, schemaUri, depth);
             }
+            SchemaCheck untyped = compileUntypedSimple(snapshot, schema, value, schemaUri, depth);
+            if (untyped != null) return untyped;
             return scalars.compileLiteralsOnly(schema, value, schemaUri);
         }
         if ("string".equals(kind) || "number".equals(kind) || "integer".equals(kind)) {
@@ -135,6 +137,61 @@ final class SchemaCompiler {
             return objects.compileNested(value.type, snapshot, schema, schemaUri, depth);
         }
         return null;
+    }
+
+    /**
+     * A keyword such as minimum does not imply type=number: it is simply
+     * ignored for non-numeric JSON instances. Compile its predicate behind a
+     * semantic JsonType guard rather than requiring runtime SchemaPlan.
+     *
+     * Only homogeneous, supported keyword families are handled here. Any
+     * unfamiliar keyword or mixed family conservatively delegates as before.
+     */
+    private SchemaCheck compileUntypedSimple(SchemaResourceResolver.Snapshot snapshot,
+                                             JsonObject schema, SchemaValue value,
+                                             String uri, int depth) {
+        String family = null;
+        for (String key : schema.keySet()) {
+            if (isAnnotation(key)) continue;
+            String current;
+            switch (key) {
+                case "minLength": case "maxLength": case "pattern":
+                    current = "string";
+                    break;
+                case "minimum": case "maximum": case "exclusiveMinimum":
+                case "exclusiveMaximum": case "multipleOf":
+                    current = "number";
+                    break;
+                case "minItems": case "maxItems":
+                    current = "array";
+                    break;
+                default:
+                    return null;
+            }
+            if (family != null && !family.equals(current)) return null;
+            family = current;
+        }
+        if (family == null) return null;
+
+        // Keep the original schema immutable. Adding type here is a compiler
+        // internal device; TypeGuard preserves the actual untyped semantics.
+        JsonObject typed = new JsonObject();
+        for (String key : schema.keySet()) typed.put(key, schema.getNode(key));
+        typed.put("type", family);
+
+        boolean matchingShape = ("string".equals(family) && value.shape == SchemaValue.Shape.STRING)
+                || ("number".equals(family) && value.shape == SchemaValue.Shape.NUMBER)
+                || ("array".equals(family) && value.isArrayLike());
+        SchemaValue childValue = matchingShape ? value : SchemaValue.of(context, null);
+        SchemaCheck compiled;
+        if ("array".equals(family)) {
+            compiled = arrays.compile(snapshot, typed, childValue, uri, depth);
+        } else {
+            compiled = scalars.compile(typed, childValue, family, uri);
+        }
+        if (compiled == null) return null;
+        return new SchemaCheck.TypeGuard(family.toUpperCase(java.util.Locale.ROOT),
+                childValue, compiled);
     }
 
     /** Single boolean/null types and type unions with optional scalar literals. */
