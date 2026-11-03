@@ -56,6 +56,11 @@ public final class OfficialCompiledTest {
     private int mainGroup = -1;
     private int mainCase = -1;
 
+    public static void main(String[] args) throws Exception {
+//        doMain(args);
+        doMain(new String[]{"all", "boolean_schema.json", "1", "4"});
+    }
+
     /**
      * Standalone IntelliJ entrypoint (run the test class as an Application).
      *
@@ -65,7 +70,7 @@ public final class OfficialCompiledTest {
      * Requires an existing local suite and generated bindings (Gradle's
      * downloadOfficialSchemaTests + generateOfficialCompiledCases once).
      */
-    public static void main(String[] args) throws Exception {
+    private static void doMain(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException(
                     "Usage: OfficialCompiledTest [category [file.json [groupIndex [testIndex]]]]");

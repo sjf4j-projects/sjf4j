@@ -39,7 +39,7 @@ public class Address {
 }
 ```
 
-**Bind, navigate, modify, patch, validate, and transform them:**
+**Bind, navigate, modify, patch, validate, and transform with runtime APIs:**
 ```java
 Sjf4j sjf4j = new Sjf4j();
 
@@ -66,17 +66,20 @@ String output = sjf4j.toJsonString(another);
 ```java
 @CompiledBinder
 interface UserBinder {
-    @ReadFrom User read(String json) throws IOException;
-    
-    @WriteTo String write(User user) throws IOException;
+    @ReadFrom User read(String json);
+    @WriteTo String write(User user);
 }
 
 UserBinder binder = CompiledInstances.create(UserBinder.class);
 User user = binder.read(json);
 ```
-Compile-time code generation also supports: `@CompiledNavigator` ( JSONPath navigation ), 
-`@CompiledMapper` ( object mapping ), and `@CompiledJdbcMapper` ( JDBC `ResultSet` mapping ).
 
+Compile-time code generation supports:
+- `@CompiledBinder`: Serialization and deserialization of JSON and other formats.
+- `@CompiledNavigator`: Navigation and modification with JSONPath.
+- `@CompiledMapper`: Object-to-object mapping.
+- `@CompiledJdbcMapper`: JDBC ResultSet-to-object mapping.
+- `@CompiledValidator`: Validation with JSON Schema .
 
 ## Why SJF4J?
 
@@ -95,7 +98,6 @@ Compile-time code generation also supports: `@CompiledNavigator` ( JSONPath navi
 - **Runtime Flexibility, Compiled Speed**  
   Enjoy flexible runtime APIs and highly optimized compile-time code generation.
 
-Use SJF4J when you need more than serialization!
 
 ## Core Capabilities
 

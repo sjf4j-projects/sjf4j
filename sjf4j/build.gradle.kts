@@ -20,6 +20,17 @@ dependencies {
     api(project(":sjf4j-schema"))
 }
 
+// The aggregate module has no test sources of its own; test its components.
+tasks.named("test") {
+    dependsOn(
+        ":sjf4j-core:test", ":sjf4j-asm:test", ":sjf4j-schema:test",
+        ":sjf4j-processor:test", ":sjf4j-testbench:test",
+        ":sjf4j-backend-gson:test", ":sjf4j-backend-jackson2:test",
+        ":sjf4j-backend-jackson3:test", ":sjf4j-backend-fastjson2:test",
+        ":sjf4j-backend-jsonp:test", ":sjf4j-backend-snake:test"
+    )
+}
+
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()

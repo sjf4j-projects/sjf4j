@@ -94,6 +94,7 @@ public class SchemaCoreTest {
                 "}\n";
         JsonSchema schema = JsonSchema.fromJson(json);
         log.info("schema={}", schema);
+        assertEquals("base.json#foo", ((ObjectSchema) schema).getCanonicalUri().toString());
     }
 
     @Test

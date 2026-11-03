@@ -10,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -282,6 +284,7 @@ public class ValidJsonSchemaTest {
         Files.write(schemaPath, SIMPLE_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
 
         SchemaValidator validator = new SchemaValidator(new SchemaLoader.Local(tempDir.toUri()), null, true);
+        assertNotNull(validator.load("user.json"));
         ExternalRefUser ok = new ExternalRefUser();
         ok.id = 1;
         ok.name = "han";
@@ -291,6 +294,7 @@ public class ValidJsonSchemaTest {
     @Test
     public void testPreloadMissingRefThrows(@TempDir Path tempDir) {
         SchemaValidator validator = new SchemaValidator(new SchemaLoader.Local(tempDir.toUri()), null, true);
+        assertNull(validator.load("missing.json"));
         MissingRefUser user = new MissingRefUser();
         user.name = "han";
         assertThrows(SchemaException.class, () -> validator.validate(user));
@@ -310,6 +314,7 @@ public class ValidJsonSchemaTest {
         Files.write(schemaPath, SIMPLE_USER_SCHEMA.getBytes(StandardCharsets.UTF_8));
 
         SchemaValidator validator = new SchemaValidator(new SchemaLoader.Local(tempDir.toUri()), null, true);
+        assertNotNull(validator.load("PreloadUser.json"));
         PreloadUser ok = new PreloadUser();
         ok.id = 1;
         ok.name = "han";
@@ -360,7 +365,8 @@ public class ValidJsonSchemaTest {
         assertTrue(validator.validate(ok).isValid());
 
         JojoUser bad = new JojoUser();
-        bad.put("id", 0);
+        bad.put("id", "not an integer");
+        bad.put("name", "tom");
         assertFalse(validator.validate(bad).isValid());
     }
 
