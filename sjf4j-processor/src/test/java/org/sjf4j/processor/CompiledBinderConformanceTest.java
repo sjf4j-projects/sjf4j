@@ -38,14 +38,14 @@ class CompiledBinderConformanceTest {
                         + "@CompiledBinder(backend=Backend." + backend
                         + (yaml ? ", format=BindingFormat.YAML" : "") + ")\n"
                         + "public interface Binder {\n"
-                        + "  @ReadFrom Bean read(String source) throws java.io.IOException;\n"
-                        + "  @ReadFrom Bean readBytes(byte[] source) throws java.io.IOException;\n"
-                        + "  @ReadFrom Bean readReader(java.io.Reader source) throws java.io.IOException;\n"
-                        + "  @ReadFrom Bean readStream(java.io.InputStream source) throws java.io.IOException;\n"
-                        + "  @WriteTo String write(Bean value) throws java.io.IOException;\n"
-                        + "  @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\n"
-                        + "  @WriteTo void writeWriter(Bean value,java.io.Writer output) throws java.io.IOException;\n"
-                        + "  @WriteTo void writeStream(Bean value,java.io.OutputStream output) throws java.io.IOException;\n"
+                        + "  @Read Bean read(String source);\n"
+                        + "  @Read Bean readBytes(byte[] source);\n"
+                        + "  @Read Bean readReader(java.io.Reader source);\n"
+                        + "  @Read Bean readStream(java.io.InputStream source);\n"
+                        + "  @Write String write(Bean failure);\n"
+                        + "  @Write byte[] writeBytes(Bean value);\n"
+                        + "  @Write void writeWriter(Bean value,java.io.Writer output);\n"
+                        + "  @Write void writeStream(Bean value,java.io.OutputStream output);\n"
                         + "}\n");
         return NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
     }
@@ -54,6 +54,11 @@ class CompiledBinderConformanceTest {
         NavigatorTestCompiler.Result result = compile(backend, yaml);
         assertTrue(result.success, backend + ": " + result.diagnostics());
         String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("catch (BindingException failure2)"), backend);
+        assertTrue(generated.contains("failed to read node as 'fixture.Bean'"), backend);
+        assertTrue(generated.contains("failed to write node type '"), backend);
+        assertTrue(generated.contains("Asserts.notNull(context, \"context\")"), backend);
+        assertFalse(generated.contains("Objects.requireNonNull"), backend);
         if (!"FASTJSON2".equals(backend)) {
             assertTrue(generated.contains("PooledStringWriter"), backend);
             assertFalse(generated.contains("FastStringWriter"), backend);
@@ -233,8 +238,8 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
-                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
-                        + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;\n"
+                        + " @Read Bean read(String json) throws java.io.IOException;\n"
+                        + " @Read Bean readBytes(byte[] json) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -294,8 +299,8 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
-                        + " @ReadFrom Bean read(String source) throws java.io.IOException;\n"
-                        + " @ReadFrom Bean readBytes(byte[] source) throws java.io.IOException;\n"
+                        + " @Read Bean read(String source) throws java.io.IOException;\n"
+                        + " @Read Bean readBytes(byte[] source) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -366,8 +371,8 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
-                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
-                        + " @ReadFrom Bean readBytes(byte[] json) throws java.io.IOException;\n"
+                        + " @Read Bean read(String json) throws java.io.IOException;\n"
+                        + " @Read Bean readBytes(byte[] json) throws java.io.IOException;\n"
                         + "}\n");
 
         NavigatorTestCompiler.Result compiled =
@@ -420,7 +425,7 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
-                        + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                        + " @Read Bean read(String s) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -442,7 +447,7 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
-                        + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                        + " @Read Bean read(String s) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -465,7 +470,7 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
-                        + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                        + " @Read Bean read(String s) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -511,7 +516,7 @@ class CompiledBinderConformanceTest {
                         "package fixture;\n"
                                 + "import org.sjf4j.annotation.binding.*;\n"
                                 + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder {\n"
-                                + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                                + " @Read Bean read(String s) throws java.io.IOException;\n"
                                 + "}\n");
                 NavigatorTestCompiler.Result result =
                         NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -541,7 +546,7 @@ class CompiledBinderConformanceTest {
         sources.put("fixture/Binder.java", "package fixture;\n"
                 + "import org.sjf4j.annotation.binding.*;\n"
                 + "@CompiledBinder(backend=Backend.JACKSON2) public interface Binder {\n"
-                + " @ReadFrom Bean read(String s) throws java.io.IOException;\n"
+                + " @Read Bean read(String s) throws java.io.IOException;\n"
                 + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -561,7 +566,7 @@ class CompiledBinderConformanceTest {
                             + "import org.sjf4j.annotation.binding.*;\n"
                             + "@CompiledBinder(backend=Backend." + backend + ")\n"
                             + "public interface Binder {\n"
-                            + " @ReadFrom Choice read(String source) throws java.io.IOException;\n"
+                            + " @Read Choice read(String source) throws java.io.IOException;\n"
                             + "}\n");
 
             NavigatorTestCompiler.Result result =
@@ -594,9 +599,9 @@ class CompiledBinderConformanceTest {
                             + "import org.sjf4j.annotation.binding.*;\n"
                             + "@CompiledBinder(backend=Backend." + backend + ")\n"
                             + "public interface Binder {\n"
-                            + " @ReadFrom Bean read(String source) throws java.io.IOException;\n"
-                            + " @WriteTo String write(Bean value) throws java.io.IOException;\n"
-                            + " @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\n"
+                            + " @Read Bean read(String source) throws java.io.IOException;\n"
+                            + " @Write String write(Bean value) throws java.io.IOException;\n"
+                            + " @Write byte[] writeBytes(Bean value) throws java.io.IOException;\n"
                             + "}\n");
             NavigatorTestCompiler.Result result =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -638,8 +643,8 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
-                        + " @WriteTo String write(Bean value) throws java.io.IOException;\n"
-                        + " @WriteTo byte[] writeBytes(Bean value) throws java.io.IOException;\n"
+                        + " @Write String write(Bean value) throws java.io.IOException;\n"
+                        + " @Write byte[] writeBytes(Bean value) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -681,8 +686,8 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {\n"
-                        + " @WriteTo String write(Node value) throws java.io.IOException;\n"
-                        + " @WriteTo byte[] writeBytes(Node value) throws java.io.IOException;\n"
+                        + " @Write String write(Node value) throws java.io.IOException;\n"
+                        + " @Write byte[] writeBytes(Node value) throws java.io.IOException;\n"
                         + "}\n");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -720,13 +725,13 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.FASTJSON2) public interface StringOnly {\n"
-                        + " @WriteTo String write(Sample value) throws java.io.IOException;\n"
+                        + " @Write String write(Sample value) throws java.io.IOException;\n"
                         + "}\n");
         sources.put("fixture/BytesOnly.java",
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend.FASTJSON2) public interface BytesOnly {\n"
-                        + " @WriteTo byte[] write(Sample value) throws java.io.IOException;\n"
+                        + " @Write byte[] write(Sample value) throws java.io.IOException;\n"
                         + "}\n");
 
         NavigatorTestCompiler.Result result =

@@ -35,8 +35,8 @@ class CompiledBinderNamingTest {
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                             + " @CompiledBinder(backend=Backend." + backend + ")"
                             + " public interface Binder extends Base {"
-                            + " @ReadFrom Bean read(String source) throws java.io.IOException;"
-                            + " @WriteTo String write(Bean value) throws java.io.IOException;"
+                            + " @Read Bean read(String source) throws java.io.IOException;"
+                            + " @Write String write(Bean value) throws java.io.IOException;"
                             + " }");
 
             NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(

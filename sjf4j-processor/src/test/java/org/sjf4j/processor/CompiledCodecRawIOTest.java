@@ -39,8 +39,8 @@ class CompiledCodecRawIOTest {
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + "public interface Binder {"
-                    + " @WriteTo String write(Bean bean) throws java.io.IOException;"
-                    + " @ReadFrom Bean read(String json) throws java.io.IOException;"
+                    + " @Write String write(Bean bean) throws java.io.IOException;"
+                    + " @Read Bean read(String json) throws java.io.IOException;"
                     + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -130,7 +130,7 @@ class CompiledCodecRawIOTest {
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + "public interface Binder {"
-                    + " @WriteTo String writeUuid(java.util.UUID id) throws java.io.IOException;"
+                    + " @Write String writeUuid(java.util.UUID id) throws java.io.IOException;"
                     + "}");
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

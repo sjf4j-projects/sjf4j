@@ -153,7 +153,7 @@ class RegistryDiscoveryTest {
                 + "@BindingOptions(registries={ClasspathRegistries.First.class, "
                 + "ClasspathRegistries.Second.class}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @ReadFrom String read(String json) throws IOException; "
+                + " @Read String read(String json) throws IOException; "
                 + " }"), CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         assertTrue(result.generatedSource("fixture/Binder_Impl.java").contains("class Binder_Impl"));

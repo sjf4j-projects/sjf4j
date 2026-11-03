@@ -9,7 +9,7 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -143,8 +143,8 @@ public class CreatorOneOfBenchmark {
     }
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface CompiledReader {
-        @ReadFrom RuntimeZoo read(String json) throws IOException;
-        @ReadFrom RuntimeZoo read(byte[] json) throws IOException;
+        @Read RuntimeZoo read(String json) throws IOException;
+        @Read RuntimeZoo read(byte[] json) throws IOException;
     }
 
 }

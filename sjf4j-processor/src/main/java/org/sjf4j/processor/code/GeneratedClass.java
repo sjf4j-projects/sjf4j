@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Represents one generated implementation class.
@@ -258,17 +257,17 @@ public final class GeneratedClass {
             out.blank();
             out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
             if (backendBinderType == null) {
-                out.line("this.context = java.util.Objects.requireNonNull(context, \"context\");");
+                out.line("this.context = org.sjf4j.util.Asserts.notNull(context, \"context\");");
                 for (Member initializer : contextInitializers) initializer.write(out);
             } else {
                 out.line("this(new " + backendBinderType
-                        + "(java.util.Objects.requireNonNull(context, \"context\")));");
+                        + "(org.sjf4j.util.Asserts.notNull(context, \"context\")));");
             }
             out.endBlock();
             if (backendBinderType != null) {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
-                out.line("this.binder = java.util.Objects.requireNonNull(backendBinder, \"backendBinder\");");
+                out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
                 out.line("this.context = this.binder.context();");
                 for (Member initializer : contextInitializers) initializer.write(out);
                 out.endBlock();

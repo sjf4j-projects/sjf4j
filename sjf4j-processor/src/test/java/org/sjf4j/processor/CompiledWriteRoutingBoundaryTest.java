@@ -21,11 +21,11 @@ class CompiledWriteRoutingBoundaryTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
-                            + " @WriteTo String writeString(String value) throws java.io.IOException; "
-                            + " @WriteTo String writeNamedG(String g) throws java.io.IOException; "
-                            + " @WriteTo String writeArray(int[] value) throws java.io.IOException; "
-                            + " @WriteTo String writeObject(org.sjf4j.JsonObject value) throws java.io.IOException; "
-                            + " @WriteTo String writeJsonArray(org.sjf4j.JsonArray value) throws java.io.IOException; "
+                            + " @Write String writeString(String value) throws java.io.IOException; "
+                            + " @Write String writeNamedG(String g) throws java.io.IOException; "
+                            + " @Write String writeArray(int[] value) throws java.io.IOException; "
+                            + " @Write String writeObject(org.sjf4j.JsonObject value) throws java.io.IOException; "
+                            + " @Write String writeJsonArray(org.sjf4j.JsonArray value) throws java.io.IOException; "
                             + "}");
 
             NavigatorTestCompiler.Result compiled =

@@ -6,7 +6,7 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 
 import java.io.IOException;
@@ -230,9 +230,9 @@ public class Fastjson2RawAllocationBenchmark {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface RawCompiledBinder {
-        @ReadFrom Map<String, Object> readMap(String input) throws IOException;
-        @ReadFrom Map<String, Object> readMapUtf8(byte[] input) throws IOException;
-        @ReadFrom List<Object> readList(String input) throws IOException;
-        @ReadFrom List<Object> readListUtf8(byte[] input) throws IOException;
+        @Read Map<String, Object> readMap(String input) throws IOException;
+        @Read Map<String, Object> readMapUtf8(byte[] input) throws IOException;
+        @Read List<Object> readList(String input) throws IOException;
+        @Read List<Object> readListUtf8(byte[] input) throws IOException;
     }
 }

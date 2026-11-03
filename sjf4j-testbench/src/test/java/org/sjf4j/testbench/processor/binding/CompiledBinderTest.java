@@ -5,10 +5,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
@@ -38,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -64,6 +66,81 @@ public class CompiledBinderTest {
             + "\"name\":\"Ada\""
             + "}";
 
+
+    @Test
+    public void wrapsIoFailuresWithRuntimeBinderMessages() {
+        SimpleBinder binder = CompiledInstances.create(SimpleBinder.class);
+
+        IOException readFailure = new IOException("read failed");
+        Reader input = new Reader() {
+            @Override
+            public int read(char[] chars, int offset, int length) throws IOException {
+                throw readFailure;
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        BindingException read = assertThrows(BindingException.class,
+                () -> binder.readPerson(input));
+        assertEquals("failed to read node as '" + Person.class.getName() + "'",
+                read.getMessage());
+        assertSame(readFailure, read.getCause());
+
+        BindingException readArray = assertThrows(BindingException.class,
+                () -> binder.readPersonArray(input));
+        assertEquals("failed to read node as '" + Person[].class.getTypeName() + "'",
+                readArray.getMessage());
+        assertSame(readFailure, readArray.getCause());
+
+        BindingException readList = assertThrows(BindingException.class,
+                () -> binder.readPersonList(input));
+        String listTypeName = new TypeReference<List<Person>>() {}.getType().getTypeName();
+        assertEquals("failed to read node as '" + listTypeName + "'",
+                readList.getMessage());
+        assertSame(readFailure, readList.getCause());
+
+        IOException writeFailure = new IOException("write failed");
+        Writer output = new Writer() {
+            @Override
+            public void write(char[] chars, int offset, int length) throws IOException {
+                throw writeFailure;
+            }
+
+            @Override
+            public void flush() {
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+        BindingException write = assertThrows(BindingException.class,
+                () -> binder.writePerson(personFixture(), output));
+        assertEquals("failed to write node type '" + Person.class.getName()
+                + "' to streaming", write.getMessage());
+        assertSame(writeFailure, write.getCause());
+    }
+
+    @Test
+    public void preservesExistingBindingExceptions() {
+        SimpleBinder binder = CompiledInstances.create(SimpleBinder.class);
+        BindingException original = new BindingException("binding failed");
+        Reader input = new Reader() {
+            @Override
+            public int read(char[] chars, int offset, int length) {
+                throw original;
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+
+        assertSame(original, assertThrows(BindingException.class,
+                () -> binder.readPerson(input)));
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("jsonBackends")
@@ -664,112 +741,118 @@ public class CompiledBinderTest {
 
     public interface BinderContract {
 
-        @ReadFrom
-        List<Object> readRawList(String input) throws IOException;
+        @Read
+        List<Object> readRawList(String input);
 
-        @ReadFrom
-        ArrayList<Object> readRawArrayList(String input) throws IOException;
+        @Read
+        ArrayList<Object> readRawArrayList(String input);
 
-        @ReadFrom
-        RawListHolder readRawListHolder(String input) throws IOException;
+        @Read
+        RawListHolder readRawListHolder(String input);
 
-        @ReadFrom
-        int readInt(String input) throws IOException;
+        @Read
+        int readInt(String input);
 
-        @ReadFrom
-        String readString(String input) throws IOException;
+        @Read
+        String readString(String input);
 
-        @WriteTo
-        String writeString(String value) throws IOException;
+        @Write
+        String writeString(String value);
 
-        @WriteTo
-        byte[] writeStringUtf8(String value) throws IOException;
+        @Write
+        byte[] writeStringUtf8(String value);
 
-        @ReadFrom
-        Role readRole(String input) throws IOException;
+        @Read
+        Role readRole(String input);
 
-        @WriteTo
-        String writeRole(Role value) throws IOException;
+        @Write
+        String writeRole(Role value);
 
-        @ReadFrom
-        BigDecimal readDecimal(String input) throws IOException;
+        @Read
+        BigDecimal readDecimal(String input);
 
-        @WriteTo
-        String writeDecimal(BigDecimal value) throws IOException;
+        @Write
+        String writeDecimal(BigDecimal value);
 
-        @ReadFrom
-        Person readPerson(String input) throws IOException;
+        @Read
+        Person readPerson(String input);
 
-        @ReadFrom
-        Person readPerson(byte[] input) throws IOException;
+        @Read
+        Person readPerson(byte[] input);
 
-        @ReadFrom
-        Person readPerson(Reader input) throws IOException;
+        @Read
+        Person readPerson(Reader input);
 
-        @ReadFrom
-        Person readPerson(InputStream input) throws IOException;
+        @Read
+        Person[] readPersonArray(Reader input);
 
-        @WriteTo
-        String writePerson(Person value) throws IOException;
+        @Read
+        List<Person> readPersonList(Reader input);
 
-        @WriteTo
-        byte[] writePersonBytes(Person value) throws IOException;
+        @Read
+        Person readPerson(InputStream input);
 
-        @WriteTo
-        void writePerson(Person value, Writer output) throws IOException;
+        @Write
+        String writePerson(Person value);
 
-        @WriteTo
-        void writePerson(Person value, OutputStream output) throws IOException;
+        @Write
+        byte[] writePersonBytes(Person value);
 
-        @ReadFrom
-        List<Integer> readNumbers(String input) throws IOException;
+        @Write
+        void writePerson(Person value, Writer output);
 
-        @WriteTo
-        String writeNumbers(List<Integer> values) throws IOException;
+        @Write
+        void writePerson(Person value, OutputStream output);
 
-        @WriteTo
-        byte[] writeNumbersUtf8(List<Integer> values) throws IOException;
+        @Read
+        List<Integer> readNumbers(String input);
 
-        @WriteTo
-        String writeStrings(List<String> values) throws IOException;
+        @Write
+        String writeNumbers(List<Integer> values);
 
-        @WriteTo
-        byte[] writeStringsUtf8(List<String> values) throws IOException;
+        @Write
+        byte[] writeNumbersUtf8(List<Integer> values);
 
-        @ReadFrom
-        Map<String, Address> readAddresses(String input) throws IOException;
+        @Write
+        String writeStrings(List<String> values);
 
-        @ReadFrom
-        Map<String, Object> readObjectMap(String input) throws IOException;
+        @Write
+        byte[] writeStringsUtf8(List<String> values);
 
-        @ReadFrom
-        LinkedHashMap<String, Object> readLinkedObjectMap(String input) throws IOException;
+        @Read
+        Map<String, Address> readAddresses(String input);
 
-        @ReadFrom
-        Map<String, Integer> readIntegerMap(String input) throws IOException;
+        @Read
+        Map<String, Object> readObjectMap(String input);
 
-        @WriteTo
-        String writeObjectMap(Map<String, Object> value) throws IOException;
+        @Read
+        LinkedHashMap<String, Object> readLinkedObjectMap(String input);
 
-        @WriteTo
-        byte[] writeObjectMapBytes(Map<String, Object> value) throws IOException;
+        @Read
+        Map<String, Integer> readIntegerMap(String input);
 
-        @WriteTo
-        void writeObjectMap(Map<String, Object> value, Writer output) throws IOException;
+        @Write
+        String writeObjectMap(Map<String, Object> value);
 
-        @WriteTo
-        void writeObjectMap(Map<String, Object> value, OutputStream output) throws IOException;
+        @Write
+        byte[] writeObjectMapBytes(Map<String, Object> value);
 
-        @ReadFrom
-        ObjectHolder readObjectHolder(String input) throws IOException;
+        @Write
+        void writeObjectMap(Map<String, Object> value, Writer output);
 
-        @WriteTo
-        String writeAddresses(Map<String, Address> values) throws IOException;
+        @Write
+        void writeObjectMap(Map<String, Object> value, OutputStream output);
 
-        @ReadFrom
+        @Read
+        ObjectHolder readObjectHolder(String input);
+
+        @Write
+        String writeAddresses(Map<String, Address> values);
+
+        @Read
         Object readAny(String input) throws IOException;
 
-        @WriteTo
+        @Write
         String writeAny(Object value) throws IOException;
     }
 
@@ -787,10 +870,10 @@ public class CompiledBinderTest {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface FastjsonPackedNameBinder {
-        @WriteTo
+        @Write
         String writeString(PackedNames value) throws IOException;
 
-        @WriteTo
+        @Write
         byte[] writeUtf8(PackedNames value) throws IOException;
     }
 

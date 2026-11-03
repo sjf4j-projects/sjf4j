@@ -10,7 +10,7 @@ import org.sjf4j.node.NodeMapper;
 import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.testbench.model.oneof.Cat;
 import org.sjf4j.testbench.model.oneof.Dog;
@@ -268,11 +268,11 @@ public class OneOfReadBenchmark {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
-        @ReadFrom
+        @Read
         Pet readPet(String json) throws IOException;
-        @ReadFrom Pet readPet(byte[] json) throws IOException;
-        @ReadFrom Envelope readEnvelope(String json) throws IOException;
-        @ReadFrom
+        @Read Pet readPet(byte[] json) throws IOException;
+        @Read Envelope readEnvelope(String json) throws IOException;
+        @Read
         Envelope readEnvelope(byte[] json) throws IOException;
     }
 }

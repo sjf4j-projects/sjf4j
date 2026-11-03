@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -31,38 +31,38 @@ class CompiledMapReadFallbackTest {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2Reader {
-        @ReadFrom Map<String, Object> read(String json) throws IOException;
-        @ReadFrom Map<String, Object> readBytes(byte[] json) throws IOException;
+        @Read Map<String, Object> read(String json) throws IOException;
+        @Read Map<String, Object> readBytes(byte[] json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Reader {
-        @ReadFrom Map<String, Object> read(String json) throws IOException;
-        @ReadFrom Map<String, Object> readBytes(byte[] json) throws IOException;
+        @Read Map<String, Object> read(String json) throws IOException;
+        @Read Map<String, Object> readBytes(byte[] json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Reader {
-        @ReadFrom Map<String, Object> read(String json) throws IOException;
-        @ReadFrom Map<String, Object> readBytes(byte[] json) throws IOException;
+        @Read Map<String, Object> read(String json) throws IOException;
+        @Read Map<String, Object> readBytes(byte[] json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonReader {
-        @ReadFrom Map<String, Object> read(String json) throws IOException;
-        @ReadFrom Map<String, Object> readBytes(byte[] json) throws IOException;
+        @Read Map<String, Object> read(String json) throws IOException;
+        @Read Map<String, Object> readBytes(byte[] json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpReader {
-        @ReadFrom Map<String, Object> read(String json) throws IOException;
-        @ReadFrom Map<String, Object> readBytes(byte[] json) throws IOException;
+        @Read Map<String, Object> read(String json) throws IOException;
+        @Read Map<String, Object> readBytes(byte[] json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleReader {
-        @ReadFrom Map<String, Object> read(String json) throws IOException;
-        @ReadFrom Map<String, Object> readBytes(byte[] json) throws IOException;
+        @Read Map<String, Object> read(String json) throws IOException;
+        @Read Map<String, Object> readBytes(byte[] json) throws IOException;
     }
 
     @FunctionalInterface

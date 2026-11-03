@@ -8,7 +8,7 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 
@@ -33,20 +33,20 @@ public class CompiledJacksonNullOmissionTest {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Compiled {
-        @WriteTo String writePojo(TestBean value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(TestBean value) throws IOException;
-        @WriteTo void writePojo(TestBean value, Writer output) throws IOException;
-        @WriteTo void writePojo(TestBean value, OutputStream output) throws IOException;
-        @WriteTo String writeList(List<TestBean> value) throws IOException;
-        @WriteTo String writeMap(Map<String, TestBean> value) throws IOException;
+        @Write String writePojo(TestBean value) throws IOException;
+        @Write byte[] writePojoUtf8(TestBean value) throws IOException;
+        @Write void writePojo(TestBean value, Writer output) throws IOException;
+        @Write void writePojo(TestBean value, OutputStream output) throws IOException;
+        @Write String writeList(List<TestBean> value) throws IOException;
+        @Write String writeMap(Map<String, TestBean> value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Compiled {
-        @WriteTo String writePojo(TestBean value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(TestBean value) throws IOException;
-        @WriteTo String writeList(List<TestBean> value) throws IOException;
-        @WriteTo String writeMap(Map<String, TestBean> value) throws IOException;
+        @Write String writePojo(TestBean value) throws IOException;
+        @Write byte[] writePojoUtf8(TestBean value) throws IOException;
+        @Write String writeList(List<TestBean> value) throws IOException;
+        @Write String writeMap(Map<String, TestBean> value) throws IOException;
     }
 
     public static class TestBean {

@@ -4,7 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.exception.BindingException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -60,9 +62,15 @@ class Jackson2NativeStringContainersTest {
     void rejectsNonStringArrayElements() {
         for (String input : List.of("[1]", "[true]", "[{}]", "[[]]")) {
             byte[] json = utf8(input);
-            assertThrows(IOException.class, () -> BINDER.readArray(json), input);
-            assertThrows(IOException.class, () -> BINDER.readList(json), input);
-            assertThrows(IOException.class, () -> BINDER.readSet(json), input);
+            BindingException array = assertThrows(BindingException.class,
+                    () -> BINDER.readArray(json), input);
+            BindingException list = assertThrows(BindingException.class,
+                    () -> BINDER.readList(json), input);
+            BindingException set = assertThrows(BindingException.class,
+                    () -> BINDER.readSet(json), input);
+            assertInstanceOf(IOException.class, array.getCause(), input);
+            assertInstanceOf(IOException.class, list.getCause(), input);
+            assertInstanceOf(IOException.class, set.getCause(), input);
         }
     }
 
@@ -78,10 +86,10 @@ class Jackson2NativeStringContainersTest {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface NativeStringBinder {
-        @ReadFrom String[] readArray(byte[] json) throws IOException;
-        @ReadFrom List<String> readList(byte[] json) throws IOException;
-        @ReadFrom Set<String> readSet(byte[] json) throws IOException;
-        @ReadFrom List<List<String>> readNested(byte[] json) throws IOException;
-        @ReadFrom StringHolder readHolder(byte[] json) throws IOException;
+        @Read String[] readArray(byte[] json) throws IOException;
+        @Read List<String> readList(byte[] json) throws IOException;
+        @Read Set<String> readSet(byte[] json) throws IOException;
+        @Read List<List<String>> readNested(byte[] json) throws IOException;
+        @Read StringHolder readHolder(byte[] json) throws IOException;
     }
 }

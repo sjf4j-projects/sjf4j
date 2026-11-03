@@ -8,8 +8,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.OneOf;
@@ -171,16 +171,16 @@ public class CompiledOneOfWriteTest {
     }
 
     public interface OneOfWriter {
-        @WriteTo String writeEnvelope(Envelope value) throws IOException;
-        @WriteTo byte[] writeEnvelopeBytes(Envelope value) throws IOException;
-        @WriteTo void writeEnvelope(Envelope value, java.io.OutputStream output) throws IOException;
-        @WriteTo void writeEnvelope(Envelope value, java.io.Writer output) throws IOException;
-        @ReadFrom Envelope readEnvelope(String json) throws IOException;
-        @WriteTo String writePet(Pet value) throws IOException;
-        @ReadFrom Pet readPet(String json) throws IOException;
-        @WriteTo String writeComplex(ComplexEnvelope value) throws IOException;
-        @WriteTo String writeTree(Tree value) throws IOException;
-        @ReadFrom Tree readTree(String json) throws IOException;
+        @Write String writeEnvelope(Envelope value) throws IOException;
+        @Write byte[] writeEnvelopeBytes(Envelope value) throws IOException;
+        @Write void writeEnvelope(Envelope value, java.io.OutputStream output) throws IOException;
+        @Write void writeEnvelope(Envelope value, java.io.Writer output) throws IOException;
+        @Read Envelope readEnvelope(String json) throws IOException;
+        @Write String writePet(Pet value) throws IOException;
+        @Read Pet readPet(String json) throws IOException;
+        @Write String writeComplex(ComplexEnvelope value) throws IOException;
+        @Write String writeTree(Tree value) throws IOException;
+        @Read Tree readTree(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)

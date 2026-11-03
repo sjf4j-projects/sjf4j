@@ -19,9 +19,9 @@ class CodeGenerationIntegrationTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
-                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "import org.sjf4j.annotation.binding.Read;\n"
                         + "@CompiledBinder(backend = Backend.SIMPLE) public interface Binder {\n"
-                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "  @Read Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);
 
@@ -40,9 +40,9 @@ class CodeGenerationIntegrationTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
-                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "import org.sjf4j.annotation.binding.Read;\n"
                         + "@CompiledBinder(backend = Backend.FASTJSON2) public interface Binder {\n"
-                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "  @Read Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);
 
@@ -59,9 +59,9 @@ class CodeGenerationIntegrationTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
-                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "import org.sjf4j.annotation.binding.Read;\n"
                         + "@CompiledBinder(backend = Backend.GSON) public interface Binder {\n"
-                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "  @Read Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);
 
@@ -78,9 +78,9 @@ class CodeGenerationIntegrationTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.Backend;\n"
                         + "import org.sjf4j.annotation.binding.CompiledBinder;\n"
-                        + "import org.sjf4j.annotation.binding.ReadFrom;\n"
+                        + "import org.sjf4j.annotation.binding.Read;\n"
                         + "@CompiledBinder(backend = Backend.JACKSON2) public interface Binder {\n"
-                        + "  @ReadFrom Object read(String input) throws java.io.IOException;\n"
+                        + "  @Read Object read(String input) throws java.io.IOException;\n"
                         + "}\n"
         ), CodegenProcessor.class);
 
@@ -106,8 +106,8 @@ class CodeGenerationIntegrationTest {
                     "package fixture;\n"
                             + "import org.sjf4j.annotation.binding.*;\n"
                             + "@CompiledBinder(backend = Backend." + backend + ") public interface Binder {\n"
-                            + "  @ReadFrom Bean read(String input) throws java.io.IOException;\n"
-                            + "  @WriteTo String write(Bean bean) throws java.io.IOException;\n"
+                            + "  @Read Bean read(String input) throws java.io.IOException;\n"
+                            + "  @Write String write(Bean bean) throws java.io.IOException;\n"
                             + "}\n"
             ), CodegenProcessor.class);
 

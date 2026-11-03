@@ -62,10 +62,10 @@ class CompiledOneOfWriteTest {
             sources.put("fixture/Binder.java", "package fixture;\n"
                     + "import org.sjf4j.annotation.binding.*;\n"
                     + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder {\n"
-                    + " @WriteTo String write(Envelope value) throws java.io.IOException;\n"
-                    + " @WriteTo byte[] writeBytes(Envelope value) throws java.io.IOException;\n"
-                    + " @WriteTo void writeStream(Envelope value, java.io.OutputStream out) throws java.io.IOException;\n"
-                    + " @WriteTo String writeAnimal(Animal value) throws java.io.IOException;\n"
+                    + " @Write String write(Envelope value) throws java.io.IOException;\n"
+                    + " @Write byte[] writeBytes(Envelope value) throws java.io.IOException;\n"
+                    + " @Write void writeStream(Envelope value, java.io.OutputStream out) throws java.io.IOException;\n"
+                    + " @Write String writeAnimal(Animal value) throws java.io.IOException;\n"
                     + "}\n");
 
             NavigatorTestCompiler.Result result =

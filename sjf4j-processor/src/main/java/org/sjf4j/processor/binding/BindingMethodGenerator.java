@@ -1,7 +1,7 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -23,7 +23,6 @@ final class BindingMethodGenerator {
     private final TypeMirror inputStreamType;
     private final TypeMirror writerType;
     private final TypeMirror outputStreamType;
-    private final TypeMirror ioExceptionType;
 
     BindingMethodGenerator(ProcessorContext context) {
         this.context = context;
@@ -32,16 +31,15 @@ final class BindingMethodGenerator {
         this.inputStreamType = requiredType("java.io.InputStream");
         this.writerType = requiredType("java.io.Writer");
         this.outputStreamType = requiredType("java.io.OutputStream");
-        this.ioExceptionType = requiredType("java.io.IOException");
     }
 
     BindingPlan analyze(ResolvedMethod resolved, GeneratedClass generated) {
         ExecutableElement method = resolved.declaration();
-        boolean read = method.getAnnotation(ReadFrom.class) != null;
-        boolean write = method.getAnnotation(WriteTo.class) != null;
+        boolean read = method.getAnnotation(Read.class) != null;
+        boolean write = method.getAnnotation(Write.class) != null;
 
         if (read == write) {
-            error(method, generated, "Binder method must declare exactly one of @ReadFrom or @WriteTo");
+            error(method, generated, "Binder method must declare exactly one of @Read or @Write");
             return null;
         }
 
@@ -49,12 +47,6 @@ final class BindingMethodGenerator {
             error(method, generated,
                     "Binder method contains unresolved type variables after interface specialization: " +
                             resolved.type());
-            return null;
-        }
-
-        if (!declaresIOException(resolved.type())) {
-            error(method, generated, "@" + (read ? "ReadFrom" : "WriteTo") +
-                    " method must declare java.io.IOException or a supertype");
             return null;
         }
 
@@ -69,21 +61,21 @@ final class BindingMethodGenerator {
         List<? extends TypeMirror> parameters = type.getParameterTypes();
 
         if (parameters.size() != 1) {
-            error(method, generated, "@ReadFrom method must have exactly one input parameter");
+            error(method, generated, "@Read method must have exactly one input parameter");
             return null;
         }
 
         BindingPlan.ReadInput input = readInput(parameters.get(0));
 
         if (input == null) {
-            error(method, generated, "@ReadFrom input must be String, byte[], InputStream, or Reader");
+            error(method, generated, "@Read input must be String, byte[], InputStream, or Reader");
             return null;
         }
 
         TypeMirror returnType = type.getReturnType();
 
         if (returnType.getKind() == TypeKind.VOID) {
-            error(method, generated, "@ReadFrom method must return the bound value");
+            error(method, generated, "@Read method must return the bound value");
             return null;
         }
 
@@ -100,7 +92,7 @@ final class BindingMethodGenerator {
             BindingPlan.WriteOutput output = returnOutput(returnType);
 
             if (output == null) {
-                error(method, generated, "Single-parameter @WriteTo method must return String or byte[]");
+                error(method, generated, "Single-parameter @Write method must return String or byte[]");
                 return null;
             }
 
@@ -109,14 +101,14 @@ final class BindingMethodGenerator {
 
         if (parameters.size() == 2) {
             if (returnType.getKind() != TypeKind.VOID) {
-                error(method, generated, "Two-parameter @WriteTo method must return void");
+                error(method, generated, "Two-parameter @Write method must return void");
                 return null;
             }
 
             BindingPlan.WriteOutput output = streamOutput(parameters.get(1));
 
             if (output == null) {
-                error(method, generated, "Second @WriteTo parameter must be OutputStream or Writer");
+                error(method, generated, "Second @Write parameter must be OutputStream or Writer");
                 return null;
             }
 
@@ -124,7 +116,7 @@ final class BindingMethodGenerator {
         }
 
         error(method, generated,
-                "@WriteTo method must have one value parameter, optionally followed by an OutputStream or Writer");
+                "@Write method must have one value parameter, optionally followed by an OutputStream or Writer");
         return null;
     }
 
@@ -175,14 +167,6 @@ final class BindingMethodGenerator {
         }
 
         return true;
-    }
-
-    private boolean declaresIOException(ExecutableType type) {
-        for (TypeMirror thrown : type.getThrownTypes()) {
-            if (context.typeUtils.isAssignable(ioExceptionType, thrown)) return true;
-        }
-
-        return false;
     }
 
     private TypeMirror requiredType(String name) {

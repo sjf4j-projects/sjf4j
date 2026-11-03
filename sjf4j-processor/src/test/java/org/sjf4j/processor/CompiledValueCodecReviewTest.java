@@ -24,7 +24,7 @@ class CompiledValueCodecReviewTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@ReadFrom Bean read(String json) throws IOException; }"
+                + "@Read Bean read(String json) throws IOException; }"
         ), CodegenProcessor.class);
 
         assertFalse(result.success, result.diagnostics());
@@ -52,7 +52,7 @@ class CompiledValueCodecReviewTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import java.io.IOException; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@WriteTo String write(Child value) throws IOException; }");
+                + "@Write String write(Child value) throws IOException; }");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -86,7 +86,7 @@ class CompiledValueCodecReviewTest {
                 + "import java.io.IOException; "
                 + "import com.google.gson.JsonElement; "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@WriteTo String write(JsonElement value) "
+                + "@Write String write(JsonElement value) "
                 + "throws IOException; }"
         ), CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
@@ -125,7 +125,7 @@ class CompiledValueCodecReviewTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "@BindingOptions(registries={FirstCodecs.class,DefaultCodecs.class}) "
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + "@ReadFrom Tag read(String json) throws java.io.IOException; }");
+                + "@Read Tag read(String json) throws java.io.IOException; }");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);

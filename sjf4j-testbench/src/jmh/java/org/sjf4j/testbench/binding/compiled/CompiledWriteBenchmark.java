@@ -18,7 +18,7 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -533,11 +533,11 @@ public class CompiledWriteBenchmark {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
-        @WriteTo String writePojo(User value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(User value) throws IOException;
-        @WriteTo String writeMap(Map<String, Object> value) throws IOException;
-        @WriteTo String writeUri(URI value) throws IOException;
-        @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+        @Write String writePojo(User value) throws IOException;
+        @Write byte[] writePojoUtf8(User value) throws IOException;
+        @Write String writeMap(Map<String, Object> value) throws IOException;
+        @Write String writeUri(URI value) throws IOException;
+        @Write byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
     // ----- JACKSON3 -----
@@ -688,11 +688,11 @@ public class CompiledWriteBenchmark {
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3CompiledBinder {
-        @WriteTo String writePojo(User value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(User value) throws IOException;
-        @WriteTo String writeMap(Map<String, Object> value) throws IOException;
-        @WriteTo String writeUri(URI value) throws IOException;
-        @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+        @Write String writePojo(User value) throws IOException;
+        @Write byte[] writePojoUtf8(User value) throws IOException;
+        @Write String writeMap(Map<String, Object> value) throws IOException;
+        @Write String writeUri(URI value) throws IOException;
+        @Write byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
     // ----- GSON -----
@@ -748,10 +748,10 @@ public class CompiledWriteBenchmark {
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonCompiledBinder {
-        @WriteTo String writePojo(User value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(User value) throws IOException;
-        @WriteTo String writeMap(Map<String, Object> value) throws IOException;
-        @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+        @Write String writePojo(User value) throws IOException;
+        @Write byte[] writePojoUtf8(User value) throws IOException;
+        @Write String writeMap(Map<String, Object> value) throws IOException;
+        @Write byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
     // ----- FASTJSON2 -----
@@ -817,10 +817,10 @@ public class CompiledWriteBenchmark {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2CompiledBinder {
-        @WriteTo String writePojo(User value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(User value) throws IOException;
-        @WriteTo String writeMap(Map<String, Object> value) throws IOException;
-        @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+        @Write String writePojo(User value) throws IOException;
+        @Write byte[] writePojoUtf8(User value) throws IOException;
+        @Write String writeMap(Map<String, Object> value) throws IOException;
+        @Write byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
     // ----- JSONP -----
@@ -885,10 +885,10 @@ public class CompiledWriteBenchmark {
 
     @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpCompiledBinder {
-        @WriteTo String writePojo(User value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(User value) throws IOException;
-        @WriteTo String writeMap(Map<String, Object> value) throws IOException;
-        @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+        @Write String writePojo(User value) throws IOException;
+        @Write byte[] writePojoUtf8(User value) throws IOException;
+        @Write String writeMap(Map<String, Object> value) throws IOException;
+        @Write byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
     // ----- SIMPLE -----
@@ -934,10 +934,10 @@ public class CompiledWriteBenchmark {
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiledBinder {
-        @WriteTo String writePojo(User value) throws IOException;
-        @WriteTo byte[] writePojoUtf8(User value) throws IOException;
-        @WriteTo String writeMap(Map<String, Object> value) throws IOException;
-        @WriteTo byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
+        @Write String writePojo(User value) throws IOException;
+        @Write byte[] writePojoUtf8(User value) throws IOException;
+        @Write String writeMap(Map<String, Object> value) throws IOException;
+        @Write byte[] writeMapUtf8(Map<String, Object> value) throws IOException;
     }
 
 }

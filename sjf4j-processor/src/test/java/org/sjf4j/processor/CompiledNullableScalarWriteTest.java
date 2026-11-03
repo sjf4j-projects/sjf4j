@@ -38,7 +38,7 @@ class CompiledNullableScalarWriteTest {
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + " public interface Binder {"
-                    + " @WriteTo String write(Model value) throws java.io.IOException;"
+                    + " @Write String write(Model value) throws java.io.IOException;"
                     + "}"
             ), CodegenProcessor.class);
 

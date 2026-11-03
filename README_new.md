@@ -66,8 +66,8 @@ String output = sjf4j.toJsonString(another);
 ```java
 @CompiledBinder
 interface UserBinder {
-    @ReadFrom User read(String json);
-    @WriteTo String write(User user);
+    @Read User read(String json);
+    @Write String write(User user);
 }
 
 UserBinder binder = CompiledInstances.create(UserBinder.class);

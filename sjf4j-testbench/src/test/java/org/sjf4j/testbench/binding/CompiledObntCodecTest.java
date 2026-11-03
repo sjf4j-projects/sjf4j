@@ -8,8 +8,8 @@ import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
@@ -199,85 +199,85 @@ class CompiledObntCodecTest {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2Compiled {
-        @ReadFrom CodecPojo readCodec(String json) throws IOException;
-        @WriteTo String writeCodec(CodecPojo value) throws IOException;
-        @ReadFrom OpenJojo readJojo(String json) throws IOException;
-        @WriteTo String writeJojo(OpenJojo value) throws IOException;
-        @ReadFrom JsonObject readObject(String json) throws IOException;
-        @WriteTo String writeObject(JsonObject value) throws IOException;
-        @ReadFrom JsonArray readArray(String json) throws IOException;
-        @WriteTo String writeArray(JsonArray value) throws IOException;
-        @ReadFrom Token readToken(String json) throws IOException;
-        @WriteTo String writeToken(Token value) throws IOException;
+        @Read CodecPojo readCodec(String json) throws IOException;
+        @Write String writeCodec(CodecPojo value) throws IOException;
+        @Read OpenJojo readJojo(String json) throws IOException;
+        @Write String writeJojo(OpenJojo value) throws IOException;
+        @Read JsonObject readObject(String json) throws IOException;
+        @Write String writeObject(JsonObject value) throws IOException;
+        @Read JsonArray readArray(String json) throws IOException;
+        @Write String writeArray(JsonArray value) throws IOException;
+        @Read Token readToken(String json) throws IOException;
+        @Write String writeToken(Token value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Compiled {
-        @ReadFrom CodecPojo readCodec(String json) throws IOException;
-        @WriteTo String writeCodec(CodecPojo value) throws IOException;
-        @ReadFrom OpenJojo readJojo(String json) throws IOException;
-        @WriteTo String writeJojo(OpenJojo value) throws IOException;
-        @ReadFrom JsonObject readObject(String json) throws IOException;
-        @WriteTo String writeObject(JsonObject value) throws IOException;
-        @ReadFrom JsonArray readArray(String json) throws IOException;
-        @WriteTo String writeArray(JsonArray value) throws IOException;
-        @ReadFrom Token readToken(String json) throws IOException;
-        @WriteTo String writeToken(Token value) throws IOException;
+        @Read CodecPojo readCodec(String json) throws IOException;
+        @Write String writeCodec(CodecPojo value) throws IOException;
+        @Read OpenJojo readJojo(String json) throws IOException;
+        @Write String writeJojo(OpenJojo value) throws IOException;
+        @Read JsonObject readObject(String json) throws IOException;
+        @Write String writeObject(JsonObject value) throws IOException;
+        @Read JsonArray readArray(String json) throws IOException;
+        @Write String writeArray(JsonArray value) throws IOException;
+        @Read Token readToken(String json) throws IOException;
+        @Write String writeToken(Token value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Compiled {
-        @ReadFrom CodecPojo readCodec(String json) throws IOException;
-        @WriteTo String writeCodec(CodecPojo value) throws IOException;
-        @ReadFrom OpenJojo readJojo(String json) throws IOException;
-        @WriteTo String writeJojo(OpenJojo value) throws IOException;
-        @ReadFrom JsonObject readObject(String json) throws IOException;
-        @WriteTo String writeObject(JsonObject value) throws IOException;
-        @ReadFrom JsonArray readArray(String json) throws IOException;
-        @WriteTo String writeArray(JsonArray value) throws IOException;
-        @ReadFrom Token readToken(String json) throws IOException;
-        @WriteTo String writeToken(Token value) throws IOException;
+        @Read CodecPojo readCodec(String json) throws IOException;
+        @Write String writeCodec(CodecPojo value) throws IOException;
+        @Read OpenJojo readJojo(String json) throws IOException;
+        @Write String writeJojo(OpenJojo value) throws IOException;
+        @Read JsonObject readObject(String json) throws IOException;
+        @Write String writeObject(JsonObject value) throws IOException;
+        @Read JsonArray readArray(String json) throws IOException;
+        @Write String writeArray(JsonArray value) throws IOException;
+        @Read Token readToken(String json) throws IOException;
+        @Write String writeToken(Token value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonCompiled {
-        @ReadFrom CodecPojo readCodec(String json) throws IOException;
-        @WriteTo String writeCodec(CodecPojo value) throws IOException;
-        @ReadFrom OpenJojo readJojo(String json) throws IOException;
-        @WriteTo String writeJojo(OpenJojo value) throws IOException;
-        @ReadFrom JsonObject readObject(String json) throws IOException;
-        @WriteTo String writeObject(JsonObject value) throws IOException;
-        @ReadFrom JsonArray readArray(String json) throws IOException;
-        @WriteTo String writeArray(JsonArray value) throws IOException;
-        @ReadFrom Token readToken(String json) throws IOException;
-        @WriteTo String writeToken(Token value) throws IOException;
+        @Read CodecPojo readCodec(String json) throws IOException;
+        @Write String writeCodec(CodecPojo value) throws IOException;
+        @Read OpenJojo readJojo(String json) throws IOException;
+        @Write String writeJojo(OpenJojo value) throws IOException;
+        @Read JsonObject readObject(String json) throws IOException;
+        @Write String writeObject(JsonObject value) throws IOException;
+        @Read JsonArray readArray(String json) throws IOException;
+        @Write String writeArray(JsonArray value) throws IOException;
+        @Read Token readToken(String json) throws IOException;
+        @Write String writeToken(Token value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpCompiled {
-        @ReadFrom CodecPojo readCodec(String json) throws IOException;
-        @WriteTo String writeCodec(CodecPojo value) throws IOException;
-        @ReadFrom OpenJojo readJojo(String json) throws IOException;
-        @WriteTo String writeJojo(OpenJojo value) throws IOException;
-        @ReadFrom JsonObject readObject(String json) throws IOException;
-        @WriteTo String writeObject(JsonObject value) throws IOException;
-        @ReadFrom JsonArray readArray(String json) throws IOException;
-        @WriteTo String writeArray(JsonArray value) throws IOException;
-        @ReadFrom Token readToken(String json) throws IOException;
-        @WriteTo String writeToken(Token value) throws IOException;
+        @Read CodecPojo readCodec(String json) throws IOException;
+        @Write String writeCodec(CodecPojo value) throws IOException;
+        @Read OpenJojo readJojo(String json) throws IOException;
+        @Write String writeJojo(OpenJojo value) throws IOException;
+        @Read JsonObject readObject(String json) throws IOException;
+        @Write String writeObject(JsonObject value) throws IOException;
+        @Read JsonArray readArray(String json) throws IOException;
+        @Write String writeArray(JsonArray value) throws IOException;
+        @Read Token readToken(String json) throws IOException;
+        @Write String writeToken(Token value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiled {
-        @ReadFrom CodecPojo readCodec(String json) throws IOException;
-        @WriteTo String writeCodec(CodecPojo value) throws IOException;
-        @ReadFrom OpenJojo readJojo(String json) throws IOException;
-        @WriteTo String writeJojo(OpenJojo value) throws IOException;
-        @ReadFrom JsonObject readObject(String json) throws IOException;
-        @WriteTo String writeObject(JsonObject value) throws IOException;
-        @ReadFrom JsonArray readArray(String json) throws IOException;
-        @WriteTo String writeArray(JsonArray value) throws IOException;
-        @ReadFrom Token readToken(String json) throws IOException;
-        @WriteTo String writeToken(Token value) throws IOException;
+        @Read CodecPojo readCodec(String json) throws IOException;
+        @Write String writeCodec(CodecPojo value) throws IOException;
+        @Read OpenJojo readJojo(String json) throws IOException;
+        @Write String writeJojo(OpenJojo value) throws IOException;
+        @Read JsonObject readObject(String json) throws IOException;
+        @Write String writeObject(JsonObject value) throws IOException;
+        @Read JsonArray readArray(String json) throws IOException;
+        @Write String writeArray(JsonArray value) throws IOException;
+        @Read Token readToken(String json) throws IOException;
+        @Write String writeToken(Token value) throws IOException;
     }
 }

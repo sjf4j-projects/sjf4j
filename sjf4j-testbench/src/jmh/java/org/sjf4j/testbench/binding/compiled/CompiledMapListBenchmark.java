@@ -13,7 +13,7 @@ import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -323,10 +323,10 @@ public class CompiledMapListBenchmark {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2CompiledBinder {
-        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
-        @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
-        @ReadFrom java.util.List<Object> readList(String json) throws IOException;
-        @ReadFrom java.util.List<Object> readListUtf8(byte[] json) throws IOException;
+        @Read Map<String, Object> readMap(String json) throws IOException;
+        @Read Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @Read java.util.List<Object> readList(String json) throws IOException;
+        @Read java.util.List<Object> readListUtf8(byte[] json) throws IOException;
     }
 
     // ----- JACKSON3 -----
@@ -383,8 +383,8 @@ public class CompiledMapListBenchmark {
 
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3CompiledBinder {
-        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
-        @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @Read Map<String, Object> readMap(String json) throws IOException;
+        @Read Map<String, Object> readMapUtf8(byte[] json) throws IOException;
     }
 
     // ----- GSON -----
@@ -422,8 +422,8 @@ public class CompiledMapListBenchmark {
 
     @CompiledBinder(backend = Backend.GSON)
     public interface GsonCompiledBinder {
-        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
-        @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @Read Map<String, Object> readMap(String json) throws IOException;
+        @Read Map<String, Object> readMapUtf8(byte[] json) throws IOException;
     }
 
     // ----- FASTJSON2 -----
@@ -500,10 +500,10 @@ public class CompiledMapListBenchmark {
 
     @CompiledBinder(backend = Backend.FASTJSON2)
     public interface Fastjson2CompiledBinder {
-        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
-        @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
-        @ReadFrom java.util.List<Object> readList(String json) throws IOException;
-        @ReadFrom java.util.List<Object> readListUtf8(byte[] json) throws IOException;
+        @Read Map<String, Object> readMap(String json) throws IOException;
+        @Read Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @Read java.util.List<Object> readList(String json) throws IOException;
+        @Read java.util.List<Object> readListUtf8(byte[] json) throws IOException;
     }
 
     // ----- JSONP -----
@@ -545,8 +545,8 @@ public class CompiledMapListBenchmark {
 
     @CompiledBinder(backend = Backend.JSONP)
     public interface JsonpCompiledBinder {
-        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
-        @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @Read Map<String, Object> readMap(String json) throws IOException;
+        @Read Map<String, Object> readMapUtf8(byte[] json) throws IOException;
     }
 
     // ----- SIMPLE -----
@@ -573,8 +573,8 @@ public class CompiledMapListBenchmark {
 
     @CompiledBinder(backend = Backend.SIMPLE)
     public interface SimpleCompiledBinder {
-        @ReadFrom Map<String, Object> readMap(String json) throws IOException;
-        @ReadFrom Map<String, Object> readMapUtf8(byte[] json) throws IOException;
+        @Read Map<String, Object> readMap(String json) throws IOException;
+        @Read Map<String, Object> readMapUtf8(byte[] json) throws IOException;
     }
 
 }

@@ -7,7 +7,7 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfMapping;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
@@ -134,15 +134,15 @@ public class CompiledOneOfFallbackTest {
 
 
     public interface OneOfBinder {
-        @ReadFrom Animal readAnimal(String json) throws IOException;
-        @ReadFrom Holder readHolder(String json) throws IOException;
-        @ReadFrom Holder readHolder(byte[] json) throws IOException;
-        @ReadFrom Root readRoot(String json) throws IOException;
-        @ReadFrom ShapeHolder readShape(String json) throws IOException;
-        @ReadFrom PathHolder readPath(String json) throws IOException;
-        @ReadFrom NullableHolder readNullable(String json) throws IOException;
-        @ReadFrom RecordHolder readRecord(String json) throws IOException;
-        @ReadFrom TreeNode readTree(String json) throws IOException;
+        @Read Animal readAnimal(String json) throws IOException;
+        @Read Holder readHolder(String json) throws IOException;
+        @Read Holder readHolder(byte[] json) throws IOException;
+        @Read Root readRoot(String json) throws IOException;
+        @Read ShapeHolder readShape(String json) throws IOException;
+        @Read PathHolder readPath(String json) throws IOException;
+        @Read NullableHolder readNullable(String json) throws IOException;
+        @Read RecordHolder readRecord(String json) throws IOException;
+        @Read TreeNode readTree(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)

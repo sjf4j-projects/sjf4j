@@ -23,7 +23,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
-import org.sjf4j.annotation.binding.ReadFrom;
+import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 import org.sjf4j.testbench.model.fabien.Clients;
 import org.sjf4j.testbench.model.fabien.FabienDataGenerator;
@@ -138,8 +138,8 @@ public class FabienReadBenchmark {
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface FabienCompiled {
-        @ReadFrom Users readUsers(byte[] json) throws IOException;
-        @ReadFrom Clients readClients(byte[] json) throws IOException;
+        @Read Users readUsers(byte[] json) throws IOException;
+        @Read Clients readClients(byte[] json) throws IOException;
     }
 
 

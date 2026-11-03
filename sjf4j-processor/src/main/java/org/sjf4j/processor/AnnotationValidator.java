@@ -3,8 +3,8 @@ package org.sjf4j.processor;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.binding.BindingOptions;
-import org.sjf4j.annotation.binding.ReadFrom;
-import org.sjf4j.annotation.binding.WriteTo;
+import org.sjf4j.annotation.binding.Read;
+import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.EnsureMapping;
 import org.sjf4j.annotation.mapping.Mapping;
@@ -51,7 +51,7 @@ final class AnnotationValidator {
     private static final Set<String> MAPPING_METHOD_ANNOTATIONS =
             names(Mapping.class, Mappings.class, MappingIfParentPresent.class, EnsureMapping.class);
 
-    private static final Set<String> BINDING_METHOD_ANNOTATIONS = names(ReadFrom.class, WriteTo.class);
+    private static final Set<String> BINDING_METHOD_ANNOTATIONS = names(Read.class, Write.class);
 
     private static final Set<String> CREATOR_ANNOTATIONS = names(MappingCreator.class, MappingCreators.class);
 

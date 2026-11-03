@@ -24,7 +24,7 @@ class CompiledJacksonCreatorTest {
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend." + backend + ")\n"
                         + "public interface Binder {\n"
-                        + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                        + " @Read Bean read(String json) throws java.io.IOException;\n"
                         + "}\n");
 
                 NavigatorTestCompiler.Result result =
@@ -70,7 +70,7 @@ class CompiledJacksonCreatorTest {
         sources.put("fixture/Binder.java", "package fixture;\n"
                 + "import org.sjf4j.annotation.binding.*;\n"
                 + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
-                + " @ReadFrom Bean read(String json) throws java.io.IOException;\n"
+                + " @Read Bean read(String json) throws java.io.IOException;\n"
                 + "}\n");
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(result.success, result.diagnostics());

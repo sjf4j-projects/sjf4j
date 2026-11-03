@@ -1,6 +1,7 @@
 package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.exception.BindingException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.URLClassLoader;
@@ -29,12 +30,12 @@ class CompiledFastjson2EnumReadTest {
         sources.put("fixture/Binder.java", "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder { "
-                + "@ReadFrom Choice readEnum(String json) throws java.io.IOException; "
-                + "@ReadFrom Choice readEnumBytes(byte[] json) throws java.io.IOException; "
-                + "@ReadFrom Model readModel(String json) throws java.io.IOException; "
-                + "@ReadFrom Model readModelBytes(byte[] json) throws java.io.IOException; "
-                + "@ReadFrom java.util.List<Choice> readList(String json) throws java.io.IOException; "
-                + "@ReadFrom java.util.Map<String,Choice> readMap(String json) throws java.io.IOException; "
+                + "@Read Choice readEnum(String json) throws java.io.IOException; "
+                + "@Read Choice readEnumBytes(byte[] json) throws java.io.IOException; "
+                + "@Read Model readModel(String json) throws java.io.IOException; "
+                + "@Read Model readModelBytes(byte[] json) throws java.io.IOException; "
+                + "@Read java.util.List<Choice> readList(String json) throws java.io.IOException; "
+                + "@Read java.util.Map<String,Choice> readMap(String json) throws java.io.IOException; "
                 + "}");
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -101,11 +102,15 @@ class CompiledFastjson2EnumReadTest {
             for (String invalid : new String[]{"\"NO_MATCH\"", "\"\"", "\"1\""}) {
                 InvocationTargetException error = assertThrows(InvocationTargetException.class,
                         () -> fromString.invoke(binder, invalid), invalid);
-                assertInstanceOf(IllegalArgumentException.class, error.getCause(), invalid);
+                BindingException failure = assertInstanceOf(BindingException.class, error.getCause(), invalid);
+                assertInstanceOf(IllegalArgumentException.class, failure.getCause(), invalid);
             }
             InvocationTargetException ordinalError = assertThrows(InvocationTargetException.class,
                     () -> fromString.invoke(binder, "100"));
-            assertTrue(ordinalError.getCause().getMessage().contains("out of range"));
+            BindingException ordinalFailure =
+                    assertInstanceOf(BindingException.class, ordinalError.getCause());
+            // The backend already raises BindingException for invalid ordinals.
+            assertTrue(ordinalFailure.getMessage().contains("out of range"));
         }
     }
 

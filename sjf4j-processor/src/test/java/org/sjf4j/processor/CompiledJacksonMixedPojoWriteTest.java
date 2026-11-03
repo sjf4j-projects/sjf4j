@@ -42,7 +42,7 @@ class CompiledJacksonMixedPojoWriteTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") "
                             + "public interface Binder { "
-                            + "@WriteTo String write(CountingModel value) throws java.io.IOException; "
+                            + "@Write String write(CountingModel value) throws java.io.IOException; "
                             + "}");
 
             NavigatorTestCompiler.Result result =

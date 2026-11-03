@@ -36,11 +36,11 @@ class CompiledBinderArrayTest {
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*; "
                             + "@CompiledBinder(backend=Backend." + backend + ") public interface Binder { "
-                            + "@ReadFrom Clients read(byte[] bytes) throws java.io.IOException; "
-                            + "@ReadFrom String[] names(String json) throws java.io.IOException; "
-                            + "@ReadFrom int[] numbers(String json) throws java.io.IOException; "
-                            + "@ReadFrom Client[] clients(String json) throws java.io.IOException; "
-                            + "@WriteTo String writeNames(String[] values) throws java.io.IOException; "
+                            + "@Read Clients read(byte[] bytes) throws java.io.IOException; "
+                            + "@Read String[] names(String json) throws java.io.IOException; "
+                            + "@Read int[] numbers(String json) throws java.io.IOException; "
+                            + "@Read Client[] clients(String json) throws java.io.IOException; "
+                            + "@Write String writeNames(String[] values) throws java.io.IOException; "
                             + "}");
             NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());

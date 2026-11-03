@@ -35,9 +35,9 @@ class CompiledNonNullStructureHelperTest {
                     "package fixture; import org.sjf4j.annotation.binding.*; import java.util.*;"
                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + " public interface Binder {"
-                    + " @WriteTo String write(Model value) throws java.io.IOException;"
-                    + " @WriteTo String writeList(List<List<String>> value) throws java.io.IOException;"
-                    + " @WriteTo String writeMap(Map<String,List<String>> value) throws java.io.IOException;"
+                    + " @Write String write(Model value) throws java.io.IOException;"
+                    + " @Write String writeList(List<List<String>> value) throws java.io.IOException;"
+                    + " @Write String writeMap(Map<String,List<String>> value) throws java.io.IOException;"
                     + "}");
 
             NavigatorTestCompiler.Result compiled =
