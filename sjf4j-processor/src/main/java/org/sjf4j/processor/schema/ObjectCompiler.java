@@ -149,13 +149,12 @@ final class ObjectCompiler {
                     && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
                 // A final POJO with a complete known projection necessarily
                 // exposes a property forbidden by additionalProperties=false.
-                return new SchemaCheck.Reject(
-                        SchemaCompiler.diagnostic(rootUri, "additionalProperties"));
+                return missingObjectConstraint(rootUri, typeRequired, "additionalProperties");
             }
         }
         for (String name : propertyMap.keySet()) {
             if (!dynamic && !javaProperties.containsKey(name) && isRequired(required, name))
-                return new SchemaCheck.Reject(SchemaCompiler.diagnostic(rootUri, "required"));
+                return missingObjectConstraint(rootUri, typeRequired, "required");
         }
         if (!dynamic) {
             for (Property property : javaProperties.values()) {
