@@ -226,7 +226,7 @@ final class ObjectCompiler {
                 || context.types.nodeKind(type) == NodeKind.OBJECT_JOJO);
         return new SchemaCheck.ObjectCheck(dynamic, jsonObject, typeRequired,
                 Boolean.FALSE.equals(additional), additionalCheck, patternChecks,
-                minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
+                SchemaValue.of(context, null), minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
                 new ArrayList<String>(propertyMap.keySet()), requiredChecks, dependencies, properties,
                 typeRequired ? SchemaCompiler.diagnostic(rootUri, "type") : null,
                 minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
