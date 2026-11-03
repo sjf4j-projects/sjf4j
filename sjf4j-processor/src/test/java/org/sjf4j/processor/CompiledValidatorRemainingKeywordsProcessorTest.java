@@ -60,7 +60,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
         for (String schema : new String[]{
                 "{\"type\":\"string\",\"contentSchema\":true}",
                 "{\"type\":\"number\",\"unevaluatedItems\":false}",
-                "{\"type\":\"object\",\"patternProperties\":{\"^x\":true}}"
+                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^x\"}}"
         }) {
             NavigatorTestCompiler.Result result = compile(schema, "Object");
             assertFalse(result.success, schema);
