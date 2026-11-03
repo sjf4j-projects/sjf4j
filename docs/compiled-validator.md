@@ -66,7 +66,7 @@ Supported assertions compile into Java predicates. A partially supported schema 
 | String: `minLength`, `maxLength`, `pattern` | Supported, including Unicode code-point lengths |
 | Number: bounds, `multipleOf` | Supported for native numeric types and exact comparisons |
 | Object: `properties`, `patternProperties`, `additionalProperties` (boolean or schema), `propertyNames`, `required`, `dependentRequired`, `dependentSchemas`, property counts | Supported when child schemas compile; POJO/OBNT affect access code, not fallback eligibility |
-| Array: `prefixItems`, `items`, `uniqueItems`, `minItems`, `maxItems` | Independent compiled checks; `items` starts after local `prefixItems`; `uniqueItems` shares runtime JSON equality semantics |
+| Array: `prefixItems`, `items`, `contains`, `minContains`, `maxContains`, `uniqueItems`, `minItems`, `maxItems` | Independent compiled checks; `items` starts after local `prefixItems`; `contains` counts matching elements; `uniqueItems` uses runtime JSON equality semantics |
 | Applicators: `allOf`, `anyOf`, `oneOf`, `not`, `if/then/else` | Supported when their branches can compile |
 | `$ref`, `$defs` | Compile-time-resolvable JSON Pointer targets; cycles/anchors may fall back |
 | `format` | Supported typed-string checks when appropriate; `strictFormat` and vocabularies affect semantics |
