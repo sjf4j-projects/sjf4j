@@ -41,8 +41,8 @@ class CompiledValidatorRegistryDirTest {
         NavigatorTestCompiler.Result compiled = compile(schema, registryDir.toUri().toString());
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Check_Impl.java");
-        assertTrue(generated.contains("registryLoader.listDirectory()"), generated);
-        assertTrue(generated.contains(".indexIfAbsent(uri, registryLoader.load(uri))"), generated);
+        assertTrue(generated.contains("REGISTRY.indexDir(java.net.URI.create("), generated);
+        assertFalse(generated.contains("listDirectory()"), generated);
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> type = loader.loadClass("fixture.Check");
