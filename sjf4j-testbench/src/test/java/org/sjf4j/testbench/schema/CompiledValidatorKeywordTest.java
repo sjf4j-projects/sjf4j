@@ -310,7 +310,7 @@ class CompiledValidatorKeywordTest {
 
         assertTrue(validator.independentType("abc"));
         assertFalse(validator.independentType("abcd"));
-        assertFalse(validator.independentType("a"));
+        assertTrue(validator.independentType("a")); // minimum has no effect on strings.
         assertFalse(validator.independentType(2)); // type:string, not minimum.
         assertFalse(validator.independentType(null));
 
