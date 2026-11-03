@@ -574,7 +574,15 @@ public final class Jackson3Parser extends StreamingParser {
 
     @Override
     public Object readRaw() throws IOException {
-        JsonToken current = nextValue();
+        return _readRawCurrent(nextValue());
+    }
+
+    /**
+     * Reads a value whose token has already been consumed from the native
+     * parser. Raw object/array traversal calls this directly to avoid
+     * round-tripping through the public consuming-value lookahead protocol.
+     */
+    private Object _readRawCurrent(JsonToken current) throws IOException {
         if (current == null) {
             throw expected("raw node", null);
         }
@@ -590,8 +598,9 @@ public final class Jackson3Parser extends StreamingParser {
             case VALUE_NUMBER_FLOAT:
                 return parser.getNumberValue();
             case VALUE_TRUE:
+                return Boolean.TRUE;
             case VALUE_FALSE:
-                return parser.getBooleanValue();
+                return Boolean.FALSE;
             case VALUE_NULL:
                 return null;
             default:
@@ -623,15 +632,16 @@ public final class Jackson3Parser extends StreamingParser {
         Map<String, Object> value = new LinkedHashMap<>();
         String name;
         while ((name = parser.nextName()) != null) {
-            value.put(name, readRaw());
+            value.put(name, _readRawCurrent(parser.nextToken()));
         }
         return value;
     }
 
     private List<Object> _readRawArray() throws IOException {
         List<Object> value = new ArrayList<>();
-        while (!nextIfArrayEnd()) {
-            value.add(readRaw());
+        JsonToken token;
+        while ((token = parser.nextToken()) != JsonToken.END_ARRAY) {
+            value.add(_readRawCurrent(token));
         }
         return value;
     }
