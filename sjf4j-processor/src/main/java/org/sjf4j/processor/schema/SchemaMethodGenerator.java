@@ -118,8 +118,7 @@ final class SchemaMethodGenerator {
             booleanLiteral = compileBoolean(bound.snapshot);
             if (booleanLiteral == null) {
                 SchemaCompiler compiler = new SchemaCompiler(context);
-                direct = compiler.compileObject(parameterType, bound.snapshot);
-                if (direct == null) direct = compiler.compileRoot(parameterType, bound.snapshot);
+                direct = compiler.compileRoot(parameterType, bound.snapshot);
                 if (isBoolean && direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
                     booleanLiteral = "false";
                     direct = null;
