@@ -57,6 +57,7 @@ class SchemaPlanTest {
         registry.indexIfAbsent(falseUri, BooleanSchema.TRUE);
         assertFalse(registry.resolve(falseUri).isValid("anything"));
         assertThrows(SchemaException.class, () -> registry.index(falseUri, BooleanSchema.TRUE));
+        assertThrows(SchemaException.class, () -> registry.index(falseUri, JsonSchema.fromJson("{}")));
     }
 
     @Test
