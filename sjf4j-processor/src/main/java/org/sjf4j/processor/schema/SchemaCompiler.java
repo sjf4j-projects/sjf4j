@@ -30,11 +30,6 @@ final class SchemaCompiler {
         this.oneOf = new OneOfCompiler(context, objects, this);
     }
 
-    SchemaCheck compileObject(TypeMirror type,
-                                          SchemaResourceResolver.Snapshot snapshot) {
-        return objects.compile(type, snapshot);
-    }
-
     /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
     SchemaCheck compileRoot(TypeMirror type, SchemaResourceResolver.Snapshot snapshot) {
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
@@ -202,12 +197,9 @@ final class SchemaCompiler {
         return matching ? value : SchemaValue.of(context, null);
     }
 
-    /** Single boolean/null types and type unions with optional scalar literals. */
+    /** Compile only the type keyword; every other assertion is independent. */
     private SchemaCheck compileUnionType(JsonObject schema, SchemaValue value, String schemaUri) {
-        for (String key : schema.keySet()) {
-            if (!key.equals("type") && !key.equals("const") && !key.equals("enum")
-                    && !isAnnotation(key)) return null;
-        }
+        if (schema.size() != 1 || !schema.containsKey("type")) return null;
         Object raw = schema.getNode("type");
         List<String> types = new ArrayList<String>();
         if (raw instanceof String) {
@@ -227,17 +219,7 @@ final class SchemaCompiler {
                 return null;
             }
         }
-        SchemaCheck check = new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
-        if (!schema.containsKey("const") && !schema.containsKey("enum")) return check;
-        JsonObject literals = new JsonObject();
-        if (schema.containsKey("const")) literals.put("const", schema.getNode("const"));
-        if (schema.containsKey("enum")) literals.put("enum", schema.getNode("enum"));
-        SchemaCheck literal = scalars.compileLiteralsOnly(literals, value, schemaUri);
-        if (literal == null) return null;
-        List<SchemaCheck> all = new ArrayList<SchemaCheck>();
-        all.add(check);
-        all.add(literal);
-        return new SchemaCheck.AllCheck(all);
+        return new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
     }
 
     /**
