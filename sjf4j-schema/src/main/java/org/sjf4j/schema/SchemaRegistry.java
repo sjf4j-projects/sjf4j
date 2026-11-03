@@ -163,16 +163,17 @@ public class SchemaRegistry {
             throw new IllegalArgumentException("schema registry directory not found: " + root);
         }
         try (Stream<Path> paths = Files.walk(root)) {
-            for (Path path : (Iterable<Path>) paths.filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().endsWith(".json"))
-                    .sorted()::iterator) {
-                URI uri = path.toUri();
-                JsonSchema schema = loader.load(uri);
-                if (schema == null) {
-                    throw new IllegalArgumentException("schema registry resource not found: " + uri);
-                }
-                indexIfAbsent(uri, schema);
-            }
+            paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .sorted()
+                    .forEach(path -> {
+                        URI uri = path.toUri();
+                        JsonSchema schema = loader.load(uri);
+                        if (schema == null) {
+                            throw new IllegalArgumentException("schema registry resource not found: " + uri);
+                        }
+                        indexIfAbsent(uri, schema);
+                    });
         } catch (IOException e) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                     "failed to index schema registry directory", PathSegment.Root.INSTANCE, base), e);
