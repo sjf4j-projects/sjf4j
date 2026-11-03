@@ -65,7 +65,7 @@ Supported assertions compile into Java predicates. A partially supported schema 
 | Boolean schemas; `type`; scalar `enum` / `const` | Supported; object/array literals may require fallback |
 | String: `minLength`, `maxLength`, `pattern` | Supported, including Unicode code-point lengths |
 | Number: bounds, `multipleOf` | Supported for native numeric types and exact comparisons |
-| Object: `properties`, `required`, `additionalProperties: false`, property counts, `dependentRequired` | Supported for suitable POJOs and dynamic Nodes access |
+| Object: `properties`, `patternProperties`, `additionalProperties` (boolean or schema), `propertyNames`, `required`, `dependentRequired`, `dependentSchemas`, property counts | Supported when child schemas compile; POJO/OBNT affect access code, not fallback eligibility |
 | Array: `items`, `minItems`, `maxItems` | Supported where element constraints can compile |
 | Applicators: `allOf`, `anyOf`, `oneOf`, `not`, `if/then/else` | Supported when their branches can compile |
 | `$ref`, `$defs` | Compile-time-resolvable JSON Pointer targets; cycles/anchors may fall back |
@@ -74,7 +74,7 @@ Supported assertions compile into Java predicates. A partially supported schema 
 
 The generator uses direct Java member access for statically known types and strict `Nodes` access for dynamic values; **Nodes access is still compiled execution**, not a `SchemaPlan` fallback. `@NodeValue` and ValueCodec objects are atomic leaves, even when their raw encoding is a Map/List. `oneOf` may prune impossible branches when known discriminator constants prove them disjoint.
 
-Coverage is conditional on the Java type and complete schema context; the table does not imply that every keyword combination compiles directly.
+Direct compilation eligibility depends on the **schema semantics**, never on whether the Java instance is a POJO or OBNT. Each keyword, including `type`, compiles independently; related object keywords share only their required local evaluation scope. The table does not imply that every keyword combination or dialect compiles directly.
 
 ## Official JSON Schema tests
 
