@@ -42,7 +42,7 @@ public final class SchemaGenerator {
         // A fresh method generator per interface preserves plan sharing within
         // that interface without leaking metadata across generated classes.
         SchemaMethodGenerator methods = new SchemaMethodGenerator(
-                context, generated, options.registryDir(), registryCache);
+                context, generated, options.registryDir(), options.registryBaseUri(), registryCache);
         for (ResolvedMethod method : context.methods.abstractMethods(iface)) {
             methods.generate(method, generated, options.fallback());
         }
