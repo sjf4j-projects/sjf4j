@@ -408,14 +408,13 @@ or removes a mandatory file fails discovery until the inventory is updated.
 The `optional/` tree is excluded from both enumeration and the test runner.
 
 ```bash
-# The recommended local command for phase 2:
-./gradlew :sjf4j-testbench:officialCompiledPhase2Test \
-  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+# Set the exact upstream fixture once (no ZIP download if already cached).
+./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+# Then run locally without any network access.
+./gradlew :sjf4j-testbench:officialCompiledPhase2Test
 
 # To execute a smaller phase-2 wave, select one official-file cohort:
-./gradlew :sjf4j-testbench:officialCompiledPhase2Test \
-  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057 \
-  -PofficialCompiledCategory=object
+./gradlew :sjf4j-testbench:officialCompiledPhase2Test -PofficialCompiledCategory=object
 # Other values: basic, scalar. Default: phase2 (all three).
 ```
 
@@ -452,11 +451,11 @@ deliberately outside this test-harness stage.
 
 ### Phase 3: arrays, applicators and evaluated-location behavior
 
-Run the full mandatory Phase 3 cohort at the pinned official revision:
+Run the full mandatory Phase 3 cohort using a pinned official revision:
 
 ```bash
-./gradlew :sjf4j-testbench:officialCompiledPhase3Test \
-  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057
+./gradlew :sjf4j-testbench:officialCompiledPhase3Test
 ```
 
 This executes **15 files, 169 schema groups and 525 official assertions**,
@@ -473,9 +472,7 @@ the following exact group and assertion counts:
 To run one wave only:
 
 ```bash
-./gradlew :sjf4j-testbench:officialCompiledPhase3Test \
-  -PjsonSchemaSuiteRef=ed0ebd31d0a83fd79e99a32aa0c884b966ada057 \
-  -PofficialCompiledCategory=unevaluated
+./gradlew :sjf4j-testbench:officialCompiledPhase3Test -PofficialCompiledCategory=unevaluated
 ```
 
 The array cohort includes `items`, `prefixItems`, `minItems`,
