@@ -42,6 +42,16 @@ public final class CompiledUtil {
         }
     }
 
+    /**
+     * Implements the JSON equality semantics of uniqueItems without running
+     * a SchemaPlan. The runtime and compiled validator share the same
+     * Nodes.hash/Nodes.equals-based duplicate detection.
+     */
+    public static boolean hasDuplicateItems(Object array) {
+        return Evaluator.ArrayEvaluator.hasDuplicate(array,
+                org.sjf4j.Nodes.sizeInArray(array));
+    }
+
     /** Creates a fail-fast error from compiled diagnostics; no SchemaPlan execution. */
     public static ValidationException validationFailure(String keyword, String schemaUri,
                                                         String keywordPointer, PathSegment instancePath) {
