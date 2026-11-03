@@ -407,7 +407,7 @@ final class SchemaEmitter {
                     shape = "org.sjf4j.JsonType.of(" + expression
                             + ") == org.sjf4j.JsonType." + name;
                 }
-                if ("integer".equals(type) && !"false".equals(shape)) {
+                if ("integer".equals(type) && !"false".equals(shape) && !isNativeInteger(value)) {
                     shape = "(" + shape + " && org.sjf4j.util.Numbers.isSemanticInteger("
                             + (value.shape == SchemaValue.Shape.NUMBER ? expression
                                : "org.sjf4j.Nodes.toNumber(" + expression + ")") + "))";
