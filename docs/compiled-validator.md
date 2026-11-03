@@ -368,8 +368,6 @@ The official test-suite download, runtime test and compiled test are owned by
 # Then offline (no GitHub access) using the cached suite:
 ./gradlew :sjf4j-testbench:officialRuntimeTest
 ./gradlew :sjf4j-testbench:officialCompiledTest
-./gradlew :sjf4j-testbench:officialCompiledPhase2Test
-./gradlew :sjf4j-testbench:officialCompiledPhase3Test
 
 # Pin a revision for repeatable local testing (updates the cache if necessary):
 ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests -PjsonSchemaSuiteRef=<40-character-SHA>
