@@ -273,8 +273,11 @@ class CompiledValidatorContractProcessorTest {
                         + "boolean valid(Model value, boolean strictFormat); }");
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertTrue(generated.contains("getMethod(\"valid\", Model.class, boolean.class)"),
-                generated);
+        // The format keyword now compiles independently; the method keeps
+        // the strictFormat parameter without installing a reflection fallback.
+        assertTrue(generated.contains("public boolean valid(Model value, boolean strictFormat)"), generated);
+        assertTrue(generated.contains("FormatValidator.of(\"email\")"), generated);
+        assertFalse(generated.contains("getMethod(\"valid\""), generated);
     }
 
     private static NavigatorTestCompiler.Result compile(String source) throws Exception {
