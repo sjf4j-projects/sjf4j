@@ -929,15 +929,14 @@ public class JsonArray extends JsonContainer {
      * backend-native tree representations that participate as array nodes.
      * Values are appended through {@link #add(Object)} without deep recursion, so
      * nested child values may still be shared with the source.
+     * The source must not be this array.
+     *
+     * @throws NodeException if {@code node == this}
      */
     public void addAll(Object node) {
         if (node == null) return;
-        // Traversing a live JsonArray while appending to it would never terminate.
         if (node == this) {
-            if (dynamicElements == null) return;
-            Object[] snapshot = dynamicElements.toArray();
-            for (Object value : snapshot) add(value);
-            return;
+            throw new NodeException("cannot addAll from JsonArray itself");
         }
         Nodes.forEachArray(node, (i, value) -> add(value));
     }
