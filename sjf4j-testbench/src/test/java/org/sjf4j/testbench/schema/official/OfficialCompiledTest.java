@@ -60,13 +60,10 @@ public final class OfficialCompiledTest {
         Set<String> groups = new LinkedHashSet<>();
         fallback(groups, "anchor.json", 0, 1, 2, 3);
         fallback(groups, "const.json", 1, 2, 6, 7, 8, 9);
-        fallback(groups, "contains.json", 0, 1, 2, 3, 4, 5, 6);
         fallback(groups, "content.json", 0, 1, 2, 3);
         fallback(groups, "defs.json", 0);
         fallback(groups, "dynamicRef.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20);
         fallback(groups, "enum.json", 1, 6, 8, 10, 12);
-        fallback(groups, "maxContains.json", 0, 1, 2, 3, 4);
-        fallback(groups, "minContains.json", 0, 1, 2, 3, 4, 5, 6, 7);
         fallback(groups, "not.json", 8);
         fallback(groups, "ref.json", 0, 5, 6, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34);
         fallback(groups, "refRemote.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14);
