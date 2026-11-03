@@ -163,16 +163,19 @@ final class SchemaCompiler {
             checks.add(new SchemaCheck.ShapeGuard("ARRAY", arrayValue, check));
         }
         if (!object.isEmpty()) {
-            // ObjectCompiler chooses POJO field reads or Nodes traversal.
-            // This is a code-generation choice, never a schema fallback.
-            TypeMirror objectType = value.type;
-            if (value.shape == SchemaValue.Shape.STRING
-                    || value.shape == SchemaValue.Shape.NUMBER
-                    || value.shape == SchemaValue.Shape.BOOLEAN || value.isArrayLike()) {
-                objectType = null;
+            // Analyze the entire object-keyword scope with a representation-
+            // neutral value first. A final POJO's missing or constant property
+            // must not hide a schema feature that the compiler cannot handle.
+            SchemaCheck semantic = objects.compileNested(null, snapshot, object, uri, depth);
+            if (semantic == null) return null;
+            SchemaCheck check = semantic;
+            if (!semantic.hasFallback() && value.type != null
+                    && value.shape == SchemaValue.Shape.OBJECT) {
+                // Only after schema coverage succeeds may we select faster
+                // static POJO access. If it is unsafe, retain Nodes traversal.
+                SchemaCheck optimized = objects.compileNested(value.type, snapshot, object, uri, depth);
+                if (optimized != null && !optimized.hasFallback()) check = optimized;
             }
-            SchemaCheck check = objects.compileNested(objectType, snapshot, object, uri, depth);
-            if (check == null) return null;
             checks.add(new SchemaCheck.ShapeGuard("OBJECT", value, check));
         }
         if (checks.isEmpty()) return new SchemaCheck.Pass();
