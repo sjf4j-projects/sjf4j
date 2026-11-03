@@ -123,6 +123,24 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void unsupportedKeywordRequiresFallbackEvenWhenJavaShapeCannotMatch() throws Exception {
+        // Capability depends on schema semantics, not the Java method parameter.
+        String schema = "{\"contains\":{\"type\":\"number\"}}";
+        for (String type : new String[]{"String", "int", "Model"}) {
+            String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                    + "@CompiledValidator(fallback=false) public interface Check { "
+                    + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema)
+                    + ") boolean valid(" + type + " value); }";
+            NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Model.java", MODEL, "fixture/Check.java", source),
+                    CodegenProcessor.class);
+            assertFalse(result.success, type + "\n" + result.diagnostics());
+            assertTrue(result.diagnostics().contains("cannot fully compile"),
+                    type + "\n" + result.diagnostics());
+        }
+    }
+
+    @Test
     void rejectsUnsupportedRequireValidWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
@@ -273,8 +291,11 @@ class CompiledValidatorContractProcessorTest {
                         + "boolean valid(Model value, boolean strictFormat); }");
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertTrue(generated.contains("getMethod(\"valid\", Model.class, boolean.class)"),
-                generated);
+        // The format keyword now compiles independently; the method keeps
+        // the strictFormat parameter without installing a reflection fallback.
+        assertTrue(generated.contains("public boolean valid(Model value, boolean strictFormat)"), generated);
+        assertTrue(generated.contains("FormatValidator.of(\"email\")"), generated);
+        assertFalse(generated.contains("getMethod(\"valid\""), generated);
     }
 
     private static NavigatorTestCompiler.Result compile(String source) throws Exception {

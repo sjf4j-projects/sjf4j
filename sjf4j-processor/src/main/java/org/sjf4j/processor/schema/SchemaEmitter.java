@@ -171,6 +171,33 @@ final class SchemaEmitter {
             case TYPE:
                 emitType(lines, (SchemaCheck.TypeCheck) check, value, expression, onFailure);
                 return;
+            case SHAPE_GUARD:
+                SchemaCheck.ShapeGuard guard = (SchemaCheck.ShapeGuard) check;
+                // A known Java projection is only an emission fast path; it
+                // never determines whether a schema keyword can compile.
+                boolean knownShape = ("OBJECT".equals(guard.jsonType) && value.shape == SchemaValue.Shape.OBJECT)
+                        || ("STRING".equals(guard.jsonType) && value.shape == SchemaValue.Shape.STRING)
+                        || ("NUMBER".equals(guard.jsonType) && value.shape == SchemaValue.Shape.NUMBER)
+                        || ("ARRAY".equals(guard.jsonType) && value.isArrayLike());
+                // Even when this Java value cannot have the required shape,
+                // the schema was fully analyzed before we fold away emission.
+                // Avoid unreachable primitive code such as value.getClass().
+                if (!knownShape && value.type != null && value.type.getKind().isPrimitive()) return;
+                String condition = knownShape
+                        ? (value.nullable ? expression + " != null" : "true")
+                        : "org.sjf4j.JsonType.of(" + expression
+                          + ") == org.sjf4j.JsonType." + guard.jsonType;
+                List<String> guarded = new ArrayList<String>();
+                emitValue(guarded, plan, guard.child, guard.value, expression,
+                        planName + "_", strictFormat, depth, onFailure);
+                if ("true".equals(condition)) {
+                    lines.addAll(guarded);
+                } else {
+                    lines.add("if (" + condition + ") {");
+                    for (String statement : guarded) lines.add("    " + statement);
+                    lines.add("}");
+                }
+                return;
             case FALLBACK:
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
                         ((SchemaCheck.Fallback) check).uri, planName);
@@ -221,7 +248,11 @@ final class SchemaEmitter {
                 // Logical @NodeValue instances remain leaves even if their
                 // serialized raw representation is a Map or List. Never unwrap
                 // them to traverse the raw encoding as an object.
-                boolean unknownShape = object.dynamic;
+                // Dynamic Nodes traversal does not imply an unknown JSON
+                // shape: a final POJO may still be a known object even when
+                // direct field access is unavailable.
+                boolean unknownShape = object.dynamic
+                        && value.shape != SchemaValue.Shape.OBJECT;
                 if (object.typeRequired) {
                     if (unknownShape) {
                         lines.add("if (org.sjf4j.JsonType.of(" + expression
@@ -389,6 +420,7 @@ final class SchemaEmitter {
                 String known = value.shape == SchemaValue.Shape.STRING ? "STRING"
                         : value.shape == SchemaValue.Shape.NUMBER ? "NUMBER"
                         : value.shape == SchemaValue.Shape.BOOLEAN ? "BOOLEAN"
+                        : value.shape == SchemaValue.Shape.OBJECT ? "OBJECT"
                         : value.isArrayLike() ? "ARRAY" : null;
                 String shape;
                 if (known != null) {
@@ -397,7 +429,7 @@ final class SchemaEmitter {
                     shape = "org.sjf4j.JsonType.of(" + expression
                             + ") == org.sjf4j.JsonType." + name;
                 }
-                if ("integer".equals(type) && !"false".equals(shape)) {
+                if ("integer".equals(type) && !"false".equals(shape) && !isNativeInteger(value)) {
                     shape = "(" + shape + " && org.sjf4j.util.Numbers.isSemanticInteger("
                             + (value.shape == SchemaValue.Shape.NUMBER ? expression
                                : "org.sjf4j.Nodes.toNumber(" + expression + ")") + "))";

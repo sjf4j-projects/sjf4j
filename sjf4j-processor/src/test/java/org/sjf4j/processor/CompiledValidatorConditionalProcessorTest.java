@@ -55,12 +55,19 @@ class CompiledValidatorConditionalProcessorTest {
     }
 
     @Test
+    void conditionalWithIndependentIntegerAndMultipleOfCompilesDirect() throws Exception {
+        String schema = "{\"if\":{\"required\":[\"x\"]},"
+                + "\"then\":{\"type\":\"integer\",\"multipleOf\":2}}";
+        NavigatorTestCompiler.Result result = compile(schema, false);
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Validator_Impl.java").contains("SchemaPlan"));
+    }
+
+    @Test
     void unsupportedConditionOrSelectedBranchRequiresFallback() throws Exception {
         for (String schema : new String[]{
                 "{\"if\":{\"type\":\"object\",\"patternProperties\":{\"^x\":true}},"
                         + "\"then\":{\"required\":[\"x\"]}}",
-                "{\"if\":{\"required\":[\"x\"]},"
-                        + "\"then\":{\"type\":\"integer\",\"multipleOf\":2}}",
                 "{\"if\":true,\"then\":{\"required\":[\"x\"]},"
                         + "\"unevaluatedProperties\":false}"
         }) {
