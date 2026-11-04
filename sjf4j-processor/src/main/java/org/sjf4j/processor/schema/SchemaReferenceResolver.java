@@ -19,7 +19,7 @@ final class SchemaReferenceResolver {
     private final Map<String, Entry> locations = new HashMap<String, Entry>();
     private final Map<String, Entry> fragments = new HashMap<String, Entry>();
 
-    private SchemaReferenceResolver(SchemaResourceResolver.Snapshot snapshot) {
+    SchemaReferenceResolver(SchemaResourceResolver.Snapshot snapshot) {
         for (int i = 0; i < snapshot.uris.length; i++) {
             URI retrieval = URI.create(snapshot.uris[i]);
             Object raw = Sjf4j.global().fromJson(snapshot.documents[i]);
@@ -28,14 +28,14 @@ final class SchemaReferenceResolver {
     }
 
     static String canonicalLocation(SchemaResourceResolver.Snapshot snapshot, String location) {
-        SchemaReferenceResolver resolver = new SchemaReferenceResolver(snapshot);
+        SchemaReferenceResolver resolver = snapshot.referenceIndex();
         Entry entry = resolver.locations.get(location);
         if (entry == null) entry = resolver.locations.get(location + "#");
         return entry == null ? location : entry.location;
     }
 
     static boolean acceptsRefSiblings(SchemaResourceResolver.Snapshot snapshot, String location) {
-        SchemaReferenceResolver resolver = new SchemaReferenceResolver(snapshot);
+        SchemaReferenceResolver resolver = snapshot.referenceIndex();
         Entry entry = resolver.locations.get(location);
         if (entry == null) entry = resolver.locations.get(location + "#");
         return entry == null || entry.modern;
@@ -48,7 +48,7 @@ final class SchemaReferenceResolver {
         }
         String literal = schema.getString("$ref");
         if (literal == null) return null;
-        return new SchemaReferenceResolver(snapshot).resolve(sourceUri, literal);
+        return snapshot.referenceIndex().resolve(sourceUri, literal);
     }
 
     private SchemaCompiler.RefTarget resolve(String sourceUri, String reference) {
