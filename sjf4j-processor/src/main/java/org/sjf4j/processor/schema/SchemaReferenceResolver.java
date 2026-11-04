@@ -119,7 +119,9 @@ final class SchemaReferenceResolver {
                 } catch (IllegalArgumentException malformedId) {
                     // SchemaRegistry reports malformed ids during plan validation.
                 }
-                String stripped = SchemaUtil.stripFragment((String) id);
+                // In Draft-07 a nested $ref suppresses its sibling $id scope.
+                String stripped = !root && !modern && Nodes.getInObject(node, "$ref") instanceof String
+                        ? "" : SchemaUtil.stripFragment((String) id);
                 if (!stripped.isEmpty()) {
                     URI resolved = SchemaUtil.resolveUri(parentResource, URI.create(stripped));
                     if (!resolved.equals(parentResource)) {
