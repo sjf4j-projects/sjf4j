@@ -83,7 +83,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
                 {"{\"contains\":{\"type\":\"integer\"},\"unevaluatedItems\":false}",
                         "contains + unevaluatedItems"},
                 {"{\"properties\":{\"nested\":{\"unevaluatedProperties\":false}}}",
-                        "unevaluatedProperties in a nested schema"}
+                        "properties + unevaluatedProperties"}
         }) {
             NavigatorTestCompiler.Result result = compile(input[0], "Object");
             assertFalse(result.success, input[0]);
