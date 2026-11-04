@@ -77,6 +77,22 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void coverageNeutralApplicatorsCompileWithoutFallback() throws Exception {
+        for (String schema : new String[]{
+                "{\"allOf\":[true],\"unevaluatedItems\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[true],\"unevaluatedProperties\":false}",
+                "{\"prefixItems\":[{\"const\":\"foo\"}],\"not\":{\"not\":{\"prefixItems\":[true,{\"const\":\"bar\"}]}},\"unevaluatedItems\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"not\":{\"not\":{\"properties\":{\"bar\":{\"const\":\"bar\"}},\"required\":[\"bar\"]}},\"unevaluatedProperties\":false}"
+        }) {
+            NavigatorTestCompiler.Result result = compile(schema, "Object");
+            assertTrue(result.success, schema + "\n" + result.diagnostics());
+            String output = result.generatedSource("fixture/Validator_Impl.java");
+            assertFalse(output.contains(".isValid("), schema + "\n" + output);
+            assertFalse(output.contains("SchemaPlan"), schema + "\n" + output);
+        }
+    }
+
+    @Test
     void combinationsRequiringEvaluationTrackingReportExactReason() throws Exception {
         for (String[] input : new String[][]{
                 {"{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}",
