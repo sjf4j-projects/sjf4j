@@ -46,7 +46,7 @@ Methods take one value argument and optionally a primitive `boolean strictFormat
 
 ## Compilation and fallback
 
-`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. **CompiledValidator currently supports Draft 2020-12 only.** A schema without `$schema` uses 2020-12 by default. Explicit Draft-07, Draft 2019-09, or unknown `$schema` declarations are compilation errors, even with `fallback = true`; the runtime `SchemaRegistry` and `SchemaPlanner` retain their existing multi-draft support. Opt in to runtime fallback when needed:
+`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. **CompiledValidator currently supports Draft 2020-12 only.** A schema without `$schema` uses 2020-12 by default. Explicit Draft-07 or Draft 2019-09 declarations are compilation errors, even with `fallback = true`; unknown custom meta-schemas require explicit runtime fallback because their vocabularies may differ. The runtime `SchemaRegistry` and `SchemaPlanner` retain existing multi-draft support. Opt in to runtime fallback when needed:
 
 ```java
 @CompiledValidator(fallback = true)
