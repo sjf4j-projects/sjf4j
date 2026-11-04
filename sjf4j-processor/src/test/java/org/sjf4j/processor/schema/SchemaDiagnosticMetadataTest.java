@@ -19,7 +19,7 @@ class SchemaDiagnosticMetadataTest {
 
         assertNotNull(diagnostic);
         assertEquals("minimum", diagnostic.keyword);
-        assertEquals("classpath:/schemas/model.json", diagnostic.schemaUri);
+        assertEquals("classpath:/schemas/model.json", diagnostic.resourceUri);
         assertEquals("/$defs/person/properties/a~1b/minimum", diagnostic.keywordPointer);
 
         SchemaCheck.TypeCheck check = new SchemaCheck.TypeCheck(
@@ -33,7 +33,7 @@ class SchemaDiagnosticMetadataTest {
                 "classpath:/schema%20draft.json#/$defs/name%20with%20space",
                 "minLength");
 
-        assertEquals("classpath:/schema%20draft.json", diagnostic.schemaUri);
+        assertEquals("classpath:/schema%20draft.json", diagnostic.resourceUri);
         assertEquals("/$defs/name with space/minLength", diagnostic.keywordPointer);
     }
 
@@ -44,7 +44,7 @@ class SchemaDiagnosticMetadataTest {
                 "false");
 
         assertEquals("false", diagnostic.keyword);
-        assertEquals("classpath:/schemas/model.json", diagnostic.schemaUri);
+        assertEquals("classpath:/schemas/model.json", diagnostic.resourceUri);
         assertEquals("/properties/child", diagnostic.keywordPointer);
     }
 
@@ -54,7 +54,7 @@ class SchemaDiagnosticMetadataTest {
                 "classpath:/schemas/model.json#/properties/name with+plus",
                 "minLength");
 
-        assertEquals("classpath:/schemas/model.json", diagnostic.schemaUri);
+        assertEquals("classpath:/schemas/model.json", diagnostic.resourceUri);
         assertEquals("/properties/name with+plus/minLength", diagnostic.keywordPointer);
     }
 
@@ -66,7 +66,7 @@ class SchemaDiagnosticMetadataTest {
 
         assertEquals("classpath:/schemas/child.json", effective);
         SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(effective, "minimum");
-        assertEquals("classpath:/schemas/child.json", diagnostic.schemaUri);
+        assertEquals("classpath:/schemas/child.json", diagnostic.resourceUri);
         assertEquals("/minimum", diagnostic.keywordPointer);
     }
 
