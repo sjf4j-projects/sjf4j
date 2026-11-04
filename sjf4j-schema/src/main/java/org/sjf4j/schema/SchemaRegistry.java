@@ -223,7 +223,7 @@ public class SchemaRegistry {
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
         }
-        rememberSource(retrievalUri != null ? retrievalUri : canonicalUri, schema);
+
     }
 
     /**
