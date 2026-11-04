@@ -50,6 +50,24 @@ class CompiledValidatorStaticUnevaluatedTest {
              "additionalProperties":{"type":"integer"},"unevaluatedProperties":false}
             """;
 
+    private static final String TRUE_ALLOF_ITEMS = """
+            {"allOf":[true],"unevaluatedItems":false}
+            """;
+    private static final String TRUE_ALLOF_PROPERTIES = """
+            {"properties":{"foo":{"type":"string"}},
+             "allOf":[true],"unevaluatedProperties":false}
+            """;
+    private static final String NOT_ITEMS = """
+            {"prefixItems":[{"const":"foo"}],
+             "not":{"not":{"prefixItems":[true,{"const":"bar"}]}},
+             "unevaluatedItems":false}
+            """;
+    private static final String NOT_PROPERTIES = """
+            {"properties":{"foo":{"type":"string"}},
+             "not":{"not":{"properties":{"bar":{"const":"bar"}},"required":["bar"]}},
+             "unevaluatedProperties":false}
+            """;
+
     @CompiledValidator(fallback = false)
     public interface Direct {
         @ValidJsonSchema(PROPERTIES) boolean properties(Object node);
@@ -61,6 +79,10 @@ class CompiledValidatorStaticUnevaluatedTest {
         @ValidJsonSchema(ADDITIONAL_FALSE) boolean additionalFalse(Object node);
         @ValidJsonSchema(ADDITIONAL_TRUE) boolean additionalTrue(Object node);
         @ValidJsonSchema(ADDITIONAL_SCHEMA) boolean additionalSchema(Object node);
+        @ValidJsonSchema(TRUE_ALLOF_ITEMS) boolean allTrueItems(Object node);
+        @ValidJsonSchema(TRUE_ALLOF_PROPERTIES) boolean allTrueProperties(Object node);
+        @ValidJsonSchema(NOT_ITEMS) boolean notItems(Object node);
+        @ValidJsonSchema(NOT_PROPERTIES) boolean notProperties(Object node);
     }
 
     @Test
@@ -131,6 +153,24 @@ class CompiledValidatorStaticUnevaluatedTest {
         assertEquals(falsePlan.isValid(withNull), direct.additionalFalse(withNull));
         assertEquals(truePlan.isValid(withNull), direct.additionalTrue(withNull));
         assertEquals(schemaPlan.isValid(withNull), direct.additionalSchema(withNull));
+    }
+
+    @Test
+    void coverageNeutralApplicatorsMatchRuntime() {
+        Direct direct = CompiledInstances.create(Direct.class);
+        SchemaPlan allItems = JsonSchema.fromJson(TRUE_ALLOF_ITEMS).createPlan();
+        SchemaPlan allProperties = JsonSchema.fromJson(TRUE_ALLOF_PROPERTIES).createPlan();
+        SchemaPlan notItems = JsonSchema.fromJson(NOT_ITEMS).createPlan();
+        SchemaPlan notProperties = JsonSchema.fromJson(NOT_PROPERTIES).createPlan();
+        for (Object value : Arrays.asList(null, 1, List.of(), List.of("foo"),
+                List.of("foo", "bar"), List.of("foo", "bad"), List.of("bad"),
+                Map.of(), Map.of("foo", "ok"), Map.of("foo", 42),
+                Map.of("foo", "ok", "bar", "bar"), Map.of("bar", "bar"))) {
+            assertEquals(allItems.isValid(value), direct.allTrueItems(value), String.valueOf(value));
+            assertEquals(allProperties.isValid(value), direct.allTrueProperties(value), String.valueOf(value));
+            assertEquals(notItems.isValid(value), direct.notItems(value), String.valueOf(value));
+            assertEquals(notProperties.isValid(value), direct.notProperties(value), String.valueOf(value));
+        }
     }
 
 }
