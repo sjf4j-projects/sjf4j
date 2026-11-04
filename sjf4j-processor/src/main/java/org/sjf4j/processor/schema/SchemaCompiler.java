@@ -18,7 +18,6 @@ import java.util.Map;
  * Concrete keyword compilation is delegated to type-focused compilers.
  */
 final class SchemaCompiler {
-    static final ThreadLocal<String> DEBUG_REF = new ThreadLocal<String>();
     private final ProcessorContext context;
     private final ObjectCompiler objects;
     private final ScalarCompiler scalars;
@@ -36,7 +35,6 @@ final class SchemaCompiler {
 
     /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
     SchemaCheck compileRoot(TypeMirror type, SchemaResourceResolver.Snapshot snapshot) {
-        DEBUG_REF.remove();
         // A custom meta-schema can redefine vocabularies, including the
         // semantics of an otherwise empty or ref-only schema. Never emit
         // direct predicates under an unknown dialect.
@@ -68,8 +66,6 @@ final class SchemaCompiler {
         if (schema.containsKey("$ref")) {
             JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
             RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
-            DEBUG_REF.set("source=" + schemaUri + ", ref=" + schema.getString("$ref")
-                    + ", target=" + (target == null ? "UNRESOLVED" : target.uri));
             if (target == null) return null;
             String referenceKey = target.uri + "\\u0000" + (value.type == null ? "Object" : value.type.toString())
                     + "\\u0000" + value.shape;
@@ -84,11 +80,7 @@ final class SchemaCompiler {
                 // Keeping completed nodes would lose the referring keyword's
                 // diagnostic location and force needless helper calls.
                 boundReferences.remove(referenceKey);
-                if (reference.target == null) {
-                    DEBUG_REF.set("REF TARGET COMPILATION FAILED: " + target.uri
-                            + " node=" + target.value);
-                    return null;
-                }
+                if (reference.target == null) return null;
                 referenced = reference.recursive ? reference : reference.target;
             } else {
                 if (reference.binding) reference.recursive = true;
@@ -533,19 +525,9 @@ final class SchemaCompiler {
             java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
                     java.net.URI.create(sourceUri), java.net.URI.create(literal));
             org.sjf4j.schema.SchemaPlan plan = snapshot.registry.resolve(absolute);
-            if (plan == null) {
-                System.err.println("SJF4J DIAG unresolved ref " + sourceUri + " -> " + absolute);
-                return null;
-            }
-            if (plan.schemaNode() == null || plan.schemaLocation() == null) {
-                System.err.println("SJF4J DIAG incomplete plan " + sourceUri + " -> " + absolute
-                        + " node=" + plan.schemaNode() + " location=" + plan.schemaLocation());
-                return null;
-            }
-            return new RefTarget(plan.schemaNode(), plan.schemaLocation().toString());
+            return plan == null ? null : new RefTarget(plan.schemaNode(),
+                    plan.schemaLocation().toString());
         } catch (RuntimeException unresolved) {
-            System.err.println("SJF4J DIAG resolving " + sourceUri + " + " + literal
-                    + ": " + unresolved);
             return null;
         }
     }
