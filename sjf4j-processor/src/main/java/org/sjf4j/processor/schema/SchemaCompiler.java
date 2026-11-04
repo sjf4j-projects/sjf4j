@@ -27,6 +27,7 @@ final class SchemaCompiler {
     private final OneOfCompiler oneOf;
     private final Map<String, SchemaCheck.ReferenceCheck> boundReferences = new HashMap<String, SchemaCheck.ReferenceCheck>();
     private String fallbackReason;
+    private int activeReferences;
 
     /** First semantic obstacle seen while compiling a schema tree. */
     String fallbackReason() {
@@ -120,6 +121,7 @@ final class SchemaCompiler {
                 interfering = "unevaluatedItems";
             if (depth != 0 || interfering != null) {
                 String parent = interfering == null ? enclosingKeyword(schemaUri) : interfering;
+                if (parent == null && activeReferences > 0) parent = "$ref";
                 unsupported(parent == null
                         ? keyword + " in a nested schema requires evaluated-location tracking at "
                                 + keywordUri(schemaUri, keyword)
@@ -139,8 +141,13 @@ final class SchemaCompiler {
             if (reference == null) {
                 reference = new SchemaCheck.ReferenceCheck(target.uri, diagnostic(schemaUri, "$ref"));
                 boundReferences.put(referenceKey, reference);
-                reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
-                reference.binding = false;
+                try {
+                    activeReferences++;
+                    reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
+                } finally {
+                    activeReferences--;
+                    reference.binding = false;
+                }
                 // The cache is an active reference chain, not global memoization.
                 // Keeping completed nodes would lose the referring keyword's
                 // diagnostic location and force needless helper calls.
