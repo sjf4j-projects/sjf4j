@@ -78,6 +78,8 @@ final class SchemaCompiler {
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
         JsonObject schema = schemaObject(rawSchema);
+        // Canonical locations are indexed by lexical $id scope.
+        schemaUri = snapshot.canonicalLocation(schemaUri);
         // Static local coverage is safe only for the selected root schema,
         // with no applicator/reference or dependent-schema annotation exchange.
         // Child schemas are compiled normally but cannot claim their parent's
@@ -109,9 +111,6 @@ final class SchemaCompiler {
                 return null;
             }
         }
-        // Canonical locations are indexed by lexical $id scope, including nested
-        // resources. Do not reapply a relative $id when following a reference.
-        schemaUri = snapshot.canonicalLocation(schemaUri);
         if (schema.containsKey("$ref")) {
             JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
             RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
