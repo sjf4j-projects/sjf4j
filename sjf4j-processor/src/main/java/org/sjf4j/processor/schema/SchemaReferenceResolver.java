@@ -53,7 +53,7 @@ final class SchemaReferenceResolver {
 
     static String canonicalLocation(SchemaResourceResolver.Snapshot snapshot, String location) {
         SchemaReferenceResolver resolver = snapshot.referenceIndex();
-        Entry entry = resolver.locations.get(location);
+        Entry entry = resolver.locations.get(locationKey(location));
         if (entry == null) entry = resolver.locations.get(location + "#");
         return entry == null ? location : entry.location;
     }
@@ -76,7 +76,7 @@ final class SchemaReferenceResolver {
     }
 
     private SchemaCompiler.RefTarget resolve(String sourceUri, String reference) {
-        Entry source = locations.get(sourceUri);
+        Entry source = locations.get(locationKey(sourceUri));
         if (source == null) {
             // Exact same-resource root references also occur without a '#'.
             source = locations.get(sourceUri + "#");
@@ -168,6 +168,24 @@ final class SchemaReferenceResolver {
                 index(child, resource, append(pointer, keyword),
                         physicalDocument, append(physicalPointer, keyword), false, modern);
             }
+        }
+    }
+
+    /**
+     * Compiler source locations may contain URI-escaped JSON Pointer segments.
+     * The schema index stores decoded RFC 6901 pointers; decode URI escapes
+     * (not ~0/~1) before matching the source location. Never decode '+' as space.
+     */
+    private static String locationKey(String location) {
+        int hash = location.indexOf('#');
+        if (hash < 0) return location;
+        try {
+            String fragment = URI.create(location).getFragment();
+            return location.substring(0, hash) + "#" + (fragment == null ? "" : fragment);
+        } catch (IllegalArgumentException invalidRawFragment) {
+            // Locations produced from already decoded schema names can contain
+            // quote or percent characters; those are already index keys.
+            return location;
         }
     }
 
