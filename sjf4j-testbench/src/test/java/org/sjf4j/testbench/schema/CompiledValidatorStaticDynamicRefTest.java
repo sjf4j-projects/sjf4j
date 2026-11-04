@@ -35,7 +35,7 @@ class CompiledValidatorStaticDynamicRefTest {
             """;
 
     @CompiledValidator(fallback = false)
-    interface Direct {
+    public interface Direct {
         @ValidJsonSchema(PLAIN_ANCHOR) boolean plain(Object value);
         @ValidJsonSchema(POINTER_TO_DYNAMIC_ANCHOR) boolean pointer(Object value);
         @ValidJsonSchema(NONMATCHING_DYNAMIC_ANCHOR) boolean nonmatching(Object value);
