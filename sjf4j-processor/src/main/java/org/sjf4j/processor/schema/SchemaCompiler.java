@@ -28,6 +28,51 @@ final class SchemaCompiler {
     private final Map<String, SchemaCheck.ReferenceCheck> boundReferences = new HashMap<String, SchemaCheck.ReferenceCheck>();
     private String fallbackReason;
     private int activeReferences;
+    // Only present during annotation processing. Never emitted into runtime code.
+    private final java.util.LinkedHashMap<String, org.sjf4j.schema.SchemaPlan> scope =
+            new java.util.LinkedHashMap<String, org.sjf4j.schema.SchemaPlan>();
+    private final java.util.Set<String> specializedReferences = new java.util.HashSet<String>();
+    private boolean dynamicScopeEnabled;
+    private int unresolvedScope;
+    private static final int MAX_SPECIALIZED_REFERENCES = 256;
+
+    private String enterScope(SchemaResourceResolver.Snapshot snapshot, String uri) {
+        if (!dynamicScopeEnabled) return null;
+        String canonical = snapshot.canonicalLocation(uri);
+        int hash = canonical.indexOf('#');
+        String resource = hash < 0 ? canonical : canonical.substring(0, hash);
+        if (scope.containsKey(resource)) return null;
+        try {
+            org.sjf4j.schema.SchemaPlan plan =
+                    snapshot.registry.resolve(java.net.URI.create(resource));
+            if (plan != null) {
+                scope.put(resource, plan);
+                return resource;
+            }
+        } catch (RuntimeException unresolved) {
+            // A synthetic keyword projection may not be a registered resource.
+        }
+        unresolvedScope++;
+        return "";
+    }
+
+    private void leaveScope(String entered) {
+        if (entered == null) return;
+        if (entered.isEmpty()) {
+            unresolvedScope--;
+        } else {
+            scope.remove(entered);
+        }
+    }
+
+    private String scopeKey() {
+        StringBuilder key = new StringBuilder();
+        for (String resource : scope.keySet()) {
+            key.append(resource.length()).append(':').append(resource);
+        }
+        return key.toString();
+    }
+
 
     /** First semantic obstacle seen while compiling a schema tree. */
     String fallbackReason() {
@@ -56,6 +101,7 @@ final class SchemaCompiler {
                     + " requires runtime vocabulary interpretation");
             return null;
         }
+        dynamicScopeEnabled = snapshot.hasDynamicRef;
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
@@ -76,11 +122,16 @@ final class SchemaCompiler {
     SchemaCheck compileValue(SchemaResourceResolver.Snapshot snapshot,
                              Object rawSchema, SchemaValue value,
                              String schemaUri, int depth) {
-        SchemaCheck compiled = compileSchema(snapshot, rawSchema, value, schemaUri, depth);
-        if (compiled == null && fallbackReason == null) {
-            unsupported(explainFailure(snapshot, rawSchema, schemaUri));
+        String entered = enterScope(snapshot, schemaUri);
+        try {
+            SchemaCheck compiled = compileSchema(snapshot, rawSchema, value, schemaUri, depth);
+            if (compiled == null && fallbackReason == null) {
+                unsupported(explainFailure(snapshot, rawSchema, schemaUri));
+            }
+            return compiled;
+        } finally {
+            leaveScope(entered);
         }
-        return compiled;
     }
 
     private SchemaCheck compileSchema(SchemaResourceResolver.Snapshot snapshot,
@@ -132,35 +183,58 @@ final class SchemaCompiler {
                 return null;
             }
         }
-        if (schema.containsKey("$dynamicRef")) {
-            // Adjacent $ref and $dynamicRef are two independent assertions.
-            // Rewriting their keys into one $ref would silently lose one.
-            if (schema.containsKey("$ref")) {
-                unsupported("$ref + $dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
-                        + " requires runtime fallback: adjacent reference assertions");
-                return null;
-            }
-            if (!isStaticDynamicRef(snapshot, schema, schemaUri)) {
-                unsupported("$dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
-                        + " requires runtime dynamic-scope resolution");
-                return null;
-            }
-            JsonObject staticRef = new JsonObject();
-            for (String key : schema.keySet()) {
-                staticRef.put("$dynamicRef".equals(key) ? "$ref" : key, schema.getNode(key));
-            }
-            return compileSchema(snapshot, staticRef, value, schemaUri, depth);
+        // Adjacent $ref and $dynamicRef are independent assertions. Until
+        // both can be emitted together, preserve their semantics via fallback.
+        if (schema.containsKey("$dynamicRef") && schema.containsKey("$ref")) {
+            unsupported("$ref + $dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+                    + " requires runtime fallback: adjacent reference assertions");
+            return null;
         }
-        if (schema.containsKey("$ref")) {
-            JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
-            RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
-            if (target == null) return null;
-            String referenceKey = target.uri + "\\u0000" + (value.type == null ? "Object" : value.type.toString())
-                    + "\\u0000" + value.shape;
+        String referenceKeyword = schema.containsKey("$dynamicRef") ? "$dynamicRef"
+                : schema.containsKey("$ref") ? "$ref" : null;
+        if (referenceKeyword != null) {
+            RefTarget target;
+            if ("$dynamicRef".equals(referenceKeyword)) {
+                if (!dynamicScopeEnabled || unresolvedScope != 0) {
+                    unsupported("$dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+                            + " requires runtime fallback: incomplete compilation scope");
+                    return null;
+                }
+                try {
+                    java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
+                            java.net.URI.create(schemaUri),
+                            java.net.URI.create(schema.getString("$dynamicRef")));
+                    org.sjf4j.schema.SchemaPlan selected = snapshot.registry.resolveDynamicRef(
+                            absolute, new ArrayList<org.sjf4j.schema.SchemaPlan>(scope.values()));
+                    if (selected == null) return null;
+                    target = new RefTarget(selected.schema(), selected.schemaUri().toString());
+                } catch (RuntimeException unresolved) {
+                    unsupported("$dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+                            + " cannot be resolved at compile time");
+                    return null;
+                }
+            } else {
+                target = resolveRef(snapshot,
+                        JsonObject.of("$ref", schema.getString("$ref")), schemaUri);
+                if (target == null) return null;
+            }
+            // The same referenced schema may need different predicates for
+            // different enclosing dynamic-anchor scopes.
+            String referenceKey = target.uri + "\\u0000"
+                    + (value.type == null ? "Object" : value.type.toString())
+                    + "\\u0000" + value.shape
+                    + (dynamicScopeEnabled ? "\\u0000" + scopeKey() : "");
             SchemaCheck.ReferenceCheck reference = boundReferences.get(referenceKey);
             SchemaCheck referenced;
             if (reference == null) {
-                reference = new SchemaCheck.ReferenceCheck(target.uri, diagnostic(schemaUri, "$ref"));
+                if (dynamicScopeEnabled && specializedReferences.add(referenceKey)
+                        && specializedReferences.size() > MAX_SPECIALIZED_REFERENCES) {
+                    unsupported("$dynamicRef specialization exceeds "
+                            + MAX_SPECIALIZED_REFERENCES + " distinct schema contexts");
+                    return null;
+                }
+                reference = new SchemaCheck.ReferenceCheck(target.uri,
+                        diagnostic(schemaUri, referenceKeyword));
                 boundReferences.put(referenceKey, reference);
                 try {
                     activeReferences++;
@@ -169,9 +243,7 @@ final class SchemaCompiler {
                     activeReferences--;
                     reference.binding = false;
                 }
-                // The cache is an active reference chain, not global memoization.
-                // Keeping completed nodes would lose the referring keyword's
-                // diagnostic location and force needless helper calls.
+                // Keep only active references to preserve diagnostic locations.
                 boundReferences.remove(referenceKey);
                 if (reference.target == null) return null;
                 referenced = reference.recursive ? reference : reference.target;
@@ -180,11 +252,11 @@ final class SchemaCompiler {
                 referenced = reference;
             }
             if (referenced.hasFallback()) return null;
-            // Draft 2020-12: adjacent assertions are independent of $ref.
+            // Sibling assertions are applied in the referring schema scope.
             if (schema.size() == 1) return referenced;
             JsonObject adjacent = new JsonObject();
             for (String keyword : schema.keySet()) {
-                if (!"$ref".equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
+                if (!referenceKeyword.equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
             }
             if (!adjacent.isEmpty()) {
                 SchemaCheck siblings = compileValue(snapshot, adjacent, value, schemaUri, depth + 1);
@@ -708,28 +780,6 @@ final class SchemaCompiler {
         return rawSchema instanceof ObjectSchema
                 ? new JsonObject(((ObjectSchema) rawSchema).dynamicMembers())
                 : Nodes.toJsonObject(rawSchema);
-    }
-
-    /** Only a static anchor or JSON Pointer is immune to dynamic scope. */
-    private static boolean isStaticDynamicRef(SchemaResourceResolver.Snapshot snapshot,
-                                              JsonObject schema, String sourceUri) {
-        String literal = schema.getString("$dynamicRef");
-        if (literal == null) return false;
-        try {
-            java.net.URI resolved = org.sjf4j.schema.SchemaUtil.resolveUri(
-                    java.net.URI.create(sourceUri), java.net.URI.create(literal));
-            RefTarget target = resolveRef(snapshot, JsonObject.of("$ref", literal), sourceUri);
-            if (target == null) return false;
-            String fragment = resolved.getFragment();
-            if (fragment == null || fragment.isEmpty() || fragment.startsWith("/")) return true;
-            // A plain-name fragment must be proven to be a regular $anchor.
-            if (JsonType.of(target.value) != JsonType.OBJECT) return false;
-            JsonObject targetSchema = schemaObject(target.value);
-            return fragment.equals(targetSchema.getString("$anchor"))
-                    && !fragment.equals(targetSchema.getString("$dynamicAnchor"));
-        } catch (RuntimeException invalidReference) {
-            return false;
-        }
     }
 
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
