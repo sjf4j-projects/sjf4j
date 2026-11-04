@@ -1001,7 +1001,6 @@ public interface Evaluator {
 
     // minItems / maxItems / uniqueItems
     final class ArrayEvaluator implements Evaluator {
-        private static final Object NULL_ITEM = new Object();
 
         final PathSegment minItemsKeywordPs;
         final PathSegment maxItemsKeywordPs;
@@ -1066,7 +1065,7 @@ public interface Evaluator {
             }
             if (!result && ctx.isFailFast()) return false;
             if (uniqueItems && size > 1) {
-                if (hasDuplicate(node, size)) {
+                if (Nodes.hasDuplicateInArray(node)) {
                     ctx.addError(instance, ps, uniqueItemsKeywordPs, schemaUri, "uniqueItems",
                             ctx.needsErrorDetail() ? ("expected unique array items") : null);
                     result = false;
@@ -1076,43 +1075,7 @@ public interface Evaluator {
         }
 
 
-        static boolean hasDuplicate(Object array, int size) {
-            if (size < 2) return false;
-            Iterator<Object> it = NodeWalker.iteratorInArray(array);
-            // Keep load factor <= 0.5 for inexpensive linear probing.
-            int capacity = 16;
-            while (capacity < (long) size * 2) {
-                if (capacity == (1 << 30)) {
-                    throw new OutOfMemoryError("uniqueItems hash table exceeds maximum capacity");
-                }
-                capacity <<= 1;
-            }
 
-            Object[] table = new Object[capacity];
-            int[] hashes = new int[capacity];
-            int mask = capacity - 1;
-            while (it.hasNext()) {
-                Object value = it.next();
-                int hash = Nodes.hash(value);
-
-                // Spread high hash bits before applying the power-of-two mask.
-                int slot = (hash ^ (hash >>> 16)) & mask;
-                while (true) {
-                    Object previous = table[slot];
-                    if (previous == null) {
-                        // null is the empty-slot marker.
-                        table[slot] = value == null ? NULL_ITEM : value;
-                        hashes[slot] = hash;
-                        break;
-                    }
-                    if (hashes[slot] == hash && Nodes.equals(previous == NULL_ITEM ? null : previous, value)) {
-                        return true;
-                    }
-                    slot = (slot + 1) & mask;
-                }
-            }
-            return false;
-        }
     }
 
     // items / prefixItems

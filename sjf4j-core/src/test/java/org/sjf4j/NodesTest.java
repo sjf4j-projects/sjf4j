@@ -826,4 +826,18 @@ public class NodesTest {
         assertEquals("J[null, J{id=Integer}, J{id=Integer, name=String}]", JsonArray.of(null, JsonObject.of("id", 1), JsonObject.of("id", 2, "name", "x")).shape());
     }
 
+    @Test
+    void hasDuplicateInArrayUsesJsonValueEquality() {
+        assertFalse(Nodes.hasDuplicateInArray(Arrays.asList()));
+        assertFalse(Nodes.hasDuplicateInArray(Arrays.asList(1)));
+        assertFalse(Nodes.hasDuplicateInArray(Arrays.asList(1, 2, 3)));
+        assertTrue(Nodes.hasDuplicateInArray(Arrays.asList(1, 1L)));
+        assertTrue(Nodes.hasDuplicateInArray(Arrays.asList(1, new BigDecimal("1.00"))));
+        assertTrue(Nodes.hasDuplicateInArray(Arrays.asList(null, "x", null)));
+        assertTrue(Nodes.hasDuplicateInArray(Arrays.asList(
+                Map.of("n", 1), Map.of("n", 1L))));
+        assertTrue(Nodes.hasDuplicateInArray(Arrays.asList(
+                Arrays.asList(1, 2), Arrays.asList(1L, 2L))));
+    }
+
 }

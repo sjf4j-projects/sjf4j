@@ -120,17 +120,24 @@ public final class SchemaPlan {
      */
     public boolean evaluate(Object node, ValidationContext ctx) {
         Asserts.notNull(ctx, "ctx");
+        return evaluate(node, ctx.isFailFast() ? null : PathSegment.Root.INSTANCE, ctx);
+    }
+
+    /**
+     * Evaluates a nested instance using an explicit enclosing instance path.
+     * Used by compiled fallback support; resets per-evaluation context state.
+     */
+    boolean evaluate(Object node, PathSegment instancePs, ValidationContext ctx) {
+        Asserts.notNull(ctx, "ctx");
         try {
             if (booleanSchema) {
                 if (!booleanValue) {
-                    ctx.addError(null, PathSegment.Root.INSTANCE, keywordPs,
-                            resourceUri, "false", "schema 'false' always fails");
+                    ctx.addError(null, instancePs == null ? PathSegment.Root.INSTANCE : instancePs,
+                            keywordPs, resourceUri, "false", "schema 'false' always fails");
                 }
                 return booleanValue;
             }
-            Instance instance = Instance.infer(node);
-            PathSegment ps = ctx.isFailFast() ? null : PathSegment.Root.INSTANCE;
-            return evaluate(instance, ps, ctx);
+            return evaluate(Instance.infer(node), instancePs, ctx);
         } finally {
             ctx.reset();
         }

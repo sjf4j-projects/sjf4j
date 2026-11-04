@@ -162,7 +162,7 @@ final class SchemaMethodGenerator {
                 if (isVoid) {
                     if ("false".equals(literal)) {
 
-                        out.line("throw org.sjf4j.schema.CompiledUtil.validationFailure("
+                        out.line("throw org.sjf4j.schema.ValidationException.failure("
                                 + "\"false\", " + SchemaEmitter.javaLiteral(falseSchemaUri)
                                 + ", \"\", org.sjf4j.path.PathSegment.Root.INSTANCE);");
                     }

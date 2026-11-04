@@ -900,6 +900,49 @@ public final class Nodes {
         return NodeWalker.sizeInArray(node);
     }
 
+    private static final Object NULL_ARRAY_ITEM = new Object();
+
+    /**
+     * Returns true if an array has two elements equal under OBNT JSON semantics.
+     * Uses {@link #hash(Object)} and {@link #equals(Object, Object)} so
+     * equivalent numeric values and mixed node representations compare correctly.
+     */
+    public static boolean hasDuplicateInArray(Object node) {
+        int size = sizeInArray(node);
+        if (size < 2) return false;
+        Iterator<Object> it = iteratorInArray(node);
+        // Keep load factor <= 0.5 for inexpensive linear probing.
+        int capacity = 16;
+        while (capacity < (long) size * 2) {
+            if (capacity == (1 << 30)) {
+                throw new OutOfMemoryError("array duplicate hash table exceeds maximum capacity");
+            }
+            capacity <<= 1;
+        }
+
+        Object[] table = new Object[capacity];
+        int[] hashes = new int[capacity];
+        int mask = capacity - 1;
+        while (it.hasNext()) {
+            Object value = it.next();
+            int hash = hash(value);
+            int slot = (hash ^ (hash >>> 16)) & mask;
+            while (true) {
+                Object previous = table[slot];
+                if (previous == null) {
+                    table[slot] = value == null ? NULL_ARRAY_ITEM : value;
+                    hashes[slot] = hash;
+                    break;
+                }
+                if (hashes[slot] == hash && equals(previous == NULL_ARRAY_ITEM ? null : previous, value)) {
+                    return true;
+                }
+                slot = (slot + 1) & mask;
+            }
+        }
+        return false;
+    }
+
     /**
      * Returns the gettable key set for an object node.
      * <p>
