@@ -18,7 +18,7 @@ class SchemaPlanInstancePathTest {
     void falseSchemaFailurePreservesEnclosingInstancePath() {
         SchemaPlan plan = BooleanSchema.FALSE.createPlan();
         ValidationException exception = assertThrows(ValidationException.class,
-                () -> plan.requireValid(Map.of("zip", 123), prefix(), false));
+                () -> CompiledValidatorSupport.requireValid(plan, Map.of("zip", 123), prefix(), false));
         assertEquals("/user/address",
                 exception.getResult().getLastError().getInstancePs().rootedPointerExpr());
     }
@@ -30,7 +30,7 @@ class SchemaPlanInstancePathTest {
                 + "\"properties\":{\"zip\":{\"type\":\"string\"}}}");
         SchemaPlan plan = schema.createPlan();
         ValidationException exception = assertThrows(ValidationException.class,
-                () -> plan.requireValid(Map.of("zip", 123), prefix(), false));
+                () -> CompiledValidatorSupport.requireValid(plan, Map.of("zip", 123), prefix(), false));
         ValidationResult.Message error = exception.getResult().getLastError();
         assertEquals("/user/address/zip", error.getInstancePs().rootedPointerExpr());
         assertEquals("/properties/zip/type", error.getKeywordPs().rootedPointerExpr());
