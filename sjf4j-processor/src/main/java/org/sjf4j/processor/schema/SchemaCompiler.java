@@ -1,6 +1,8 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.JsonObject;
+import org.sjf4j.schema.BooleanSchema;
+import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPointer;
@@ -54,12 +56,15 @@ final class SchemaCompiler {
     SchemaCheck compileValue(SchemaResourceResolver.Snapshot snapshot,
                              Object rawSchema, SchemaValue value,
                              String schemaUri, int depth) {
-        if (rawSchema instanceof Boolean) {
-            return Boolean.TRUE.equals(rawSchema) ? new SchemaCheck.Pass()
+        if (rawSchema instanceof Boolean || rawSchema instanceof BooleanSchema) {
+            boolean allowed = rawSchema instanceof BooleanSchema
+                    ? ((BooleanSchema) rawSchema).booleanValue()
+                    : Boolean.TRUE.equals(rawSchema);
+            return allowed ? new SchemaCheck.Pass()
                     : new SchemaCheck.Reject(schemaDiagnostic(schemaUri, "false"));
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
-        JsonObject schema = Nodes.toJsonObject(rawSchema);
+        JsonObject schema = schemaObject(rawSchema);
         // Canonical locations are indexed by lexical $id scope, including nested
         // resources. Do not reapply a relative $id when following a reference.
         schemaUri = snapshot.canonicalLocation(schemaUri);
@@ -517,6 +522,13 @@ final class SchemaCompiler {
                 || key.equals("$recursiveAnchor");
     }
 
+    /** JOJO metadata is not part of the JSON Schema keyword object. */
+    static JsonObject schemaObject(Object rawSchema) {
+        return rawSchema instanceof ObjectSchema
+                ? new JsonObject(((ObjectSchema) rawSchema).dynamicMembers())
+                : Nodes.toJsonObject(rawSchema);
+    }
+
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
                                 JsonObject schema, String sourceUri) {
         String literal = schema.getString("$ref");
@@ -525,8 +537,8 @@ final class SchemaCompiler {
             java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
                     java.net.URI.create(sourceUri), java.net.URI.create(literal));
             org.sjf4j.schema.SchemaPlan plan = snapshot.registry.resolve(absolute);
-            return plan == null ? null : new RefTarget(plan.schemaNode(),
-                    plan.schemaLocation().toString());
+            return plan == null ? null : new RefTarget(plan.schema(),
+                    plan.schemaUri().toString());
         } catch (RuntimeException unresolved) {
             return null;
         }
