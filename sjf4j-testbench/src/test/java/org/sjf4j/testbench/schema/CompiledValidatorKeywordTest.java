@@ -150,6 +150,22 @@ class CompiledValidatorKeywordTest {
     }
 
     @CompiledValidator(fallback = false)
+    public interface QuotedReferences {
+        @ValidJsonSchema("""
+                {"$defs":{"foo\\\"bar":{"type":"number"}},
+                 "properties":{"foo\\\"bar":{"$ref":"#/$defs/foo%22bar"}}}
+                """)
+        boolean valid(Object input);
+    }
+
+    @Test
+    void percentEncodedQuotedReference() {
+        QuotedReferences validator = CompiledInstances.create(QuotedReferences.class);
+        assertTrue(validator.valid(Map.of("foo\\\"bar", 2)));
+        assertFalse(validator.valid(Map.of("foo\\\"bar", "invalid")));
+    }
+
+    @CompiledValidator(fallback = false)
     public interface RecursiveReferences {
         @ValidJsonSchema("""
                 {"$anchor":"node","type":"object",
