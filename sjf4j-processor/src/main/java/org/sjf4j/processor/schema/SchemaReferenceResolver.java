@@ -40,8 +40,10 @@ final class SchemaReferenceResolver {
             for (Map.Entry<String, Entry> location : indexedLocations.entrySet()) {
                 if (!location.getKey().startsWith(retrievalPrefix)) continue;
                 String suffix = location.getKey().substring(retrieval.length());
-                fragments.putIfAbsent(retrieval + suffix, location.getValue());
-                fragments.putIfAbsent(root.resource + suffix, location.getValue());
+                Entry entry = location.getValue();
+                locations.putIfAbsent(key(root.resource, suffix.substring(1)), entry);
+                fragments.putIfAbsent(key(retrieval, suffix.substring(1)), entry);
+                fragments.putIfAbsent(key(root.resource, suffix.substring(1)), entry);
             }
             for (Map.Entry<String, Entry> fragment : indexed.entrySet()) {
                 if (!fragment.getKey().startsWith(canonicalPrefix)) continue;
@@ -193,7 +195,7 @@ final class SchemaReferenceResolver {
         if (hash < 0) return location;
         try {
             String fragment = URI.create(location).getFragment();
-            return location.substring(0, hash) + "#" + (fragment == null ? "" : fragment);
+            return key(location.substring(0, hash), fragment == null ? "" : fragment);
         } catch (IllegalArgumentException invalidRawFragment) {
             // Locations produced from already decoded schema names can contain
             // quote or percent characters; those are already index keys.
@@ -210,7 +212,9 @@ final class SchemaReferenceResolver {
     }
 
     private static String key(String resource, String fragment) {
-        return resource + "#" + fragment;
+        // Java URI resolution can change file:/// to file:/ while preserving
+        // the same absolute resource; use the registry's canonical key.
+        return SchemaUtil.normalizeUriKey(resource) + "#" + fragment;
     }
 
     private static final class Entry {
