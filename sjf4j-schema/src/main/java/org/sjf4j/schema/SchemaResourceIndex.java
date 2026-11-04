@@ -8,15 +8,19 @@ import org.sjf4j.Sjf4j;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.LinkedHashSet;
+import java.util.Collections;
 
 /**
- * Compile-time JSON Schema resource index. URI resolution follows lexical $id
+ * Shared JSON Schema resource index. URI resolution follows lexical $id
  * scopes; $anchor and JSON Pointer fragments address entries in those scopes.
  * Physical retrieval URIs are aliases for roots, not alternate resource bases.
  */
 public final class SchemaResourceIndex {
     private final Map<String, Entry> locations = new HashMap<String, Entry>();
     private final boolean draft2020Only;
+    private final Set<URI> referencedDocuments = new LinkedHashSet<URI>();
     private final Map<String, Entry> fragments = new HashMap<String, Entry>();
 
     public SchemaResourceIndex(Map<URI, ?> documents) {
@@ -70,6 +74,11 @@ public final class SchemaResourceIndex {
         Entry entry = locations.get(locationKey(location));
         if (entry == null) entry = locations.get(location + "#");
         return entry == null || entry.modern;
+    }
+
+    /** External resource URIs named by all static/dynamic references in these documents. */
+    public Set<URI> referencedDocuments() {
+        return Collections.unmodifiableSet(referencedDocuments);
     }
 
     /** Looks up an already absolute resource URI without requiring a source location. */
@@ -160,6 +169,13 @@ public final class SchemaResourceIndex {
         if (root) fragments.putIfAbsent(physicalLocation, entry);
 
         if (kind != JsonType.OBJECT) return;
+        for (String keyword : new String[]{"$ref", "$dynamicRef", "$recursiveRef"}) {
+            Object ref = Nodes.getInObject(node, keyword);
+            if (!(ref instanceof String)) continue;
+            URI target = SchemaUtil.resolveUri(resource, URI.create((String) ref));
+            referencedDocuments.add(URI.create(SchemaUtil.stripFragment(target.toString())));
+        }
+
         Object anchor = Nodes.getInObject(node, "$anchor");
         if (!(anchor instanceof String) && legacyIdAnchor != null && !legacyIdAnchor.isEmpty()) {
             // Draft-07 location-independent identifiers also use $id fragments.
