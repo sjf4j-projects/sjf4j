@@ -49,7 +49,8 @@ public final class OfficialCompiledTest {
     private static Set<String> fallbackGroups() {
         Set<String> groups = new LinkedHashSet<>();
         fallback(groups, "defs.json", 0);
-        fallback(groups, "dynamicRef.json", 0, 3, 5, 6, 9, 11, 12, 13, 14, 15, 16, 17, 19, 20);
+        // The remaining dynamicRef case combines cross-resource dynamic scope with unevaluatedProperties.
+        fallback(groups, "dynamicRef.json", 13);
         fallback(groups, "not.json", 8);
         fallback(groups, "ref.json", 6, 13);
         // Only groups that require cross-subschema evaluated-location tracking
