@@ -43,10 +43,16 @@ final class SchemaResourceResolver {
         final boolean[] fromRegistry;
         final String selectedUri;
 
-        private SchemaReferenceResolver referenceIndex;
+        private org.sjf4j.schema.SchemaResourceIndex referenceIndex;
 
-        synchronized SchemaReferenceResolver referenceIndex() {
-            if (referenceIndex == null) referenceIndex = new SchemaReferenceResolver(this);
+        synchronized org.sjf4j.schema.SchemaResourceIndex referenceIndex() {
+            if (referenceIndex == null) {
+                Map<URI, String> all = new LinkedHashMap<URI, String>();
+                for (int i = 0; i < uris.length; i++) {
+                    all.put(URI.create(uris[i]), documents[i]);
+                }
+                referenceIndex = new org.sjf4j.schema.SchemaResourceIndex(all);
+            }
             return referenceIndex;
         }
 
