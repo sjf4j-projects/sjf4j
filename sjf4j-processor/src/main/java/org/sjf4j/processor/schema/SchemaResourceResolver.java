@@ -202,8 +202,7 @@ final class SchemaResourceResolver {
             throw new IllegalArgumentException("unresolved selected schema: " + snapshot.selectedUri);
         }
         snapshot.registry = registry;
-        // This checks every nested schema node compiled by the Planner, not
-        // arbitrary instance objects under const/default/enum.
+        // CompiledSupport inspected schema-bearing positions before plan construction.
         snapshot.customDialect = customDialect;
         return snapshot;
     }
