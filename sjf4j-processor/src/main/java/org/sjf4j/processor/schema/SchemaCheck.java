@@ -50,6 +50,7 @@ abstract class SchemaCheck {
     static final class ReferenceCheck extends SchemaCheck {
         final String uri;
         SchemaCheck target;
+        boolean binding = true;
         private boolean checkingFallback;
 
         ReferenceCheck(String uri, Diagnostic diagnostic) {
@@ -58,7 +59,7 @@ abstract class SchemaCheck {
         }
 
         @Override boolean hasFallback() {
-            if (target == null) return true;
+            if (target == null) return !binding;
             if (checkingFallback) return false;
             checkingFallback = true;
             try {
