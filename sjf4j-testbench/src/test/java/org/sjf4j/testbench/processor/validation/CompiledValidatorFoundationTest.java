@@ -30,6 +30,34 @@ class CompiledValidatorFoundationTest {
         validator.requireValid(good);
     }
 
+    @CompiledValidator(fallback = false)
+    public interface InheritedDirectValidator {
+        boolean isValid(Employee employee);
+        void requireValid(Employee employee);
+    }
+
+    @Test
+    void inheritedBindingsCompileDirectlyWithoutRuntimePlans() throws Exception {
+        InheritedDirectValidator validator = CompiledInstances.create(InheritedDirectValidator.class);
+        assertTrue(validator.isValid(new Employee("Alice", 3)));
+        assertFalse(validator.isValid(new Employee("A", 3)));
+        assertFalse(validator.isValid(new Employee("Alice", -1)));
+        assertFalse(validator.isValid(null));
+        validator.requireValid(new Employee("Alice", 3));
+        assertThrows(ValidationException.class, () -> validator.requireValid(new Employee("A", 3)));
+        assertThrows(ValidationException.class, () -> validator.requireValid(new Employee("Alice", -1)));
+        assertThrows(ValidationException.class, () -> validator.requireValid(null));
+
+        java.nio.file.Path source = java.nio.file.Paths.get(
+                "build/generated/sources/annotationProcessor/java/test/",
+                "org/sjf4j/testbench/processor/validation/",
+                "CompiledValidatorFoundationTest$InheritedDirectValidator_Impl.java");
+        String generated = java.nio.file.Files.readString(source);
+        assertFalse(generated.contains("SchemaFallbacks.SchemaPlan."), generated);
+        assertTrue(generated.contains("getName()"), generated);
+        assertTrue(generated.contains("getLevel()"), generated);
+    }
+
     @Test
     void methodAndParameterBindingsOverrideTypeBinding() {
         PersonValidator validator = CompiledInstances.create(PersonValidator.class);
