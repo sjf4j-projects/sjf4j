@@ -38,7 +38,7 @@ final class SchemaCompiler {
         // A custom meta-schema can redefine vocabularies, including the
         // semantics of an otherwise empty or ref-only schema. Never emit
         // direct predicates under an unknown dialect.
-        if (snapshot.referenceIndex().hasCustomDialect()) return null;
+        if (snapshot.customDialect) return null;
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
@@ -62,7 +62,7 @@ final class SchemaCompiler {
         JsonObject schema = Nodes.toJsonObject(rawSchema);
         // Canonical locations are indexed by lexical $id scope, including nested
         // resources. Do not reapply a relative $id when following a reference.
-        schemaUri = snapshot.referenceIndex().canonicalLocation(schemaUri);
+        schemaUri = snapshot.canonicalLocation(schemaUri);
         if (schema.containsKey("$ref")) {
             JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
             RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
@@ -519,9 +519,17 @@ final class SchemaCompiler {
 
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
                                 JsonObject schema, String sourceUri) {
-        org.sjf4j.schema.SchemaResourceIndex.Target target =
-                snapshot.referenceIndex().resolve(sourceUri, schema.getString("$ref"));
-        return target == null ? null : new RefTarget(target.node, target.uri);
+        String literal = schema.getString("$ref");
+        if (literal == null) return null;
+        try {
+            java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
+                    java.net.URI.create(sourceUri), java.net.URI.create(literal));
+            org.sjf4j.schema.SchemaPlan plan = snapshot.registry.resolve(absolute);
+            return plan == null ? null : new RefTarget(plan.schemaNode(),
+                    plan.schemaLocation().toString());
+        } catch (RuntimeException unresolved) {
+            return null;
+        }
     }
 
     static final class RefTarget {
