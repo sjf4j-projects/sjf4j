@@ -66,7 +66,7 @@ class CompiledValidatorApplicatorProcessorTest {
         }) {
             NavigatorTestCompiler.Result result = compile(schema, false);
             assertFalse(result.success, schema + "\n" + result.diagnostics());
-            assertTrue(result.diagnostics().contains("requires evaluated-location tracking"),
+            assertTrue(result.diagnostics().contains("requires runtime fallback"),
                     schema + "\n" + result.diagnostics());
         }
     }
