@@ -613,12 +613,18 @@ final class SchemaCompiler {
             String fragment = uri.getFragment();
             if (fragment == null || fragment.isEmpty()) return false;
             if (!fragment.startsWith("/")) return true;
-            Object root = node;
             try {
-                for (PathSegment segment : JsonPointer.parse(fragment).segments()) {
-                    if (segment == PathSegment.Root.INSTANCE) continue;
-                    node = JsonPointer.fromLast(segment).getNode(root);
-                    if (node == null || hasId(node)) return true;
+                // Inspect every ancestor, not isolated segments against the
+                // document root. Nested $defs/property pointers must resolve.
+                int offset = 1;
+                while (offset <= fragment.length()) {
+                    int slash = fragment.indexOf('/', offset);
+                    int end = slash < 0 ? fragment.length() : slash;
+                    String prefix = fragment.substring(0, end);
+                    Object scoped = JsonPointer.parse(prefix).getNode(node);
+                    if (scoped == null || hasId(scoped)) return true;
+                    if (slash < 0) break;
+                    offset = slash + 1;
                 }
             } catch (RuntimeException ex) {
                 return true;
