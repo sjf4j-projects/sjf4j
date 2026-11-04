@@ -35,6 +35,10 @@ final class SchemaCompiler {
 
     /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
     SchemaCheck compileRoot(TypeMirror type, SchemaResourceResolver.Snapshot snapshot) {
+        // A custom meta-schema can redefine vocabularies, including the
+        // semantics of an otherwise empty or ref-only schema. Never emit
+        // direct predicates under an unknown dialect.
+        if (snapshot.referenceIndex().hasCustomDialect()) return null;
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
