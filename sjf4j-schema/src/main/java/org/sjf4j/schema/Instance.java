@@ -36,6 +36,7 @@ public final class Instance {
 
     private Map<Object, Instance> subInstanceCache;
     private Instance pathParent;
+    private PathSegment rootPath;
     private String pathKey;
     private int pathIndex;
     private boolean pathByIndex;
@@ -112,6 +113,7 @@ public final class Instance {
 
     private Instance clearPath() {
         this.pathParent = null;
+        this.rootPath = null;
         this.pathKey = null;
         this.pathIndex = 0;
         this.pathByIndex = false;
@@ -132,8 +134,13 @@ public final class Instance {
         return this;
     }
 
+    Instance withRootPath(PathSegment rootPath) {
+        this.rootPath = rootPath;
+        return this;
+    }
+
     PathSegment materializePath() {
-        if (pathParent == null) return PathSegment.Root.INSTANCE;
+        if (pathParent == null) return rootPath == null ? PathSegment.Root.INSTANCE : rootPath;
         PathSegment parentPs = pathParent.materializePath();
         return pathByIndex ? new PathSegment.Index(parentPs, pathIndex) : new PathSegment.Name(parentPs, pathKey);
     }
