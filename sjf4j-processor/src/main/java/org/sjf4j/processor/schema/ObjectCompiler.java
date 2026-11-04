@@ -42,6 +42,12 @@ final class ObjectCompiler {
                     SchemaResourceResolver.Snapshot snapshot, JsonObject root,
                     String rootUri, int depth) {
         boolean dynamic = useDynamicAccess(type);
+        // In an isolated schema, successful properties/patternProperties mark
+        // exactly the same keys that additionalProperties excludes. For a
+        // failing child the entire validation fails already.
+        String additionalKeyword = root.containsKey("unevaluatedProperties")
+                ? "unevaluatedProperties" : "additionalProperties";
+        boolean hasAdditional = root.containsKey(additionalKeyword);
         // The direct POJO path only understands the public structural projection.
         // Non-public annotated members may be visible to runtime reflection and
         // must not silently disappear from additionalProperties/required checks.
@@ -50,12 +56,12 @@ final class ObjectCompiler {
         // traversal decisions, not runtime SchemaPlan fallbacks.
         if (!dynamic && (root.containsKey("patternProperties")
                 || root.containsKey("propertyNames") || root.containsKey("dependentSchemas")
-                || (root.containsKey("additionalProperties")
-                    && !(root.getNode("additionalProperties") instanceof Boolean)))) return null;
+                || (hasAdditional
+                    && !(root.getNode(additionalKeyword) instanceof Boolean)))) return null;
         for (String key : root.keySet()) {
             if (!key.equals("type") && !key.equals("properties") && !key.equals("patternProperties")
                     && !key.equals("propertyNames") && !key.equals("required")
-                    && !key.equals("additionalProperties") && !key.equals("minProperties")
+                    && !key.equals("additionalProperties") && !key.equals("unevaluatedProperties") && !key.equals("minProperties")
                     && !key.equals("maxProperties") && !key.equals("dependentRequired")
                     && !key.equals("dependentSchemas")
                     && !SchemaCompiler.isAnnotation(key)) return null;
@@ -64,7 +70,7 @@ final class ObjectCompiler {
         if (typeRequired && !"object".equals(root.getNode("type"))) return null;
         if (!typeRequired && !root.containsKey("properties") && !root.containsKey("patternProperties")
                 && !root.containsKey("propertyNames") && !root.containsKey("required")
-                && !root.containsKey("additionalProperties") && !root.containsKey("minProperties")
+                && !hasAdditional && !root.containsKey("minProperties")
                 && !root.containsKey("maxProperties") && !root.containsKey("dependentRequired")
                 && !root.containsKey("dependentSchemas")) return null;
         Object raw = root.getNode("properties");
@@ -166,20 +172,20 @@ final class ObjectCompiler {
                 }
             }
         }
-        Object additional = root.getNode("additionalProperties");
+        Object additional = root.getNode(additionalKeyword);
         SchemaCheck additionalCheck = null;
-        if (root.containsKey("additionalProperties")) {
+        if (hasAdditional) {
             if (additional instanceof Boolean) {
                 if (!dynamic && Boolean.FALSE.equals(additional)
                         && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
                     // The static projection is complete and the uncovered name
                     // must fail. JSON type applicability is enforced outside.
-                    return missingObjectConstraint(rootUri, typeRequired, "additionalProperties");
+                    return missingObjectConstraint(rootUri, typeRequired, additionalKeyword);
                 }
             } else if (JsonType.of(additional) == JsonType.OBJECT) {
                 additionalCheck = schemaCompiler.compileValue(snapshot, additional,
                         SchemaValue.of(context, null),
-                        SchemaCompiler.keywordUri(rootUri, "additionalProperties"), depth + 1);
+                        SchemaCompiler.keywordUri(rootUri, additionalKeyword), depth + 1);
                 if (additionalCheck == null || additionalCheck.hasFallback()) return null;
             } else {
                 return null;
@@ -270,7 +276,7 @@ final class ObjectCompiler {
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
                 dependencies.isEmpty() ? null : SchemaCompiler.diagnostic(rootUri, "dependentRequired"),
                 Boolean.FALSE.equals(additional)
-                        ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null,
+                        ? SchemaCompiler.diagnostic(rootUri, additionalKeyword) : null,
                 propertyNamesCheck == null ? null : SchemaCompiler.diagnostic(rootUri, "propertyNames"));
     }
 
