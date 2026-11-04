@@ -42,17 +42,18 @@ final class SchemaResourceResolver {
         final boolean[] fromRegistry;
         final String selectedUri;
 
-        private org.sjf4j.schema.SchemaResourceIndex referenceIndex;
+        org.sjf4j.schema.SchemaRegistry registry;
+        boolean customDialect;
 
-        synchronized org.sjf4j.schema.SchemaResourceIndex referenceIndex() {
-            if (referenceIndex == null) {
-                Map<URI, String> all = new LinkedHashMap<URI, String>();
-                for (int i = 0; i < uris.length; i++) {
-                    all.put(URI.create(uris[i]), documents[i]);
-                }
-                referenceIndex = new org.sjf4j.schema.SchemaResourceIndex(all, true);
-            }
-            return referenceIndex;
+        org.sjf4j.schema.SchemaPlan resolvePlan(String location) {
+            if (registry == null) throw new IllegalStateException("schema registry not initialized");
+            return registry.resolve(URI.create(location));
+        }
+
+        String canonicalLocation(String location) {
+            org.sjf4j.schema.SchemaPlan plan = resolvePlan(location);
+            return plan == null || plan.schemaLocation() == null
+                    ? location : plan.schemaLocation().toString();
         }
 
         Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources) {
@@ -156,9 +157,8 @@ final class SchemaResourceResolver {
 
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
-            Map<URI, String> current = new LinkedHashMap<URI, String>();
-            current.put(uri, resources.get(uri));
-            for (URI document : new org.sjf4j.schema.SchemaResourceIndex(current).referencedDocuments()) {
+            for (URI document : SchemaRegistry.referencedDocuments(
+                    uri, JsonSchema.fromJson(resources.get(uri)))) {
                 if (resources.containsKey(document)) continue;
                 String contents;
                 URI retrieval = document;
@@ -178,9 +178,6 @@ final class SchemaResourceResolver {
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources);
-        // Reject unsupported dialects even when fallback=true. Runtime continues
-        // to support older drafts independently of CompiledValidator.
-        snapshot.referenceIndex();
         // Directory resources are indexed once, prior to root resolution.
         // Each method gets a registry copy so roots cannot leak between methods.
         SchemaRegistry registry = registry();
@@ -195,6 +192,12 @@ final class SchemaResourceResolver {
         if (registry.resolve(URI.create(snapshot.selectedUri)) == null) {
             throw new IllegalArgumentException("unresolved selected schema: " + snapshot.selectedUri);
         }
+        snapshot.registry = registry;
+        // This checks every nested schema node compiled by the Planner, not
+        // arbitrary instance objects under const/default/enum.
+        List<URI> sources = new ArrayList<URI>();
+        for (String uri : snapshot.uris) sources.add(URI.create(uri));
+        snapshot.customDialect = registry.checkCompiledDialect(sources);
         return snapshot;
     }
 
