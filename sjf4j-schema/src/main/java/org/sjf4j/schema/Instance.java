@@ -328,7 +328,7 @@ public final class Instance {
         }
         if (firstActiveRef == plan || (nestedActiveRefs != null && nestedActiveRefs.contains(plan))) {
             throw new NodeException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
-                    "cyclic schema reference detected", keywordPs, plan.schemaUri));
+                    "cyclic schema reference detected", keywordPs, plan.resourceUri));
         }
         if (nestedActiveRefs == null) nestedActiveRefs = new ArrayDeque<>();
         nestedActiveRefs.push(plan);
