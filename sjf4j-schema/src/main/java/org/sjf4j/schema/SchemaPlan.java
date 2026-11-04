@@ -196,16 +196,14 @@ public final class SchemaPlan {
         if (path.isEmpty()) return schemaUri;
         // Encode the pointer as a URI fragment, preserving RFC 6901 ~0/~1.
         try {
+            if (schemaUri.isOpaque()) {
+                return new URI(schemaUri.getScheme(), schemaUri.getSchemeSpecificPart(), path);
+            }
             return new URI(schemaUri.getScheme(), schemaUri.getAuthority(),
                     schemaUri.getPath(), schemaUri.getQuery(), path);
         } catch (java.net.URISyntaxException e) {
             throw new IllegalArgumentException("invalid schema location: " + schemaUri + "#" + path, e);
         }
-    }
-
-    /** Dialect in effect at this schema node, inherited from its enclosing scope. */
-    public SchemaDialect schemaDialect() {
-        return dialect;
     }
 
     final URI schemaUri;
