@@ -202,7 +202,7 @@ final class OneOfCompiler {
         if (object.containsKey("$ref")) {
             SchemaCompiler.RefTarget target = SchemaCompiler.resolveRef(snapshot, object, uri);
             if (target == null || JsonType.of(target.value) != JsonType.OBJECT) return null;
-            object = Nodes.toJsonObject(target.value);
+            object = SchemaCompiler.schemaObject(target.value);
         }
         return requiredDiscriminator(object, discriminator);
     }
