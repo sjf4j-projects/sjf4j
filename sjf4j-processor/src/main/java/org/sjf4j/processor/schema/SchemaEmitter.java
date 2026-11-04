@@ -22,6 +22,8 @@ final class SchemaEmitter {
     private NameAllocator locals;
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
+    private final java.util.Map<SchemaCheck.ReferenceCheck, String> referenceHelpers =
+            new java.util.IdentityHashMap<SchemaCheck.ReferenceCheck, String>();
 
     SchemaEmitter(GeneratedClass generated, String helperPrefix, NameAllocator locals) {
         this.generated = generated;
@@ -276,6 +278,37 @@ final class SchemaEmitter {
                     for (String statement : guarded) lines.add("    " + statement);
                     lines.add("}");
                 }
+                return;
+            case REFERENCE:
+                SchemaCheck.ReferenceCheck reference = (SchemaCheck.ReferenceCheck) check;
+                if (reference.target == null) throw new IllegalStateException("unbound schema reference: " + reference.uri);
+                String helper = referenceHelpers.get(reference);
+                if (helper == null) {
+                    helper = generated.names().helperMethod("matchesReference");
+                    referenceHelpers.put(reference, helper);
+                    final String method = helper;
+                    final String parameterType = value.type == null ? "Object" : value.type.toString();
+                    List<String> body = new ArrayList<String>();
+                    NameAllocator parentLocals = locals;
+                    locals = generated.names().helperLocals("value", "strictFormat");
+                    try {
+                        emitValue(body, plan, reference.target, value, "value", method,
+                                "strictFormat", 0, "return false;");
+                    } finally {
+                        locals = parentLocals;
+                    }
+                    final boolean alwaysRejects = !body.isEmpty()
+                            && "return false;".equals(body.get(body.size() - 1));
+                    generated.addHelper(out -> {
+                        out.beginBlock("private static boolean " + method + "("
+                                + parameterType + " value, boolean strictFormat)");
+                        for (String statement : body) out.line(statement);
+                        if (!alwaysRejects) out.line("return true;");
+                        out.endBlock();
+                    });
+                }
+                lines.add("if (!" + helper + "(" + expression + ", " + strictFormat
+                        + ")) " + fail(onFailure, reference.diagnostic));
                 return;
             case FALLBACK:
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
