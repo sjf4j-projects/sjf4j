@@ -135,7 +135,7 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
-    void embeddedIdAnchorDoesNotEscapeItsResource() throws Exception {
+    void embeddedIdAnchorResolvesThroughCanonicalResource() throws Exception {
         String schema = "{\"$defs\":{\"nested\":{\"$id\":\"nested.json\","
                 + "\"$anchor\":\"inner\",\"minLength\":2}},"
                 + "\"properties\":{\"name\":{\"$ref\":\"nested.json#inner\"}}}";
@@ -143,8 +143,8 @@ class CompiledValidatorContractProcessorTest {
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
                         + "boolean valid(Model value); }");
-        assertFalse(result.success, result.diagnostics());
-        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
     }
 
     @Test
