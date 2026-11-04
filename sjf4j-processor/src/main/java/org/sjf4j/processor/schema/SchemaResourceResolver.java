@@ -53,8 +53,8 @@ final class SchemaResourceResolver {
         String canonicalLocation(String location) {
             try {
                 org.sjf4j.schema.SchemaPlan plan = resolvePlan(location);
-                return plan == null || plan.schemaLocation() == null
-                        ? location : plan.schemaLocation().toString();
+                return plan == null || plan.schemaUri() == null
+                        ? location : plan.schemaUri().toString();
             } catch (IllegalArgumentException | org.sjf4j.schema.SchemaException missingSubschema) {
                 // Some compiler keyword locations are synthetic (e.g. reduced
                 // sibling assertion maps), not independent runtime subschemas.
@@ -112,14 +112,14 @@ final class SchemaResourceResolver {
         Path resourceDirectory = findResourceDirectory(sourceElement);
         String inline = annotation.value();
         String ref = annotation.ref().trim();
-        URI rootUri;
+        URI documentUri;
         URI selectedUri;
         String rootDocument;
         boolean rootFromRegistry = false;
 
         if (!inline.isEmpty()) {
-            rootUri = URI.create("sjf4j:/" + originName + "/");
-            selectedUri = rootUri;
+            documentUri = URI.create("sjf4j:/" + originName + "/");
+            selectedUri = documentUri;
             rootDocument = inline;
         } else {
             URI baseDir = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
@@ -128,43 +128,46 @@ final class SchemaResourceResolver {
                 if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
                 // Fragments select a schema within the resource; they are not
                 // part of the document retrieval URI.
-                rootUri = URI.create(selectedUri.toString().split("#", 2)[0]);
-                if ("classpath".equals(rootUri.getScheme()) || "file".equals(rootUri.getScheme())) {
-                    rootDocument = read(rootUri, resourceDirectory);
+                documentUri = URI.create(selectedUri.toString().split("#", 2)[0]);
+                if ("classpath".equals(documentUri.getScheme()) || "file".equals(documentUri.getScheme())) {
+                    rootDocument = read(documentUri, resourceDirectory);
                 } else {
-                    IndexedSource indexed = indexedSource(rootUri);
+                    IndexedSource indexed = indexedSource(documentUri);
                     rootDocument = indexed == null ? null : indexed.document;
                     if (indexed != null) {
-                        rootUri = indexed.retrieval;
+                        documentUri = indexed.retrieval;
                         rootFromRegistry = true;
                     }
                 }
             } else {
                 String simple = ownerName.substring(ownerName.lastIndexOf('.') + 1);
-                rootUri = baseDir.resolve(simple + ".json");
-                rootDocument = read(rootUri, resourceDirectory);
+                documentUri = baseDir.resolve(simple + ".json");
+                rootDocument = read(documentUri, resourceDirectory);
                 if (rootDocument == null) {
                     String snake = Strings.toSnakeCase(simple);
-                    rootUri = baseDir.resolve(snake + ".json");
+                    documentUri = baseDir.resolve(snake + ".json");
                 }
-                selectedUri = rootUri;
-                rootDocument = read(rootUri, resourceDirectory);
+                selectedUri = documentUri;
+                rootDocument = read(documentUri, resourceDirectory);
             }
             if (rootDocument == null) {
-                throw new IllegalArgumentException("schema resource not found: " + rootUri
+                throw new IllegalArgumentException("schema resource not found: " + documentUri
                         + " (resource not found on the compilation classpath or alongside the source set)");
             }
         }
 
         Map<URI, String> resources = new LinkedHashMap<URI, String>();
         Set<URI> registryResources = new HashSet<URI>();
-        resources.put(rootUri, rootDocument);
-        if (rootFromRegistry) registryResources.add(rootUri);
+        resources.put(documentUri, rootDocument);
+        if (rootFromRegistry) registryResources.add(documentUri);
 
+        boolean customDialect = false;
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
-            for (URI document : SchemaRegistry.referencedDocuments(
-                    uri, JsonSchema.fromJson(resources.get(uri)))) {
+            CompiledSupport.Analysis analysis = CompiledSupport.analyze(
+                    uri, JsonSchema.fromJson(resources.get(uri)));
+            customDialect |= analysis.customDialect;
+            for (URI document : analysis.referencedDocuments) {
                 if (resources.containsKey(document)) continue;
                 String contents;
                 URI retrieval = document;
@@ -201,9 +204,7 @@ final class SchemaResourceResolver {
         snapshot.registry = registry;
         // This checks every nested schema node compiled by the Planner, not
         // arbitrary instance objects under const/default/enum.
-        List<URI> sources = new ArrayList<URI>();
-        for (String uri : snapshot.uris) sources.add(URI.create(uri));
-        snapshot.customDialect = registry.checkCompiledDialect(sources);
+        snapshot.customDialect = customDialect;
         return snapshot;
     }
 
