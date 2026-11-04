@@ -138,13 +138,13 @@ final class SchemaMethodGenerator {
                         ? "multiple schema bindings require runtime validation"
                         : "unsupported schema construct requires runtime evaluation";
             }
-            String diagnostic = "@CompiledValidator fallback: " + fallbackReason;
             if (!allowFallback) {
-                fail(generated, method, diagnostic + " (fallback=false)");
+                fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile "
+                        + "this schema and method: " + fallbackReason);
                 return;
             }
             context.messager.printMessage(javax.tools.Diagnostic.Kind.WARNING,
-                    diagnostic + " (fallback=true)", method);
+                    "@CompiledValidator(fallback=true) runtime fallback: " + fallbackReason, method);
         }
         // The same checks serve both APIs; only their failure action differs.
         // Boolean branch helpers (oneOf/anyOf/not/if) still return boolean.
