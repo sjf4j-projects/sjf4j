@@ -59,7 +59,7 @@ public class SchemaRegistry {
                     Map<URI, Object> roots = new LinkedHashMap<URI, Object>();
                     for (Map.Entry<URI, JsonSchema> entry : sourceDocuments.entrySet()) {
                         // Preserve the wire JSON shape (including BooleanSchema).
-                        roots.put(entry.getKey(), org.sjf4j.Sjf4j.global().toJson(entry.getValue()));
+                        roots.put(entry.getKey(), org.sjf4j.Sjf4j.global().toJsonString(entry.getValue()));
                     }
                     local = new SchemaResourceIndex(roots);
                     sourceIndex = local;
@@ -76,7 +76,7 @@ public class SchemaRegistry {
                 : this == GLOBAL_SCHEMA_REGISTRY ? null : GLOBAL_SCHEMA_REGISTRY.resourceIndex().get(uri);
     }
 
-    private void rememberSource(URI retrieval, JsonSchema schema) {
+    private synchronized void rememberSource(URI retrieval, JsonSchema schema) {
         if (retrieval == null) return;
         sourceDocuments.putIfAbsent(retrieval, schema);
         sourceIndex = null;
