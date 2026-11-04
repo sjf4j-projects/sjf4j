@@ -148,6 +148,9 @@ final class SchemaResourceResolver {
         // Each method gets a registry copy so roots cannot leak between methods.
         SchemaRegistry registry = registry();
         for (int i = 0; i < snapshot.uris.length; i++) {
+            // indexDir already owns the registry-backed source object.
+            // Reindexing a separately parsed copy would be a duplicate URI.
+            if (snapshot.fromRegistry[i]) continue;
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
         // Boolean resources are now indexed alongside object resources, so the
