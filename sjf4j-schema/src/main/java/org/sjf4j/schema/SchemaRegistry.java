@@ -11,10 +11,6 @@ import java.nio.file.Paths;
 import java.util.stream.Stream;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.LinkedHashSet;
-import java.util.Iterator;
-import org.sjf4j.JsonType;
-import org.sjf4j.Nodes;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,83 +43,6 @@ public class SchemaRegistry {
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
         this.defaultDialect = defaultDialect;
-    }
-
-    /**
-     * Finds resources referenced by an uncompiled schema. Used by annotation
-     * processing to preload dependencies before the ordinary Planner binds refs.
-     * Resource scope is defined by lexical $id, not instance-valued keywords.
-     */
-    public static Set<URI> referencedDocuments(URI retrieval, JsonSchema source) {
-        Set<URI> result = new LinkedHashSet<URI>();
-        collectReferences(source, retrieval, result);
-        return result;
-    }
-
-    private static void collectReferences(Object node, URI base, Set<URI> resources) {
-        JsonType kind = JsonType.of(node);
-        if (kind == JsonType.ARRAY) {
-            for (Iterator<Object> it = Nodes.iteratorInArray(node); it.hasNext();) {
-                collectReferences(it.next(), base, resources);
-            }
-            return;
-        }
-        if (kind != JsonType.OBJECT) return;
-        Object declaredId = Nodes.getInObject(node, "$id");
-        URI scoped = declaredId instanceof String
-                ? SchemaUtil.resolveUri(base, URI.create(SchemaUtil.stripFragment((String) declaredId))) : base;
-        for (String keyword : new String[]{"$ref", "$dynamicRef", "$recursiveRef"}) {
-            Object reference = Nodes.getInObject(node, keyword);
-            if (!(reference instanceof String)) continue;
-            URI target = SchemaUtil.resolveUri(scoped, URI.create((String) reference));
-            resources.add(URI.create(SchemaUtil.stripFragment(target.toString())));
-        }
-        for (String keyword : new String[]{"$defs", "definitions", "properties",
-                "patternProperties", "dependentSchemas", "dependencies"}) {
-            Object mapping = Nodes.getInObject(node, keyword);
-            if (JsonType.of(mapping) != JsonType.OBJECT) continue;
-            for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(mapping)) {
-                collectReferences(entry.getValue(), scoped, resources);
-            }
-        }
-        for (String keyword : new String[]{"items", "additionalItems", "additionalProperties",
-                "contains", "propertyNames", "not", "if", "then", "else",
-                "unevaluatedItems", "unevaluatedProperties", "contentSchema",
-                "allOf", "anyOf", "oneOf", "prefixItems"}) {
-            Object child = Nodes.getInObject(node, keyword);
-            if (child != null) collectReferences(child, scoped, resources);
-        }
-    }
-
-    /**
-     * Checks explicit dialect declarations after Planner has built all schemas.
-     * Returns true if an unknown custom meta-schema requires runtime fallback.
-     */
-    public boolean checkCompiledDialect(Iterable<URI> documents) {
-        boolean custom = false;
-        Set<SchemaPlan> inspected = java.util.Collections.newSetFromMap(
-                new java.util.IdentityHashMap<SchemaPlan, Boolean>());
-        for (URI document : documents) {
-            SchemaPlan root = resolve(document);
-            if (root == null) continue;
-            java.util.Collection<SchemaPlan> plans = root.byPathPlans == null
-                    ? java.util.Collections.singleton(root) : root.byPathPlans.values();
-            for (SchemaPlan plan : plans) {
-                if (!inspected.add(plan)) continue;
-                Object node = plan.schemaNode();
-                if (JsonType.of(node) != JsonType.OBJECT) continue;
-                Object declared = Nodes.getInObject(node, "$schema");
-                if (declared == null) continue;
-                SchemaDialect dialect = declared instanceof String
-                        ? SchemaDialect.detect((String) declared) : null;
-                if (dialect == SchemaDialect.DRAFT_07 || dialect == SchemaDialect.DRAFT_2019_09) {
-                    throw new IllegalArgumentException("CompiledValidator supports only JSON Schema Draft 2020-12; "
-                            + "unsupported $schema: " + declared + " at " + plan.schemaLocation());
-                }
-                if (dialect == null) custom = true;
-            }
-        }
-        return custom;
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -525,7 +444,7 @@ public class SchemaRegistry {
         if (plan == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                     "cannot resolve schema fragment '#" + fragment + "'",
-                    PathSegment.Root.INSTANCE, rootPlan.schemaUri));
+                    PathSegment.Root.INSTANCE, rootPlan.resourceUri));
         }
 
         return plan;
