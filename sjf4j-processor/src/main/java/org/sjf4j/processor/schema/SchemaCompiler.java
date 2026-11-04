@@ -54,12 +54,29 @@ final class SchemaCompiler {
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
         JsonObject schema = Nodes.toJsonObject(rawSchema);
+        // Canonical locations are indexed by lexical $id scope, including nested
+        // resources. Do not reapply a relative $id when following a reference.
+        schemaUri = SchemaReferenceResolver.canonicalLocation(snapshot, schemaUri);
         if (schema.containsKey("$ref")) {
-            RefTarget target = resolveRef(snapshot, schema, schemaUri);
+            JsonObject reference = JsonObject.of("$ref", schema.getString("$ref"));
+            RefTarget target = resolveRef(snapshot, reference, schemaUri);
             if (target == null) return null;
-            return compileValue(snapshot, target.value, value, target.uri, depth + 1);
+            SchemaCheck referenced = compileValue(snapshot, target.value, value, target.uri, depth + 1);
+            if (referenced == null || referenced.hasFallback()) return null;
+            // Draft 2020-12 / 2019-09: adjacent assertions are independent of
+            // $ref. Draft-07 ignores adjacent keywords instead.
+            if (schema.size() == 1) return referenced;
+            JsonObject adjacent = new JsonObject();
+            for (String keyword : schema.keySet()) {
+                if (!"$ref".equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
+            }
+            if (!adjacent.isEmpty()) {
+                SchemaCheck siblings = compileValue(snapshot, adjacent, value, schemaUri, depth + 1);
+                if (siblings == null || siblings.hasFallback()) return null;
+                return new SchemaCheck.AllCheck(java.util.Arrays.asList(referenced, siblings));
+            }
+            return referenced;
         }
-        schemaUri = effectiveSchemaUri(schemaUri, schema);
         // No keyword, including type, selects a compilation strategy for
         // other keywords. Applicators compile their child schemas recursively;
         // the sibling assertions are compiled by the same keyword dispatcher.
