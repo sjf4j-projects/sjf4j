@@ -430,6 +430,16 @@ public final class SchemaPlanner {
 
         JsonPath jsonPath = JsonPath.parse(path);
         Object node = jsonPath.getNode(resourcePlan.schema);
+        // Runtime and CompiledValidator share canonical path resolution.
+        // For non-indexed extension locations retain legacy lazy JSONPath
+        // traversal, which may discover subschemas under custom keywords.
+        try {
+            URI location = URI.create(SchemaUtil.stripFragment(resourcePlan.schemaUri.toString()) + "#" + path);
+            SchemaResourceIndex.Target indexed = registry.resolveSourceNode(location);
+            if (indexed != null) node = indexed.node;
+        } catch (IllegalArgumentException ignored) {
+            // A raw pointer can contain characters that require URI escaping.
+        }
         if (node == null) return null;
         PlanningContext context = new PlanningContext(registry);
         SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.schemaUri, jsonPath.tail(),
