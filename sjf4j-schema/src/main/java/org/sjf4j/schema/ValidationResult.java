@@ -70,16 +70,16 @@ public class ValidationResult {
         private final Object value;
         private final PathSegment instancePs;
         private final PathSegment keywordPs;
-        private final URI schemaUri;
+        private final URI resourceUri;
 
         public Message(String keyword, String message, Object value, PathSegment instancePs,
-                       PathSegment keywordPs, URI schemaUri) {
+                       PathSegment keywordPs, URI resourceUri) {
             this.keyword = keyword;
             this.message = message;
             this.value = value;
             this.instancePs = instancePs;
             this.keywordPs = keywordPs;
-            this.schemaUri = schemaUri;
+            this.resourceUri = resourceUri;
         }
 
         public String getKeyword() { return keyword; }
@@ -87,14 +87,15 @@ public class ValidationResult {
         public Object getValue() { return value; }
         public PathSegment getInstancePs() { return instancePs; }
         public PathSegment getKeywordPs() { return keywordPs; }
-        public URI getSchemaUri() { return schemaUri; }
-        public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(schemaUri); }
+        /** Legacy accessor: returns the resource URI, excluding the keyword pointer. */
+        public URI getSchemaUri() { return resourceUri; }
+        public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(resourceUri); }
 
         @Override
         public String toString() {
             return SchemaUtil.formatValidationMessage(
                     message != null ? message : String.valueOf(value),
-                    instancePs, keywordPs, schemaUri, keyword);
+                    instancePs, keywordPs, resourceUri, keyword);
         }
     }
 }
