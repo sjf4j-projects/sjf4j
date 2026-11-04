@@ -210,6 +210,8 @@ abstract class SchemaCheck {
         final boolean additionalPropertiesFalse;
         final SchemaCheck additionalPropertiesCheck;
         final List<PatternProperty> patternProperties;
+        final SchemaCheck propertyNamesCheck;
+        final List<DependentSchema> dependentSchemas;
         final SchemaValue elementValue;
         final Integer minProperties;
         final Integer maxProperties;
@@ -219,6 +221,7 @@ abstract class SchemaCheck {
         final Diagnostic requiredDiagnostic;
         final Diagnostic dependentRequiredDiagnostic;
         final Diagnostic additionalPropertiesDiagnostic;
+        final Diagnostic propertyNamesDiagnostic;
         final int staticPropertyCount;
         final List<String> allowedNames;
         final List<Required> required;
@@ -227,13 +230,15 @@ abstract class SchemaCheck {
 
         ObjectCheck(boolean dynamic, boolean jsonObject, boolean typeRequired,
                     boolean additionalPropertiesFalse, SchemaCheck additionalPropertiesCheck,
-                    List<PatternProperty> patternProperties, SchemaValue elementValue,
+                    List<PatternProperty> patternProperties, SchemaCheck propertyNamesCheck,
+                    List<DependentSchema> dependentSchemas, SchemaValue elementValue,
                     Integer minProperties, Integer maxProperties, int staticPropertyCount,
                     List<String> allowedNames, List<Required> required,
                     List<DependentRequired> dependentRequired, List<PropertyCheck> properties,
                     Diagnostic typeDiagnostic, Diagnostic minPropertiesDiagnostic,
                     Diagnostic maxPropertiesDiagnostic, Diagnostic requiredDiagnostic,
-                    Diagnostic dependentRequiredDiagnostic, Diagnostic additionalPropertiesDiagnostic) {
+                    Diagnostic dependentRequiredDiagnostic, Diagnostic additionalPropertiesDiagnostic,
+                    Diagnostic propertyNamesDiagnostic) {
             super(Kind.OBJECT);
             this.dynamic = dynamic;
             this.jsonObject = jsonObject;
@@ -241,6 +246,8 @@ abstract class SchemaCheck {
             this.additionalPropertiesFalse = additionalPropertiesFalse;
             this.additionalPropertiesCheck = additionalPropertiesCheck;
             this.patternProperties = Collections.unmodifiableList(new ArrayList<PatternProperty>(patternProperties));
+            this.propertyNamesCheck = propertyNamesCheck;
+            this.dependentSchemas = Collections.unmodifiableList(new ArrayList<DependentSchema>(dependentSchemas));
             this.elementValue = elementValue;
             this.minProperties = minProperties;
             this.maxProperties = maxProperties;
@@ -250,6 +257,7 @@ abstract class SchemaCheck {
             this.requiredDiagnostic = requiredDiagnostic;
             this.dependentRequiredDiagnostic = dependentRequiredDiagnostic;
             this.additionalPropertiesDiagnostic = additionalPropertiesDiagnostic;
+            this.propertyNamesDiagnostic = propertyNamesDiagnostic;
             this.staticPropertyCount = staticPropertyCount;
             this.allowedNames = Collections.unmodifiableList(new ArrayList<String>(allowedNames));
             this.required = Collections.unmodifiableList(new ArrayList<Required>(required));
@@ -260,6 +268,10 @@ abstract class SchemaCheck {
         @Override
         boolean hasFallback() {
             if (additionalPropertiesCheck != null && additionalPropertiesCheck.hasFallback()) return true;
+            if (propertyNamesCheck != null && propertyNamesCheck.hasFallback()) return true;
+            for (DependentSchema dependency : dependentSchemas) {
+                if (dependency.check.hasFallback()) return true;
+            }
             for (PatternProperty pattern : patternProperties) {
                 if (pattern.check.hasFallback()) return true;
             }
@@ -267,6 +279,17 @@ abstract class SchemaCheck {
                 if (property.check.hasFallback()) return true;
             }
             return false;
+        }
+    }
+
+    /** Triggers a child schema against the entire containing object, never the property value. */
+    static final class DependentSchema {
+        final String trigger;
+        final SchemaCheck check;
+
+        DependentSchema(String trigger, SchemaCheck check) {
+            this.trigger = trigger;
+            this.check = check;
         }
     }
 
@@ -384,28 +407,50 @@ abstract class SchemaCheck {
     static final class ArrayCheck extends SchemaCheck {
         final Integer minItems;
         final Integer maxItems;
+        final List<SchemaCheck> prefixItems;
         final SchemaCheck items;
         final SchemaValue itemValue;
+        final boolean uniqueItems;
+        final SchemaCheck contains;
+        final int minContains;
+        final Integer maxContains;
+        final Diagnostic minContainsDiagnostic;
+        final Diagnostic maxContainsDiagnostic;
         final Diagnostic typeDiagnostic;
         final Diagnostic minItemsDiagnostic;
         final Diagnostic maxItemsDiagnostic;
+        final Diagnostic uniqueItemsDiagnostic;
 
-        ArrayCheck(Integer minItems, Integer maxItems, SchemaCheck items, SchemaValue itemValue,
+        ArrayCheck(Integer minItems, Integer maxItems, List<SchemaCheck> prefixItems,
+                   SchemaCheck items, SchemaValue itemValue, boolean uniqueItems,
+                   SchemaCheck contains, int minContains, Integer maxContains,
+                   Diagnostic minContainsDiagnostic, Diagnostic maxContainsDiagnostic,
                    Diagnostic typeDiagnostic, Diagnostic minItemsDiagnostic,
-                   Diagnostic maxItemsDiagnostic) {
+                   Diagnostic maxItemsDiagnostic, Diagnostic uniqueItemsDiagnostic) {
             super(Kind.ARRAY);
             this.minItems = minItems;
             this.maxItems = maxItems;
+            this.prefixItems = Collections.unmodifiableList(new ArrayList<SchemaCheck>(prefixItems));
             this.items = items;
             this.itemValue = itemValue;
+            this.uniqueItems = uniqueItems;
+            this.contains = contains;
+            this.minContains = minContains;
+            this.maxContains = maxContains;
+            this.minContainsDiagnostic = minContainsDiagnostic;
+            this.maxContainsDiagnostic = maxContainsDiagnostic;
             this.typeDiagnostic = typeDiagnostic;
             this.minItemsDiagnostic = minItemsDiagnostic;
             this.maxItemsDiagnostic = maxItemsDiagnostic;
+            this.uniqueItemsDiagnostic = uniqueItemsDiagnostic;
         }
 
         @Override
         boolean hasFallback() {
-            return items != null && items.hasFallback();
+            if (contains != null && contains.hasFallback()) return true;
+            if (items != null && items.hasFallback()) return true;
+            for (SchemaCheck prefix : prefixItems) if (prefix.hasFallback()) return true;
+            return false;
         }
     }
 }

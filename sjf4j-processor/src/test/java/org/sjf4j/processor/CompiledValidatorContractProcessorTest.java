@@ -116,7 +116,7 @@ class CompiledValidatorContractProcessorTest {
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
                                 "{\"type\":\"object\",\"required\":[\"name\"],"
-                                + "\"propertyNames\":{\"pattern\":\"^x\"}}") + ") "
+                                + "\"unevaluatedProperties\":false}") + ") "
                         + "boolean valid(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
@@ -125,7 +125,7 @@ class CompiledValidatorContractProcessorTest {
     @Test
     void unsupportedKeywordRequiresFallbackEvenWhenJavaShapeCannotMatch() throws Exception {
         // Capability depends on schema semantics, not the Java method parameter.
-        String schema = "{\"contains\":{\"type\":\"number\"}}";
+        String schema = "{\"unevaluatedItems\":false}";
         for (String type : new String[]{"String", "int", "Model"}) {
             String source = "package fixture; import org.sjf4j.annotation.schema.*; "
                     + "@CompiledValidator(fallback=false) public interface Check { "
@@ -145,7 +145,7 @@ class CompiledValidatorContractProcessorTest {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
-                                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^x\"}}") + ") "
+                                "{\"type\":\"object\",\"unevaluatedProperties\":false}") + ") "
                         + "void requireValid(Model value); }");
         assertFalse(result.success);
         assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
@@ -175,7 +175,7 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void defaultFallbackRejectsUnsupportedChecks() throws Exception {
-        String schema = "{\"propertyNames\":{\"pattern\":\"^x\"}}";
+        String schema = "{\"unevaluatedProperties\":false}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "

@@ -93,6 +93,14 @@ final class SchemaCompiler {
 
         for (String keyword : schema.keySet()) {
             if (isAnnotation(keyword)) continue;
+            // In the standard Draft 2020-12 Content vocabulary these keywords
+            // are annotations, not validation assertions. Never assume that
+            // semantic role for an unverified custom dialect/vocabulary.
+            if (keyword.equals("contentEncoding") || keyword.equals("contentMediaType")
+                    || keyword.equals("contentSchema")) {
+                if (!canCompileStandardDialect(snapshot)) return null;
+                continue;
+            }
             switch (keyword) {
                 case "type":
                     types.put(keyword, schema.getNode(keyword));
@@ -107,12 +115,14 @@ final class SchemaCompiler {
                 case "exclusiveMaximum": case "multipleOf":
                     numbers.put(keyword, schema.getNode(keyword));
                     break;
-                case "items": case "minItems": case "maxItems":
+                case "items": case "prefixItems": case "uniqueItems":
+                case "minItems": case "maxItems":
+                case "contains": case "minContains": case "maxContains":
                     array.put(keyword, schema.getNode(keyword));
                     break;
-                case "properties": case "patternProperties": case "required":
-                case "additionalProperties": case "minProperties": case "maxProperties":
-                case "dependentRequired":
+                case "properties": case "patternProperties": case "propertyNames":
+                case "required": case "additionalProperties": case "minProperties":
+                case "maxProperties": case "dependentRequired": case "dependentSchemas":
                     object.put(keyword, schema.getNode(keyword));
                     break;
                 default:
