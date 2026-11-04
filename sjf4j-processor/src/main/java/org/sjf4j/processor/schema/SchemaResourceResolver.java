@@ -51,9 +51,15 @@ final class SchemaResourceResolver {
         }
 
         String canonicalLocation(String location) {
-            org.sjf4j.schema.SchemaPlan plan = resolvePlan(location);
-            return plan == null || plan.schemaLocation() == null
-                    ? location : plan.schemaLocation().toString();
+            try {
+                org.sjf4j.schema.SchemaPlan plan = resolvePlan(location);
+                return plan == null || plan.schemaLocation() == null
+                        ? location : plan.schemaLocation().toString();
+            } catch (IllegalArgumentException | org.sjf4j.schema.SchemaException missingSubschema) {
+                // Some compiler keyword locations are synthetic (e.g. reduced
+                // sibling assertion maps), not independent runtime subschemas.
+                return location;
+            }
         }
 
         Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources) {
