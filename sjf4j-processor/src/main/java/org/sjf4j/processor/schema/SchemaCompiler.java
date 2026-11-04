@@ -106,9 +106,10 @@ final class SchemaCompiler {
         if (unevaluatedObject || unevaluatedArray) {
             String keyword = unevaluatedObject ? "unevaluatedProperties" : "unevaluatedItems";
             String interfering = null;
-            for (String key : new String[]{"allOf", "anyOf", "oneOf", "not", "if", "then",
+            for (String key : new String[]{"allOf", "anyOf", "oneOf", "if", "then",
                     "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
-                if (schema.containsKey(key)) {
+                if (schema.containsKey(key) && (!"allOf".equals(key)
+                        || !isTrivialTrueAllOf(schema.getNode(key)))) {
                     interfering = key;
                     break;
                 }
@@ -360,6 +361,20 @@ final class SchemaCompiler {
         return new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
     }
 
+    /** Literal true branches have no evaluated locations or assertions. */
+    private static boolean isTrivialTrueAllOf(Object raw) {
+        if (JsonType.of(raw) != JsonType.ARRAY) return false;
+        int count = Nodes.sizeInArray(raw);
+        if (count == 0) return false;
+        for (int i = 0; i < count; i++) {
+            Object branch = Nodes.getInArray(raw, i);
+            if (!Boolean.TRUE.equals(branch)
+                    && !(branch instanceof BooleanSchema
+                         && ((BooleanSchema) branch).booleanValue())) return false;
+        }
+        return true;
+    }
+
     /**
      * Applicator checks share a value but must not share local variables or
      * evaluated-location state. Unsupported branches fall back as a complete
@@ -382,7 +397,16 @@ final class SchemaCompiler {
                 }
             }
             if (!annotationsOnly) {
-                SchemaCheck sibling = compileValue(snapshot, siblings, value, schemaUri, depth + 1);
+                // Neither not nor a literal-true allOf exports annotations.
+                boolean localCoverage = (schema.containsKey("unevaluatedProperties")
+                        || schema.containsKey("unevaluatedItems"))
+                        && !schema.containsKey("anyOf") && !schema.containsKey("oneOf")
+                        && !schema.containsKey("if") && !schema.containsKey("then")
+                        && !schema.containsKey("else")
+                        && (!schema.containsKey("allOf")
+                            || isTrivialTrueAllOf(schema.getNode("allOf")));
+                SchemaCheck sibling = compileValue(snapshot, siblings, value, schemaUri,
+                        localCoverage ? depth : depth + 1);
                 if (sibling == null || sibling.hasFallback()) return null;
                 checks.add(sibling);
             }
@@ -439,6 +463,7 @@ final class SchemaCompiler {
         // no validation effect and does not need to be compiled.
         for (String keyword : new String[]{"allOf", "anyOf", "not"}) {
             if (!schema.containsKey(keyword)) continue;
+            if ("allOf".equals(keyword) && isTrivialTrueAllOf(schema.getNode(keyword))) continue;
             boolean negation = "not".equals(keyword);
             Object raw = schema.getNode(keyword);
             if (!negation && JsonType.of(raw) != JsonType.ARRAY) return null;
