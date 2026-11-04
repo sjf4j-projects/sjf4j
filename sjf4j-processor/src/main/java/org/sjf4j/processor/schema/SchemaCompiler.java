@@ -83,9 +83,8 @@ final class SchemaCompiler {
                 referenced = reference;
             }
             if (referenced.hasFallback()) return null;
-            // Draft 2020-12 / 2019-09: adjacent assertions are independent of
-            // $ref. Draft-07 ignores adjacent keywords instead.
-            if (schema.size() == 1 || !SchemaReferenceResolver.acceptsRefSiblings(snapshot, schemaUri)) return referenced;
+            // Draft 2020-12: adjacent assertions are independent of $ref.
+            if (schema.size() == 1) return referenced;
             JsonObject adjacent = new JsonObject();
             for (String keyword : schema.keySet()) {
                 if (!"$ref".equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
@@ -483,47 +482,17 @@ final class SchemaCompiler {
         return base + (base.contains("#") ? "/" : "#/") + keyword;
     }
 
-    /**
-     * Returns whether dependentRequired applies under this schema dialect.
-     * Unknown vocabulary or dialect delegates to SchemaPlan.
-     */
+    /** The supported Draft 2020-12 always defines dependentRequired. */
     static Boolean supportsDependentRequired(SchemaResourceResolver.Snapshot snapshot,
-                                             String schemaUri, JsonObject schema) {
-        if (schema.containsKey("$vocabulary")) return null;
-        String documentUri = schemaUri.split("#", 2)[0];
-        for (int i = 0; i < snapshot.uris.length; i++) {
-            if (!snapshot.uris[i].equals(documentUri)) continue;
-            Object parsed = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[i]);
-            if (JsonType.of(parsed) != JsonType.OBJECT) return null;
-            JsonObject document = Nodes.toJsonObject(parsed);
-            if (document.containsKey("$vocabulary")) return null;
-            String declared = schema.getString("$schema");
-            if (declared == null) declared = document.getString("$schema");
-            if (declared == null) return Boolean.TRUE; // Registry default is 2020-12.
-            org.sjf4j.schema.SchemaDialect dialect = org.sjf4j.schema.SchemaDialect.detect(declared);
-            if (dialect == null) return null;
-            // Conservatively fall back if an ancestor could override the dialect.
-            if (schema.getString("$schema") == null
-                    && snapshot.documents[i].indexOf("\"$schema\"",
-                    snapshot.documents[i].indexOf("\"$schema\"") + 1) >= 0)
-                return null;
-            return dialect != org.sjf4j.schema.SchemaDialect.DRAFT_07;
-        }
-        return null;
+                                              String schemaUri, JsonObject schema) {
+        return canCompileStandardDialect(snapshot) && !schema.containsKey("$vocabulary")
+                ? Boolean.TRUE : null;
     }
 
+    /** Unknown vocabularies can change assertion semantics, so remain fallback. */
     private static boolean canCompileStandardDialect(SchemaResourceResolver.Snapshot snapshot) {
         for (String source : snapshot.documents) {
             if (source.contains("\"format-assertion\"") || source.contains("\"$vocabulary\""))
-                return false;
-            Object raw = org.sjf4j.Sjf4j.global().fromJson(source);
-            if (JsonType.of(raw) != JsonType.OBJECT) continue;
-            String dialect = Nodes.toJsonObject(raw).getString("$schema");
-            if (dialect != null
-                    && !dialect.startsWith("https://json-schema.org/draft/2020-12/schema")
-                    && !dialect.startsWith("https://json-schema.org/draft/2019-09/schema")
-                    && !dialect.startsWith("http://json-schema.org/draft-07/schema")
-                    && !dialect.startsWith("https://json-schema.org/draft-07/schema"))
                 return false;
         }
         return true;
