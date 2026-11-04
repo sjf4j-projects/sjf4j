@@ -72,6 +72,15 @@ public public final class SchemaResourceIndex {
         return entry == null || entry.modern;
     }
 
+    /** Looks up an already absolute resource URI without requiring a source location. */
+    public Target get(URI absoluteUri) {
+        if (absoluteUri == null || !absoluteUri.isAbsolute()) return null;
+        String resource = SchemaUtil.stripFragment(absoluteUri.toString());
+        String fragment = absoluteUri.getFragment();
+        Entry result = fragments.get(key(resource, fragment == null ? "" : fragment));
+        return result == null ? null : new Target(result.node, result.location);
+    }
+
     public Target resolve(String sourceUri, String reference) {
         Entry source = locations.get(locationKey(sourceUri));
         if (source == null) source = locations.get(sourceUri + "#");
