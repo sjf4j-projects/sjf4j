@@ -161,8 +161,8 @@ class CompiledValidatorKeywordTest {
     @Test
     void percentEncodedQuotedReference() {
         QuotedReferences validator = CompiledInstances.create(QuotedReferences.class);
-        assertTrue(validator.valid(Map.of("foo\\\"bar", 2)));
-        assertFalse(validator.valid(Map.of("foo\\\"bar", "invalid")));
+        assertTrue(validator.valid(Map.of("foo\"bar", 2)));
+        assertFalse(validator.valid(Map.of("foo\"bar", "invalid")));
     }
 
     @CompiledValidator(fallback = false)
