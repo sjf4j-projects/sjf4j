@@ -9,7 +9,7 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -30,9 +30,9 @@ import static org.junit.jupiter.api.Assertions.*;
 /** OneOf hands off exactly one runtime subtree without de-optimizing its compiled ancestors. */
 public class CompiledOneOfFallbackTest {
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = Dog.class, when = "dog"),
-            @OneOfMapping(type = Cat.class, when = "cat")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = Dog.class, when = "dog"),
+            @OneOfCase(type = Cat.class, when = "cat")
     })
     public static class Animal extends JsonObject {
         public String name;
@@ -50,9 +50,9 @@ public class CompiledOneOfFallbackTest {
         public long id;
 
         // This member annotation deliberately overrides Animal's class-level "kind".
-        @OneOf(discriminatorKey = "species", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorKey = "species", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         public Animal pet;
 
@@ -63,9 +63,9 @@ public class CompiledOneOfFallbackTest {
 
     public static class Parent {
         public String kind;
-        @OneOf(discriminatorKey = "kind", scope = OneOf.Scope.PARENT, mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorKey = "kind", scope = OneOf.Scope.PARENT, cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         public Animal pet;
     }
@@ -77,26 +77,26 @@ public class CompiledOneOfFallbackTest {
     }
 
     public static class ShapeHolder {
-        @OneOf(mappings = {
-                @OneOfMapping(type = String.class),
-                @OneOfMapping(type = Integer.class)
+        @OneOf(cases = {
+                @OneOfCase(type = String.class),
+                @OneOfCase(type = Integer.class)
         })
         public Object value;
         public int after;
     }
 
     public static class PathHolder {
-        @OneOf(discriminatorPath = "$.meta.kind", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorPath = "$.meta.kind", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         public Animal pet;
         public int after;
     }
 
     public static class NullableHolder {
-        @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog")
+        @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+                @OneOfCase(type = Dog.class, when = "dog")
         })
         public Animal pet;
         public int after;
@@ -104,9 +104,9 @@ public class CompiledOneOfFallbackTest {
 
     public record RecordHolder(long id, Animal pet) {}
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = TreeLeaf.class, when = "leaf"),
-            @OneOfMapping(type = TreeBranch.class, when = "branch")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = TreeLeaf.class, when = "leaf"),
+            @OneOfCase(type = TreeBranch.class, when = "branch")
     })
     public interface TreeNode {}
 
@@ -118,14 +118,14 @@ public class CompiledOneOfFallbackTest {
         public List<TreeNode> children;
         public TreeNode single;
         public Animal typed;
-        @OneOf(discriminatorKey = "species", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorKey = "species", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         public Animal member;
-        @OneOf(discriminatorPath = "$.meta.kind", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorPath = "$.meta.kind", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         public Animal byPath;
         public List<Animal> otherTypes;

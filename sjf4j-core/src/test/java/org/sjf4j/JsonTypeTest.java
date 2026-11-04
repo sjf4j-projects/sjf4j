@@ -2,7 +2,7 @@ package org.sjf4j;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.annotation.node.RawToValue;
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JsonTypeTest {
     static class PlainPojo { public String name; }
 
-    @OneOf(mappings = {@OneOfMapping(type = PolyObj.class), @OneOfMapping(type = PolyArr.class)})
+    @OneOf(cases = {@OneOfCase(type = PolyObj.class), @OneOfCase(type = PolyArr.class)})
     interface PolymorphicType {}
 
     static class PolyObj extends JsonObject implements PolymorphicType {}

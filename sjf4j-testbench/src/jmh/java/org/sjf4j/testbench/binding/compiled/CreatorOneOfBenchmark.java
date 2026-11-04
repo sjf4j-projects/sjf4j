@@ -11,7 +11,7 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 
 import java.io.IOException;
@@ -48,9 +48,9 @@ public class CreatorOneOfBenchmark {
     public record Cat(String kind, String name, int lives) implements Animal, JacksonAnimal {}
 
     public record RuntimeZoo(
-            @OneOf(discriminatorKey = "kind", mappings = {
-                    @OneOfMapping(type = Dog.class, when = "dog"),
-                    @OneOfMapping(type = Cat.class, when = "cat")
+            @OneOf(discriminatorKey = "kind", cases = {
+                    @OneOfCase(type = Dog.class, when = "dog"),
+                    @OneOfCase(type = Cat.class, when = "cat")
             }) Animal pet, int after) {}
 
     public record JacksonZoo(JacksonAnimal pet, int after) {}

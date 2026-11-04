@@ -23,8 +23,8 @@ class CompiledJacksonUnifiedWriteTest {
             Map<String, String> sources = new LinkedHashMap<>();
             sources.put("fixture/Animal.java",
                     "package fixture; import org.sjf4j.annotation.node.*; "
-                    + "@OneOf(discriminatorKey=\"kind\", mappings={"
-                    + "@OneOfMapping(type=Cat.class,when=\"cat\")}) "
+                    + "@OneOf(discriminatorKey=\"kind\", cases = {"
+                    + "@OneOfCase(type=Cat.class,when=\"cat\")}) "
                     + "public interface Animal {}");
             sources.put("fixture/Cat.java",
                     "package fixture; public final class Cat implements Animal { "

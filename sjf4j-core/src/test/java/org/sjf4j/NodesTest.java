@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 
@@ -420,9 +420,9 @@ public class NodesTest {
 
     @Getter
     @Setter
-    @OneOf(mappings = {
-            @OneOfMapping(type = Cat.class, when = "cat"),
-            @OneOfMapping(type = Dog.class, when = "dog")
+    @OneOf(cases = {
+            @OneOfCase(type = Cat.class, when = "cat"),
+            @OneOfCase(type = Dog.class, when = "dog")
     }, discriminatorKey = "kind")
     public static class Animal {
         private String kind;
@@ -442,9 +442,9 @@ public class NodesTest {
     }
 
     public static class Zoo {
-        @OneOf(mappings = {
-                @OneOfMapping(type = Cat.class, when = "cat"),
-                @OneOfMapping(type = Dog.class, when = "dog")
+        @OneOf(cases = {
+                @OneOfCase(type = Cat.class, when = "cat"),
+                @OneOfCase(type = Dog.class, when = "dog")
         }, discriminatorKey = "kind")
         public Animal pet;
     }

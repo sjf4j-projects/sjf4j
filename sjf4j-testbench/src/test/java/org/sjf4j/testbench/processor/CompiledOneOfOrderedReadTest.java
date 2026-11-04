@@ -8,7 +8,7 @@ import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.exception.BindingException;
 
 import java.io.IOException;
@@ -22,10 +22,10 @@ public class CompiledOneOfOrderedReadTest {
     private static final String ID = "123e4567-e89b-12d3-a456-426614174000";
     private static final Reader READER = CompiledInstances.create(Reader.class);
 
-    @OneOf(discriminatorKey = "@type", mappings = {
-            @OneOfMapping(type = Alpha.class, when = "alpha"),
-            @OneOfMapping(type = Beta.class, when = "beta"),
-            @OneOfMapping(type = Gamma.class, when = "gamma")
+    @OneOf(discriminatorKey = "@type", cases = {
+            @OneOfCase(type = Alpha.class, when = "alpha"),
+            @OneOfCase(type = Beta.class, when = "beta"),
+            @OneOfCase(type = Gamma.class, when = "gamma")
     })
     public interface Variant {}
 

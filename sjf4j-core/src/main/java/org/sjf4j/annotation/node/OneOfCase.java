@@ -5,10 +5,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * Single subtype mapping inside {@link OneOf}.
+ * Candidate subtype case inside {@link OneOf}.
  */
 @Retention(RetentionPolicy.RUNTIME)
-public @interface OneOfMapping {
+public @interface OneOfCase {
     /**
      * Concrete target subtype, distinct from the declared target type.
      */

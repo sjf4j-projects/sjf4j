@@ -117,9 +117,9 @@ class Jackson2ExternalMappingTest {
         assertSame(child, shallow.get("child"));
         assertNotSame(child, deep.get("child"));
     }
-    @org.sjf4j.annotation.node.OneOf(discriminatorKey = "kind", mappings = {
-            @org.sjf4j.annotation.node.OneOfMapping(type = Dog.class, when = "dog"),
-            @org.sjf4j.annotation.node.OneOfMapping(type = Cat.class, when = "cat")
+    @org.sjf4j.annotation.node.OneOf(discriminatorKey = "kind", cases = {
+            @org.sjf4j.annotation.node.OneOfCase(type = Dog.class, when = "dog"),
+            @org.sjf4j.annotation.node.OneOfCase(type = Cat.class, when = "cat")
     })
     interface Animal {}
 

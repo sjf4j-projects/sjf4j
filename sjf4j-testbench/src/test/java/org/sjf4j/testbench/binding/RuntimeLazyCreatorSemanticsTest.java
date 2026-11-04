@@ -7,7 +7,7 @@ import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -75,7 +75,7 @@ class RuntimeLazyCreatorSemanticsTest {
         }
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = @OneOfMapping(type = FixedContainerVariant.class, when = "fixed"))
+    @OneOf(discriminatorKey = "kind", cases = @OneOfCase(type = FixedContainerVariant.class, when = "fixed"))
     public interface FixedContainerOneOf {}
 
     public record FixedContainerVariant(List<UUID> fixed, Map<String, LocalDate> dates)
@@ -94,9 +94,9 @@ class RuntimeLazyCreatorSemanticsTest {
         }
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = Leaf.class, when = "leaf"),
-            @OneOfMapping(type = Branch.class, when = "branch")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = Leaf.class, when = "leaf"),
+            @OneOfCase(type = Branch.class, when = "branch")
     })
     public interface RecursiveNode {}
 
@@ -114,17 +114,17 @@ class RuntimeLazyCreatorSemanticsTest {
 
     public static final class ParentEnvelope {
         public String kind;
-        @OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind", mappings = {
-                @OneOfMapping(type = ParentDog.class, when = "dog"),
-                @OneOfMapping(type = ParentCat.class, when = "cat")
+        @OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind", cases = {
+                @OneOfCase(type = ParentDog.class, when = "dog"),
+                @OneOfCase(type = ParentCat.class, when = "cat")
         })
         public ParentPet pet;
     }
 
     public static final class JsonShapeEnvelope {
-        @OneOf(mappings = {
-                @OneOfMapping(type = String.class),
-                @OneOfMapping(type = Integer.class)
+        @OneOf(cases = {
+                @OneOfCase(type = String.class),
+                @OneOfCase(type = Integer.class)
         })
         public Object value;
     }

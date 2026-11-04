@@ -461,8 +461,8 @@ class CompiledBinderConformanceTest {
         sources.put("fixture/Bean.java",
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.node.OneOf;\n"
-                        + "import org.sjf4j.annotation.node.OneOfMapping;\n"
-                        + "@OneOf(discriminatorKey=\"kind\", mappings={@OneOfMapping(type=Sub.class, when=\"sub\")})\n"
+                        + "import org.sjf4j.annotation.node.OneOfCase;\n"
+                        + "@OneOf(discriminatorKey=\"kind\", cases = {@OneOfCase(type=Sub.class, when=\"sub\")})\n"
                         + "public class Bean { public String kind; public String name; }\n");
         sources.put("fixture/Sub.java",
                 "package fixture; public class Sub extends Bean { public int age; }\n");
@@ -490,7 +490,7 @@ class CompiledBinderConformanceTest {
     void supportsOneOfOnCreatorBoundMembersAtCompileTime() throws Exception {
         for (String bean : new String[]{
                 "public class Bean {\n"
-                        + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " @OneOf(discriminatorKey=\"species\", cases = {@OneOfCase(type=Dog.class, when=\"dog\")})\n"
                         + " private final Animal pet;\n"
                         + " @NodeCreator public Bean(@NodeProperty(\"pet\") Animal pet) { this.pet=pet; }\n"
                         + " public Animal getPet() { return pet; }\n"
@@ -498,11 +498,11 @@ class CompiledBinderConformanceTest {
                 "public class Bean {\n"
                         + " private final Animal pet;\n"
                         + " @NodeCreator public Bean(@NodeProperty(\"pet\")\n"
-                        + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " @OneOf(discriminatorKey=\"species\", cases = {@OneOfCase(type=Dog.class, when=\"dog\")})\n"
                         + " Animal pet) { this.pet=pet; }\n"
                         + "}\n",
                 "public record Bean(\n"
-                        + " @OneOf(discriminatorKey=\"species\", mappings={@OneOfMapping(type=Dog.class, when=\"dog\")})\n"
+                        + " @OneOf(discriminatorKey=\"species\", cases = {@OneOfCase(type=Dog.class, when=\"dog\")})\n"
                         + " Animal pet) {}\n"
         }) {
             for (String backend : new String[]{"SIMPLE", "JACKSON2"}) {
@@ -540,7 +540,7 @@ class CompiledBinderConformanceTest {
         sources.put("fixture/Bean.java", "package fixture;\n"
                 + "import org.sjf4j.annotation.node.*;\n"
                 + "public record Bean(@OneOf(scope=OneOf.Scope.PARENT, discriminatorKey=\"kind\","
-                + " mappings={@OneOfMapping(type=Dog.class, when=\"dog\")}) Animal pet) {}\n");
+                + " cases = {@OneOfCase(type=Dog.class, when=\"dog\")}) Animal pet) {}\n");
         sources.put("fixture/Animal.java", "package fixture; public interface Animal {}\n");
         sources.put("fixture/Dog.java", "package fixture; public class Dog implements Animal {}\n");
         sources.put("fixture/Binder.java", "package fixture;\n"

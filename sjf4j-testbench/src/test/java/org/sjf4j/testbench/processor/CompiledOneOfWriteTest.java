@@ -13,7 +13,7 @@ import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -42,10 +42,10 @@ public class CompiledOneOfWriteTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = Cat.class, when = "cat"),
-            @OneOfMapping(type = Dog.class, when = "dog"),
-            @OneOfMapping(type = Secret.class, when = "secret")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = Cat.class, when = "cat"),
+            @OneOfCase(type = Dog.class, when = "dog"),
+            @OneOfCase(type = Secret.class, when = "secret")
     })
     public interface Pet {}
 
@@ -79,17 +79,17 @@ public class CompiledOneOfWriteTest {
         public List<Pet> pets;
         public Map<String, Pet> byName;
         public Pet featured;
-        @OneOf(discriminatorKey = "variant", mappings = {
-                @OneOfMapping(type = Cat.class, when = "feline"),
-                @OneOfMapping(type = Dog.class, when = "canine")
+        @OneOf(discriminatorKey = "variant", cases = {
+                @OneOfCase(type = Cat.class, when = "feline"),
+                @OneOfCase(type = Dog.class, when = "canine")
         })
         public Pet selected;
         public String after;
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = Leaf.class, when = "leaf"),
-            @OneOfMapping(type = Branch.class, when = "branch")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = Leaf.class, when = "leaf"),
+            @OneOfCase(type = Branch.class, when = "branch")
     })
     public interface Tree {}
 
@@ -106,14 +106,14 @@ public class CompiledOneOfWriteTest {
         public Tree next;
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = RawListValue.class, when = "raw"),
-            @OneOfMapping(type = NumericMapValue.class, when = "numberMap"),
-            @OneOfMapping(type = IgnoredFieldValue.class, when = "ignoredField"),
-            @OneOfMapping(type = IgnoredGetterValue.class, when = "ignoredGetter"),
-            @OneOfMapping(type = PrivateGetterValue.class, when = "privateGetter"),
-            @OneOfMapping(type = InheritedPrivateValue.class, when = "inherited"),
-            @OneOfMapping(type = PlainValue.class, when = "plain")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = RawListValue.class, when = "raw"),
+            @OneOfCase(type = NumericMapValue.class, when = "numberMap"),
+            @OneOfCase(type = IgnoredFieldValue.class, when = "ignoredField"),
+            @OneOfCase(type = IgnoredGetterValue.class, when = "ignoredGetter"),
+            @OneOfCase(type = PrivateGetterValue.class, when = "privateGetter"),
+            @OneOfCase(type = InheritedPrivateValue.class, when = "inherited"),
+            @OneOfCase(type = PlainValue.class, when = "plain")
     })
     public interface ComplexValue {}
 

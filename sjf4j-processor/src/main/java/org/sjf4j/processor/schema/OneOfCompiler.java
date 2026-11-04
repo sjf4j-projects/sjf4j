@@ -4,7 +4,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
@@ -75,17 +75,17 @@ final class OneOfCompiler {
         if (value.type == null || depth >= 8 || generic == null) return null;
         TypeElement parent = context.types.typeElement(value.type);
         if (parent == null) return null;
-        OneOf mapping = parent.getAnnotation(OneOf.class);
-        if (mapping == null || mapping.scope() != OneOf.Scope.CURRENT
-                || mapping.discriminatorKey().isEmpty() || !mapping.discriminatorPath().isEmpty()) return null;
+        OneOf oneOf = parent.getAnnotation(OneOf.class);
+        if (oneOf == null || oneOf.scope() != OneOf.Scope.CURRENT
+                || oneOf.discriminatorKey().isEmpty() || !oneOf.discriminatorPath().isEmpty()) return null;
 
         Object candidates = schema.getNode("oneOf");
         if (JsonType.of(candidates) != JsonType.ARRAY) return null;
         int count = Nodes.sizeInArray(candidates);
-        if (count < 2 || mapping.mappings().length == 0) return null;
+        if (count < 2 || oneOf.cases().length == 0) return null;
 
-        String discriminator = mapping.discriminatorKey();
-        // The schema itself (not @OneOfMapping) must prove that exactly one
+        String discriminator = oneOf.discriminatorKey();
+        // The schema itself (not @OneOfCase) must prove that exactly one
         // branch can match any given discriminator. Any unknown/overlapping
         // branch disables guarded dispatch, not generic oneOf compilation.
         String[] schemaValues = new String[count];
@@ -103,7 +103,7 @@ final class OneOfCompiler {
         }
         List<SchemaCheck.OneOfCheck.Subtype> compiled = new ArrayList<>();
         Set<String> seenTypes = new HashSet<>();
-        for (OneOfMapping candidate : mapping.mappings()) {
+        for (OneOfCase candidate : oneOf.cases()) {
             TypeMirror subtype = mappedType(candidate);
             if (subtype == null || !seenTypes.add(subtype.toString())) return null;
             TypeElement owner = context.types.typeElement(subtype);
@@ -167,9 +167,9 @@ final class OneOfCompiler {
                 SchemaCompiler.diagnostic(uri, "oneOf"), compiled, generic);
     }
 
-    private TypeMirror mappedType(OneOfMapping mapping) {
+    private TypeMirror mappedType(OneOfCase candidate) {
         try {
-            Class<?> clazz = mapping.type();
+            Class<?> clazz = candidate.type();
             TypeElement type = context.elements.getTypeElement(clazz.getCanonicalName());
             return type == null ? null : type.asType();
         } catch (MirroredTypeException ex) {
