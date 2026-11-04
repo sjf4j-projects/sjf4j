@@ -124,7 +124,7 @@ public final class SchemaPlan {
             if (booleanSchema) {
                 if (!booleanValue) {
                     ctx.addError(null, PathSegment.Root.INSTANCE, keywordPs,
-                            schemaUri, "false", "schema 'false' always fails");
+                            resourceUri, "false", "schema 'false' always fails");
                 }
                 return booleanValue;
             }
