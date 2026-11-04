@@ -26,18 +26,18 @@ abstract class SchemaCheck {
     /**
      * Source location for one assertion represented by a compiled check.
      *
-     * <p>{@code schemaUri} identifies the resource without its fragment.
+     * <p>{@code resourceUri} identifies the resource without its fragment.
      * {@code keywordPointer} is the decoded JSON Pointer within that resource,
      * including the keyword token (or the schema location for boolean false).
      */
     static final class Diagnostic {
         final String keyword;
-        final String schemaUri;
+        final String resourceUri;
         final String keywordPointer;
 
-        Diagnostic(String keyword, String schemaUri, String keywordPointer) {
+        Diagnostic(String keyword, String resourceUri, String keywordPointer) {
             this.keyword = keyword;
-            this.schemaUri = schemaUri;
+            this.resourceUri = resourceUri;
             this.keywordPointer = keywordPointer;
         }
     }
