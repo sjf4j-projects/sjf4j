@@ -25,6 +25,20 @@ final class SchemaReferenceResolver {
             Object raw = Sjf4j.global().fromJson(snapshot.documents[i]);
             index(raw, retrieval, "", retrieval.toString(), "", true, true);
         }
+        // A retrieval URI and the root's canonical $id name the same resource.
+        // Its named fragments and JSON Pointer fragments must be accessible
+        // through either URI. Embedded $id resources do not inherit this alias.
+        Map<String, Entry> indexed = new HashMap<String, Entry>(fragments);
+        for (String retrieval : snapshot.uris) {
+            Entry root = locations.get(key(retrieval, ""));
+            if (root == null || retrieval.equals(root.resource)) continue;
+            String canonicalPrefix = root.resource + "#";
+            for (Map.Entry<String, Entry> fragment : indexed.entrySet()) {
+                if (!fragment.getKey().startsWith(canonicalPrefix)) continue;
+                String alias = retrieval + fragment.getKey().substring(root.resource.length());
+                fragments.putIfAbsent(alias, fragment.getValue());
+            }
+        }
     }
 
     static String canonicalLocation(SchemaResourceResolver.Snapshot snapshot, String location) {
