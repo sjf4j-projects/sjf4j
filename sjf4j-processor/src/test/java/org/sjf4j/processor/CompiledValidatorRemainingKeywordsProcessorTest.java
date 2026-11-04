@@ -61,7 +61,9 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
                 "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"unevaluatedProperties\":false}",
                 "{\"patternProperties\":{\"^x\":true},\"unevaluatedProperties\":{\"type\":\"integer\"}}",
                 "{\"prefixItems\":[{\"type\":\"integer\"}],\"unevaluatedItems\":false}",
-                "{\"prefixItems\":[true],\"unevaluatedItems\":{\"type\":\"string\"}}"
+                "{\"prefixItems\":[true],\"unevaluatedItems\":{\"type\":\"string\"}}",
+                "{\"items\":{\"type\":\"integer\"},\"unevaluatedItems\":false}",
+                "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"type\":\"integer\"},\"unevaluatedItems\":false}"
         }) {
             NavigatorTestCompiler.Result result = compile(schema, "Object");
             assertTrue(result.success, schema + "\\n" + result.diagnostics());
