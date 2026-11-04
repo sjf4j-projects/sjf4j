@@ -102,6 +102,7 @@ final class SchemaReferenceResolver {
         URI resource = parentResource;
         String pointer = resourcePointer;
         boolean modern = inheritedModern;
+        String legacyIdAnchor = null;
         if (kind == JsonType.OBJECT) {
             Object dialect = Nodes.getInObject(node, "$schema");
             if (dialect instanceof String) {
@@ -113,6 +114,11 @@ final class SchemaReferenceResolver {
             }
             Object id = Nodes.getInObject(node, "$id");
             if (id instanceof String) {
+                try {
+                    legacyIdAnchor = URI.create((String) id).getFragment();
+                } catch (IllegalArgumentException malformedId) {
+                    // SchemaRegistry reports malformed ids during plan validation.
+                }
                 String stripped = SchemaUtil.stripFragment((String) id);
                 if (!stripped.isEmpty()) {
                     URI resolved = SchemaUtil.resolveUri(parentResource, URI.create(stripped));
@@ -135,6 +141,10 @@ final class SchemaReferenceResolver {
 
         if (kind != JsonType.OBJECT) return;
         Object anchor = Nodes.getInObject(node, "$anchor");
+        if (!(anchor instanceof String) && legacyIdAnchor != null && !legacyIdAnchor.isEmpty()) {
+            // Draft-07 location-independent identifiers also use $id fragments.
+            fragments.putIfAbsent(key(resource.toString(), legacyIdAnchor), entry);
+        }
         if (anchor instanceof String && !((String) anchor).isEmpty()) {
             fragments.putIfAbsent(key(resource.toString(), (String) anchor), entry);
         }
