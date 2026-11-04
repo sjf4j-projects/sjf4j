@@ -703,6 +703,28 @@ final class SchemaCompiler {
                 : Nodes.toJsonObject(rawSchema);
     }
 
+    /** Only a static anchor or JSON Pointer is immune to dynamic scope. */
+    private static boolean isStaticDynamicRef(SchemaResourceResolver.Snapshot snapshot,
+                                              JsonObject schema, String sourceUri) {
+        String literal = schema.getString("$dynamicRef");
+        if (literal == null) return false;
+        try {
+            java.net.URI resolved = org.sjf4j.schema.SchemaUtil.resolveUri(
+                    java.net.URI.create(sourceUri), java.net.URI.create(literal));
+            RefTarget target = resolveRef(snapshot, JsonObject.of("$ref", literal), sourceUri);
+            if (target == null) return false;
+            String fragment = resolved.getFragment();
+            if (fragment == null || fragment.isEmpty() || fragment.startsWith("/")) return true;
+            // A plain-name fragment must be proven to be a regular $anchor.
+            if (JsonType.of(target.value) != JsonType.OBJECT) return false;
+            JsonObject targetSchema = schemaObject(target.value);
+            return fragment.equals(targetSchema.getString("$anchor"))
+                    && !fragment.equals(targetSchema.getString("$dynamicAnchor"));
+        } catch (RuntimeException invalidReference) {
+            return false;
+        }
+    }
+
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
                                 JsonObject schema, String sourceUri) {
         String literal = schema.getString("$ref");
