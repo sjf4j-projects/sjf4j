@@ -222,7 +222,7 @@ class CompiledValidatorFoundationTest {
         String mixed = java.nio.file.Files.readString(root.resolve(
                 "CompiledValidatorFoundationTest$MixedValidator_Impl.java"));
         assertTrue(mixed.contains("value.getName()"), "direct getter must be emitted");
-        assertTrue(mixed.contains("CompiledUtil.hasDuplicateItems("),
+        assertTrue(mixed.contains("Nodes.hasDuplicateInArray("),
                 "uniqueItems must use shared JSON equality directly");
         assertFalse(mixed.contains("SchemaFallbacks.SchemaPlan.SUBSCHEMA"),
                 "direct uniqueItems must not create a cached SchemaPlan");
