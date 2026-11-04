@@ -66,17 +66,22 @@ final class SchemaCompiler {
             String referenceKey = target.uri + "\\u0000" + (value.type == null ? "Object" : value.type.toString())
                     + "\\u0000" + value.shape;
             SchemaCheck.ReferenceCheck reference = boundReferences.get(referenceKey);
+            SchemaCheck referenced;
             if (reference == null) {
                 reference = new SchemaCheck.ReferenceCheck(target.uri, diagnostic(schemaUri, "$ref"));
                 boundReferences.put(referenceKey, reference);
                 reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
                 reference.binding = false;
-                if (reference.target == null) {
-                    boundReferences.remove(referenceKey);
-                    return null;
-                }
+                // The cache is an active reference chain, not global memoization.
+                // Keeping completed nodes would lose the referring keyword's
+                // diagnostic location and force needless helper calls.
+                boundReferences.remove(referenceKey);
+                if (reference.target == null) return null;
+                referenced = reference.recursive ? reference : reference.target;
+            } else {
+                if (reference.binding) reference.recursive = true;
+                referenced = reference;
             }
-            SchemaCheck referenced = reference;
             if (referenced.hasFallback()) return null;
             // Draft 2020-12 / 2019-09: adjacent assertions are independent of
             // $ref. Draft-07 ignores adjacent keywords instead.
