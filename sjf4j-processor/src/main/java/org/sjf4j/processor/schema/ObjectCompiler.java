@@ -45,8 +45,11 @@ final class ObjectCompiler {
         // In an isolated schema, successful properties/patternProperties mark
         // exactly the same keys that additionalProperties excludes. For a
         // failing child the entire validation fails already.
-        String additionalKeyword = root.containsKey("unevaluatedProperties")
-                ? "unevaluatedProperties" : "additionalProperties";
+        // Co-located additionalProperties already evaluates the entire
+        // remaining property set. The adjacent unevaluatedProperties does not
+        // affect the boolean result, including boolean false/true schemas.
+        String additionalKeyword = root.containsKey("additionalProperties")
+                ? "additionalProperties" : "unevaluatedProperties";
         boolean hasAdditional = root.containsKey(additionalKeyword);
         // The direct POJO path only understands the public structural projection.
         // Non-public annotated members may be visible to runtime reflection and
