@@ -132,6 +132,18 @@ final class SchemaCompiler {
                 return null;
             }
         }
+        if (schema.containsKey("$dynamicRef")) {
+            if (!isStaticDynamicRef(snapshot, schema, schemaUri)) {
+                unsupported("$dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+                        + " requires runtime dynamic-scope resolution");
+                return null;
+            }
+            JsonObject staticRef = new JsonObject();
+            for (String key : schema.keySet()) {
+                staticRef.put("$dynamicRef".equals(key) ? "$ref" : key, schema.getNode(key));
+            }
+            return compileSchema(snapshot, staticRef, value, schemaUri, depth);
+        }
         if (schema.containsKey("$ref")) {
             JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
             RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
