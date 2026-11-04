@@ -40,6 +40,13 @@ final class SchemaResourceResolver {
         final String[] documents;
         final String selectedUri;
 
+        private SchemaReferenceResolver referenceIndex;
+
+        synchronized SchemaReferenceResolver referenceIndex() {
+            if (referenceIndex == null) referenceIndex = new SchemaReferenceResolver(this);
+            return referenceIndex;
+        }
+
         Snapshot(Map<URI, String> resources, URI selectedUri) {
             this.selectedUri = selectedUri.toString();
             uris = new String[resources.size()];
