@@ -47,7 +47,7 @@ class CompiledValidatorGenericOneOfProcessorTest {
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("requires evaluated-location tracking"),
+        assertTrue(result.diagnostics().contains("requires runtime fallback"),
                 result.diagnostics());
     }
 }
