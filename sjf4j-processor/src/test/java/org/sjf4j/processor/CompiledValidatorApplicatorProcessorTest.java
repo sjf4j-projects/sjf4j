@@ -66,7 +66,7 @@ class CompiledValidatorApplicatorProcessorTest {
         }) {
             NavigatorTestCompiler.Result result = compile(schema, false);
             assertFalse(result.success, schema + "\n" + result.diagnostics());
-            assertTrue(result.diagnostics().contains("cannot fully compile"),
+            assertTrue(result.diagnostics().contains("requires evaluated-location tracking"),
                     schema + "\n" + result.diagnostics());
         }
     }
