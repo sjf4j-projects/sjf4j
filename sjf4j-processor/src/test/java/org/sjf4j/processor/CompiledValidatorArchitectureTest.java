@@ -71,7 +71,7 @@ class CompiledValidatorArchitectureTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".codePointCount("), generated);
-        assertTrue(generated.contains("CompiledUtil.validationFailure("), generated);
+        assertTrue(generated.contains("ValidationException.failure("), generated);
         assertFalse(generated.contains(".ROOT.validate("), generated);
         assertFalse(generated.contains("private static final class SchemaPlan"), generated);
         assertFalse(generated.contains(".ROOT.requireValid("), generated);
