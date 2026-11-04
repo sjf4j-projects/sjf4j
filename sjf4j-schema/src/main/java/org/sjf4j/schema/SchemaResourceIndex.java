@@ -14,7 +14,7 @@ import java.util.Map;
  * scopes; $anchor and JSON Pointer fragments address entries in those scopes.
  * Physical retrieval URIs are aliases for roots, not alternate resource bases.
  */
-public public final class SchemaResourceIndex {
+public final class SchemaResourceIndex {
     private final Map<String, Entry> locations = new HashMap<String, Entry>();
     private final boolean draft2020Only;
     private final Map<String, Entry> fragments = new HashMap<String, Entry>();
