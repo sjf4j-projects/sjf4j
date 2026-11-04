@@ -20,6 +20,7 @@ import java.util.Collections;
 public final class SchemaResourceIndex {
     private final Map<String, Entry> locations = new HashMap<String, Entry>();
     private final boolean draft2020Only;
+    private boolean customDialect;
     private final Set<URI> referencedDocuments = new LinkedHashSet<URI>();
     private final Map<String, Entry> fragments = new HashMap<String, Entry>();
 
@@ -76,6 +77,11 @@ public final class SchemaResourceIndex {
         return entry == null || entry.modern;
     }
 
+    /** True when a custom or unknown meta-schema prevents direct assertion compilation. */
+    public boolean hasCustomDialect() {
+        return customDialect;
+    }
+
     /** External resource URIs named by all static/dynamic references in these documents. */
     public Set<URI> referencedDocuments() {
         return Collections.unmodifiableSet(referencedDocuments);
@@ -126,11 +132,16 @@ public final class SchemaResourceIndex {
         String legacyIdAnchor = null;
         if (kind == JsonType.OBJECT) {
             Object dialect = Nodes.getInObject(node, "$schema");
-            if (draft2020Only && dialect != null &&
-                    (!(dialect instanceof String) ||
-                            SchemaDialect.detect((String) dialect) != SchemaDialect.DRAFT_2020_12)) {
-                throw new IllegalArgumentException("CompiledValidator supports only JSON Schema Draft 2020-12; "
-                        + "unsupported $schema: " + dialect + " at " + parentResource + "#" + resourcePointer);
+            if (draft2020Only && dialect != null) {
+                SchemaDialect recognized = dialect instanceof String
+                        ? SchemaDialect.detect((String) dialect) : null;
+                if (recognized != null && recognized != SchemaDialect.DRAFT_2020_12) {
+                    throw new IllegalArgumentException("CompiledValidator supports only JSON Schema Draft 2020-12; "
+                            + "unsupported $schema: " + dialect + " at " + parentResource + "#" + resourcePointer);
+                }
+                // Custom meta-schemas may alter vocabularies. Retain runtime
+                // fallback rather than assuming 2020-12 assertion semantics.
+                if (recognized == null) customDialect = true;
             }
             if (dialect instanceof String) {
                 org.sjf4j.schema.SchemaDialect detected =
