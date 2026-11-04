@@ -138,7 +138,7 @@ class CompiledValidatorContractProcessorTest {
     void embeddedIdAnchorDoesNotEscapeItsResource() throws Exception {
         String schema = "{\"$defs\":{\"nested\":{\"$id\":\"nested.json\","
                 + "\"$anchor\":\"inner\",\"minLength\":2}},"
-                + "\"properties\":{\"name\":{\"$ref\":\"#inner\"}}}";
+                + "\"properties\":{\"name\":{\"$ref\":\"nested.json#inner\"}}}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
