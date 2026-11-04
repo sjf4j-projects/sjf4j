@@ -37,6 +37,19 @@ class CompiledValidatorStaticUnevaluatedTest {
              "unevaluatedItems":false}
             """;
 
+    private static final String ADDITIONAL_FALSE = """
+            {"properties":{"name":{"type":"string"}},
+             "additionalProperties":false,"unevaluatedProperties":false}
+            """;
+    private static final String ADDITIONAL_TRUE = """
+            {"properties":{"name":true},
+             "additionalProperties":true,"unevaluatedProperties":false}
+            """;
+    private static final String ADDITIONAL_SCHEMA = """
+            {"patternProperties":{"^x":true},
+             "additionalProperties":{"type":"integer"},"unevaluatedProperties":false}
+            """;
+
     @CompiledValidator(fallback = false)
     public interface Direct {
         @ValidJsonSchema(PROPERTIES) boolean properties(Object node);
@@ -45,6 +58,9 @@ class CompiledValidatorStaticUnevaluatedTest {
         @ValidJsonSchema(SUFFIX_SCHEMA) boolean suffix(Object node);
         @ValidJsonSchema(ITEMS_AND_UNEVALUATED) boolean items(Object node);
         @ValidJsonSchema(PREFIX_ITEMS_AND_UNEVALUATED) boolean prefixItems(Object node);
+        @ValidJsonSchema(ADDITIONAL_FALSE) boolean additionalFalse(Object node);
+        @ValidJsonSchema(ADDITIONAL_TRUE) boolean additionalTrue(Object node);
+        @ValidJsonSchema(ADDITIONAL_SCHEMA) boolean additionalSchema(Object node);
     }
 
     @Test
@@ -94,4 +110,27 @@ class CompiledValidatorStaticUnevaluatedTest {
             assertEquals(prefixItems.isValid(value), direct.prefixItems(value), String.valueOf(value));
         }
     }
+    @Test
+    void adjacentAdditionalPropertiesMakesUnevaluatedRedundant() {
+        Direct direct = CompiledInstances.create(Direct.class);
+        SchemaPlan falsePlan = JsonSchema.fromJson(ADDITIONAL_FALSE).createPlan();
+        SchemaPlan truePlan = JsonSchema.fromJson(ADDITIONAL_TRUE).createPlan();
+        SchemaPlan schemaPlan = JsonSchema.fromJson(ADDITIONAL_SCHEMA).createPlan();
+        for (Object value : Arrays.asList(null, "string", List.of(1),
+                Map.of(), Map.of("name", "ok"), Map.of("name", 42),
+                Map.of("xKey", "anything"), Map.of("other", 12),
+                Map.of("name", "ok", "other", 12), Map.of("other", "bad"),
+                Map.of("xKey", true, "other", 99))) {
+            assertEquals(falsePlan.isValid(value), direct.additionalFalse(value), String.valueOf(value));
+            assertEquals(truePlan.isValid(value), direct.additionalTrue(value), String.valueOf(value));
+            assertEquals(schemaPlan.isValid(value), direct.additionalSchema(value), String.valueOf(value));
+        }
+        Map<String, Object> withNull = new LinkedHashMap<>();
+        withNull.put("name", null);
+        withNull.put("other", null);
+        assertEquals(falsePlan.isValid(withNull), direct.additionalFalse(withNull));
+        assertEquals(truePlan.isValid(withNull), direct.additionalTrue(withNull));
+        assertEquals(schemaPlan.isValid(withNull), direct.additionalSchema(withNull));
+    }
+
 }
