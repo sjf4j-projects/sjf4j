@@ -27,6 +27,11 @@ final class SchemaReferenceResolver {
         }
     }
 
+    static String canonicalLocation(SchemaResourceResolver.Snapshot snapshot, String location) {
+        Entry entry = new SchemaReferenceResolver(snapshot).locations.get(location);
+        return entry == null ? location : entry.location;
+    }
+
     static SchemaCompiler.RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
                                                JsonObject schema, String sourceUri) {
         for (String keyword : schema.keySet()) {
