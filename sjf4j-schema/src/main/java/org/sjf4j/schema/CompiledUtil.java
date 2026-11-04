@@ -53,13 +53,13 @@ public final class CompiledUtil {
     }
 
     /** Creates a fail-fast error from compiled diagnostics; no SchemaPlan execution. */
-    public static ValidationException validationFailure(String keyword, String schemaUri,
+    public static ValidationException validationFailure(String keyword, String resourceUri,
                                                         String keywordPointer, PathSegment instancePath) {
         PathSegment schemaPath = keywordPointer == null
                 ? PathSegment.Root.INSTANCE : JsonPointer.parse(keywordPointer).tail();
         ValidationResult.Message message = new ValidationResult.Message(
                 keyword, "compiled assertion failed", null, instancePath, schemaPath,
-                schemaUri == null ? null : URI.create(schemaUri));
+                resourceUri == null ? null : URI.create(resourceUri));
         return new ValidationException(new ValidationResult(false, Collections.singletonList(message)));
     }
 
