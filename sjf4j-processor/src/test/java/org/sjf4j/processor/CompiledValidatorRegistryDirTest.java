@@ -98,6 +98,25 @@ class CompiledValidatorRegistryDirTest {
     }
 
     @Test
+    void rootRemoteRefSelectsPreloadedAnchorDirectly() throws Exception {
+        Path remote = Files.createDirectories(registryDir.resolve("draft2020-12"));
+        Files.write(remote.resolve("word.json"),
+                "{\"$defs\":{\"word\":{\"$anchor\":\"word\",\"minLength\":3}}}"
+                        .getBytes(StandardCharsets.UTF_8));
+        String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false, registryDir="
+                + JavaWriter.stringLiteral(registryDir.toUri().toString())
+                + ", registryBaseUri=\"http://localhost:1234/\") "
+                + "public interface Check { "
+                + "@ValidJsonSchema(ref=\"http://localhost:1234/draft2020-12/word.json#word\") "
+                + "boolean valid(Object value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                Map.of("fixture/Check.java", source), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
+    }
+
+    @Test
     void missingRegistryDirectoryReportsCompilationError() throws Exception {
         // Path.toUri() omits the trailing slash for a directory that does not exist.
         String missing = registryDir.resolve("missing").toUri().toString() + "/";
