@@ -124,9 +124,9 @@ final class SchemaCompiler {
                 String parent = interfering == null ? enclosingKeyword(schemaUri) : interfering;
                 if (parent == null && activeReferences > 0) parent = "$ref";
                 unsupported(parent == null
-                        ? keyword + " in a nested schema requires evaluated-location tracking at "
+                        ? keyword + " in a nested schema requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator at "
                                 + keywordUri(schemaUri, keyword)
-                        : parent + " + " + keyword + " requires evaluated-location tracking at "
+                        : parent + " + " + keyword + " requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator at "
                                 + keywordUri(schemaUri, keyword));
                 return null;
             }
@@ -517,7 +517,7 @@ final class SchemaCompiler {
             if (enclosing != null && ("unevaluatedProperties".equals(keyword)
                     || "unevaluatedItems".equals(keyword))) {
                 return enclosing + " + " + keyword
-                        + " requires evaluated-location tracking at " + keywordUri(uri, keyword);
+                        + " requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator at " + keywordUri(uri, keyword);
             }
             if ("$ref".equals(keyword)) {
                 return "$ref at " + keywordUri(uri, keyword)
