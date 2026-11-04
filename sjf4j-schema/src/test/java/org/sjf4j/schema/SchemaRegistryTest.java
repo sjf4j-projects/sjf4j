@@ -19,6 +19,43 @@ class SchemaRegistryTest {
     }
 
     @Test
+    void resolvedPlansExposeCanonicalSchemaNodesAndLocations() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI retrieval = URI.create("classpath:/schemas/entry.json");
+        registry.index(retrieval, JsonSchema.fromJson(
+                "{\"$id\":\"https://example.test/root.json\","
+                        + "\"$defs\":{\"word\":{\"$anchor\":\"word\",\"type\":\"string\"},"
+                        + "\"nested\":{\"$id\":\"nested.json\","
+                        + "\"$defs\":{\"number\":{\"$anchor\":\"number\",\"type\":\"number\"}}}}}"));
+        SchemaPlan word = registry.resolve(URI.create("https://example.test/root.json#word"));
+        assertNotNull(word);
+        assertTrue(word.schema() instanceof ObjectSchema);
+        ObjectSchema raw = (ObjectSchema) word.schema();
+        assertTrue(raw.dynamicMembers().containsKey("type"));
+        assertFalse(raw.dynamicMembers().containsKey("canonicalUri"));
+        assertFalse(raw.dynamicMembers().containsKey("retrievalUri"));
+        org.junit.jupiter.api.Assertions.assertSame(raw, word.schema());
+        assertTrue(word.schemaUri().toString().endsWith("#/$defs/word"));
+        assertTrue(registry.resolve(URI.create("classpath:/schemas/entry.json#/$defs/word"))
+                .schemaUri().equals(word.schemaUri()));
+        SchemaPlan number = registry.resolve(URI.create("https://example.test/nested.json#number"));
+        assertNotNull(number);
+        assertTrue(number.schemaUri().toString().endsWith("nested.json#/$defs/number"));
+        assertTrue(registry.resolve(URI.create("https://example.test/root.json#/$defs/nested/$defs/number"))
+                .schemaUri().equals(number.schemaUri()));
+    }
+
+    @Test
+    void booleanPlanRetainsJsonSchemaIdentity() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI uri = URI.create("https://example.test/boolean");
+        registry.index(uri, BooleanSchema.FALSE);
+        SchemaPlan plan = registry.resolve(uri);
+        org.junit.jupiter.api.Assertions.assertSame(BooleanSchema.FALSE, plan.schema());
+        org.junit.jupiter.api.Assertions.assertEquals(uri, plan.schemaUri());
+    }
+
+    @Test
     void index_allowsOrderIndependentDeferredCompilation() {
         ObjectSchema rootSchema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$id\":\"http://example.com/root\"," +

@@ -142,6 +142,7 @@ public class SchemaRegistry {
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
         }
+
     }
 
     /**
@@ -443,7 +444,7 @@ public class SchemaRegistry {
         if (plan == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_RESOLVE,
                     "cannot resolve schema fragment '#" + fragment + "'",
-                    PathSegment.Root.INSTANCE, rootPlan.schemaUri));
+                    PathSegment.Root.INSTANCE, rootPlan.resourceUri));
         }
 
         return plan;

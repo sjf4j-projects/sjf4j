@@ -45,7 +45,7 @@ class SchemaPlanTest {
         SchemaPlan falsePlan = registry.resolve(falseUri);
         assertFalse(falsePlan.isValid("anything"));
         assertFalse(falsePlan.validate("anything").isValid());
-        assertEquals(falseUri, falsePlan.schemaUri);
+        assertEquals(falseUri, falsePlan.schemaUri());
 
         SchemaPlan truePlan = registry.register(trueUri, BooleanSchema.TRUE);
         assertTrue(truePlan.isValid("anything"));

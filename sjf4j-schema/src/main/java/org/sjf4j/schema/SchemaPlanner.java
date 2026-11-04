@@ -42,21 +42,21 @@ public final class SchemaPlanner {
         Asserts.notNull(registry, "registry");
 
         URI retrievalUri = schema.getRetrievalUri();
-        URI idUri = retrievalUri != null
+        URI resourceUri = retrievalUri != null
                 ? SchemaUtil.resolveUri(retrievalUri, schema.getCanonicalUri())
                 : SchemaUtil.resolveUri(URI.create("sjf4j:/schema-" + schema.hashCode() + "/"), schema.getCanonicalUri());
-        SchemaPlan plan = registry.resolveBuilt(idUri);
+        SchemaPlan plan = registry.resolveBuilt(resourceUri);
         if (plan != null) return plan;
 
         PlanningContext context = new PlanningContext(registry);
         SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
         Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
-                idUri, PathSegment.Root.INSTANCE);
-        plan = _buildPlan(schema, idUri, PathSegment.Root.INSTANCE,
+                resourceUri, PathSegment.Root.INSTANCE);
+        plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
                 new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-        context.registry.putPlan(idUri, plan);
+        context.registry.putPlan(resourceUri, plan);
 
-        if (retrievalUri != null && !retrievalUri.equals(idUri)) {
+        if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
             context.registry.putPlan(retrievalUri, plan);
         }
         _bindDeferredRefs(context);
@@ -72,7 +72,7 @@ public final class SchemaPlanner {
      * pointer lookup maps. Named anchors and dynamic anchors share one fragment
      * namespace, so duplicate names in the same resource are rejected.
      */
-    private static SchemaPlan _buildPlan(ObjectSchema schema, URI idUri, PathSegment ps,
+    private static SchemaPlan _buildPlan(ObjectSchema schema, URI resourceUri, PathSegment ps,
                                          Map<String, SchemaPlan> byAnchorPlans,
                                          Map<String, SchemaPlan> byDynamicAnchorPlans,
                                          Map<String, SchemaPlan> byPathPlans,
@@ -82,9 +82,9 @@ public final class SchemaPlanner {
 
         // $defs / definitions
         if (_allowsKeyword(dialect, vocabulary, "$defs")) {
-            _buildPlanMapByKey("$defs", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+            _buildPlanMapByKey("$defs", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
         }
-        _buildPlanMapByKey("definitions", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+        _buildPlanMapByKey("definitions", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
 
         // $anchor
         String anchor = schema.getString("$anchor");
@@ -108,13 +108,13 @@ public final class SchemaPlanner {
         // $ref
         String ref = schema.getString("$ref");
         if (ref != null && _allowsKeyword(dialect, vocabulary, "$ref")) {
-            Evaluator.RefEvaluator evaluator = new Evaluator.RefEvaluator(new PathSegment.Name(ps, "$ref"), idUri, ref);
+            Evaluator.RefEvaluator evaluator = new Evaluator.RefEvaluator(new PathSegment.Name(ps, "$ref"), resourceUri, ref);
             evaluators.add(evaluator);
             context.refEvaluators.add(evaluator);
 
             if (dialect == SchemaDialect.DRAFT_07) {
                 // end up
-                SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor,
+                SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                         byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                         schema, dialect, vocabulary);
                 byPathPlans.put(ps.rootedPointerExpr(), plan);
@@ -130,13 +130,13 @@ public final class SchemaPlanner {
         }
         if (dynamicRef != null && _allowsKeyword(dialect, vocabulary, "$dynamicRef")) {
             Evaluator.DynamicRefEvaluator evaluator = new Evaluator.DynamicRefEvaluator(
-                    new PathSegment.Name(ps, "$dynamicRef"), idUri, dynamicRef);
+                    new PathSegment.Name(ps, "$dynamicRef"), resourceUri, dynamicRef);
             evaluators.add(evaluator);
             context.dynamicRefEvaluators.add(evaluator);
         } else if (dynamicRef != null && dialect == SchemaDialect.DRAFT_2019_09
                 && _allowsKeyword(dialect, vocabulary, "$recursiveRef")) {
             Evaluator.DynamicRefEvaluator evaluator = new Evaluator.DynamicRefEvaluator(
-                    new PathSegment.Name(ps, "$recursiveRef"), idUri, dynamicRef);
+                    new PathSegment.Name(ps, "$recursiveRef"), resourceUri, dynamicRef);
             evaluators.add(evaluator);
             context.dynamicRefEvaluators.add(evaluator);
         }
@@ -144,7 +144,7 @@ public final class SchemaPlanner {
         // format
         String format = schema.getString("format");
         if (format != null && _allowsFormatKeyword(vocabulary)) {
-            evaluators.add(new Evaluator.FormatEvaluator(new PathSegment.Name(ps, "format"), idUri,
+            evaluators.add(new Evaluator.FormatEvaluator(new PathSegment.Name(ps, "format"), resourceUri,
                     format, _isFormatAssertionEnabled(vocabulary)));
         }
 
@@ -160,26 +160,26 @@ public final class SchemaPlanner {
                 evaluators.add(new Evaluator.ContentEvaluator(
                         new PathSegment.Name(ps, "contentEncoding"),
                         new PathSegment.Name(ps, "contentMediaType"),
-                        idUri, contentEncoding, contentMediaType));
+                        resourceUri, contentEncoding, contentMediaType));
             }
         }
 
         // type
         Object type = schema.getNode("type");
         if (type != null && _allowsKeyword(dialect, vocabulary, "type")) {
-            evaluators.add(new Evaluator.TypeEvaluator(new PathSegment.Name(ps, "type"), idUri, type));
+            evaluators.add(new Evaluator.TypeEvaluator(new PathSegment.Name(ps, "type"), resourceUri, type));
         }
 
         // const
         if (schema.containsKey("const") && _allowsKeyword(dialect, vocabulary, "const")) {
-            evaluators.add(new Evaluator.ConstEvaluator(new PathSegment.Name(ps, "const"), idUri,
+            evaluators.add(new Evaluator.ConstEvaluator(new PathSegment.Name(ps, "const"), resourceUri,
                     schema.getNode("const")));
         }
 
         // enum
         Object[] enumValues = schema.getArray("enum");
         if (enumValues != null && _allowsKeyword(dialect, vocabulary, "enum")) {
-            evaluators.add(new Evaluator.EnumEvaluator(new PathSegment.Name(ps, "enum"), idUri, enumValues));
+            evaluators.add(new Evaluator.EnumEvaluator(new PathSegment.Name(ps, "enum"), resourceUri, enumValues));
         }
 
         // minimum maximum exclusiveMinimum exclusiveMaximum
@@ -194,13 +194,13 @@ public final class SchemaPlanner {
                     new PathSegment.Name(ps, "maximum"),
                     new PathSegment.Name(ps, "exclusiveMinimum"),
                     new PathSegment.Name(ps, "exclusiveMaximum"),
-                    idUri, minimum, maximum, exclusiveMinimum, exclusiveMaximum));
+                    resourceUri, minimum, maximum, exclusiveMinimum, exclusiveMaximum));
         }
 
         // multipleOf
         Number multipleOf = schema.getNumber("multipleOf");
         if (multipleOf != null && _allowsKeyword(dialect, vocabulary, "multipleOf")) {
-            evaluators.add(new Evaluator.MultipleOfEvaluator(new PathSegment.Name(ps, "multipleOf"), idUri,
+            evaluators.add(new Evaluator.MultipleOfEvaluator(new PathSegment.Name(ps, "multipleOf"), resourceUri,
                     multipleOf));
         }
 
@@ -209,13 +209,13 @@ public final class SchemaPlanner {
         Integer maxLength = schema.getInt("maxLength");
         if (_allowsKeyword(dialect, vocabulary, "minLength") && (minLength != null || maxLength != null)) {
             evaluators.add(new Evaluator.StringEvaluator(new PathSegment.Name(ps, "minLength"),
-                    new PathSegment.Name(ps, "maxLength"), idUri, minLength, maxLength));
+                    new PathSegment.Name(ps, "maxLength"), resourceUri, minLength, maxLength));
         }
 
         // pattern
         String pattern = schema.getString("pattern");
         if (pattern != null && _allowsKeyword(dialect, vocabulary, "pattern")) {
-            evaluators.add(new Evaluator.PatternEvaluator(new PathSegment.Name(ps, "pattern"), idUri, pattern));
+            evaluators.add(new Evaluator.PatternEvaluator(new PathSegment.Name(ps, "pattern"), resourceUri, pattern));
         }
 
         // minProperties / maxProperties
@@ -225,7 +225,7 @@ public final class SchemaPlanner {
             evaluators.add(new Evaluator.ObjectEvaluator(
                     new PathSegment.Name(ps, "minProperties"),
                     new PathSegment.Name(ps, "maxProperties"),
-                    idUri, minProperties, maxProperties));
+                    resourceUri, minProperties, maxProperties));
         }
 
         // required / dependentRequired
@@ -239,27 +239,27 @@ public final class SchemaPlanner {
             evaluators.add(new Evaluator.RequiredEvaluator(
                     new PathSegment.Name(ps, "required"),
                     new PathSegment.Name(ps, "dependentRequired"),
-                    idUri, required, dependentRequired));
+                    resourceUri, required, dependentRequired));
         }
 
         // properties / patternProperties / additionalProperties
         Map<String, SchemaPlan> properties = _allowsKeyword(dialect, vocabulary, "properties")
-                ? _buildPlanMapByKey("properties", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanMapByKey("properties", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         Map<String, SchemaPlan> patternProperties = _allowsKeyword(dialect, vocabulary, "patternProperties")
-                ? _buildPlanMapByKey("patternProperties", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanMapByKey("patternProperties", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         SchemaPlan additionalProperties = _allowsKeyword(dialect, vocabulary, "additionalProperties")
-                ? _buildPlanByKey("additionalProperties", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("additionalProperties", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (properties != null || patternProperties != null || additionalProperties != null) {
-            evaluators.add(new Evaluator.PropertiesEvaluator(new PathSegment.Name(ps, "patternProperties"), idUri,
+            evaluators.add(new Evaluator.PropertiesEvaluator(new PathSegment.Name(ps, "patternProperties"), resourceUri,
                     properties, patternProperties, additionalProperties));
         }
 
         // dependentSchemas
         Map<String, SchemaPlan> dependentPlans = _allowsKeyword(dialect, vocabulary, "dependentSchemas")
-                ? _buildPlanMapByKey("dependentSchemas", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanMapByKey("dependentSchemas", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (dependentPlans != null) {
             evaluators.add(new Evaluator.DependentSchemasEvaluator(dependentPlans));
@@ -280,22 +280,22 @@ public final class SchemaPlanner {
                 } else if (valueType.isObject() || valueType.isBoolean()) {
                     if (dependenciesPlans == null) dependenciesPlans = new HashMap<>();
                     PathSegment ccps = new PathSegment.Name(cps, entry.getKey());
-                    SchemaPlan childPlan = _buildPlanFromNode(value, idUri, ccps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+                    SchemaPlan childPlan = _buildPlanFromNode(value, resourceUri, ccps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
                     dependenciesPlans.put(entry.getKey(), childPlan);
                 }
             }
         }
         if (dependenciesRequired != null || dependenciesPlans != null) {
-            evaluators.add(new Evaluator.DependenciesEvaluator(new PathSegment.Name(ps, "dependencies"), idUri,
+            evaluators.add(new Evaluator.DependenciesEvaluator(new PathSegment.Name(ps, "dependencies"), resourceUri,
                     dependenciesRequired, dependenciesPlans));
         }
 
         // propertyNames
         SchemaPlan propertyNamesPlan = _allowsKeyword(dialect, vocabulary, "propertyNames")
-                ? _buildPlanByKey("propertyNames", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("propertyNames", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (propertyNamesPlan != null) {
-            evaluators.add(new Evaluator.PropertyNamesEvaluator(new PathSegment.Name(ps, "propertyNames"), idUri,
+            evaluators.add(new Evaluator.PropertyNamesEvaluator(new PathSegment.Name(ps, "propertyNames"), resourceUri,
                     propertyNamesPlan));
         }
 
@@ -309,7 +309,7 @@ public final class SchemaPlanner {
                     new PathSegment.Name(ps, "minItems"),
                     new PathSegment.Name(ps, "maxItems"),
                     new PathSegment.Name(ps, "uniqueItems"),
-                    idUri, minItems, maxItems, uniqueItems));
+                    resourceUri, minItems, maxItems, uniqueItems));
         }
 
         // items / prefixItems
@@ -318,21 +318,21 @@ public final class SchemaPlanner {
         if (_allowsKeyword(dialect, vocabulary, "items") && schema.containsKey("items")) {
             if (!((dialect == SchemaDialect.DRAFT_2019_09 || dialect == SchemaDialect.DRAFT_07)
                     && itemsNode != null && JsonType.of(itemsNode).isArray())) {
-                itemsPlan = _buildPlanFromNode(itemsNode, idUri, new PathSegment.Name(ps, "items"),
+                itemsPlan = _buildPlanFromNode(itemsNode, resourceUri, new PathSegment.Name(ps, "items"),
                         byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
             }
         }
         SchemaPlan[] prefixItemsPlans = _allowsKeyword(dialect, vocabulary, "prefixItems")
-                ? _buildPlanArrayByKey("prefixItems", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanArrayByKey("prefixItems", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if ((dialect == SchemaDialect.DRAFT_2019_09 || dialect == SchemaDialect.DRAFT_07)
                 && prefixItemsPlans == null && _allowsKeyword(dialect, vocabulary, "items")) {
             if (itemsNode != null && JsonType.of(itemsNode).isArray()) {
-                prefixItemsPlans = _buildPlanArrayByKey("items", schema, idUri, ps,
+                prefixItemsPlans = _buildPlanArrayByKey("items", schema, resourceUri, ps,
                         byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
             }
             if (prefixItemsPlans != null && itemsPlan == null && _allowsKeyword(dialect, vocabulary, "items")) {
-                itemsPlan = _buildPlanByKey("additionalItems", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+                itemsPlan = _buildPlanByKey("additionalItems", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
             }
         }
         if (itemsPlan != null || prefixItemsPlans != null) {
@@ -341,7 +341,7 @@ public final class SchemaPlanner {
 
         // contains / minContains / maxContains
         SchemaPlan containsPlan = _allowsKeyword(dialect, vocabulary, "contains")
-                ? _buildPlanByKey("contains", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("contains", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         Integer minContains = schema.getInt("minContains");
         Integer maxContains = schema.getInt("maxContains");
@@ -350,18 +350,18 @@ public final class SchemaPlanner {
             evaluators.add(new Evaluator.ContainsEvaluator(
                     new PathSegment.Name(ps, "minContains"),
                     new PathSegment.Name(ps, "maxContains"),
-                    idUri, containsPlan, minContains, maxContains));
+                    resourceUri, containsPlan, minContains, maxContains));
         }
 
         // if / then / else
         SchemaPlan ifPlan = _allowsKeyword(dialect, vocabulary, "if")
-                ? _buildPlanByKey("if", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("if", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         SchemaPlan thenPlan = _allowsKeyword(dialect, vocabulary, "then")
-                ? _buildPlanByKey("then", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("then", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         SchemaPlan elsePlan = _allowsKeyword(dialect, vocabulary, "else")
-                ? _buildPlanByKey("else", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("else", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (ifPlan != null || thenPlan != null || elsePlan != null) {
             evaluators.add(new Evaluator.IfThenElseEvaluator(ifPlan, thenPlan, elsePlan));
@@ -369,7 +369,7 @@ public final class SchemaPlanner {
 
         // allOf
         SchemaPlan[] allOfPlans = _allowsKeyword(dialect, vocabulary, "allOf")
-                ? _buildPlanArrayByKey("allOf", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanArrayByKey("allOf", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (allOfPlans != null) {
             evaluators.add(new Evaluator.AllOfEvaluator(allOfPlans));
@@ -377,45 +377,45 @@ public final class SchemaPlanner {
 
         // anyOf
         SchemaPlan[] anyOfPlans = _allowsKeyword(dialect, vocabulary, "anyOf")
-                ? _buildPlanArrayByKey("anyOf", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanArrayByKey("anyOf", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (anyOfPlans != null) {
-            evaluators.add(new Evaluator.AnyOfEvaluator(new PathSegment.Name(ps, "anyOf"), idUri, anyOfPlans));
+            evaluators.add(new Evaluator.AnyOfEvaluator(new PathSegment.Name(ps, "anyOf"), resourceUri, anyOfPlans));
         }
 
         // oneOf
         SchemaPlan[] oneOfPlans = _allowsKeyword(dialect, vocabulary, "oneOf")
-                ? _buildPlanArrayByKey("oneOf", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanArrayByKey("oneOf", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (oneOfPlans != null) {
-            evaluators.add(new Evaluator.OneOfEvaluator(new PathSegment.Name(ps, "oneOf"), idUri, oneOfPlans));
+            evaluators.add(new Evaluator.OneOfEvaluator(new PathSegment.Name(ps, "oneOf"), resourceUri, oneOfPlans));
         }
 
         // not
         SchemaPlan notPlan = _allowsKeyword(dialect, vocabulary, "not")
-                ? _buildPlanByKey("not", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary) : null;
+                ? _buildPlanByKey("not", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary) : null;
         if (notPlan != null) {
-            evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), idUri, notPlan));
+            evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), resourceUri, notPlan));
         }
 
         // unevaluatedProperties / unevaluatedItems
         SchemaPlan unevaluatedPropertiesPlan = _allowsKeyword(dialect, vocabulary, "unevaluatedProperties")
-                ? _buildPlanByKey("unevaluatedProperties", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("unevaluatedProperties", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         SchemaPlan unevaluatedItemsPlan = _allowsKeyword(dialect, vocabulary, "unevaluatedItems")
-                ? _buildPlanByKey("unevaluatedItems", schema, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                ? _buildPlanByKey("unevaluatedItems", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
                 : null;
         if (unevaluatedPropertiesPlan != null || unevaluatedItemsPlan != null) {
             evaluators.add(new Evaluator.UnevaluatedEvaluator(unevaluatedPropertiesPlan, unevaluatedItemsPlan));
         }
 
         // end up
-        SchemaPlan plan = SchemaPlan.of(idUri, ps, evaluators, dynamicAnchor,
+        SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
                 schema, dialect, vocabulary);
-        if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", idUri, ps);
+        if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps);
         if (dynamicAnchor != null) {
-            _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", idUri, ps);
+            _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps);
             byDynamicAnchorPlans.put(dynamicAnchor, plan);
         }
         byPathPlans.put(ps.rootedPointerExpr(), plan);
@@ -426,13 +426,13 @@ public final class SchemaPlanner {
         Asserts.notNull(resourcePlan, "resourcePlan");
         Asserts.notNull(path, "path");
         Asserts.notNull(registry, "registry");
-        if (!path.startsWith("/") || resourcePlan.schema == null) return null;
+        if (!path.startsWith("/") || !(resourcePlan.schema instanceof ObjectSchema)) return null;
 
         JsonPath jsonPath = JsonPath.parse(path);
         Object node = jsonPath.getNode(resourcePlan.schema);
         if (node == null) return null;
         PlanningContext context = new PlanningContext(registry);
-        SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.schemaUri, jsonPath.tail(),
+        SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.resourceUri, jsonPath.tail(),
                 resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
                 context, resourcePlan.dialect, resourcePlan.vocabulary);
         _bindDeferredRefs(context);
@@ -440,12 +440,12 @@ public final class SchemaPlanner {
     }
 
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
-                                          SchemaPlan plan, String keyword, URI idUri, PathSegment ps) {
+                                          SchemaPlan plan, String keyword, URI resourceUri, PathSegment ps) {
         SchemaPlan old = byAnchorPlans.putIfAbsent(fragment, plan);
         if (old != null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate named fragment '" + fragment + "' from " + keyword,
-                    ps, idUri));
+                    ps, resourceUri));
         }
     }
 
@@ -456,7 +456,7 @@ public final class SchemaPlanner {
      * declares its own {@code $id}, in which case that child starts a new
      * resource with its own fragment space.
      */
-    private static Map<String, SchemaPlan> _buildPlanMapByKey(String key, ObjectSchema schema, URI baseUri, PathSegment ps,
+    private static Map<String, SchemaPlan> _buildPlanMapByKey(String key, ObjectSchema schema, URI resourceUri, PathSegment ps,
                                                               Map<String, SchemaPlan> byAnchorPlans,
                                                               Map<String, SchemaPlan> byDynamicAnchorPlans,
                                                               Map<String, SchemaPlan> byPathPlans,
@@ -469,13 +469,13 @@ public final class SchemaPlanner {
         if (!JsonType.of(objectNode).isObject()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                     "invalid schema node: expected JSON object, but found '" + objectNode.getClass().getName() + "'",
-                    cps, baseUri));
+                    cps, resourceUri));
         }
 
         Map<String, SchemaPlan> planMap = new HashMap<>();
         Nodes.forEachObject(objectNode, (k, subNode) -> {
             PathSegment ccps = new PathSegment.Name(cps, k);
-            SchemaPlan plan = _buildPlanFromNode(subNode, baseUri, ccps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+            SchemaPlan plan = _buildPlanFromNode(subNode, resourceUri, ccps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
             planMap.put(k, plan);
         });
         return planMap;
@@ -488,7 +488,7 @@ public final class SchemaPlanner {
      * declares its own {@code $id}, in which case that item starts a new
      * resource with its own fragment space.
      */
-    private static SchemaPlan[] _buildPlanArrayByKey(String key, ObjectSchema schema, URI baseUri, PathSegment ps,
+    private static SchemaPlan[] _buildPlanArrayByKey(String key, ObjectSchema schema, URI resourceUri, PathSegment ps,
                                                      Map<String, SchemaPlan> byAnchorPlans,
                                                      Map<String, SchemaPlan> byDynamicAnchorPlans,
                                                      Map<String, SchemaPlan> byPathPlans,
@@ -501,14 +501,14 @@ public final class SchemaPlanner {
         if (!JsonType.of(arrayNode).isArray()) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
                     "invalid schema node: expected JSON array, but found '" + arrayNode.getClass().getName() + "'",
-                    cps, baseUri));
+                    cps, resourceUri));
         }
         int size = Nodes.sizeInArray(arrayNode);
         SchemaPlan[] planArr = new SchemaPlan[size];
         for (int i = 0; i < size; i++) {
             Object subNode = Nodes.getInArray(arrayNode, i);
             PathSegment ccps = new PathSegment.Index(cps, i);
-            planArr[i] = _buildPlanFromNode(subNode, baseUri, ccps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+            planArr[i] = _buildPlanFromNode(subNode, resourceUri, ccps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
         }
         return planArr;
     }
@@ -516,7 +516,7 @@ public final class SchemaPlanner {
     /**
      * Compiles one subschema from the given keyword and writes back if needed.
      */
-    private static SchemaPlan _buildPlanByKey(String key, ObjectSchema schema, URI baseUri, PathSegment ps,
+    private static SchemaPlan _buildPlanByKey(String key, ObjectSchema schema, URI resourceUri, PathSegment ps,
                                               Map<String, SchemaPlan> byAnchorPlans,
                                               Map<String, SchemaPlan> byDynamicAnchorPlans,
                                               Map<String, SchemaPlan> byPathPlans,
@@ -525,7 +525,7 @@ public final class SchemaPlanner {
         if (!schema.containsKey(key)) return null;
         Object subNode = schema.getNode(key);
         PathSegment cps = new PathSegment.Name(ps, key);
-        return _buildPlanFromNode(subNode, baseUri, cps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+        return _buildPlanFromNode(subNode, resourceUri, cps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
     }
 
     /**
@@ -536,14 +536,14 @@ public final class SchemaPlanner {
      * starts a new schema resource and resets fragment lookup to that resource
      * root. Null/other types are invalid for schema positions.
      */
-    private static SchemaPlan _buildPlanFromNode(Object node, URI idUri, PathSegment ps,
+    private static SchemaPlan _buildPlanFromNode(Object node, URI resourceUri, PathSegment ps,
                                                     Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                                                     Map<String, SchemaPlan> byPathPlans,
                                                     PlanningContext context, SchemaDialect inheritedDialect,
                                                     Map<String, Boolean> inheritedVocabulary) {
         if (node == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
-                    "invalid schema node: schema is null", ps, idUri));
+                    "invalid schema node: schema is null", ps, resourceUri));
         }
 
         JsonSchema schema;
@@ -554,31 +554,31 @@ public final class SchemaPlanner {
                 schema = Nodes.to(node, JsonSchema.class);
             } catch (Exception e) {
                 throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_INVALID,
-                        "invalid schema node type '" + node.getClass().getName() + "'", ps, idUri), e);
+                        "invalid schema node type '" + node.getClass().getName() + "'", ps, resourceUri), e);
             }
         }
 
         SchemaPlan plan;
         String path = ps.rootedPointerExpr();
         if (schema instanceof BooleanSchema) {
-            plan = SchemaPlan.of(idUri, ps, (BooleanSchema) schema);
+            plan = SchemaPlan.of(resourceUri, ps, (BooleanSchema) schema);
         } else {
             ObjectSchema os = (ObjectSchema) schema;
             SchemaDialect dialect = _resolveDialect(os, inheritedDialect);
-            Map<String, Boolean> vocabulary = _resolveVocabulary(os, inheritedVocabulary, context.registry, idUri, ps);
+            Map<String, Boolean> vocabulary = _resolveVocabulary(os, inheritedVocabulary, context.registry, resourceUri, ps);
 
             String id = SchemaUtil.stripFragment(os.getId());
             String ref = os.getString("$ref");
             if ((dialect == SchemaDialect.DRAFT_07 && ref != null) || id == null || id.isEmpty()) {
-                plan = _buildPlan(os, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+                plan = _buildPlan(os, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
             } else {
-                URI childIdUri = idUri.resolve(id);
-                if (childIdUri.equals(idUri)) {
-                    plan = _buildPlan(os, idUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
+                URI childResourceUri = resourceUri.resolve(id);
+                if (childResourceUri.equals(resourceUri)) {
+                    plan = _buildPlan(os, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary);
                 } else {
-                    plan = _buildPlan(os, childIdUri, PathSegment.Root.INSTANCE,
+                    plan = _buildPlan(os, childResourceUri, PathSegment.Root.INSTANCE,
                             new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-                    context.registry.putPlan(childIdUri, plan);
+                    context.registry.putPlan(childResourceUri, plan);
 
                     for (Map.Entry<String, SchemaPlan> entry : plan.byPathPlans.entrySet()) {
                         byPathPlans.put(path + entry.getKey(), entry.getValue());

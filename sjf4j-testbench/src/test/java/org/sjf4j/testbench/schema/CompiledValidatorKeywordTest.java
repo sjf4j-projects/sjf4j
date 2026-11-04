@@ -41,6 +41,18 @@ class CompiledValidatorKeywordTest {
             {"type":"object","properties":{"text":{"$ref":"#/$defs/word"}},
              "$defs":{"word":{"type":"string","minLength":2,"maxLength":4}}}
             """;
+    private static final String ANCHOR_REF = """
+            {"$defs":{"word":{"$anchor":"word","type":"string","minLength":2}},
+             "properties":{"text":{"$ref":"#word"}}}
+            """;
+    private static final String ESCAPED_DEFS_REF = """
+            {"$defs":{"a/b":{"type":"string","minLength":3}},
+             "properties":{"text":{"$ref":"#/$defs/a~1b"}}}
+            """;
+    private static final String NESTED_DEFS_REF = """
+            {"$defs":{"group":{"$defs":{"word":{"type":"string","minLength":4}}}},
+             "properties":{"text":{"$ref":"#/$defs/group/$defs/word"}}}
+            """;
     private static final String ROOT_REF = """
             {"$ref":"#/$defs/model","$defs":{"model":{"type":"object",
              "properties":{"text":{"type":"string","minLength":2}}}}}
@@ -127,11 +139,51 @@ class CompiledValidatorKeywordTest {
         @ValidJsonSchema(INTEGER) boolean integer(Values value);
         @ValidJsonSchema(ARRAYS) boolean arrays(Values value);
         @ValidJsonSchema(REFS) boolean ref(Values value);
+        @ValidJsonSchema(ANCHOR_REF) boolean anchorRef(Values value);
+        @ValidJsonSchema(ESCAPED_DEFS_REF) boolean escapedDefsRef(Values value);
+        @ValidJsonSchema(NESTED_DEFS_REF) boolean nestedDefsRef(Values value);
         @ValidJsonSchema(ROOT_REF) boolean rootRef(Values value);
         @ValidJsonSchema(CLOSED) boolean closed(Values value);
         @ValidJsonSchema(DYNAMIC) boolean map(Map<String, Object> value);
         @ValidJsonSchema(DYNAMIC) boolean jsonObject(JsonObject value);
         @ValidJsonSchema(DYNAMIC) boolean jojo(Open value);
+    }
+
+    @CompiledValidator(fallback = false)
+    public interface QuotedReferences {
+        @ValidJsonSchema("""
+                {"$defs":{"foo\\\"bar":{"type":"number"}},
+                 "properties":{"foo\\\"bar":{"$ref":"#/$defs/foo%22bar"}}}
+                """)
+        boolean valid(Object input);
+    }
+
+    @Test
+    void percentEncodedQuotedReference() {
+        QuotedReferences validator = CompiledInstances.create(QuotedReferences.class);
+        assertTrue(validator.valid(Map.of("foo\"bar", 2)));
+        assertFalse(validator.valid(Map.of("foo\"bar", "invalid")));
+    }
+
+    @CompiledValidator(fallback = false)
+    public interface RecursiveReferences {
+        @ValidJsonSchema("""
+                {"$anchor":"node","type":"object",
+                 "properties":{"name":{"type":"string","minLength":2},
+                               "child":{"$ref":"#node"}}}
+                """)
+        boolean recursive(Object input);
+    }
+
+    @Test
+    void recursiveNamedAnchorDirectValidation() {
+        RecursiveReferences validator = CompiledInstances.create(RecursiveReferences.class);
+        Map<String, Object> good = Map.of("name", "root",
+                "child", Map.of("name", "leaf", "child", Map.of("name", "ok")));
+        Map<String, Object> bad = Map.of("name", "root",
+                "child", Map.of("name", "x"));
+        assertTrue(validator.recursive(good));
+        assertFalse(validator.recursive(bad));
     }
 
     public static final class Open extends JsonObject {
@@ -199,6 +251,17 @@ class CompiledValidatorKeywordTest {
     private static Values value(String text, BigDecimal decimal, Integer integer,
                                 List<List<String>> matrix) {
         return new Values(text, decimal, integer, matrix);
+    }
+
+    @Test
+    void staticAnchorAndNestedDefsResolveWithoutFallback() {
+        Direct direct = CompiledInstances.create(Direct.class);
+        assertTrue(direct.anchorRef(new Values("ab", BigDecimal.ONE, 1, List.of())));
+        assertFalse(direct.anchorRef(new Values("a", BigDecimal.ONE, 1, List.of())));
+        assertTrue(direct.escapedDefsRef(new Values("abc", BigDecimal.ONE, 1, List.of())));
+        assertFalse(direct.escapedDefsRef(new Values("ab", BigDecimal.ONE, 1, List.of())));
+        assertTrue(direct.nestedDefsRef(new Values("abcd", BigDecimal.ONE, 1, List.of())));
+        assertFalse(direct.nestedDefsRef(new Values("abc", BigDecimal.ONE, 1, List.of())));
     }
 
     @Test

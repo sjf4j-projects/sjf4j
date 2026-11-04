@@ -95,19 +95,72 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
-    void draft07DependentRequiredIsIgnoredByCompiledValidator() throws Exception {
-        String schema = "{\"$schema\":\"http://json-schema.org/draft-07/schema#\","
-                + "\"dependentRequired\":{\"a\":[\"b\"]}}";
-        String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator(fallback=false) public interface Check { "
-                + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
-                + "boolean valid(Map<String,Object> value); }";
-        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
-                "fixture/Check.java", source), CodegenProcessor.class);
+    void rejectExplicitOlderDraftsEvenWithFallbackEnabled() throws Exception {
+        for (String dialect : new String[]{
+                "http://json-schema.org/draft-07/schema#",
+                "https://json-schema.org/draft/2019-09/schema"}) {
+            for (boolean fallback : new boolean[]{false, true}) {
+                String schema = "{\"$schema\":\"" + dialect + "\",\"type\":\"object\"}";
+                String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
+                        + "@CompiledValidator(fallback=" + fallback + ") public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Map<String,Object> value); }";
+                NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                        "fixture/Check.java", source), CodegenProcessor.class);
+                assertFalse(result.success, dialect + ": " + result.diagnostics());
+                assertTrue(result.diagnostics().contains("Draft 2020-12"), result.diagnostics());
+            }
+        }
+    }
+
+    @Test
+    void rejectOlderDraftDeclaredWithinDefs() throws Exception {
+        String schema = "{\"$defs\":{\"nested\":{\"$schema\":"
+                + "\"https://json-schema.org/draft/2019-09/schema\",\"type\":\"string\"}},"
+                + "\"$ref\":\"#/$defs/nested\"}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=true) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("Draft 2020-12"), result.diagnostics());
+    }
+
+    @Test
+    void staticNamedAnchorCompilesDirectly() throws Exception {
+        String schema = "{\"$defs\":{\"word\":{\"$anchor\":\"word\",\"minLength\":2}},"
+                + "\"properties\":{\"name\":{\"$ref\":\"#word\"}}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
         assertTrue(result.success, result.diagnostics());
-        String generated = result.generatedSource("fixture/Check_Impl.java");
-        assertFalse(generated.contains("keySetInObject"), generated);
-        assertFalse(generated.contains(".isValid("), generated);
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
+    }
+
+    @Test
+    void nestedDefsPointerCompilesDirectly() throws Exception {
+        String schema = "{\"$defs\":{\"group\":{\"$defs\":{\"word\":{\"minLength\":2}}}},"
+                + "\"properties\":{\"name\":{\"$ref\":\"#/$defs/group/$defs/word\"}}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
+    }
+
+    @Test
+    void embeddedIdAnchorResolvesThroughCanonicalResource() throws Exception {
+        String schema = "{\"$defs\":{\"nested\":{\"$id\":\"nested.json\","
+                + "\"$anchor\":\"inner\",\"minLength\":2}},"
+                + "\"properties\":{\"name\":{\"$ref\":\"nested.json#inner\"}}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
     }
 
     @Test

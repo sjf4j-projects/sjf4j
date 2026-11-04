@@ -1,6 +1,8 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.JsonObject;
+import org.sjf4j.schema.BooleanSchema;
+import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPointer;
@@ -10,6 +12,8 @@ import org.sjf4j.processor.ProcessorContext;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Coordinates schema references and dispatches supported JSON value kinds.
@@ -21,6 +25,7 @@ final class SchemaCompiler {
     private final ScalarCompiler scalars;
     private final ArrayCompiler arrays;
     private final OneOfCompiler oneOf;
+    private final Map<String, SchemaCheck.ReferenceCheck> boundReferences = new HashMap<String, SchemaCheck.ReferenceCheck>();
 
     SchemaCompiler(ProcessorContext context) {
         this.context = context;
@@ -32,6 +37,10 @@ final class SchemaCompiler {
 
     /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
     SchemaCheck compileRoot(TypeMirror type, SchemaResourceResolver.Snapshot snapshot) {
+        // A custom meta-schema can redefine vocabularies, including the
+        // semantics of an otherwise empty or ref-only schema. Never emit
+        // direct predicates under an unknown dialect.
+        if (snapshot.customDialect) return null;
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
@@ -47,19 +56,55 @@ final class SchemaCompiler {
     SchemaCheck compileValue(SchemaResourceResolver.Snapshot snapshot,
                              Object rawSchema, SchemaValue value,
                              String schemaUri, int depth) {
-        if (depth > 8) return null;
-        if (rawSchema instanceof Boolean) {
-            return Boolean.TRUE.equals(rawSchema) ? new SchemaCheck.Pass()
+        if (rawSchema instanceof Boolean || rawSchema instanceof BooleanSchema) {
+            boolean allowed = rawSchema instanceof BooleanSchema
+                    ? ((BooleanSchema) rawSchema).booleanValue()
+                    : Boolean.TRUE.equals(rawSchema);
+            return allowed ? new SchemaCheck.Pass()
                     : new SchemaCheck.Reject(schemaDiagnostic(schemaUri, "false"));
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
-        JsonObject schema = Nodes.toJsonObject(rawSchema);
+        JsonObject schema = schemaObject(rawSchema);
+        // Canonical locations are indexed by lexical $id scope, including nested
+        // resources. Do not reapply a relative $id when following a reference.
+        schemaUri = snapshot.canonicalLocation(schemaUri);
         if (schema.containsKey("$ref")) {
-            RefTarget target = resolveRef(snapshot, schema, schemaUri);
+            JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
+            RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
             if (target == null) return null;
-            return compileValue(snapshot, target.value, value, target.uri, depth + 1);
+            String referenceKey = target.uri + "\\u0000" + (value.type == null ? "Object" : value.type.toString())
+                    + "\\u0000" + value.shape;
+            SchemaCheck.ReferenceCheck reference = boundReferences.get(referenceKey);
+            SchemaCheck referenced;
+            if (reference == null) {
+                reference = new SchemaCheck.ReferenceCheck(target.uri, diagnostic(schemaUri, "$ref"));
+                boundReferences.put(referenceKey, reference);
+                reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
+                reference.binding = false;
+                // The cache is an active reference chain, not global memoization.
+                // Keeping completed nodes would lose the referring keyword's
+                // diagnostic location and force needless helper calls.
+                boundReferences.remove(referenceKey);
+                if (reference.target == null) return null;
+                referenced = reference.recursive ? reference : reference.target;
+            } else {
+                if (reference.binding) reference.recursive = true;
+                referenced = reference;
+            }
+            if (referenced.hasFallback()) return null;
+            // Draft 2020-12: adjacent assertions are independent of $ref.
+            if (schema.size() == 1) return referenced;
+            JsonObject adjacent = new JsonObject();
+            for (String keyword : schema.keySet()) {
+                if (!"$ref".equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
+            }
+            if (!adjacent.isEmpty()) {
+                SchemaCheck siblings = compileValue(snapshot, adjacent, value, schemaUri, depth + 1);
+                if (siblings == null || siblings.hasFallback()) return null;
+                return new SchemaCheck.AllCheck(java.util.Arrays.asList(referenced, siblings));
+            }
+            return referenced;
         }
-        schemaUri = effectiveSchemaUri(schemaUri, schema);
         // No keyword, including type, selects a compilation strategy for
         // other keywords. Applicators compile their child schemas recursively;
         // the sibling assertions are compiled by the same keyword dispatcher.
@@ -446,47 +491,18 @@ final class SchemaCompiler {
         return base + (base.contains("#") ? "/" : "#/") + keyword;
     }
 
-    /**
-     * Returns whether dependentRequired applies under this schema dialect.
-     * Unknown vocabulary or dialect delegates to SchemaPlan.
-     */
+    /** The supported Draft 2020-12 always defines dependentRequired. */
     static Boolean supportsDependentRequired(SchemaResourceResolver.Snapshot snapshot,
-                                             String schemaUri, JsonObject schema) {
-        if (schema.containsKey("$vocabulary")) return null;
-        String documentUri = schemaUri.split("#", 2)[0];
-        for (int i = 0; i < snapshot.uris.length; i++) {
-            if (!snapshot.uris[i].equals(documentUri)) continue;
-            Object parsed = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[i]);
-            if (JsonType.of(parsed) != JsonType.OBJECT) return null;
-            JsonObject document = Nodes.toJsonObject(parsed);
-            if (document.containsKey("$vocabulary")) return null;
-            String declared = schema.getString("$schema");
-            if (declared == null) declared = document.getString("$schema");
-            if (declared == null) return Boolean.TRUE; // Registry default is 2020-12.
-            org.sjf4j.schema.SchemaDialect dialect = org.sjf4j.schema.SchemaDialect.detect(declared);
-            if (dialect == null) return null;
-            // Conservatively fall back if an ancestor could override the dialect.
-            if (schema.getString("$schema") == null
-                    && snapshot.documents[i].indexOf("\"$schema\"",
-                    snapshot.documents[i].indexOf("\"$schema\"") + 1) >= 0)
-                return null;
-            return dialect != org.sjf4j.schema.SchemaDialect.DRAFT_07;
-        }
-        return null;
+                                              String schemaUri, JsonObject schema) {
+        return canCompileStandardDialect(snapshot) && !schema.containsKey("$vocabulary")
+                ? Boolean.TRUE : null;
     }
 
+    /** Unknown vocabularies can change assertion semantics, so remain fallback. */
     private static boolean canCompileStandardDialect(SchemaResourceResolver.Snapshot snapshot) {
+        if (snapshot.customDialect) return false;
         for (String source : snapshot.documents) {
             if (source.contains("\"format-assertion\"") || source.contains("\"$vocabulary\""))
-                return false;
-            Object raw = org.sjf4j.Sjf4j.global().fromJson(source);
-            if (JsonType.of(raw) != JsonType.OBJECT) continue;
-            String dialect = Nodes.toJsonObject(raw).getString("$schema");
-            if (dialect != null
-                    && !dialect.startsWith("https://json-schema.org/draft/2020-12/schema")
-                    && !dialect.startsWith("https://json-schema.org/draft/2019-09/schema")
-                    && !dialect.startsWith("http://json-schema.org/draft-07/schema")
-                    && !dialect.startsWith("https://json-schema.org/draft-07/schema"))
                 return false;
         }
         return true;
@@ -501,88 +517,31 @@ final class SchemaCompiler {
         return key.equals("$schema") || key.equals("$id") || key.equals("title")
                 || key.equals("description") || key.equals("default") || key.equals("examples")
                 || key.equals("$comment") || key.equals("deprecated") || key.equals("readOnly")
-                || key.equals("writeOnly") || key.equals("definitions") || key.equals("$defs");
+                || key.equals("writeOnly") || key.equals("definitions") || key.equals("$defs")
+                || key.equals("$anchor") || key.equals("$dynamicAnchor")
+                || key.equals("$recursiveAnchor");
     }
 
-    /** A compile-time resolution only; unsupported anchors or sibling keywords fall back. */
+    /** JOJO metadata is not part of the JSON Schema keyword object. */
+    static JsonObject schemaObject(Object rawSchema) {
+        return rawSchema instanceof ObjectSchema
+                ? new JsonObject(((ObjectSchema) rawSchema).dynamicMembers())
+                : Nodes.toJsonObject(rawSchema);
+    }
+
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
                                 JsonObject schema, String sourceUri) {
-        for (String keyword : schema.keySet()) {
-            if (!keyword.equals("$ref") && !isAnnotation(keyword)) return null;
-        }
         String literal = schema.getString("$ref");
-        if (literal == null || hasScopedId(snapshot, sourceUri) || schema.containsKey("$id")) return null;
-        java.net.URI target;
+        if (literal == null) return null;
         try {
-            target = java.net.URI.create(sourceUri).resolve(literal);
-        } catch (IllegalArgumentException e) {
+            java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
+                    java.net.URI.create(sourceUri), java.net.URI.create(literal));
+            org.sjf4j.schema.SchemaPlan plan = snapshot.registry.resolve(absolute);
+            return plan == null ? null : new RefTarget(plan.schema(),
+                    plan.schemaUri().toString());
+        } catch (RuntimeException unresolved) {
             return null;
         }
-        // A nested $id establishes a new resource base. Do not compile a
-        // pointer under that scope using the retrieval URI: the runtime
-        // SchemaRegistry resolves canonical resources correctly.
-        if (hasScopedId(snapshot, target.toString())) return null;
-        String document = org.sjf4j.schema.SchemaLoader.documentUri(target).toString();
-        Object node = null;
-        for (int i = 0; i < snapshot.uris.length; i++) {
-            if (snapshot.uris[i].equals(document)) {
-                node = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[i]);
-                break;
-            }
-        }
-        if (node == null) return null;
-        String fragment = target.getFragment();
-        if (fragment != null && !fragment.isEmpty()) {
-            if (!fragment.startsWith("/")) return null;
-            try {
-                node = JsonPointer.parse(fragment).getNode(node);
-            } catch (RuntimeException ex) {
-                return null;
-            }
-            if (node == null) return null;
-        }
-        return new RefTarget(node, target.toString());
-    }
-
-    /**
-     * Detect resource scopes that cannot safely be represented by our simple
-     * retrieval-URI + JSON Pointer expansion. Such references are delegated to
-     * SchemaPlan rather than risk compiling the wrong schema branch.
-     */
-    private static boolean hasScopedId(SchemaResourceResolver.Snapshot snapshot, String reference) {
-        java.net.URI uri;
-        try {
-            uri = java.net.URI.create(reference);
-        } catch (IllegalArgumentException ex) {
-            return true;
-        }
-        String document = org.sjf4j.schema.SchemaLoader.documentUri(uri).toString();
-        for (int i = 0; i < snapshot.uris.length; i++) {
-            if (!snapshot.uris[i].equals(document)) continue;
-            Object node = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[i]);
-            if (hasId(node)) return true;
-            String fragment = uri.getFragment();
-            if (fragment == null || fragment.isEmpty()) return false;
-            if (!fragment.startsWith("/")) return true;
-            Object root = node;
-            try {
-                for (PathSegment segment : JsonPointer.parse(fragment).segments()) {
-                    if (segment == PathSegment.Root.INSTANCE) continue;
-                    node = JsonPointer.fromLast(segment).getNode(root);
-                    if (node == null || hasId(node)) return true;
-                }
-            } catch (RuntimeException ex) {
-                return true;
-            }
-            return false;
-        }
-        // A canonical URI of an embedded $id cannot be mapped safely through
-        // the physical document snapshot; leave it to SchemaRegistry.
-        return true;
-    }
-
-    private static boolean hasId(Object node) {
-        return JsonType.of(node) == JsonType.OBJECT && Nodes.getInObject(node, "$id") != null;
     }
 
     static final class RefTarget {

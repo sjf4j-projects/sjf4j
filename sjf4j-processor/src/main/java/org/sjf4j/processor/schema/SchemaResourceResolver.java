@@ -23,10 +23,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * Resolves complete schema documents at annotation-processing time.
@@ -38,15 +39,38 @@ final class SchemaResourceResolver {
     static final class Snapshot {
         final String[] uris;
         final String[] documents;
+        final boolean[] fromRegistry;
         final String selectedUri;
 
-        Snapshot(Map<URI, String> resources, URI selectedUri) {
+        org.sjf4j.schema.SchemaRegistry registry;
+        boolean customDialect;
+
+        org.sjf4j.schema.SchemaPlan resolvePlan(String location) {
+            if (registry == null) throw new IllegalStateException("schema registry not initialized");
+            return registry.resolve(URI.create(location));
+        }
+
+        String canonicalLocation(String location) {
+            try {
+                org.sjf4j.schema.SchemaPlan plan = resolvePlan(location);
+                return plan == null || plan.schemaUri() == null
+                        ? location : plan.schemaUri().toString();
+            } catch (IllegalArgumentException | org.sjf4j.schema.SchemaException missingSubschema) {
+                // Some compiler keyword locations are synthetic (e.g. reduced
+                // sibling assertion maps), not independent runtime subschemas.
+                return location;
+            }
+        }
+
+        Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources) {
             this.selectedUri = selectedUri.toString();
             uris = new String[resources.size()];
             documents = new String[resources.size()];
+            fromRegistry = new boolean[resources.size()];
             int i = 0;
             for (Map.Entry<URI, String> entry : resources.entrySet()) {
                 uris[i] = entry.getKey().toString();
+                fromRegistry[i] = registryResources.contains(entry.getKey());
                 documents[i++] = entry.getValue();
             }
         }
@@ -56,6 +80,7 @@ final class SchemaResourceResolver {
     private final String registryDir;
     private final String registryBaseUri;
     private final Map<String, SchemaRegistry> registryCache;
+    private Map<String, IndexedSource> indexedSources;
 
     SchemaResourceResolver(ProcessorContext context, String registryDir, String registryBaseUri,
                            Map<String, SchemaRegistry> registryCache) {
@@ -87,13 +112,14 @@ final class SchemaResourceResolver {
         Path resourceDirectory = findResourceDirectory(sourceElement);
         String inline = annotation.value();
         String ref = annotation.ref().trim();
-        URI rootUri;
+        URI documentUri;
         URI selectedUri;
         String rootDocument;
+        boolean rootFromRegistry = false;
 
         if (!inline.isEmpty()) {
-            rootUri = URI.create("sjf4j:/" + originName + "/");
-            selectedUri = rootUri;
+            documentUri = URI.create("sjf4j:/" + originName + "/");
+            selectedUri = documentUri;
             rootDocument = inline;
         } else {
             URI baseDir = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
@@ -102,38 +128,72 @@ final class SchemaResourceResolver {
                 if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
                 // Fragments select a schema within the resource; they are not
                 // part of the document retrieval URI.
-                rootUri = URI.create(selectedUri.toString().split("#", 2)[0]);
+                documentUri = URI.create(selectedUri.toString().split("#", 2)[0]);
+                if ("classpath".equals(documentUri.getScheme()) || "file".equals(documentUri.getScheme())) {
+                    rootDocument = read(documentUri, resourceDirectory);
+                } else {
+                    IndexedSource indexed = indexedSource(documentUri);
+                    rootDocument = indexed == null ? null : indexed.document;
+                    if (indexed != null) {
+                        documentUri = indexed.retrieval;
+                        rootFromRegistry = true;
+                    }
+                }
             } else {
                 String simple = ownerName.substring(ownerName.lastIndexOf('.') + 1);
-                rootUri = baseDir.resolve(simple + ".json");
-                rootDocument = read(rootUri, resourceDirectory);
+                documentUri = baseDir.resolve(simple + ".json");
+                rootDocument = read(documentUri, resourceDirectory);
                 if (rootDocument == null) {
                     String snake = Strings.toSnakeCase(simple);
-                    rootUri = baseDir.resolve(snake + ".json");
+                    documentUri = baseDir.resolve(snake + ".json");
                 }
-                selectedUri = rootUri;
+                selectedUri = documentUri;
+                rootDocument = read(documentUri, resourceDirectory);
             }
-            rootDocument = read(rootUri, resourceDirectory);
             if (rootDocument == null) {
-                throw new IllegalArgumentException("schema resource not found: " + rootUri
+                throw new IllegalArgumentException("schema resource not found: " + documentUri
                         + " (resource not found on the compilation classpath or alongside the source set)");
             }
         }
 
         Map<URI, String> resources = new LinkedHashMap<URI, String>();
-        resources.put(rootUri, rootDocument);
+        Set<URI> registryResources = new HashSet<URI>();
+        resources.put(documentUri, rootDocument);
+        if (rootFromRegistry) registryResources.add(documentUri);
 
+        boolean customDialect = false;
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
-            JsonSchema schema = JsonSchema.fromJson(resources.get(uri));
-            scanRefs(schema, uri, resources, queue, resourceDirectory);
+            CompiledSupport.Analysis analysis = CompiledSupport.analyze(
+                    uri, JsonSchema.fromJson(resources.get(uri)));
+            customDialect |= analysis.customDialect;
+            for (URI document : analysis.referencedDocuments) {
+                if (resources.containsKey(document)) continue;
+                String contents;
+                URI retrieval = document;
+                if ("classpath".equals(document.getScheme()) || "file".equals(document.getScheme())) {
+                    contents = read(document, resourceDirectory);
+                } else {
+                    IndexedSource indexed = indexedSource(document);
+                    if (indexed == null) continue;
+                    retrieval = indexed.retrieval;
+                    contents = indexed.document;
+                    registryResources.add(retrieval);
+                }
+                if (contents == null || resources.containsKey(retrieval)) continue;
+                resources.put(retrieval, contents);
+                queue.add(retrieval);
+            }
         }
 
-        Snapshot snapshot = new Snapshot(resources, selectedUri);
+        Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources);
         // Directory resources are indexed once, prior to root resolution.
         // Each method gets a registry copy so roots cannot leak between methods.
         SchemaRegistry registry = registry();
         for (int i = 0; i < snapshot.uris.length; i++) {
+            // indexDir already owns the registry-backed source object.
+            // Reindexing a separately parsed copy would be a duplicate URI.
+            if (snapshot.fromRegistry[i]) continue;
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
         // Boolean resources are now indexed alongside object resources, so the
@@ -141,61 +201,70 @@ final class SchemaResourceResolver {
         if (registry.resolve(URI.create(snapshot.selectedUri)) == null) {
             throw new IllegalArgumentException("unresolved selected schema: " + snapshot.selectedUri);
         }
+        snapshot.registry = registry;
+        // CompiledSupport inspected schema-bearing positions before plan construction.
+        snapshot.customDialect = customDialect;
         return snapshot;
     }
 
-    private URI effectiveBase(URI base, Object node) {
-        if (JsonType.of(node) != JsonType.OBJECT) return base;
-        Object id = Nodes.getInObject(node, "$id");
-        return id instanceof String ? base.resolve((String) id) : base;
+    private static final class IndexedSource {
+        final URI retrieval;
+        final String document;
+        IndexedSource(URI retrieval, String document) {
+            this.retrieval = retrieval;
+            this.document = document;
+        }
     }
 
-    private void scanRefs(Object node, URI base, Map<URI, String> resources, List<URI> queue,
-                          Path resourceDirectory) {
-        JsonType type = JsonType.of(node);
-        if (type == JsonType.OBJECT) {
-            URI local = effectiveBase(base, node);
-            for (String keyword : new String[]{"$ref", "$dynamicRef", "$recursiveRef"}) {
-                Object ref = Nodes.getInObject(node, keyword);
-                if (!(ref instanceof String)) continue;
-                URI target = local.resolve((String) ref);
-                URI document = URI.create(target.toString().split("#", 2)[0]);
-                if (resources.containsKey(document)) continue;
-                if (!"classpath".equals(document.getScheme()) && !"file".equals(document.getScheme())) {
-                    continue; // Embedded $id and built-in meta-schema refs resolve in the planner.
-                }
-                String contents = read(document, resourceDirectory);
-                if (contents == null) {
-                    // Could be a nested $id within an already indexed resource.
-                    // The planner decides whether that resource actually exists.
-                    continue;
-                }
-                resources.put(document, contents);
-                queue.add(document);
+    /**
+     * The runtime registry already indexes these files. At compilation time
+     * they must also be visible as source documents for direct $ref codegen.
+     * Only a referenced document is included in the snapshot, not the whole
+     * registry directory.
+     */
+    private IndexedSource indexedSource(URI target) {
+        if (registryDir.isEmpty()) return null;
+        if (indexedSources == null) {
+            indexedSources = new LinkedHashMap<String, IndexedSource>();
+            Path directory;
+            try {
+                URI location = URI.create(registryDir);
+                directory = "file".equals(location.getScheme())
+                        ? Paths.get(location) : Paths.get(registryDir);
+                directory = directory.toAbsolutePath().normalize();
+            } catch (RuntimeException invalid) {
+                return null; // The registry reports configuration errors later.
             }
-            // Descend only through schema-bearing keywords. Objects under
-            // const/enum/default/examples are instance data, not schemas.
-            for (String keyword : new String[]{
-                    "$defs", "definitions", "properties", "patternProperties",
-                    "dependentSchemas", "dependencies"}) {
-                Object mapping = Nodes.getInObject(node, keyword);
-                if (JsonType.of(mapping) != JsonType.OBJECT) continue;
-                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(mapping)) {
-                    scanRefs(entry.getValue(), local, resources, queue, resourceDirectory);
+            if (!Files.isDirectory(directory)) return null;
+            final Path root = directory;
+            URI base = registryBaseUri.isEmpty() ? directory.toUri() : URI.create(registryBaseUri);
+            try (java.util.stream.Stream<Path> paths = Files.walk(directory)) {
+                java.util.Iterator<Path> iterator = paths.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".json")).iterator();
+                while (iterator.hasNext()) {
+                    Path path = iterator.next();
+                    String relative = root.relativize(path).toString().replace('\\', '/');
+                    URI retrieval = base.resolve(relative);
+                    String document = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+                    IndexedSource indexed = new IndexedSource(retrieval, document);
+                    indexedSources.putIfAbsent(retrieval.toString(), indexed);
+                    Object parsed = org.sjf4j.Sjf4j.global().fromJson(document);
+                    if (JsonType.of(parsed) == JsonType.OBJECT) {
+                        Object id = Nodes.getInObject(parsed, "$id");
+                        if (id instanceof String) {
+                            String stripped = org.sjf4j.schema.SchemaUtil.stripFragment((String) id);
+                            if (!stripped.isEmpty()) {
+                                URI canonical = org.sjf4j.schema.SchemaUtil.resolveUri(retrieval, URI.create(stripped));
+                                indexedSources.putIfAbsent(canonical.toString(), indexed);
+                            }
+                        }
+                    }
                 }
+            } catch (IOException e) {
+                throw new IllegalArgumentException("cannot index schema registry directory: " + root, e);
             }
-            for (String keyword : new String[]{
-                    "items", "additionalItems", "additionalProperties",
-                    "contains", "propertyNames", "not", "if", "then", "else",
-                    "unevaluatedItems", "unevaluatedProperties", "contentSchema",
-                    "allOf", "anyOf", "oneOf", "prefixItems"}) {
-                Object subschema = Nodes.getInObject(node, keyword);
-                if (subschema != null) scanRefs(subschema, local, resources, queue, resourceDirectory);
-            }
-        } else if (type == JsonType.ARRAY) {
-            Iterator<Object> iter = Nodes.iteratorInArray(node);
-            while (iter.hasNext()) scanRefs(iter.next(), base, resources, queue, resourceDirectory);
         }
+        return indexedSources.get(target.toString());
     }
 
     private String read(URI uri, Path resourceDirectory) {
