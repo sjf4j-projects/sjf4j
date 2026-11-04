@@ -80,9 +80,9 @@ class CompiledValidatorRegistryDirTest {
     void preloadedRemoteReferencesCompileDirectly() throws Exception {
         Path remote = Files.createDirectories(registryDir.resolve("draft2020-12"));
         Files.write(remote.resolve("word.json"),
-                "{\\"$anchor\\":\\"word\\",\\"type\\":\\"string\\",\\"minLength\\":3}"
+                "{\"$anchor\":\"word\",\"type\":\"string\",\"minLength\":3}"
                         .getBytes(StandardCharsets.UTF_8));
-        String schema = "{\\"$ref\\":\\"http://localhost:1234/draft2020-12/word.json#word\\"}";
+        String schema = "{\"$ref\":\"http://localhost:1234/draft2020-12/word.json#word\"}";
         NavigatorTestCompiler.Result result = compile(schema, registryDir.toUri().toString(),
                 "http://localhost:1234/", false);
         assertTrue(result.success, result.diagnostics());
