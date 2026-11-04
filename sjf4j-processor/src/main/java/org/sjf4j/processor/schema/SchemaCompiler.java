@@ -26,6 +26,16 @@ final class SchemaCompiler {
     private final ArrayCompiler arrays;
     private final OneOfCompiler oneOf;
     private final Map<String, SchemaCheck.ReferenceCheck> boundReferences = new HashMap<String, SchemaCheck.ReferenceCheck>();
+    private String fallbackReason;
+
+    /** First semantic obstacle seen while compiling a schema tree. */
+    String fallbackReason() {
+        return fallbackReason == null ? "unsupported schema construct or Java value projection" : fallbackReason;
+    }
+
+    private void unsupported(String reason) {
+        if (fallbackReason == null) fallbackReason = reason;
+    }
 
     SchemaCompiler(ProcessorContext context) {
         this.context = context;
@@ -40,7 +50,10 @@ final class SchemaCompiler {
         // A custom meta-schema can redefine vocabularies, including the
         // semantics of an otherwise empty or ref-only schema. Never emit
         // direct predicates under an unknown dialect.
-        if (snapshot.customDialect) return null;
+        if (snapshot.customDialect) {
+            unsupported("custom $schema / $vocabulary requires runtime vocabulary interpretation");
+            return null;
+        }
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
@@ -65,6 +78,37 @@ final class SchemaCompiler {
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
         JsonObject schema = schemaObject(rawSchema);
+        // Static local coverage is safe only for the selected root schema,
+        // with no applicator/reference or dependent-schema annotation exchange.
+        // Child schemas are compiled normally but cannot claim their parent's
+        // evaluated locations.
+        boolean unevaluatedObject = schema.containsKey("unevaluatedProperties");
+        boolean unevaluatedArray = schema.containsKey("unevaluatedItems");
+        if (unevaluatedObject || unevaluatedArray) {
+            String keyword = unevaluatedObject ? "unevaluatedProperties" : "unevaluatedItems";
+            String interfering = null;
+            for (String key : new String[]{"allOf", "anyOf", "oneOf", "not", "if", "then",
+                    "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
+                if (schema.containsKey(key)) {
+                    interfering = key;
+                    break;
+                }
+            }
+            if (interfering == null && unevaluatedObject
+                    && schema.containsKey("additionalProperties")) interfering = "additionalProperties";
+            if (interfering == null && unevaluatedArray
+                    && schema.containsKey("items")) interfering = "items";
+            if (interfering == null && unevaluatedObject && unevaluatedArray)
+                interfering = "unevaluatedItems";
+            if (depth != 0 || interfering != null) {
+                unsupported(interfering != null
+                        ? interfering + " + " + keyword + " requires evaluated-location tracking at "
+                                + keywordUri(schemaUri, keyword)
+                        : keyword + " in a nested schema requires evaluated-location tracking at "
+                                + keywordUri(schemaUri, keyword));
+                return null;
+            }
+        }
         // Canonical locations are indexed by lexical $id scope, including nested
         // resources. Do not reapply a relative $id when following a reference.
         schemaUri = snapshot.canonicalLocation(schemaUri);
@@ -160,18 +204,19 @@ final class SchemaCompiler {
                 case "exclusiveMaximum": case "multipleOf":
                     numbers.put(keyword, schema.getNode(keyword));
                     break;
-                case "items": case "prefixItems": case "uniqueItems":
+                case "items": case "unevaluatedItems": case "prefixItems": case "uniqueItems":
                 case "minItems": case "maxItems":
                 case "contains": case "minContains": case "maxContains":
                     array.put(keyword, schema.getNode(keyword));
                     break;
-                case "properties": case "patternProperties": case "propertyNames":
+                case "properties": case "unevaluatedProperties": case "patternProperties": case "propertyNames":
                 case "required": case "additionalProperties": case "minProperties":
                 case "maxProperties": case "dependentRequired": case "dependentSchemas":
                     object.put(keyword, schema.getNode(keyword));
                     break;
                 default:
                     // Never omit an unsupported keyword while compiling others.
+                    unsupported("unsupported keyword '" + keyword + "' at " + keywordUri(uri, keyword));
                     return null;
             }
         }
