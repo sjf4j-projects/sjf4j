@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -157,8 +156,25 @@ final class SchemaResourceResolver {
 
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
-            JsonSchema schema = JsonSchema.fromJson(resources.get(uri));
-            scanRefs(schema, uri, resources, queue, resourceDirectory, registryResources);
+            Map<URI, String> current = new LinkedHashMap<URI, String>();
+            current.put(uri, resources.get(uri));
+            for (URI document : new org.sjf4j.schema.SchemaResourceIndex(current).referencedDocuments()) {
+                if (resources.containsKey(document)) continue;
+                String contents;
+                URI retrieval = document;
+                if ("classpath".equals(document.getScheme()) || "file".equals(document.getScheme())) {
+                    contents = read(document, resourceDirectory);
+                } else {
+                    IndexedSource indexed = indexedSource(document);
+                    if (indexed == null) continue;
+                    retrieval = indexed.retrieval;
+                    contents = indexed.document;
+                    registryResources.add(retrieval);
+                }
+                if (contents == null || resources.containsKey(retrieval)) continue;
+                resources.put(retrieval, contents);
+                queue.add(retrieval);
+            }
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources);
@@ -180,65 +196,6 @@ final class SchemaResourceResolver {
             throw new IllegalArgumentException("unresolved selected schema: " + snapshot.selectedUri);
         }
         return snapshot;
-    }
-
-    private URI effectiveBase(URI base, Object node) {
-        if (JsonType.of(node) != JsonType.OBJECT) return base;
-        Object id = Nodes.getInObject(node, "$id");
-        return id instanceof String ? base.resolve((String) id) : base;
-    }
-
-    private void scanRefs(Object node, URI base, Map<URI, String> resources, List<URI> queue,
-                          Path resourceDirectory, Set<URI> registryResources) {
-        JsonType type = JsonType.of(node);
-        if (type == JsonType.OBJECT) {
-            URI local = effectiveBase(base, node);
-            for (String keyword : new String[]{"$ref", "$dynamicRef", "$recursiveRef"}) {
-                Object ref = Nodes.getInObject(node, keyword);
-                if (!(ref instanceof String)) continue;
-                URI target = local.resolve((String) ref);
-                URI document = URI.create(target.toString().split("#", 2)[0]);
-                if (resources.containsKey(document)) continue;
-                String contents;
-                URI retrieval = document;
-                if ("classpath".equals(document.getScheme()) || "file".equals(document.getScheme())) {
-                    contents = read(document, resourceDirectory);
-                } else {
-                    // Resolve preloaded logical HTTP/URN resources from the local
-                    // registry directory without attempting network access.
-                    IndexedSource indexed = indexedSource(document);
-                    if (indexed == null) continue;
-                    retrieval = indexed.retrieval;
-                    registryResources.add(retrieval);
-                    contents = indexed.document;
-                }
-                if (contents == null || resources.containsKey(retrieval)) continue;
-                resources.put(retrieval, contents);
-                queue.add(retrieval);
-            }
-            // Descend only through schema-bearing keywords. Objects under
-            // const/enum/default/examples are instance data, not schemas.
-            for (String keyword : new String[]{
-                    "$defs", "definitions", "properties", "patternProperties",
-                    "dependentSchemas", "dependencies"}) {
-                Object mapping = Nodes.getInObject(node, keyword);
-                if (JsonType.of(mapping) != JsonType.OBJECT) continue;
-                for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(mapping)) {
-                    scanRefs(entry.getValue(), local, resources, queue, resourceDirectory, registryResources);
-                }
-            }
-            for (String keyword : new String[]{
-                    "items", "additionalItems", "additionalProperties",
-                    "contains", "propertyNames", "not", "if", "then", "else",
-                    "unevaluatedItems", "unevaluatedProperties", "contentSchema",
-                    "allOf", "anyOf", "oneOf", "prefixItems"}) {
-                Object subschema = Nodes.getInObject(node, keyword);
-                if (subschema != null) scanRefs(subschema, local, resources, queue, resourceDirectory, registryResources);
-            }
-        } else if (type == JsonType.ARRAY) {
-            Iterator<Object> iter = Nodes.iteratorInArray(node);
-            while (iter.hasNext()) scanRefs(iter.next(), base, resources, queue, resourceDirectory, registryResources);
-        }
     }
 
     private static final class IndexedSource {
