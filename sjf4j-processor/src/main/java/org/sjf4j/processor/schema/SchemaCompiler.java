@@ -52,7 +52,8 @@ final class SchemaCompiler {
         // semantics of an otherwise empty or ref-only schema. Never emit
         // direct predicates under an unknown dialect.
         if (snapshot.customDialect) {
-            unsupported("custom $schema / $vocabulary requires runtime vocabulary interpretation");
+            unsupported("custom $schema / $vocabulary at " + snapshot.selectedUri
+                    + " requires runtime vocabulary interpretation");
             return null;
         }
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
