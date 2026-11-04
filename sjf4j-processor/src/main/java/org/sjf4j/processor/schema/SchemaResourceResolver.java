@@ -63,6 +63,7 @@ final class SchemaResourceResolver {
     private final String registryDir;
     private final String registryBaseUri;
     private final Map<String, SchemaRegistry> registryCache;
+    private Map<String, IndexedSource> indexedSources;
 
     SchemaResourceResolver(ProcessorContext context, String registryDir, String registryBaseUri,
                            Map<String, SchemaRegistry> registryCache) {
@@ -168,17 +169,21 @@ final class SchemaResourceResolver {
                 URI target = local.resolve((String) ref);
                 URI document = URI.create(target.toString().split("#", 2)[0]);
                 if (resources.containsKey(document)) continue;
-                if (!"classpath".equals(document.getScheme()) && !"file".equals(document.getScheme())) {
-                    continue; // Embedded $id and built-in meta-schema refs resolve in the planner.
+                String contents;
+                URI retrieval = document;
+                if ("classpath".equals(document.getScheme()) || "file".equals(document.getScheme())) {
+                    contents = read(document, resourceDirectory);
+                } else {
+                    // Resolve preloaded logical HTTP/URN resources from the local
+                    // registry directory without attempting network access.
+                    IndexedSource indexed = indexedSource(document);
+                    if (indexed == null) continue;
+                    retrieval = indexed.retrieval;
+                    contents = indexed.document;
                 }
-                String contents = read(document, resourceDirectory);
-                if (contents == null) {
-                    // Could be a nested $id within an already indexed resource.
-                    // The planner decides whether that resource actually exists.
-                    continue;
-                }
-                resources.put(document, contents);
-                queue.add(document);
+                if (contents == null || resources.containsKey(retrieval)) continue;
+                resources.put(retrieval, contents);
+                queue.add(retrieval);
             }
             // Descend only through schema-bearing keywords. Objects under
             // const/enum/default/examples are instance data, not schemas.
@@ -203,6 +208,64 @@ final class SchemaResourceResolver {
             Iterator<Object> iter = Nodes.iteratorInArray(node);
             while (iter.hasNext()) scanRefs(iter.next(), base, resources, queue, resourceDirectory);
         }
+    }
+
+    private static final class IndexedSource {
+        final URI retrieval;
+        final String document;
+        IndexedSource(URI retrieval, String document) {
+            this.retrieval = retrieval;
+            this.document = document;
+        }
+    }
+
+    /**
+     * The runtime registry already indexes these files. At compilation time
+     * they must also be visible as source documents for direct $ref codegen.
+     * Only a referenced document is included in the snapshot, not the whole
+     * registry directory.
+     */
+    private IndexedSource indexedSource(URI target) {
+        if (registryDir.isEmpty()) return null;
+        if (indexedSources == null) {
+            indexedSources = new LinkedHashMap<String, IndexedSource>();
+            Path directory;
+            try {
+                URI location = URI.create(registryDir);
+                directory = "file".equals(location.getScheme())
+                        ? Paths.get(location) : Paths.get(registryDir);
+                directory = directory.toAbsolutePath().normalize();
+            } catch (RuntimeException invalid) {
+                return null; // The registry reports configuration errors later.
+            }
+            if (!Files.isDirectory(directory)) return null;
+            final Path root = directory;
+            URI base = registryBaseUri.isEmpty() ? directory.toUri() : URI.create(registryBaseUri);
+            try (java.util.stream.Stream<Path> paths = Files.walk(directory)) {
+                java.util.Iterator<Path> iterator = paths.filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().endsWith(".json")).iterator();
+                while (iterator.hasNext()) {
+                    Path path = iterator.next();
+                    String relative = root.relativize(path).toString().replace('\\', '/');
+                    URI retrieval = base.resolve(relative);
+                    String document = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+                    IndexedSource indexed = new IndexedSource(retrieval, document);
+                    indexedSources.putIfAbsent(retrieval.toString(), indexed);
+                    Object parsed = org.sjf4j.Sjf4j.global().fromJson(document);
+                    if (JsonType.of(parsed) == JsonType.OBJECT) {
+                        Object id = Nodes.getInObject(parsed, "$id");
+                        if (id instanceof String) {
+                            String stripped = org.sjf4j.schema.SchemaUtil.stripFragment((String) id);
+                            URI canonical = org.sjf4j.schema.SchemaUtil.resolveUri(retrieval, URI.create(stripped));
+                            indexedSources.putIfAbsent(canonical.toString(), indexed);
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                throw new IllegalArgumentException("cannot index schema registry directory: " + root, e);
+            }
+        }
+        return indexedSources.get(target.toString());
     }
 
     private String read(URI uri, Path resourceDirectory) {
