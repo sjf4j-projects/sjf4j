@@ -68,7 +68,7 @@ Supported assertions compile into Java predicates. A partially supported schema 
 | Object: `properties`, `patternProperties`, `additionalProperties` (boolean or schema), `propertyNames`, `required`, `dependentRequired`, `dependentSchemas`, property counts | Supported when child schemas compile; POJO/OBNT affect access code, not fallback eligibility |
 | Array: `prefixItems`, `items`, `contains`, `minContains`, `maxContains`, `uniqueItems`, `minItems`, `maxItems` | Independent compiled checks; `items` starts after local `prefixItems`; `contains` counts matching elements; `uniqueItems` uses runtime JSON equality semantics |
 | Applicators: `allOf`, `anyOf`, `oneOf`, `not`, `if/then/else` | Supported when their branches can compile |
-| `$ref`, `$defs`, `$anchor` | Static JSON Pointer targets and unique anchors within the same resource; cycles and embedded `$id` scopes may fall back |
+| `$ref`, `$defs`, `$anchor` | Direct static references through JSON Pointer or named anchors, including nested `$id` resources, registered external schemas and productive recursive references; schemas containing other unsupported assertions may still fall back |
 | `format` | Supported typed-string checks when appropriate; `strictFormat` and vocabularies affect semantics |
 | `unevaluatedProperties`, `unevaluatedItems` | Runtime fallback (evaluation-location tracking not generated) |
 
