@@ -501,10 +501,11 @@ final class SchemaCompiler {
         return key.equals("$schema") || key.equals("$id") || key.equals("title")
                 || key.equals("description") || key.equals("default") || key.equals("examples")
                 || key.equals("$comment") || key.equals("deprecated") || key.equals("readOnly")
-                || key.equals("writeOnly") || key.equals("definitions") || key.equals("$defs");
+                || key.equals("writeOnly") || key.equals("definitions") || key.equals("$defs")
+                || key.equals("$anchor");
     }
 
-    /** A compile-time resolution only; unsupported anchors or sibling keywords fall back. */
+    /** Compile-time resolution for static pointers and named anchors. */
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
                                 JsonObject schema, String sourceUri) {
         for (String keyword : schema.keySet()) {
@@ -518,10 +519,6 @@ final class SchemaCompiler {
         } catch (IllegalArgumentException e) {
             return null;
         }
-        // A nested $id establishes a new resource base. Do not compile a
-        // pointer under that scope using the retrieval URI: the runtime
-        // SchemaRegistry resolves canonical resources correctly.
-        if (hasScopedId(snapshot, target.toString())) return null;
         String document = org.sjf4j.schema.SchemaLoader.documentUri(target).toString();
         Object node = null;
         for (int i = 0; i < snapshot.uris.length; i++) {
@@ -532,8 +529,16 @@ final class SchemaCompiler {
         }
         if (node == null) return null;
         String fragment = target.getFragment();
+        if (fragment != null && !fragment.isEmpty() && !fragment.startsWith("/")) {
+            // Named anchors are found only at schema locations in the same resource.
+            // Embedded $id resource scopes remain delegated to SchemaRegistry.
+            String pointer = findAnchorPointer(node, fragment);
+            if (pointer == null) return null;
+            target = java.net.URI.create(document + (pointer.isEmpty() ? "" : "#" + pointer));
+            fragment = pointer;
+        }
+        if (hasScopedId(snapshot, target.toString())) return null;
         if (fragment != null && !fragment.isEmpty()) {
-            if (!fragment.startsWith("/")) return null;
             try {
                 node = JsonPointer.parse(fragment).getNode(node);
             } catch (RuntimeException ex) {
@@ -542,6 +547,50 @@ final class SchemaCompiler {
             if (node == null) return null;
         }
         return new RefTarget(node, target.toString());
+    }
+
+    /** Finds a unique anchor within the current resource (never in instance data). */
+    private static String findAnchorPointer(Object root, String anchor) {
+        List<String> matches = new ArrayList<String>();
+        collectAnchors(root, anchor, "", true, matches);
+        return matches.size() == 1 ? matches.get(0) : null;
+    }
+
+    private static void collectAnchors(Object node, String anchor, String pointer,
+                                       boolean root, List<String> matches) {
+        if (JsonType.of(node) != JsonType.OBJECT) return;
+        if (!root && Nodes.getInObject(node, "$id") != null) return;
+        if (anchor.equals(Nodes.getInObject(node, "$anchor"))) matches.add(pointer);
+        for (String keyword : new String[]{
+                "$defs", "definitions", "properties", "patternProperties",
+                "dependentSchemas", "dependencies"}) {
+            Object mapping = Nodes.getInObject(node, keyword);
+            if (JsonType.of(mapping) != JsonType.OBJECT) continue;
+            for (java.util.Map.Entry<String, Object> entry : Nodes.entrySetInObject(mapping)) {
+                collectAnchors(entry.getValue(), anchor,
+                        pointer + "/" + keyword + "/" + pointerToken(entry.getKey()),
+                        false, matches);
+            }
+        }
+        for (String keyword : new String[]{
+                "items", "additionalItems", "additionalProperties", "contains",
+                "propertyNames", "not", "if", "then", "else",
+                "unevaluatedItems", "unevaluatedProperties", "contentSchema",
+                "allOf", "anyOf", "oneOf", "prefixItems"}) {
+            Object child = Nodes.getInObject(node, keyword);
+            if (JsonType.of(child) == JsonType.ARRAY) {
+                for (int i = 0; i < Nodes.sizeInArray(child); i++) {
+                    collectAnchors(Nodes.getInArray(child, i), anchor,
+                            pointer + "/" + keyword + "/" + i, false, matches);
+                }
+            } else if (child != null) {
+                collectAnchors(child, anchor, pointer + "/" + keyword, false, matches);
+            }
+        }
+    }
+
+    private static String pointerToken(String key) {
+        return key.replace("~", "~0").replace("/", "~1");
     }
 
     /**
