@@ -133,6 +133,13 @@ final class SchemaCompiler {
             }
         }
         if (schema.containsKey("$dynamicRef")) {
+            // Adjacent $ref and $dynamicRef are two independent assertions.
+            // Rewriting their keys into one $ref would silently lose one.
+            if (schema.containsKey("$ref")) {
+                unsupported("$ref + $dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+                        + " requires runtime fallback: adjacent reference assertions");
+                return null;
+            }
             if (!isStaticDynamicRef(snapshot, schema, schemaUri)) {
                 unsupported("$dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
                         + " requires runtime dynamic-scope resolution");
