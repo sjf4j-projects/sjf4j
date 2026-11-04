@@ -10,6 +10,8 @@ import org.sjf4j.processor.ProcessorContext;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Coordinates schema references and dispatches supported JSON value kinds.
@@ -21,6 +23,7 @@ final class SchemaCompiler {
     private final ScalarCompiler scalars;
     private final ArrayCompiler arrays;
     private final OneOfCompiler oneOf;
+    private final Map<String, SchemaCheck.ReferenceCheck> boundReferences = new HashMap<String, SchemaCheck.ReferenceCheck>();
 
     SchemaCompiler(ProcessorContext context) {
         this.context = context;
@@ -47,7 +50,6 @@ final class SchemaCompiler {
     SchemaCheck compileValue(SchemaResourceResolver.Snapshot snapshot,
                              Object rawSchema, SchemaValue value,
                              String schemaUri, int depth) {
-        if (depth > 8) return null;
         if (rawSchema instanceof Boolean) {
             return Boolean.TRUE.equals(rawSchema) ? new SchemaCheck.Pass()
                     : new SchemaCheck.Reject(schemaDiagnostic(schemaUri, "false"));
@@ -61,8 +63,20 @@ final class SchemaCompiler {
             JsonObject reference = JsonObject.of("$ref", schema.getString("$ref"));
             RefTarget target = resolveRef(snapshot, reference, schemaUri);
             if (target == null) return null;
-            SchemaCheck referenced = compileValue(snapshot, target.value, value, target.uri, depth + 1);
-            if (referenced == null || referenced.hasFallback()) return null;
+            String referenceKey = target.uri + "\\u0000" + (value.type == null ? "Object" : value.type.toString())
+                    + "\\u0000" + value.shape;
+            SchemaCheck.ReferenceCheck reference = boundReferences.get(referenceKey);
+            if (reference == null) {
+                reference = new SchemaCheck.ReferenceCheck(target.uri, diagnostic(schemaUri, "$ref"));
+                boundReferences.put(referenceKey, reference);
+                reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
+                if (reference.target == null) {
+                    boundReferences.remove(referenceKey);
+                    return null;
+                }
+            }
+            SchemaCheck referenced = reference;
+            if (referenced.hasFallback()) return null;
             // Draft 2020-12 / 2019-09: adjacent assertions are independent of
             // $ref. Draft-07 ignores adjacent keywords instead.
             if (schema.size() == 1 || !SchemaReferenceResolver.acceptsRefSiblings(snapshot, schemaUri)) return referenced;
