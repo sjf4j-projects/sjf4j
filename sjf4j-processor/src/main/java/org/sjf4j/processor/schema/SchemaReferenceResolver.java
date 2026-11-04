@@ -23,13 +23,22 @@ final class SchemaReferenceResolver {
         for (int i = 0; i < snapshot.uris.length; i++) {
             URI retrieval = URI.create(snapshot.uris[i]);
             Object raw = Sjf4j.global().fromJson(snapshot.documents[i]);
-            index(raw, retrieval, "", retrieval.toString(), "", true);
+            index(raw, retrieval, "", retrieval.toString(), "", true, true);
         }
     }
 
     static String canonicalLocation(SchemaResourceResolver.Snapshot snapshot, String location) {
-        Entry entry = new SchemaReferenceResolver(snapshot).locations.get(location);
+        SchemaReferenceResolver resolver = new SchemaReferenceResolver(snapshot);
+        Entry entry = resolver.locations.get(location);
+        if (entry == null) entry = resolver.locations.get(location + "#");
         return entry == null ? location : entry.location;
+    }
+
+    static boolean acceptsRefSiblings(SchemaResourceResolver.Snapshot snapshot, String location) {
+        SchemaReferenceResolver resolver = new SchemaReferenceResolver(snapshot);
+        Entry entry = resolver.locations.get(location);
+        if (entry == null) entry = resolver.locations.get(location + "#");
+        return entry == null || entry.modern;
     }
 
     static SchemaCompiler.RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
@@ -63,12 +72,21 @@ final class SchemaReferenceResolver {
     }
 
     private void index(Object node, URI parentResource, String resourcePointer,
-                       String physicalDocument, String physicalPointer, boolean root) {
+                       String physicalDocument, String physicalPointer, boolean root, boolean inheritedModern) {
         JsonType kind = JsonType.of(node);
         if (kind != JsonType.OBJECT && kind != JsonType.BOOLEAN) return;
         URI resource = parentResource;
         String pointer = resourcePointer;
+        boolean modern = inheritedModern;
         if (kind == JsonType.OBJECT) {
+            Object dialect = Nodes.getInObject(node, "$schema");
+            if (dialect instanceof String) {
+                org.sjf4j.schema.SchemaDialect detected =
+                        org.sjf4j.schema.SchemaDialect.detect((String) dialect);
+                if (detected != null) {
+                    modern = detected != org.sjf4j.schema.SchemaDialect.DRAFT_07;
+                }
+            }
             Object id = Nodes.getInObject(node, "$id");
             if (id instanceof String) {
                 String stripped = SchemaUtil.stripFragment((String) id);
@@ -83,7 +101,7 @@ final class SchemaReferenceResolver {
         }
         String physicalLocation = key(physicalDocument, physicalPointer);
         String canonicalLocation = key(resource.toString(), pointer);
-        Entry entry = new Entry(node, resource.toString(), canonicalLocation);
+        Entry entry = new Entry(node, resource.toString(), canonicalLocation, modern);
         locations.putIfAbsent(physicalLocation, entry);
         locations.putIfAbsent(canonicalLocation, entry);
         fragments.putIfAbsent(canonicalLocation, entry);
@@ -96,6 +114,10 @@ final class SchemaReferenceResolver {
         if (anchor instanceof String && !((String) anchor).isEmpty()) {
             fragments.putIfAbsent(key(resource.toString(), (String) anchor), entry);
         }
+        Object dynamicAnchor = Nodes.getInObject(node, "$dynamicAnchor");
+        if (dynamicAnchor instanceof String && !((String) dynamicAnchor).isEmpty()) {
+            fragments.putIfAbsent(key(resource.toString(), (String) dynamicAnchor), entry);
+        }
 
         for (String keyword : new String[]{
                 "$defs", "definitions", "properties", "patternProperties",
@@ -104,7 +126,7 @@ final class SchemaReferenceResolver {
             if (JsonType.of(mapping) != JsonType.OBJECT) continue;
             for (Map.Entry<String, Object> child : Nodes.entrySetInObject(mapping)) {
                 index(child.getValue(), resource, append(pointer, keyword, child.getKey()),
-                        physicalDocument, append(physicalPointer, keyword, child.getKey()), false);
+                        physicalDocument, append(physicalPointer, keyword, child.getKey()), false, modern);
             }
         }
         for (String keyword : new String[]{
@@ -116,11 +138,11 @@ final class SchemaReferenceResolver {
             if (JsonType.of(child) == JsonType.ARRAY) {
                 for (int i = 0; i < Nodes.sizeInArray(child); i++) {
                     index(Nodes.getInArray(child, i), resource, append(pointer, keyword, Integer.toString(i)),
-                            physicalDocument, append(physicalPointer, keyword, Integer.toString(i)), false);
+                            physicalDocument, append(physicalPointer, keyword, Integer.toString(i)), false, modern);
                 }
             } else if (child != null) {
                 index(child, resource, append(pointer, keyword),
-                        physicalDocument, append(physicalPointer, keyword), false);
+                        physicalDocument, append(physicalPointer, keyword), false, modern);
             }
         }
     }
@@ -141,10 +163,12 @@ final class SchemaReferenceResolver {
         final Object node;
         final String resource;
         final String location;
-        Entry(Object node, String resource, String location) {
+        final boolean modern;
+        Entry(Object node, String resource, String location, boolean modern) {
             this.node = node;
             this.resource = resource;
             this.location = location;
+            this.modern = modern;
         }
     }
 }
