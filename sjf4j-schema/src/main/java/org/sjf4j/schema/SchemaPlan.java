@@ -106,6 +106,16 @@ public final class SchemaPlan {
     }
 
 
+    /**
+     * Validates a nested value while retaining its location in the enclosing instance.
+     * Generated compiled validators use this overload for runtime fallback.
+     */
+    public void requireValid(Object node, PathSegment instancePs, boolean strictFormat) {
+        ValidationContext ctx = new ValidationContext(true, strictFormat, false);
+        boolean valid = evaluate(node, instancePs, ctx);
+        if (!valid) throw new ValidationException(ctx.toResult(false));
+    }
+
     /*
      * --------------------------------------------------------------
      * Evaluate
@@ -120,17 +130,24 @@ public final class SchemaPlan {
      */
     public boolean evaluate(Object node, ValidationContext ctx) {
         Asserts.notNull(ctx, "ctx");
+        return evaluate(node, ctx.isFailFast() ? null : PathSegment.Root.INSTANCE, ctx);
+    }
+
+    /**
+     * Evaluates a nested instance with a caller-provided path.
+     * The context's execution state is reset afterwards, as with evaluate(node, ctx).
+     */
+    public boolean evaluate(Object node, PathSegment instancePs, ValidationContext ctx) {
+        Asserts.notNull(ctx, "ctx");
         try {
             if (booleanSchema) {
                 if (!booleanValue) {
-                    ctx.addError(null, PathSegment.Root.INSTANCE, keywordPs,
-                            resourceUri, "false", "schema 'false' always fails");
+                    ctx.addError(null, instancePs == null ? PathSegment.Root.INSTANCE : instancePs,
+                            keywordPs, resourceUri, "false", "schema 'false' always fails");
                 }
                 return booleanValue;
             }
-            Instance instance = Instance.infer(node);
-            PathSegment ps = ctx.isFailFast() ? null : PathSegment.Root.INSTANCE;
-            return evaluate(instance, ps, ctx);
+            return evaluate(Instance.infer(node), instancePs, ctx);
         } finally {
             ctx.reset();
         }
