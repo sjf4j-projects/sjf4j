@@ -62,6 +62,9 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
                 "{\"patternProperties\":{\"^x\":true},\"unevaluatedProperties\":{\"type\":\"integer\"}}",
                 "{\"prefixItems\":[{\"type\":\"integer\"}],\"unevaluatedItems\":false}",
                 "{\"prefixItems\":[true],\"unevaluatedItems\":{\"type\":\"string\"}}",
+                "{\"properties\":{\"name\":{\"type\":\"string\"}},\"additionalProperties\":false,\"unevaluatedProperties\":false}",
+                "{\"properties\":{\"name\":true},\"additionalProperties\":true,\"unevaluatedProperties\":false}",
+                "{\"patternProperties\":{\"^x\":true},\"additionalProperties\":{\"type\":\"integer\"},\"unevaluatedProperties\":false}",
                 "{\"items\":{\"type\":\"integer\"},\"unevaluatedItems\":false}",
                 "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"type\":\"integer\"},\"unevaluatedItems\":false}"
         }) {
