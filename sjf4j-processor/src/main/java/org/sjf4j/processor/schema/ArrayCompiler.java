@@ -26,8 +26,10 @@ final class ArrayCompiler {
         if (!value.isArrayLike() && value.shape != SchemaValue.Shape.DYNAMIC) return null;
         // For an independent schema with no contains, prefixItems evaluates
         // its prefix and unevaluatedItems covers exactly the remaining suffix.
-        String itemKeyword = schema.containsKey("unevaluatedItems")
-                ? "unevaluatedItems" : "items";
+        // When items exists it covers the entire suffix on success. Since an
+        // unsuccessful items assertion already rejects the schema, the adjacent
+        // unevaluatedItems cannot change the boolean validation result.
+        String itemKeyword = schema.containsKey("items") ? "items" : "unevaluatedItems";
         for (String key : schema.keySet()) {
             if (!key.equals("items") && !key.equals("unevaluatedItems") && !key.equals("prefixItems")
                     && !key.equals("minItems") && !key.equals("maxItems")
