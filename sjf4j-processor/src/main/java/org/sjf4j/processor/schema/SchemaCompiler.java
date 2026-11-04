@@ -98,8 +98,9 @@ final class SchemaCompiler {
             }
             if (interfering == null && unevaluatedObject
                     && schema.containsKey("additionalProperties")) interfering = "additionalProperties";
-            if (interfering == null && unevaluatedArray
-                    && schema.containsKey("items")) interfering = "items";
+            // In a single schema object, successful 'items' covers all remaining
+            // indices after prefixItems; unevaluatedItems has no unvisited index.
+            // Its assertion still runs normally, so failure cannot be hidden.
             if (interfering == null && unevaluatedObject && unevaluatedArray)
                 interfering = "unevaluatedItems";
             if (depth != 0 || interfering != null) {
