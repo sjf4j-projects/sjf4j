@@ -106,16 +106,6 @@ public final class SchemaPlan {
     }
 
 
-    /**
-     * Validates a nested value while retaining its location in the enclosing instance.
-     * Generated compiled validators use this overload for runtime fallback.
-     */
-    public void requireValid(Object node, PathSegment instancePs, boolean strictFormat) {
-        ValidationContext ctx = new ValidationContext(true, strictFormat, false);
-        boolean valid = evaluate(node, instancePs, ctx);
-        if (!valid) throw new ValidationException(ctx.toResult(false));
-    }
-
     /*
      * --------------------------------------------------------------
      * Evaluate
@@ -134,10 +124,10 @@ public final class SchemaPlan {
     }
 
     /**
-     * Evaluates a nested instance with a caller-provided path.
-     * The context's execution state is reset afterwards, as with evaluate(node, ctx).
+     * Evaluates a nested instance using an explicit enclosing instance path.
+     * Used by compiled fallback support; resets per-evaluation context state.
      */
-    public boolean evaluate(Object node, PathSegment instancePs, ValidationContext ctx) {
+    boolean evaluate(Object node, PathSegment instancePs, ValidationContext ctx) {
         Asserts.notNull(ctx, "ctx");
         try {
             if (booleanSchema) {
@@ -147,13 +137,7 @@ public final class SchemaPlan {
                 }
                 return booleanValue;
             }
-            Instance instance = Instance.infer(node);
-            if (ctx.isFailFast()) {
-                // Avoid constructing child PathSegments on successful fail-fast checks.
-                // Materialize the original enclosing prefix only on an error.
-                return evaluate(instance.withRootPath(instancePs), null, ctx);
-            }
-            return evaluate(instance, instancePs, ctx);
+            return evaluate(Instance.infer(node), instancePs, ctx);
         } finally {
             ctx.reset();
         }
