@@ -29,10 +29,20 @@ final class SchemaReferenceResolver {
         // Its named fragments and JSON Pointer fragments must be accessible
         // through either URI. Embedded $id resources do not inherit this alias.
         Map<String, Entry> indexed = new HashMap<String, Entry>(fragments);
+        Map<String, Entry> indexedLocations = new HashMap<String, Entry>(locations);
         for (String retrieval : snapshot.uris) {
             Entry root = locations.get(key(retrieval, ""));
-            if (root == null || retrieval.equals(root.resource)) continue;
+            if (root == null) continue;
             String canonicalPrefix = root.resource + "#";
+            String retrievalPrefix = retrieval + "#";
+            // The enclosing root's pointer namespace also sees embedded $id
+            // locations (SchemaPlanner adds their physical paths to byPathPlans).
+            for (Map.Entry<String, Entry> location : indexedLocations.entrySet()) {
+                if (!location.getKey().startsWith(retrievalPrefix)) continue;
+                String suffix = location.getKey().substring(retrieval.length());
+                fragments.putIfAbsent(retrieval + suffix, location.getValue());
+                fragments.putIfAbsent(root.resource + suffix, location.getValue());
+            }
             for (Map.Entry<String, Entry> fragment : indexed.entrySet()) {
                 if (!fragment.getKey().startsWith(canonicalPrefix)) continue;
                 String alias = retrieval + fragment.getKey().substring(root.resource.length());
