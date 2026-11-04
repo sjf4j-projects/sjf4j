@@ -33,7 +33,7 @@ final class SchemaEmitter {
 
     private String fail(String action, SchemaCheck.Diagnostic d) {
         if (!DIAGNOSTIC_FAILURE.equals(action)) return action;
-        return "throw org.sjf4j.schema.CompiledUtil.validationFailure("
+        return "throw org.sjf4j.schema.ValidationException.failure("
                 + literal(d == null || d.keyword == null ? "schema" : d.keyword) + ", "
                 + (d == null || d.resourceUri == null ? "null" : literal(d.resourceUri)) + ", "
                 + literal(d == null || d.keywordPointer == null ? "" : d.keywordPointer)
@@ -156,7 +156,7 @@ final class SchemaEmitter {
                         String element = locals.newName("element");
                         statements.add("        Object " + element + " = " + (check.jsonObject
                                 ? variable + ".getNode(" + key + ")"
-                                : "org.sjf4j.schema.CompiledUtil.objectPropertyValue(" + variable + ", " + key + ")") + ";");
+                                : "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + key + ")") + ";");
                         String previousPath = instancePath;
                         instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
                         List<String> children = new ArrayList<String>();
@@ -176,7 +176,7 @@ final class SchemaEmitter {
                     statements.add("    if (!" + covered + ") {");
                     statements.add("        Object " + element + " = " + (check.jsonObject
                             ? variable + ".getNode(" + key + ")"
-                            : "org.sjf4j.schema.CompiledUtil.objectPropertyValue(" + variable + ", " + key + ")") + ";");
+                            : "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + key + ")") + ";");
                     String previousPath = instancePath;
                     instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
                     List<String> children = new ArrayList<String>();
@@ -196,7 +196,7 @@ final class SchemaEmitter {
             String access = check.jsonObject
                     ? variable + ".getNode(" + literal(property.name) + ")"
                     : check.dynamic
-                    ? "org.sjf4j.schema.CompiledUtil.objectPropertyValue(" + variable + ", " + literal(property.name) + ")"
+                    ? "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
             statements.add((property.codecOwner == null ? property.value.localType() : "Object")
                     + " " + local + " = " + access + ";");
@@ -314,13 +314,9 @@ final class SchemaEmitter {
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
                         ((SchemaCheck.Fallback) check).uri, planName);
                 if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
-                    // Preserve the enclosing instance location across a real
-                    // fallback without executing the root SchemaPlan.
-                    String fallbackError = locals.newName("fallbackError");
-                    lines.add("try { " + sub.reference() + ".requireValid(" + expression
-                            + ", " + strictFormat + "); } catch (org.sjf4j.schema.ValidationException " + fallbackError + ") {"
-                            + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(" + fallbackError + ", "
-                            + instancePath + "); }");
+                    // The runtime evaluator receives the full enclosing instance path.
+                    lines.add(sub.reference() + ".requireValid(" + expression
+                            + ", " + instancePath + ", " + strictFormat + ");");
                 } else {
                     lines.add("if (!" + sub.reference() + ".isValid("
                             + expression + ", " + strictFormat + ")) " + onFailure);
@@ -629,12 +625,8 @@ final class SchemaEmitter {
         } else {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
-                String fallbackError = locals.newName("fallbackError");
-                lines.add("    try { " + full.reference() + ".requireValid("
-                        + expression + ", " + strictFormat + "); }"
-                        + " catch (org.sjf4j.schema.ValidationException " + fallbackError + ") {"
-                        + " throw org.sjf4j.schema.CompiledUtil.rebaseFailure(" + fallbackError + ", "
-                        + instancePath + "); }");
+                lines.add("    " + full.reference() + ".requireValid("
+                        + expression + ", " + instancePath + ", " + strictFormat + ");");
             } else {
                 lines.add("    if (!" + full.reference()
                         + ".isValid(" + expression + ", " + strictFormat + ")) " + onFailure);
@@ -809,7 +801,7 @@ final class SchemaEmitter {
         if (check.minItems != null) lines.add("if (" + size + " < " + check.minItems + ") " + fail(onFailure, check.minItemsDiagnostic));
         if (check.maxItems != null) lines.add("if (" + size + " > " + check.maxItems + ") " + fail(onFailure, check.maxItemsDiagnostic));
         if (check.uniqueItems) {
-            lines.add("if (org.sjf4j.schema.CompiledUtil.hasDuplicateItems(" + subject
+            lines.add("if (org.sjf4j.Nodes.hasDuplicateInArray(" + subject
                     + ")) " + fail(onFailure, check.uniqueItemsDiagnostic));
         }
         // contains probes each item independently and counts matches. Failed
