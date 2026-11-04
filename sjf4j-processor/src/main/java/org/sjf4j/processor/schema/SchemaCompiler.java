@@ -65,7 +65,7 @@ final class SchemaCompiler {
             if (referenced == null || referenced.hasFallback()) return null;
             // Draft 2020-12 / 2019-09: adjacent assertions are independent of
             // $ref. Draft-07 ignores adjacent keywords instead.
-            if (schema.size() == 1) return referenced;
+            if (schema.size() == 1 || !SchemaReferenceResolver.acceptsRefSiblings(snapshot, schemaUri)) return referenced;
             JsonObject adjacent = new JsonObject();
             for (String keyword : schema.keySet()) {
                 if (!"$ref".equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
