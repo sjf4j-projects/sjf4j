@@ -167,8 +167,6 @@ final class SchemaMethodGenerator {
                         + "; set @CompiledValidator(fallback=true) to enable runtime fallback");
                 return;
             }
-            context.messager.printMessage(javax.tools.Diagnostic.Kind.WARNING,
-                    "@CompiledValidator(fallback=true) runtime fallback: " + fallbackReason, method);
         }
         // SchemaEmitter maintains its own helper names per root. Emit bindings
         // in inheritance order with one shared local-name allocator.
