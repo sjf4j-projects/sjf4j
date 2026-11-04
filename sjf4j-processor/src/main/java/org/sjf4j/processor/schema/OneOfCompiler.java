@@ -54,7 +54,7 @@ final class OneOfCompiler {
         Object candidates = schema.getNode("oneOf");
         if (JsonType.of(candidates) != JsonType.ARRAY) return null;
         int count = Nodes.sizeInArray(candidates);
-        if (count < 1 || depth >= 8) return null;
+        if (count < 1) return null;
         List<SchemaCheck> branches = new ArrayList<SchemaCheck>(count);
         for (int i = 0; i < count; i++) {
             String childUri = SchemaCompiler.childUri(uri, "oneOf", i);
@@ -72,7 +72,7 @@ final class OneOfCompiler {
     private SchemaCheck compileSpecialized(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
                         SchemaValue value, String uri, int depth,
                         SchemaCheck.GenericOneOfCheck generic) {
-        if (value.type == null || depth >= 8 || generic == null) return null;
+        if (value.type == null || generic == null) return null;
         TypeElement parent = context.types.typeElement(value.type);
         if (parent == null) return null;
         OneOf mapping = parent.getAnnotation(OneOf.class);
