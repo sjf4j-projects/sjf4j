@@ -16,12 +16,19 @@ import java.util.Map;
  */
 public public final class SchemaResourceIndex {
     private final Map<String, Entry> locations = new HashMap<String, Entry>();
+    private final boolean draft2020Only;
     private final Map<String, Entry> fragments = new HashMap<String, Entry>();
 
-    public SchemaResourceIndex(Map<URI, String> documents) {
-        for (Map.Entry<URI, String> document : documents.entrySet()) {
+    public SchemaResourceIndex(Map<URI, ?> documents) {
+        this(documents, false);
+    }
+
+    public SchemaResourceIndex(Map<URI, ?> documents, boolean draft2020Only) {
+        this.draft2020Only = draft2020Only;
+        for (Map.Entry<URI, ?> document : documents.entrySet()) {
             URI retrieval = document.getKey();
-            Object raw = Sjf4j.global().fromJson(document.getValue());
+            Object raw = document.getValue() instanceof String
+                    ? Sjf4j.global().fromJson((String) document.getValue()) : document.getValue();
             index(raw, retrieval, "", retrieval.toString(), "", true, true);
         }
         // A retrieval URI and the root's canonical $id name the same resource.
@@ -101,6 +108,12 @@ public public final class SchemaResourceIndex {
         String legacyIdAnchor = null;
         if (kind == JsonType.OBJECT) {
             Object dialect = Nodes.getInObject(node, "$schema");
+            if (draft2020Only && dialect != null &&
+                    (!(dialect instanceof String) ||
+                            SchemaDialect.detect((String) dialect) != SchemaDialect.DRAFT_2020_12)) {
+                throw new IllegalArgumentException("CompiledValidator supports only JSON Schema Draft 2020-12; "
+                        + "unsupported $schema: " + dialect + " at " + parentResource + "#" + resourcePointer);
+            }
             if (dialect instanceof String) {
                 org.sjf4j.schema.SchemaDialect detected =
                         org.sjf4j.schema.SchemaDialect.detect((String) dialect);
