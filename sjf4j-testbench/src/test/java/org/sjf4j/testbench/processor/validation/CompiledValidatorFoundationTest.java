@@ -184,10 +184,10 @@ class CompiledValidatorFoundationTest {
         boolean valid(DirectBean input);
     }
 
-    // The generated _Impl.java should call getName() directly, then invoke the
-    // pre-resolved #/properties/tags sub-schema for the unsupported keyword.
+    // The generated _Impl.java should use direct getters and the shared
+    // uniqueItems predicate, without creating a runtime SchemaPlan.
     @Test
-    void mixesDirectGetterChecksWithPointerSubschemaFallback() {
+    void mixesDirectGetterChecksWithCompiledUniqueItems() {
         MixedValidator compiled = CompiledInstances.create(MixedValidator.class);
         assertTrue(compiled.test(new MixedBean("Alice", java.util.Arrays.asList(1, 2))));
         assertFalse(compiled.test(new MixedBean("A", java.util.Arrays.asList(1, 2))));
@@ -215,16 +215,17 @@ class CompiledValidatorFoundationTest {
     }
 
     @Test
-    void generatedSourceContainsDirectGettersAndPointerFallback() throws Exception {
+    void generatedSourceContainsDirectGettersAndCompiledUniqueItems() throws Exception {
         java.nio.file.Path root = java.nio.file.Paths.get(
                 "build/generated/sources/annotationProcessor/java/test/",
                 "org/sjf4j/testbench/processor/validation/");
         String mixed = java.nio.file.Files.readString(root.resolve(
                 "CompiledValidatorFoundationTest$MixedValidator_Impl.java"));
         assertTrue(mixed.contains("value.getName()"), "direct getter must be emitted");
-        assertTrue(mixed.contains("#/properties/tags"), "subschema pointer must be emitted");
-        assertTrue(mixed.contains("SchemaFallbacks.SchemaPlan.SUBSCHEMA") && mixed.contains(".isValid("),
-                "unsupported keyword must use its own cached subschema");
+        assertTrue(mixed.contains("CompiledUtil.hasDuplicateItems("),
+                "uniqueItems must use shared JSON equality directly");
+        assertFalse(mixed.contains("SchemaFallbacks.SchemaPlan.SUBSCHEMA"),
+                "direct uniqueItems must not create a cached SchemaPlan");
         assertFalse(mixed.contains("new String[]{"), "JSON Schema documents must not be duplicated");
     }
 

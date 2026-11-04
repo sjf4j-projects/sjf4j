@@ -1076,7 +1076,7 @@ public interface Evaluator {
         }
 
 
-        private static boolean hasDuplicate(Object array, int size) {
+        static boolean hasDuplicate(Object array, int size) {
             if (size < 2) return false;
             Iterator<Object> it = NodeWalker.iteratorInArray(array);
             // Keep load factor <= 0.5 for inexpensive linear probing.
