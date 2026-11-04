@@ -281,6 +281,15 @@ public final class OfficialCompiledTest {
                         String compilationError = runner.compilationError(spec);
                         String mode = runner.compilationMode(spec);
                         String directError = runner.directCompilationError(spec);
+                        // A known fallback is never allowed to regress to an
+                        // uninformative root-level failure. The processor must
+                        // identify the keyword/combination or runtime-only mode.
+                        if (directError != null) {
+                            assertTrue(!directError.contains("unsupported schema construct or Java value projection")
+                                            && !directError.contains("no complete direct predicate is available")
+                                            && !directError.contains("unsupported schema construct requires runtime evaluation"),
+                                    spec.key() + ": missing specific fallback reason: " + directError);
+                        }
                         if (compilationError != null) {
                             report.record(spec, groupDescription, testIndex, description, expected,
                                     null, "COMPILE_ERROR", mode, directError, compilationError);
