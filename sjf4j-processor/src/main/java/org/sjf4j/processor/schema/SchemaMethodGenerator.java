@@ -113,12 +113,14 @@ final class SchemaMethodGenerator {
         SchemaFallbackEmitter.Plan bound = null;
         String booleanLiteral = null;
         SchemaCheck direct = null;
+        String fallbackReason = null;
         if ((isBoolean || isVoid) && plans.size() == 1) {
             bound = plans.get(0);
             booleanLiteral = compileBoolean(bound.snapshot);
             if (booleanLiteral == null) {
                 SchemaCompiler compiler = new SchemaCompiler(context);
                 direct = compiler.compileRoot(parameterType, bound.snapshot);
+                fallbackReason = compiler.fallbackReason();
                 if (isBoolean && direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
                     booleanLiteral = "false";
                     direct = null;
@@ -128,9 +130,21 @@ final class SchemaMethodGenerator {
 
         boolean fallback = booleanLiteral == null &&
                 (direct == null || direct.hasFallback());
-        if (fallback && !allowFallback) {
-            fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method");
-            return;
+        if (fallback) {
+            if (fallbackReason == null) {
+                fallbackReason = isResult
+                        ? "ValidationResult aggregation requires runtime SchemaPlan"
+                        : plans.size() > 1
+                        ? "multiple schema bindings require runtime validation"
+                        : "unsupported schema construct requires runtime evaluation";
+            }
+            String diagnostic = "@CompiledValidator fallback: " + fallbackReason;
+            if (!allowFallback) {
+                fail(generated, method, diagnostic + " (fallback=false)");
+                return;
+            }
+            context.messager.printMessage(javax.tools.Diagnostic.Kind.WARNING,
+                    diagnostic + " (fallback=true)", method);
         }
         // The same checks serve both APIs; only their failure action differs.
         // Boolean branch helpers (oneOf/anyOf/not/if) still return boolean.
