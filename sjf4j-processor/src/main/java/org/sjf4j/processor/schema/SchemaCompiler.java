@@ -113,8 +113,9 @@ final class SchemaCompiler {
                     break;
                 }
             }
-            if (interfering == null && unevaluatedObject
-                    && schema.containsKey("additionalProperties")) interfering = "additionalProperties";
+            // Same-schema additionalProperties evaluates every property not matched
+            // by properties/patternProperties. If that assertion succeeds, no
+            // unevaluated property remains; if it fails, the schema already fails.
             // In a single schema object, successful 'items' covers all remaining
             // indices after prefixItems; unevaluatedItems has no unvisited index.
             // Its assertion still runs normally, so failure cannot be hidden.
