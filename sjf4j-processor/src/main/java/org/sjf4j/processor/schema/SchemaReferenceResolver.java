@@ -33,22 +33,22 @@ final class SchemaReferenceResolver {
         for (String retrieval : snapshot.uris) {
             Entry root = locations.get(key(retrieval, ""));
             if (root == null) continue;
-            String canonicalPrefix = root.resource + "#";
-            String retrievalPrefix = retrieval + "#";
+            String canonicalPrefix = key(root.resource, "");
+            String retrievalPrefix = key(retrieval, "");
             // The enclosing root's pointer namespace also sees embedded $id
             // locations (SchemaPlanner adds their physical paths to byPathPlans).
             for (Map.Entry<String, Entry> location : indexedLocations.entrySet()) {
                 if (!location.getKey().startsWith(retrievalPrefix)) continue;
-                String suffix = location.getKey().substring(retrieval.length());
+                String suffix = location.getKey().substring(retrievalPrefix.length());
                 Entry entry = location.getValue();
-                locations.putIfAbsent(key(root.resource, suffix.substring(1)), entry);
-                fragments.putIfAbsent(key(retrieval, suffix.substring(1)), entry);
-                fragments.putIfAbsent(key(root.resource, suffix.substring(1)), entry);
+                locations.putIfAbsent(key(root.resource, suffix), entry);
+                fragments.putIfAbsent(key(retrieval, suffix), entry);
+                fragments.putIfAbsent(key(root.resource, suffix), entry);
             }
             for (Map.Entry<String, Entry> fragment : indexed.entrySet()) {
                 if (!fragment.getKey().startsWith(canonicalPrefix)) continue;
-                String alias = retrieval + fragment.getKey().substring(root.resource.length());
-                fragments.putIfAbsent(alias, fragment.getValue());
+                String suffix = fragment.getKey().substring(canonicalPrefix.length());
+                fragments.putIfAbsent(key(retrieval, suffix), fragment.getValue());
             }
         }
     }
@@ -62,7 +62,7 @@ final class SchemaReferenceResolver {
 
     static boolean acceptsRefSiblings(SchemaResourceResolver.Snapshot snapshot, String location) {
         SchemaReferenceResolver resolver = snapshot.referenceIndex();
-        Entry entry = resolver.locations.get(location);
+        Entry entry = resolver.locations.get(locationKey(location));
         if (entry == null) entry = resolver.locations.get(location + "#");
         return entry == null || entry.modern;
     }
