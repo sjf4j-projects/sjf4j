@@ -27,6 +27,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * Resolves complete schema documents at annotation-processing time.
@@ -38,6 +40,7 @@ final class SchemaResourceResolver {
     static final class Snapshot {
         final String[] uris;
         final String[] documents;
+        final boolean[] fromRegistry;
         final String selectedUri;
 
         private SchemaReferenceResolver referenceIndex;
@@ -47,13 +50,15 @@ final class SchemaResourceResolver {
             return referenceIndex;
         }
 
-        Snapshot(Map<URI, String> resources, URI selectedUri) {
+        Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources) {
             this.selectedUri = selectedUri.toString();
             uris = new String[resources.size()];
             documents = new String[resources.size()];
+            fromRegistry = new boolean[resources.size()];
             int i = 0;
             for (Map.Entry<URI, String> entry : resources.entrySet()) {
                 uris[i] = entry.getKey().toString();
+                fromRegistry[i] = registryResources.contains(entry.getKey());
                 documents[i++] = entry.getValue();
             }
         }
@@ -129,15 +134,16 @@ final class SchemaResourceResolver {
         }
 
         Map<URI, String> resources = new LinkedHashMap<URI, String>();
+        Set<URI> registryResources = new HashSet<URI>();
         resources.put(rootUri, rootDocument);
 
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
             JsonSchema schema = JsonSchema.fromJson(resources.get(uri));
-            scanRefs(schema, uri, resources, queue, resourceDirectory);
+            scanRefs(schema, uri, resources, queue, resourceDirectory, registryResources);
         }
 
-        Snapshot snapshot = new Snapshot(resources, selectedUri);
+        Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources);
         // Directory resources are indexed once, prior to root resolution.
         // Each method gets a registry copy so roots cannot leak between methods.
         SchemaRegistry registry = registry();
@@ -159,7 +165,7 @@ final class SchemaResourceResolver {
     }
 
     private void scanRefs(Object node, URI base, Map<URI, String> resources, List<URI> queue,
-                          Path resourceDirectory) {
+                          Path resourceDirectory, Set<URI> registryResources) {
         JsonType type = JsonType.of(node);
         if (type == JsonType.OBJECT) {
             URI local = effectiveBase(base, node);
@@ -179,6 +185,7 @@ final class SchemaResourceResolver {
                     IndexedSource indexed = indexedSource(document);
                     if (indexed == null) continue;
                     retrieval = indexed.retrieval;
+                    registryResources.add(retrieval);
                     contents = indexed.document;
                 }
                 if (contents == null || resources.containsKey(retrieval)) continue;
@@ -193,7 +200,7 @@ final class SchemaResourceResolver {
                 Object mapping = Nodes.getInObject(node, keyword);
                 if (JsonType.of(mapping) != JsonType.OBJECT) continue;
                 for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(mapping)) {
-                    scanRefs(entry.getValue(), local, resources, queue, resourceDirectory);
+                    scanRefs(entry.getValue(), local, resources, queue, resourceDirectory, registryResources);
                 }
             }
             for (String keyword : new String[]{
@@ -202,11 +209,11 @@ final class SchemaResourceResolver {
                     "unevaluatedItems", "unevaluatedProperties", "contentSchema",
                     "allOf", "anyOf", "oneOf", "prefixItems"}) {
                 Object subschema = Nodes.getInObject(node, keyword);
-                if (subschema != null) scanRefs(subschema, local, resources, queue, resourceDirectory);
+                if (subschema != null) scanRefs(subschema, local, resources, queue, resourceDirectory, registryResources);
             }
         } else if (type == JsonType.ARRAY) {
             Iterator<Object> iter = Nodes.iteratorInArray(node);
-            while (iter.hasNext()) scanRefs(iter.next(), base, resources, queue, resourceDirectory);
+            while (iter.hasNext()) scanRefs(iter.next(), base, resources, queue, resourceDirectory, registryResources);
         }
     }
 
