@@ -137,6 +137,22 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void staticDynamicReferencesCompileDirectly() throws Exception {
+        for (String schema : new String[]{
+                "{\"$defs\":{\"target\":{\"$anchor\":\"name\",\"type\":\"string\"}},\"$dynamicRef\":\"#name\"}",
+                "{\"$defs\":{\"target\":{\"$dynamicAnchor\":\"name\",\"type\":\"string\"}},\"$dynamicRef\":\"#/$defs/target\"}",
+                "{\"$defs\":{\"target\":{\"$anchor\":\"name\",\"$dynamicAnchor\":\"other\",\"type\":\"string\"}},\"$dynamicRef\":\"#name\"}",
+                "{\"$defs\":{\"target\":true},\"$dynamicRef\":\"#/$defs/target\"}"
+        }) {
+            NavigatorTestCompiler.Result result = compile(schema, "Object");
+            assertTrue(result.success, schema + "\\n" + result.diagnostics());
+            String output = result.generatedSource("fixture/Validator_Impl.java");
+            assertFalse(output.contains(".isValid("), output);
+            assertFalse(output.contains("SchemaPlan"), output);
+        }
+    }
+
+    @Test
     void dynamicRefDiagnosisDoesNotInventSecondKeyword() throws Exception {
         String schema = "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"}},"
                 + "\"$dynamicRef\":\"#node\"}";
