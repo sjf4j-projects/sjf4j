@@ -67,7 +67,7 @@ public final class SchemaPlan {
             } else {
                 ValidationResult.Message error = new ValidationResult.Message(
                         "false", "schema 'false' always fails", null,
-                        PathSegment.Root.INSTANCE, keywordPs, schemaUri);
+                        PathSegment.Root.INSTANCE, keywordPs, resourceUri);
                 return new ValidationResult(false, java.util.Collections.singletonList(error));
             }
         }
@@ -144,7 +144,7 @@ public final class SchemaPlan {
             if (booleanValue) {
                 return true;
             } else {
-                ctx.addError(instance, ps, keywordPs, schemaUri, "false", "schema 'false' always fails");
+                ctx.addError(instance, ps, keywordPs, resourceUri, "false", "schema 'false' always fails");
                 return false;
             }
         }
@@ -184,35 +184,28 @@ public final class SchemaPlan {
      * --------------------------------------------------------------
      */
 
-    /**
-     * The schema's JSON node without JOJO metadata accessors.
-     * ObjectSchema exposes retrievalUri/canonicalUri as declared properties;
-     * they are not JSON Schema keywords and must not reach code generation.
-     * This shallow copy preserves the original nested OBNT nodes.
-     */
-    public Object schemaNode() {
-        return booleanSchema ? Boolean.valueOf(booleanValue)
-                : new org.sjf4j.JsonObject(schema.dynamicMembers());
+    /** Original parsed BooleanSchema or ObjectSchema, without conversion. */
+    public JsonSchema schema() {
+        return schema;
     }
 
-    /** Canonical URI of this schema position, including its JSON Pointer. */
-    public URI schemaLocation() {
-        if (schemaUri == null) return null;
+    /** Absolute URI identifying this schema node, including its JSON Pointer. */
+    public URI schemaUri() {
+        if (resourceUri == null) return null;
         String path = keywordPs == null ? "" : keywordPs.rootedPointerExpr();
-        if (path.isEmpty()) return schemaUri;
-        // Encode the pointer as a URI fragment, preserving RFC 6901 ~0/~1.
+        if (path.isEmpty()) return resourceUri;
         try {
-            if (schemaUri.isOpaque()) {
-                return new URI(schemaUri.getScheme(), schemaUri.getSchemeSpecificPart(), path);
+            if (resourceUri.isOpaque()) {
+                return new URI(resourceUri.getScheme(), resourceUri.getSchemeSpecificPart(), path);
             }
-            return new URI(schemaUri.getScheme(), schemaUri.getAuthority(),
-                    schemaUri.getPath(), schemaUri.getQuery(), path);
+            return new URI(resourceUri.getScheme(), resourceUri.getAuthority(),
+                    resourceUri.getPath(), resourceUri.getQuery(), path);
         } catch (java.net.URISyntaxException e) {
-            throw new IllegalArgumentException("invalid schema location: " + schemaUri + "#" + path, e);
+            throw new IllegalArgumentException("invalid schema URI: " + resourceUri + "#" + path, e);
         }
     }
 
-    final URI schemaUri;
+    final URI resourceUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
     final boolean booleanSchema;
@@ -223,44 +216,41 @@ public final class SchemaPlan {
     final Map<String, SchemaPlan> byDynamicAnchorPlans;
     final Map<String, SchemaPlan> byPathPlans;
 
-    final ObjectSchema schema;
+    final JsonSchema schema;
     final SchemaDialect dialect;
     final Map<String, Boolean> vocabulary;
-    SchemaPlan(URI schemaUri, PathSegment keywordPs, Evaluator[] evaluators,
-               boolean booleanSchema, boolean booleanValue, String dynamicAnchor,
+    SchemaPlan(URI resourceUri, PathSegment keywordPs, Evaluator[] evaluators,
+               JsonSchema schema, String dynamicAnchor,
                Map<String, SchemaPlan> byAnchorPlans,
                Map<String, SchemaPlan> byDynamicAnchorPlans,
                Map<String, SchemaPlan> byPathPlans,
-               ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary) {
-        this.schemaUri = schemaUri;
+               SchemaDialect dialect, Map<String, Boolean> vocabulary) {
+        this.resourceUri = resourceUri;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
-        this.booleanSchema = booleanSchema;
-        this.booleanValue = booleanValue;
-
+        this.schema = Asserts.notNull(schema, "schema");
+        this.booleanSchema = schema instanceof BooleanSchema;
+        this.booleanValue = booleanSchema && ((BooleanSchema) schema).booleanValue();
         this.dynamicAnchor = dynamicAnchor;
         this.byAnchorPlans = byAnchorPlans;
         this.byDynamicAnchorPlans = byDynamicAnchorPlans;
         this.byPathPlans = byPathPlans;
-
-        this.schema = schema;
         this.dialect = dialect;
         this.vocabulary = vocabulary;
     }
 
-    static SchemaPlan of(URI schemaUri, PathSegment keywordPs, BooleanSchema booleanSchema) {
-        return new SchemaPlan(schemaUri, keywordPs, new Evaluator[0], true, booleanSchema.booleanValue(),
-                null, null, null, null, null, null, null);
+    static SchemaPlan of(URI resourceUri, PathSegment keywordPs, BooleanSchema schema) {
+        return new SchemaPlan(resourceUri, keywordPs, new Evaluator[0], schema,
+                null, null, null, null, null, null);
     }
 
-    static SchemaPlan of(URI schemaUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
+    static SchemaPlan of(URI resourceUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
                          Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                          Map<String, SchemaPlan> byPathPlans,
-                         ObjectSchema resourceRootSchema, SchemaDialect resourceDialect,
-                         Map<String, Boolean> resourceVocabulary) {
-        return new SchemaPlan(schemaUri, keywordPs, evaluators.toArray(new Evaluator[0]), false, false,
-                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                resourceRootSchema, resourceDialect, resourceVocabulary);
+                         ObjectSchema schema, SchemaDialect dialect,
+                         Map<String, Boolean> vocabulary) {
+        return new SchemaPlan(resourceUri, keywordPs, evaluators.toArray(new Evaluator[0]), schema,
+                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, dialect, vocabulary);
     }
 
 }
