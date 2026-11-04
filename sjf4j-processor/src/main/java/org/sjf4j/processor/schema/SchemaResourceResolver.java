@@ -103,6 +103,7 @@ final class SchemaResourceResolver {
         URI rootUri;
         URI selectedUri;
         String rootDocument;
+        boolean rootFromRegistry = false;
 
         if (!inline.isEmpty()) {
             rootUri = URI.create("sjf4j:/" + originName + "/");
@@ -116,6 +117,16 @@ final class SchemaResourceResolver {
                 // Fragments select a schema within the resource; they are not
                 // part of the document retrieval URI.
                 rootUri = URI.create(selectedUri.toString().split("#", 2)[0]);
+                if ("classpath".equals(rootUri.getScheme()) || "file".equals(rootUri.getScheme())) {
+                    rootDocument = read(rootUri, resourceDirectory);
+                } else {
+                    IndexedSource indexed = indexedSource(rootUri);
+                    rootDocument = indexed == null ? null : indexed.document;
+                    if (indexed != null) {
+                        rootUri = indexed.retrieval;
+                        rootFromRegistry = true;
+                    }
+                }
             } else {
                 String simple = ownerName.substring(ownerName.lastIndexOf('.') + 1);
                 rootUri = baseDir.resolve(simple + ".json");
@@ -125,8 +136,8 @@ final class SchemaResourceResolver {
                     rootUri = baseDir.resolve(snake + ".json");
                 }
                 selectedUri = rootUri;
+                rootDocument = read(rootUri, resourceDirectory);
             }
-            rootDocument = read(rootUri, resourceDirectory);
             if (rootDocument == null) {
                 throw new IllegalArgumentException("schema resource not found: " + rootUri
                         + " (resource not found on the compilation classpath or alongside the source set)");
@@ -136,6 +147,7 @@ final class SchemaResourceResolver {
         Map<URI, String> resources = new LinkedHashMap<URI, String>();
         Set<URI> registryResources = new HashSet<URI>();
         resources.put(rootUri, rootDocument);
+        if (rootFromRegistry) registryResources.add(rootUri);
 
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
