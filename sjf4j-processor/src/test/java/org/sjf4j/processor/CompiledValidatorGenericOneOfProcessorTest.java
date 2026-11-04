@@ -47,7 +47,7 @@ class CompiledValidatorGenericOneOfProcessorTest {
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("cannot fully compile"),
+        assertTrue(result.diagnostics().contains("requires evaluated-location tracking"),
                 result.diagnostics());
     }
 }
