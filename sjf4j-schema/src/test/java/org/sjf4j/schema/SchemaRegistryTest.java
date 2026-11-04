@@ -29,8 +29,11 @@ class SchemaRegistryTest {
                         + "\"$defs\":{\"number\":{\"$anchor\":\"number\",\"type\":\"number\"}}}}}"));
         SchemaPlan word = registry.resolve(URI.create("https://example.test/root.json#word"));
         assertNotNull(word);
-        assertTrue(word.schemaNode() instanceof ObjectSchema);
-        assertTrue(((ObjectSchema) word.schemaNode()).containsKey("type"));
+        assertTrue(word.schemaNode() instanceof org.sjf4j.JsonObject);
+        org.sjf4j.JsonObject raw = (org.sjf4j.JsonObject) word.schemaNode();
+        assertTrue(raw.containsKey("type"));
+        assertFalse(raw.containsKey("canonicalUri"));
+        assertFalse(raw.containsKey("retrievalUri"));
         assertTrue(word.schemaLocation().toString().endsWith("#/$defs/word"));
         assertTrue(registry.resolve(URI.create("classpath:/schemas/entry.json#/$defs/word"))
                 .schemaLocation().equals(word.schemaLocation()));
