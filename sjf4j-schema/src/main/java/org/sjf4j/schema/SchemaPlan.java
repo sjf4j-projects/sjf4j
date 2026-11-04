@@ -77,6 +77,18 @@ public final class SchemaPlan {
         return ctx.toResult(valid);
     }
 
+    /**
+     * Validates with explicit options. Annotation collection is reserved for a
+     * future runtime implementation and currently fails explicitly when requested.
+     */
+    public ValidationResult validate(Object node, ValidationOptions options) {
+        Asserts.notNull(options, "options");
+        if (options.isCollectAnnotations()) {
+            throw new UnsupportedOperationException("Annotation collection is not implemented yet");
+        }
+        return validate(node, options.isFailFast(), options.isStrictFormat());
+    }
+
     /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
         return isValid(node, false);

@@ -19,6 +19,7 @@ public class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
     private final boolean booleanOnly;
+    private final boolean collectAnnotations;
     private List<ValidationResult.Message> errors;
     private List<ValidationResult.Message> annotations;
 
@@ -38,7 +39,24 @@ public class ValidationContext {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
+        this.collectAnnotations = false;
         this.reusedLeaf = Instance.infer(null);
+    }
+
+    /**
+     * Creates a context from validation options.
+     * Annotation collection is not implemented yet; enabling it is rejected.
+     */
+    public ValidationContext(ValidationOptions options, boolean booleanOnly) {
+        this(options.isFailFast(), options.isStrictFormat(), booleanOnly);
+        if (options.isCollectAnnotations()) {
+            throw new UnsupportedOperationException("Annotation collection is not implemented yet");
+        }
+    }
+
+    /** Whether annotation collection is enabled (currently always false). */
+    public boolean isCollectAnnotations() {
+        return collectAnnotations;
     }
 
     /** Releases per-evaluation state, preserving configuration and output. */
