@@ -51,6 +51,7 @@ abstract class SchemaCheck {
         final String uri;
         SchemaCheck target;
         boolean binding = true;
+        boolean recursive;
         private boolean checkingFallback;
 
         ReferenceCheck(String uri, Diagnostic diagnostic) {
