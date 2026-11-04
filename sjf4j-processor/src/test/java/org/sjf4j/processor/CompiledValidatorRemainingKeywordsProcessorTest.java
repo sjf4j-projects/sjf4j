@@ -122,6 +122,18 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void referencedUnevaluatedExplainsReferenceScope() throws Exception {
+        String schema = "{\"$defs\":{\"guard\":{\"unevaluatedProperties\":false}},"
+                + "\"$ref\":\"#/$defs/guard\"}";
+        NavigatorTestCompiler.Result result = compile(schema, "Object");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("$ref + unevaluatedProperties"),
+                result.diagnostics());
+        assertTrue(result.diagnostics().contains("#/$defs/guard/unevaluatedProperties"),
+                result.diagnostics());
+    }
+
+    @Test
     void dynamicRefDiagnosisDoesNotInventSecondKeyword() throws Exception {
         String schema = "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"}},"
                 + "\"$dynamicRef\":\"#node\"}";
