@@ -52,8 +52,10 @@ public final class OfficialCompiledTest {
         fallback(groups, "dynamicRef.json", 0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20);
         fallback(groups, "not.json", 8);
         fallback(groups, "ref.json", 6, 13);
-        fallback(groups, "unevaluatedItems.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28);
-        fallback(groups, "unevaluatedProperties.json", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43);
+        // Only groups that require cross-subschema evaluated-location tracking
+        // remain fallback. Isolated root-local groups compile directly.
+        fallback(groups, "unevaluatedItems.json", 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27);
+        fallback(groups, "unevaluatedProperties.json", 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 39, 40);
         // Custom metaschemas need vocabulary-aware interpretation, even when
         // the schema uses a familiar validation keyword such as type.
         fallback(groups, "vocabulary.json", 0, 1);
@@ -279,6 +281,15 @@ public final class OfficialCompiledTest {
                         String compilationError = runner.compilationError(spec);
                         String mode = runner.compilationMode(spec);
                         String directError = runner.directCompilationError(spec);
+                        // A known fallback is never allowed to regress to an
+                        // uninformative root-level failure. The processor must
+                        // identify the keyword/combination or runtime-only mode.
+                        if (directError != null) {
+                            assertTrue(!directError.contains("unsupported schema construct or Java value projection")
+                                            && !directError.contains("no complete direct predicate is available")
+                                            && !directError.contains("unsupported schema construct requires runtime evaluation"),
+                                    spec.key() + ": missing specific fallback reason: " + directError);
+                        }
                         if (compilationError != null) {
                             report.record(spec, groupDescription, testIndex, description, expected,
                                     null, "COMPILE_ERROR", mode, directError, compilationError);

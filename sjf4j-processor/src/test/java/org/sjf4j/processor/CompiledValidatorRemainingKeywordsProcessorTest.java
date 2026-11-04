@@ -56,16 +56,96 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
-    void unsupportedKeywordStillRejectsFallbackFalse() throws Exception {
+    void isolatedUnevaluatedKeywordsCompileDirectly() throws Exception {
         for (String schema : new String[]{
-                "{\"type\":\"string\",\"unevaluatedProperties\":false}",
-                "{\"type\":\"number\",\"unevaluatedItems\":false}",
-                "{\"type\":\"object\",\"unevaluatedProperties\":false}"
+                "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"unevaluatedProperties\":false}",
+                "{\"patternProperties\":{\"^x\":true},\"unevaluatedProperties\":{\"type\":\"integer\"}}",
+                "{\"prefixItems\":[{\"type\":\"integer\"}],\"unevaluatedItems\":false}",
+                "{\"prefixItems\":[true],\"unevaluatedItems\":{\"type\":\"string\"}}",
+                "{\"properties\":{\"name\":{\"type\":\"string\"}},\"additionalProperties\":false,\"unevaluatedProperties\":false}",
+                "{\"properties\":{\"name\":true},\"additionalProperties\":true,\"unevaluatedProperties\":false}",
+                "{\"patternProperties\":{\"^x\":true},\"additionalProperties\":{\"type\":\"integer\"},\"unevaluatedProperties\":false}",
+                "{\"items\":{\"type\":\"integer\"},\"unevaluatedItems\":false}",
+                "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"type\":\"integer\"},\"unevaluatedItems\":false}"
         }) {
             NavigatorTestCompiler.Result result = compile(schema, "Object");
-            assertFalse(result.success, schema);
-            assertTrue(result.diagnostics().contains("cannot fully compile"),
-                    schema + "\n" + result.diagnostics());
+            assertTrue(result.success, schema + "\\n" + result.diagnostics());
+            String output = result.generatedSource("fixture/Validator_Impl.java");
+            assertFalse(output.contains(".isValid("), schema + "\\n" + output);
+            assertFalse(output.contains("SchemaPlan"), schema + "\\n" + output);
         }
     }
+
+    @Test
+    void combinationsRequiringEvaluationTrackingReportExactReason() throws Exception {
+        for (String[] input : new String[][]{
+                {"{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}",
+                        "allOf + unevaluatedProperties"},
+                {"{\"$ref\":\"#/$defs/A\",\"$defs\":{\"A\":true},\"unevaluatedProperties\":false}",
+                        "$ref + unevaluatedProperties"},
+                {"{\"contains\":{\"type\":\"integer\"},\"unevaluatedItems\":false}",
+                        "contains + unevaluatedItems"},
+                {"{\"properties\":{\"nested\":{\"unevaluatedProperties\":false}}}",
+                        "properties + unevaluatedProperties"}
+        }) {
+            NavigatorTestCompiler.Result result = compile(input[0], "Object");
+            assertFalse(result.success, input[0]);
+            assertTrue(result.diagnostics().contains(input[1]), result.diagnostics());
+            assertTrue(result.diagnostics().contains("fallback=false"), result.diagnostics());
+        }
+    }
+    @Test
+    void fallbackTrueEmitsSemanticWarning() throws Exception {
+        String schema = "{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}";
+        String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=true) public interface Validator { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "boolean validate(Object value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                Map.of("fixture/Validator.java", source), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("allOf + unevaluatedProperties"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("fallback=true"), result.diagnostics());
+    }
+
+    @Test
+    void nestedFallbackDiagnosticsIdentifyActualApplicatorAndLocation() throws Exception {
+        for (String[] sample : new String[][]{
+                {"{\"allOf\":[{\"unevaluatedProperties\":false}]}", "allOf + unevaluatedProperties", "#/allOf/0/unevaluatedProperties"},
+                {"{\"anyOf\":[{\"unevaluatedItems\":false},true]}", "anyOf + unevaluatedItems", "#/anyOf/0/unevaluatedItems"},
+                {"{\"oneOf\":[{\"unevaluatedProperties\":false},true]}", "oneOf + unevaluatedProperties", "#/oneOf/0/unevaluatedProperties"},
+                {"{\"not\":{\"unevaluatedItems\":false}}", "not + unevaluatedItems", "#/not/unevaluatedItems"},
+                {"{\"properties\":{\"child\":{\"unevaluatedProperties\":false}}}", "properties + unevaluatedProperties", "#/properties/child/unevaluatedProperties"}
+        }) {
+            NavigatorTestCompiler.Result result = compile(sample[0], "Object");
+            assertFalse(result.success, sample[0]);
+            assertTrue(result.diagnostics().contains(sample[1]), result.diagnostics());
+            assertTrue(result.diagnostics().contains(sample[2]), result.diagnostics());
+        }
+    }
+
+    @Test
+    void referencedUnevaluatedExplainsReferenceScope() throws Exception {
+        String schema = "{\"$defs\":{\"guard\":{\"unevaluatedProperties\":false}},"
+                + "\"$ref\":\"#/$defs/guard\"}";
+        NavigatorTestCompiler.Result result = compile(schema, "Object");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("$ref + unevaluatedProperties"),
+                result.diagnostics());
+        assertTrue(result.diagnostics().contains("#/$defs/guard/unevaluatedProperties"),
+                result.diagnostics());
+    }
+
+    @Test
+    void dynamicRefDiagnosisDoesNotInventSecondKeyword() throws Exception {
+        String schema = "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"}},"
+                + "\"$dynamicRef\":\"#node\"}";
+        NavigatorTestCompiler.Result result = compile(schema, "Object");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("$dynamicRef"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("dynamic-scope"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("#/$dynamicRef"), result.diagnostics());
+    }
+
+
 }

@@ -26,6 +26,17 @@ final class SchemaCompiler {
     private final ArrayCompiler arrays;
     private final OneOfCompiler oneOf;
     private final Map<String, SchemaCheck.ReferenceCheck> boundReferences = new HashMap<String, SchemaCheck.ReferenceCheck>();
+    private String fallbackReason;
+    private int activeReferences;
+
+    /** First semantic obstacle seen while compiling a schema tree. */
+    String fallbackReason() {
+        return fallbackReason == null ? "unsupported schema construct or Java value projection" : fallbackReason;
+    }
+
+    private void unsupported(String reason) {
+        if (fallbackReason == null) fallbackReason = reason;
+    }
 
     SchemaCompiler(ProcessorContext context) {
         this.context = context;
@@ -40,7 +51,11 @@ final class SchemaCompiler {
         // A custom meta-schema can redefine vocabularies, including the
         // semantics of an otherwise empty or ref-only schema. Never emit
         // direct predicates under an unknown dialect.
-        if (snapshot.customDialect) return null;
+        if (snapshot.customDialect) {
+            unsupported("custom $schema / $vocabulary at " + snapshot.selectedUri
+                    + " requires runtime vocabulary interpretation");
+            return null;
+        }
         Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
@@ -50,12 +65,27 @@ final class SchemaCompiler {
             root = selected.value;
             uri = selected.uri;
         }
-        return compileValue(snapshot, root, SchemaValue.of(context, type), uri, 0);
+        SchemaCheck compiled = compileValue(snapshot, root, SchemaValue.of(context, type), uri, 0);
+        if ((compiled == null || compiled.hasFallback()) && fallbackReason == null) {
+            unsupported("schema at " + snapshot.selectedUri
+                    + " requires runtime validation: no complete direct predicate is available");
+        }
+        return compiled;
     }
 
     SchemaCheck compileValue(SchemaResourceResolver.Snapshot snapshot,
                              Object rawSchema, SchemaValue value,
                              String schemaUri, int depth) {
+        SchemaCheck compiled = compileSchema(snapshot, rawSchema, value, schemaUri, depth);
+        if (compiled == null && fallbackReason == null) {
+            unsupported(explainFailure(snapshot, rawSchema, schemaUri));
+        }
+        return compiled;
+    }
+
+    private SchemaCheck compileSchema(SchemaResourceResolver.Snapshot snapshot,
+                                      Object rawSchema, SchemaValue value,
+                                      String schemaUri, int depth) {
         if (rawSchema instanceof Boolean || rawSchema instanceof BooleanSchema) {
             boolean allowed = rawSchema instanceof BooleanSchema
                     ? ((BooleanSchema) rawSchema).booleanValue()
@@ -65,9 +95,43 @@ final class SchemaCompiler {
         }
         if (JsonType.of(rawSchema) != JsonType.OBJECT) return null;
         JsonObject schema = schemaObject(rawSchema);
-        // Canonical locations are indexed by lexical $id scope, including nested
-        // resources. Do not reapply a relative $id when following a reference.
+        // Canonical locations are indexed by lexical $id scope.
         schemaUri = snapshot.canonicalLocation(schemaUri);
+        // Static local coverage is safe only for the selected root schema,
+        // with no applicator/reference or dependent-schema annotation exchange.
+        // Child schemas are compiled normally but cannot claim their parent's
+        // evaluated locations.
+        boolean unevaluatedObject = schema.containsKey("unevaluatedProperties");
+        boolean unevaluatedArray = schema.containsKey("unevaluatedItems");
+        if (unevaluatedObject || unevaluatedArray) {
+            String keyword = unevaluatedObject ? "unevaluatedProperties" : "unevaluatedItems";
+            String interfering = null;
+            for (String key : new String[]{"allOf", "anyOf", "oneOf", "not", "if", "then",
+                    "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
+                if (schema.containsKey(key)) {
+                    interfering = key;
+                    break;
+                }
+            }
+            // Same-schema additionalProperties evaluates every property not matched
+            // by properties/patternProperties. If that assertion succeeds, no
+            // unevaluated property remains; if it fails, the schema already fails.
+            // In a single schema object, successful 'items' covers all remaining
+            // indices after prefixItems; unevaluatedItems has no unvisited index.
+            // Its assertion still runs normally, so failure cannot be hidden.
+            if (interfering == null && unevaluatedObject && unevaluatedArray)
+                interfering = "unevaluatedItems";
+            if (depth != 0 || interfering != null) {
+                String parent = interfering == null ? enclosingKeyword(schemaUri) : interfering;
+                if (parent == null && activeReferences > 0) parent = "$ref";
+                unsupported(parent == null
+                        ? keyword + " in a nested schema requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator at "
+                                + keywordUri(schemaUri, keyword)
+                        : parent + " + " + keyword + " requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator at "
+                                + keywordUri(schemaUri, keyword));
+                return null;
+            }
+        }
         if (schema.containsKey("$ref")) {
             JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
             RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
@@ -79,8 +143,13 @@ final class SchemaCompiler {
             if (reference == null) {
                 reference = new SchemaCheck.ReferenceCheck(target.uri, diagnostic(schemaUri, "$ref"));
                 boundReferences.put(referenceKey, reference);
-                reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
-                reference.binding = false;
+                try {
+                    activeReferences++;
+                    reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
+                } finally {
+                    activeReferences--;
+                    reference.binding = false;
+                }
                 // The cache is an active reference chain, not global memoization.
                 // Keeping completed nodes would lose the referring keyword's
                 // diagnostic location and force needless helper calls.
@@ -160,18 +229,27 @@ final class SchemaCompiler {
                 case "exclusiveMaximum": case "multipleOf":
                     numbers.put(keyword, schema.getNode(keyword));
                     break;
-                case "items": case "prefixItems": case "uniqueItems":
+                case "items": case "unevaluatedItems": case "prefixItems": case "uniqueItems":
                 case "minItems": case "maxItems":
                 case "contains": case "minContains": case "maxContains":
                     array.put(keyword, schema.getNode(keyword));
                     break;
-                case "properties": case "patternProperties": case "propertyNames":
+                case "properties": case "unevaluatedProperties": case "patternProperties": case "propertyNames":
                 case "required": case "additionalProperties": case "minProperties":
                 case "maxProperties": case "dependentRequired": case "dependentSchemas":
                     object.put(keyword, schema.getNode(keyword));
                     break;
                 default:
                     // Never omit an unsupported keyword while compiling others.
+                    if ("$dynamicRef".equals(keyword)) {
+                        unsupported("$dynamicRef at " + keywordUri(uri, keyword)
+                                + " requires runtime dynamic-scope resolution");
+                    } else if ("$vocabulary".equals(keyword)) {
+                        unsupported(dialectFallbackReason(snapshot, uri));
+                    } else {
+                        unsupported("unsupported keyword '" + keyword + "' at " + keywordUri(uri, keyword)
+                                + " requires runtime evaluation");
+                    }
                     return null;
             }
         }
@@ -182,7 +260,10 @@ final class SchemaCompiler {
 
         // Custom vocabularies can redefine whether a keyword is an assertion.
         // A syntactically compilable keyword is not necessarily active.
-        if (!canCompileStandardDialect(snapshot)) return null;
+        if (!canCompileStandardDialect(snapshot)) {
+            unsupported(dialectFallbackReason(snapshot, uri));
+            return null;
+        }
 
         List<SchemaCheck> checks = new ArrayList<SchemaCheck>();
         if (!types.isEmpty()) {
@@ -407,6 +488,87 @@ final class SchemaCompiler {
         checks.removeIf(check -> check.kind == SchemaCheck.Kind.PASS);
         if (checks.isEmpty()) return new SchemaCheck.Pass();
         return checks.size() == 1 ? checks.get(0) : new SchemaCheck.AllCheck(checks);
+    }
+
+    /**
+     * Explain the first unsupported schema location, not simply the root where
+     * compilation eventually returned null. Never invent a keyword pair: a
+     * single dynamic reference or unsupported dialect is also a valid reason.
+     */
+    private static String explainFailure(SchemaResourceResolver.Snapshot snapshot,
+                                         Object rawSchema, String uri) {
+        if (JsonType.of(rawSchema) != JsonType.OBJECT)
+            return "schema at " + uri + " has no supported direct representation";
+        JsonObject schema = schemaObject(rawSchema);
+        if (schema.containsKey("$dynamicRef")) {
+            return "$dynamicRef at " + keywordUri(uri, "$dynamicRef")
+                    + " requires runtime dynamic-scope resolution";
+        }
+        if (!canCompileStandardDialect(snapshot)) return dialectFallbackReason(snapshot, uri);
+        String[] ordered = {"unevaluatedProperties", "unevaluatedItems", "$ref", "oneOf",
+                "anyOf", "allOf", "not", "if", "then", "else", "contains",
+                "dependentSchemas", "properties", "patternProperties", "additionalProperties",
+                "prefixItems", "items", "const", "enum", "type", "format", "pattern",
+                "multipleOf", "required", "dependentRequired", "propertyNames"};
+        String first = null;
+        for (String keyword : ordered) {
+            if (!schema.containsKey(keyword)) continue;
+            if (first == null) first = keyword;
+            String enclosing = enclosingKeyword(uri);
+            if (enclosing != null && ("unevaluatedProperties".equals(keyword)
+                    || "unevaluatedItems".equals(keyword))) {
+                return enclosing + " + " + keyword
+                        + " requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator at " + keywordUri(uri, keyword);
+            }
+            if ("$ref".equals(keyword)) {
+                return "$ref at " + keywordUri(uri, keyword)
+                        + " cannot be fully resolved or directly compiled";
+            }
+        }
+        if (first != null) {
+            return "schema keyword '" + first + "' at " + keywordUri(uri, first)
+                    + " cannot be fully compiled with this schema and Java value projection";
+        }
+        return "schema at " + uri + " cannot be fully compiled with this Java value projection";
+    }
+
+    private static String dialectFallbackReason(SchemaResourceResolver.Snapshot snapshot, String uri) {
+        for (int i = 0; i < snapshot.documents.length; i++) {
+            String document = snapshot.documents[i];
+            if (document.contains("\"$vocabulary\"")) {
+                return "$vocabulary at " + snapshot.uris[i]
+                        + " requires runtime vocabulary interpretation";
+            }
+            if (document.contains("\"format-assertion\"")) {
+                return "format-assertion vocabulary at " + snapshot.uris[i]
+                        + " requires runtime dialect interpretation";
+            }
+        }
+        return "custom $schema at " + uri + " requires runtime vocabulary interpretation";
+    }
+
+    /** Nearest enclosing applicator or structural keyword in a JSON Pointer. */
+    private static String enclosingKeyword(String uri) {
+        int hash = uri.indexOf('#');
+        if (hash < 0) return null;
+        String pointer = decodeUriFragment(uri.substring(hash + 1));
+        String[] keywords = {"allOf", "anyOf", "oneOf", "not", "if", "then",
+                "else", "contains", "dependentSchemas", "properties",
+                "patternProperties", "items", "prefixItems"};
+        String enclosing = null;
+        int nearest = -1;
+        for (String keyword : keywords) {
+            int at = pointer.lastIndexOf("/" + keyword + "/");
+            if (at > nearest) {
+                nearest = at;
+                enclosing = keyword;
+            }
+            if (pointer.endsWith("/" + keyword) && pointer.length() - keyword.length() - 1 > nearest) {
+                nearest = pointer.length() - keyword.length() - 1;
+                enclosing = keyword;
+            }
+        }
+        return enclosing;
     }
 
     private static boolean isApplicator(String key) {

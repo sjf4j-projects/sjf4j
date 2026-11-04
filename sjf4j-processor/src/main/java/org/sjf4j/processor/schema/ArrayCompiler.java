@@ -24,8 +24,14 @@ final class ArrayCompiler {
     SchemaCheck compile(SchemaResourceResolver.Snapshot snapshot, JsonObject schema,
                         SchemaValue value, String schemaUri, int depth) {
         if (!value.isArrayLike() && value.shape != SchemaValue.Shape.DYNAMIC) return null;
+        // For an independent schema with no contains, prefixItems evaluates
+        // its prefix and unevaluatedItems covers exactly the remaining suffix.
+        // When items exists it covers the entire suffix on success. Since an
+        // unsuccessful items assertion already rejects the schema, the adjacent
+        // unevaluatedItems cannot change the boolean validation result.
+        String itemKeyword = schema.containsKey("items") ? "items" : "unevaluatedItems";
         for (String key : schema.keySet()) {
-            if (!key.equals("items") && !key.equals("prefixItems")
+            if (!key.equals("items") && !key.equals("unevaluatedItems") && !key.equals("prefixItems")
                     && !key.equals("minItems") && !key.equals("maxItems")
                     && !key.equals("uniqueItems") && !key.equals("contains")
                     && !key.equals("minContains") && !key.equals("maxContains")
@@ -55,9 +61,9 @@ final class ArrayCompiler {
             }
         }
         SchemaCheck itemCheck = null;
-        if (schema.containsKey("items")) {
-            String itemUri = SchemaCompiler.keywordUri(schemaUri, "items");
-            itemCheck = schemaCompiler.compileValue(snapshot, schema.getNode("items"),
+        if (schema.containsKey(itemKeyword)) {
+            String itemUri = SchemaCompiler.keywordUri(schemaUri, itemKeyword);
+            itemCheck = schemaCompiler.compileValue(snapshot, schema.getNode(itemKeyword),
                     itemValue, itemUri, depth + 1);
             if (itemCheck == null) itemCheck = new SchemaCheck.Fallback(itemUri);
         }

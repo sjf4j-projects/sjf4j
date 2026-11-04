@@ -56,7 +56,9 @@ public interface UserDiagnosticValidator {
 }
 ```
 
-Supported assertions compile into Java predicates. A partially supported schema can delegate an unsupported subtree to `SchemaPlan`; keywords that need shared evaluation state (notably `unevaluated*`) fall back at the appropriate scope. `ValidationResult` methods always use the runtime engine for complete diagnostics. `CompiledInstances.create(Validator.class, RuntimeContext)` is supported as a factory, but validation options currently come from method arguments, not `RuntimeContext`.
+Supported assertions compile into Java predicates. A partially supported schema can delegate an unsupported subtree to `SchemaPlan`; keywords that need shared evaluation state (notably `unevaluated*`) fall back at the appropriate scope. `ValidationResult` methods always use the runtime engine for complete diagnostics.
+
+When a validator needs fallback, annotation processing reports the **first unsupported construct at its schema location**. Where evaluation-location propagation crosses a keyword boundary, the diagnostic names the actual combination, e.g. `allOf + unevaluatedProperties requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator`. The error also advises `@CompiledValidator(fallback=true)`. Standalone limitations such as `$dynamicRef` dynamic-scope resolution, `$vocabulary` interpretation, and `ValidationResult` aggregation are identified separately; a second keyword is never invented. With `fallback=false` this is a compilation error, while `fallback=true` produces a compiler warning. Non-semantic projection failures report the specific schema keyword and location where possible, not a fabricated combination. `CompiledInstances.create(Validator.class, RuntimeContext)` is supported as a factory, but validation options currently come from method arguments, not `RuntimeContext`.
 
 ### Direct code-generation coverage
 
@@ -70,7 +72,7 @@ Supported assertions compile into Java predicates. A partially supported schema 
 | Applicators: `allOf`, `anyOf`, `oneOf`, `not`, `if/then/else` | Supported when their branches can compile |
 | `$ref`, `$defs`, `$anchor` | Direct static references resolved by `SchemaRegistry` and `SchemaPlanner` at annotation-processing time, using `SchemaPlan.schema()` / `schemaUri()`; includes nested `$id`, registered external schemas, JSON Pointer, named anchors and recursive references; generated direct validators do not invoke runtime SchemaPlan |
 | `format` | Supported typed-string checks when appropriate; `strictFormat` and vocabularies affect semantics |
-| `unevaluatedProperties`, `unevaluatedItems` | Runtime fallback (evaluation-location tracking not generated) |
+| `unevaluatedProperties`, `unevaluatedItems` | Direct only for isolated root-local coverage (object: `properties` / `patternProperties`, plus co-located `additionalProperties` which already evaluates every unmatched key; array: `prefixItems` / suffix, plus co-located `items` + `unevaluatedItems` where `items` already validates the entire remaining suffix). Combinations needing cross-schema evaluated-location tracking still fall back. |
 
 The generator uses direct Java member access for statically known types and strict `Nodes` access for dynamic values; **Nodes access is still compiled execution**, not a `SchemaPlan` fallback. `@NodeValue` and ValueCodec objects are atomic leaves, even when their raw encoding is a Map/List. `oneOf` may prune impossible branches when known discriminator constants prove them disjoint.
 
