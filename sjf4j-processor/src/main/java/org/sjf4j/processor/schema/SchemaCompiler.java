@@ -70,6 +70,7 @@ final class SchemaCompiler {
                 reference = new SchemaCheck.ReferenceCheck(target.uri, diagnostic(schemaUri, "$ref"));
                 boundReferences.put(referenceKey, reference);
                 reference.target = compileValue(snapshot, target.value, value, target.uri, depth + 1);
+                reference.binding = false;
                 if (reference.target == null) {
                     boundReferences.remove(referenceKey);
                     return null;
