@@ -95,7 +95,7 @@ public class CompiledOneOfFallbackTest {
     }
 
     public static class NullableHolder {
-        @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+        @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.RETURN_NULL, cases = {
                 @OneOfCase(type = Dog.class, when = "dog")
         })
         public Animal pet;

@@ -67,7 +67,7 @@ class RuntimeCreatorOneOfTest {
     }) Animal pet) {}
 
     public record NullableZoo(@OneOf(discriminatorKey = "kind",
-            onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL,
+            onNoMatch = OneOf.OnNoMatch.RETURN_NULL,
             cases = @OneOfCase(type = Dog.class, when = "dog")) Animal pet) {}
 
     public static class InheritedBase {

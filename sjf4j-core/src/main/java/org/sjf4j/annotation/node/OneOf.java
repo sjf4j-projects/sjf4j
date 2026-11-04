@@ -64,6 +64,6 @@ public @interface OneOf {
     /**
      * No-match handling policy.
      */
-    enum OnNoMatch { FAIL, FAILBACK_NULL }
+    enum OnNoMatch { FAIL, RETURN_NULL}
 
 }

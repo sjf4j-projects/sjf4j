@@ -153,7 +153,7 @@ public class MapperOneOfTest {
 
     public record Dog(String name, boolean goodDog) implements Animal {}
 
-    @OneOf(discriminatorKey = "type", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+    @OneOf(discriminatorKey = "type", onNoMatch = OneOf.OnNoMatch.RETURN_NULL, cases = {
             @OneOfCase(type = NullableCat.class, when = "cat"),
             @OneOfCase(type = NullableDog.class, when = "dog")
     })
@@ -184,7 +184,7 @@ public class MapperOneOfTest {
         }
     }
 
-    @OneOf(onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+    @OneOf(onNoMatch = OneOf.OnNoMatch.RETURN_NULL, cases = {
             @OneOfCase(type = NullableShapeCat.class),
             @OneOfCase(type = NullableShapeText.class)
     })

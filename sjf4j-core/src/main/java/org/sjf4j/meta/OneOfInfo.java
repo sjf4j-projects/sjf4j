@@ -43,7 +43,7 @@ public final class OneOfInfo {
         this.discriminatorPath = discriminatorPath;
         this.scope = scope;
         this.onNoMatch = onNoMatch;
-        this.fallbackNull = onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL;
+        this.fallbackNull = onNoMatch == OneOf.OnNoMatch.RETURN_NULL;
         this.compiledPath = discriminatorPath.isEmpty() ? null : JsonPath.parse(discriminatorPath);
         this.hasDiscriminator = !discriminatorKey.isEmpty() || !discriminatorPath.isEmpty();
         this.keyDiscriminator = !discriminatorKey.isEmpty();

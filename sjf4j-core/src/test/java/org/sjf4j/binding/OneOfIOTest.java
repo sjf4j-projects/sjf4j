@@ -419,7 +419,7 @@ class OneOfIOTest {
     }
     static class FallbackContainer {
         @OneOf(cases = {@OneOfCase(type = Dog.class, when = "dog"), @OneOfCase(type = Cat.class, when = "cat")},
-                discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
+                discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.RETURN_NULL) public Animal pet;
         public int after;
     }
     static class PathContainer {
@@ -429,7 +429,7 @@ class OneOfIOTest {
     }
     static class PathFallbackContainer {
         @OneOf(cases = {@OneOfCase(type = Dog.class, when = "dog"), @OneOfCase(type = Cat.class, when = "cat")},
-                discriminatorPath = "$.meta.kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL) public Animal pet;
+                discriminatorPath = "$.meta.kind", onNoMatch = OneOf.OnNoMatch.RETURN_NULL) public Animal pet;
         public int after;
     }
     static class AnimalList { public java.util.List<Animal> pets; }

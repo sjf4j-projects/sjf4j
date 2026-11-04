@@ -1102,7 +1102,7 @@ public final class NodeMapper {
                             : node;
                 }
             }
-            if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) return null;
+            if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.RETURN_NULL) return null;
             throw new BindingException("oneOf mapping does not support ValueCodec type '"
                     + node.getClass().getName() + "' for type '" + toBoxed.getName() + "'", ps);
         }
@@ -1110,7 +1110,7 @@ public final class NodeMapper {
         JsonType jsonType = JsonType.of(nodeKind);
         if (oneOfInfo.hasDiscriminator) {
             if (!jsonType.isObject()) {
-                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
+                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.RETURN_NULL) {
                     return null;
                 }
                 throw new BindingException("node must be a JSON object, when OneOf has a CURRENT discriminator", ps);
@@ -1135,7 +1135,7 @@ public final class NodeMapper {
             }
 
             if (discriminatorValue == null) {
-                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
+                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.RETURN_NULL) {
                     return null;
                 }
                 throw new BindingException("not found value for discriminator "
@@ -1146,7 +1146,7 @@ public final class NodeMapper {
 
             target = oneOfInfo.lazyTypeInfoByWhen(discriminatorValue);
             if (target == null) {
-                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
+                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.RETURN_NULL) {
                     return null;
                 }
                 throw new BindingException("oneOf discriminator has no matching mapping: value='" +
@@ -1155,7 +1155,7 @@ public final class NodeMapper {
         } else {
             target = oneOfInfo.lazyTypeInfoByJsonType(jsonType);
             if (target == null) {
-                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.FAILBACK_NULL) {
+                if (oneOfInfo.onNoMatch == OneOf.OnNoMatch.RETURN_NULL) {
                     return null;
                 }
                 throw new BindingException("oneOf mapping does not support jsonType=" + jsonType +

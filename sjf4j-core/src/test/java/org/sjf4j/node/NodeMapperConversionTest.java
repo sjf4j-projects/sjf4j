@@ -15,7 +15,6 @@ import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.fixture.JsonObjectPersonFixture.Baby;
 import org.sjf4j.fixture.JsonObjectPersonFixture.Person;
-import org.sjf4j.node.NodeMapper;
 
 import java.lang.reflect.Type;
 import java.math.BigInteger;
@@ -942,7 +941,7 @@ class NodeMapperConversionTest {
     }
 
     @OneOf(cases = @OneOfCase(type = NullableValueSubtype.class, when = "child"),
-            discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL)
+            discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.RETURN_NULL)
     static abstract class NullableValueChoice extends ValueChoice {}
 
     static class NullableValueSubtype extends NullableValueChoice {}

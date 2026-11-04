@@ -160,41 +160,6 @@ final class AnnotationValidator {
 
         TypeElement type = (TypeElement) enclosing;
 
-//        switch (owner) {
-//            case NAVIGATOR:
-//                if (type.getAnnotation(
-//                        CompiledNavigator.class) == null) {
-//
-//                    context.error(
-//                            element,
-//                            "@" + annotation +
-//                                    " method must be declared in an @CompiledNavigator interface");
-//                }
-//                return;
-//
-//            case MAPPER:
-//                if (!isMapper(type)) {
-//                    context.error(
-//                            element,
-//                            "@" + annotation +
-//                                    " method must be declared in an @CompiledMapper or @CompiledJdbcMapper interface");
-//                }
-//                return;
-//
-//            case BINDER:
-//                if (type.getAnnotation(
-//                        CompiledBinder.class) == null) {
-//
-//                    context.error(
-//                            element,
-//                            "@" + annotation +
-//                                    " method must be declared in an @CompiledBinder interface");
-//                }
-//                return;
-//
-//            default:
-//                throw new AssertionError(owner);
-//        }
     }
 
     /*
@@ -219,39 +184,22 @@ final class AnnotationValidator {
 
     private void validateMappingOptions(Element element) {
         TypeElement owner = abstractMethodOwner(element, "MappingOptions");
-
         if (owner == null) return;
-
         if (owner.getAnnotation(CompiledMapper.class) != null) return;
-
         if (owner.getAnnotation(CompiledJdbcMapper.class) != null) {
-
-            context.error(
-                    element,
-                    "@MappingOptions is not supported on " +
-                            "@CompiledJdbcMapper methods; " +
-                            "use @JdbcMappingOptions");
-
+            context.error(element, "@MappingOptions is not supported on @CompiledJdbcMapper methods; " +
+                    "use @JdbcMappingOptions");
             return;
         }
-
-        context.error(
-                element,
-                "@MappingOptions method must be declared in an " +
-                        "@CompiledMapper interface");
+        context.error(element, "@MappingOptions method must be declared in an @CompiledMapper interface");
     }
 
     private void validateJdbcMappingOptions(Element element) {
         TypeElement owner = abstractMethodOwner(element, "JdbcMappingOptions");
-
         if (owner == null) return;
-
         if (owner.getAnnotation(CompiledJdbcMapper.class) == null) {
-
-            context.error(
-                    element,
-                    "@JdbcMappingOptions method must be declared in an " +
-                            "@CompiledJdbcMapper interface");
+            context.error(element, "@JdbcMappingOptions method must be declared in an " +
+                    "@CompiledJdbcMapper interface");
         }
     }
 
@@ -261,52 +209,30 @@ final class AnnotationValidator {
      * --------------------------------------------------------------
      */
 
-    private void validateCreator(
-            Element element,
-            String annotation) {
-
+    private void validateCreator(Element element, String annotation) {
         if (element.getKind() == ElementKind.INTERFACE) {
             if (!isMapper((TypeElement) element)) {
-
-                context.error(
-                        element,
-                        "@" + annotation +
-                                " can be applied only to " +
-                                "@CompiledMapper or @CompiledJdbcMapper interfaces");
+                context.error(element, "@" + annotation +
+                        " can be applied only to @CompiledMapper or @CompiledJdbcMapper interfaces");
             }
-
             return;
         }
 
         if (element.getKind() != ElementKind.METHOD) {
-            context.error(
-                    element,
-                    "@" + annotation +
-                            " can be applied only to mapper interfaces " +
-                            "or abstract mapper methods");
-
+            context.error(element, "@" + annotation +
+                    " can be applied only to mapper interfaces or abstract mapper methods");
             return;
         }
 
         if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
-            context.error(
-                    element,
-                    "@" + annotation +
-                            " can be applied only to abstract mapper methods");
-
+            context.error(element, "@" + annotation + " can be applied only to abstract mapper methods");
             return;
         }
 
         Element enclosing = element.getEnclosingElement();
-
-        if (enclosing.getKind() != ElementKind.INTERFACE ||
-                !isMapper((TypeElement) enclosing)) {
-
-            context.error(
-                    element,
-                    "@" + annotation +
-                            " method must be declared in an " +
-                            "@CompiledMapper or @CompiledJdbcMapper interface");
+        if (enclosing.getKind() != ElementKind.INTERFACE || !isMapper((TypeElement) enclosing)) {
+            context.error(element, "@" + annotation +
+                    " method must be declared in an @CompiledMapper or @CompiledJdbcMapper interface");
         }
     }
 
@@ -316,40 +242,22 @@ final class AnnotationValidator {
      * --------------------------------------------------------------
      */
 
-    private TypeElement abstractMethodOwner(
-            Element element,
-            String annotation) {
-
+    private TypeElement abstractMethodOwner(Element element, String annotation) {
         if (element.getKind() != ElementKind.METHOD) {
-            context.error(
-                    element,
-                    "@" + annotation +
-                            " can be applied only to methods");
-
+            context.error(element, "@" + annotation + " can be applied only to methods");
             return null;
         }
 
         if (!element.getModifiers().contains(Modifier.ABSTRACT)) {
-            context.error(
-                    element,
-                    "@" + annotation +
-                            " can be applied only to abstract methods");
-
+            context.error(element, "@" + annotation + " can be applied only to abstract methods");
             return null;
         }
 
         Element owner = element.getEnclosingElement();
-
         if (!(owner instanceof TypeElement) || owner.getKind() != ElementKind.INTERFACE) {
-
-            context.error(
-                    element,
-                    "@" + annotation +
-                            " method must be declared in an interface");
-
+            context.error(element, "@" + annotation + " method must be declared in an interface");
             return null;
         }
-
         return (TypeElement) owner;
     }
 

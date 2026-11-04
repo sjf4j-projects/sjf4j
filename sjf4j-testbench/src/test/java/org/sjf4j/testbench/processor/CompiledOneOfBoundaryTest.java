@@ -100,7 +100,7 @@ public class CompiledOneOfBoundaryTest {
         public WithPropertyLong() {}
     }
 
-    @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+    @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.RETURN_NULL, cases = {
             @OneOfCase(type = MaybeValue.class, when = "valid")
     })
     public interface OptionalChoice {}

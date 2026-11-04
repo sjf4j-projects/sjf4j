@@ -87,10 +87,7 @@ public final class CodegenProcessor extends AbstractProcessor {
 
     private void generateMapper(TypeElement type) {
         if (type.getAnnotation(CompiledJdbcMapper.class) != null) {
-            context.error(
-                    type,
-                    "An interface cannot be annotated with both " +
-                            "@CompiledMapper and @CompiledJdbcMapper");
+            context.error(type, "An interface cannot be annotated with both @CompiledMapper and @CompiledJdbcMapper");
             return;
         }
 
@@ -113,8 +110,7 @@ public final class CodegenProcessor extends AbstractProcessor {
 
         for (Element element : roundEnv.getElementsAnnotatedWith(annotationType)) {
             if (element.getKind() != ElementKind.INTERFACE) {
-                context.error(
-                        element,
+                context.error(element,
                         "@" + annotationType.getSimpleName() + " can be applied only to interfaces");
                 continue;
             }
