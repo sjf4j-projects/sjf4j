@@ -232,7 +232,15 @@ final class SchemaCompiler {
                     break;
                 default:
                     // Never omit an unsupported keyword while compiling others.
-                    unsupported("unsupported keyword '" + keyword + "' at " + keywordUri(uri, keyword));
+                    if ("$dynamicRef".equals(keyword)) {
+                        unsupported("$dynamicRef at " + keywordUri(uri, keyword)
+                                + " requires runtime dynamic-scope resolution");
+                    } else if ("$vocabulary".equals(keyword)) {
+                        unsupported(dialectFallbackReason(snapshot, uri));
+                    } else {
+                        unsupported("unsupported keyword '" + keyword + "' at " + keywordUri(uri, keyword)
+                                + " requires runtime evaluation");
+                    }
                     return null;
             }
         }
@@ -518,11 +526,11 @@ final class SchemaCompiler {
     private static String dialectFallbackReason(SchemaResourceResolver.Snapshot snapshot, String uri) {
         for (int i = 0; i < snapshot.documents.length; i++) {
             String document = snapshot.documents[i];
-            if (document.contains("\\\"$vocabulary\\\"")) {
+            if (document.contains("\"$vocabulary\"")) {
                 return "$vocabulary at " + snapshot.uris[i]
                         + " requires runtime vocabulary interpretation";
             }
-            if (document.contains("\\\"format-assertion\\\"")) {
+            if (document.contains("\"format-assertion\"")) {
                 return "format-assertion vocabulary at " + snapshot.uris[i]
                         + " requires runtime dialect interpretation";
             }
