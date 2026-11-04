@@ -129,7 +129,7 @@ final class SchemaMethodGenerator {
         boolean fallback = booleanLiteral == null &&
                 (direct == null || direct.hasFallback());
         if (fallback && !allowFallback) {
-            fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method; last reference: " + SchemaCompiler.DEBUG_REF.get());
+            fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method");
             return;
         }
         // The same checks serve both APIs; only their failure action differs.
