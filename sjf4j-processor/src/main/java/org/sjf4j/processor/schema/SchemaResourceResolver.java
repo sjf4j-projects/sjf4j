@@ -51,7 +51,7 @@ final class SchemaResourceResolver {
                 for (int i = 0; i < uris.length; i++) {
                     all.put(URI.create(uris[i]), documents[i]);
                 }
-                referenceIndex = new org.sjf4j.schema.SchemaResourceIndex(all);
+                referenceIndex = new org.sjf4j.schema.SchemaResourceIndex(all, true);
             }
             return referenceIndex;
         }
@@ -162,6 +162,9 @@ final class SchemaResourceResolver {
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources);
+        // Reject unsupported dialects even when fallback=true. Runtime continues
+        // to support older drafts independently of CompiledValidator.
+        snapshot.referenceIndex();
         // Directory resources are indexed once, prior to root resolution.
         // Each method gets a registry copy so roots cannot leak between methods.
         SchemaRegistry registry = registry();
