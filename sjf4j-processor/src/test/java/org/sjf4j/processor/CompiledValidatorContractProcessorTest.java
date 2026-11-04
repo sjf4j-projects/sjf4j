@@ -112,8 +112,8 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void staticNamedAnchorCompilesDirectly() throws Exception {
-        String schema = "{\\"$defs\\":{\\"word\\":{\\"$anchor\\":\\"word\\",\\"minLength\\":2}},"
-                + "\\"properties\\":{\\"name\\":{\\"$ref\\":\\"#word\\"}}}";
+        String schema = "{\"$defs\":{\"word\":{\"$anchor\":\"word\",\"minLength\":2}},"
+                + "\"properties\":{\"name\":{\"$ref\":\"#word\"}}}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
@@ -124,8 +124,8 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void nestedDefsPointerCompilesDirectly() throws Exception {
-        String schema = "{\\"$defs\\":{\\"group\\":{\\"$defs\\":{\\"word\\":{\\"minLength\\":2}}}},"
-                + "\\"properties\\":{\\"name\\":{\\"$ref\\":\\"#/$defs/group/$defs/word\\"}}}";
+        String schema = "{\"$defs\":{\"group\":{\"$defs\":{\"word\":{\"minLength\":2}}}},"
+                + "\"properties\":{\"name\":{\"$ref\":\"#/$defs/group/$defs/word\"}}}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
@@ -136,9 +136,9 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void embeddedIdAnchorDoesNotEscapeItsResource() throws Exception {
-        String schema = "{\\"$defs\\":{\\"nested\\":{\\"$id\\":\\"nested.json\\","
-                + "\\"$anchor\\":\\"inner\\",\\"minLength\\":2}},"
-                + "\\"properties\\":{\\"name\\":{\\"$ref\\":\\"#inner\\"}}}";
+        String schema = "{\"$defs\":{\"nested\":{\"$id\":\"nested.json\","
+                + "\"$anchor\":\"inner\",\"minLength\":2}},"
+                + "\"properties\":{\"name\":{\"$ref\":\"#inner\"}}}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
