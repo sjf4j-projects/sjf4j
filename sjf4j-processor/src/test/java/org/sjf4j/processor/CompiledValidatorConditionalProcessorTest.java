@@ -73,7 +73,7 @@ class CompiledValidatorConditionalProcessorTest {
         }) {
             NavigatorTestCompiler.Result result = compile(schema, false);
             assertFalse(result.success, schema);
-            assertTrue(result.diagnostics().contains("cannot fully compile"),
+            assertTrue(result.diagnostics().contains("requires evaluated-location tracking"),
                     schema + "\n" + result.diagnostics());
         }
     }
