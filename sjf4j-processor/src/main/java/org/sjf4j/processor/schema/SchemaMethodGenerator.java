@@ -140,7 +140,8 @@ final class SchemaMethodGenerator {
             }
             if (!allowFallback) {
                 fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile "
-                        + "this schema and method: " + fallbackReason);
+                        + "this schema and method: " + fallbackReason
+                        + "; set @CompiledValidator(fallback=true) to enable runtime fallback");
                 return;
             }
             context.messager.printMessage(javax.tools.Diagnostic.Kind.WARNING,
