@@ -9,7 +9,7 @@ import java.util.List;
  * fallback field names appear here. Source generation belongs to SchemaEmitter.
  */
 abstract class SchemaCheck {
-    enum Kind { TYPE, SHAPE_GUARD, OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, IF_THEN_ELSE, LITERAL, ALL, PASS, REJECT, FALLBACK }
+    enum Kind { TYPE, SHAPE_GUARD, OBJECT, STRING, NUMBER, ARRAY, ONE_OF, GENERIC_ONE_OF, ALL_OF, ANY_OF, NOT, IF_THEN_ELSE, LITERAL, ALL, PASS, REJECT, REFERENCE, FALLBACK }
 
     final Kind kind;
     final Diagnostic diagnostic;
@@ -44,6 +44,29 @@ abstract class SchemaCheck {
 
     boolean hasFallback() {
         return kind == Kind.FALLBACK;
+    }
+
+    /** A statically bound reference edge. Deferred binding allows recursive schemas. */
+    static final class ReferenceCheck extends SchemaCheck {
+        final String uri;
+        SchemaCheck target;
+        private boolean checkingFallback;
+
+        ReferenceCheck(String uri, Diagnostic diagnostic) {
+            super(Kind.REFERENCE, diagnostic);
+            this.uri = uri;
+        }
+
+        @Override boolean hasFallback() {
+            if (target == null) return true;
+            if (checkingFallback) return false;
+            checkingFallback = true;
+            try {
+                return target.hasFallback();
+            } finally {
+                checkingFallback = false;
+            }
+        }
     }
 
     /** Complete typed oneOf branch predicates, with optional runtime-guarded dispatch. */
