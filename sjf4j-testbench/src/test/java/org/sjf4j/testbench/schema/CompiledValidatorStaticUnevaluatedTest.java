@@ -30,7 +30,7 @@ class CompiledValidatorStaticUnevaluatedTest {
             """;
 
     @CompiledValidator(fallback = false)
-    interface Direct {
+    public interface Direct {
         @ValidJsonSchema(PROPERTIES) boolean properties(Object node);
         @ValidJsonSchema(PATTERNS) boolean patterns(Object node);
         @ValidJsonSchema(PREFIX) boolean prefix(Object node);
