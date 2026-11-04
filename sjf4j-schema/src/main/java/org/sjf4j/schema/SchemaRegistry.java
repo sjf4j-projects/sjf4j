@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -32,6 +33,8 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
+    private final Map<URI, JsonSchema> sourceDocuments;
+    private volatile SchemaResourceIndex sourceIndex;
 
 
 
@@ -42,7 +45,41 @@ public class SchemaRegistry {
     public SchemaRegistry(SchemaDialect defaultDialect) {
         this.byIdPlans = new ConcurrentHashMap<>();
         this.byIdSchemas = new ConcurrentHashMap<>();
+        this.sourceDocuments = new ConcurrentHashMap<>();
         this.defaultDialect = defaultDialect;
+    }
+
+    /** Shared schema-location index, built lazily from registered source schemas. */
+    public SchemaResourceIndex resourceIndex() {
+        SchemaResourceIndex local = sourceIndex;
+        if (local == null) {
+            synchronized (this) {
+                local = sourceIndex;
+                if (local == null) {
+                    Map<URI, Object> roots = new LinkedHashMap<URI, Object>();
+                    for (Map.Entry<URI, JsonSchema> entry : sourceDocuments.entrySet()) {
+                        // Preserve the wire JSON shape (including BooleanSchema).
+                        roots.put(entry.getKey(), org.sjf4j.Sjf4j.global().toJson(entry.getValue()));
+                    }
+                    local = new SchemaResourceIndex(roots);
+                    sourceIndex = local;
+                }
+            }
+        }
+        return local;
+    }
+
+    /** Looks up a raw schema node without building any runtime Evaluator. */
+    SchemaResourceIndex.Target resolveSourceNode(URI uri) {
+        SchemaResourceIndex.Target target = resourceIndex().get(uri);
+        return target != null ? target
+                : this == GLOBAL_SCHEMA_REGISTRY ? null : GLOBAL_SCHEMA_REGISTRY.resourceIndex().get(uri);
+    }
+
+    private void rememberSource(URI retrieval, JsonSchema schema) {
+        if (retrieval == null) return;
+        sourceDocuments.putIfAbsent(retrieval, schema);
+        sourceIndex = null;
     }
 
     /** Creates a registry defaulting to draft 2020-12. */
@@ -103,6 +140,7 @@ public class SchemaRegistry {
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
         }
+        rememberSource(retrievalUri != null ? retrievalUri : canonicalUri, schema);
     }
 
     /**
@@ -142,6 +180,7 @@ public class SchemaRegistry {
                 .equals(SchemaUtil.normalizeUriKey(canonicalUri))) {
             _putSchema(retrievalUri, os);
         }
+        rememberSource(retrievalUri != null ? retrievalUri : canonicalUri, schema);
     }
 
     /**
@@ -252,6 +291,7 @@ public class SchemaRegistry {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, retrievalUri));
         }
+        rememberSource(retrievalUri, schema);
     }
 
     /**
@@ -330,6 +370,7 @@ public class SchemaRegistry {
                         URI.create(entry.getKey())));
             }
         }
+        registry.sourceDocuments.putAll(other.sourceDocuments);
         return registry;
     }
 
