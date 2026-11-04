@@ -111,6 +111,43 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void staticNamedAnchorCompilesDirectly() throws Exception {
+        String schema = "{\\"$defs\\":{\\"word\\":{\\"$anchor\\":\\"word\\",\\"minLength\\":2}},"
+                + "\\"properties\\":{\\"name\\":{\\"$ref\\":\\"#word\\"}}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
+    }
+
+    @Test
+    void nestedDefsPointerCompilesDirectly() throws Exception {
+        String schema = "{\\"$defs\\":{\\"group\\":{\\"$defs\\":{\\"word\\":{\\"minLength\\":2}}}},"
+                + "\\"properties\\":{\\"name\\":{\\"$ref\\":\\"#/$defs/group/$defs/word\\"}}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
+    }
+
+    @Test
+    void embeddedIdAnchorDoesNotEscapeItsResource() throws Exception {
+        String schema = "{\\"$defs\\":{\\"nested\\":{\\"$id\\":\\"nested.json\\","
+                + "\\"$anchor\\":\\"inner\\",\\"minLength\\":2}},"
+                + "\\"properties\\":{\\"name\\":{\\"$ref\\":\\"#inner\\"}}}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+    }
+
+    @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
