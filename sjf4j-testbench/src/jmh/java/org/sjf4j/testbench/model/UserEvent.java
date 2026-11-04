@@ -1,11 +1,11 @@
 package org.sjf4j.testbench.model;
 
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 
-@OneOf(discriminatorKey = "type", mappings = {
-        @OneOfMapping(type = LoginEvent.class, when = "login"),
-        @OneOfMapping(type = CommentEvent.class, when = "comment")
+@OneOf(discriminatorKey = "type", cases = {
+        @OneOfCase(type = LoginEvent.class, when = "login"),
+        @OneOfCase(type = CommentEvent.class, when = "comment")
 })
 public interface UserEvent {
 }

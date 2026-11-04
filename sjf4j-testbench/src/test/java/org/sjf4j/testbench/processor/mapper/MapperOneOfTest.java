@@ -5,7 +5,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.CompiledInstances;
@@ -143,9 +143,9 @@ public class MapperOneOfTest {
         public List<Animal> animals;
     }
 
-    @OneOf(discriminatorKey = "type", mappings = {
-            @OneOfMapping(type = Cat.class, when = "cat"),
-            @OneOfMapping(type = Dog.class, when = "dog")
+    @OneOf(discriminatorKey = "type", cases = {
+            @OneOfCase(type = Cat.class, when = "cat"),
+            @OneOfCase(type = Dog.class, when = "dog")
     })
     interface Animal {}
 
@@ -153,9 +153,9 @@ public class MapperOneOfTest {
 
     public record Dog(String name, boolean goodDog) implements Animal {}
 
-    @OneOf(discriminatorKey = "type", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
-            @OneOfMapping(type = NullableCat.class, when = "cat"),
-            @OneOfMapping(type = NullableDog.class, when = "dog")
+    @OneOf(discriminatorKey = "type", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+            @OneOfCase(type = NullableCat.class, when = "cat"),
+            @OneOfCase(type = NullableDog.class, when = "dog")
     })
     interface NullableAnimal {}
 
@@ -163,9 +163,9 @@ public class MapperOneOfTest {
 
     public record NullableDog(String name, boolean goodDog) implements NullableAnimal {}
 
-    @OneOf(mappings = {
-            @OneOfMapping(type = ShapeCat.class),
-            @OneOfMapping(type = ShapeText.class)
+    @OneOf(cases = {
+            @OneOfCase(type = ShapeCat.class),
+            @OneOfCase(type = ShapeText.class)
     })
     interface ShapeAnimal {}
 
@@ -184,9 +184,9 @@ public class MapperOneOfTest {
         }
     }
 
-    @OneOf(onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
-            @OneOfMapping(type = NullableShapeCat.class),
-            @OneOfMapping(type = NullableShapeText.class)
+    @OneOf(onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+            @OneOfCase(type = NullableShapeCat.class),
+            @OneOfCase(type = NullableShapeText.class)
     })
     interface NullableShapeAnimal {}
 

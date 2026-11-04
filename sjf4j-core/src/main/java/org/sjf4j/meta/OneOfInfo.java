@@ -2,7 +2,7 @@ package org.sjf4j.meta;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.BackendCache;
 import org.sjf4j.path.JsonPath;
@@ -14,12 +14,12 @@ import java.util.Map;
 /**
  * Cached resolution metadata for an {@link OneOf} polymorphic type.
  *
- * <p>Mappings are selected by discriminator value when one is configured, or
+ * <p>Cases are selected by discriminator value when one is configured, or
  * by JSON type otherwise.</p>
  */
 public final class OneOfInfo {
     public final Class<?> clazz;
-    public final OneOfMapping[] mappings;
+    public final OneOfCase[] cases;
     public final String discriminatorKey;
     public final String discriminatorPath;
     public final OneOf.Scope scope;
@@ -35,10 +35,10 @@ public final class OneOfInfo {
     /**
      * Creates metadata from a {@link OneOf} declaration.
      */
-    public OneOfInfo(Class<?> clazz, OneOfMapping[] mappings, String discriminatorKey,
+    public OneOfInfo(Class<?> clazz, OneOfCase[] cases, String discriminatorKey,
                      String discriminatorPath, OneOf.Scope scope, OneOf.OnNoMatch onNoMatch) {
         this.clazz = clazz;
-        this.mappings = mappings;
+        this.cases = cases;
         this.discriminatorKey = discriminatorKey;
         this.discriminatorPath = discriminatorPath;
         this.scope = scope;
@@ -51,17 +51,17 @@ public final class OneOfInfo {
             this.byJsonType = null;
             this.byWhen = new HashMap<>();
             Map<Class<?>, LazyTypeInfo> targets = new HashMap<>();
-            for (OneOfMapping mapping : mappings) {
-                LazyTypeInfo target = targets.computeIfAbsent(mapping.type(), LazyTypeInfo::new);
-                for (String when : mapping.when()) {
+            for (OneOfCase candidate : cases) {
+                LazyTypeInfo target = targets.computeIfAbsent(candidate.type(), LazyTypeInfo::new);
+                for (String when : candidate.when()) {
                     byWhen.put(when, target);
                 }
             }
         } else {
             this.byWhen = null;
             this.byJsonType = new EnumMap<>(JsonType.class);
-            for (OneOfMapping mapping : mappings) {
-                byJsonType.put(JsonType.rawOf(mapping.type()), new LazyTypeInfo(mapping.type()));
+            for (OneOfCase candidate : cases) {
+                byJsonType.put(JsonType.rawOf(candidate.type()), new LazyTypeInfo(candidate.type()));
             }
         }
     }

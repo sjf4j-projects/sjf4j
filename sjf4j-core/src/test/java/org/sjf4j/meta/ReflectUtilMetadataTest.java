@@ -9,7 +9,7 @@ import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
@@ -154,18 +154,18 @@ class ReflectUtilMetadataTest {
         }
     }
 
-    @OneOf(mappings = {
-            @OneOfMapping(type = DiscA.class, when = {"a"}),
-            @OneOfMapping(type = DiscB.class, when = {"b"})
+    @OneOf(cases = {
+            @OneOfCase(type = DiscA.class, when = {"a"}),
+            @OneOfCase(type = DiscB.class, when = {"b"})
     }, discriminatorKey = "type")
     interface DiscOneOf {}
 
     static class DiscA extends JsonObject implements DiscOneOf {}
     static class DiscB extends JsonObject implements DiscOneOf {}
 
-    @OneOf(mappings = {
-            @OneOfMapping(type = DuplicateA.class),
-            @OneOfMapping(type = DuplicateB.class)
+    @OneOf(cases = {
+            @OneOfCase(type = DuplicateA.class),
+            @OneOfCase(type = DuplicateB.class)
     })
     interface DuplicateRawOneOf {}
 
@@ -173,31 +173,31 @@ class ReflectUtilMetadataTest {
     static class DuplicateB extends JsonObject implements DuplicateRawOneOf {}
 
     @OneOf(discriminatorKey = "type", discriminatorPath = "$.type",
-            mappings = @OneOfMapping(type = BothDiscriminatorSubtype.class, when = "a"))
+            cases = @OneOfCase(type = BothDiscriminatorSubtype.class, when = "a"))
     interface BothDiscriminatorsOneOf {}
 
     static class BothDiscriminatorSubtype implements BothDiscriminatorsOneOf {}
 
-    @OneOf(mappings = {@OneOfMapping(type = NotAssignable.class)})
+    @OneOf(cases = {@OneOfCase(type = NotAssignable.class)})
     interface WrongOneOf {}
 
     static class NotAssignable {}
 
-    @OneOf(mappings = {@OneOfMapping(type = MissingWhenSubtype.class)}, discriminatorKey = "type")
+    @OneOf(cases = {@OneOfCase(type = MissingWhenSubtype.class)}, discriminatorKey = "type")
     interface MissingWhenOneOf {}
 
     static class MissingWhenSubtype extends JsonObject implements MissingWhenOneOf {}
 
-    @OneOf(mappings = @OneOfMapping(type = SelfDiscriminatorOneOf.class, when = "self"), discriminatorKey = "kind")
+    @OneOf(cases = @OneOfCase(type = SelfDiscriminatorOneOf.class, when = "self"), discriminatorKey = "kind")
     static class SelfDiscriminatorOneOf {}
 
-    @OneOf(mappings = @OneOfMapping(type = SelfShapeOneOf.class))
+    @OneOf(cases = @OneOfCase(type = SelfShapeOneOf.class))
     static class SelfShapeOneOf {}
 
     static class SelfFieldChoice {}
 
     static class SelfFieldOneOf {
-        @OneOf(mappings = @OneOfMapping(type = SelfFieldChoice.class, when = "self"), discriminatorKey = "kind")
+        @OneOf(cases = @OneOfCase(type = SelfFieldChoice.class, when = "self"), discriminatorKey = "kind")
         public SelfFieldChoice value;
     }
 

@@ -14,7 +14,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayInputStream;
@@ -442,14 +442,14 @@ class Jackson2BinderTest {
     }
 
     static class CurrentJojo extends JsonObject {
-        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, discriminatorKey = "kind")
+        @OneOf(cases = {@OneOfCase(type = Dog.class, when = "dog")}, discriminatorKey = "kind")
         public Animal pet;
     }
 
     static class ParentJojo extends JsonObject {
         public String kind;
 
-        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
+        @OneOf(cases = {@OneOfCase(type = Dog.class, when = "dog")},
                 discriminatorKey = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
     }
@@ -470,7 +470,7 @@ class Jackson2BinderTest {
         private final String name;
         public String kind;
 
-        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
+        @OneOf(cases = {@OneOfCase(type = Dog.class, when = "dog")},
                 discriminatorKey = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
 
@@ -538,14 +538,14 @@ class Jackson2BinderTest {
     }
 
     static class CurrentOneOf {
-        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")}, discriminatorKey = "kind")
+        @OneOf(cases = {@OneOfCase(type = Dog.class, when = "dog")}, discriminatorKey = "kind")
         public Animal pet;
     }
 
     static class ParentOneOf {
         public String kind;
 
-        @OneOf(mappings = {@OneOfMapping(type = Dog.class, when = "dog")},
+        @OneOf(cases = {@OneOfCase(type = Dog.class, when = "dog")},
                 discriminatorKey = "kind", scope = OneOf.Scope.PARENT)
         public Animal pet;
     }

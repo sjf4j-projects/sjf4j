@@ -10,7 +10,7 @@ import org.sjf4j.annotation.node.NodeProperty;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -18,10 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 @Slf4j
 public class OneOfTest {
 
-    @OneOf(discriminatorKey = "cmd", mappings = {
-            @OneOfMapping(type = StartRequest.class, when = "start"),
-            @OneOfMapping(type = DialectRequest.class, when = "dialect"),
-            @OneOfMapping(type = RunRequest.class, when = "run"),
+    @OneOf(discriminatorKey = "cmd", cases = {
+            @OneOfCase(type = StartRequest.class, when = "start"),
+            @OneOfCase(type = DialectRequest.class, when = "dialect"),
+            @OneOfCase(type = RunRequest.class, when = "run"),
     })
     @Data
     public static class BaseRequest {

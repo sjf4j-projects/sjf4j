@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.JsonSchema;
@@ -32,9 +32,9 @@ public class CompiledValidatorOneOfTest {
             }
             """;
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = A.class, when = "a"),
-            @OneOfMapping(type = B.class, when = "b")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = A.class, when = "a"),
+            @OneOfCase(type = B.class, when = "b")
     })
     public interface Variant { }
 

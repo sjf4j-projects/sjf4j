@@ -93,7 +93,7 @@ class CompiledValidatorOneOfProcessorTest {
     @Test
     void overlappingDiscriminatorBranchesCannotUseGuardedDispatch() throws Exception {
         // Two branches requiring the same tag cannot be treated as disjoint,
-        // even when @OneOfMapping claims different subtype tags.
+        // even when @OneOfCase claims different subtype tags.
         String schema = SCHEMA.replace("\"enum\":[\"b\"]", "\"enum\":[\"a\"]");
         NavigatorTestCompiler.Result result = compile(true, schema, false, false, false, true);
         assertTrue(result.success, result.diagnostics());
@@ -170,9 +170,9 @@ class CompiledValidatorOneOfProcessorTest {
         Map<String, String> sources = new LinkedHashMap<String, String>();
         sources.put("fixture/Variant.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "
-                + "@OneOf(discriminatorKey=\"" + discriminatorName + "\", mappings={"
-                + "@OneOfMapping(type=A.class,when=\"a\"),"
-                + "@OneOfMapping(type=B.class,when=\"b\")}) "
+                + "@OneOf(discriminatorKey=\"" + discriminatorName + "\", cases = {"
+                + "@OneOfCase(type=A.class,when=\"a\"),"
+                + "@OneOfCase(type=B.class,when=\"b\")}) "
                 + "public interface Variant {}");
         sources.put("fixture/A.java",
                 "package fixture; import org.sjf4j.annotation.node.*; "

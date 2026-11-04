@@ -6,7 +6,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.NodeObject;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.binding.PropertyParser;
 import org.sjf4j.binding.PropertyGenerator;
@@ -249,7 +249,7 @@ public final class ReflectUtil {
                 if (parameter != null && (!parameter.discriminatorKey.equals(member.discriminatorKey)
                         || !parameter.discriminatorPath.equals(member.discriminatorPath)
                         || parameter.scope != member.scope || parameter.onNoMatch != member.onNoMatch
-                        || !java.util.Arrays.equals(parameter.mappings, member.mappings))) {
+                        || !java.util.Arrays.equals(parameter.cases, member.cases))) {
                     throw new BindingException("conflicting @OneOf on creator parameter and field '"
                             + finalName + "' in " + clazz.getName());
                 }
@@ -1081,9 +1081,9 @@ public final class ReflectUtil {
      */
 
     public static OneOfInfo analyzeOneOf(Class<?> clazz, OneOf ann) {
-        OneOfMapping[] mappings = ann.mappings();
-        if (mappings == null || mappings.length == 0) {
-            throw new BindingException("empty mappings in @" + OneOf.class.getName() + " of class " + clazz.getName());
+        OneOfCase[] cases = ann.cases();
+        if (cases == null || cases.length == 0) {
+            throw new BindingException("empty cases in @" + OneOf.class.getName() + " of class " + clazz.getName());
         }
 
         if (!ann.discriminatorKey().isEmpty() && !ann.discriminatorPath().isEmpty()) {
@@ -1093,10 +1093,10 @@ public final class ReflectUtil {
         boolean hasDiscriminator = !ann.discriminatorKey().isEmpty() || !ann.discriminatorPath().isEmpty();
         EnumSet<JsonType> enumSet = hasDiscriminator ? null : EnumSet.noneOf(JsonType.class);
         Map<String, Class<?>> whenTypes = hasDiscriminator ? new HashMap<>() : null;
-        for (OneOfMapping mapping : mappings) {
-            Class<?> subClazz = mapping.type();
+        for (OneOfCase candidate : cases) {
+            Class<?> subClazz = candidate.type();
             if (subClazz == clazz) {
-                throw new BindingException("mapping class " + subClazz.getName() + " in @" + OneOf.class.getName() +
+                throw new BindingException("OneOf case class " + subClazz.getName() + " in @" + OneOf.class.getName() +
                         " must differ from declared type " + clazz.getName());
             }
             if (!clazz.isAssignableFrom(subClazz)) {
@@ -1109,29 +1109,29 @@ public final class ReflectUtil {
                         + subClazz.getName() + "' is not a POJO");
             }
             if (hasDiscriminator) {
-                if (mapping.when().length == 0) {
-                    throw new BindingException("given a discriminator but has empty 'when' in mapping " +
+                if (candidate.when().length == 0) {
+                    throw new BindingException("given a discriminator but has empty 'when' in OneOf case " +
                             subClazz.getName() + " in @" + OneOf.class.getName() + " of class " + clazz.getName());
                 }
-                for (String when : mapping.when()) {
+                for (String when : candidate.when()) {
                     Class<?> previous = whenTypes.putIfAbsent(when, subClazz);
                     if (previous != null) {
-                        throw new BindingException("mapping duplicated discriminator value '" + when
+                        throw new BindingException("OneOf case duplicated discriminator value '" + when
                                 + "' in @OneOf of " + clazz.getName() + ": "
                                 + previous.getName() + " and " + subClazz.getName());
                     }
                 }
             } else {
-                JsonType jt = JsonType.rawOf(mapping.type());
+                JsonType jt = JsonType.rawOf(candidate.type());
                 if (jt.isUnknown()) {
-                    throw new BindingException("mapping raw JsonType must not be UNKNOWN in class " + clazz.getName());
+                    throw new BindingException("OneOf case raw JsonType must not be UNKNOWN in class " + clazz.getName());
                 }
                 if (!enumSet.add(jt)) {
-                    throw new BindingException("mapping duplicated raw JsonType " + jt + " in class " + subClazz.getName());
+                    throw new BindingException("OneOf case duplicated raw JsonType " + jt + " in class " + subClazz.getName());
                 }
             }
         }
-        return new OneOfInfo(clazz, mappings, ann.discriminatorKey(), ann.discriminatorPath(), ann.scope(), ann.onNoMatch());
+        return new OneOfInfo(clazz, cases, ann.discriminatorKey(), ann.discriminatorPath(), ann.scope(), ann.onNoMatch());
     }
 
     /**

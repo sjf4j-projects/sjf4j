@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
  *     <li>Creator parameters and creator-bound fields support CURRENT-scope polymorphic selection; PARENT is unsupported</li>
  *     <li>CURRENT-scope OneOf may be nested in subtype properties, including through lists and maps or self-recursively</li>
  *     <li>Selected subtypes must not declare another class-level OneOf or direct PARENT-scope OneOf fields</li>
- *     <li>Use {@link #discriminatorKey()} or {@link #discriminatorPath()} with {@link OneOfMapping#when()} for discriminator-based selection</li>
+ *     <li>Use {@link #discriminatorKey()} or {@link #discriminatorPath()} with {@link OneOfCase#when()} for discriminator-based selection</li>
  *     <li>Omit discriminators to resolve by raw JSON kind when candidate shapes are distinct</li>
  * </ul>
  */
@@ -28,9 +28,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface OneOf {
     /**
-     * Candidate subtype mappings.
+     * Candidate subtype cases.
      */
-    OneOfMapping[] mappings();
+    OneOfCase[] cases();
 
     /**
      * Discriminator property name read from the current object.

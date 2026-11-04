@@ -19,12 +19,12 @@ package org.sjf4j.testbench.model.creek;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 
 @SuppressWarnings("unused")
-@OneOf(discriminatorKey = "@type", mappings = {
-        @OneOfMapping(type = PolyTypeA.class, when = "poly-a"),
-        @OneOfMapping(type = PolyTypeB.class, when = "poly-b")
+@OneOf(discriminatorKey = "@type", cases = {
+        @OneOfCase(type = PolyTypeA.class, when = "poly-a"),
+        @OneOfCase(type = PolyTypeB.class, when = "poly-b")
 })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "@type")
 @JsonSubTypes({@JsonSubTypes.Type(value = PolyTypeA.class, name = "poly-a"),

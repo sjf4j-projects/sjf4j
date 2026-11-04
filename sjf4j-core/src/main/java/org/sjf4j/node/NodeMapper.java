@@ -8,7 +8,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.NodeKind;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
@@ -1095,10 +1095,10 @@ public final class NodeMapper {
         if (nodeKind.isValueCodec()) {
             // An already-bound mapped subtype needs no raw shape/discriminator
             // selection. Other bound values must not be implicitly encoded.
-            for (OneOfMapping mapping : oneOfInfo.mappings) {
-                if (mapping.type().isInstance(node)) {
+            for (OneOfCase candidate : oneOfInfo.cases) {
+                if (candidate.type().isInstance(node)) {
                     return deepCopy
-                            ? _deepCopy(node, mapping.type(), mapping.type(), ps, context)
+                            ? _deepCopy(node, candidate.type(), candidate.type(), ps, context)
                             : node;
                 }
             }

@@ -13,7 +13,7 @@ import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -66,11 +66,11 @@ public class CompiledOneOfBoundaryTest {
                         tag -> tag.value, DecimalTag::new);
     }
 
-    @OneOf(discriminatorKey = "@type", mappings = {
-            @OneOfMapping(type = WithLong.class, when = "long"),
-            @OneOfMapping(type = WithDouble.class, when = "double"),
-            @OneOfMapping(type = WithDecimal.class, when = "decimal"),
-            @OneOfMapping(type = WithPropertyLong.class, when = "property")
+    @OneOf(discriminatorKey = "@type", cases = {
+            @OneOfCase(type = WithLong.class, when = "long"),
+            @OneOfCase(type = WithDouble.class, when = "double"),
+            @OneOfCase(type = WithDecimal.class, when = "decimal"),
+            @OneOfCase(type = WithPropertyLong.class, when = "property")
     })
     public interface NumericChoice {}
 
@@ -100,8 +100,8 @@ public class CompiledOneOfBoundaryTest {
         public WithPropertyLong() {}
     }
 
-    @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, mappings = {
-            @OneOfMapping(type = MaybeValue.class, when = "valid")
+    @OneOf(discriminatorKey = "kind", onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL, cases = {
+            @OneOfCase(type = MaybeValue.class, when = "valid")
     })
     public interface OptionalChoice {}
 
@@ -110,8 +110,8 @@ public class CompiledOneOfBoundaryTest {
         public MaybeValue() {}
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = AliasValue.class, when = "alias")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = AliasValue.class, when = "alias")
     })
     public interface AliasChoice {}
 
@@ -121,8 +121,8 @@ public class CompiledOneOfBoundaryTest {
         public AliasValue() {}
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = FactoryAliasValue.class, when = "factory")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = FactoryAliasValue.class, when = "factory")
     })
     public interface FactoryAliasChoice {}
 
@@ -142,8 +142,8 @@ public class CompiledOneOfBoundaryTest {
         public String getValue() { return value; }
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = FactoryValue.class, when = "regular")
+    @OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = FactoryValue.class, when = "regular")
     })
     public interface FactoryChoice {}
 

@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -26,7 +26,7 @@ public class RuntimeOneOfMatcherTest {
 
     private static final UUID ID = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
 
-    @OneOf(discriminatorKey = "kind", mappings = @OneOfMapping(type = CreatorPet.class, when = "pet"))
+    @OneOf(discriminatorKey = "kind", cases = @OneOfCase(type = CreatorPet.class, when = "pet"))
     public interface Pet {}
 
     public static final class CreatorPet implements Pet {
@@ -48,7 +48,7 @@ public class RuntimeOneOfMatcherTest {
         public int after;
     }
 
-    @OneOf(discriminatorKey = "kind", mappings = @OneOfMapping(type = PlainPet.class, when = "plain"))
+    @OneOf(discriminatorKey = "kind", cases = @OneOfCase(type = PlainPet.class, when = "plain"))
     public interface PlainVariant {}
 
     public static final class PlainPet implements PlainVariant {

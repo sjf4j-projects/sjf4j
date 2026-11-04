@@ -4,11 +4,11 @@ package org.sjf4j.testbench.model.oneof;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 
-@OneOf(discriminatorKey = "kind", mappings = {
-        @OneOfMapping(type = Dog.class, when = "dog"),
-        @OneOfMapping(type = Cat.class, when = "cat")
+@OneOf(discriminatorKey = "kind", cases = {
+        @OneOfCase(type = Dog.class, when = "dog"),
+        @OneOfCase(type = Cat.class, when = "cat")
 })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY,
         property = "kind", visible = true)

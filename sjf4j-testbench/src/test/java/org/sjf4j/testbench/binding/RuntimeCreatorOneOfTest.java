@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.fastjson2.binding.Fastjson2Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -27,9 +27,9 @@ class RuntimeCreatorOneOfTest {
     public record Dog(String kind, String name, int age) implements Animal {}
     public record Cat(String kind, String name, int lives) implements Animal {}
 
-    public record Zoo(@OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = Dog.class, when = "dog"),
-            @OneOfMapping(type = Cat.class, when = "cat")
+    public record Zoo(@OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = Dog.class, when = "dog"),
+            @OneOfCase(type = Cat.class, when = "cat")
     }) Animal pet, int after) {}
 
     public static class ConstructorZoo {
@@ -37,9 +37,9 @@ class RuntimeCreatorOneOfTest {
         public final int after;
 
         @NodeCreator
-        public ConstructorZoo(@NodeProperty("pet") @OneOf(discriminatorKey = "kind", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        public ConstructorZoo(@NodeProperty("pet") @OneOf(discriminatorKey = "kind", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         }) Animal pet, @NodeProperty("after") int after) {
             this.pet = pet;
             this.after = after;
@@ -47,9 +47,9 @@ class RuntimeCreatorOneOfTest {
     }
 
     public static class FieldZoo {
-        @OneOf(discriminatorKey = "kind", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorKey = "kind", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         public final Animal pet;
         public final int after;
@@ -61,20 +61,20 @@ class RuntimeCreatorOneOfTest {
         }
     }
 
-    public record PathZoo(@OneOf(discriminatorPath = "$.meta.kind", mappings = {
-            @OneOfMapping(type = Dog.class, when = "dog"),
-            @OneOfMapping(type = Cat.class, when = "cat")
+    public record PathZoo(@OneOf(discriminatorPath = "$.meta.kind", cases = {
+            @OneOfCase(type = Dog.class, when = "dog"),
+            @OneOfCase(type = Cat.class, when = "cat")
     }) Animal pet) {}
 
     public record NullableZoo(@OneOf(discriminatorKey = "kind",
             onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL,
-            mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {}
+            cases = @OneOfCase(type = Dog.class, when = "dog")) Animal pet) {}
 
     public static class InheritedBase {
         @NodeProperty("animal")
-        @OneOf(discriminatorKey = "kind", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorKey = "kind", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         protected final Animal pet;
         protected InheritedBase(Animal pet) { this.pet = pet; }
@@ -89,14 +89,14 @@ class RuntimeCreatorOneOfTest {
         @NodeCreator
         public InheritedConflictZoo(@NodeProperty("animal")
                 @OneOf(discriminatorKey = "species",
-                        mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {
+                        cases = @OneOfCase(type = Dog.class, when = "dog")) Animal pet) {
             super(pet);
         }
     }
 
     public static class InheritedParentBase {
         @OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind",
-                mappings = @OneOfMapping(type = Dog.class, when = "dog"))
+                cases = @OneOfCase(type = Dog.class, when = "dog"))
         protected final Animal pet;
         protected InheritedParentBase(Animal pet) { this.pet = pet; }
     }
@@ -107,7 +107,7 @@ class RuntimeCreatorOneOfTest {
     }
 
     public record ParentZoo(@OneOf(scope = OneOf.Scope.PARENT, discriminatorKey = "kind",
-            mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {}
+            cases = @OneOfCase(type = Dog.class, when = "dog")) Animal pet) {}
 
     static Stream<Arguments> backends() {
         return Stream.of(

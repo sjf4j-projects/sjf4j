@@ -8,7 +8,7 @@ import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
 
 import java.io.IOException;
@@ -26,9 +26,9 @@ public class CompiledCreatorOneOfTest {
     public record Dog(String kind, String name, int age) implements Animal {}
     public record Cat(String kind, String name, int lives) implements Animal {}
 
-    public record RecordZoo(@OneOf(discriminatorKey = "kind", mappings = {
-            @OneOfMapping(type = Dog.class, when = "dog"),
-            @OneOfMapping(type = Cat.class, when = "cat")
+    public record RecordZoo(@OneOf(discriminatorKey = "kind", cases = {
+            @OneOfCase(type = Dog.class, when = "dog"),
+            @OneOfCase(type = Cat.class, when = "cat")
     }) Animal pet, int after) {}
 
     public static final class ConstructorZoo {
@@ -37,9 +37,9 @@ public class CompiledCreatorOneOfTest {
 
         @NodeCreator
         public ConstructorZoo(
-                @NodeProperty("pet") @OneOf(discriminatorKey = "kind", mappings = {
-                        @OneOfMapping(type = Dog.class, when = "dog"),
-                        @OneOfMapping(type = Cat.class, when = "cat")
+                @NodeProperty("pet") @OneOf(discriminatorKey = "kind", cases = {
+                        @OneOfCase(type = Dog.class, when = "dog"),
+                        @OneOfCase(type = Cat.class, when = "cat")
                 }) Animal pet,
                 @NodeProperty("after") int after) {
             this.pet = pet;
@@ -51,9 +51,9 @@ public class CompiledCreatorOneOfTest {
     }
 
     public static final class FieldZoo {
-        @OneOf(discriminatorKey = "kind", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorKey = "kind", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         private final Animal pet;
 
@@ -68,9 +68,9 @@ public class CompiledCreatorOneOfTest {
 
         @NodeCreator
         public static FactoryZoo create(@NodeProperty("pet")
-                @OneOf(discriminatorKey = "kind", mappings = {
-                        @OneOfMapping(type = Dog.class, when = "dog"),
-                        @OneOfMapping(type = Cat.class, when = "cat")
+                @OneOf(discriminatorKey = "kind", cases = {
+                        @OneOfCase(type = Dog.class, when = "dog"),
+                        @OneOfCase(type = Cat.class, when = "cat")
                 }) Animal pet) {
             return new FactoryZoo(pet);
         }
@@ -80,9 +80,9 @@ public class CompiledCreatorOneOfTest {
 
     public static class InheritedBase {
         @NodeProperty("animal")
-        @OneOf(discriminatorKey = "kind", mappings = {
-                @OneOfMapping(type = Dog.class, when = "dog"),
-                @OneOfMapping(type = Cat.class, when = "cat")
+        @OneOf(discriminatorKey = "kind", cases = {
+                @OneOfCase(type = Dog.class, when = "dog"),
+                @OneOfCase(type = Cat.class, when = "cat")
         })
         protected final Animal pet;
         protected InheritedBase(Animal pet) { this.pet = pet; }
@@ -96,19 +96,19 @@ public class CompiledCreatorOneOfTest {
         }
     }
 
-    public record PathZoo(@OneOf(discriminatorPath = "$.meta.kind", mappings = {
-            @OneOfMapping(type = Dog.class, when = "dog"),
-            @OneOfMapping(type = Cat.class, when = "cat")
+    public record PathZoo(@OneOf(discriminatorPath = "$.meta.kind", cases = {
+            @OneOfCase(type = Dog.class, when = "dog"),
+            @OneOfCase(type = Cat.class, when = "cat")
     }) Animal pet) {}
 
-    public record ShapeZoo(@OneOf(mappings = {
-            @OneOfMapping(type = String.class),
-            @OneOfMapping(type = Integer.class)
+    public record ShapeZoo(@OneOf(cases = {
+            @OneOfCase(type = String.class),
+            @OneOfCase(type = Integer.class)
     }) Object item) {}
 
     public record NullableZoo(@OneOf(discriminatorKey = "kind",
             onNoMatch = OneOf.OnNoMatch.FAILBACK_NULL,
-            mappings = @OneOfMapping(type = Dog.class, when = "dog")) Animal pet) {}
+            cases = @OneOfCase(type = Dog.class, when = "dog")) Animal pet) {}
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface JacksonReader {

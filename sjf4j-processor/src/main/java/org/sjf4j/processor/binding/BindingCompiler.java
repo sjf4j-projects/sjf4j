@@ -8,7 +8,7 @@ import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.OneOf;
-import org.sjf4j.annotation.node.OneOfMapping;
+import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.creator.CreatorPlan;
 import org.sjf4j.processor.creator.StandardCreatorResolver;
@@ -413,7 +413,7 @@ final class BindingCompiler {
 
     /**
      * Compile only the inexpensive, statically safe CURRENT/key case. Other
-     * mappings retain OneOfIO, including PARENT/path/shape discriminators,
+     * cases retain OneOfIO, including PARENT/path/shape discriminators,
      * recursive graphs, and subtypes with discriminator-bound fields.
      */
     private boolean compileOneOfRead(BindingValue value, OneOf annotation,
@@ -421,16 +421,16 @@ final class BindingCompiler {
         if (backend != Backend.JACKSON2 || annotation == null
                 || annotation.scope() != OneOf.Scope.CURRENT
                 || annotation.discriminatorKey().isEmpty() || !annotation.discriminatorPath().isEmpty()
-                || annotation.mappings().length == 0) return true;
+                || annotation.cases().length == 0) return true;
 
         List<TypeMirror> types = new ArrayList<>();
         Set<String> keys = new HashSet<>();
         // Preflight the complete set before compiling children: a fallback
         // must not accidentally introduce compiler diagnostics.
-        for (OneOfMapping mapping : annotation.mappings()) {
+        for (OneOfCase candidate : annotation.cases()) {
             TypeMirror subtype;
             try {
-                Class<?> mapped = mapping.type();
+                Class<?> mapped = candidate.type();
                 TypeElement element = context.elements.getTypeElement(mapped.getCanonicalName());
                 if (element == null) return true;
                 subtype = element.asType();
@@ -438,8 +438,8 @@ final class BindingCompiler {
                 subtype = e.getTypeMirror();
             }
             if (!canCompileOneOfReadSubtype(subtype, annotation.discriminatorKey(), method)
-                    || mapping.when().length == 0) return true;
-            for (String when : mapping.when()) {
+                    || candidate.when().length == 0) return true;
+            for (String when : candidate.when()) {
                 if (!keys.add(when)) return true;
             }
             types.add(subtype);
@@ -452,7 +452,7 @@ final class BindingCompiler {
                     subtype, method, generated);
             if (child == null) return false;
             subtypes.add(new BindingValue.OneOfSubtype(subtype, child, false,
-                    annotation.mappings()[i].when()));
+                    annotation.cases()[i].when()));
         }
         value.oneOfKey(annotation.discriminatorKey());
         value.oneOfSubtypes(subtypes);
@@ -547,10 +547,10 @@ final class BindingCompiler {
                                       ExecutableElement method, GeneratedClass generated) {
         if (annotation == null) return true;
         List<BindingValue.OneOfSubtype> subtypes = new ArrayList<>();
-        for (OneOfMapping mapping : annotation.mappings()) {
+        for (OneOfCase candidate : annotation.cases()) {
             TypeMirror subtype;
             try {
-                Class<?> target = mapping.type();
+                Class<?> target = candidate.type();
                 TypeElement element = context.elements.getTypeElement(target.getCanonicalName());
                 if (element == null) continue;
                 subtype = element.asType();
