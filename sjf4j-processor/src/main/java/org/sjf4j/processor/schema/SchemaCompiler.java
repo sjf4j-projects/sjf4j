@@ -495,7 +495,7 @@ final class SchemaCompiler {
 
     /** Unknown vocabularies can change assertion semantics, so remain fallback. */
     private static boolean canCompileStandardDialect(SchemaResourceResolver.Snapshot snapshot) {
-        if (snapshot.referenceIndex().hasCustomDialect()) return false;
+        if (snapshot.customDialect) return false;
         for (String source : snapshot.documents) {
             if (source.contains("\"format-assertion\"") || source.contains("\"$vocabulary\""))
                 return false;
