@@ -153,6 +153,16 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void adjacentStaticAndDynamicReferencesAreNotCollapsed() throws Exception {
+        String schema = "{\"$defs\":{\"a\":{\"$anchor\":\"value\",\"type\":\"string\"},"
+                + "\"b\":{\"type\":\"number\"}},\"$ref\":\"#/$defs/b\","
+                + "\"$dynamicRef\":\"#value\"}";
+        NavigatorTestCompiler.Result result = compile(schema, "Object");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("$ref + $dynamicRef"), result.diagnostics());
+    }
+
+    @Test
     void dynamicRefDiagnosisDoesNotInventSecondKeyword() throws Exception {
         String schema = "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"}},"
                 + "\"$dynamicRef\":\"#node\"}";
