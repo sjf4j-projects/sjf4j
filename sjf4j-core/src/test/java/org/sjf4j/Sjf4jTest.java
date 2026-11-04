@@ -83,11 +83,11 @@ public class Sjf4jTest {
         JsonObject jo3 = Sjf4j.global().fromJson(JSON_DATA, JsonObject.class);
         log.info("jo3={}", jo3);
 
-        Person p2 = Sjf4j.global().deepNode(jo3, Person.class);
+        Person p2 = Sjf4j.global().deepConvert(jo3, Person.class);
         log.info("p2={}", p2);
         assertNotEquals(p1, p2);
 
-        assertEquals(Sjf4j.global().toRaw(p1), Sjf4j.global().toRaw(p2));
+        assertEquals(Sjf4j.global().convertToRaw(p1), Sjf4j.global().convertToRaw(p2));
     }
 
     @Test
@@ -98,7 +98,7 @@ public class Sjf4jTest {
         JsonObject jo2 = JsonObject.fromNode(p1);
         log.info("jo2={}", jo2);
 
-        Object n3 = Sjf4j.global().toRaw(p1);
+        Object n3 = Sjf4j.global().convertToRaw(p1);
         log.info("n3={}", n3);
 
         assertTrue(Nodes.equals(p1, n3));
@@ -156,7 +156,7 @@ public class Sjf4jTest {
         assertEquals(18, user.getInt("age"));
         assertEquals("{\"name\":\"han\",\"age\":18}", runtime.toJsonString(user));
 
-        Map<String, Object> map = runtime.deepNode(
+        Map<String, Object> map = runtime.deepConvert(
                 user, new TypeReference<Map<String, Object>>() {});
         assertEquals("han", map.get("name"));
 
@@ -207,7 +207,7 @@ public class Sjf4jTest {
         Sjf4j runtime = Sjf4j.builder().build();
 
         BindingException error = findBindingException(assertThrows(NodeException.class,
-                () -> runtime.deepNode(invalidNode, RuntimeOuter.class)));
+                () -> runtime.deepConvert(invalidNode, RuntimeOuter.class)));
 
         assertNotNull(error);
         assertTrue(error.hasPathSegment());
@@ -265,9 +265,9 @@ public class Sjf4jTest {
                 .build();
 
         assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
-        assertEquals(epochMillis, runtime.toRaw(instant));
+        assertEquals(epochMillis, runtime.convertToRaw(instant));
         assertEquals(instant, runtime.fromJson(String.valueOf(epochMillis), Instant.class));
-        assertEquals(instant, runtime.deepNode(epochMillis, Instant.class));
+        assertEquals(instant, runtime.deepConvert(epochMillis, Instant.class));
     }
 
     @Test

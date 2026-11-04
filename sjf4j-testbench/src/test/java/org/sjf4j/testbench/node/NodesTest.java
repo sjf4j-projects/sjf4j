@@ -51,7 +51,7 @@ public class NodesTest {
 
         Object node = sjf4j.fromJson(json);
         log.info("node={}", Nodes.inspect(node));
-        User user2 = sjf4j.deepNode(node, User.class);
+        User user2 = sjf4j.deepConvert(node, User.class);
         log.info("user2={}", Nodes.inspect(user2));
         assertEquals("2026-02-04", user2.records[0].date.toString());
     }

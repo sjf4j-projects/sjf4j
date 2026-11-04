@@ -260,7 +260,7 @@ public class NodesTest {
         Map<String, Object> map = new HashMap<>();
         map.put("key", "value");
         JsonObject byClass = Nodes.to(map, JsonObject.class);
-        JsonObject byTypeReference = Sjf4j.global().deepNode(map, new TypeReference<JsonObject>() {});
+        JsonObject byTypeReference = Sjf4j.global().deepConvert(map, new TypeReference<JsonObject>() {});
         map.put("later", 2);
 
         assertEquals("value", byClass.getString("key"));
@@ -271,7 +271,7 @@ public class NodesTest {
         List<Object> list = new ArrayList<>();
         list.add(1);
         JsonArray arrayByClass = Nodes.to(list, JsonArray.class);
-        JsonArray arrayByTypeReference = Sjf4j.global().deepNode(list, new TypeReference<JsonArray>() {});
+        JsonArray arrayByTypeReference = Sjf4j.global().deepConvert(list, new TypeReference<JsonArray>() {});
         list.add(2);
 
         assertEquals(1, arrayByClass.size());
@@ -281,7 +281,7 @@ public class NodesTest {
 
         Map<String, Object> rawUser = new HashMap<>();
         rawUser.put("name", "Ada");
-        List<GenericUser> users = Sjf4j.global().deepNode(
+        List<GenericUser> users = Sjf4j.global().deepConvert(
                 Arrays.asList(rawUser), new TypeReference<List<GenericUser>>() {});
         assertEquals("Ada", users.get(0).name);
         assertNotSame(rawUser, users.get(0));
@@ -292,7 +292,7 @@ public class NodesTest {
         BindingException byClass = assertThrows(BindingException.class,
                 () -> Nodes.to(JsonArray.of("not an object"), GenericUser.class));
         BindingException byTypeReference = assertThrows(BindingException.class,
-                () -> Sjf4j.global().fromNode(JsonArray.of("not an object"),
+                () -> Sjf4j.global().convert(JsonArray.of("not an object"),
                         new TypeReference<GenericUser>() {}));
 
         assertTrue(byClass.getMessage().contains("GenericUser"));
@@ -795,7 +795,7 @@ public class NodesTest {
     @Test
     public void testInspect2() {
         LocalDate date1 = LocalDate.now();
-        LocalDate date2 = Sjf4j.global().deepNode(date1.toString(), LocalDate.class);
+        LocalDate date2 = Sjf4j.global().deepConvert(date1.toString(), LocalDate.class);
         log.info("date2={}", date2);
         assertEquals(date1, date2);
 
