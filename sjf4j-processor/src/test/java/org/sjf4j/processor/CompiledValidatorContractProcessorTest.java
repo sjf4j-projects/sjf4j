@@ -188,8 +188,7 @@ class CompiledValidatorContractProcessorTest {
             NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                     "fixture/Model.java", MODEL, "fixture/Check.java", source),
                     CodegenProcessor.class);
-            assertTrue(result.success, type + "
-" + result.diagnostics());
+            assertTrue(result.success, type + "\n" + result.diagnostics());
             assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
         }
     }
