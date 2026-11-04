@@ -63,6 +63,9 @@ final class SchemaFallbackEmitter {
                 out.beginBlock("try");
                 out.line("org.sjf4j.schema.SchemaLoader loader = new org.sjf4j.schema.SchemaLoader.Local(org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR);");
                 for (int i = 0; i < plan.snapshot.uris.length; i++) {
+                    // Registry-backed documents are loaded by indexDir below;
+                    // the default SchemaLoader must never fetch their logical HTTP URIs.
+                    if (plan.snapshot.fromRegistry[i]) continue;
                     String uri = "java.net.URI.create(" + SchemaEmitter.javaLiteral(plan.snapshot.uris[i]) + ")";
                     if (i == 0 && !plan.annotation.value().isEmpty()) {
                         out.line(registry + ".index(" + uri
