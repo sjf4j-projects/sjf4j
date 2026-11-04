@@ -105,4 +105,32 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
         assertTrue(result.diagnostics().contains("fallback=true"), result.diagnostics());
     }
 
+    @Test
+    void nestedFallbackDiagnosticsIdentifyActualApplicatorAndLocation() throws Exception {
+        for (String[] sample : new String[][]{
+                {"{\"allOf\":[{\"unevaluatedProperties\":false}]}", "allOf + unevaluatedProperties", "#/allOf/0/unevaluatedProperties"},
+                {"{\"anyOf\":[{\"unevaluatedItems\":false},true]}", "anyOf + unevaluatedItems", "#/anyOf/0/unevaluatedItems"},
+                {"{\"oneOf\":[{\"unevaluatedProperties\":false},true]}", "oneOf + unevaluatedProperties", "#/oneOf/0/unevaluatedProperties"},
+                {"{\"not\":{\"unevaluatedItems\":false}}", "not + unevaluatedItems", "#/not/unevaluatedItems"},
+                {"{\"properties\":{\"child\":{\"unevaluatedProperties\":false}}}", "properties + unevaluatedProperties", "#/properties/child/unevaluatedProperties"}
+        }) {
+            NavigatorTestCompiler.Result result = compile(sample[0], "Object");
+            assertFalse(result.success, sample[0]);
+            assertTrue(result.diagnostics().contains(sample[1]), result.diagnostics());
+            assertTrue(result.diagnostics().contains(sample[2]), result.diagnostics());
+        }
+    }
+
+    @Test
+    void dynamicRefDiagnosisDoesNotInventSecondKeyword() throws Exception {
+        String schema = "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"}},"
+                + "\"$dynamicRef\":\"#node\"}";
+        NavigatorTestCompiler.Result result = compile(schema, "Object");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("$dynamicRef"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("dynamic-scope"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("#/$dynamicRef"), result.diagnostics());
+    }
+
+
 }
