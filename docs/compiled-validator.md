@@ -46,7 +46,7 @@ Methods take one value argument and optionally a primitive `boolean strictFormat
 
 ## Compilation and fallback
 
-`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. Opt in to runtime fallback when needed:
+`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. **CompiledValidator currently supports Draft 2020-12 only.** A schema without `$schema` uses 2020-12 by default. Explicit Draft-07, Draft 2019-09, or unknown `$schema` declarations are compilation errors, even with `fallback = true`; the runtime `SchemaRegistry` and `SchemaPlanner` retain their existing multi-draft support. Opt in to runtime fallback when needed:
 
 ```java
 @CompiledValidator(fallback = true)
@@ -68,7 +68,7 @@ Supported assertions compile into Java predicates. A partially supported schema 
 | Object: `properties`, `patternProperties`, `additionalProperties` (boolean or schema), `propertyNames`, `required`, `dependentRequired`, `dependentSchemas`, property counts | Supported when child schemas compile; POJO/OBNT affect access code, not fallback eligibility |
 | Array: `prefixItems`, `items`, `contains`, `minContains`, `maxContains`, `uniqueItems`, `minItems`, `maxItems` | Independent compiled checks; `items` starts after local `prefixItems`; `contains` counts matching elements; `uniqueItems` uses runtime JSON equality semantics |
 | Applicators: `allOf`, `anyOf`, `oneOf`, `not`, `if/then/else` | Supported when their branches can compile |
-| `$ref`, `$defs`, `$anchor` | Direct static references through JSON Pointer or named anchors, including nested `$id` resources, registered external schemas and productive recursive references; schemas containing other unsupported assertions may still fall back |
+| `$ref`, `$defs`, `$anchor` | Direct static references resolved through the shared `SchemaResourceIndex`, including nested `$id`, registered external schemas, JSON Pointer, named anchors and recursive references; other unsupported assertions may still fall back |
 | `format` | Supported typed-string checks when appropriate; `strictFormat` and vocabularies affect semantics |
 | `unevaluatedProperties`, `unevaluatedItems` | Runtime fallback (evaluation-location tracking not generated) |
 
