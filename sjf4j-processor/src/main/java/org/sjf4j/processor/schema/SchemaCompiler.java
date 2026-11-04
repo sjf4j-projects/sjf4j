@@ -534,7 +534,8 @@ final class SchemaCompiler {
                 || key.equals("description") || key.equals("default") || key.equals("examples")
                 || key.equals("$comment") || key.equals("deprecated") || key.equals("readOnly")
                 || key.equals("writeOnly") || key.equals("definitions") || key.equals("$defs")
-                || key.equals("$anchor");
+                || key.equals("$anchor") || key.equals("$dynamicAnchor")
+                || key.equals("$recursiveAnchor");
     }
 
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
