@@ -315,8 +315,9 @@ final class SchemaEmitter {
                         ((SchemaCheck.Fallback) check).uri, planName);
                 if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
                     // The runtime evaluator receives the full enclosing instance path.
-                    lines.add(sub.reference() + ".requireValid(" + expression
-                            + ", " + instancePath + ", " + strictFormat + ");");
+                    lines.add("org.sjf4j.schema.CompiledValidatorSupport.requireValid("
+                            + sub.reference() + ", " + expression + ", " + instancePath
+                            + ", " + strictFormat + ");");
                 } else {
                     lines.add("if (!" + sub.reference() + ".isValid("
                             + expression + ", " + strictFormat + ")) " + onFailure);
@@ -625,8 +626,9 @@ final class SchemaEmitter {
         } else {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
-                lines.add("    " + full.reference() + ".requireValid("
-                        + expression + ", " + instancePath + ", " + strictFormat + ");");
+                lines.add("    org.sjf4j.schema.CompiledValidatorSupport.requireValid("
+                        + full.reference() + ", " + expression + ", " + instancePath
+                        + ", " + strictFormat + ");");
             } else {
                 lines.add("    if (!" + full.reference()
                         + ".isValid(" + expression + ", " + strictFormat + ")) " + onFailure);
