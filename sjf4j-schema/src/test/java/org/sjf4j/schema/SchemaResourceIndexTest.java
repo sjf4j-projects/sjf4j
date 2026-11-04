@@ -13,12 +13,7 @@ class SchemaResourceIndexTest {
     @Test
     void resolvesCanonicalAliasesAndAnchors() {
         Map<URI, String> documents = new LinkedHashMap<>();
-        documents.put(URI.create("classpath:/schemas/entry.json"), """
-                {"$id":"https://example.test/root.json",
-                 "$defs":{"word":{"$anchor":"word","type":"string"},
-                          "nested":{"$id":"nested.json",
-                                    "$defs":{"number":{"$anchor":"number","type":"number"}}}}}
-                """);
+        documents.put(URI.create("classpath:/schemas/entry.json"), "{\"$id\":\"https://example.test/root.json\", \"$defs\":{\"word\":{\"$anchor\":\"word\",\"type\":\"string\"}, \"nested\":{\"$id\":\"nested.json\", \"$defs\":{\"number\":{\"$anchor\":\"number\",\"type\":\"number\"}}}}}");
         SchemaResourceIndex index = new SchemaResourceIndex(documents, true);
         SchemaResourceIndex.Target anchor =
                 index.resolve("https://example.test/root.json", "#word");
@@ -34,10 +29,7 @@ class SchemaResourceIndexTest {
 
     @Test
     void doesNotTreatInstanceDataAsSchemaAnchors() {
-        Map<URI, String> documents = Map.of(URI.create("https://example.test/root"), """
-                {"const":{"$anchor":"incorrect","type":"string"},
-                 "$defs":{"actual":{"$anchor":"correct","type":"string"}}}
-                """);
+        Map<URI, String> documents = java.util.Collections.singletonMap(URI.create("https://example.test/root"), "{\"const\":{\"$anchor\":\"incorrect\",\"type\":\"string\"}, \"$defs\":{\"actual\":{\"$anchor\":\"correct\",\"type\":\"string\"}}}");
         SchemaResourceIndex index = new SchemaResourceIndex(documents, true);
         assertNull(index.resolve("https://example.test/root", "#incorrect"));
         assertNotNull(index.resolve("https://example.test/root", "#correct"));
@@ -45,10 +37,7 @@ class SchemaResourceIndexTest {
 
     @Test
     void explicitOlderDialectsOnlyRejectedForCompiledMode() {
-        Map<URI, String> documents = Map.of(URI.create("https://example.test/root"), """
-                {"$defs":{"nested":{"$schema":"https://json-schema.org/draft/2019-09/schema",
-                                     "type":"string"}}}
-                """);
+        Map<URI, String> documents = java.util.Collections.singletonMap(URI.create("https://example.test/root"), "{\"$defs\":{\"nested\":{\"$schema\":\"https://json-schema.org/draft/2019-09/schema\", \"type\":\"string\"}}}");
         assertDoesNotThrow(() -> new SchemaResourceIndex(documents));
         IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                 () -> new SchemaResourceIndex(documents, true));
@@ -59,10 +48,7 @@ class SchemaResourceIndexTest {
     void runtimeRegistryCanResolveRawNodesWithoutBuildingPlans() {
         SchemaRegistry registry = new SchemaRegistry();
         URI retrieval = URI.create("https://example.test/retrieved.json");
-        registry.index(retrieval, JsonSchema.fromJson("""
-                {"$id":"https://example.test/canonical.json",
-                 "$defs":{"word":{"$anchor":"word","type":"string"}}}
-                """));
+        registry.index(retrieval, JsonSchema.fromJson("{\"$id\":\"https://example.test/canonical.json\", \"$defs\":{\"word\":{\"$anchor\":\"word\",\"type\":\"string\"}}}"));
         SchemaResourceIndex.Target target = registry.resourceIndex()
                 .get(URI.create("https://example.test/canonical.json#word"));
         assertNotNull(target);
