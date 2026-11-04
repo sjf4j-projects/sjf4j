@@ -19,6 +19,48 @@ class SchemaRegistryTest {
     }
 
     @Test
+    void resolvedPlansExposeCanonicalSchemaNodesAndLocations() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI retrieval = URI.create("classpath:/schemas/entry.json");
+        registry.index(retrieval, JsonSchema.fromJson(
+                "{\"$id\":\"https://example.test/root.json\","
+                        + "\"$defs\":{\"word\":{\"$anchor\":\"word\",\"type\":\"string\"},"
+                        + "\"nested\":{\"$id\":\"nested.json\","
+                        + "\"$defs\":{\"number\":{\"$anchor\":\"number\",\"type\":\"number\"}}}}}"));
+        SchemaPlan word = registry.resolve(URI.create("https://example.test/root.json#word"));
+        assertNotNull(word);
+        assertTrue(word.schemaNode() instanceof ObjectSchema);
+        assertTrue(((ObjectSchema) word.schemaNode()).containsKey("type"));
+        assertTrue(word.schemaLocation().toString().endsWith("#/$defs/word"));
+        assertTrue(registry.resolve(URI.create("classpath:/schemas/entry.json#/$defs/word"))
+                .schemaLocation().equals(word.schemaLocation()));
+        SchemaPlan number = registry.resolve(URI.create("https://example.test/nested.json#number"));
+        assertNotNull(number);
+        assertTrue(number.schemaLocation().toString().endsWith("nested.json#/$defs/number"));
+        assertTrue(registry.resolve(URI.create("https://example.test/root.json#/$defs/nested/$defs/number"))
+                .schemaLocation().equals(number.schemaLocation()));
+    }
+
+    @Test
+    void compilerDialectCheckRejectsOldDraftsButAllowsCustomMetaSchema() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI uri = URI.create("https://example.test/schema");
+        registry.index(uri, JsonSchema.fromJson("{\"$defs\":{\"nested\":{"
+                + "\"$schema\":\"https://json-schema.org/draft/2019-09/schema\","
+                + "\"type\":\"string\"}}}"));
+        assertThrows(IllegalArgumentException.class,
+                () -> registry.checkCompiledDialect(java.util.Collections.singleton(uri)));
+
+        SchemaRegistry custom = new SchemaRegistry();
+        custom.index(uri, JsonSchema.fromJson("{\"$schema\":\"https://json-schema.org/custom/v1\","
+                + "\"type\":\"string\"}"));
+        // Custom meta-schema requires pre-registration and runtime fallback.
+        // The dialect checker is independent of the schema's validation rules.
+        assertFalse(SchemaDialect.detect("https://json-schema.org/custom/v1")
+                == SchemaDialect.DRAFT_2020_12);
+    }
+
+    @Test
     void index_allowsOrderIndependentDeferredCompilation() {
         ObjectSchema rootSchema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$id\":\"http://example.com/root\"," +
