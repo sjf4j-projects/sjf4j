@@ -29,12 +29,22 @@ class CompiledValidatorStaticUnevaluatedTest {
             {"prefixItems":[true],"unevaluatedItems":{"type":"string"}}
             """;
 
+    private static final String ITEMS_AND_UNEVALUATED = """
+            {"items":{"type":"integer"},"unevaluatedItems":false}
+            """;
+    private static final String PREFIX_ITEMS_AND_UNEVALUATED = """
+            {"prefixItems":[{"type":"string"}],"items":{"type":"integer"},
+             "unevaluatedItems":false}
+            """;
+
     @CompiledValidator(fallback = false)
     public interface Direct {
         @ValidJsonSchema(PROPERTIES) boolean properties(Object node);
         @ValidJsonSchema(PATTERNS) boolean patterns(Object node);
         @ValidJsonSchema(PREFIX) boolean prefix(Object node);
         @ValidJsonSchema(SUFFIX_SCHEMA) boolean suffix(Object node);
+        @ValidJsonSchema(ITEMS_AND_UNEVALUATED) boolean items(Object node);
+        @ValidJsonSchema(PREFIX_ITEMS_AND_UNEVALUATED) boolean prefixItems(Object node);
     }
 
     @Test
@@ -73,6 +83,15 @@ class CompiledValidatorStaticUnevaluatedTest {
                 List.of(1, 2), List.of(1, "ok"), List.of(1, "ok", "next"))) {
             assertEquals(prefix.isValid(value), direct.prefix(value), String.valueOf(value));
             assertEquals(suffix.isValid(value), direct.suffix(value), String.valueOf(value));
+        }
+        SchemaPlan items = JsonSchema.fromJson(ITEMS_AND_UNEVALUATED).createPlan();
+        SchemaPlan prefixItems = JsonSchema.fromJson(PREFIX_ITEMS_AND_UNEVALUATED).createPlan();
+        for (Object value : Arrays.asList(
+                null, "string", List.of(), List.of(1), List.of("bad"),
+                List.of(1, 2), List.of("ok", 2), List.of("ok", 2, 3),
+                List.of("ok", "bad"))) {
+            assertEquals(items.isValid(value), direct.items(value), String.valueOf(value));
+            assertEquals(prefixItems.isValid(value), direct.prefixItems(value), String.valueOf(value));
         }
     }
 }
