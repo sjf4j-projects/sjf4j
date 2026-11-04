@@ -147,7 +147,13 @@ public final class SchemaPlan {
                 }
                 return booleanValue;
             }
-            return evaluate(Instance.infer(node), instancePs, ctx);
+            Instance instance = Instance.infer(node);
+            if (ctx.isFailFast()) {
+                // Avoid constructing child PathSegments on successful fail-fast checks.
+                // Materialize the original enclosing prefix only on an error.
+                return evaluate(instance.withRootPath(instancePs), null, ctx);
+            }
+            return evaluate(instance, instancePs, ctx);
         } finally {
             ctx.reset();
         }
