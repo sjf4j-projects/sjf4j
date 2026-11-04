@@ -365,6 +365,27 @@ public class SchemaRegistry {
         return _resolveFragmentOrThrow(plan, fragment);
     }
 
+    /**
+     * Resolves a Draft 2020-12 dynamic reference for a known evaluation scope.
+     * The reference URI must already be absolute; scope entries are ordered
+     * from the outermost schema evaluation to the innermost. An empty scope
+     * resolves to the initial (static) target. This method is also useful to
+     * annotation processors which specialize schema references ahead of time.
+     *
+     * @return the resolved plan, or null if its resource is not registered
+     * @throws SchemaException if the resource exists but its fragment is missing
+     */
+    public SchemaPlan resolveDynamicRef(URI refUri, java.util.List<SchemaPlan> scope) {
+        Asserts.notNull(refUri, "refUri");
+        Asserts.notNull(scope, "scope");
+        SchemaPlan initial = resolve(refUri);
+        if (initial == null) return null;
+        String fragment = refUri.getFragment();
+        String dynamicAnchor = fragment != null && !fragment.startsWith("/")
+                && fragment.equals(initial.dynamicAnchor) ? fragment : null;
+        return SchemaPlan.selectDynamicTarget(initial, dynamicAnchor, scope.iterator());
+    }
+
     SchemaPlan resolveBuilt(URI uri) {
         Asserts.notNull(uri, "uri");
         String id = uri.toString();
