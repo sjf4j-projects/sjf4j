@@ -150,6 +150,24 @@ class CompiledValidatorKeywordTest {
     }
 
     @CompiledValidator(fallback = false)
+    public interface DraftReferenceSiblings {
+        @ValidJsonSchema("""
+                {"$schema":"http://json-schema.org/draft-07/schema#",
+                 "definitions":{"word":{"type":"string"}},
+                 "$ref":"#/definitions/word",
+                 "type":"integer"}
+                """)
+        boolean valid(Object input);
+    }
+
+    @Test
+    void draft07IgnoresKeywordsAdjacentToRef() {
+        DraftReferenceSiblings validator = CompiledInstances.create(DraftReferenceSiblings.class);
+        assertTrue(validator.valid("text"));
+        assertFalse(validator.valid(2));
+    }
+
+    @CompiledValidator(fallback = false)
     public interface QuotedReferences {
         @ValidJsonSchema("""
                 {"$defs":{"foo\\\"bar":{"type":"number"}},
