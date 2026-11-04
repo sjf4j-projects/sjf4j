@@ -115,35 +115,3 @@ tasks.matching { it.name == "generateMetadataFileForMavenPublication" }
         dependsOn(tasks.matching { it.name == "plainJavadocJar" })
     }
 
-
-/////////////////////
-/// Incubator
-evaluationDependsOn(":sjf4j-core")
-val sjf4jIncubator = project(":sjf4j-core")
-    .extensions
-    .getByType<SourceSetContainer>()
-    .getByName("incubator")
-
-val incubator by sourceSets.creating {
-    java.srcDir("src/incubator/java")
-    resources.srcDir("src/incubator/resources")
-
-    compileClasspath += sourceSets.main.get().output
-    compileClasspath += sjf4jIncubator.output
-    runtimeClasspath += output + compileClasspath
-}
-configurations.named(incubator.implementationConfigurationName) {
-    extendsFrom(configurations.implementation.get())
-}
-configurations.named(incubator.compileOnlyConfigurationName) {
-    extendsFrom(configurations.compileOnly.get())
-}
-configurations.named(incubator.runtimeOnlyConfigurationName) {
-    extendsFrom(configurations.testRuntimeOnly.get())
-}
-dependencies {
-    add(incubator.implementationConfigurationName, project(":sjf4j-schema"))
-    add(incubator.implementationConfigurationName, platform("org.junit:junit-bom:5.10.0"))
-    add(incubator.implementationConfigurationName, "org.junit.jupiter:junit-jupiter")
-    add(incubator.runtimeOnlyConfigurationName, "org.junit.platform:junit-platform-launcher")
-}
