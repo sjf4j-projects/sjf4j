@@ -77,16 +77,15 @@ public final class SchemaPlan {
         return ctx.toResult(valid);
     }
 
-    /**
-     * Validates with explicit options. Annotation collection is reserved for a
-     * future runtime implementation and currently fails explicitly when requested.
-     */
+    /** Validates with optional annotation collection. */
     public ValidationResult validate(Object node, ValidationOptions options) {
         Asserts.notNull(options, "options");
-        if (options.isCollectAnnotations()) {
-            throw new UnsupportedOperationException("Annotation collection is not implemented yet");
+        if (!options.isCollectAnnotations()) {
+            return validate(node, options.isFailFast(), options.isStrictFormat());
         }
-        return validate(node, options.isFailFast(), options.isStrictFormat());
+        ValidationContext ctx = new ValidationContext(options, false);
+        boolean valid = evaluate(node, ctx);
+        return ctx.toResult(valid);
     }
 
     /** Returns whether the instance passes validation in fail-fast mode. */
@@ -159,6 +158,24 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
+        if (ctx.isCollectAnnotations()) {
+            int mark = ctx.annotationMark();
+            boolean valid = false;
+            try {
+                valid = evaluateKeywords(instance, ps, ctx);
+                if (valid && annotationEvaluator != null) {
+                    annotationEvaluator.evaluate(instance, ps, ctx);
+                }
+                return valid;
+            } finally {
+                if (!valid) ctx.rollbackAnnotations(mark);
+            }
+        }
+        return evaluateKeywords(instance, ps, ctx);
+    }
+
+    /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
+    private boolean evaluateKeywords(Instance instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
                 return true;
@@ -227,6 +244,7 @@ public final class SchemaPlan {
     final URI resourceUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
+    final Evaluator.AnnotationEvaluator annotationEvaluator;
     final boolean booleanSchema;
     final boolean booleanValue;
 
@@ -243,8 +261,10 @@ public final class SchemaPlan {
                Map<String, SchemaPlan> byAnchorPlans,
                Map<String, SchemaPlan> byDynamicAnchorPlans,
                Map<String, SchemaPlan> byPathPlans,
-               SchemaDialect dialect, Map<String, Boolean> vocabulary) {
+               SchemaDialect dialect, Map<String, Boolean> vocabulary,
+               Evaluator.AnnotationEvaluator annotationEvaluator) {
         this.resourceUri = resourceUri;
+        this.annotationEvaluator = annotationEvaluator;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
         this.schema = Asserts.notNull(schema, "schema");
@@ -260,7 +280,7 @@ public final class SchemaPlan {
 
     static SchemaPlan of(URI resourceUri, PathSegment keywordPs, BooleanSchema schema) {
         return new SchemaPlan(resourceUri, keywordPs, new Evaluator[0], schema,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     static SchemaPlan of(URI resourceUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
@@ -268,8 +288,18 @@ public final class SchemaPlan {
                          Map<String, SchemaPlan> byPathPlans,
                          ObjectSchema schema, SchemaDialect dialect,
                          Map<String, Boolean> vocabulary) {
+        return of(resourceUri, keywordPs, evaluators, dynamicAnchor, byAnchorPlans,
+                byDynamicAnchorPlans, byPathPlans, schema, dialect, vocabulary, null);
+    }
+
+    static SchemaPlan of(URI resourceUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
+                         Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
+                         Map<String, SchemaPlan> byPathPlans,
+                         ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary,
+                         Evaluator.AnnotationEvaluator annotationEvaluator) {
         return new SchemaPlan(resourceUri, keywordPs, evaluators.toArray(new Evaluator[0]), schema,
-                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, dialect, vocabulary);
+                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                dialect, vocabulary, annotationEvaluator);
     }
 
 }

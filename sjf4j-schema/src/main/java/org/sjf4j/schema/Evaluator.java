@@ -54,6 +54,39 @@ public interface Evaluator {
      * --------------------------------------------------------------
      */
 
+    /** Static metadata of a schema object, collected only in annotation mode. */
+    final class AnnotationEvaluator implements Evaluator {
+        static final class Entry {
+            final String keyword;
+            final Object value;
+            final PathSegment keywordPs;
+            final URI resourceUri;
+
+            Entry(String keyword, Object value, PathSegment keywordPs, URI resourceUri) {
+                this.keyword = keyword;
+                this.value = value;
+                this.keywordPs = keywordPs;
+                this.resourceUri = resourceUri;
+            }
+        }
+
+        private final Entry[] entries;
+
+        AnnotationEvaluator(Entry[] entries) {
+            this.entries = entries;
+        }
+
+        @Override
+        public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
+            if (!ctx.isCollectAnnotations()) return true;
+            for (Entry entry : entries) {
+                ctx.addAnnotation(instance, ps, entry.keywordPs,
+                        entry.resourceUri, entry.keyword, null, entry.value);
+            }
+            return true;
+        }
+    }
+
     // $ref
     final class RefEvaluator implements Evaluator {
         final PathSegment keywordPs;
@@ -978,11 +1011,13 @@ public interface Evaluator {
             Object node = instance.node();
             boolean result = true;
             for (String key : NodeWalker.keySetInObject(node)) {
+                int annotationMark = ctx.isCollectAnnotations() ? ctx.annotationMark() : -1;
                 ctx.pushIgnoreError();
                 boolean probed;
                 try {
                     probed = propertyNamesPlan.evaluate(Instance.infer(key, ctx.reusedLeaf()), ps, ctx);
                 } finally {
+                    if (annotationMark >= 0) ctx.rollbackAnnotations(annotationMark);
                     ctx.popIgnoreError();
                 }
                 if (!probed) {
@@ -1237,7 +1272,8 @@ public interface Evaluator {
                     // and no unevaluated tracking is active, further scanning is
                     // unnecessary for contains semantics.
                     if (matches >= minContains && maxContains == -1
-                            && instance.peekEvaluated() == null) {
+                            && instance.peekEvaluated() == null
+                            && !ctx.isCollectAnnotations()) {
                         return true;
                     }
                 }
@@ -1399,7 +1435,7 @@ public interface Evaluator {
                 if (subResult) {
                     result = true;
                     // Without evaluated tracking, one successful branch is enough.
-                    if (cousinEvaluated == null) break;
+                    if (cousinEvaluated == null && !ctx.isCollectAnnotations()) break;
                 }
             }
             if (cousinEvaluated != null)

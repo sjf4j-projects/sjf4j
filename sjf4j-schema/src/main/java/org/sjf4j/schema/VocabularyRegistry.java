@@ -98,6 +98,7 @@ public class VocabularyRegistry {
         registerKeyword("deprecated", DRAFT_2020_12_VOCAB_METADATA, DRAFT_2019_09_VOCAB_METADATA);
         registerKeyword("readOnly", DRAFT_2020_12_VOCAB_METADATA, DRAFT_2019_09_VOCAB_METADATA);
         registerKeyword("writeOnly", DRAFT_2020_12_VOCAB_METADATA, DRAFT_2019_09_VOCAB_METADATA);
+        registerKeyword("examples", DRAFT_2020_12_VOCAB_METADATA, DRAFT_2019_09_VOCAB_METADATA);
 
         // URI_DRAFT_2020_12_VOCAB_VALIDATION
         registerKeyword("type", DRAFT_2020_12_VOCAB_VALIDATION, DRAFT_2019_09_VOCAB_VALIDATION);

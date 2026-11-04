@@ -3,8 +3,8 @@ package org.sjf4j.schema;
 /**
  * Immutable options for runtime JSON Schema validation.
  *
- * <p>Annotation collection is an API placeholder and is not implemented yet.
- * Requesting it currently throws {@link UnsupportedOperationException}.
+ * <p>Annotation collection is opt-in and has no overhead on the ordinary
+ * boolean validation path beyond the mode check.
  */
 public final class ValidationOptions {
     private final boolean failFast;

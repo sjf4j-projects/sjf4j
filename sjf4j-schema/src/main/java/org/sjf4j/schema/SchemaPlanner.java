@@ -398,6 +398,23 @@ public final class SchemaPlanner {
             evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), resourceUri, notPlan));
         }
 
+        // Static metadata annotations. Keep unevaluated* last for evaluated tracking.
+        final String[] metadataKeywords = {
+                "title", "description", "default", "examples",
+                "deprecated", "readOnly", "writeOnly"
+        };
+        List<Evaluator.AnnotationEvaluator.Entry> metadataEntries = null;
+        for (String key : metadataKeywords) {
+            if (schema.containsKey(key) && _allowsKeyword(dialect, vocabulary, key)) {
+                if (metadataEntries == null) metadataEntries = new ArrayList<>();
+                metadataEntries.add(new Evaluator.AnnotationEvaluator.Entry(
+                        key, schema.getNode(key), new PathSegment.Name(ps, key), resourceUri));
+            }
+        }
+        Evaluator.AnnotationEvaluator annotationEvaluator = metadataEntries == null ? null
+                : new Evaluator.AnnotationEvaluator(
+                        metadataEntries.toArray(new Evaluator.AnnotationEvaluator.Entry[0]));
+
         // unevaluatedProperties / unevaluatedItems
         SchemaPlan unevaluatedPropertiesPlan = _allowsKeyword(dialect, vocabulary, "unevaluatedProperties")
                 ? _buildPlanByKey("unevaluatedProperties", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
@@ -412,7 +429,7 @@ public final class SchemaPlanner {
         // end up
         SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                schema, dialect, vocabulary);
+                schema, dialect, vocabulary, annotationEvaluator);
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps);

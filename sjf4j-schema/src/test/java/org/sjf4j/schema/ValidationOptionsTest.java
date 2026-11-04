@@ -40,15 +40,18 @@ class ValidationOptionsTest {
     }
 
     @Test
-    void annotationCollectionIsExplicitlyUnsupportedForNow() {
+    void annotationCollectionCanBeRequested() {
         ValidationOptions options = ValidationOptions.builder()
                 .collectAnnotations(true)
                 .build();
         assertTrue(options.isCollectAnnotations());
         SchemaPlan plan = JsonSchema.fromJson("{\"title\":\"Example\"}").createPlan();
-        assertThrows(UnsupportedOperationException.class, () -> plan.validate(42, options));
-        assertThrows(UnsupportedOperationException.class,
-                () -> new ValidationContext(options, false));
+        ValidationResult result = plan.validate(42, options);
+        assertTrue(result.isValid());
+        assertEquals(1, result.getAnnotations().size());
+        assertEquals("title", result.getAnnotations().get(0).getKeyword());
+        assertEquals("Example", result.getAnnotations().get(0).getValue());
+        assertTrue(new ValidationContext(options, false).isCollectAnnotations());
         assertThrows(NullPointerException.class, () -> plan.validate(42, (ValidationOptions) null));
     }
 }
