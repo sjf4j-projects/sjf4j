@@ -184,6 +184,30 @@ public final class SchemaPlan {
      * --------------------------------------------------------------
      */
 
+    /** The original schema node for this plan (object or boolean), without evaluation. */
+    public Object schemaNode() {
+        return booleanSchema ? Boolean.valueOf(booleanValue) : schema;
+    }
+
+    /** Canonical URI of this schema position, including its JSON Pointer. */
+    public URI schemaLocation() {
+        if (schemaUri == null) return null;
+        String path = keywordPs == null ? "" : keywordPs.rootedPointerExpr();
+        if (path.isEmpty()) return schemaUri;
+        // Encode the pointer as a URI fragment, preserving RFC 6901 ~0/~1.
+        try {
+            return new URI(schemaUri.getScheme(), schemaUri.getAuthority(),
+                    schemaUri.getPath(), schemaUri.getQuery(), path);
+        } catch (java.net.URISyntaxException e) {
+            throw new IllegalArgumentException("invalid schema location: " + schemaUri + "#" + path, e);
+        }
+    }
+
+    /** Dialect in effect at this schema node, inherited from its enclosing scope. */
+    public SchemaDialect schemaDialect() {
+        return dialect;
+    }
+
     final URI schemaUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
