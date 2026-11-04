@@ -35,7 +35,7 @@ final class SchemaEmitter {
         if (!DIAGNOSTIC_FAILURE.equals(action)) return action;
         return "throw org.sjf4j.schema.CompiledUtil.validationFailure("
                 + literal(d == null || d.keyword == null ? "schema" : d.keyword) + ", "
-                + (d == null || d.schemaUri == null ? "null" : literal(d.schemaUri)) + ", "
+                + (d == null || d.resourceUri == null ? "null" : literal(d.resourceUri)) + ", "
                 + literal(d == null || d.keywordPointer == null ? "" : d.keywordPointer)
                 + ", " + instancePath + ");";
     }
