@@ -525,9 +525,19 @@ final class SchemaCompiler {
             java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
                     java.net.URI.create(sourceUri), java.net.URI.create(literal));
             org.sjf4j.schema.SchemaPlan plan = snapshot.registry.resolve(absolute);
-            return plan == null ? null : new RefTarget(plan.schemaNode(),
-                    plan.schemaLocation().toString());
+            if (plan == null) {
+                System.err.println("SJF4J DIAG unresolved ref " + sourceUri + " -> " + absolute);
+                return null;
+            }
+            if (plan.schemaNode() == null || plan.schemaLocation() == null) {
+                System.err.println("SJF4J DIAG incomplete plan " + sourceUri + " -> " + absolute
+                        + " node=" + plan.schemaNode() + " location=" + plan.schemaLocation());
+                return null;
+            }
+            return new RefTarget(plan.schemaNode(), plan.schemaLocation().toString());
         } catch (RuntimeException unresolved) {
+            System.err.println("SJF4J DIAG resolving " + sourceUri + " + " + literal
+                    + ": " + unresolved);
             return null;
         }
     }
