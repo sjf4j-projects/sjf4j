@@ -46,23 +46,77 @@ final class ObjectCompiler {
         // Non-public annotated members may be visible to runtime reflection and
         // must not silently disappear from additionalProperties/required checks.
         if (!dynamic && hasHiddenNodeMembers(type)) return null;
+        // Property-name enumeration and evaluated-name coverage are dynamic
+        // traversal decisions, not runtime SchemaPlan fallbacks.
+        if (!dynamic && (root.containsKey("patternProperties")
+                || root.containsKey("propertyNames") || root.containsKey("dependentSchemas")
+                || (root.containsKey("additionalProperties")
+                    && !(root.getNode("additionalProperties") instanceof Boolean)))) return null;
         for (String key : root.keySet()) {
-            if (!key.equals("type") && !key.equals("properties") && !key.equals("required")
-                    && !key.equals("additionalProperties")
-                    && !key.equals("minProperties") && !key.equals("maxProperties")
-                    && !key.equals("dependentRequired")
+            if (!key.equals("type") && !key.equals("properties") && !key.equals("patternProperties")
+                    && !key.equals("propertyNames") && !key.equals("required")
+                    && !key.equals("additionalProperties") && !key.equals("minProperties")
+                    && !key.equals("maxProperties") && !key.equals("dependentRequired")
+                    && !key.equals("dependentSchemas")
                     && !SchemaCompiler.isAnnotation(key)) return null;
         }
         boolean typeRequired = root.containsKey("type");
         if (typeRequired && !"object".equals(root.getNode("type"))) return null;
-        if (!typeRequired && !root.containsKey("properties") && !root.containsKey("required")
-                && !root.containsKey("additionalProperties")
-                && !root.containsKey("minProperties")
-                && !root.containsKey("maxProperties")
-                && !root.containsKey("dependentRequired")) return null;
+        if (!typeRequired && !root.containsKey("properties") && !root.containsKey("patternProperties")
+                && !root.containsKey("propertyNames") && !root.containsKey("required")
+                && !root.containsKey("additionalProperties") && !root.containsKey("minProperties")
+                && !root.containsKey("maxProperties") && !root.containsKey("dependentRequired")
+                && !root.containsKey("dependentSchemas")) return null;
         Object raw = root.getNode("properties");
         if (raw != null && JsonType.of(raw) != JsonType.OBJECT) return null;
         JsonObject propertyMap = raw == null ? new JsonObject() : Nodes.toJsonObject(raw);
+        Object rawPatterns = root.getNode("patternProperties");
+        if (root.containsKey("patternProperties") && JsonType.of(rawPatterns) != JsonType.OBJECT) return null;
+        JsonObject patternMap = rawPatterns == null ? new JsonObject() : Nodes.toJsonObject(rawPatterns);
+        List<SchemaCheck.PatternProperty> patternChecks = new ArrayList<SchemaCheck.PatternProperty>();
+        for (String expression : patternMap.keySet()) {
+            String javaPattern;
+            try {
+                javaPattern = org.sjf4j.schema.SchemaUtil.compileRegexPattern(
+                        expression, "patternProperties", org.sjf4j.path.PathSegment.Root.INSTANCE,
+                        java.net.URI.create("sjf4j:/compiled")).pattern();
+            } catch (RuntimeException ex) {
+                return null;
+            }
+            SchemaCheck patternCheck = schemaCompiler.compileValue(snapshot, patternMap.getNode(expression),
+                    SchemaValue.of(context, null), childPointer(rootUri, "patternProperties", expression), depth + 1);
+            if (patternCheck == null || patternCheck.hasFallback()) return null;
+            patternChecks.add(new SchemaCheck.PatternProperty(javaPattern, patternCheck));
+        }
+        // propertyNames validates each JSON member *name* as a string, not
+        // the value. The compiled child is independent of the instance's Java
+        // representation and of the separate type assertion.
+        SchemaCheck propertyNamesCheck = null;
+        if (root.containsKey("propertyNames")) {
+            propertyNamesCheck = schemaCompiler.compileValue(snapshot, root.getNode("propertyNames"),
+                    SchemaValue.of(context, null),
+                    SchemaCompiler.keywordUri(rootUri, "propertyNames"), depth + 1);
+            if (propertyNamesCheck == null || propertyNamesCheck.hasFallback()) return null;
+        }
+        // dependentSchemas applies its child schema to the entire object when
+        // the trigger member is present, including when its value is null.
+        // Its child does not contribute to additionalProperties coverage.
+        List<SchemaCheck.DependentSchema> dependentSchemaChecks =
+                new ArrayList<SchemaCheck.DependentSchema>();
+        if (root.containsKey("dependentSchemas")) {
+            Object rawSchemaMap = root.getNode("dependentSchemas");
+            if (JsonType.of(rawSchemaMap) != JsonType.OBJECT) return null;
+            JsonObject schemaMap = Nodes.toJsonObject(rawSchemaMap);
+            for (String trigger : schemaMap.keySet()) {
+                SchemaCheck child = schemaCompiler.compileValue(snapshot, schemaMap.getNode(trigger),
+                        SchemaValue.of(context, null),
+                        childPointer(rootUri, "dependentSchemas", trigger), depth + 1);
+                if (child == null || child.hasFallback()) return null;
+                if (child.kind != SchemaCheck.Kind.PASS) {
+                    dependentSchemaChecks.add(new SchemaCheck.DependentSchema(trigger, child));
+                }
+            }
+        }
         Map<String, Property> javaProperties = dynamic ? java.util.Collections.emptyMap()
                 : context.properties.resolve(type);
 
@@ -113,13 +167,22 @@ final class ObjectCompiler {
             }
         }
         Object additional = root.getNode("additionalProperties");
-        if (additional != null) {
-            if (!(additional instanceof Boolean)) return null;
-            if (!dynamic && Boolean.FALSE.equals(additional)
-                    && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
-                // A final POJO with a complete known projection necessarily
-                // exposes a property forbidden by additionalProperties=false.
-                return missingObjectConstraint(rootUri, typeRequired, "additionalProperties");
+        SchemaCheck additionalCheck = null;
+        if (root.containsKey("additionalProperties")) {
+            if (additional instanceof Boolean) {
+                if (!dynamic && Boolean.FALSE.equals(additional)
+                        && !propertyMap.keySet().containsAll(javaProperties.keySet())) {
+                    // The static projection is complete and the uncovered name
+                    // must fail. JSON type applicability is enforced outside.
+                    return missingObjectConstraint(rootUri, typeRequired, "additionalProperties");
+                }
+            } else if (JsonType.of(additional) == JsonType.OBJECT) {
+                additionalCheck = schemaCompiler.compileValue(snapshot, additional,
+                        SchemaValue.of(context, null),
+                        SchemaCompiler.keywordUri(rootUri, "additionalProperties"), depth + 1);
+                if (additionalCheck == null || additionalCheck.hasFallback()) return null;
+            } else {
+                return null;
             }
         }
         for (String name : propertyMap.keySet()) {
@@ -154,6 +217,10 @@ final class ObjectCompiler {
         CompiledMetadata codecMetadata = dynamic ? null
                 : context.metadata(context.types.typeElement(type));
         int directCount = (typeRequired && propertyMap.isEmpty() ? 1 : 0)
+                + (propertyNamesCheck != null && propertyNamesCheck.kind != SchemaCheck.Kind.PASS ? 1 : 0)
+                + (!dependentSchemaChecks.isEmpty() ? 1 : 0)
+                + (additionalCheck != null ? 1 : 0)
+                + (!patternChecks.isEmpty() ? 1 : 0)
                 + (required != null ? 1 : 0)
                 + (!dependencies.isEmpty() ? 1 : 0)
                 + (dynamic && Boolean.FALSE.equals(additional) ? 1 : 0)
@@ -193,8 +260,9 @@ final class ObjectCompiler {
         boolean jsonObject = dynamic && type != null && (context.types.nodeKind(type) == NodeKind.OBJECT_JSON_OBJECT
                 || context.types.nodeKind(type) == NodeKind.OBJECT_JOJO);
         return new SchemaCheck.ObjectCheck(dynamic, jsonObject, typeRequired,
-                Boolean.FALSE.equals(additional),
-                minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
+                Boolean.FALSE.equals(additional), additionalCheck, patternChecks,
+                propertyNamesCheck, dependentSchemaChecks,
+                SchemaValue.of(context, null), minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
                 new ArrayList<String>(propertyMap.keySet()), requiredChecks, dependencies, properties,
                 typeRequired ? SchemaCompiler.diagnostic(rootUri, "type") : null,
                 minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
@@ -202,7 +270,8 @@ final class ObjectCompiler {
                 required == null ? null : SchemaCompiler.diagnostic(rootUri, "required"),
                 dependencies.isEmpty() ? null : SchemaCompiler.diagnostic(rootUri, "dependentRequired"),
                 Boolean.FALSE.equals(additional)
-                        ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null);
+                        ? SchemaCompiler.diagnostic(rootUri, "additionalProperties") : null,
+                propertyNamesCheck == null ? null : SchemaCompiler.diagnostic(rootUri, "propertyNames"));
     }
 
     /**

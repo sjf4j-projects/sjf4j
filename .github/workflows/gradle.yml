@@ -38,6 +38,8 @@ jobs:
     # The build lifecycle itself is offline. CI explicitly seeds the official
     # suite once so that JaCoCo still includes runtime conformance coverage.
     - name: Download official JSON Schema suite for CI
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests
 
     - name: Run tests with coverage

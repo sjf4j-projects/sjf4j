@@ -117,6 +117,13 @@ val officialSchemaSuiteDir = layout.buildDirectory.dir("official-json-schema-tes
 
 fun githubStream(url: String) = URI(url).toURL().openConnection().apply {
     setRequestProperty("User-Agent", "sjf4j-gradle")
+    // GitHub Actions authenticates API requests to avoid anonymous 60/hr rate
+    // limits; never forward the token to third-party or archive hosts.
+    if (url.startsWith("https://api.github.com/")) {
+        System.getenv("GITHUB_TOKEN")?.takeIf { it.isNotBlank() }?.let {
+            setRequestProperty("Authorization", "Bearer $it")
+        }
+    }
     connectTimeout = 30_000
     readTimeout = 120_000
 }.getInputStream()

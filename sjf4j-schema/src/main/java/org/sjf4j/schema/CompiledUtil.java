@@ -15,6 +15,43 @@ import java.util.List;
 public final class CompiledUtil {
     private CompiledUtil() {}
 
+    /**
+     * Reads a structural object member for generated Schema validators.
+     * Unlike a plain Nodes.getInObject call, a POJO member can select a
+     * nondefault scalar codec through @NodeProperty(valueFormat/valuePattern).
+     * Raw Map/List codec values stay atomic leaves, never traversable nodes.
+     */
+    public static Object objectPropertyValue(Object owner, String key) {
+        Object value = org.sjf4j.Nodes.getInObject(owner, key);
+        if (value == null || owner instanceof java.util.Map || owner instanceof org.sjf4j.JsonObject)
+            return value;
+        org.sjf4j.meta.TypeInfo info =
+                org.sjf4j.meta.TypeRegistry.registerTypeInfo(owner.getClass());
+        if (info.pojoInfo == null) return value;
+        org.sjf4j.meta.PropertyInfo property = info.pojoInfo.getPropertyNoAlias(key);
+        if (property == null || property.valueInfo == null) return value;
+        org.sjf4j.value.ValueInfo codec = property.valueInfo;
+        switch (codec.rawJsonType) {
+            case STRING:
+            case NUMBER:
+            case BOOLEAN:
+                return codec.valueToRaw(value);
+            default:
+                // A codec-backed Map/List is a leaf, not a structural node.
+                return value;
+        }
+    }
+
+    /**
+     * Implements the JSON equality semantics of uniqueItems without running
+     * a SchemaPlan. The runtime and compiled validator share the same
+     * Nodes.hash/Nodes.equals-based duplicate detection.
+     */
+    public static boolean hasDuplicateItems(Object array) {
+        return Evaluator.ArrayEvaluator.hasDuplicate(array,
+                org.sjf4j.Nodes.sizeInArray(array));
+    }
+
     /** Creates a fail-fast error from compiled diagnostics; no SchemaPlan execution. */
     public static ValidationException validationFailure(String keyword, String schemaUri,
                                                         String keywordPointer, PathSegment instancePath) {
