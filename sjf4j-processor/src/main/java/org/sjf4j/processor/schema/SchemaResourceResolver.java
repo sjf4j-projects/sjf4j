@@ -278,8 +278,10 @@ final class SchemaResourceResolver {
                         Object id = Nodes.getInObject(parsed, "$id");
                         if (id instanceof String) {
                             String stripped = org.sjf4j.schema.SchemaUtil.stripFragment((String) id);
-                            URI canonical = org.sjf4j.schema.SchemaUtil.resolveUri(retrieval, URI.create(stripped));
-                            indexedSources.putIfAbsent(canonical.toString(), indexed);
+                            if (!stripped.isEmpty()) {
+                                URI canonical = org.sjf4j.schema.SchemaUtil.resolveUri(retrieval, URI.create(stripped));
+                                indexedSources.putIfAbsent(canonical.toString(), indexed);
+                            }
                         }
                     }
                 }
