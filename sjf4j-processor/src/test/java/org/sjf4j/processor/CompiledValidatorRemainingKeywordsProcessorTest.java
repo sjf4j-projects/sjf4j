@@ -56,16 +56,37 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
-    void unsupportedKeywordStillRejectsFallbackFalse() throws Exception {
+    void isolatedUnevaluatedKeywordsCompileDirectly() throws Exception {
         for (String schema : new String[]{
-                "{\"type\":\"string\",\"unevaluatedProperties\":false}",
-                "{\"type\":\"number\",\"unevaluatedItems\":false}",
-                "{\"type\":\"object\",\"unevaluatedProperties\":false}"
+                "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"unevaluatedProperties\":false}",
+                "{\"patternProperties\":{\"^x\":true},\"unevaluatedProperties\":{\"type\":\"integer\"}}",
+                "{\"prefixItems\":[{\"type\":\"integer\"}],\"unevaluatedItems\":false}",
+                "{\"prefixItems\":[true],\"unevaluatedItems\":{\"type\":\"string\"}}"
         }) {
             NavigatorTestCompiler.Result result = compile(schema, "Object");
-            assertFalse(result.success, schema);
-            assertTrue(result.diagnostics().contains("cannot fully compile"),
-                    schema + "\n" + result.diagnostics());
+            assertTrue(result.success, schema + "\\n" + result.diagnostics());
+            String output = result.generatedSource("fixture/Validator_Impl.java");
+            assertFalse(output.contains(".isValid("), schema + "\\n" + output);
+            assertFalse(output.contains("SchemaPlan"), schema + "\\n" + output);
+        }
+    }
+
+    @Test
+    void combinationsRequiringEvaluationTrackingReportExactReason() throws Exception {
+        for (String[] input : new String[][]{
+                {"{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}",
+                        "allOf + unevaluatedProperties"},
+                {"{\"$ref\":\"#/$defs/A\",\"$defs\":{\"A\":true},\"unevaluatedProperties\":false}",
+                        "$ref + unevaluatedProperties"},
+                {"{\"contains\":{\"type\":\"integer\"},\"unevaluatedItems\":false}",
+                        "contains + unevaluatedItems"},
+                {"{\"properties\":{\"nested\":{\"unevaluatedProperties\":false}}}",
+                        "unevaluatedProperties in a nested schema"}
+        }) {
+            NavigatorTestCompiler.Result result = compile(input[0], "Object");
+            assertFalse(result.success, input[0]);
+            assertTrue(result.diagnostics().contains(input[1]), result.diagnostics());
+            assertTrue(result.diagnostics().contains("fallback=false"), result.diagnostics());
         }
     }
 }
