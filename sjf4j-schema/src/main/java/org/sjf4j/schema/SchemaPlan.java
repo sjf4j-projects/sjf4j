@@ -184,9 +184,15 @@ public final class SchemaPlan {
      * --------------------------------------------------------------
      */
 
-    /** The original schema node for this plan (object or boolean), without evaluation. */
+    /**
+     * The schema's JSON node without JOJO metadata accessors.
+     * ObjectSchema exposes retrievalUri/canonicalUri as declared properties;
+     * they are not JSON Schema keywords and must not reach code generation.
+     * This shallow copy preserves the original nested OBNT nodes.
+     */
     public Object schemaNode() {
-        return booleanSchema ? Boolean.valueOf(booleanValue) : schema;
+        return booleanSchema ? Boolean.valueOf(booleanValue)
+                : new org.sjf4j.JsonObject(schema.dynamicMembers());
     }
 
     /** Canonical URI of this schema position, including its JSON Pointer. */
