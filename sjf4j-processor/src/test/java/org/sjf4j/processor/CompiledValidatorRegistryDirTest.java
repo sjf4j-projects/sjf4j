@@ -77,6 +77,27 @@ class CompiledValidatorRegistryDirTest {
     }
 
     @Test
+    void preloadedRemoteReferencesCompileDirectly() throws Exception {
+        Path remote = Files.createDirectories(registryDir.resolve("draft2020-12"));
+        Files.write(remote.resolve("word.json"),
+                "{\\"$anchor\\":\\"word\\",\\"type\\":\\"string\\",\\"minLength\\":3}"
+                        .getBytes(StandardCharsets.UTF_8));
+        String schema = "{\\"$ref\\":\\"http://localhost:1234/draft2020-12/word.json#word\\"}";
+        NavigatorTestCompiler.Result result = compile(schema, registryDir.toUri().toString(),
+                "http://localhost:1234/", false);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Check_Impl.java");
+        assertFalse(generated.contains(".isValid("), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> type = loader.loadClass("fixture.Check");
+            Object validator = CompiledInstances.create((Class) type);
+            Method valid = type.getMethod("valid", Object.class);
+            assertEquals(Boolean.TRUE, valid.invoke(validator, "hello"));
+            assertEquals(Boolean.FALSE, valid.invoke(validator, "no"));
+        }
+    }
+
+    @Test
     void missingRegistryDirectoryReportsCompilationError() throws Exception {
         // Path.toUri() omits the trailing slash for a directory that does not exist.
         String missing = registryDir.resolve("missing").toUri().toString() + "/";
@@ -94,10 +115,15 @@ class CompiledValidatorRegistryDirTest {
 
     private static NavigatorTestCompiler.Result compile(
             String schema, String registryDir, String registryBaseUri) throws Exception {
+        return compile(schema, registryDir, registryBaseUri, true);
+    }
+
+    private static NavigatorTestCompiler.Result compile(
+            String schema, String registryDir, String registryBaseUri, boolean fallback) throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Check.java",
                 "package fixture; import org.sjf4j.annotation.schema.*; "
-                        + "@CompiledValidator(fallback=true, registryDir="
+                        + "@CompiledValidator(fallback=" + fallback + ", registryDir="
                         + JavaWriter.stringLiteral(registryDir) + ", registryBaseUri="
                         + JavaWriter.stringLiteral(registryBaseUri) + ") "
                         + "public interface Check { @ValidJsonSchema("
