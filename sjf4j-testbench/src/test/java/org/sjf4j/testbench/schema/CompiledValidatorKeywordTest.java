@@ -149,6 +149,27 @@ class CompiledValidatorKeywordTest {
         @ValidJsonSchema(DYNAMIC) boolean jojo(Open value);
     }
 
+    @CompiledValidator(fallback = false)
+    public interface RecursiveReferences {
+        @ValidJsonSchema("""
+                {"$anchor":"node","type":"object",
+                 "properties":{"name":{"type":"string","minLength":2},
+                               "child":{"$ref":"#node"}}}
+                """)
+        boolean recursive(Object input);
+    }
+
+    @Test
+    void recursiveNamedAnchorDirectValidation() {
+        RecursiveReferences validator = CompiledInstances.create(RecursiveReferences.class);
+        Map<String, Object> good = Map.of("name", "root",
+                "child", Map.of("name", "leaf", "child", Map.of("name", "ok")));
+        Map<String, Object> bad = Map.of("name", "root",
+                "child", Map.of("name", "x"));
+        assertTrue(validator.recursive(good));
+        assertFalse(validator.recursive(bad));
+    }
+
     public static final class Open extends JsonObject {
         public Open() { super(); }
     }
