@@ -58,7 +58,7 @@ final class SchemaCompiler {
         JsonObject schema = Nodes.toJsonObject(rawSchema);
         // Canonical locations are indexed by lexical $id scope, including nested
         // resources. Do not reapply a relative $id when following a reference.
-        schemaUri = SchemaReferenceResolver.canonicalLocation(snapshot, schemaUri);
+        schemaUri = snapshot.referenceIndex().canonicalLocation(schemaUri);
         if (schema.containsKey("$ref")) {
             JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
             RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
@@ -514,7 +514,9 @@ final class SchemaCompiler {
 
     static RefTarget resolveRef(SchemaResourceResolver.Snapshot snapshot,
                                 JsonObject schema, String sourceUri) {
-        return SchemaReferenceResolver.resolveRef(snapshot, schema, sourceUri);
+        org.sjf4j.schema.SchemaResourceIndex.Target target =
+                snapshot.referenceIndex().resolve(sourceUri, schema.getString("$ref"));
+        return target == null ? null : new RefTarget(target.node, target.uri);
     }
 
     static final class RefTarget {
