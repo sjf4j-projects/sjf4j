@@ -22,6 +22,7 @@ final class ScalarCompiler {
             else if (type == JsonType.NUMBER || type == JsonType.INTEGER) values.add(Nodes.toNumber(item));
             else if (type == JsonType.BOOLEAN) values.add(Nodes.toBoolean(item));
             else if (type == JsonType.NULL) values.add(null);
+            else if (type == JsonType.OBJECT || type == JsonType.ARRAY) values.add(item);
             else return null;
         }
         return new SchemaCheck.LiteralCheck(values, diagnostic);
