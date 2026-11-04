@@ -60,8 +60,8 @@ final class SchemaCompiler {
         // resources. Do not reapply a relative $id when following a reference.
         schemaUri = SchemaReferenceResolver.canonicalLocation(snapshot, schemaUri);
         if (schema.containsKey("$ref")) {
-            JsonObject reference = JsonObject.of("$ref", schema.getString("$ref"));
-            RefTarget target = resolveRef(snapshot, reference, schemaUri);
+            JsonObject referenceSchema = JsonObject.of("$ref", schema.getString("$ref"));
+            RefTarget target = resolveRef(snapshot, referenceSchema, schemaUri);
             if (target == null) return null;
             String referenceKey = target.uri + "\\u0000" + (value.type == null ? "Object" : value.type.toString())
                     + "\\u0000" + value.shape;
