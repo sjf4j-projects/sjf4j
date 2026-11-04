@@ -95,7 +95,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
         }
     }
     @Test
-    void fallbackTrueEmitsSemanticWarning() throws Exception {
+    void fallbackTrueDoesNotEmitWarning() throws Exception {
         String schema = "{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}";
         String source = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=true) public interface Validator { "
@@ -104,8 +104,8 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
                 Map.of("fixture/Validator.java", source), CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
-        assertTrue(result.diagnostics().contains("allOf + unevaluatedProperties"), result.diagnostics());
-        assertTrue(result.diagnostics().contains("fallback=true"), result.diagnostics());
+        assertFalse(result.diagnostics().contains("runtime fallback"), result.diagnostics());
+        assertFalse(result.diagnostics().contains("WARNING"), result.diagnostics());
     }
 
     @Test
