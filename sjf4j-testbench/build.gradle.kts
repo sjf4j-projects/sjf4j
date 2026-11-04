@@ -399,7 +399,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
 // First checkout with no cached suite simply SKIPs these tasks. The release gate
 // below always refreshes, so no publication can silently omit the official suite.
 tasks.named("check") {
-    dependsOn(officialRuntimeTest, officialCompiledTest)
+    dependsOn(officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
 }
 
 // Release gate covers runtime and full compiled Draft 2020-12 official cases.
@@ -407,7 +407,7 @@ tasks.named("check") {
 val officialPublishGate by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Refreshes upstream main and runs all required official runtime and compiled tests before publishing."
-    dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest)
+    dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
     doLast {
         check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
         // A pinned local SHA may be used for debugging, never for a publication.
@@ -432,11 +432,12 @@ evaluationDependsOn(":sjf4j-schema")
 val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
     layout.buildDirectory.file("jacoco/officialRuntimeTest.exec") +
+    layout.buildDirectory.file("jacoco/officialAnnotationTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
 tasks.jacocoTestReport {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest + officialAnnotationTest)
     executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
@@ -445,7 +446,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest + officialAnnotationTest)
     executionData(coverageExecFiles)
     violationRules {
         rule {
