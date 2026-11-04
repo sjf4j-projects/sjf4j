@@ -191,7 +191,7 @@ class CompiledValidatorArchitectureTest {
         return count;
     }
     @Test
-    void scopedIdPreventsUnsafeDirectRefCompilation() throws Exception {
+    void scopedIdCompilesWithCanonicalResourceIndex() throws Exception {
         String schema = "{\"type\":\"object\",\"properties\":{"
                 + "\"name\":{\"$ref\":\"#/$defs/inner\"}},"
                 + "\"$defs\":{\"word\":{\"type\":\"string\",\"minLength\":2},"
@@ -203,8 +203,8 @@ class CompiledValidatorArchitectureTest {
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
                 + "boolean valid(Model value); }";
         NavigatorTestCompiler.Result result = compile(MODEL, validator);
-        assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
     }
 
 }
