@@ -56,7 +56,7 @@ JsonPatch.fromJson(patchJson).apply(user);
 JsonSchema.fromJson(schemaJson).createPlan().validate(user);
 
 // Transform to another POJO
-AnotherUser another = sjf4j.fromNode(user, AnotherUser.class);
+AnotherUser another = sjf4j.convert(user, AnotherUser.class);
 
 // Serialize to JSON
 String output = sjf4j.toJsonString(another);
@@ -225,10 +225,10 @@ Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 
 ### Mapping
 
-Runtime mapping through `Sjf4j.fromNode()` supports object-to-object conversion based only on properties with the same names and compatible types.
+Runtime mapping through `Sjf4j.convert()` supports object-to-object conversion based only on properties with the same names and compatible types.
 
 ```java
-AnotherUser another = sjf4j.fromNode(user, AnotherUser.class);
+AnotherUser another = sjf4j.convert(user, AnotherUser.class);
 ```
 
 For complex transformations, `@CompiledMapper` supports property renaming, 

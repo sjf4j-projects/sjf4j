@@ -32,10 +32,10 @@ class Sjf4jTargetValidationTest {
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromYaml(new StringReader("null"), nullType));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromYaml("null", nullClass));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromYaml("null", nullType));
-        assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromNode(null, nullClass));
-        assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromNode(null, nullType));
-        assertThrowsExactly(NullPointerException.class, () -> sjf4j.deepNode(null, nullClass));
-        assertThrowsExactly(NullPointerException.class, () -> sjf4j.deepNode(null, nullType));
+        assertThrowsExactly(NullPointerException.class, () -> sjf4j.convert(null, nullClass));
+        assertThrowsExactly(NullPointerException.class, () -> sjf4j.convert(null, nullType));
+        assertThrowsExactly(NullPointerException.class, () -> sjf4j.deepConvert(null, nullClass));
+        assertThrowsExactly(NullPointerException.class, () -> sjf4j.deepConvert(null, nullType));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromProperties(new Properties(), nullClass));
         assertThrowsExactly(NullPointerException.class, () -> sjf4j.fromProperties(new Properties(), nullType));
     }

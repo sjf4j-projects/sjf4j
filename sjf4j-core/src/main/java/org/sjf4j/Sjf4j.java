@@ -338,10 +338,10 @@ public final class Sjf4j {
      * <p>
      * Uses {@link NodeMapper} for structural conversion. Compatible values may
      * be reused, so mutable source structures can be shared with the result.
-     * Use {@link #deepNode(Object, Class)} to copy supported nested structures.
+     * Use {@link #deepConvert(Object, Class)} to copy supported nested structures.
      */
     @SuppressWarnings("unchecked")
-    public <T> T fromNode(Object node, Class<T> clazz) {
+    public <T> T convert(Object node, Class<T> clazz) {
         return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), false, runtimeContext);
     }
 
@@ -350,10 +350,10 @@ public final class Sjf4j {
      * <p>
      * Uses {@link NodeMapper} for structural conversion. Compatible values may
      * be reused, so mutable source structures can be shared with the result.
-     * Use {@link #deepNode(Object, TypeReference)} to copy supported nested structures.
+     * Use {@link #deepConvert(Object, TypeReference)} to copy supported nested structures.
      */
     @SuppressWarnings("unchecked")
-    public <T> T fromNode(Object node, TypeReference<T> type) {
+    public <T> T convert(Object node, TypeReference<T> type) {
         return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), false, runtimeContext);
     }
 
@@ -362,10 +362,10 @@ public final class Sjf4j {
      * supported nested structures recursively. {@code @NodeValue} types use
      * their configured value-copy behavior.
      *
-     * @see #fromNode(Object, Class)
+     * @see #convert(Object, Class)
      */
     @SuppressWarnings("unchecked")
-    public <T> T deepNode(Object node, Class<T> clazz) {
+    public <T> T deepConvert(Object node, Class<T> clazz) {
         return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), true, runtimeContext);
     }
 
@@ -374,10 +374,10 @@ public final class Sjf4j {
      * copying supported nested structures recursively. {@code @NodeValue} types
      * use their configured value-copy behavior.
      *
-     * @see #fromNode(Object, TypeReference)
+     * @see #convert(Object, TypeReference)
      */
     @SuppressWarnings("unchecked")
-    public <T> T deepNode(Object node, TypeReference<T> type) {
+    public <T> T deepConvert(Object node, TypeReference<T> type) {
         return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), true, runtimeContext);
     }
 
@@ -403,7 +403,7 @@ public final class Sjf4j {
      * representations. {@code @NodeValue} types are encoded by their configured
      * value binding; scalar raw values may be returned unchanged.
      */
-    public Object toRaw(Object node) {
+    public Object convertToRaw(Object node) {
         return NodeMapper.convertToRaw(node, runtimeContext);
     }
 
@@ -427,7 +427,7 @@ public final class Sjf4j {
     public <T> T fromProperties(Properties props, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         JsonObject jo = propertiesBinder.readNode(props);
-        return fromNode(jo, clazz);
+        return convert(jo, clazz);
     }
 
     /**
@@ -436,7 +436,7 @@ public final class Sjf4j {
     public <T> T fromProperties(Properties props, TypeReference<T> type) {
         Asserts.notNull(type, "type");
         JsonObject jo = propertiesBinder.readNode(props);
-        return fromNode(jo, type);
+        return convert(jo, type);
     }
 
     /**

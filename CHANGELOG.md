@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the `Sjf4j` structural conversion methods: `fromNode()` → `convert()`, `deepNode()` → `deepConvert()`, and `toRaw()` → `convertToRaw()`; `deepCopy()` is unchanged. This is a breaking API change.
+
 
 ## [1.5.0] - 2026.11.03
 

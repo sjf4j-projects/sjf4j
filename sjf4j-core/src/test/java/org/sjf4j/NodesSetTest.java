@@ -57,7 +57,7 @@ class NodesSetTest {
         Object node = Sjf4j.global().deepCopy(set);
         assertInstanceOf(Set.class, node);
         assertEquals("[\"a\"]", Sjf4j.global().toJsonString(node));
-        Object node2 = Sjf4j.global().toRaw(set);
+        Object node2 = Sjf4j.global().convertToRaw(set);
         assertInstanceOf(List.class, node2);
     }
 }
