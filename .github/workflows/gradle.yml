@@ -48,6 +48,15 @@ jobs:
     - name: Verify official compiled direct coverage and fallback allowlist
       run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledProbeDirect=true
 
+    # Validate both older drafts through the same javac-based official runner.
+    # Start with independent scalar constraints; broader suites need explicit,
+    # individually reviewed fallback groups, never auto-added exemptions.
+    - name: Verify Draft-07 compiled scalar conformance
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7 -PofficialCompiledCategory=scalar
+
+    - name: Verify Draft 2019-09 compiled scalar conformance
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09 -PofficialCompiledCategory=scalar
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
