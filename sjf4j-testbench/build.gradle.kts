@@ -248,9 +248,11 @@ val cachedOfficialAnnotationsExist = {
         officialSchemaSuiteDir.get().asFile.resolve("annotations/tests/meta-data.json").isFile
 }
 
+val officialAnnotationDraft = providers.gradleProperty("officialAnnotationDraft").orElse("all")
+
 val officialAnnotationTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs the official metadata Annotation Suite against runtime validation."
+    description = "Runs the official Annotation Suite across all three drafts (or one selected draft)."
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -261,6 +263,7 @@ val officialAnnotationTest by tasks.registering(Test::class) {
         showStandardStreams = true
     }
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    systemProperty("sjf4j.schema.officialAnnotationDraft", officialAnnotationDraft.get())
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
@@ -465,7 +468,7 @@ tasks.named("check") {
 // Publication invokes the downloader; normal build/check never invokes it.
 val officialPublishGate by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Refreshes upstream main and runs all required official runtime and compiled tests before publishing."
+    description = "Refreshes upstream main and runs required official runtime, compiled and annotation suites."
     dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
     doLast {
         check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
@@ -475,6 +478,9 @@ val officialPublishGate by tasks.registering {
         }
         check(officialCompiledDraft.get() == "all") {
             "Publication requires all official compiled drafts; remove -PofficialCompiledDraft"
+        }
+        check(officialAnnotationDraft.get() == "all") {
+            "Publication requires all official annotation drafts; remove -PofficialAnnotationDraft"
         }
         check(providers.gradleProperty("officialCompiledCategory").orElse("all").get() == "all") {
             "Publication requires all mandatory official compiled cases; remove -PofficialCompiledCategory"
