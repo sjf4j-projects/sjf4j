@@ -64,6 +64,34 @@ class CompiledValidatorRecursiveRefTest {
             }
             """;
 
+    // Official Draft 2019-09 recursiveRef suite: one reference reached under
+    // different recursive-anchor scopes selected by a conditional.
+    private static final String MULTIPLE_PATHS = """
+            {
+              "$schema":"https://json-schema.org/draft/2019-09/schema",
+              "$id":"https://example.test/compiled-recursive/multiple-paths/main.json",
+              "$defs":{
+                "inner":{
+                  "$id":"inner.json",
+                  "$recursiveAnchor":true,
+                  "additionalProperties":{"$recursiveRef":"#"}
+                }
+              },
+              "if":{"propertyNames":{"pattern":"^[a-m]"}},
+              "then":{
+                "$id":"any-leaf.json",
+                "$recursiveAnchor":true,
+                "$ref":"inner.json"
+              },
+              "else":{
+                "$id":"integer-leaf.json",
+                "$recursiveAnchor":true,
+                "type":["object","integer"],
+                "$ref":"inner.json"
+              }
+            }
+            """;
+
     @CompiledValidator(fallback = false)
     public interface Direct {
         @ValidJsonSchema(RECURSIVE)
@@ -74,6 +102,9 @@ class CompiledValidatorRecursiveRefTest {
 
         @ValidJsonSchema(WRAPPER)
         boolean scopedOverride(Object value);
+
+        @ValidJsonSchema(MULTIPLE_PATHS)
+        boolean multiplePaths(Object value);
 
         @ValidJsonSchema(RECURSIVE)
         void requireRecursive(Object value);
@@ -100,6 +131,17 @@ class CompiledValidatorRecursiveRefTest {
                         "child", Map.of("child", Map.of("requiredOnEveryLevel", 2))),
                 Map.of("requiredOnEveryLevel", 1, "child", 4),
                 Map.of("child", Map.of("requiredOnEveryLevel", 2)), null);
+    }
+
+    @Test
+    void recursiveRefRebindsUnderMultipleConditionalScopes() {
+        Direct direct = CompiledInstances.create(Direct.class);
+        assertParity(MULTIPLE_PATHS, direct::multiplePaths,
+                Map.of("alpha", 1.1),
+                Map.of("november", 1.1),
+                Map.of("alpha", Map.of("beta", 1.1)),
+                Map.of("november", Map.of("zulu", 2)),
+                Map.of("november", Map.of("zulu", "not integer")), null);
     }
 
     @Test
