@@ -788,6 +788,19 @@ public final class NodeMapper {
      * converted. Map/list values returned by a codec remain logical leaves.
      */
     public static Object rawValueInObject(Object node, String key, RuntimeContext context) {
+        return _rawValueInObject(node, key, context, false);
+    }
+
+    /**
+     * Returns a member value using scalar codec encodings only.
+     * Map/list-encoded value nodes remain atomic for structural validation.
+     */
+    public static Object scalarValueInObject(Object node, String key, RuntimeContext context) {
+        return _rawValueInObject(node, key, context, true);
+    }
+
+    private static Object _rawValueInObject(Object node, String key,
+                                            RuntimeContext context, boolean scalarOnly) {
         Asserts.notNull(node, "node");
         Asserts.notNull(key, "key");
         Asserts.notNull(context, "context");
@@ -826,7 +839,11 @@ public final class NodeMapper {
                 codec = valueType.requireValueInfo(context.valueFormat(valueClazz));
             }
         }
-        return codec == null ? value : codec.valueToRaw(value);
+        if (codec == null) return value;
+        if (scalarOnly && (codec.rawJsonType == JsonType.OBJECT || codec.rawJsonType == JsonType.ARRAY)) {
+            return value;
+        }
+        return codec.valueToRaw(value);
     }
 
     /**
