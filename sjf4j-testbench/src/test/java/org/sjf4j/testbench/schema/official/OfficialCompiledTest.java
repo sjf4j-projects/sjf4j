@@ -40,12 +40,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public final class OfficialCompiledTest {
 
-    public static void main(String[] args) throws Exception {
-        doMain(args);
-//        doMain(new String[]{"all", "defs.json", "0", "0"});
-    }
-
-
     private static Set<String> fallbackGroups() {
         Set<String> groups = new LinkedHashSet<>();
         fallback(groups, "defs.json", 0);
@@ -106,7 +100,7 @@ public final class OfficialCompiledTest {
     private int mainCase = -1;
 
     /**
-     * Standalone IntelliJ entrypoint (run the test class as an Application).
+     * Standalone runner invoked by OfficialCompiledMain (run that class as an Application).
      *
      * <p>Arguments: [category [file.json [groupIndex [testIndex]]]].
      * Category defaults to "all"; available categories include phase2, phase3,
@@ -114,10 +108,10 @@ public final class OfficialCompiledTest {
      * Requires an existing local suite and generated bindings (Gradle's
      * downloadOfficialSchemaTests + generateOfficialCompiledCases once).
      */
-    private static void doMain(String[] args) throws Exception {
+    static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException(
-                    "Usage: OfficialCompiledTest [category [file.json [groupIndex [testIndex]]]]");
+                    "Usage: OfficialCompiledMain [category [file.json [groupIndex [testIndex]]]]");
         }
         OfficialCompiledTest instance = new OfficialCompiledTest();
         instance.mainCategory = args.length > 0 ? args[0] : "all";
@@ -148,7 +142,7 @@ public final class OfficialCompiledTest {
         } finally {
             instance.writeReport();
         }
-        System.out.printf("OfficialCompiledTest.main: %d executed, %d failed%n",
+        System.out.printf("OfficialCompiledMain: %d executed, %d failed%n",
                 counts[0], counts[1]);
         if (counts[1] > 0) {
             throw new AssertionError(counts[1] + " official compiled case(s) failed");
