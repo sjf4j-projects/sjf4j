@@ -220,6 +220,11 @@ public class JsonPatchTest {
 
         JsonPointer intermediate = JsonPointer.parse("/nested/-/child");
         assertEquals(2, intermediate.getNode(object));
+        NodeException prefixFailure = assertThrows(NodeException.class,
+                () -> new PatchOperation(PatchOperation.STD_MOVE,
+                        intermediate, null, JsonPointer.parse("/nested/-")).apply(object));
+        assertTrue(prefixFailure.getCause().getMessage().contains("proper prefix"),
+                prefixFailure.toString());
         new PatchOperation(PatchOperation.STD_REPLACE, intermediate, 5, null).apply(object);
         assertEquals(5, intermediate.getNode(object));
 
