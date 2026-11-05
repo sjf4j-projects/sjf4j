@@ -42,6 +42,9 @@ public final class OfficialCompiledTest {
 
     private static Set<String> fallbackGroups() {
         Set<String> groups = new LinkedHashSet<>();
+        // Legacy suites start with no exemptions: every fallback must be
+        // explicitly reviewed and recorded against its own draft.
+        if (!"draft2020-12".equals(DRAFT)) return Collections.unmodifiableSet(groups);
         fallback(groups, "defs.json", 0);
         // The remaining dynamicRef case combines cross-resource dynamic scope with unevaluatedProperties.
         fallback(groups, "dynamicRef.json", 13);
@@ -61,7 +64,9 @@ public final class OfficialCompiledTest {
 
     private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
     private static final String GENERATED_ROOT = "sjf4j.schema.officialGeneratedRoot";
-    private static final String DIALECT_DIR = "tests/draft2020-12";
+    private static final String DRAFT = System.getProperty(
+            "sjf4j.schema.officialDraft", "draft2020-12");
+    private static final String DIALECT_DIR = "tests/" + DRAFT;
     private static final String SELECTION = "sjf4j.schema.officialCategory";
     private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
 
@@ -136,7 +141,7 @@ public final class OfficialCompiledTest {
 
         int[] counts = new int[2]; // executed, failed
         try {
-            try (Stream<DynamicNode> nodes = instance.draft2020_12()) {
+            try (Stream<DynamicNode> nodes = instance.officialDraft()) {
                 nodes.forEach(node -> executeMainNode(node, counts, ""));
             }
         } finally {
@@ -176,7 +181,11 @@ public final class OfficialCompiledTest {
     }
 
     @TestFactory
-    Stream<DynamicNode> draft2020_12() throws Exception {
+    Stream<DynamicNode> officialDraft() throws Exception {
+        if (!DRAFT.equals("draft2020-12") && !DRAFT.equals("draft2019-09")
+                && !DRAFT.equals("draft7")) {
+            throw new IllegalArgumentException("Unsupported official compiled draft: " + DRAFT);
+        }
         Path suiteRoot = Paths.get(System.getProperty(TEST_ROOT,
                 localBuildPath("official-json-schema-tests/suite").toString()));
         Path generated = Paths.get(System.getProperty(GENERATED_ROOT,
@@ -250,6 +259,16 @@ public final class OfficialCompiledTest {
                         .resolve(stem).resolve(String.format(java.util.Locale.ROOT,
                                 "%03d.json", i));
                 Object generatedSchema = Sjf4j.global().fromJson(Files.readAllBytes(schemaResource));
+                if (!"draft2020-12".equals(DRAFT) && officialSchema instanceof JsonObject
+                        && !((JsonObject) officialSchema).containsKey("$schema")
+                        && generatedSchema instanceof JsonObject) {
+                    JsonObject normalized = new JsonObject();
+                    JsonObject compiled = (JsonObject) generatedSchema;
+                    for (String key : compiled.keySet()) {
+                        if (!"$schema".equals(key)) normalized.put(key, compiled.getNode(key));
+                    }
+                    generatedSchema = normalized;
+                }
                 assertTrue(Nodes.equals(officialSchema, generatedSchema),
                         fileName + " #" + i + ": generated schema differs from upstream");
 
@@ -321,10 +340,10 @@ public final class OfficialCompiledTest {
         revision = Files.readString(suiteRoot.resolve("OFFICIAL_TEST_SUITE_REV"),
                 StandardCharsets.UTF_8).trim();
         Path moduleBuild = generated.getParent().getParent();
-        reportDir = moduleBuild.resolve("reports/officialCompiled").resolve(selection);
+        reportDir = moduleBuild.resolve("reports/officialCompiled").resolve(DRAFT).resolve(selection);
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
         runner = new OfficialCaseRunner(generated,
-                moduleBuild.resolve("officialCompiled/compile").resolve(selection));
+                moduleBuild.resolve("officialCompiled/compile").resolve(DRAFT).resolve(selection));
         runner.compileAll(specs, Boolean.parseBoolean(
                 System.getProperty(PROBE_DIRECT, mainCategory == null ? "false" : "true")));
         return fileNodes.stream();
