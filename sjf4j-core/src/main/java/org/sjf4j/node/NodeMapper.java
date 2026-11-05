@@ -780,6 +780,56 @@ public final class NodeMapper {
     }
 
     /**
+     * Returns the shallow raw representation of an object member's value.
+     *
+     * <p>Declared property codecs take precedence over the runtime context's
+     * value format. Otherwise, a registered value codec is selected using the
+     * supplied context. Ordinary POJOs, maps, and lists are not recursively
+     * converted. Map/list values returned by a codec remain logical leaves.
+     */
+    public static Object rawValueInObject(Object node, String key, RuntimeContext context) {
+        Asserts.notNull(node, "node");
+        Asserts.notNull(key, "key");
+        Asserts.notNull(context, "context");
+
+        Object value;
+        ValueInfo codec = null;
+        if (node instanceof Map) {
+            value = ((Map<?, ?>) node).get(key);
+        } else if (node.getClass() == JsonObject.class) {
+            value = ((JsonObject) node).getNode(key);
+        } else {
+            TypeInfo owner = TypeRegistry.registerTypeInfo(node.getClass());
+            if (owner.externalNode != null
+                    && owner.externalNode.jsonType(node) == JsonType.OBJECT) {
+                value = owner.externalNode.getInObject(node, key);
+            } else if (owner.pojoInfo != null) {
+                PropertyInfo property = owner.pojoInfo.getPropertyNoAlias(key);
+                if (property != null && property.gettable) {
+                    value = property.invokeGetter(node);
+                    codec = property.valueInfo;
+                } else if (owner.pojoInfo.isJojo) {
+                    value = ((JsonObject) node).getNode(key);
+                } else {
+                    return null;
+                }
+            } else {
+                throw new NodeException("expected object node, but was " + Types.name(node));
+            }
+        }
+
+        if (value == null) return null;
+        if (codec == null) {
+            Class<?> valueClazz = value.getClass();
+            TypeInfo valueType = TypeRegistry.registerTypeInfo(valueClazz);
+            if (valueType.valueSet != null) {
+                codec = valueType.requireValueInfo(context.valueFormat(valueClazz));
+            }
+        }
+        return codec == null ? value : codec.valueToRaw(value);
+    }
+
+    /**
      * Converts a node to its raw JSON-compatible representation using the
      * supplied runtime context.
      *
