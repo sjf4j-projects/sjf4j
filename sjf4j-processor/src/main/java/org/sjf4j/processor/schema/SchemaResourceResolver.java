@@ -15,7 +15,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -166,7 +165,7 @@ final class SchemaResourceResolver {
         boolean hasDynamicRef = false;
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
-            CompiledSupport.Analysis analysis = CompiledSupport.analyze(
+            SchemaSupport.Analysis analysis = SchemaSupport.analyze(
                     uri, JsonSchema.fromJson(resources.get(uri)));
             customDialect |= analysis.customDialect;
             hasDynamicRef |= analysis.hasDynamicRef;

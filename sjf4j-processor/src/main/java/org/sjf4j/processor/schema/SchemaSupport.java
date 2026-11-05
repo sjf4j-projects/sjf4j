@@ -17,8 +17,8 @@ import java.util.Set;
  * Discovers referenced resources and enforces the compiled dialect contract
  * before runtime SchemaPlanner builds evaluation plans.
  */
-final class CompiledSupport {
-    private CompiledSupport() {}
+final class SchemaSupport {
+    private SchemaSupport() {}
 
     static final class Analysis {
         final Set<URI> referencedDocuments = new LinkedHashSet<>();

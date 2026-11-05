@@ -19,8 +19,8 @@ import java.util.Map;
  * Runtime support for generated compiled JSON Schema validators.
  * Only operations that cannot be emitted as direct Java access belong here.
  */
-public final class CompiledValidatorSupport {
-    private CompiledValidatorSupport() {}
+public final class CompiledSupport {
+    private CompiledSupport() {}
 
     /**
      * Executes a compiled validator's diagnostic fallback at its original
