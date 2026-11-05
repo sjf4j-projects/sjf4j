@@ -118,10 +118,10 @@ Run `OfficialCompiledTest` as a **JUnit test** to see and rerun individual dynam
 To run a filtered subset as an Application, use `OfficialCompiledMain.main(String[])` from `sjf4j-testbench/src/test/java` with optional arguments:
 
 ```text
-[category [file.json [groupIndex [testIndex]]]]
+[dialect [file.json [groupIndex [testIndex]]]]
 ```
 
-For example: `phase3 unevaluatedItems.json 0 1`. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
+For example: `draft2019-09 unevaluatedItems.json 0 1`, or `draft2020-12 ref.json`. The first argument is the dialect (`all`, `draft7`, `draft2019-09`, or `draft2020-12`; default: `all`). The standalone Main selects the dialect from program arguments only; it does not read `sjf4j.schema.officialDraft` or the JUnit category property. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
 
 Run `OfficialAnnotationTest` as a **JUnit test**. It targets Draft 2020-12 and honors each annotation group's official `compatibility` metadata: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, which denotes future specifications) are counted as `Skipped`, not failures; `Total` counts executed cases only.
 
