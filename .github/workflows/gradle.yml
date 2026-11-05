@@ -42,10 +42,9 @@ jobs:
         GITHUB_TOKEN: ${{ github.token }}
       run: ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests
 
-    # build -> check includes officialRuntimeTest, officialCompiledTest (all drafts)
-    # and officialAnnotationTest. Run each task once, then verify JaCoCo.
+    # build -> check includes all official suites and the JaCoCo coverage gate.
     - name: Build and verify coverage
-      run: ./gradlew build :sjf4j-testbench:jacocoTestReport :sjf4j-testbench:jacocoTestCoverageVerification -PofficialCompiledProbeDirect=true
+      run: ./gradlew build
 
     - name: Print JaCoCo summary
       if: ${{ always() }}
