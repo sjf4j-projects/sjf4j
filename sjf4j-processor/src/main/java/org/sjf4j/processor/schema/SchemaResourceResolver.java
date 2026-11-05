@@ -9,6 +9,7 @@ import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.schema.SchemaException;
 import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.SchemaRegistry;
+import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaUtil;
 import org.sjf4j.schema.SchemaLoader;
 import org.sjf4j.schema.JsonSchema;
@@ -55,6 +56,25 @@ final class SchemaResourceResolver {
         SchemaPlan resolvePlan(String location) {
             if (registry == null) throw new IllegalStateException("schema registry not initialized");
             return registry.resolve(URI.create(location));
+        }
+
+        /** Resolve the effective draft for a node, including nested $schema scopes. */
+        SchemaDialect dialect(String location) {
+            String candidate = canonicalLocation(location);
+            for (;;) {
+                try {
+                    SchemaPlan plan = resolvePlan(candidate);
+                    if (plan != null && plan.dialect() != null) return plan.dialect();
+                } catch (RuntimeException missingNode) {
+                    // Synthetic sibling/coverage schemas have no standalone plan.
+                }
+                int hash = candidate.indexOf('#');
+                if (hash < 0) break;
+                int slash = candidate.lastIndexOf('/');
+                candidate = slash > hash ? candidate.substring(0, slash)
+                        : candidate.substring(0, hash);
+            }
+            return registry.getDefaultDialect();
         }
 
         String canonicalLocation(String location) {
