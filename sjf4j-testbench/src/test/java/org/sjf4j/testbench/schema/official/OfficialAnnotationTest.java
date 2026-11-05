@@ -33,10 +33,9 @@ import java.util.stream.Stream;
 /**
  * Official JSON Schema annotation conformance suite.
  *
- * <p>JUnit runs every file and reports all results. Until the remaining annotation
- * vocabularies are implemented, the CI gate enforces the metadata and applicator
- * suites and reports the other files as pending (without concealing failures).
- * The standalone entrypoint is strict for any selected file or the entire suite.
+ * <p>JUnit runs every compatible official case for each selected dialect,
+ * with one dynamic test per file. The standalone entrypoint supports dialect,
+ * file, group and test filters; both entrypoints fail on mismatched annotations.
  */
 public final class OfficialAnnotationTest {
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
@@ -59,7 +58,7 @@ public final class OfficialAnnotationTest {
                     + "[dialect [file.json [group-filter [test-filter]]]]");
         }
         List<SchemaDialect> dialects = standaloneDialects(args.length > 0 ? args[0] : null);
-        Path root = locateTestRoot(null);
+        Path root = locateTestRoot();
         String file = args.length > 1 ? args[1] : null;
         String groupFilter = args.length > 2 ? args[2] : null;
         String testFilter = args.length > 3 ? args[3] : null;
@@ -97,7 +96,7 @@ public final class OfficialAnnotationTest {
      */
     @TestFactory
     Stream<DynamicNode> officialAnnotations() throws Exception {
-        Path directory = annotationDirectory(locateTestRoot(null));
+        Path directory = annotationDirectory(locateTestRoot());
         List<Path> files = listAnnotationFiles(directory);
         if (files.isEmpty()) throw new IllegalStateException("Official annotation suite is empty: " + directory);
         List<DynamicNode> drafts = new ArrayList<>();
@@ -141,18 +140,16 @@ public final class OfficialAnnotationTest {
         }
     }
 
-    private static Path locateTestRoot(String argumentRoot) {
+    private static Path locateTestRoot() {
         String property = System.getProperty(TEST_ROOT_PROPERTY);
         if (property != null && !property.isEmpty()) return Paths.get(property);
-        if (argumentRoot != null && !argumentRoot.isEmpty()) return Paths.get(argumentRoot);
-
         Path moduleRoot = Paths.get("build", SUITE_DIRECTORY);
         if (Files.isDirectory(moduleRoot)) return moduleRoot;
         Path repositoryRoot = Paths.get("sjf4j-testbench", "build", SUITE_DIRECTORY);
         if (Files.isDirectory(repositoryRoot)) return repositoryRoot;
         throw new IllegalStateException("Official JSON Schema test suite not found. Run "
                 + "./gradlew :sjf4j-testbench:downloadOfficialSchemaTests, or supply -D"
-                + TEST_ROOT_PROPERTY + "=<suite-root> or a <suite-root> main argument.");
+                + TEST_ROOT_PROPERTY + "=<suite-root>.");
     }
 
     private static Report run(Path root, SchemaDialect dialect, String file,
@@ -168,12 +165,10 @@ public final class OfficialAnnotationTest {
             }
             Report fileReport = runFile(selected, dialect, groupFilter, testFilter);
             total.add(fileReport);
-            total.files.put(selected.getFileName().toString(), fileReport);
         } else {
             for (Path path : listAnnotationFiles(directory)) {
                 Report fileReport = runFile(path, dialect, groupFilter, testFilter);
                 total.add(fileReport);
-                total.files.put(path.getFileName().toString(), fileReport);
             }
         }
         System.out.println("========================================");
@@ -378,7 +373,6 @@ public final class OfficialAnnotationTest {
     }
 
     private static final class Report {
-        final Map<String, Report> files = new LinkedHashMap<>();
         int total;
         int passed;
         int failed;
