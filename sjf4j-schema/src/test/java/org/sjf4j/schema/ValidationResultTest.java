@@ -33,7 +33,7 @@ class ValidationResultTest {
         assertEquals(uri.toString(), error.getSchemaUriText());
         assertTrue(error.toString().contains("type: expected integer"));
         assertFalse(error.toString().startsWith("ERROR"));
-        assertNull(error.getValue());
+        assertNull(error.getAnnotation());
         assertTrue(result.getAnnotations().isEmpty());
     }
 
@@ -49,7 +49,7 @@ class ValidationResultTest {
         assertEquals(0, result.count());
         assertTrue(result.getErrors().isEmpty());
         assertNull(result.getLastError());
-        assertSame(values, annotation.getValue());
+        assertSame(values, annotation.getAnnotation());
         assertEquals("examples", annotation.getKeyword());
         assertEquals("Example values", annotation.getMessage());
         assertFalse(annotation.toString().startsWith("ERROR"));
@@ -75,8 +75,8 @@ class ValidationResultTest {
         assertSame(error, result.getLastError());
         assertEquals(List.of(error), result.getErrors());
         assertEquals(List.of(annotation), result.getAnnotations());
-        assertNull(error.getValue());
-        assertSame(rawValue, annotation.getValue());
+        assertNull(error.getAnnotation());
+        assertSame(rawValue, annotation.getAnnotation());
         assertTrue(ValidationResult.SUCCESS.getErrors().isEmpty());
         assertTrue(ValidationResult.SUCCESS.getAnnotations().isEmpty());
     }
