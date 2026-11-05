@@ -50,6 +50,9 @@ public class CompiledValidatorAdditionalPropertiesTest {
 
         @ValidJsonSchema("{\"additionalProperties\":{\"type\":\"number\",\"minimum\":1000}}")
         boolean dynamicNumber(Object value);
+
+        @ValidJsonSchema("{\"additionalProperties\":{\"type\":\"number\",\"minimum\":1000}}")
+        boolean dynamicNumberJsonObject(JsonObject value);
     }
 
     public static final class CodecBean {
@@ -118,6 +121,8 @@ public class CompiledValidatorAdditionalPropertiesTest {
 
         assertFalse(defaults.dynamicNumber(Map.of("when", when)));
         assertTrue(epoch.dynamicNumber(Map.of("when", when)));
+        assertFalse(defaults.dynamicNumberJsonObject(JsonObject.of("when", when)));
+        assertTrue(epoch.dynamicNumberJsonObject(JsonObject.of("when", when)));
 
         // The explicitly declared format overrides the runtime default.
         assertTrue(defaults.codecAdditional(new CodecBean()));
