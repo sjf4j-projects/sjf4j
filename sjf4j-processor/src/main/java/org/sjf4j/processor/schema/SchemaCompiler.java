@@ -5,6 +5,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.schema.BooleanSchema;
 import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.schema.SchemaPlan;
+import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaUtil;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
@@ -157,6 +158,23 @@ final class SchemaCompiler {
         JsonObject schema = schemaObject(rawSchema);
         // Canonical locations are indexed by lexical $id scope.
         schemaUri = snapshot.canonicalLocation(schemaUri);
+        SchemaDialect dialect = snapshot.dialect(schemaUri);
+        // Older drafts do not assign assertion semantics to newer keywords.
+        // Remove only known-inapplicable keywords, never arbitrary unknown ones.
+        if (dialect != SchemaDialect.DRAFT_2020_12) {
+            JsonObject applicable = new JsonObject();
+            for (String keyword : schema.keySet()) {
+                if (dialect.supportsKeyword(keyword)) applicable.put(keyword, schema.getNode(keyword));
+            }
+            schema = applicable;
+        }
+        if (dialect == SchemaDialect.DRAFT_07 && schema.containsKey("$ref")) {
+            // Draft-07 ignores every sibling assertion of $ref. Discard them
+            // before local coverage/applicator analysis, not only at emission.
+            JsonObject refOnly = new JsonObject();
+            refOnly.put("$ref", schema.getNode("$ref"));
+            schema = refOnly;
+        }
         // When every allOf branch has a statically known coverage footprint,
         // project it into the local unevaluated* check. The original branches
         // remain assertions, so failed branches still reject the instance.
@@ -176,9 +194,13 @@ final class SchemaCompiler {
         boolean unevaluatedArray = schema.containsKey("unevaluatedItems");
         if (unevaluatedObject || unevaluatedArray) {
             String keyword = unevaluatedObject ? "unevaluatedProperties" : "unevaluatedItems";
-            String interfering = null;
+            // Schema-form dependencies can export evaluated property names.
+            // Until that coverage is tracked, delegate the entire schema to runtime.
+            String interfering = unevaluatedObject && hasSchemaDependencies(schema)
+                    ? "dependencies" : null;
             for (String key : new String[]{"allOf", "anyOf", "oneOf", "if", "then",
                     "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
+                if (interfering != null) break;
                 if (schema.containsKey(key) && (!"allOf".equals(key)
                         || !(staticAllOfCoverage || isTrivialTrueAllOf(schema.getNode(key))))) {
                     interfering = key;
@@ -273,7 +295,8 @@ final class SchemaCompiler {
             }
             if (referenced.hasFallback()) return null;
             // Sibling assertions are applied in the referring schema scope.
-            if (schema.size() == 1) return referenced;
+            // In Draft-07 $ref is the entire schema assertion: siblings are ignored.
+            if (schema.size() == 1 || dialect == SchemaDialect.DRAFT_07) return referenced;
             JsonObject adjacent = new JsonObject();
             for (String keyword : schema.keySet()) {
                 if (!referenceKeyword.equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
@@ -323,6 +346,11 @@ final class SchemaCompiler {
             // semantic role for an unverified custom dialect/vocabulary.
             if (keyword.equals("contentEncoding") || keyword.equals("contentMediaType")
                     || keyword.equals("contentSchema")) {
+                if (snapshot.dialect(uri) == SchemaDialect.DRAFT_07) {
+                    unsupported("Draft-07 content assertion at " + keywordUri(uri, keyword)
+                            + " requires runtime evaluation");
+                    return null;
+                }
                 if (!canCompileStandardDialect(snapshot)) return null;
                 continue;
             }
@@ -340,7 +368,7 @@ final class SchemaCompiler {
                 case "exclusiveMaximum": case "multipleOf":
                     numbers.put(keyword, schema.getNode(keyword));
                     break;
-                case "items": case "unevaluatedItems": case "prefixItems": case "uniqueItems":
+                case "items": case "additionalItems": case "unevaluatedItems": case "prefixItems": case "uniqueItems":
                 case "minItems": case "maxItems":
                 case "contains": case "minContains": case "maxContains":
                     array.put(keyword, schema.getNode(keyword));
@@ -348,6 +376,7 @@ final class SchemaCompiler {
                 case "properties": case "unevaluatedProperties": case "patternProperties": case "propertyNames":
                 case "required": case "additionalProperties": case "minProperties":
                 case "maxProperties": case "dependentRequired": case "dependentSchemas":
+                case "dependencies":
                     object.put(keyword, schema.getNode(keyword));
                     break;
                 default:
@@ -469,6 +498,17 @@ final class SchemaCompiler {
             }
         }
         return new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
+    }
+
+    /** Array-form dependencies do not export evaluated locations. */
+    private static boolean hasSchemaDependencies(JsonObject schema) {
+        Object raw = schema.getNode("dependencies");
+        if (JsonType.of(raw) != JsonType.OBJECT) return false;
+        for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(raw)) {
+            JsonType type = JsonType.of(entry.getValue());
+            if (type == JsonType.OBJECT || type == JsonType.BOOLEAN) return true;
+        }
+        return false;
     }
 
     /** Literal true branches have no evaluated locations or assertions. */

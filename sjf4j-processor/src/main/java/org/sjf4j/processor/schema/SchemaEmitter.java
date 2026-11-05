@@ -276,7 +276,7 @@ final class SchemaEmitter {
                                 .append(literal(name)).append(")");
                     }
                     statements.add("if (" + keys + ".contains(" + literal(dependency.trigger)
-                            + ") && (" + missing + ")) " + fail(onFailure, check.dependentRequiredDiagnostic));
+                            + ") && (" + missing + ")) " + fail(onFailure, dependency.diagnostic));
                 }
             }
             // Coverage belongs only to sibling properties and patternProperties.

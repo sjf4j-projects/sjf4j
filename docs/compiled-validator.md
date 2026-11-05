@@ -46,7 +46,7 @@ Methods take one value argument and optionally a primitive `boolean strictFormat
 
 ## Compilation and fallback
 
-`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. **CompiledValidator currently supports Draft 2020-12 only.** A schema without `$schema` uses 2020-12 by default. Explicit Draft-07 or Draft 2019-09 declarations are compilation errors, even with `fallback = true`; unknown custom meta-schemas require explicit runtime fallback because their vocabularies may differ. The runtime `SchemaRegistry` and `SchemaPlanner` retain existing multi-draft support. Opt in to runtime fallback when needed:
+`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. **CompiledValidator supports Draft-07, Draft 2019-09, and Draft 2020-12.** A schema without `$schema` uses 2020-12 by default. Standard dialects use their effective keyword semantics, including nested and referenced schema scopes; tuple `items`/`additionalItems`, legacy `dependencies`, and Draft-07 `$ref` siblings are handled during direct compilation. Features not yet directly compiled (notably Draft 2019-09 `$recursiveRef` and complex cross-schema evaluated-location tracking) still require explicit `fallback = true`. Unknown custom meta-schemas require runtime fallback because their vocabularies may differ. Opt in to runtime fallback when needed:
 
 ```java
 @CompiledValidator(fallback = true)
@@ -67,8 +67,8 @@ When a validator needs fallback, annotation processing reports the **first unsup
 | Boolean schemas; `type`; scalar `enum` / `const` | Supported; object/array literals may require fallback |
 | String: `minLength`, `maxLength`, `pattern` | Supported, including Unicode code-point lengths |
 | Number: bounds, `multipleOf` | Supported for native numeric types and exact comparisons |
-| Object: `properties`, `patternProperties`, `additionalProperties` (boolean or schema), `propertyNames`, `required`, `dependentRequired`, `dependentSchemas`, property counts | Supported when child schemas compile; POJO/OBNT affect access code, not fallback eligibility |
-| Array: `prefixItems`, `items`, `contains`, `minContains`, `maxContains`, `uniqueItems`, `minItems`, `maxItems` | Independent compiled checks; `items` starts after local `prefixItems`; `contains` counts matching elements; `uniqueItems` uses runtime JSON equality semantics |
+| Object: `properties`, `patternProperties`, `additionalProperties` (boolean or schema), `propertyNames`, `required`, `dependentRequired`, `dependentSchemas`, legacy `dependencies`, property counts | Supported when child schemas compile; POJO/OBNT affect access code, not fallback eligibility |
+| Array: `prefixItems`, `items`, `additionalItems`, `contains`, `minContains`, `maxContains`, `uniqueItems`, `minItems`, `maxItems` | Independent compiled checks; Draft-07/2019-09 tuple `items` uses `additionalItems` for the suffix, while Draft 2020-12 uses `prefixItems` + `items`; `contains` counts matching elements; `uniqueItems` uses runtime JSON equality semantics |
 | Applicators: `allOf`, `anyOf`, `oneOf`, `not`, `if/then/else` | Supported when their branches can compile |
 | `$dynamicRef` | Uses `SchemaRegistry.resolveDynamicRef(URI, List<SchemaPlan>)` and the currently compiled schema-resource scope to specialize dynamic targets into static helper calls, including different targets reached through separate branches. Recursive contexts reuse helpers; unsupported cross-schema evaluation or excessive specialization still falls back. |
 | `$ref`, `$defs`, `$anchor` | Direct static references resolved by `SchemaRegistry` and `SchemaPlanner` at annotation-processing time, using `SchemaPlan.schema()` / `schemaUri()`; includes nested `$id`, registered external schemas, JSON Pointer, named anchors and recursive references; generated direct validators do not invoke runtime SchemaPlan |

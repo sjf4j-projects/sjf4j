@@ -35,7 +35,8 @@ public enum SchemaDialect {
         return schemaUri == null ? null : detect(schemaUri.toString());
     }
 
-    boolean supportsKeyword(String keyword) {
+    /** Whether this draft defines the keyword as a standard schema keyword. */
+    public boolean supportsKeyword(String keyword) {
         switch (this) {
             case DRAFT_07:
                 switch (keyword) {
@@ -51,6 +52,9 @@ public enum SchemaDialect {
                     case "unevaluatedItems":
                     case "unevaluatedProperties":
                     case "prefixItems":
+                    case "minContains":
+                    case "maxContains":
+                    case "contentSchema":
                         return false;
                 }
                 return true;

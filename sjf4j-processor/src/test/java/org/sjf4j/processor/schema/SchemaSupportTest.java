@@ -27,10 +27,24 @@ class SchemaSupportTest {
     }
 
     @Test
-    void rejectsExplicitOlderDraftAtAnySchemaPosition() {
+    void recognizesExplicitOlderDraftAtAnySchemaPosition() {
         JsonSchema old = JsonSchema.fromJson(
                 "{\"$defs\":{\"child\":{\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"}}}");
-        assertThrows(IllegalArgumentException.class, () -> SchemaSupport.analyze(RETRIEVAL, old));
+        assertFalse(SchemaSupport.analyze(RETRIEVAL, old).customDialect);
+    }
+
+    @Test
+    void draft07RefSkipsSiblingAssertionsButTraversesAddressableDefinitions() {
+        JsonSchema schema = JsonSchema.fromJson(
+                "{\"$schema\":\"http://json-schema.org/draft-07/schema#\","
+                + "\"definitions\":{\"target\":{\"$ref\":\"https://used.test/value\"}},"
+                + "\"$ref\":\"#/definitions/target\","
+                + "\"properties\":{\"ignored\":{\"$ref\":\"https://ignored.test/value\"}}}");
+        SchemaSupport.Analysis analyzed = SchemaSupport.analyze(RETRIEVAL, schema);
+        assertTrue(analyzed.referencedDocuments.contains(RETRIEVAL));
+        assertTrue(analyzed.referencedDocuments.contains(URI.create("https://used.test/value")));
+        assertFalse(analyzed.referencedDocuments.contains(URI.create("https://ignored.test/value")));
+        assertFalse(analyzed.customDialect);
     }
 
     @Test
