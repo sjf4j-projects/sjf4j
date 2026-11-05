@@ -17,8 +17,10 @@ import java.util.Objects;
  * <p>This class is a restricted {@link JsonPath}. It accepts the empty root
  * pointer and slash-delimited tokens with RFC 6901 escaping. Nonnegative
  * 32-bit integer tokens select an array index for array node parents and
- * retain their token as an object key for object node parents. The {@code -}
- * token is reserved for append writes; it does not select an existing value.
+ * retain their token as an object key for object node parents. Likewise,
+ * the terminal {@code -} selects an object member named {@code "-"} or the
+ * append position after an array's last element. Array append positions are
+ * only writable, not readable. Nonterminal {@code -} tokens are object names.
  */
 @NodeValue
 public class JsonPointer extends JsonPath {
