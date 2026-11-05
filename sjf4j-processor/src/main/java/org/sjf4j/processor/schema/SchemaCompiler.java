@@ -194,9 +194,13 @@ final class SchemaCompiler {
         boolean unevaluatedArray = schema.containsKey("unevaluatedItems");
         if (unevaluatedObject || unevaluatedArray) {
             String keyword = unevaluatedObject ? "unevaluatedProperties" : "unevaluatedItems";
-            String interfering = null;
+            // Schema-form dependencies can export evaluated property names.
+            // Until that coverage is tracked, delegate the entire schema to runtime.
+            String interfering = unevaluatedObject && hasSchemaDependencies(schema)
+                    ? "dependencies" : null;
             for (String key : new String[]{"allOf", "anyOf", "oneOf", "if", "then",
                     "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
+                if (interfering != null) break;
                 if (schema.containsKey(key) && (!"allOf".equals(key)
                         || !(staticAllOfCoverage || isTrivialTrueAllOf(schema.getNode(key))))) {
                     interfering = key;
@@ -494,6 +498,17 @@ final class SchemaCompiler {
             }
         }
         return new SchemaCheck.TypeCheck(types, diagnostic(schemaUri, "type"));
+    }
+
+    /** Array-form dependencies do not export evaluated locations. */
+    private static boolean hasSchemaDependencies(JsonObject schema) {
+        Object raw = schema.getNode("dependencies");
+        if (JsonType.of(raw) != JsonType.OBJECT) return false;
+        for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(raw)) {
+            JsonType type = JsonType.of(entry.getValue());
+            if (type == JsonType.OBJECT || type == JsonType.BOOLEAN) return true;
+        }
+        return false;
     }
 
     /** Literal true branches have no evaluated locations or assertions. */
