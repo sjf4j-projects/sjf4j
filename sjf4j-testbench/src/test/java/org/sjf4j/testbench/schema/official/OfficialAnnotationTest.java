@@ -4,6 +4,8 @@ import org.junit.jupiter.api.DynamicContainer;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
@@ -113,6 +115,8 @@ public final class OfficialAnnotationTest {
                                 + " errors (" + result.passed + "/" + result.total
                                 + " passed): " + result.failures);
                     }
+                    assumeTrue(result.total > 0, "No compatible " + dialect
+                            + " cases in " + file.getFileName() + " (" + result.skipped + " skipped)");
                 }));
             }
             drafts.add(DynamicContainer.dynamicContainer(dialect.name(), tests.stream()));
