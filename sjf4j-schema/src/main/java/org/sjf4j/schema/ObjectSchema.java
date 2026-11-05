@@ -40,7 +40,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     /**
      * Returns the retrieval URI used to load the root schema document.
      */
-    public URI getRetrievalUri() {
+    URI retrievalUri() {
         return retrievalUri;
     }
 
@@ -50,7 +50,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * This is root-resource metadata. Nested subschemas do not carry their own
      * retrieval URIs.
      */
-    public void setRetrievalUri(URI retrievalUri) {
+    void retrievalUri(URI retrievalUri) {
         this.retrievalUri = retrievalUri;
     }
 
@@ -60,9 +60,9 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * When {@code $id} is relative, callers still need a retrieval/base URI to
      * obtain the absolute resource URI used by registries and compiled plans.
      */
-    public URI getCanonicalUri() {
+    URI canonicalUri() {
         String id = getId();
-        if (id == null) return getRetrievalUri();
+        if (id == null) return retrievalUri();
         return URI.create(id);
     }
 

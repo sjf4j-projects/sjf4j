@@ -156,6 +156,8 @@ public final class ReflectUtil {
         }
 
         Map<String, PropertyFamily> families = new LinkedHashMap<>();
+        // Nearest field declaration decides whether the property is transient.
+        Map<String, Boolean> transientByField = new HashMap<>();
         boolean includeBeans = propertyStrategy != PropertyStrategy.FIELD_ONLY;
         boolean includeFields = propertyStrategy != PropertyStrategy.BEAN_ONLY;
         Type curType = clazz;
@@ -165,12 +167,17 @@ public final class ReflectUtil {
             try {
                 AccessibleObject.setAccessible(declared, true);
             } catch (RuntimeException ignored) {}
-            if (includeFields) _reserveFieldFamilies(declared, families);
+            if (includeFields) _reserveFieldFamilies(declared, families, transientByField);
             if (includeBeans) _collectBeanFamilies(clazz, curClazz, curType, families);
             if (includeFields) _collectFieldFamilies(clazz, declared, curType, propertyStrategy, families);
             curType = curClazz.getGenericSuperclass();
             curClazz = curClazz.getSuperclass();
         } while (isPojoCandidate(curClazz));
+
+        // A transient field suppresses its entire implicit property family,
+        // including independently discovered Bean getters and setters.
+        // Bean-only discovery intentionally does not inspect fields.
+        families.keySet().removeIf(name -> Boolean.TRUE.equals(transientByField.get(name)));
 
         Map<String, PropertyInfo> properties = new LinkedHashMap<>();
         for (PropertyFamily family : families.values()) {
@@ -319,16 +326,18 @@ public final class ReflectUtil {
                 gettableProperties.toArray(new PropertyInfo[0]), propertyGenerators.toArray(new PropertyGenerator[0]));
     }
 
-    private static void _reserveFieldFamilies(Field[] fields, Map<String, PropertyFamily> families) {
+    private static void _reserveFieldFamilies(Field[] fields, Map<String, PropertyFamily> families,
+                                              Map<String, Boolean> transientByField) {
         for (Field field : fields) {
             int modifiers = field.getModifiers();
             if (Modifier.isStatic(modifiers) || field.isSynthetic()) continue;
-            if (Modifier.isTransient(modifiers)) {
-                if (field.getAnnotation(NodeProperty.class) != null) {
-                    throw new BindingException("transient field '" + field.getName() + "' cannot use @NodeProperty");
-                }
-                continue;
+            if (Modifier.isTransient(modifiers) && field.getAnnotation(NodeProperty.class) != null) {
+                throw new BindingException("transient field '" + field.getName() + "' cannot use @NodeProperty");
             }
+            // Subclass declarations win over hidden ancestor fields.
+            boolean isTransient = Modifier.isTransient(modifiers);
+            if (transientByField.putIfAbsent(field.getName(), isTransient) != null) continue;
+            if (isTransient) continue;
             if (field.getAnnotation(NodeIgnore.class) != null || field.getType().isAnnotationPresent(NodeIgnore.class)) continue;
             families.computeIfAbsent(field.getName(), PropertyFamily::new);
         }

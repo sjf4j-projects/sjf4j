@@ -212,6 +212,45 @@ class ReflectUtilMetadataTest {
         transient String name;
     }
 
+    static class TransientAccessorPojo {
+        private transient String hidden = "hidden";
+        private String visible = "visible";
+
+        public String getHidden() { return hidden; }
+        public void setHidden(String hidden) { this.hidden = hidden; }
+        public String getVisible() { return visible; }
+        public String getDerived() { return "derived"; }
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
+    static class BeanOnlyTransientAccessorPojo {
+        private transient String hidden;
+        public String getHidden() { return hidden; }
+    }
+
+    static class TransientParent {
+        public transient String value = "parent";
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    static class FieldOnlyChildWithValue extends TransientParent {
+        public String value = "child";
+    }
+
+    static class BeanFieldChildWithValue extends TransientParent {
+        public String value = "child";
+        public String getValue() { return value; }
+    }
+
+    static class NonTransientParent {
+        public String value = "parent";
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    static class FieldOnlyTransientChild extends NonTransientParent {
+        public transient String value = "child";
+    }
+
     enum SampleEnum { A }
 
     interface SampleInterface {}
@@ -358,6 +397,34 @@ class ReflectUtilMetadataTest {
         } catch (NoSuchFieldException e) {
             throw new AssertionError(e);
         }
+    }
+
+    @Test
+    void transientFieldSuppressesMatchingBeanAccessors() {
+        PojoInfo info = ReflectUtil.analyzePojo(TransientAccessorPojo.class, true);
+        assertNull(info.getPropertyNoAlias("hidden"));
+        assertNotNull(info.getPropertyNoAlias("visible"));
+        assertNotNull(info.getPropertyNoAlias("derived"));
+
+        // BEAN_ONLY deliberately ignores fields, including transient fields.
+        PojoInfo beanOnly = ReflectUtil.analyzePojo(BeanOnlyTransientAccessorPojo.class, true);
+        assertNotNull(beanOnly.getPropertyNoAlias("hidden"));
+    }
+
+    @Test
+    void descendantFieldShadowsTransientAncestor() {
+        PojoInfo fieldOnly = ReflectUtil.analyzePojo(FieldOnlyChildWithValue.class, true);
+        assertNotNull(fieldOnly.getPropertyNoAlias("value"));
+        assertEquals(1, fieldOnly.gettableProperties.length);
+        assertEquals("child", fieldOnly.getPropertyNoAlias("value").invokeGetter(new FieldOnlyChildWithValue()));
+
+        PojoInfo beanField = ReflectUtil.analyzePojo(BeanFieldChildWithValue.class, true);
+        assertNotNull(beanField.getPropertyNoAlias("value"));
+        assertEquals(1, beanField.gettableProperties.length);
+        assertEquals("child", beanField.getPropertyNoAlias("value").invokeGetter(new BeanFieldChildWithValue()));
+
+        PojoInfo transientChild = ReflectUtil.analyzePojo(FieldOnlyTransientChild.class, true);
+        assertNull(transientChild.getPropertyNoAlias("value"));
     }
 
     @SuppressWarnings("unchecked")
