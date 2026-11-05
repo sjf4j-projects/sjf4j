@@ -51,11 +51,11 @@ jobs:
     # Validate both older drafts through the same javac-based official runner.
     # Start with independent scalar constraints; broader suites need explicit,
     # individually reviewed fallback groups, never auto-added exemptions.
-    - name: Verify Draft-07 compiled scalar conformance
-      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7 -PofficialCompiledCategory=scalar
+    - name: Verify Draft-07 compiled conformance
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7
 
-    - name: Verify Draft 2019-09 compiled scalar conformance
-      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09 -PofficialCompiledCategory=scalar
+    - name: Verify Draft 2019-09 compiled conformance
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09
 
     - name: Print JaCoCo summary
       if: ${{ always() }}
