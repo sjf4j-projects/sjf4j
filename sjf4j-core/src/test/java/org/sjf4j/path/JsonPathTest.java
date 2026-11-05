@@ -137,8 +137,8 @@ public class JsonPathTest {
         JsonPointer dash = JsonPointer.parse("/-");
         assertTrue(dash.isAppend());
         // JSONPath's array append selector has no Pointer object-key token.
-        assertNull(JsonPointer.fromLast(new PathSegment.Append(
-                PathSegment.Root.INSTANCE)).getNode(Map.of("-", "object")));
+        assertFalse(JsonPointer.fromLast(new PathSegment.Append(
+                PathSegment.Root.INSTANCE)).isSingleGet());
         assertTrue(dash.isSingleGet());
 
         Map<String, Object> object = new HashMap<>();
