@@ -70,21 +70,10 @@ public final class OfficialAnnotationTest {
         Report all = run(root, null, null, null);
         if (all.total == 0) throw new AssertionError("No official annotation tests found");
 
-        Report metadata = run(root, "meta-data.json", null, null);
-        Report applicators = run(root, "applicators.json", null, null);
-        Report unevaluated = run(root, "unevaluated.json", null, null);
-        if (metadata.total != 7 || applicators.total != 15 || unevaluated.total != 20) {
-            throw new AssertionError("Official annotation suite changed: metadata="
-                    + metadata.total + ", applicators=" + applicators.total
-                    + ", unevaluated=" + unevaluated.total);
-        }
-        if (metadata.failed + metadata.errors + applicators.failed + applicators.errors
-                + unevaluated.failed + unevaluated.errors != 0) {
-            throw new AssertionError("Supported annotation suites failed: metadata="
-                    + metadata.failed + "/" + metadata.errors + ", applicators="
-                    + applicators.failed + "/" + applicators.errors
-                    + ", unevaluated=" + unevaluated.failed + "/" + unevaluated.errors);
-        }
+        // Reuse the single full-suite run rather than re-evaluating files for CI.
+        assertPassing(all, "meta-data.json", 7);
+        assertPassing(all, "applicators.json", 15);
+        assertPassing(all, "unevaluated.json", 20);
     }
 
     private static Path locateTestRoot(String argumentRoot) {
@@ -115,12 +104,16 @@ public final class OfficialAnnotationTest {
                     || !selected.getFileName().toString().endsWith(".json")) {
                 throw new IllegalArgumentException("Annotation suite file not found: " + selected);
             }
-            total.add(runFile(selected, groupFilter, testFilter));
+            Report fileReport = runFile(selected, groupFilter, testFilter);
+            total.add(fileReport);
+            total.files.put(selected.getFileName().toString(), fileReport);
         } else {
             try (Stream<Path> paths = Files.list(directory)) {
                 for (Path path : (Iterable<Path>) paths.filter(p -> p.toString().endsWith(".json"))
                         .sorted(Comparator.comparing(p -> p.getFileName().toString()))::iterator) {
-                    total.add(runFile(path, groupFilter, testFilter));
+                    Report fileReport = runFile(path, groupFilter, testFilter);
+                    total.add(fileReport);
+                    total.files.put(path.getFileName().toString(), fileReport);
                 }
             }
         }
@@ -235,7 +228,21 @@ public final class OfficialAnnotationTest {
         }
     }
 
+    private static void assertPassing(Report all, String filename, int expectedCount) {
+        Report file = all.files.get(filename);
+        if (file == null || file.total != expectedCount) {
+            throw new AssertionError("Official annotation suite changed: " + filename
+                    + " expected " + expectedCount + " tests, got "
+                    + (file == null ? "missing" : file.total));
+        }
+        if (file.failed != 0 || file.errors != 0) {
+            throw new AssertionError("Official annotations failed in " + filename
+                    + ": " + file.failed + " failures, " + file.errors + " errors");
+        }
+    }
+
     private static final class Report {
+        final Map<String, Report> files = new LinkedHashMap<>();
         int total;
         int passed;
         int failed;
