@@ -90,6 +90,13 @@ public class ValidationResult {
         /** Legacy accessor: returns the resource URI, excluding the keyword pointer. */
         public URI getSchemaUri() { return resourceUri; }
         public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(resourceUri); }
+        /**
+         * Absolute, dereferenced JSON Schema keyword location, or {@code null}
+         * when it cannot be represented by a JSON Pointer URI fragment.
+         */
+        public String getAbsoluteKeywordLocation() {
+            return SchemaUtil.absoluteKeywordLocation(resourceUri, keywordPs);
+        }
 
         @Override
         public String toString() {
