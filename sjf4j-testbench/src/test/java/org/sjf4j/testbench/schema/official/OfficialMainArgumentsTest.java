@@ -22,7 +22,8 @@ final class OfficialMainArgumentsTest {
 
     @Test
     void annotationMainParsesDialectRatherThanSuiteRoot() {
-        assertEquals(List.of(SchemaDialect.DRAFT_2020_12),
+        assertEquals(List.of(SchemaDialect.DRAFT_07, SchemaDialect.DRAFT_2019_09,
+                        SchemaDialect.DRAFT_2020_12),
                 OfficialAnnotationTest.standaloneDialects(null));
         assertEquals(List.of(SchemaDialect.DRAFT_07),
                 OfficialAnnotationTest.standaloneDialects("draft7"));
@@ -42,6 +43,8 @@ final class OfficialMainArgumentsTest {
         assertTrue(OfficialAnnotationTest.compatibleWith(null, SchemaDialect.DRAFT_07));
         assertTrue(OfficialAnnotationTest.compatibleWith("7", SchemaDialect.DRAFT_07));
         assertFalse(OfficialAnnotationTest.compatibleWith("2019", SchemaDialect.DRAFT_07));
+        assertTrue(OfficialAnnotationTest.compatibleWith("6,<=2019", SchemaDialect.DRAFT_07));
+        assertFalse(OfficialAnnotationTest.compatibleWith("6,<=2019", SchemaDialect.DRAFT_2020_12));
         assertTrue(OfficialAnnotationTest.compatibleWith("2019", SchemaDialect.DRAFT_2019_09));
         assertTrue(OfficialAnnotationTest.compatibleWith("<=2019", SchemaDialect.DRAFT_2019_09));
         assertFalse(OfficialAnnotationTest.compatibleWith("<=2019", SchemaDialect.DRAFT_2020_12));
