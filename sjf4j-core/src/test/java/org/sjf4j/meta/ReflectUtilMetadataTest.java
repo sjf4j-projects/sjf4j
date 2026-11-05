@@ -212,6 +212,22 @@ class ReflectUtilMetadataTest {
         transient String name;
     }
 
+    static class TransientAccessorPojo {
+        private transient String hidden = "hidden";
+        private String visible = "visible";
+
+        public String getHidden() { return hidden; }
+        public void setHidden(String hidden) { this.hidden = hidden; }
+        public String getVisible() { return visible; }
+        public String getDerived() { return "derived"; }
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
+    static class BeanOnlyTransientAccessorPojo {
+        private transient String hidden;
+        public String getHidden() { return hidden; }
+    }
+
     enum SampleEnum { A }
 
     interface SampleInterface {}
@@ -358,6 +374,18 @@ class ReflectUtilMetadataTest {
         } catch (NoSuchFieldException e) {
             throw new AssertionError(e);
         }
+    }
+
+    @Test
+    void transientFieldSuppressesMatchingBeanAccessors() {
+        PojoInfo info = ReflectUtil.analyzePojo(TransientAccessorPojo.class, true);
+        assertNull(info.getPropertyNoAlias("hidden"));
+        assertNotNull(info.getPropertyNoAlias("visible"));
+        assertNotNull(info.getPropertyNoAlias("derived"));
+
+        // BEAN_ONLY deliberately ignores fields, including transient fields.
+        PojoInfo beanOnly = ReflectUtil.analyzePojo(BeanOnlyTransientAccessorPojo.class, true);
+        assertNotNull(beanOnly.getPropertyNoAlias("hidden"));
     }
 
     @SuppressWarnings("unchecked")

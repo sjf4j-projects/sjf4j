@@ -145,7 +145,7 @@ public final class SchemaValidator {
         if (!inline.isEmpty()) {
             JsonSchema schema = JsonSchema.fromJson(inline);
             if (schema instanceof ObjectSchema) {
-                ((ObjectSchema) schema).setRetrievalUri(URI.create("sjf4j:/" + clazz.getName() + "/"));
+                ((ObjectSchema) schema).retrievalUri(URI.create("sjf4j:/" + clazz.getName() + "/"));
             }
             return registry.register(schema);
         }
@@ -187,7 +187,7 @@ public final class SchemaValidator {
         if (schema == null) return null;
         URI selectedUri = uri;
         if (!selectedUri.isAbsolute() && schema instanceof ObjectSchema) {
-            URI loaded = ((ObjectSchema) schema).getRetrievalUri();
+            URI loaded = ((ObjectSchema) schema).retrievalUri();
             if (loaded != null && loaded.isAbsolute()) {
                 selectedUri = URI.create(loaded.toString() +
                         (uri.getRawFragment() == null ? "" : "#" + uri.getRawFragment()));

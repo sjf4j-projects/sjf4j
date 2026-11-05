@@ -87,11 +87,11 @@ public class SchemaRegistry {
         }
 
         ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.setRetrievalUri(retrievalUri);
-        retrievalUri = os.getRetrievalUri();
+        if (retrievalUri != null) os.retrievalUri(retrievalUri);
+        retrievalUri = os.retrievalUri();
         URI canonicalUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, os.getCanonicalUri())
-                : os.getCanonicalUri();
+                ? SchemaUtil.resolveUri(retrievalUri, os.canonicalUri())
+                : os.canonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "missing root schema uri: specify $id or a retrieval URI",
@@ -122,11 +122,11 @@ public class SchemaRegistry {
         }
 
         ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.setRetrievalUri(retrievalUri);
-        retrievalUri = os.getRetrievalUri();
+        if (retrievalUri != null) os.retrievalUri(retrievalUri);
+        retrievalUri = os.retrievalUri();
         URI canonicalUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, os.getCanonicalUri())
-                : os.getCanonicalUri();
+                ? SchemaUtil.resolveUri(retrievalUri, os.canonicalUri())
+                : os.canonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "missing root schema uri: specify $id or a retrieval URI",
@@ -222,10 +222,10 @@ public class SchemaRegistry {
         }
 
         ObjectSchema os = (ObjectSchema) schema;
-        if (retrievalUri != null) os.setRetrievalUri(retrievalUri);
-        URI canonicalUri = os.getRetrievalUri() != null
-                ? SchemaUtil.resolveUri(os.getRetrievalUri(), os.getCanonicalUri())
-                : os.getCanonicalUri();
+        if (retrievalUri != null) os.retrievalUri(retrievalUri);
+        URI canonicalUri = os.retrievalUri() != null
+                ? SchemaUtil.resolveUri(os.retrievalUri(), os.canonicalUri())
+                : os.canonicalUri();
         if (canonicalUri == null) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_URI,
                     "missing root schema uri: specify $id or a retrieval URI",

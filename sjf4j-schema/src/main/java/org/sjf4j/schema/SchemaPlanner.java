@@ -41,10 +41,10 @@ public final class SchemaPlanner {
         Asserts.notNull(schema, "schema");
         Asserts.notNull(registry, "registry");
 
-        URI retrievalUri = schema.getRetrievalUri();
+        URI retrievalUri = schema.retrievalUri();
         URI resourceUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, schema.getCanonicalUri())
-                : SchemaUtil.resolveUri(URI.create("sjf4j:/schema-" + schema.hashCode() + "/"), schema.getCanonicalUri());
+                ? SchemaUtil.resolveUri(retrievalUri, schema.canonicalUri())
+                : SchemaUtil.resolveUri(URI.create("sjf4j:/schema-" + schema.hashCode() + "/"), schema.canonicalUri());
         SchemaPlan plan = registry.resolveBuilt(resourceUri);
         if (plan != null) return plan;
 

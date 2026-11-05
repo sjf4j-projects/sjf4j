@@ -26,8 +26,8 @@ class SchemaLoaderTest {
                 SchemaLoader.documentUri(base.resolve("user.json#/$defs/name")));
         JsonSchema parsed = loader.load(base.resolve("user.json#/$defs/name"));
         assertTrue(parsed instanceof ObjectSchema);
-        assertEquals(base.resolve("user.json"), ((ObjectSchema) parsed).getRetrievalUri());
-        assertEquals(base.resolve("user.json"), ((ObjectSchema) loader.load(base.resolve("user.json"))).getRetrievalUri());
+        assertEquals(base.resolve("user.json"), ((ObjectSchema) parsed).retrievalUri());
+        assertEquals(base.resolve("user.json"), ((ObjectSchema) loader.load(base.resolve("user.json"))).retrievalUri());
 
         SchemaRegistry registry = new SchemaRegistry();
         registry.register(base.resolve("user.json"), parsed);
@@ -65,7 +65,7 @@ class SchemaLoaderTest {
             URI selected = URI.create("user.json#");
             JsonSchema schema = local.load(selected);
             assertTrue(schema instanceof ObjectSchema);
-            assertEquals(document.toUri(), ((ObjectSchema) schema).getRetrievalUri());
+            assertEquals(document.toUri(), ((ObjectSchema) schema).retrievalUri());
             assertNull(local.load(URI.create("missing.json")));
             assertEquals(document.toUri(), local.resolve(URI.create("user.json")));
         } finally {
@@ -89,7 +89,7 @@ class SchemaLoaderTest {
             assertEquals(URI.create(document.toUri().toString() + "#/$defs/name"), loader.resolve(reference));
             JsonSchema schema = loader.load(reference);
             assertTrue(schema instanceof ObjectSchema);
-            assertEquals(document.toUri(), ((ObjectSchema) schema).getRetrievalUri());
+            assertEquals(document.toUri(), ((ObjectSchema) schema).retrievalUri());
             assertNull(loader.load(URI.create("missing.json")));
         } finally {
             Files.deleteIfExists(document);

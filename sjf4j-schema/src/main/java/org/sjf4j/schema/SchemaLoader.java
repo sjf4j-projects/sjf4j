@@ -50,7 +50,7 @@ public interface SchemaLoader {
         StringBuilder json = new StringBuilder();
         for (int n; (n = reader.read(chars)) != -1;) json.append(chars, 0, n);
         JsonSchema schema = JsonSchema.fromJson(json.toString());
-        if (schema instanceof ObjectSchema) ((ObjectSchema) schema).setRetrievalUri(document);
+        if (schema instanceof ObjectSchema) ((ObjectSchema) schema).retrievalUri(document);
         return schema;
     }
 

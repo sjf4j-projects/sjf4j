@@ -17,12 +17,12 @@ class SchemaPlanTest {
     @Test
     void objectSchemaPlanSnapshotsMinimalRootRuntimeState() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
-        schema.setRetrievalUri(URI.create("file:///schemas/root.json"));
+        schema.retrievalUri(URI.create("file:///schemas/root.json"));
 
         SchemaPlan plan = schema.createPlan();
 
-        assertEquals("file:///schemas/root.json", schema.getRetrievalUri().toString());
-        assertEquals("defs/user.json", schema.getCanonicalUri().toString());
+        assertEquals("file:///schemas/root.json", schema.retrievalUri().toString());
+        assertEquals("defs/user.json", schema.canonicalUri().toString());
         assertTrue(plan.validate("hello").isValid());
         assertFalse(plan.validate(123).isValid());
     }
@@ -160,7 +160,7 @@ class SchemaPlanTest {
                 "\"$id\":\"defs/root.json\"," +
                 "\"$ref\":\"leaf.json\"" +
                 "}");
-        rootSchema.setRetrievalUri(URI.create("file:///schemas/base.json"));
+        rootSchema.retrievalUri(URI.create("file:///schemas/base.json"));
 
         ObjectSchema leafSchema = (ObjectSchema) JsonSchema.fromJson("{" +
                 "\"$id\":\"file:///schemas/defs/leaf.json\"," +
