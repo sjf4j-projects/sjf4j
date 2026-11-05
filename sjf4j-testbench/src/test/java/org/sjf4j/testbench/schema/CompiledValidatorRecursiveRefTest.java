@@ -64,16 +64,6 @@ class CompiledValidatorRecursiveRefTest {
             }
             """;
 
-    private static final String ADJACENT = """
-            {
-              "$schema":"https://json-schema.org/draft/2019-09/schema",
-              "$id":"https://example.test/compiled-recursive/adjacent",
-              "$recursiveAnchor":true,
-              "$recursiveRef":"#",
-              "type":"object"
-            }
-            """;
-
     @CompiledValidator(fallback = false)
     public interface Direct {
         @ValidJsonSchema(RECURSIVE)
