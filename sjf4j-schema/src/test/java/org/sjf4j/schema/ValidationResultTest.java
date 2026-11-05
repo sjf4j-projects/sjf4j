@@ -18,7 +18,7 @@ class ValidationResultTest {
     void errorCarriesLocationsAndDescriptionWithoutSeverity() {
         URI uri = URI.create("https://example.com/schema");
         PathSegment keyword = new PathSegment.Name(ROOT, "type");
-        ValidationResult.Message error = new ValidationResult.Message("type", "expected integer", null, ROOT,
+        ValidationResult.Detail error = new ValidationResult.Detail("type", "expected integer", null, ROOT,
                 keyword, uri);
         ValidationResult result = new ValidationResult(false, List.of(error));
 
@@ -41,7 +41,7 @@ class ValidationResultTest {
     void annotationPreservesOriginalJsonValueAndLocations() {
         PathSegment keyword = new PathSegment.Name(ROOT, "examples");
         Object values = List.of(Map.of("x", 1), Map.of("x", 2));
-        ValidationResult.Message annotation = new ValidationResult.Message(
+        ValidationResult.Detail annotation = new ValidationResult.Detail(
                 "examples", "Example values", values, ROOT, keyword, null);
         ValidationResult result = new ValidationResult(true, null, List.of(annotation));
 
@@ -62,10 +62,10 @@ class ValidationResultTest {
 
     @Test
     void sharedMessageTypeKeepsErrorsAndAnnotationsSeparate() {
-        ValidationResult.Message error = new ValidationResult.Message(
+        ValidationResult.Detail error = new ValidationResult.Detail(
                 "required", "missing property", null, ROOT, ROOT, null);
         Object rawValue = Map.of("sample", 42);
-        ValidationResult.Message annotation = new ValidationResult.Message(
+        ValidationResult.Detail annotation = new ValidationResult.Detail(
                 "examples", "sample value", rawValue, ROOT, ROOT, null);
         ValidationResult result = new ValidationResult(
                 false, List.of(error), List.of(annotation));
