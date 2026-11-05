@@ -75,6 +75,9 @@ public final class OfficialAnnotationTest {
         assertPassing(all, "meta-data.json", 7);
         assertPassing(all, "applicators.json", 15);
         assertPassing(all, "unevaluated.json", 20);
+        assertPassing(all, "content.json", 7);
+        assertPassing(all, "format.json", 1);
+        assertPassing(all, "unknown.json", 1);
 
         // Compatibility "9999" requires a future dialect and cannot be gated
         // as Draft 2020-12 conformance. Report these in the full-suite run.

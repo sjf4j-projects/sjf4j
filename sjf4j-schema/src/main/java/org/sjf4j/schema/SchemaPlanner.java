@@ -398,17 +398,40 @@ public final class SchemaPlanner {
             evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), resourceUri, notPlan));
         }
 
-        // Static metadata annotations. Keep unevaluated* last for evaluated tracking.
-        List<SchemaPlan.Annotation> metadataEntries = null;
+        // Static annotations are planned once and never enter the evaluator loop.
+        // The content vocabulary only annotates string instances; contentSchema
+        // additionally requires a declared, active contentMediaType.
+        List<SchemaPlan.Annotation> annotationEntries = null;
         for (String key : VocabularyRegistry.ANNOTATION_KEYWORDS) {
-            if (schema.containsKey(key) && _allowsKeyword(dialect, vocabulary, key)) {
-                if (metadataEntries == null) metadataEntries = new ArrayList<>();
-                metadataEntries.add(new SchemaPlan.Annotation(
-                        key, schema.getNode(key), new PathSegment.Name(ps, key), resourceUri));
+            if (!schema.containsKey(key)) continue;
+            boolean enabled = "format".equals(key) ? _allowsFormatKeyword(vocabulary)
+                    : _allowsKeyword(dialect, vocabulary, key);
+            if (!enabled) continue;
+            if ("contentSchema".equals(key)
+                    && (!schema.containsKey("contentMediaType")
+                    || !_allowsKeyword(dialect, vocabulary, "contentMediaType"))) {
+                continue;
             }
+            if (annotationEntries == null) annotationEntries = new ArrayList<>();
+            boolean stringOnly = "format".equals(key) || key.startsWith("content");
+            annotationEntries.add(new SchemaPlan.Annotation(
+                    key, schema.getNode(key), new PathSegment.Name(ps, key),
+                    resourceUri, stringOnly));
         }
-        SchemaPlan.Annotation[] annotations = metadataEntries == null ? null
-                : metadataEntries.toArray(new SchemaPlan.Annotation[0]);
+
+        // Unrecognized keywords are annotations regardless of their spelling.
+        // Known keywords disabled by the dialect/vocabulary are not unknown.
+        for (Map.Entry<String, Object> entry : schema.entrySet()) {
+            String key = entry.getKey();
+            if (VocabularyRegistry.isKnownKeyword(key)) continue;
+            if (annotationEntries == null) annotationEntries = new ArrayList<>();
+            annotationEntries.add(new SchemaPlan.Annotation(
+                    key, entry.getValue(), new PathSegment.Name(ps, key),
+                    resourceUri, false));
+        }
+
+        SchemaPlan.Annotation[] annotations = annotationEntries == null ? null
+                : annotationEntries.toArray(new SchemaPlan.Annotation[0]);
 
         // unevaluatedProperties / unevaluatedItems
         SchemaPlan unevaluatedPropertiesPlan = _allowsKeyword(dialect, vocabulary, "unevaluatedProperties")

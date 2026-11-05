@@ -145,6 +145,56 @@ class AnnotationRuntimeTest {
     }
 
     @Test
+    void formatAnnotationRequiresStringInstance() {
+        ValidationResult string = validate("{\"format\":\"email\"}", "foo@bar.com");
+        assertTrue(string.isValid());
+        assertEquals(Collections.singletonList("email"), values(string));
+
+        ValidationResult number = validate("{\"format\":\"email\"}", 42);
+        assertTrue(number.isValid());
+        assertTrue(number.getAnnotations().isEmpty());
+    }
+
+    @Test
+    void contentAnnotationsRequireStringAndMediaTypeForSchema() {
+        String schema = "{\"contentEncoding\":\"base64\","
+                + "\"contentMediaType\":\"application/json\","
+                + "\"contentSchema\":{\"type\":\"number\"}}";
+        ValidationResult string = validate(schema, "42");
+        assertTrue(string.isValid());
+        assertEquals(3, string.getAnnotations().size());
+        assertEquals("base64", string.getAnnotations().get(0).getValue());
+        assertEquals("application/json", string.getAnnotations().get(1).getValue());
+        assertTrue(org.sjf4j.Nodes.equals(
+                JsonObject.of("type", "number"), string.getAnnotations().get(2).getValue()));
+
+        ValidationResult number = validate(schema, 42);
+        assertTrue(number.isValid());
+        assertTrue(number.getAnnotations().isEmpty());
+
+        ValidationResult withoutMediaType = validate(
+                "{\"contentSchema\":{\"type\":\"number\"}}", "42");
+        assertTrue(withoutMediaType.isValid());
+        assertTrue(withoutMediaType.getAnnotations().isEmpty());
+    }
+
+    @Test
+    void unknownKeywordAnnotationsPreserveNameAndValue() {
+        ValidationResult result = validate("{\"x-custom\":false,"
+                + "\"feature.name\":{\"enabled\":true},\"x-null\":null}", 42);
+        assertTrue(result.isValid());
+        assertEquals(Arrays.asList("x-custom", "feature.name", "x-null"),
+                result.getAnnotations().stream().map(ValidationResult.Message::getKeyword)
+                        .collect(Collectors.toList()));
+        assertEquals(Boolean.FALSE, result.getAnnotations().get(0).getValue());
+        assertNull(result.getAnnotations().get(2).getValue());
+
+        ValidationResult known = validate("{\"type\":\"number\",\"$comment\":\"note\"}", 42);
+        assertTrue(known.isValid());
+        assertTrue(known.getAnnotations().isEmpty());
+    }
+
+    @Test
     void disabledCollectionDoesNotChangeLegacyResults() {
         SchemaPlan plan = JsonSchema.fromJson(
                 "{\"type\":\"object\",\"title\":\"Object\","
