@@ -34,7 +34,8 @@ final class ArrayCompiler {
         // Legacy tuple items use additionalItems for the remaining suffix.
         // additionalItems is inert if items is not an array.
         String itemKeyword = tupleItems
-                ? (schema.containsKey("additionalItems") ? "additionalItems" : null)
+                ? (schema.containsKey("additionalItems") ? "additionalItems"
+                        : schema.containsKey("unevaluatedItems") ? "unevaluatedItems" : null)
                 : schema.containsKey("items") ? "items"
                 : schema.containsKey("unevaluatedItems") ? "unevaluatedItems" : null;
         // For an independent schema with no contains, prefixItems evaluates
