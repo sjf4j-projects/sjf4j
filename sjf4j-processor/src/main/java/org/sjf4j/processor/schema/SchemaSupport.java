@@ -53,7 +53,8 @@ final class SchemaSupport {
             if (!dialect.supportsKeyword(keyword) || (refOnly && !"$ref".equals(keyword))) continue;
             Object ref = Nodes.getInObject(node, keyword);
             if (!(ref instanceof String)) continue;
-            if ("$dynamicRef".equals(keyword)) result.hasDynamicRef = true;
+            if ("$dynamicRef".equals(keyword) || "$recursiveRef".equals(keyword))
+                result.hasDynamicRef = true;
             URI target = SchemaUtil.resolveUri(scopedUri, URI.create((String) ref));
             result.referencedDocuments.add(URI.create(SchemaUtil.stripFragment(target.toString())));
         }
