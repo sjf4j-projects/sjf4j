@@ -49,13 +49,13 @@ jobs:
       run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledProbeDirect=true
 
     # Validate both older drafts through the same javac-based official runner.
-    # Start with independent scalar constraints; broader suites need explicit,
-    # individually reviewed fallback groups, never auto-added exemptions.
+    # Test every mandatory group. Fallback groups are explicitly reviewed
+    # per draft, and ProbeDirect rejects stale exemptions.
     - name: Verify Draft-07 compiled conformance
-      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7 -PofficialCompiledProbeDirect=true
 
     - name: Verify Draft 2019-09 compiled conformance
-      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09
+      run: ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09 -PofficialCompiledProbeDirect=true
 
     - name: Print JaCoCo summary
       if: ${{ always() }}
