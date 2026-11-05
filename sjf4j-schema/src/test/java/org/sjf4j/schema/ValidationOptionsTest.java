@@ -50,7 +50,7 @@ class ValidationOptionsTest {
         assertTrue(result.isValid());
         assertEquals(1, result.getAnnotations().size());
         assertEquals("title", result.getAnnotations().get(0).getKeyword());
-        assertEquals("Example", result.getAnnotations().get(0).getValue());
+        assertEquals("Example", result.getAnnotations().get(0).getAnnotation());
         assertTrue(new ValidationContext(options, false).isCollectAnnotations());
         assertThrows(NullPointerException.class, () -> plan.validate(42, (ValidationOptions) null));
     }
