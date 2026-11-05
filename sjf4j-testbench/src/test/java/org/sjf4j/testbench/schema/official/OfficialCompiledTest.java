@@ -41,8 +41,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 public final class OfficialCompiledTest {
 
     public static void main(String[] args) throws Exception {
-//        doMain(args);
-        doMain(new String[]{"all", "boolean_schema.json", "1", "4"});
+        doMain(args);
     }
 
 
@@ -100,7 +99,7 @@ public final class OfficialCompiledTest {
 
     // Only the standalone main entrypoint uses these filters. JUnit continues
     // to execute every mandatory example in the selected category.
-    private String mainCategory;
+    private boolean standaloneMain;
     private String mainFile;
     private int mainGroup = -1;
     private int mainCase = -1;
@@ -108,28 +107,28 @@ public final class OfficialCompiledTest {
     /**
      * Standalone IntelliJ entrypoint (run the test class as an Application).
      *
-     * <p>Arguments: [category [file.json [groupIndex [testIndex]]]].
-     * Category defaults to "all"; available categories include phase2, phase3,
-     * basic, scalar, object, array, applicator, unevaluated, reference.
+     * <p>Arguments: [file.json [groupIndex [testIndex]]].
+     * File selection is optional; with no arguments, all cases run.
+     * Category filtering belongs to the Gradle officialCompiledCategory property.
      * Requires an existing local suite and generated bindings (Gradle's
      * downloadOfficialSchemaTests + generateOfficialCompiledCases once).
      */
     private static void doMain(String[] args) throws Exception {
-        if (args.length > 4) {
+        if (args.length > 3) {
             throw new IllegalArgumentException(
-                    "Usage: OfficialCompiledTest [category [file.json [groupIndex [testIndex]]]]");
+                    "Usage: OfficialCompiledTest [file.json [groupIndex [testIndex]]]");
         }
         OfficialCompiledTest instance = new OfficialCompiledTest();
-        instance.mainCategory = args.length > 0 ? args[0] : "all";
-        if (args.length > 1) {
-            instance.mainFile = args[1];
+        instance.standaloneMain = true;
+        if (args.length > 0) {
+            instance.mainFile = args[0];
             if (!instance.mainFile.endsWith(".json")) {
                 throw new IllegalArgumentException("Expected an official file ending in .json: "
                         + instance.mainFile);
             }
         }
-        if (args.length > 2) instance.mainGroup = Integer.parseInt(args[2]);
-        if (args.length > 3) instance.mainCase = Integer.parseInt(args[3]);
+        if (args.length > 1) instance.mainGroup = Integer.parseInt(args[1]);
+        if (args.length > 2) instance.mainCase = Integer.parseInt(args[2]);
         if (instance.mainGroup < -1 || instance.mainCase < -1) {
             throw new IllegalArgumentException("Group and test indexes must be nonnegative");
         }
@@ -191,8 +190,7 @@ public final class OfficialCompiledTest {
             throw new IllegalStateException("Official suite missing: " + officialDir);
         }
 
-        selection = OfficialCaseCategory.selection(mainCategory == null
-                ? System.getProperty(SELECTION, "all") : mainCategory);
+        selection = OfficialCaseCategory.selection(System.getProperty(SELECTION, "all"));
         List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated, FALLBACK_GROUPS);
         List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
@@ -331,7 +329,7 @@ public final class OfficialCompiledTest {
         runner = new OfficialCaseRunner(generated,
                 moduleBuild.resolve("officialCompiled/compile").resolve(selection));
         runner.compileAll(specs, Boolean.parseBoolean(
-                System.getProperty(PROBE_DIRECT, mainCategory == null ? "false" : "true")));
+                System.getProperty(PROBE_DIRECT, standaloneMain ? "true" : "false")));
         return fileNodes.stream();
     }
 
