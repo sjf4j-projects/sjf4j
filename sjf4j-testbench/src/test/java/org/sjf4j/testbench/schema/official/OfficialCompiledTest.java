@@ -347,10 +347,15 @@ public final class OfficialCompiledTest {
         revision = Files.readString(suiteRoot.resolve("OFFICIAL_TEST_SUITE_REV"),
                 StandardCharsets.UTF_8).trim();
         Path moduleBuild = generated.getParent().getParent();
-        reportDir = moduleBuild.resolve("reports/officialCompiled").resolve(DRAFT).resolve(selection);
+        Path reportBase = moduleBuild.resolve("reports/officialCompiled");
+        Path compileBase = moduleBuild.resolve("officialCompiled/compile");
+        if (!"draft2020-12".equals(DRAFT)) {
+            reportBase = reportBase.resolve(DRAFT);
+            compileBase = compileBase.resolve(DRAFT);
+        }
+        reportDir = reportBase.resolve(selection);
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
-        runner = new OfficialCaseRunner(generated,
-                moduleBuild.resolve("officialCompiled/compile").resolve(DRAFT).resolve(selection));
+        runner = new OfficialCaseRunner(generated, compileBase.resolve(selection));
         runner.compileAll(specs, Boolean.parseBoolean(
                 System.getProperty(PROBE_DIRECT, mainCategory == null ? "false" : "true")));
         return fileNodes.stream();
