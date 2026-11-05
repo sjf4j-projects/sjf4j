@@ -399,12 +399,8 @@ public final class SchemaPlanner {
         }
 
         // Static metadata annotations. Keep unevaluated* last for evaluated tracking.
-        final String[] metadataKeywords = {
-                "title", "description", "default", "examples",
-                "deprecated", "readOnly", "writeOnly"
-        };
         List<SchemaPlan.Annotation> metadataEntries = null;
-        for (String key : metadataKeywords) {
+        for (String key : VocabularyRegistry.ANNOTATION_KEYWORDS) {
             if (schema.containsKey(key) && _allowsKeyword(dialect, vocabulary, key)) {
                 if (metadataEntries == null) metadataEntries = new ArrayList<>();
                 metadataEntries.add(new SchemaPlan.Annotation(

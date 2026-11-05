@@ -15,6 +15,16 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class VocabularyRegistry {
 
+    /**
+     * Keywords whose annotation values are taken directly from the schema.
+     * Only currently supported static metadata keywords are listed here;
+     * computed applicator annotations are handled by their own evaluators.
+     */
+    static final String[] ANNOTATION_KEYWORDS = {
+            "title", "description", "default", "examples",
+            "deprecated", "readOnly", "writeOnly"
+    };
+
     private static final Map<String, String[]> KEYWORD_VOCAB_CACHE = new ConcurrentHashMap<>();
 
     /**
