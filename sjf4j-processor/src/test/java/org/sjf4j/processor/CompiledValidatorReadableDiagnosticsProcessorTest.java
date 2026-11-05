@@ -42,6 +42,47 @@ class CompiledValidatorReadableDiagnosticsProcessorTest {
         assertFalse(generated.contains("SchemaPlan.ROOT.requireValid("), generated);
     }
 
+    @Test
+    void oneOfMismatchCountersMoveToHelpersWithoutChangingFastPath() throws Exception {
+        String schema = "{\\"oneOf\\":["
+                + "{\\"type\\":\\"object\\",\\"required\\":[\\"kind\\"],"
+                + "\\"properties\\":{\\"kind\\":{\\"type\\":\\"string\\",\\"enum\\":[\\"a\\"]}}},"
+                + "{\\"type\\":\\"object\\",\\"required\\":[\\"kind\\"],"
+                + "\\"properties\\":{\\"kind\\":{\\"type\\":\\"string\\",\\"enum\\":[\\"b\\"]}}}]}";
+        String variant = "package fixture; import org.sjf4j.annotation.node.*; "
+                + "@OneOf(discriminatorKey=\\"kind\\", cases={"
+                + "@OneOfCase(type=A.class,when=\\"a\\"),"
+                + "@OneOfCase(type=B.class,when=\\"b\\")}) "
+                + "public interface Variant {}";
+        String a = "package fixture; import org.sjf4j.annotation.node.*; "
+                + "public final class A implements Variant { "
+                + "@NodeProperty(\\"kind\\") public String getKind() { return \\"a\\"; } }";
+        String b = "package fixture; import org.sjf4j.annotation.node.*; "
+                + "public final class B implements Variant { "
+                + "@NodeProperty(\\"kind\\") public String getKind() { return \\"b\\"; } }";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Validator { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "void requireValid(Variant value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                Map.of("fixture/Variant.java", variant,
+                        "fixture/A.java", a, "fixture/B.java", b,
+                        "fixture/Validator.java", validator),
+                CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        int start = generated.indexOf("void requireValid(");
+        assertTrue(start >= 0, generated);
+        int end = generated.indexOf("private static", start);
+        assertTrue(end > start, generated);
+        String method = generated.substring(start, end);
+        assertTrue(method.contains("getClass() =="), method);
+        assertTrue(method.contains("getKind()"), method);
+        assertFalse(method.contains("matchCount"), method);
+        assertTrue(generated.contains("matchCount"), generated);
+        assertTrue(generated.contains("private static boolean _matchesSchema"), generated);
+    }
+
     private static int occurrences(String text, String part) {
         int result = 0;
         for (int i = 0; (i = text.indexOf(part, i)) >= 0; i += part.length()) result++;
