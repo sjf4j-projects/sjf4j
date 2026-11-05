@@ -96,7 +96,7 @@ class ValidationResultTest {
     void contextOwnsLiveErrorListWithoutCopyingIt() {
         SchemaPlan plan = JsonSchema.fromJson("{\"required\":[\"x\"]}").createPlan();
         ValidationContext ctx = new ValidationContext(false, false, false);
-        assertFalse(plan.evaluate(Map.of(), ctx));
+        assertFalse(plan.evaluate(Map.of(), null, ctx));
 
         ValidationResult result = ctx.toResult(false);
         assertEquals(1, result.getErrors().size());

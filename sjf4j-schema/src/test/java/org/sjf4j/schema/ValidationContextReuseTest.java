@@ -22,11 +22,11 @@ class ValidationContextReuseTest {
         ValidationContext ctx = new ValidationContext(true, false, true);
 
         for (int i = 0; i < 20; i++) {
-            assertTrue(required.evaluate(Map.of("x", i), ctx));
-            assertFalse(required.evaluate(Map.of(), ctx));
-            assertFalse(required.evaluate(Map.of("x", "wrong"), ctx));
-            assertTrue(string.evaluate("good", ctx));
-            assertFalse(string.evaluate("x", ctx));
+            assertTrue(required.evaluate(Map.of("x", i), null, ctx));
+            assertFalse(required.evaluate(Map.of(), null, ctx));
+            assertFalse(required.evaluate(Map.of("x", "wrong"), null, ctx));
+            assertTrue(string.evaluate("good", null, ctx));
+            assertFalse(string.evaluate("x", null, ctx));
         }
         assertSame(ValidationResult.SUCCESS, ctx.toResult(true));
         assertEquals(0, ctx.toResult(false).count());
@@ -39,17 +39,17 @@ class ValidationContextReuseTest {
                 .createPlan();
         ValidationContext ctx = new ValidationContext(true, false, false);
 
-        assertFalse(plan.evaluate(Map.of("x", "wrong"), ctx));
+        assertFalse(plan.evaluate(Map.of("x", "wrong"), null, ctx));
         assertEquals(1, ctx.toResult(false).getErrors().size());
         ValidationResult first = ctx.toResult(false);
-        assertFalse(plan.evaluate(Map.of("x", 1), ctx));
+        assertFalse(plan.evaluate(Map.of("x", 1), null, ctx));
         assertEquals(2, ctx.toResult(false).getErrors().size());
         assertSame(first.getErrors(), ctx.toResult(false).getErrors());
 
         // Callers explicitly control the lifetime of their accumulated diagnostics.
         ctx.clearErrors();
         assertTrue(first.getErrors().isEmpty());
-        assertTrue(plan.evaluate(Map.of("x", 1, "y", 2), ctx));
+        assertTrue(plan.evaluate(Map.of("x", 1, "y", 2), null, ctx));
         assertSame(ValidationResult.SUCCESS, ctx.toResult(true));
     }
 
@@ -78,14 +78,14 @@ class ValidationContextReuseTest {
 
         // Reusing a context accumulates one error from each independent evaluation.
         ValidationContext ctx = new ValidationContext(true, false, false);
-        assertFalse(objectPlan.evaluate(invalidObject, ctx));
-        assertFalse(arrayPlan.evaluate(Collections.singletonList(1), ctx));
+        assertFalse(objectPlan.evaluate(invalidObject, null, ctx));
+        assertFalse(arrayPlan.evaluate(Collections.singletonList(1), null, ctx));
         assertEquals(2, ctx.toResult(false).count());
         assertEquals("required", ctx.toResult(false).getErrors().get(0).getKeyword());
         assertEquals("minItems", ctx.toResult(false).getLastError().getKeyword());
 
         ctx.clearErrors();
-        assertFalse(objectPlan.evaluate(invalidObject, ctx));
+        assertFalse(objectPlan.evaluate(invalidObject, null, ctx));
         assertEquals(1, ctx.toResult(false).count());
     }
 
@@ -101,7 +101,7 @@ class ValidationContextReuseTest {
         assertEquals(1, ctx.toResult(false).count());
 
         SchemaPlan validPlan = JsonSchema.fromJson("true").createPlan();
-        assertTrue(validPlan.evaluate(Map.of(), ctx));
+        assertTrue(validPlan.evaluate(Map.of(), null, ctx));
         assertTrue(ctx.needsErrorDetail());
         assertEquals(1, ctx.toResult(false).count());
     }
@@ -137,9 +137,9 @@ class ValidationContextReuseTest {
         ValidationContext ctx = new ValidationContext(false, false, false);
         boolean allValid = true;
 
-        allValid &= plan.evaluate(Map.of("x", "wrong"), ctx);
+        allValid &= plan.evaluate(Map.of("x", "wrong"), null, ctx);
         assertEquals(2, ctx.toResult(false).getErrors().size());
-        allValid &= plan.evaluate(Map.of("x", 1), ctx);
+        allValid &= plan.evaluate(Map.of("x", 1), null, ctx);
         assertEquals(3, ctx.toResult(false).getErrors().size());
         assertFalse(allValid);
         assertFalse(ctx.toResult(allValid).isValid());
@@ -154,8 +154,8 @@ class ValidationContextReuseTest {
         ValidationContext ctx = new ValidationContext(true, false, false);
 
         for (int i = 0; i < 10; i++) {
-            assertFalse(plan.evaluate(Map.of("unknown", i), ctx));
-            assertTrue(plan.evaluate(Map.of("x", i), ctx));
+            assertFalse(plan.evaluate(Map.of("unknown", i), null, ctx));
+            assertTrue(plan.evaluate(Map.of("x", i), null, ctx));
         }
         assertEquals(10, ctx.toResult(false).getErrors().size());
         for (ValidationResult.Message msg : ctx.toResult(false).getErrors()) {
@@ -199,10 +199,10 @@ class ValidationContextReuseTest {
             }
         };
 
-        assertThrows(IllegalStateException.class, () -> plan.evaluate(broken, ctx));
+        assertThrows(IllegalStateException.class, () -> plan.evaluate(broken, null, ctx));
         assertTrue(ctx.planStack() == null || ctx.planStack().isEmpty());
         assertNull(ctx.reusedLeaf().node());
-        assertTrue(plan.evaluate(Map.of("x", 1), ctx));
+        assertTrue(plan.evaluate(Map.of("x", 1), null, ctx));
         assertSame(ValidationResult.SUCCESS, ctx.toResult(true));
     }
 
@@ -235,7 +235,7 @@ class ValidationContextReuseTest {
                 "{\"$dynamicAnchor\":\"root\",\"required\":[\"x\"]}").createPlan();
         ValidationContext ctx = new ValidationContext(true, false, false);
 
-        assertFalse(plan.evaluate(Collections.emptyMap(), ctx));
+        assertFalse(plan.evaluate(Collections.emptyMap(), null, ctx));
         assertTrue(ctx.planStack().isEmpty());
         assertEquals(1, ctx.toResult(false).getErrors().size());
 
@@ -243,7 +243,7 @@ class ValidationContextReuseTest {
         ctx.pushPlan(plan);
         ctx.reusedLeaf().reuse("retain-me", org.sjf4j.JsonType.STRING, false);
 
-        assertTrue(plan.evaluate(Map.of("x", 1), ctx));
+        assertTrue(plan.evaluate(Map.of("x", 1), null, ctx));
         assertTrue(ctx.planStack().isEmpty());
         assertNull(ctx.reusedLeaf().node());
         assertTrue(ctx.needsErrorDetail());
