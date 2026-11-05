@@ -44,22 +44,22 @@ class CompiledValidatorReadableDiagnosticsProcessorTest {
 
     @Test
     void oneOfMismatchCountersMoveToHelpersWithoutChangingFastPath() throws Exception {
-        String schema = "{\\"oneOf\\":["
-                + "{\\"type\\":\\"object\\",\\"required\\":[\\"kind\\"],"
-                + "\\"properties\\":{\\"kind\\":{\\"type\\":\\"string\\",\\"enum\\":[\\"a\\"]}}},"
-                + "{\\"type\\":\\"object\\",\\"required\\":[\\"kind\\"],"
-                + "\\"properties\\":{\\"kind\\":{\\"type\\":\\"string\\",\\"enum\\":[\\"b\\"]}}}]}";
+        String schema = "{\"oneOf\":["
+                + "{\"type\":\"object\",\"required\":[\"kind\"],"
+                + "\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"a\"]}}},"
+                + "{\"type\":\"object\",\"required\":[\"kind\"],"
+                + "\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"b\"]}}}]}";
         String variant = "package fixture; import org.sjf4j.annotation.node.*; "
-                + "@OneOf(discriminatorKey=\\"kind\\", cases={"
-                + "@OneOfCase(type=A.class,when=\\"a\\"),"
-                + "@OneOfCase(type=B.class,when=\\"b\\")}) "
+                + "@OneOf(discriminatorKey=\"kind\", cases={"
+                + "@OneOfCase(type=A.class,when=\"a\"),"
+                + "@OneOfCase(type=B.class,when=\"b\")}) "
                 + "public interface Variant {}";
         String a = "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class A implements Variant { "
-                + "@NodeProperty(\\"kind\\") public String getKind() { return \\"a\\"; } }";
+                + "@NodeProperty(\"kind\") public String getKind() { return \"a\"; } }";
         String b = "package fixture; import org.sjf4j.annotation.node.*; "
                 + "public final class B implements Variant { "
-                + "@NodeProperty(\\"kind\\") public String getKind() { return \\"b\\"; } }";
+                + "@NodeProperty(\"kind\") public String getKind() { return \"b\"; } }";
         String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=false) public interface Validator { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
