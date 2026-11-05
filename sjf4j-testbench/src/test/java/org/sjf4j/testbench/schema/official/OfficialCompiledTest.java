@@ -43,9 +43,30 @@ public final class OfficialCompiledTest {
 
     private static Set<String> fallbackGroups() {
         Set<String> groups = new LinkedHashSet<>();
-        // Legacy suites start with no exemptions: every fallback must be
-        // explicitly reviewed and recorded against its own draft.
-        if (!"draft2020-12".equals(DRAFT)) return Collections.unmodifiableSet(groups);
+        // Explicit exceptions are per dialect; no old-draft group inherits
+        // the Draft 2020-12 fallback list or silently changes its mode.
+        if ("draft7".equals(DRAFT)) return Collections.unmodifiableSet(groups);
+        if ("draft2019-09".equals(DRAFT)) {
+            // Standard metaschema/vocabulary interpretation, not a root-level
+            // predicate that can be reduced to a direct Java check.
+            fallback(groups, "defs.json", 0);
+            fallback(groups, "ref.json", 6);
+            fallback(groups, "vocabulary.json", 0, 1);
+
+            // Cross-subschema evaluated-location propagation (including
+            // recursiveRef scope in the unevaluatedItems/Properties suites).
+            fallback(groups, "not.json", 8);
+            fallback(groups, "ref.json", 13, 36);
+            fallback(groups, "unevaluatedItems.json",
+                    7, 8, 9, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 24);
+            fallback(groups, "unevaluatedProperties.json",
+                    10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24,
+                    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 39, 40);
+            return Collections.unmodifiableSet(groups);
+        }
+        if (!"draft2020-12".equals(DRAFT)) {
+            throw new IllegalArgumentException("Unsupported official compiled draft: " + DRAFT);
+        }
         fallback(groups, "defs.json", 0);
         // The remaining dynamicRef case combines cross-resource dynamic scope with unevaluatedProperties.
         fallback(groups, "dynamicRef.json", 13);
