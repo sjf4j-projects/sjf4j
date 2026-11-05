@@ -95,11 +95,11 @@ public class ValidationContext {
 
     /** Collect an annotation only when explicitly requested. */
     void addAnnotation(Instance instance, PathSegment instancePs,
-                       PathSegment keywordPs, URI schemaUri, String keyword, String message, Object value) {
+                       PathSegment keywordPs, URI schemaUri, String keyword, String message, Object annotation) {
         if (!collectAnnotations) return;
         if (instancePs == null) instancePs = instance.materializePath();
         if (annotations == null) annotations = new ArrayList<>();
-        annotations.add(new ValidationResult.Message(keyword, message, value, instancePs, keywordPs, schemaUri));
+        annotations.add(new ValidationResult.Message(keyword, message, annotation, instancePs, keywordPs, schemaUri));
     }
 
     boolean needsErrorDetail() {
