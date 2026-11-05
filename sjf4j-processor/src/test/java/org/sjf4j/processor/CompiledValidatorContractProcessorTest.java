@@ -165,7 +165,7 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
-        String schema = "{\"type\":\"object\",\"allOf\":[{\"properties\":{\"name\":true}}],"
+        String schema = "{\"type\":\"object\",\"allOf\":[{\"anyOf\":[{\"properties\":{\"name\":true}}]}],"
                 + "\"unevaluatedProperties\":false}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "

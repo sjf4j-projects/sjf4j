@@ -77,6 +77,37 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void simpleAllOfCoverageCompilesWithoutRuntimeTracking() throws Exception {
+        for (String schema : new String[]{
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[{\"properties\":{\"bar\":{\"type\":\"string\"}}}],\"unevaluatedProperties\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[{\"patternProperties\":{\"^bar\":{\"type\":\"string\"}}}],\"unevaluatedProperties\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[{\"additionalProperties\":true}],\"unevaluatedProperties\":false}",
+                "{\"prefixItems\":[{\"type\":\"string\"}],\"allOf\":[{\"prefixItems\":[true,{\"type\":\"number\"}]}],\"unevaluatedItems\":false}",
+                "{\"allOf\":[{\"prefixItems\":[{\"type\":\"string\"}],\"items\":true}],\"unevaluatedItems\":false}"
+        }) {
+            NavigatorTestCompiler.Result result = compile(schema, "Object");
+            assertTrue(result.success, schema + "\n" + result.diagnostics());
+            String output = result.generatedSource("fixture/Validator_Impl.java");
+            assertFalse(output.contains(".isValid("), output);
+            assertFalse(output.contains("SchemaPlan"), output);
+        }
+    }
+
+    @Test
+    void conditionalCoverageStillRequiresFallback() throws Exception {
+        for (String schema : new String[]{
+                "{\"anyOf\":[{\"properties\":{\"foo\":true}}],\"unevaluatedProperties\":false}",
+                "{\"allOf\":[{\"anyOf\":[{\"properties\":{\"foo\":true}}]}],\"unevaluatedProperties\":false}",
+                "{\"allOf\":[{\"contains\":{\"type\":\"string\"}}],\"unevaluatedItems\":false}",
+                "{\"items\":false,\"allOf\":[{\"prefixItems\":[true]}],\"unevaluatedItems\":false}",
+                "{\"allOf\":[{\"unevaluatedProperties\":true}],\"unevaluatedProperties\":false}"
+        }) {
+            NavigatorTestCompiler.Result result = compile(schema, "Object");
+            assertFalse(result.success, schema + "\n" + result.diagnostics());
+        }
+    }
+
+    @Test
     void coverageNeutralApplicatorsCompileWithoutFallback() throws Exception {
         for (String schema : new String[]{
                 "{\"allOf\":[true],\"unevaluatedItems\":false}",
@@ -95,7 +126,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     @Test
     void combinationsRequiringEvaluationTrackingReportExactReason() throws Exception {
         for (String[] input : new String[][]{
-                {"{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}",
+                {"{\"allOf\":[{\"anyOf\":[{\"properties\":{\"a\":true}}]}],\"unevaluatedProperties\":false}",
                         "allOf + unevaluatedProperties"},
                 {"{\"$ref\":\"#/$defs/A\",\"$defs\":{\"A\":true},\"unevaluatedProperties\":false}",
                         "$ref + unevaluatedProperties"},
@@ -112,7 +143,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
     @Test
     void fallbackTrueDoesNotEmitWarning() throws Exception {
-        String schema = "{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}";
+        String schema = "{\"allOf\":[{\"anyOf\":[{\"properties\":{\"a\":true}}]}],\"unevaluatedProperties\":false}";
         String source = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=true) public interface Validator { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
