@@ -104,7 +104,8 @@ public class JsonPath {
             }
             if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Current || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index
                     || ps instanceof PathSegment.Param
-                    || (ps instanceof PathSegment.Append && _isPointerAppend()))) {
+                    || (ps instanceof PathSegment.Append
+                        && ((PathSegment.Append) ps).pointerToken != null))) {
                 isSingleGet = false;
                 if (i < len - 1) {
                     isSingleEval = false;
@@ -1177,7 +1178,7 @@ public class JsonPath {
             return current;
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
-            if (_isPointerObjectKey(index, lastContainer)) {
+            if (index.isObjectKey(lastContainer)) {
                 Object current = NodeWalker.getInObject(lastContainer, index.pointerToken);
                 if (JsonType.of(current).isNull()) {
                     NodeWalker.putInObject(lastContainer, index.pointerToken, value);
@@ -1201,7 +1202,7 @@ public class JsonPath {
             }
             return current;
         } else if (lastToken instanceof PathSegment.Append) {
-            if (_isPointerAppendObjectKey(lastContainer)) {
+            if (((PathSegment.Append) lastToken).isObjectKey(lastContainer)) {
                 Object current = NodeWalker.getInObject(lastContainer, "-");
                 if (JsonType.of(current).isNull()) {
                     NodeWalker.putInObject(lastContainer, "-", value);
@@ -1282,12 +1283,12 @@ public class JsonPath {
             return NodeWalker.containsInObject(lastContainer, name);
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
-            if (_isPointerObjectKey(index, lastContainer)) {
+            if (index.isObjectKey(lastContainer)) {
                 return NodeWalker.containsInObject(lastContainer, index.pointerToken);
             }
             return NodeWalker.containsInArray(lastContainer, index.index);
         } else if (lastToken instanceof PathSegment.Append) {
-            return _isPointerAppendObjectKey(lastContainer)
+            return ((PathSegment.Append) lastToken).isObjectKey(lastContainer)
                     && NodeWalker.containsInObject(lastContainer, "-");
         } else {
             throw new NodeException("unsupported last path token '" + lastToken +
@@ -1323,13 +1324,13 @@ public class JsonPath {
             NodeWalker.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
-            if (_isPointerObjectKey(index, lastContainer)) {
+            if (index.isObjectKey(lastContainer)) {
                 NodeWalker.putInObject(lastContainer, index.pointerToken, value);
             } else {
                 NodeWalker.addInArray(lastContainer, index.index, value);
             }
         } else if (lastToken instanceof PathSegment.Append) {
-            if (_isPointerAppendObjectKey(lastContainer)) {
+            if (((PathSegment.Append) lastToken).isObjectKey(lastContainer)) {
                 NodeWalker.putInObject(lastContainer, "-", value);
             } else {
                 NodeWalker.addInArray(lastContainer, value);
@@ -1363,7 +1364,7 @@ public class JsonPath {
             return NodeWalker.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
-            if (_isPointerObjectKey(index, lastContainer)) {
+            if (index.isObjectKey(lastContainer)) {
                 if (!NodeWalker.containsInObject(lastContainer, index.pointerToken)) {
                     throw new NodeException("cannot replace value at non-existent path '" + this + "'");
                 }
@@ -1373,7 +1374,7 @@ public class JsonPath {
                 throw new NodeException("cannot replace value at non-existent path '" + this + "'");
             }
             return NodeWalker.setInArray(lastContainer, index.index, value);
-        } else if (lastToken instanceof PathSegment.Append && _isPointerAppendObjectKey(lastContainer)) {
+        } else if (lastToken instanceof PathSegment.Append && ((PathSegment.Append) lastToken).isObjectKey(lastContainer)) {
             if (!NodeWalker.containsInObject(lastContainer, "-")) {
                 throw new NodeException("cannot replace value at non-existent path '" + this + "'");
             }
@@ -1407,11 +1408,11 @@ public class JsonPath {
             return NodeWalker.removeInObject(lastContainer, name);
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
-            if (_isPointerObjectKey(index, lastContainer)) {
+            if (index.isObjectKey(lastContainer)) {
                 return NodeWalker.removeInObject(lastContainer, index.pointerToken);
             }
             return NodeWalker.removeInArray(lastContainer, index.index);
-        } else if (lastToken instanceof PathSegment.Append && _isPointerAppendObjectKey(lastContainer)) {
+        } else if (lastToken instanceof PathSegment.Append && ((PathSegment.Append) lastToken).isObjectKey(lastContainer)) {
             return NodeWalker.removeInObject(lastContainer, "-");
         } else {
             throw new NodeException("unsupported last path token '" + lastToken +
@@ -1425,45 +1426,6 @@ public class JsonPath {
      * Private Helpers
      * --------------------------------------------------------------
      */
-
-    /**
-     * For ensurePut only, an unresolved next "/-" path can still create an
-     * array to preserve SJF4J's intermediate append extension.
-     */
-    private boolean _nextCreatesObject(PathSegment next) {
-        return next instanceof PathSegment.Name
-                && !(_isPointerAppend() && "-".equals(((PathSegment.Name) next).name));
-    }
-
-    /** Only JSON Pointer's terminal "/-" can address an object key named "-". */
-    private boolean _isPointerAppend() {
-        return this instanceof JsonPointer || (raw != null && raw.startsWith("/"));
-    }
-
-    private boolean _isPointerAppendObjectKey(Object container) {
-        return _isPointerAppend() && JsonType.of(container).isObject();
-    }
-
-    private boolean _isPointerAppendObjectKey(JsonType type) {
-        return _isPointerAppend() && type.isObject();
-    }
-
-    private static boolean _isPointerObjectKey(PathSegment.Index index, Object container) {
-        if (index.pointerToken == null) {
-            return false;
-        }
-        if (container instanceof JsonObject || container instanceof Map) {
-            return true;
-        }
-        if (container instanceof JsonArray || container instanceof List || container instanceof Set) {
-            return false;
-        }
-        return !container.getClass().isArray() && JsonType.of(container).isObject();
-    }
-
-    private static boolean _isPointerObjectKey(PathSegment.Index index, JsonType containerType) {
-        return index.pointerToken != null && containerType.isObject();
-    }
 
     /**
      * Finds a single match for the path (optionally stopping before the tail).
@@ -1497,16 +1459,17 @@ public class JsonPath {
                     NodeWalker.getAccessInArray(node, index.index, acc);
                     if (!acc.present) return MISSING;
                     node = acc.node;
-                } else if (_isPointerObjectKey(index, jt)) {
+                } else if (index.isObjectKey(jt)) {
                     NodeWalker.getAccessInObject(node, index.pointerToken, acc);
                     if (!acc.present) return MISSING;
                     node = acc.node;
                 } else {
                     return MISSING;
                 }
-            } else if (pt instanceof PathSegment.Append && _isPointerAppend()) {
+            } else if (pt instanceof PathSegment.Append
+                    && ((PathSegment.Append) pt).pointerToken != null) {
                 // On objects, "-" is a member name; on arrays it is not a readable element.
-                if (!_isPointerAppendObjectKey(jt)) return MISSING;
+                if (!((PathSegment.Append) pt).isObjectKey(jt)) return MISSING;
                 NodeWalker.getAccessInObject(node, "-", acc);
                 if (!acc.present) return MISSING;
                 node = acc.node;
@@ -1560,15 +1523,16 @@ public class JsonPath {
                     if (!acc.present) return;
                     node = acc.node;
                     continue;
-                } else if (_isPointerObjectKey(index, jt)) {
+                } else if (index.isObjectKey(jt)) {
                     NodeWalker.getAccessInObject(node, index.pointerToken, acc);
                     if (acc.present) {
                         node = acc.node;
                         continue;
                     }
                 }
-            } else if (pt instanceof PathSegment.Append && _isPointerAppend()) {
-                if (_isPointerAppendObjectKey(jt)) {
+            } else if (pt instanceof PathSegment.Append
+                    && ((PathSegment.Append) pt).pointerToken != null) {
+                if (((PathSegment.Append) pt).isObjectKey(jt)) {
                     NodeWalker.getAccessInObject(node, "-", acc);
                     if (acc.present) {
                         node = acc.node;
@@ -1780,12 +1744,12 @@ public class JsonPath {
             return NodeWalker.putInObject(lastContainer, name, value);
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
-            if (_isPointerObjectKey(index, lastContainer)) {
+            if (index.isObjectKey(lastContainer)) {
                 return NodeWalker.putInObject(lastContainer, index.pointerToken, value);
             }
             return NodeWalker.putInArray(lastContainer, index.index, value);
         } else if (lastToken instanceof PathSegment.Append) {
-            if (_isPointerAppendObjectKey(lastContainer)) {
+            if (((PathSegment.Append) lastToken).isObjectKey(lastContainer)) {
                 return NodeWalker.putInObject(lastContainer, "-", value);
             }
             NodeWalker.addInArray(lastContainer, value);
@@ -1804,7 +1768,7 @@ public class JsonPath {
             NodeWalker.putInObject(lastContainer, name, computer.apply(lastContainer, current));
         } else if (lastToken instanceof PathSegment.Index) {
             PathSegment.Index index = (PathSegment.Index) lastToken;
-            if (_isPointerObjectKey(index, lastContainer)) {
+            if (index.isObjectKey(lastContainer)) {
                 Object current = NodeWalker.getInObject(lastContainer, index.pointerToken);
                 NodeWalker.putInObject(lastContainer, index.pointerToken, computer.apply(lastContainer, current));
             } else {
@@ -1812,7 +1776,7 @@ public class JsonPath {
                 NodeWalker.putInArray(lastContainer, index.index, computer.apply(lastContainer, current));
             }
         } else if (lastToken instanceof PathSegment.Append) {
-            if (_isPointerAppendObjectKey(lastContainer)) {
+            if (((PathSegment.Append) lastToken).isObjectKey(lastContainer)) {
                 Object current = NodeWalker.getInObject(lastContainer, "-");
                 NodeWalker.putInObject(lastContainer, "-",
                         computer.apply(lastContainer, current));
@@ -1838,12 +1802,15 @@ public class JsonPath {
         NodeWalker.Access acc = new NodeWalker.Access();
         Object curNode = container;
         Type curType = container.getClass();
+        // The only remaining path-level distinction is ensurePut's legacy
+        // intermediate array append extension for a Pointer name "-".
+        boolean pointerPath = this instanceof JsonPointer || (raw != null && raw.startsWith("/"));
         for (int i = 1, len = segments.length - 1; i < len; i++) { // traverse up to the second-last token
             PathSegment ps = segments[i];
             JsonType jt = JsonType.of(curNode);
             // ensurePut is an SJF4J extension: a "-" name on an existing
             // array continues to create an appended intermediate container.
-            boolean appendName = _isPointerAppend() && ps instanceof PathSegment.Name
+            boolean appendName = pointerPath && ps instanceof PathSegment.Name
                     && "-".equals(((PathSegment.Name) ps).name) && jt.isArray();
             if (ps instanceof PathSegment.Name && !appendName) {
                 String key = ((PathSegment.Name) ps).name;
@@ -1855,7 +1822,8 @@ public class JsonPath {
                     } else if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = _nextCreatesObject(nextPt)
+                        Object subNode = (nextPt instanceof PathSegment.Name
+                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.putInObject(curNode, key, subNode);
@@ -1878,7 +1846,8 @@ public class JsonPath {
                     } else if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = _nextCreatesObject(nextPt)
+                        Object subNode = (nextPt instanceof PathSegment.Name
+                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.putInArray(curNode, index.index, subNode);
@@ -1888,7 +1857,7 @@ public class JsonPath {
                         throw new NodeException("cannot ensure path segment '" + ps.rootedPathExpr() +
                                 "': indexed array access requires an existing element; use append path syntax instead");
                     }
-                } else if (_isPointerObjectKey(index, jt)) {
+                } else if (index.isObjectKey(jt)) {
                     NodeWalker.putAccessInObject(curNode, curType, index.pointerToken, acc);
                     if (!JsonType.of(acc.node).isNull()) {
                         curNode = acc.node;
@@ -1896,7 +1865,8 @@ public class JsonPath {
                     } else if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = _nextCreatesObject(nextPt)
+                        Object subNode = (nextPt instanceof PathSegment.Name
+                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.putInObject(curNode, index.pointerToken, subNode);
@@ -1915,7 +1885,8 @@ public class JsonPath {
                     if (acc.puttable) {
                         PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = _nextCreatesObject(nextPt)
+                        Object subNode = (nextPt instanceof PathSegment.Name
+                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.addInArray(curNode, subNode);
