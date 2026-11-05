@@ -340,7 +340,7 @@ final class SchemaEmitter {
             String access = check.jsonObject
                     ? variable + ".getNode(" + literal(property.name) + ")"
                     : check.dynamic
-                    ? "org.sjf4j.node.NodeMapper.scalarValueInObject(" + variable + ", " + literal(property.name) + ")"
+                    ? "org.sjf4j.node.NodeMapper.scalarValueInObject(" + variable + ", " + literal(property.name) + ", this.context)"
                     : variable + "." + property.staticAccess;
             statements.add((property.codecOwner == null ? property.value.localType() : "Object")
                     + " " + local + " = " + access + ";");
