@@ -1,6 +1,9 @@
 package org.sjf4j.testbench.schema.official;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DynamicContainer;
+import org.junit.jupiter.api.DynamicNode;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
@@ -18,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,7 +39,7 @@ import java.util.stream.Stream;
 public final class OfficialAnnotationTest {
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
-    private static final SchemaDialect JUNIT_DIALECT = SchemaDialect.DRAFT_2020_12;
+    private static final String DRAFT_PROPERTY = "sjf4j.schema.officialAnnotationDraft";
     private static final ValidationOptions OPTIONS = ValidationOptions.builder()
             .collectAnnotations(true).build();
 
@@ -43,8 +47,8 @@ public final class OfficialAnnotationTest {
      * Run all files, or select one file/group/test:
      * OfficialAnnotationMain [dialect] [file.json] [group-filter] [test-filter].
      *
-     * <p>The optional dialect is draft7, draft2019-09, draft2020-12 (default),
-     * or all. Group/test selectors match description substrings or zero-based
+     * <p>The optional dialect is draft7, draft2019-09, draft2020-12,
+     * or all (default). Group/test selectors match description substrings or zero-based
      * indices prefixed with '#', e.g. draft2019-09 applicators.json '#5' '#0'.
      */
     static void runStandalone(String[] args) throws Exception {
@@ -72,39 +76,65 @@ public final class OfficialAnnotationTest {
     }
 
     static List<SchemaDialect> standaloneDialects(String argument) {
-        if (argument == null || "draft2020-12".equals(argument)) {
-            return List.of(SchemaDialect.DRAFT_2020_12);
+        if (argument == null || "all".equals(argument)) {
+            return List.of(SchemaDialect.DRAFT_07,
+                    SchemaDialect.DRAFT_2019_09, SchemaDialect.DRAFT_2020_12);
         }
         switch (argument) {
+            case "draft2020-12": return List.of(SchemaDialect.DRAFT_2020_12);
             case "draft7": return List.of(SchemaDialect.DRAFT_07);
             case "draft2019-09": return List.of(SchemaDialect.DRAFT_2019_09);
-            case "all": return List.of(SchemaDialect.DRAFT_07,
-                    SchemaDialect.DRAFT_2019_09, SchemaDialect.DRAFT_2020_12);
             default: throw new IllegalArgumentException("Invalid annotation dialect: " + argument
                     + " (expected all, draft7, draft2019-09, or draft2020-12)");
         }
     }
 
     /**
-     * Execute the complete official suite. Only implemented vocabularies are
-     * release-gated until the remaining files are explicitly supported.
+     * Run every compatible official annotation case for all selected drafts.
+     * Each source file is a separate JUnit test, isolating failures.
      */
-    @Test
-    public void officialAnnotations() throws Exception {
-        Path root = locateTestRoot(null);
-        Report all = run(root, JUNIT_DIALECT, null, null, null);
-        if (all.total == 0) throw new AssertionError("No official annotation tests found");
+    @TestFactory
+    Stream<DynamicNode> officialAnnotations() throws Exception {
+        Path directory = annotationDirectory(locateTestRoot(null));
+        List<Path> files = listAnnotationFiles(directory);
+        if (files.isEmpty()) throw new IllegalStateException("Official annotation suite is empty: " + directory);
+        List<DynamicNode> drafts = new ArrayList<>();
+        for (SchemaDialect dialect : standaloneDialects(System.getProperty(DRAFT_PROPERTY, "all"))) {
+            List<DynamicNode> tests = new ArrayList<>();
+            for (Path file : files) {
+                tests.add(DynamicTest.dynamicTest(file.getFileName().toString(), () -> {
+                    Report result = runFile(file, dialect, null, null);
+                    if (result.total + result.skipped == 0) {
+                        throw new AssertionError("Empty official annotation file: " + file);
+                    }
+                    if (result.failed != 0 || result.errors != 0 || result.passed != result.total) {
+                        throw new AssertionError(dialect + " / " + file.getFileName()
+                                + ": " + result.failed + " failed, " + result.errors
+                                + " errors (" + result.passed + "/" + result.total
+                                + " passed): " + result.failures);
+                    }
+                }));
+            }
+            drafts.add(DynamicContainer.dynamicContainer(dialect.name(), tests.stream()));
+        }
+        return drafts.stream();
+    }
 
-        // Reuse the single full-suite run rather than re-evaluating files for CI.
-        assertPassing(all, "meta-data.json", 7);
-        assertPassing(all, "applicators.json", 15);
-        assertPassing(all, "unevaluated.json", 20);
-        assertPassing(all, "content.json", 7);
-        assertPassing(all, "format.json", 1);
-        assertPassing(all, "unknown.json", 1);
+    private static Path annotationDirectory(Path root) {
+        Path directory = root.resolve("annotations").resolve("tests").normalize();
+        if (!Files.isDirectory(directory)) {
+            throw new IllegalStateException("Official annotation suite missing: " + directory);
+        }
+        return directory;
+    }
 
-        // All compatible Draft 2020-12 core cases are now included in the full-suite report.
-        assertPassing(all, "core.json", 4);
+    private static List<Path> listAnnotationFiles(Path directory) throws Exception {
+        try (Stream<Path> paths = Files.list(directory)) {
+            return paths.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
+                    .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                    .toList();
+        }
     }
 
     private static Path locateTestRoot(String argumentRoot) {
@@ -123,10 +153,7 @@ public final class OfficialAnnotationTest {
 
     private static Report run(Path root, SchemaDialect dialect, String file,
                               String groupFilter, String testFilter) throws Exception {
-        Path directory = root.resolve("annotations").resolve("tests").normalize();
-        if (!Files.isDirectory(directory)) {
-            throw new IllegalStateException("Official annotation suite missing: " + directory);
-        }
+        Path directory = annotationDirectory(root);
 
         Report total = new Report();
         if (file != null && !file.isEmpty()) {
@@ -139,13 +166,10 @@ public final class OfficialAnnotationTest {
             total.add(fileReport);
             total.files.put(selected.getFileName().toString(), fileReport);
         } else {
-            try (Stream<Path> paths = Files.list(directory)) {
-                for (Path path : (Iterable<Path>) paths.filter(p -> p.toString().endsWith(".json"))
-                        .sorted(Comparator.comparing(p -> p.getFileName().toString()))::iterator) {
-                    Report fileReport = runFile(path, dialect, groupFilter, testFilter);
-                    total.add(fileReport);
-                    total.files.put(path.getFileName().toString(), fileReport);
-                }
+            for (Path path : listAnnotationFiles(directory)) {
+                Report fileReport = runFile(path, dialect, groupFilter, testFilter);
+                total.add(fileReport);
+                total.files.put(path.getFileName().toString(), fileReport);
             }
         }
         System.out.println("========================================");
@@ -160,7 +184,6 @@ public final class OfficialAnnotationTest {
     private static Report runFile(Path file, SchemaDialect dialect, String groupFilter,
                                   String testFilter) throws Exception {
         JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
-        SchemaRegistry registry = new SchemaRegistry(dialect);
         JsonArray groups = suite.getJsonArray("suite");
         Report report = new Report();
 
@@ -209,6 +232,13 @@ public final class OfficialAnnotationTest {
                 try {
                     if (plan == null && compileError == null) {
                         try {
+                            // The official suite scopes external resources to each group.
+                            SchemaRegistry registry = new SchemaRegistry(dialect);
+                            Object externalSchemas = group.getNode("externalSchemas");
+                            if (externalSchemas != null) {
+                                Nodes.forEachObject(externalSchemas, (uri, schema) ->
+                                        registry.index(URI.create(uri), JsonSchema.fromNode(schema)));
+                            }
                             plan = JsonSchema.fromNode(group.getNode("schema")).createPlan(registry);
                         } catch (Exception e) {
                             compileError = e;
@@ -340,19 +370,6 @@ public final class OfficialAnnotationTest {
         } else if (node instanceof JsonArray || node instanceof java.util.List) {
             Nodes.forEachArray(node, (index, value) -> indexResourceLocations(value,
                     inheritedUri, path + "/" + index, result));
-        }
-    }
-
-    private static void assertPassing(Report all, String filename, int expectedCount) {
-        Report file = all.files.get(filename);
-        if (file == null || file.total != expectedCount) {
-            throw new AssertionError("Official annotation suite changed: " + filename
-                    + " expected " + expectedCount + " tests, got "
-                    + (file == null ? "missing" : file.total));
-        }
-        if (file.failed != 0 || file.errors != 0) {
-            throw new AssertionError("Official annotations failed in " + filename
-                    + ": " + file.failed + " failures, " + file.errors + " errors");
         }
     }
 
