@@ -40,7 +40,7 @@ public final class OfficialRuntimeTest {
         String file = args.length > 1 ? args[1] : null;
         Integer group = args.length > 2 ? Integer.parseInt(args[2]) : null;
         Integer test = args.length > 3 ? Integer.parseInt(args[3]) : null;
-        if (file != null && (!file.endsWith(".json") || file.contains("/") || file.contains("\\\\"))) {
+        if (file != null && (!file.endsWith(".json") || file.contains("/") || file.contains("\\"))) {
             throw new IllegalArgumentException("Expected a root official file.json: " + file);
         }
         if (group != null && (group < 0 || file == null)) {
