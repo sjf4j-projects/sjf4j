@@ -410,7 +410,7 @@ public final class OfficialCompiledTest {
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
         runner = new OfficialCaseRunner(generated, compileBase.resolve(selection));
         runner.compileAll(specs, Boolean.parseBoolean(
-                System.getProperty(PROBE_DIRECT, mainCategory == null ? "false" : "true")));
+                System.getProperty(PROBE_DIRECT, "true")));
         return fileNodes.stream();
     }
 
