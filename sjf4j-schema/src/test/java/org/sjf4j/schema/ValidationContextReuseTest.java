@@ -158,7 +158,7 @@ class ValidationContextReuseTest {
             assertTrue(plan.evaluate(Map.of("x", i), null, ctx));
         }
         assertEquals(10, ctx.toResult(false).getErrors().size());
-        for (ValidationResult.Message msg : ctx.toResult(false).getErrors()) {
+        for (ValidationResult.Detail msg : ctx.toResult(false).getErrors()) {
             assertNotNull(msg.getInstancePs());
         }
         assertTrue(ctx.planStack() == null || ctx.planStack().isEmpty());
