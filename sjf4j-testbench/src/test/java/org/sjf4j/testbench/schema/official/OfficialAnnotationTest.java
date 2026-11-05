@@ -153,7 +153,7 @@ public final class OfficialAnnotationTest {
             String compatibility = group.getString("compatibility");
             boolean compatible;
             try {
-                compatible = OfficialAnnotationCompatibility.supports(compatibility, DIALECT);
+                compatible = compatibleWith2020(compatibility);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(file.getFileName() + " group#" + groupIndex
                         + ": " + e.getMessage(), e);
@@ -215,6 +215,23 @@ public final class OfficialAnnotationTest {
                 + " ] Failed: " + report.failed + " Error: " + report.errors
                 + " Skipped: " + report.skipped);
         return report;
+    }
+
+    // Official Annotation Test Suite compatibility (annotations/README.md).
+    // A plain version is a minimum; constraints separated by commas are combined.
+    private static boolean compatibleWith2020(String compatibility) {
+        if (compatibility == null) return true;
+        if (!compatibility.matches("^(<=|=)?([123467]|2019|2020|9999)(,(<=|=)?([123467]|2019|2020|9999))*$")) {
+            throw new IllegalArgumentException("Invalid annotation compatibility: " + compatibility);
+        }
+        for (String constraint : compatibility.split(",")) {
+            boolean maximum = constraint.startsWith("<=");
+            boolean exact = constraint.startsWith("=");
+            int draft = Integer.parseInt(constraint.substring(maximum ? 2 : exact ? 1 : 0));
+            if ((maximum && 2020 > draft) || (exact && 2020 != draft)
+                    || (!maximum && !exact && 2020 < draft)) return false;
+        }
+        return true;
     }
 
     private static boolean selected(String filter, int index, String description) {
