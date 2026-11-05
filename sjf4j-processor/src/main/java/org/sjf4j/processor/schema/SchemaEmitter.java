@@ -78,12 +78,13 @@ final class SchemaEmitter {
                               SchemaFallbackEmitter.Plan plan, String strictFormat,
                               String prefix, String onFailure) {
         List<String> statements = new ArrayList<String>();
-        if (check.minProperties != null || check.maxProperties != null) {
+        if ((check.minProperties != null && check.minProperties > 0)
+                || check.maxProperties != null) {
             String count = check.jsonObject ? variable + ".size()"
                     : check.dynamic
                     ? "org.sjf4j.node.NodeWalker.sizeInObject(" + variable + ")"
                     : Integer.toString(check.staticPropertyCount);
-            if (check.minProperties != null) {
+            if (check.minProperties != null && check.minProperties > 0) {
                 statements.add("if (" + count + " < " + check.minProperties + ") " + fail(onFailure, check.minPropertiesDiagnostic));
             }
             if (check.maxProperties != null) {
@@ -289,6 +290,24 @@ final class SchemaEmitter {
                 List<String> guarded = new ArrayList<String>();
                 emitValue(guarded, plan, guard.child, guard.value, expression,
                         planName + "_", strictFormat, depth, onFailure);
+                if (knownShape && value.nullable) {
+                    // The enclosing guard already proves non-null. Remove only
+                    // direct checks on this exact expression, never a nested
+                    // property's own null assertion.
+                    guarded.removeIf(line -> line.startsWith("if (" + expression + " == null) "));
+                    if (guard.child.kind == SchemaCheck.Kind.OBJECT
+                            && guarded.size() >= 2
+                            && guarded.get(0).equals("if (" + expression + " != null) {")
+                            && "}".equals(guarded.get(guarded.size() - 1))) {
+                        List<String> unwrapped = new ArrayList<String>();
+                        for (int i = 1; i < guarded.size() - 1; i++) {
+                            String line = guarded.get(i);
+                            unwrapped.add(line.startsWith("    ") ? line.substring(4) : line);
+                        }
+                        guarded = unwrapped;
+                    }
+                }
+                if (guarded.isEmpty()) return;
                 if ("true".equals(condition)) {
                     lines.addAll(guarded);
                 } else {
@@ -674,7 +693,8 @@ final class SchemaEmitter {
         boolean uuidFormat = value.uuidType && "uuid".equals(check.format);
         boolean uriFormat = value.uriType
                 && ("uri".equals(check.format) || "uri-reference".equals(check.format));
-        boolean stringRequired = check.minLength != null || check.maxLength != null
+        boolean stringRequired = (check.minLength != null && check.minLength > 0)
+                || check.maxLength != null
                 || check.choices != null || check.pattern != null
                 || (check.format != null && !uuidFormat && !uriFormat);
         if (value.shape == SchemaValue.Shape.STRING) {
@@ -693,11 +713,12 @@ final class SchemaEmitter {
             lines.add("String " + temp + " = org.sjf4j.Nodes.toString(" + expression + ");");
             text = temp;
         }
-        if (check.minLength != null || check.maxLength != null) {
+        if ((check.minLength != null && check.minLength > 0)
+                || check.maxLength != null) {
             String length = locals.newName("length");
             lines.add("int " + length + " = " + text
                     + ".codePointCount(0, " + text + ".length());");
-            if (check.minLength != null) lines.add("if (" + length + " < " + check.minLength + ") " + fail(onFailure, check.minLengthDiagnostic));
+            if (check.minLength != null && check.minLength > 0) lines.add("if (" + length + " < " + check.minLength + ") " + fail(onFailure, check.minLengthDiagnostic));
             if (check.maxLength != null) lines.add("if (" + length + " > " + check.maxLength + ") " + fail(onFailure, check.maxLengthDiagnostic));
         }
         if (check.pattern != null) {
@@ -829,7 +850,7 @@ final class SchemaEmitter {
         String size = knownCollection ? subject + ".size()"
                 : knownArray ? subject + ".length"
                 : "org.sjf4j.Nodes.sizeInArray(" + subject + ")";
-        if (check.minItems != null) lines.add("if (" + size + " < " + check.minItems + ") " + fail(onFailure, check.minItemsDiagnostic));
+        if (check.minItems != null && check.minItems > 0) lines.add("if (" + size + " < " + check.minItems + ") " + fail(onFailure, check.minItemsDiagnostic));
         if (check.maxItems != null) lines.add("if (" + size + " > " + check.maxItems + ") " + fail(onFailure, check.maxItemsDiagnostic));
         if (check.uniqueItems) {
             lines.add("if (org.sjf4j.Nodes.hasDuplicateInArray(" + subject
