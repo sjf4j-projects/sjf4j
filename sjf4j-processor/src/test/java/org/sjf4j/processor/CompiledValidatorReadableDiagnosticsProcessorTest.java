@@ -39,7 +39,7 @@ class CompiledValidatorReadableDiagnosticsProcessorTest {
         assertTrue(generated.contains("private static ValidationException _validationFailure("), generated);
         assertTrue(generated.contains("throw _validationFailure(\n"), generated);
         assertEquals(1, occurrences(generated, "ValidationException.failure("), generated);
-        assertTrue(generated.contains("CompiledValidatorSupport.instancePath(instancePointer)"), generated);
+        assertTrue(generated.contains("JsonPointer.parse(instancePointer).tail()"), generated);
         assertFalse(generated.contains("new PathSegment.Name("), generated);
         assertFalse(generated.contains("new PathSegment.Index("), generated);
         assertFalse(generated.contains("SchemaPlan.ROOT.requireValid("), generated);
@@ -61,7 +61,7 @@ class CompiledValidatorReadableDiagnosticsProcessorTest {
         String generated = result.generatedSource("fixture/Validator_Impl.java");
         assertTrue(generated.contains("/a~1b~0c/"), generated);
         assertTrue(generated.contains("escapePointerToken"), generated);
-        assertTrue(generated.contains("CompiledValidatorSupport.instancePath(instancePointer)"), generated);
+        assertTrue(generated.contains("JsonPointer.parse(instancePointer).tail()"), generated);
         assertTrue(generated.contains("replace(\"~\", \"~0\").replace(\"/\", \"~1\")"), generated);
         assertFalse(generated.contains("new PathSegment.Name("), generated);
         assertFalse(generated.contains("new PathSegment.Index("), generated);
