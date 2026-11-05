@@ -90,11 +90,15 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 # Use the cached fixtures without downloading:
 ./gradlew :sjf4j-testbench:officialRuntimeTest
 ./gradlew :sjf4j-testbench:officialCompiledTest
+./gradlew :sjf4j-testbench:officialAnnotationTest
 
 # Optional: run just one draft (default: all three):
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2020-12
+./gradlew :sjf4j-testbench:officialAnnotationTest -PofficialAnnotationDraft=draft7
+./gradlew :sjf4j-testbench:officialAnnotationTest -PofficialAnnotationDraft=draft2019-09
+./gradlew :sjf4j-testbench:officialAnnotationTest -PofficialAnnotationDraft=draft2020-12
 
 # Optional: narrow a compiled test run; stale fallback probing is enabled by default:
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated
@@ -123,14 +127,14 @@ To run a filtered subset as an Application, use `OfficialCompiledMain.main(Strin
 
 For example: `draft2019-09 unevaluatedItems.json 0 1`, or `draft2020-12 ref.json`. The first argument is the dialect (`all`, `draft7`, `draft2019-09`, or `draft2020-12`; default: `all`). The standalone Main selects the dialect from program arguments only; it does not read `sjf4j.schema.officialDraft` or the JUnit category property. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
 
-Run `OfficialAnnotationTest` as a **JUnit test**. It targets Draft 2020-12 and honors each annotation group's official `compatibility` metadata: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, which denotes future specifications) are counted as `Skipped`, not failures; `Total` counts executed cases only.
+Run `OfficialAnnotationTest` as a **JUnit test**. By default it checks every compatible case across **Draft-07, Draft 2019-09 and Draft 2020-12**, grouped by dialect and file in the JUnit tree. A failing compatible case fails the build; there is no draft-specific failure allowlist. The official `compatibility` metadata is evaluated against each draft: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, for future features) are counted as `Skipped`, not failures. `-PofficialAnnotationDraft` optionally selects just one draft for local Gradle runs (default: `all`).
 
-For standalone strict execution of compatible annotation cases or a filtered file/group/test, run `OfficialAnnotationMain.main(String[])` as an Application with optional arguments `[dialect [file.json [group-filter [test-filter]]]]`. The dialect is `draft7`, `draft2019-09`, `draft2020-12` (default), or `all`. For example: `draft2019-09 applicators.json #5 #0`. Group/test filters accept description substrings or zero-based indices prefixed with `#`; compatibility constraints are interpreted against the selected draft. The JUnit annotation suite continues to gate Draft 2020-12.
+For standalone strict execution of compatible annotation cases or a filtered file/group/test, run `OfficialAnnotationMain.main(String[])` as an Application with optional arguments `[dialect [file.json [group-filter [test-filter]]]]`. The dialect is `all` (default), `draft7`, `draft2019-09`, or `draft2020-12`. For example: `draft2019-09 applicators.json #5 #0`. Group/test filters accept description substrings or zero-based indices prefixed with `#`; compatibility constraints are interpreted against the selected draft. The JUnit annotation suite gates all three drafts; only the standalone Main's positional arguments select its dialect.
 
 ### Build and publish
 
 `./gradlew build` uses the **locally cached** official suite and does not download it. If no cache exists (including after `clean`), official test tasks are skipped; download the suite explicitly to enable them.
 
-Published modules depend on `officialPublishGate`, which invokes `downloadOfficialSchemaTests` to check upstream `main`, then requires **full Runtime and Compiled official tests** to pass. A pinned `-PjsonSchemaSuiteRef` or narrowed category is rejected for publication.
+Published modules depend on `officialPublishGate`, which invokes `downloadOfficialSchemaTests` to check upstream `main`, then requires **full Runtime, Compiled and Annotation official tests** across the supported drafts to pass. A pinned `-PjsonSchemaSuiteRef`, single-draft Annotation/Compiled selection or narrowed Compiled category is rejected for publication.
 
 **Incremental compilation:** changing an external schema resource does not necessarily invalidate Java annotation-processing outputs. Track schema inputs in the build or force recompilation when changing referenced schemas.
