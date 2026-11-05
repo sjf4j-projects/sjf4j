@@ -115,7 +115,7 @@ public interface Evaluator {
                     // Only anchor-like fragments participate in dynamic rebinding.
                     Deque<SchemaPlan> planStack = ctx.planStack();
                     if (planStack != null) {
-                        plan = SchemaPlan.selectDynamicTarget(initialPlan, dynamicAnchorName,
+                        plan = SchemaPlan.findDynamicTarget(initialPlan, dynamicAnchorName,
                                 planStack.descendingIterator());
                     }
                 }

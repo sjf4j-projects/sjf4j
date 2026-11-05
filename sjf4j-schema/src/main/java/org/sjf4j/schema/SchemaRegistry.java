@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.stream.Stream;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -375,7 +375,7 @@ public class SchemaRegistry {
      * @return the resolved plan, or null if its resource is not registered
      * @throws SchemaException if the resource exists but its fragment is missing
      */
-    public SchemaPlan resolveDynamicRef(URI refUri, java.util.List<SchemaPlan> scope) {
+    public SchemaPlan resolveDynamicRef(URI refUri, List<SchemaPlan> scope) {
         Asserts.notNull(refUri, "refUri");
         Asserts.notNull(scope, "scope");
         SchemaPlan initial = resolve(refUri);
@@ -383,7 +383,7 @@ public class SchemaRegistry {
         String fragment = refUri.getFragment();
         String dynamicAnchor = fragment != null && !fragment.startsWith("/")
                 && fragment.equals(initial.dynamicAnchor) ? fragment : null;
-        return SchemaPlan.selectDynamicTarget(initial, dynamicAnchor, scope.iterator());
+        return SchemaPlan.findDynamicTarget(initial, dynamicAnchor, scope.iterator());
     }
 
     SchemaPlan resolveBuilt(URI uri) {
