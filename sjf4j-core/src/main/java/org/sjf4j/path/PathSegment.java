@@ -154,11 +154,11 @@ public abstract class PathSegment {
         }
 
         /** A parsed numeric Pointer token also addresses an object key. */
-        public boolean isObjectKey(Object container) {
+        boolean isObjectKey(Object container) {
             return pointerToken != null && JsonType.of(container).isObject();
         }
 
-        public boolean isObjectKey(JsonType type) {
+        boolean isObjectKey(JsonType type) {
             return pointerToken != null && type.isObject();
         }
 
@@ -426,11 +426,11 @@ public abstract class PathSegment {
         }
 
         /** A parsed Pointer append token also addresses an object key. */
-        public boolean isObjectKey(Object container) {
+        boolean isObjectKey(Object container) {
             return pointerToken != null && JsonType.of(container).isObject();
         }
 
-        public boolean isObjectKey(JsonType type) {
+        boolean isObjectKey(JsonType type) {
             return pointerToken != null && type.isObject();
         }
 
