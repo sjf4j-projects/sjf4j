@@ -125,7 +125,7 @@ For example: `draft2019-09 unevaluatedItems.json 0 1`, or `draft2020-12 ref.json
 
 Run `OfficialAnnotationTest` as a **JUnit test**. It targets Draft 2020-12 and honors each annotation group's official `compatibility` metadata: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, which denotes future specifications) are counted as `Skipped`, not failures; `Total` counts executed cases only.
 
-For standalone strict execution of compatible annotation cases or a filtered file/group/test, run `OfficialAnnotationMain.main(String[])` as an Application with optional arguments `[suite-root] [file.json] [group-filter] [test-filter]`. Group/test filters accept description substrings or zero-based indices prefixed with `#`.
+For standalone strict execution of compatible annotation cases or a filtered file/group/test, run `OfficialAnnotationMain.main(String[])` as an Application with optional arguments `[dialect [file.json [group-filter [test-filter]]]]`. The dialect is `draft7`, `draft2019-09`, `draft2020-12` (default), or `all`. For example: `draft2019-09 applicators.json #5 #0`. Group/test filters accept description substrings or zero-based indices prefixed with `#`; compatibility constraints are interpreted against the selected draft. The JUnit annotation suite continues to gate Draft 2020-12.
 
 ### Build and publish
 
