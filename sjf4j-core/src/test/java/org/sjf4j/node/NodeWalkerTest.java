@@ -3,15 +3,19 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.JsonType;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.fixture.PojoPersonFixture.Person;
 import org.sjf4j.path.PathSyntax;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -27,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.sjf4j.fixture.PojoPersonFixture.JSON_DATA;
@@ -510,6 +515,92 @@ class NodeWalkerTest {
         assertTrue(NodeWalker.createArrayNode(LinkedHashSet.class) instanceof LinkedHashSet);
         assertThrows(NodeException.class, () -> NodeWalker.createObjectNode(String.class));
         assertThrows(NodeException.class, () -> NodeWalker.createArrayNode(String.class));
+    }
+
+    @Test
+    void rawValueInObjectEncodesOnlyTheSelectedValue() {
+        Instant instant = Instant.ofEpochMilli(2_000);
+        LocalDate day = LocalDate.of(2024, 1, 2);
+        RawBean bean = new RawBean();
+        bean.instant = instant;
+        bean.day = day;
+        bean.child = new ReadWriteBean();
+        bean.map = new LinkedHashMap<>(Map.of("nested", bean.child));
+        bean.list = List.of(bean.child);
+        bean.bound = new BoundValue("raw");
+        bean.mapValue = new EncodedMapValue(Map.of("nested", 1));
+        bean.listValue = new EncodedListValue(List.of(1, 2));
+
+        assertSame(instant, NodeWalker.getInObject(bean, "instant"));
+        assertEquals(2_000L, NodeWalker.rawValueInObject(bean, "instant"));
+        assertEquals("2024-01-02", NodeWalker.rawValueInObject(bean, "day"));
+        assertEquals("raw", NodeWalker.rawValueInObject(bean, "bound"));
+        assertSame(bean.child, NodeWalker.rawValueInObject(bean, "child"));
+        assertSame(bean.map, NodeWalker.rawValueInObject(bean, "map"));
+        assertSame(bean.list, NodeWalker.rawValueInObject(bean, "list"));
+        assertSame(bean.mapValue.raw, NodeWalker.rawValueInObject(bean, "mapValue"));
+        assertSame(bean.listValue.raw, NodeWalker.rawValueInObject(bean, "listValue"));
+        assertEquals(JsonType.UNKNOWN, JsonType.of(bean.mapValue));
+        assertEquals(JsonType.OBJECT, JsonType.of(bean.mapValue.raw));
+        assertNull(NodeWalker.rawValueInObject(bean, "missing"));
+
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("instant", instant);
+        map.put("child", bean.child);
+        map.put("mapValue", bean.mapValue);
+        map.put("nullValue", null);
+        assertEquals(instant.toString(), NodeWalker.rawValueInObject(map, "instant"));
+        assertSame(bean.child, NodeWalker.rawValueInObject(map, "child"));
+        assertSame(bean.mapValue.raw, NodeWalker.rawValueInObject(map, "mapValue"));
+        assertNull(NodeWalker.rawValueInObject(map, "nullValue"));
+
+        JsonObject plain = JsonObject.of("instant", instant, "child", bean.child);
+        assertEquals(instant.toString(), NodeWalker.rawValueInObject(plain, "instant"));
+        assertSame(bean.child, NodeWalker.rawValueInObject(plain, "child"));
+
+        RawJojo jojo = new RawJojo();
+        jojo.instant = instant;
+        jojo.put("dynamic", day);
+        assertEquals(2_000L, NodeWalker.rawValueInObject(jojo, "instant"));
+        assertEquals("2024-01-02", NodeWalker.rawValueInObject(jojo, "dynamic"));
+        assertNull(NodeWalker.rawValueInObject(jojo, "missing"));
+    }
+
+    static class RawBean {
+        @NodeProperty(valueFormat = "epochMillis")
+        public Instant instant;
+        public LocalDate day;
+        public ReadWriteBean child;
+        public Map<String, Object> map;
+        public List<ReadWriteBean> list;
+        public BoundValue bound;
+        public EncodedMapValue mapValue;
+        public EncodedListValue listValue;
+    }
+
+    static class RawJojo extends JsonObject {
+        @NodeProperty(valueFormat = "epochMillis")
+        public Instant instant;
+    }
+
+    @NodeValue
+    static class EncodedMapValue {
+        final Map<String, Object> raw;
+        EncodedMapValue(Map<String, Object> raw) { this.raw = raw; }
+        @ValueToRaw Map<String, Object> toRaw() { return raw; }
+        @RawToValue static EncodedMapValue fromRaw(Map<String, Object> raw) {
+            return new EncodedMapValue(raw);
+        }
+    }
+
+    @NodeValue
+    static class EncodedListValue {
+        final List<Object> raw;
+        EncodedListValue(List<Object> raw) { this.raw = raw; }
+        @ValueToRaw List<Object> toRaw() { return raw; }
+        @RawToValue static EncodedListValue fromRaw(List<Object> raw) {
+            return new EncodedListValue(raw);
+        }
     }
 
     private static List<String> walkPaths(Object root, NodeWalker.WalkTarget target, int depth) {
