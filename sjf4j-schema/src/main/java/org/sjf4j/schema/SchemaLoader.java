@@ -4,6 +4,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URI;
@@ -133,7 +134,7 @@ public interface SchemaLoader {
                 if (path == null || path.isEmpty()) path = uri.getSchemeSpecificPart();
                 // Treat classpath:/name and classpath:///name as the same resource.
                 while (path.startsWith("/")) path = path.substring(1);
-                java.io.InputStream stream = classLoader.getResourceAsStream(path);
+                InputStream stream = classLoader.getResourceAsStream(path);
                 return stream == null ? null : new InputStreamReader(stream, StandardCharsets.UTF_8);
             }
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,

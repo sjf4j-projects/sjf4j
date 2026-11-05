@@ -41,8 +41,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 public final class OfficialCompiledTest {
 
     public static void main(String[] args) throws Exception {
-//        doMain(args);
-        doMain(new String[]{"all", "boolean_schema.json", "1", "4"});
+        doMain(args);
+//        doMain(new String[]{"all", "defs.json", "0", "0"});
     }
 
 
@@ -165,6 +165,7 @@ public final class OfficialCompiledTest {
             } catch (Throwable e) {
                 counts[1]++;
                 System.err.println("FAIL " + label + ": " + e);
+                e.printStackTrace(System.err);
             }
         } else if (node instanceof DynamicContainer) {
             try (Stream<? extends DynamicNode> children = ((DynamicContainer) node).getChildren()) {
