@@ -267,7 +267,7 @@ public final class OfficialAnnotationTest {
                 if (actual.containsKey(location)) {
                     throw new AssertionError("duplicate annotation at " + location);
                 }
-                actual.put(location, message.getValue());
+                actual.put(location, message.getAnnotation());
             }
 
             if (expected.size() != actual.size()) {
