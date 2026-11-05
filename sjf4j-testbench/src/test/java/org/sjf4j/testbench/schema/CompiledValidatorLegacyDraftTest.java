@@ -29,6 +29,20 @@ class CompiledValidatorLegacyDraftTest {
     private static final String DEPENDENCIES_2019 = "{\"$schema\":\"" + DRAFT_2019 + "\","
             + "\"dependencies\":{\"a\":[\"b\"],\"b\":{\"properties\":{\"c\":{\"type\":\"integer\"}}}},"
             + "\"dependentRequired\":{\"b\":[\"d\"]}}";
+    private static final String TUPLE_UNEVALUATED_2019 = "{\"$schema\":\"" + DRAFT_2019 + "\","
+            + "\"items\":[true],\"unevaluatedItems\":false}";
+    private static final String TUPLE_ADDITIONAL_2019 = "{\"$schema\":\"" + DRAFT_2019 + "\","
+            + "\"items\":[true],\"additionalItems\":true,\"unevaluatedItems\":false}";
+    private static final String SCHEMA_DEPENDENCIES_UNEVALUATED_2019 =
+            "{\"$schema\":\"" + DRAFT_2019 + "\","
+            + "\"properties\":{\"a\":true},"
+            + "\"dependencies\":{\"a\":{\"properties\":{\"b\":true}}},"
+            + "\"unevaluatedProperties\":false}";
+    private static final String ARRAY_DEPENDENCIES_UNEVALUATED_2019 =
+            "{\"$schema\":\"" + DRAFT_2019 + "\","
+            + "\"properties\":{\"a\":true},"
+            + "\"dependencies\":{\"a\":[\"b\"]},"
+            + "\"unevaluatedProperties\":false}";
     private static final String REF_07 = "{\"$schema\":\"" + DRAFT_07 + "\","
             + "\"definitions\":{\"target\":{\"type\":\"string\"}},"
             + "\"$ref\":\"#/definitions/target\",\"type\":\"integer\"}";
@@ -40,6 +54,10 @@ class CompiledValidatorLegacyDraftTest {
     public interface Direct {
         @ValidJsonSchema(TUPLE_07) boolean tuple07(Object value);
         @ValidJsonSchema(TUPLE_2019) boolean tuple2019(Object value);
+        @ValidJsonSchema(TUPLE_UNEVALUATED_2019) boolean tupleUnevaluated2019(Object value);
+        @ValidJsonSchema(TUPLE_ADDITIONAL_2019) boolean tupleAdditional2019(Object value);
+        @ValidJsonSchema(ARRAY_DEPENDENCIES_UNEVALUATED_2019)
+        boolean arrayDependenciesUnevaluated2019(Object value);
         @ValidJsonSchema(DEPENDENCIES_07) boolean dependencies07(Object value);
         @ValidJsonSchema(DEPENDENCIES_2019) boolean dependencies2019(Object value);
         @ValidJsonSchema(REF_07) boolean ref07(Object value);
@@ -61,6 +79,12 @@ class CompiledValidatorLegacyDraftTest {
         @ValidJsonSchema(TUPLE_07) void requireTuple07(Object value);
     }
 
+    @CompiledValidator(fallback = true)
+    public interface Fallback {
+        @ValidJsonSchema(SCHEMA_DEPENDENCIES_UNEVALUATED_2019)
+        boolean schemaDependenciesUnevaluated2019(Object value);
+    }
+
     @Test
     void directValidationMatchesRuntimeForBothLegacyDialects() {
         Direct compiled = CompiledInstances.create(Direct.class);
@@ -70,6 +94,13 @@ class CompiledValidatorLegacyDraftTest {
         assertParity(TUPLE_2019, compiled::tuple2019,
                 List.of(), List.of(1), List.of(1, true), List.of(1, false, true),
                 List.of(1, "wrong"), List.of("wrong"), null);
+        assertParity(TUPLE_UNEVALUATED_2019, compiled::tupleUnevaluated2019,
+                List.of(), List.of(1), List.of(1, 2), List.of(1, 2, 3), null);
+        assertParity(TUPLE_ADDITIONAL_2019, compiled::tupleAdditional2019,
+                List.of(), List.of(1), List.of(1, 2), List.of(1, 2, 3), null);
+        assertParity(ARRAY_DEPENDENCIES_UNEVALUATED_2019,
+                compiled::arrayDependenciesUnevaluated2019,
+                Map.of(), Map.of("a", 1), Map.of("a", 1, "b", 2), null);
         assertParity(DEPENDENCIES_07, compiled::dependencies07,
                 Map.of(), Map.of("a", 1), Map.of("a", 1, "b", 2),
                 Map.of("b", 1, "c", "wrong"), Map.of("a", 1, "b", 2, "c", 5),
@@ -93,6 +124,20 @@ class CompiledValidatorLegacyDraftTest {
         assertFalse(compiled.ref07(1));
         assertFalse(compiled.ref2019("x"));
         assertTrue(compiled.ref2019("hello"));
+    }
+
+    @Test
+    void reviewRegressionForLegacyUnevaluatedCoverage() {
+        Direct direct = CompiledInstances.create(Direct.class);
+        assertTrue(direct.tupleUnevaluated2019(List.of(1)));
+        assertFalse(direct.tupleUnevaluated2019(List.of(1, 2)));
+        assertTrue(direct.tupleAdditional2019(List.of(1, 2)));
+        Fallback fallback = CompiledInstances.create(Fallback.class);
+        assertParity(SCHEMA_DEPENDENCIES_UNEVALUATED_2019,
+                fallback::schemaDependenciesUnevaluated2019,
+                Map.of(), Map.of("a", 1), Map.of("a", 1, "b", 2),
+                Map.of("a", 1, "b", 2, "c", 3), null);
+        assertTrue(fallback.schemaDependenciesUnevaluated2019(Map.of("a", 1, "b", 2)));
     }
 
     @Test
