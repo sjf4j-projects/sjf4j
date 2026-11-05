@@ -112,8 +112,10 @@ public final class OfficialCompiledTest {
         this.draft = draft;
     }
 
-    private static List<String> selectedDrafts() {
-        String selected = System.getProperty(DRAFT_PROPERTY, "all");
+    private List<String> selectedDrafts() {
+        // Standalone Main takes the dialect from argv; JUnit uses the Gradle property.
+        String selected = mainDialect != null ? mainDialect
+                : System.getProperty(DRAFT_PROPERTY, "all");
         if ("all".equals(selected)) return ALL_DRAFTS;
         if (!ALL_DRAFTS.contains(selected)) {
             throw new IllegalArgumentException("Invalid official compiled draft: " + selected);
@@ -137,9 +139,9 @@ public final class OfficialCompiledTest {
     private String revision;
     private String selection;
 
-    // Only the standalone main entrypoint uses these filters. JUnit continues
-    // to execute every mandatory example in the selected category.
-    private String mainCategory;
+    // Only the standalone main entrypoint uses these arguments.
+    // JUnit continues to execute every mandatory example in the selected category.
+    private String mainDialect;
     private String mainFile;
     private int mainGroup = -1;
     private int mainCase = -1;
@@ -147,19 +149,21 @@ public final class OfficialCompiledTest {
     /**
      * Standalone runner invoked by OfficialCompiledMain (run that class as an Application).
      *
-     * <p>Arguments: [category [file.json [groupIndex [testIndex]]]].
-     * Category defaults to "all"; available categories include phase2, phase3,
-     * basic, scalar, object, array, applicator, unevaluated, reference.
+     * <p>Arguments: [dialect [file.json [groupIndex [testIndex]]]].
+     * Dialect defaults to "all"; available dialects: all, draft7,
+     * draft2019-09, draft2020-12. The standalone entrypoint ignores
+     * the Gradle/JUnit dialect and category system properties.
      * Requires an existing local suite and generated bindings (Gradle's
      * downloadOfficialSchemaTests + generateOfficialCompiledCases once).
      */
     static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException(
-                    "Usage: OfficialCompiledMain [category [file.json [groupIndex [testIndex]]]]");
+                    "Usage: OfficialCompiledMain [dialect [file.json [groupIndex [testIndex]]]]");
         }
         OfficialCompiledTest instance = new OfficialCompiledTest();
-        instance.mainCategory = args.length > 0 ? args[0] : "all";
+        instance.mainDialect = args.length > 0 ? args[0] : "all";
+        instance.selectedDrafts(); // Validate before reading any test resources.
         if (args.length > 1) {
             instance.mainFile = args[1];
             if (!instance.mainFile.endsWith(".json")) {
@@ -225,7 +229,7 @@ public final class OfficialCompiledTest {
         List<DynamicNode> drafts = new ArrayList<>();
         for (String selected : selectedDrafts()) {
             OfficialCompiledTest test = new OfficialCompiledTest(selected);
-            test.mainCategory = mainCategory;
+            test.mainDialect = mainDialect;
             test.mainFile = mainFile;
             test.mainGroup = mainGroup;
             test.mainCase = mainCase;
@@ -245,8 +249,8 @@ public final class OfficialCompiledTest {
             throw new IllegalStateException("Official suite missing: " + officialDir);
         }
 
-        selection = OfficialCaseCategory.selection(mainCategory == null
-                ? System.getProperty(SELECTION, "all") : mainCategory);
+        selection = OfficialCaseCategory.selection(mainDialect == null
+                ? System.getProperty(SELECTION, "all") : "all");
         List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated, fallbackGroups(draft));
         List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
