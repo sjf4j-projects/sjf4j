@@ -99,6 +99,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
                 "{\"anyOf\":[{\"properties\":{\"foo\":true}}],\"unevaluatedProperties\":false}",
                 "{\"allOf\":[{\"anyOf\":[{\"properties\":{\"foo\":true}}]}],\"unevaluatedProperties\":false}",
                 "{\"allOf\":[{\"contains\":{\"type\":\"string\"}}],\"unevaluatedItems\":false}",
+                "{\"items\":false,\"allOf\":[{\"prefixItems\":[true]}],\"unevaluatedItems\":false}",
                 "{\"allOf\":[{\"unevaluatedProperties\":true}],\"unevaluatedProperties\":false}"
         }) {
             NavigatorTestCompiler.Result result = compile(schema, "Object");
