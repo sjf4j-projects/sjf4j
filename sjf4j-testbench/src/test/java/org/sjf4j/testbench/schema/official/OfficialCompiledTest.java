@@ -101,16 +101,8 @@ public final class OfficialCompiledTest {
      * Existing entries were initially collected by a direct-compile probe;
      * they still need individual review before being considered permanent.
      */
-    private final String draft;
+    private String draft;
     private final List<OfficialCompiledTest> runs = new ArrayList<>();
-
-    public OfficialCompiledTest() {
-        this(null);
-    }
-
-    private OfficialCompiledTest(String draft) {
-        this.draft = draft;
-    }
 
     private List<String> selectedDrafts() {
         // Standalone Main takes the dialect from argv; JUnit uses the Gradle property.
@@ -228,7 +220,8 @@ public final class OfficialCompiledTest {
     Stream<DynamicNode> officialDrafts() throws Exception {
         List<DynamicNode> drafts = new ArrayList<>();
         for (String selected : selectedDrafts()) {
-            OfficialCompiledTest test = new OfficialCompiledTest(selected);
+            OfficialCompiledTest test = new OfficialCompiledTest();
+            test.draft = selected;
             test.mainDialect = mainDialect;
             test.mainFile = mainFile;
             test.mainGroup = mainGroup;
