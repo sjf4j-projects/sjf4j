@@ -304,10 +304,31 @@ val generateOfficialCompiledCases by tasks.registering {
         val packageName = "org.sjf4j.testbench.schema.official.generated"
         val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
         val resourceDir = output.resolve("resources/official")
-        // The official remotes are local files with canonical HTTP $id values.
-        // SchemaRegistry indexes those identities; neither javac nor fallback fetches HTTP.
-        val registryDir = JsonOutput.toJson(
-            officialSchemaSuiteDir.get().asFile.resolve("remotes").toURI().toString())
+        // Official remotes may also omit $schema. The runtime suite assigns
+        // the selected draft via SchemaRegistry; javac defaults to 2020-12.
+        // Copy only for legacy drafts, retaining the relative URI layout.
+        val upstreamRemotes = officialSchemaSuiteDir.get().asFile.resolve("remotes")
+        val registryRemotes = if (draft == "draft2020-12") upstreamRemotes
+                              else output.resolve("remotes")
+        if (draft != "draft2020-12") {
+            upstreamRemotes.walkTopDown().filter { it.isFile && it.extension == "json" }
+                .forEach { file ->
+                    val relative = upstreamRemotes.toPath().relativize(file.toPath())
+                    val target = registryRemotes.toPath().resolve(relative).toFile()
+                    target.parentFile.mkdirs()
+                    val original = JsonSlurper().parse(file)
+                    val schema = if (original is Map<*, *> && !original.containsKey("\$schema")) {
+                        linkedMapOf<String, Any?>("\$schema" to dialectUri).apply {
+                            for ((key, value) in original) {
+                                require(key is String) { "Expected string remote schema key: $key" }
+                                put(key, value)
+                            }
+                        }
+                    } else original
+                    target.writeText(JsonOutput.toJson(schema), Charsets.UTF_8)
+                }
+        }
+        val registryDir = JsonOutput.toJson(registryRemotes.toURI().toString())
         val registryBaseUri = JsonOutput.toJson("http://localhost:1234/")
         javaDir.mkdirs()
         resourceDir.mkdirs()
