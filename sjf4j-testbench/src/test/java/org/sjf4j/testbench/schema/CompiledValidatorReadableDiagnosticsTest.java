@@ -9,6 +9,7 @@ import org.sjf4j.schema.ValidationException;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -39,6 +40,35 @@ class CompiledValidatorReadableDiagnosticsTest {
         void requireValid(Model value);
     }
 
+    @CompiledValidator(fallback = false)
+    interface PointerValidator {
+        @ValidJsonSchema("{\"properties\":{\"a/b~c\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}")
+        void literalName(Map<String, Object> value);
+
+        @ValidJsonSchema("{\"patternProperties\":{\"^special\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}}")
+        void dynamicName(Map<String, Object> value);
+
+        @ValidJsonSchema("{\"propertyNames\":{\"maxLength\":2}}")
+        void propertyName(Map<String, Object> value);
+
+        @ValidJsonSchema("{\"additionalProperties\":{\"type\":\"string\"}}")
+        void additionalName(Map<String, Object> value);
+
+        @ValidJsonSchema("{\"properties\":{\"0\":{\"type\":\"string\"}}}")
+        void numericName(Map<String, Object> value);
+
+        @ValidJsonSchema("{\"patternProperties\":{\"^-$\":{\"properties\":{\"child\":{\"type\":\"string\"}}}}}")
+        void dashName(Map<String, Object> value);
+    }
+
+    private static void assertPointerFailure(Runnable check, String keyword,
+                                             String keywordPointer, String instancePointer) {
+        ValidationException ex = assertThrows(ValidationException.class, check::run);
+        assertEquals(keyword, ex.getResult().getLastError().getKeyword());
+        assertEquals(keywordPointer, ex.getResult().getLastError().getKeywordPs().rootedPointerExpr());
+        assertEquals(instancePointer, ex.getResult().getLastError().getInstancePs().rootedPointerExpr());
+    }
+
     private static void assertFailure(Validator validator, Model value,
                                       String keyword, String pointer, String instance) {
         ValidationException ex = assertThrows(ValidationException.class,
@@ -46,6 +76,25 @@ class CompiledValidatorReadableDiagnosticsTest {
         assertEquals(keyword, ex.getResult().getLastError().getKeyword());
         assertEquals(pointer, ex.getResult().getLastError().getKeywordPs().rootedPointerExpr());
         assertEquals(instance, ex.getResult().getLastError().getInstancePs().rootedPointerExpr());
+    }
+
+    @Test
+    void diagnosticPointerEscapesNamesAndRetainsDynamicArrayIndexes() {
+        PointerValidator validator = CompiledInstances.create(PointerValidator.class);
+        assertPointerFailure(() -> validator.literalName(Map.of("a/b~c", List.of(1))),
+                "type", "/properties/a~1b~0c/items/type", "/a~1b~0c/0");
+        assertPointerFailure(() -> validator.dynamicName(Map.of("special/key~value", List.of(1))),
+                "type", "/patternProperties/^special/items/type", "/special~1key~0value/0");
+        assertPointerFailure(() -> validator.propertyName(Map.of("a/b~c", 1)),
+                "propertyNames", "/propertyNames", "/a~1b~0c");
+        assertPointerFailure(() -> validator.additionalName(Map.of("a/b~c", 1)),
+                "type", "/additionalProperties/type", "/a~1b~0c");
+        assertPointerFailure(() -> validator.numericName(Map.of("0", 1)),
+                "type", "/properties/0/type", "/0");
+        assertPointerFailure(() -> validator.dashName(Map.of("-", Map.of("child", 1))),
+                "type", "/patternProperties/^-$/properties/child/type", "/-/child");
+        assertDoesNotThrow(() -> validator.literalName(Map.of("a/b~c", List.of("ok"))));
+        assertDoesNotThrow(() -> validator.dynamicName(Map.of("special/key~value", List.of("ok"))));
     }
 
     @Test

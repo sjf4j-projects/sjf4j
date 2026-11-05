@@ -39,7 +39,32 @@ class CompiledValidatorReadableDiagnosticsProcessorTest {
         assertTrue(generated.contains("private static ValidationException _validationFailure("), generated);
         assertTrue(generated.contains("throw _validationFailure(\n"), generated);
         assertEquals(1, occurrences(generated, "ValidationException.failure("), generated);
+        assertTrue(generated.contains("CompiledValidatorSupport.instancePath(instancePointer)"), generated);
+        assertFalse(generated.contains("new PathSegment.Name("), generated);
+        assertFalse(generated.contains("new PathSegment.Index("), generated);
         assertFalse(generated.contains("SchemaPlan.ROOT.requireValid("), generated);
+    }
+
+    @Test
+    void escapesStaticPointerNamesAndDefersDynamicTokensToFailure() throws Exception {
+        String schema = "{\"properties\":{\"a/b~c\":{\"type\":\"array\","
+                + "\"items\":{\"type\":\"string\"}}},"
+                + "\"patternProperties\":{\"^special\":{\"type\":\"string\"}},"
+                + "\"propertyNames\":{\"maxLength\":20}}";
+        String validator = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Validator { "
+                + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
+                + "void requireValid(java.util.Map<String,Object> value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                Map.of("fixture/Validator.java", validator), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertTrue(generated.contains("/a~1b~0c/"), generated);
+        assertTrue(generated.contains("escapePointerToken"), generated);
+        assertTrue(generated.contains("CompiledValidatorSupport.instancePath(instancePointer)"), generated);
+        assertTrue(generated.contains("replace(\"~\", \"~0\").replace(\"/\", \"~1\")"), generated);
+        assertFalse(generated.contains("new PathSegment.Name("), generated);
+        assertFalse(generated.contains("new PathSegment.Index("), generated);
     }
 
     @Test
