@@ -168,6 +168,13 @@ final class SchemaCompiler {
             }
             schema = applicable;
         }
+        if (dialect == SchemaDialect.DRAFT_07 && schema.containsKey("$ref")) {
+            // Draft-07 ignores every sibling assertion of $ref. Discard them
+            // before local coverage/applicator analysis, not only at emission.
+            JsonObject refOnly = new JsonObject();
+            refOnly.put("$ref", schema.getNode("$ref"));
+            schema = refOnly;
+        }
         // When every allOf branch has a statically known coverage footprint,
         // project it into the local unevaluated* check. The original branches
         // remain assertions, so failed branches still reject the instance.
