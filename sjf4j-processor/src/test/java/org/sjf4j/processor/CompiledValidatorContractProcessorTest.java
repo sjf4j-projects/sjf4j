@@ -162,6 +162,22 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void recursiveRefWithUnevaluatedRequiresFallback() throws Exception {
+        String schema = "{\"$schema\":\"https://json-schema.org/draft/2019-09/schema\","
+                + "\"$recursiveAnchor\":true,\"$recursiveRef\":\"#\","
+                + "\"unevaluatedProperties\":false}";
+        String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(fallback=false) public interface Check { "
+                + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                + "boolean valid(Object value); }";
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                Map.of("fixture/Check.java", source), CodegenProcessor.class);
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("$recursiveRef + unevaluatedProperties"),
+                result.diagnostics());
+    }
+
+    @Test
     void legacySchemaDependenciesWithUnevaluatedRequireFallback() throws Exception {
         String schema = "{\"$schema\":\"https://json-schema.org/draft/2019-09/schema\","
                 + "\"properties\":{\"a\":true},"
