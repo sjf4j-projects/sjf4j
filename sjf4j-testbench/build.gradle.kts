@@ -445,7 +445,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
     systemProperty("sjf4j.schema.officialCategory",
         providers.gradleProperty("officialCompiledCategory").orElse("all").get())
     systemProperty("sjf4j.schema.officialProbeDirect",
-        providers.gradleProperty("officialCompiledProbeDirect").orElse("false").get())
+        providers.gradleProperty("officialCompiledProbeDirect").orElse("true").get())
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
