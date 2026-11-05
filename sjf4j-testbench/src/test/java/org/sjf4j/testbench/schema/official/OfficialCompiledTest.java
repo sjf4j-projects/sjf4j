@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
@@ -259,11 +260,12 @@ public final class OfficialCompiledTest {
                         .resolve(stem).resolve(String.format(java.util.Locale.ROOT,
                                 "%03d.json", i));
                 Object generatedSchema = Sjf4j.global().fromJson(Files.readAllBytes(schemaResource));
-                if (!"draft2020-12".equals(DRAFT) && officialSchema instanceof JsonObject
-                        && !((JsonObject) officialSchema).containsKey("$schema")
-                        && generatedSchema instanceof JsonObject) {
-                    JsonObject original = (JsonObject) officialSchema;
-                    JsonObject compiled = (JsonObject) generatedSchema;
+                if (!"draft2020-12".equals(DRAFT)
+                        && JsonType.of(officialSchema) == JsonType.OBJECT
+                        && !Nodes.toJsonObject(officialSchema).containsKey("$schema")
+                        && JsonType.of(generatedSchema) == JsonType.OBJECT) {
+                    JsonObject original = Nodes.toJsonObject(officialSchema);
+                    JsonObject compiled = Nodes.toJsonObject(generatedSchema);
                     String dialect = "draft7".equals(DRAFT)
                             ? "http://json-schema.org/draft-07/schema#"
                             : "https://json-schema.org/draft/2019-09/schema";
