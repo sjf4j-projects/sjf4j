@@ -70,6 +70,7 @@ final class ObjectCompiler {
         // traversal decisions, not runtime SchemaPlan fallbacks.
         if (!dynamic && (root.containsKey("patternProperties")
                 || root.containsKey("propertyNames") || root.containsKey("dependentSchemas")
+                || root.containsKey("dependencies")
                 || (hasAdditional
                     && !(root.getNode(additionalKeyword) instanceof Boolean)))) return null;
         for (String key : root.keySet()) {
@@ -77,7 +78,7 @@ final class ObjectCompiler {
                     && !key.equals("propertyNames") && !key.equals("required")
                     && !key.equals("additionalProperties") && !key.equals("unevaluatedProperties") && !key.equals("minProperties")
                     && !key.equals("maxProperties") && !key.equals("dependentRequired")
-                    && !key.equals("dependentSchemas")
+                    && !key.equals("dependentSchemas") && !key.equals("dependencies")
                     && !SchemaCompiler.isAnnotation(key)) return null;
         }
         boolean typeRequired = root.containsKey("type");
@@ -86,7 +87,7 @@ final class ObjectCompiler {
                 && !root.containsKey("propertyNames") && !root.containsKey("required")
                 && !hasAdditional && !root.containsKey("minProperties")
                 && !root.containsKey("maxProperties") && !root.containsKey("dependentRequired")
-                && !root.containsKey("dependentSchemas")) return null;
+                && !root.containsKey("dependentSchemas") && !root.containsKey("dependencies")) return null;
         Object raw = root.getNode("properties");
         if (raw != null && JsonType.of(raw) != JsonType.OBJECT) return null;
         JsonObject propertyMap = raw == null ? new JsonObject() : Nodes.toJsonObject(raw);
@@ -137,6 +138,26 @@ final class ObjectCompiler {
                 }
             }
         }
+        // Draft-07 / 2019-09 dependencies mixes array and schema forms.
+        Object rawLegacyDependencies = root.getNode("dependencies");
+        if (root.containsKey("dependencies")) {
+            if (JsonType.of(rawLegacyDependencies) != JsonType.OBJECT) return null;
+            JsonObject entries = Nodes.toJsonObject(rawLegacyDependencies);
+            for (String trigger : entries.keySet()) {
+                Object dependency = entries.getNode(trigger);
+                JsonType shape = JsonType.of(dependency);
+                if (shape == JsonType.OBJECT || shape == JsonType.BOOLEAN) {
+                    String childUri = childPointer(rootUri, "dependencies", trigger);
+                    SchemaCheck child = schemaCompiler.compileValue(snapshot, dependency,
+                            SchemaValue.of(context, null), childUri, depth + 1);
+                    if (child == null || child.hasFallback()) return null;
+                    if (child.kind != SchemaCheck.Kind.PASS)
+                        dependentSchemaChecks.add(new SchemaCheck.DependentSchema(trigger, child));
+                } else if (shape != JsonType.ARRAY) {
+                    return null;
+                }
+            }
+        }
         Map<String, Property> javaProperties = dynamic ? Collections.emptyMap()
                 : context.properties.resolve(type);
 
@@ -176,12 +197,35 @@ final class ObjectCompiler {
                     }
                     if (dynamic) {
                         if (!names.isEmpty())
-                            dependencies.add(new SchemaCheck.DependentRequired(trigger, names));
+                            dependencies.add(new SchemaCheck.DependentRequired(trigger, names,
+                                    SchemaCompiler.diagnostic(rootUri, "dependentRequired")));
                     } else if (javaProperties.containsKey(trigger)) {
                         for (String name : names) {
                             if (!javaProperties.containsKey(name))
                                 return missingObjectConstraint(rootUri, typeRequired, "dependentRequired");
                         }
+                    }
+                }
+            }
+        }
+        if (root.containsKey("dependencies")) {
+            JsonObject entries = Nodes.toJsonObject(rawLegacyDependencies);
+            for (String trigger : entries.keySet()) {
+                Object rawNames = entries.getNode(trigger);
+                if (JsonType.of(rawNames) != JsonType.ARRAY) continue;
+                List<String> names = new ArrayList<String>();
+                for (int i = 0; i < Nodes.sizeInArray(rawNames); i++) {
+                    Object name = Nodes.getInArray(rawNames, i);
+                    if (!(name instanceof String) || names.contains(name)) return null;
+                    names.add((String) name);
+                }
+                if (dynamic) {
+                    if (!names.isEmpty()) dependencies.add(new SchemaCheck.DependentRequired(
+                            trigger, names, SchemaCompiler.diagnostic(rootUri, "dependencies")));
+                } else if (javaProperties.containsKey(trigger)) {
+                    for (String name : names) {
+                        if (!javaProperties.containsKey(name))
+                            return missingObjectConstraint(rootUri, typeRequired, "dependencies");
                     }
                 }
             }
