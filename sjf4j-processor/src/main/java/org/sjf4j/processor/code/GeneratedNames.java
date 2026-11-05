@@ -1,12 +1,13 @@
 package org.sjf4j.processor.code;
 
+import org.sjf4j.util.Asserts;
+
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
-import java.util.Objects;
 
 /**
  * Owns identifiers for one generated implementation.
@@ -26,8 +27,8 @@ public final class GeneratedNames {
     private final NameAllocator members = new NameAllocator();
 
     GeneratedNames(Elements elements, TypeElement origin, String implementationName) {
-        Objects.requireNonNull(elements, "elements");
-        Objects.requireNonNull(origin, "origin");
+        Asserts.notNull(elements, "elements");
+        Asserts.notNull(origin, "origin");
 
         // Fixed members emitted by GeneratedClass and BindingGenerator.
         members.reserve(implementationName).reserve("context").reserve("binder");
@@ -74,7 +75,7 @@ public final class GeneratedNames {
 
     /** Creates an independent local namespace with source parameters reserved. */
     public NameAllocator locals(ExecutableElement method) {
-        Objects.requireNonNull(method, "method");
+        Asserts.notNull(method, "method");
         NameAllocator locals = new NameAllocator();
         for (VariableElement parameter : method.getParameters()) {
             locals.reserve(parameter.getSimpleName().toString());

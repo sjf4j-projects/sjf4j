@@ -2,10 +2,10 @@
 package org.sjf4j.binding;
 
 import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.util.Asserts;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Prepared member-name matcher for runtime and compiled binding. A match
@@ -66,12 +66,12 @@ public class NameMatcher {
         if (settableProperties != null) {
             names = new String[settableProperties.length];
             for (int i = 0; i < names.length; i++) {
-                names[i] = Objects.requireNonNull(settableProperties[i].name, "property name");
+                names[i] = Asserts.notNull(settableProperties[i].name, "property name");
             }
         } else {
             names = compiledNames.clone();
             for (String name : names) {
-                Objects.requireNonNull(name, "property name");
+                Asserts.notNull(name, "property name");
             }
         }
 
