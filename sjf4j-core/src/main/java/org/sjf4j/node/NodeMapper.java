@@ -834,6 +834,7 @@ public final class NodeMapper {
         if (value == null) return null;
         if (codec == null) {
             Class<?> valueClazz = value.getClass();
+            if (NodeKind.plainOf(valueClazz) != NodeKind.UNKNOWN) return value;
             TypeInfo valueType = TypeRegistry.registerTypeInfo(valueClazz);
             if (valueType.valueSet != null) {
                 codec = valueType.requireValueInfo(context.valueFormat(valueClazz));
