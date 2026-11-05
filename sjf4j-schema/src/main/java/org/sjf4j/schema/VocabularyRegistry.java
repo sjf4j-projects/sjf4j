@@ -17,15 +17,35 @@ public class VocabularyRegistry {
 
     /**
      * Keywords whose annotation values are taken directly from the schema.
-     * Only currently supported static metadata keywords are listed here;
-     * computed applicator annotations are handled by their own evaluators.
+     * Known keywords with directly available annotation values. Applicator
+     * annotations are computed by their evaluators, while unrecognized keywords
+     * are discovered from the schema object at planning time.
      */
     static final String[] ANNOTATION_KEYWORDS = {
             "title", "description", "default", "examples",
-            "deprecated", "readOnly", "writeOnly"
+            "deprecated", "readOnly", "writeOnly",
+            "format", "contentEncoding", "contentMediaType", "contentSchema"
     };
 
     private static final Map<String, String[]> KEYWORD_VOCAB_CACHE = new ConcurrentHashMap<>();
+
+    /**
+     * Whether a keyword belongs to a recognized vocabulary or is a legacy
+     * keyword handled by older drafts. A keyword disabled for a dialect is
+     * still recognized; it must not become an unknown-keyword annotation.
+     */
+    static boolean isKnownKeyword(String keyword) {
+        if (KEYWORD_VOCAB_CACHE.containsKey(keyword)) return true;
+        switch (keyword) {
+            case "id":
+            case "definitions":
+            case "dependencies":
+            case "additionalItems":
+                return true;
+            default:
+                return false;
+        }
+    }
 
     /**
      * Registers one keyword-to-vocabulary mapping.
