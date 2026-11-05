@@ -95,35 +95,33 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
-    void rejectExplicitOlderDraftsEvenWithFallbackEnabled() throws Exception {
+    void directlyCompilesExplicitOlderDrafts() throws Exception {
         for (String dialect : new String[]{
                 "http://json-schema.org/draft-07/schema#",
                 "https://json-schema.org/draft/2019-09/schema"}) {
-            for (boolean fallback : new boolean[]{false, true}) {
-                String schema = "{\"$schema\":\"" + dialect + "\",\"type\":\"object\"}";
-                String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
-                        + "@CompiledValidator(fallback=" + fallback + ") public interface Check { "
-                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
-                        + "boolean valid(Map<String,Object> value); }";
-                NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
-                        "fixture/Check.java", source), CodegenProcessor.class);
-                assertFalse(result.success, dialect + ": " + result.diagnostics());
-                assertTrue(result.diagnostics().contains("Draft 2020-12"), result.diagnostics());
-            }
+            String schema = "{\\"$schema\\":\\"" + dialect + "\\",\\"type\\":\\"object\\"}";
+            String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
+                    + "@CompiledValidator(fallback=false) public interface Check { "
+                    + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                    + "boolean valid(Map<String,Object> value); }";
+            NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                    "fixture/Check.java", source), CodegenProcessor.class);
+            assertTrue(result.success, dialect + ": " + result.diagnostics());
+            assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
         }
     }
 
     @Test
-    void rejectOlderDraftDeclaredWithinDefs() throws Exception {
-        String schema = "{\"$defs\":{\"nested\":{\"$schema\":"
-                + "\"https://json-schema.org/draft/2019-09/schema\",\"type\":\"string\"}},"
-                + "\"$ref\":\"#/$defs/nested\"}";
+    void nestedDraft2019UsesItsOwnDialect() throws Exception {
+        String schema = "{\\"$defs\\":{\\"nested\\":{\\"$schema\\":"
+                + "\\"https://json-schema.org/draft/2019-09/schema\\",\\"type\\":\\"string\\"}},"
+                + "\\"$ref\\":\\"#/$defs/nested\\"}";
         NavigatorTestCompiler.Result result = compile(
-                "@CompiledValidator(fallback=true) public interface Check { "
+                "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
                         + "boolean valid(Model value); }");
-        assertFalse(result.success, result.diagnostics());
-        assertTrue(result.diagnostics().contains("Draft 2020-12"), result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
     }
 
     @Test
