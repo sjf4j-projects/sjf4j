@@ -36,7 +36,7 @@ class AnnotationRuntimeTest {
         assertEquals(7, result.getAnnotations().size());
         assertEquals(Arrays.asList("title", "description", "default", "examples",
                 "deprecated", "readOnly", "writeOnly"),
-                result.getAnnotations().stream().map(ValidationResult.Message::getKeyword)
+                result.getAnnotations().stream().map(ValidationResult.Detail::getKeyword)
                         .collect(Collectors.toList()));
         assertNull(result.getAnnotations().get(2).getAnnotation());
         assertEquals(Boolean.FALSE, result.getAnnotations().get(4).getAnnotation());
@@ -184,7 +184,7 @@ class AnnotationRuntimeTest {
                 + "\"feature.name\":{\"enabled\":true},\"x-null\":null}", 42);
         assertTrue(result.isValid());
         assertEquals(Arrays.asList("x-custom", "feature.name", "x-null"),
-                result.getAnnotations().stream().map(ValidationResult.Message::getKeyword)
+                result.getAnnotations().stream().map(ValidationResult.Detail::getKeyword)
                         .collect(Collectors.toList()));
         assertEquals(Boolean.FALSE, result.getAnnotations().get(0).getAnnotation());
         assertNull(result.getAnnotations().get(2).getAnnotation());
