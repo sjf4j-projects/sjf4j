@@ -37,7 +37,7 @@ class CompiledValidatorLegacyDraftTest {
             + "\"$ref\":\"#/definitions/target\",\"minLength\":3}";
 
     @CompiledValidator(fallback = false)
-    interface Direct {
+    public interface Direct {
         @ValidJsonSchema(TUPLE_07) boolean tuple07(Object value);
         @ValidJsonSchema(TUPLE_2019) boolean tuple2019(Object value);
         @ValidJsonSchema(DEPENDENCIES_07) boolean dependencies07(Object value);
