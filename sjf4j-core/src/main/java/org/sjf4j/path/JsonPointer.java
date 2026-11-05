@@ -108,7 +108,15 @@ public class JsonPointer extends JsonPath {
         for (int i = 0; i < segments.length; i++) {
             PathSegment a = segments[i];
             PathSegment b = other.segments[i];
-            if (a.getClass() != b.getClass()) return false;
+            // A nonterminal "-" is Name and a terminal "-" is Append.
+            // They identify the same RFC 6901 token after parent() truncation.
+            if (a.getClass() != b.getClass()) {
+                if (a instanceof PathSegment.Append && b instanceof PathSegment.Name
+                        && "-".equals(((PathSegment.Name) b).name)) continue;
+                if (b instanceof PathSegment.Append && a instanceof PathSegment.Name
+                        && "-".equals(((PathSegment.Name) a).name)) continue;
+                return false;
+            }
             if (a instanceof PathSegment.Name) {
                 if (!((PathSegment.Name) a).name.equals(((PathSegment.Name) b).name)) return false;
             } else if (a instanceof PathSegment.Index) {
@@ -126,8 +134,11 @@ public class JsonPointer extends JsonPath {
     public int hashCode() {
         int hash = 1;
         for (PathSegment seg : segments) {
-            int segHash = seg.getClass().hashCode();
-            if (seg instanceof PathSegment.Name) {
+            int segHash = (seg instanceof PathSegment.Append
+                    ? PathSegment.Name.class : seg.getClass()).hashCode();
+            if (seg instanceof PathSegment.Append) {
+                segHash = 31 * segHash + "-".hashCode();
+            } else if (seg instanceof PathSegment.Name) {
                 segHash = 31 * segHash + ((PathSegment.Name) seg).name.hashCode();
             } else if (seg instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) seg;
