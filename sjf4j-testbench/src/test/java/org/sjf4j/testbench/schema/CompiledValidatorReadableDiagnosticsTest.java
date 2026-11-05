@@ -5,6 +5,7 @@ import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.schema.ValidationException;
+import org.sjf4j.path.PathSegment;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -59,6 +60,9 @@ class CompiledValidatorReadableDiagnosticsTest {
 
         @ValidJsonSchema("{\"patternProperties\":{\"^-$\":{\"properties\":{\"child\":{\"type\":\"string\"}}}}}")
         void dashName(Map<String, Object> value);
+
+        @ValidJsonSchema("{\"properties\":{\"-\":{\"type\":\"string\"}}}")
+        void terminalDashName(Map<String, Object> value);
     }
 
     private static void assertPointerFailure(Runnable check, String keyword,
@@ -93,6 +97,12 @@ class CompiledValidatorReadableDiagnosticsTest {
                 "type", "/properties/0/type", "/0");
         assertPointerFailure(() -> validator.dashName(Map.of("-", Map.of("child", 1))),
                 "type", "/patternProperties/^-$/properties/child/type", "/-/child");
+        assertPointerFailure(() -> validator.terminalDashName(Map.of("-", 1)),
+                "type", "/properties/-/type", "/-");
+        ValidationException terminal = assertThrows(ValidationException.class,
+                () -> validator.terminalDashName(Map.of("-", 1)));
+        assertInstanceOf(PathSegment.Append.class,
+                terminal.getResult().getLastError().getInstancePs());
         assertDoesNotThrow(() -> validator.literalName(Map.of("a/b~c", List.of("ok"))));
         assertDoesNotThrow(() -> validator.dynamicName(Map.of("special/key~value", List.of("ok"))));
     }
