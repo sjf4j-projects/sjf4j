@@ -21,7 +21,11 @@ final class StaticAllOfCoverage {
         boolean object = schema.containsKey("unevaluatedProperties");
         boolean array = schema.containsKey("unevaluatedItems");
         if (object == array || !schema.containsKey("allOf")) return null;
+        // Do not change an existing local assertion's applicability boundary:
+        // additionalProperties uses local names; items starts after local
+        // prefixItems, which a coverage-only projection may extend.
         if (object && schema.containsKey("additionalProperties")) return null;
+        if (array && schema.containsKey("items")) return null;
 
         Object rawBranches = schema.getNode("allOf");
         if (JsonType.of(rawBranches) != JsonType.ARRAY) return null;
