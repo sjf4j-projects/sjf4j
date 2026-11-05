@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeValue;
@@ -532,38 +533,50 @@ class NodeWalkerTest {
         bean.listValue = new EncodedListValue(List.of(1, 2));
 
         assertSame(instant, NodeWalker.getInObject(bean, "instant"));
-        assertEquals(2_000L, NodeWalker.rawValueInObject(bean, "instant"));
-        assertEquals("2024-01-02", NodeWalker.rawValueInObject(bean, "day"));
-        assertEquals("raw", NodeWalker.rawValueInObject(bean, "bound"));
-        assertSame(bean.child, NodeWalker.rawValueInObject(bean, "child"));
-        assertSame(bean.map, NodeWalker.rawValueInObject(bean, "map"));
-        assertSame(bean.list, NodeWalker.rawValueInObject(bean, "list"));
-        assertSame(bean.mapValue.raw, NodeWalker.rawValueInObject(bean, "mapValue"));
-        assertSame(bean.listValue.raw, NodeWalker.rawValueInObject(bean, "listValue"));
+        assertEquals(2_000L, NodeMapper.rawValueInObject(bean, "instant", RuntimeContext.EMPTY));
+        assertEquals("2024-01-02", NodeMapper.rawValueInObject(bean, "day", RuntimeContext.EMPTY));
+        assertEquals("raw", NodeMapper.rawValueInObject(bean, "bound", RuntimeContext.EMPTY));
+        assertSame(bean.child, NodeMapper.rawValueInObject(bean, "child", RuntimeContext.EMPTY));
+        assertSame(bean.map, NodeMapper.rawValueInObject(bean, "map", RuntimeContext.EMPTY));
+        assertSame(bean.list, NodeMapper.rawValueInObject(bean, "list", RuntimeContext.EMPTY));
+        assertSame(bean.mapValue.raw, NodeMapper.rawValueInObject(bean, "mapValue", RuntimeContext.EMPTY));
+        assertSame(bean.listValue.raw, NodeMapper.rawValueInObject(bean, "listValue", RuntimeContext.EMPTY));
         assertEquals(JsonType.UNKNOWN, JsonType.of(bean.mapValue));
         assertEquals(JsonType.OBJECT, JsonType.of(bean.mapValue.raw));
-        assertNull(NodeWalker.rawValueInObject(bean, "missing"));
+        assertNull(NodeMapper.rawValueInObject(bean, "missing", RuntimeContext.EMPTY));
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("instant", instant);
         map.put("child", bean.child);
         map.put("mapValue", bean.mapValue);
         map.put("nullValue", null);
-        assertEquals(instant.toString(), NodeWalker.rawValueInObject(map, "instant"));
-        assertSame(bean.child, NodeWalker.rawValueInObject(map, "child"));
-        assertSame(bean.mapValue.raw, NodeWalker.rawValueInObject(map, "mapValue"));
-        assertNull(NodeWalker.rawValueInObject(map, "nullValue"));
+        assertEquals(instant.toString(), NodeMapper.rawValueInObject(map, "instant", RuntimeContext.EMPTY));
+        assertSame(bean.child, NodeMapper.rawValueInObject(map, "child", RuntimeContext.EMPTY));
+        assertSame(bean.mapValue.raw, NodeMapper.rawValueInObject(map, "mapValue", RuntimeContext.EMPTY));
+        assertNull(NodeMapper.rawValueInObject(map, "nullValue", RuntimeContext.EMPTY));
 
         JsonObject plain = JsonObject.of("instant", instant, "child", bean.child);
-        assertEquals(instant.toString(), NodeWalker.rawValueInObject(plain, "instant"));
-        assertSame(bean.child, NodeWalker.rawValueInObject(plain, "child"));
+        assertEquals(instant.toString(), NodeMapper.rawValueInObject(plain, "instant", RuntimeContext.EMPTY));
+        assertSame(bean.child, NodeMapper.rawValueInObject(plain, "child", RuntimeContext.EMPTY));
 
         RawJojo jojo = new RawJojo();
         jojo.instant = instant;
         jojo.put("dynamic", day);
-        assertEquals(2_000L, NodeWalker.rawValueInObject(jojo, "instant"));
-        assertEquals("2024-01-02", NodeWalker.rawValueInObject(jojo, "dynamic"));
-        assertNull(NodeWalker.rawValueInObject(jojo, "missing"));
+        assertEquals(2_000L, NodeMapper.rawValueInObject(jojo, "instant", RuntimeContext.EMPTY));
+        assertEquals("2024-01-02", NodeMapper.rawValueInObject(jojo, "dynamic", RuntimeContext.EMPTY));
+        assertNull(NodeMapper.rawValueInObject(jojo, "missing", RuntimeContext.EMPTY));
+        RuntimeContext epochDefault = new RuntimeContext(Map.of(Instant.class, "epochMillis"));
+        assertEquals(2_000L, NodeMapper.rawValueInObject(map, "instant", epochDefault));
+        assertEquals(2_000L, NodeMapper.rawValueInObject(plain, "instant", epochDefault));
+        assertEquals(2_000L, NodeMapper.rawValueInObject(bean, "instant", epochDefault));
+        assertEquals("2024-01-02", NodeMapper.rawValueInObject(bean, "day", epochDefault));
+
+        assertSame(bean.mapValue, NodeMapper.scalarValueInObject(bean, "mapValue", RuntimeContext.EMPTY));
+        assertSame(bean.listValue, NodeMapper.scalarValueInObject(bean, "listValue", RuntimeContext.EMPTY));
+        assertSame(bean.mapValue, NodeMapper.scalarValueInObject(map, "mapValue", RuntimeContext.EMPTY));
+        assertEquals(2_000L, NodeMapper.scalarValueInObject(bean, "instant", RuntimeContext.EMPTY));
+        assertEquals(instant.toString(), NodeMapper.scalarValueInObject(map, "instant", RuntimeContext.EMPTY));
+        assertEquals(2_000L, NodeMapper.scalarValueInObject(map, "instant", epochDefault));
     }
 
     static class RawBean {
