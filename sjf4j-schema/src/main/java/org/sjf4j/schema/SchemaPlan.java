@@ -148,7 +148,7 @@ public final class SchemaPlan {
                 if (!valid) ctx.rollbackAnnotations(mark);
             }
         }
-        return evaluateKeywords(instance, ps, ctx);
+        return _evaluateKeywords(instance, ps, ctx);
     }
 
     /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
