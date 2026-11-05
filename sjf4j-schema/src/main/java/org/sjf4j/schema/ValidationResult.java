@@ -47,7 +47,7 @@ public class ValidationResult {
         return errors == null ? Collections.emptyList() : errors;
     }
 
-    public Message getLastError() {
+    public Detail getLastError() {
         return errors == null || errors.isEmpty() ? null : errors.get(errors.size() - 1);
     }
 
@@ -90,6 +90,13 @@ public class ValidationResult {
         /** Legacy accessor: returns the resource URI, excluding the keyword pointer. */
         public URI getSchemaUri() { return resourceUri; }
         public String getSchemaUriText() { return SchemaUtil.displaySchemaUri(resourceUri); }
+        /**
+         * Absolute, dereferenced JSON Schema keyword location, or {@code null}
+         * when it cannot be represented by a JSON Pointer URI fragment.
+         */
+        public String getAbsoluteKeywordLocation() {
+            return SchemaUtil.absoluteKeywordLocation(resourceUri, keywordPs);
+        }
 
         @Override
         public String toString() {

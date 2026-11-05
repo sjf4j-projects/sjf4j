@@ -1,6 +1,5 @@
 package org.sjf4j.testbench.schema.official;
 
-
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
@@ -28,27 +27,57 @@ public final class OfficialRuntimeTest {
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
 
 
-    public static void main(String[] args) throws Exception {
-        if (args.length > 1) {
-            throw new IllegalArgumentException("Usage: OfficialRuntimeTest [<JSON-Schema-Test-Suite root>]");
+    /**
+     * Program arguments: [dialect [file.json [groupIndex [testIndex]]]].
+     * Gradle/JUnit always run all non-optional cases for every dialect.
+     */
+    static void runStandalone(String[] args) throws Exception {
+        if (args.length > 4) {
+            throw new IllegalArgumentException(
+                    "Usage: OfficialRuntimeMain [dialect [file.json [groupIndex [testIndex]]]]");
         }
-        Path root = locateTestRoot(args.length == 0 ? null : args[0]);
+        List<SchemaDialect> dialects = standaloneDialects(args.length == 0 ? null : args[0]);
+        String file = args.length > 1 ? args[1] : null;
+        Integer group = args.length > 2 ? Integer.parseInt(args[2]) : null;
+        Integer test = args.length > 3 ? Integer.parseInt(args[3]) : null;
+        if (file != null && (!file.endsWith(".json") || file.contains("/") || file.contains("\\"))) {
+            throw new IllegalArgumentException("Expected a root official file.json: " + file);
+        }
+        if (group != null && (group < 0 || file == null)) {
+            throw new IllegalArgumentException("Specify file.json and a nonnegative group index");
+        }
+        if (test != null && (test < 0 || group == null)) {
+            throw new IllegalArgumentException("Specify group index and a nonnegative test index");
+        }
+        Path root = locateTestRoot();
+        for (SchemaDialect dialect : dialects) {
+            SchemaRegistry registry = new SchemaRegistry(dialect);
+            loadRemotes(registry, locatePath(root, "remotes"));
+            String dir = "tests/" + draftName(dialect);
+            runTestDir(registry, locatePath(root, dir), false, true, file, group, test);
+        }
+    }
 
+    static List<SchemaDialect> standaloneDialects(String dialect) {
+        if (dialect == null || "all".equals(dialect)) {
+            return List.of(SchemaDialect.DRAFT_07,
+                    SchemaDialect.DRAFT_2019_09, SchemaDialect.DRAFT_2020_12);
+        }
+        switch (dialect) {
+            case "draft7": return List.of(SchemaDialect.DRAFT_07);
+            case "draft2019-09": return List.of(SchemaDialect.DRAFT_2019_09);
+            case "draft2020-12": return List.of(SchemaDialect.DRAFT_2020_12);
+            default: throw new IllegalArgumentException("Invalid official dialect: " + dialect);
+        }
+    }
 
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
-        loadRemotes(registry, locatePath(root, "remotes"));
-        runTestDir(registry, locatePath(root, "tests/draft2020-12"), false,true);
-//        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional"), false, true);
-//        runTestDir(registry, locatePath(root, "tests/draft2020-12/optional/format"), true, false);
-
-//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-//        loadRemotes(registry, locatePath(root, "remotes"));
-//        runTestDir(registry, locatePath(root,"tests/draft2019-09/optional/format"), true, false);
-
-//        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
-//        loadRemotes(registry, locatePath(root, "remotes"));
-//        runTestDir(registry, locatePath(root, "tests/draft7/optional/format"), true, false);
-
+    private static String draftName(SchemaDialect dialect) {
+        switch (dialect) {
+            case DRAFT_07: return "draft7";
+            case DRAFT_2019_09: return "draft2019-09";
+            case DRAFT_2020_12: return "draft2020-12";
+            default: throw new IllegalArgumentException("Unsupported dialect: " + dialect);
+        }
     }
 
     // Publication and everyday-build conformance: all required cases, no optional/ subtree.
@@ -75,7 +104,7 @@ public final class OfficialRuntimeTest {
 
 
     private static Path locatePath(String dir) {
-        return locatePath(locateTestRoot(null), dir);
+        return locatePath(locateTestRoot(), dir);
     }
 
     private static Path locatePath(Path root, String dir) {
@@ -86,13 +115,10 @@ public final class OfficialRuntimeTest {
         return path;
     }
 
-    private static Path locateTestRoot(String argumentRoot) {
+    private static Path locateTestRoot() {
         String root = System.getProperty(TEST_ROOT_PROPERTY);
         if (root != null && !root.isEmpty()) {
             return Paths.get(root);
-        }
-        if (argumentRoot != null) {
-            return Paths.get(argumentRoot);
         }
         Path moduleRoot = Paths.get("build", SUITE_DIRECTORY);
         if (Files.isDirectory(moduleRoot)) {
@@ -103,24 +129,42 @@ public final class OfficialRuntimeTest {
             return repositoryRoot;
         }
         throw new IllegalStateException("Official JSON Schema test suite not found. Run ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests, " +
-                "or supply -D" + TEST_ROOT_PROPERTY + "=<suite-root> or a <suite-root> main argument.");
+                "or supply -D" + TEST_ROOT_PROPERTY + "=<suite-root>.");
     }
 
     private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow) throws Exception {
+        runTestDir(registry, dir, strict, canThrow, null, null, null);
+    }
+
+    private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow,
+                                   String fileName, Integer groupIndex, Integer testIndex) throws Exception {
         TestSuiteReport suite = new TestSuiteReport(registry.getDefaultDialect(), dir);
-        Files.walk(dir, 1)
-                .filter(p -> p.toString().endsWith(".json"))
-                .forEach(p -> runTestFile(registry, p, strict, suite, true, null, null));
+        if (fileName != null) {
+            Path path = dir.resolve(fileName);
+            if (!Files.isRegularFile(path)) {
+                throw new IllegalArgumentException("Official test file not found: " + path);
+            }
+            runTestFile(registry, path, strict, suite, true, groupIndex, testIndex);
+        } else {
+            try (java.util.stream.Stream<Path> paths = Files.list(dir)) {
+                paths.filter(p -> p.getFileName().toString().endsWith(".json"))
+                        .filter(Files::isRegularFile)
+                        .sorted()
+                        .forEach(p -> runTestFile(registry, p, strict, suite, true, null, null));
+            }
+        }
         printSuiteReport(suite);
-        if (canThrow && (suite.error > 0 || suite.failed > 0)) {
-            throw new RuntimeException("JSON Schema Official tests failed for " + suite.dialect + " in " + suite.directory
-                    + ": " + suite.failed + " failed and " + suite.error + " errors");
+        if (suite.total == 0 || (canThrow && (suite.error > 0 || suite.failed > 0))) {
+            throw new IllegalStateException("JSON Schema Official tests " +
+                    (suite.total == 0 ? "matched no examples" : "failed") + " for " + suite.dialect
+                    + " in " + suite.directory + ": " + suite.failed + " failed and "
+                    + suite.error + " errors");
         }
     }
 
 
     private static void runTestFile(SchemaRegistry registry, Path file, boolean strict, TestSuiteReport suite,
-                                    boolean showDetails, String groupFilter, String testFilter) {
+                                    boolean showDetails, Integer groupFilter, Integer testFilter) {
         String fileName = file.getFileName().toString();
         TestFileReport report = suite.file(fileName);
         String groupDesc;
@@ -132,14 +176,18 @@ public final class OfficialRuntimeTest {
                 JsonObject caseObj = cases.getJsonObject(i);
                 JsonSchema schema = JsonSchema.fromNode(caseObj.getNode("schema"));
                 groupDesc = caseObj.getString("description", "no group desc");
-                if (groupFilter != null && !groupFilter.isEmpty() && !groupDesc.contains(groupFilter))
-                    continue;
+                if (groupFilter != null && groupFilter != i) continue;
 
+                JsonArray tests = caseObj.getJsonArray("tests");
+                if (testFilter != null && testFilter >= tests.size()) {
+                    throw new IllegalArgumentException(fileName + " group#" + i
+                            + ": test index out of range: " + testFilter);
+                }
                 SchemaPlan plan;
                 try {
                     plan = schema.createPlan(registry);
                 } catch (Exception e) {
-                    int size = caseObj.getJsonArray("tests").size();
+                    int size = testFilter == null ? tests.size() : 1;
                     report.total += size;
                     report.error += size;
                     suite.total += size;
@@ -148,14 +196,12 @@ public final class OfficialRuntimeTest {
                     continue;
                 }
 
-                JsonArray tests = caseObj.getJsonArray("tests");
                 for (int j = 0; j < tests.size(); j++) {
                     JsonObject test = tests.getJsonObject(j);
+                    if (testFilter != null && testFilter != j) continue;
                     report.total++;
                     suite.total++;
                     String testDesc = test.getString("description", "no test desc");
-                    if (testFilter != null && !testFilter.isEmpty() && !testDesc.contains(testFilter))
-                        continue;
 
                     try {
                         Object data = test.get("data");

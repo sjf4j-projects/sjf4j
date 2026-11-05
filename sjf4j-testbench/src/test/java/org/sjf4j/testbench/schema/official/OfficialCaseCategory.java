@@ -1,6 +1,5 @@
 package org.sjf4j.testbench.schema.official;
 
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -45,40 +44,6 @@ final class OfficialCaseCategory {
 
     static Category category(String file) {
         return FILES.getOrDefault(file, Category.OTHER);
-    }
-
-    static boolean selected(String selection, String file) {
-        Category category = category(file);
-        switch (selection) {
-            case "all":
-                return true;
-            case "phase2":
-                return category == Category.BASIC
-                        || category == Category.SCALAR || category == Category.OBJECT;
-            case "phase3":
-                return category == Category.ARRAY || category == Category.APPLICATOR;
-            case "unevaluated":
-                return "unevaluatedItems.json".equals(file)
-                        || "unevaluatedProperties.json".equals(file);
-            case "basic":
-            case "scalar":
-            case "object":
-            case "array":
-            case "applicator":
-            case "reference":
-                return category.name().equalsIgnoreCase(selection);
-            default:
-                throw new IllegalArgumentException("Unknown official compiled selection: " + selection);
-        }
-    }
-
-    static String selection(String value) {
-        String selection = value == null ? "all" : value.trim().toLowerCase(java.util.Locale.ROOT);
-        if (!Arrays.asList("all", "phase2", "phase3", "basic", "scalar", "object",
-                "array", "applicator", "unevaluated", "reference").contains(selection)) {
-            throw new IllegalArgumentException("Invalid official compiled category: " + value);
-        }
-        return selection;
     }
 
 }

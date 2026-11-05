@@ -86,11 +86,8 @@ public final class OfficialCompiledTest {
 
     private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
     private static final String GENERATED_ROOT = "sjf4j.schema.officialGeneratedRoot";
-    private static final String DRAFT_PROPERTY = "sjf4j.schema.officialDraft";
     private static final List<String> ALL_DRAFTS = List.of(
             "draft7", "draft2019-09", "draft2020-12");
-    private static final String SELECTION = "sjf4j.schema.officialCategory";
-    private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
 
     /**
      * Explicit exceptions for official schema groups that cannot yet
@@ -101,21 +98,11 @@ public final class OfficialCompiledTest {
      * Existing entries were initially collected by a direct-compile probe;
      * they still need individual review before being considered permanent.
      */
-    private final String draft;
+    private String draft;
     private final List<OfficialCompiledTest> runs = new ArrayList<>();
 
-    public OfficialCompiledTest() {
-        this(null);
-    }
-
-    private OfficialCompiledTest(String draft) {
-        this.draft = draft;
-    }
-
     private List<String> selectedDrafts() {
-        // Standalone Main takes the dialect from argv; JUnit uses the Gradle property.
-        String selected = mainDialect != null ? mainDialect
-                : System.getProperty(DRAFT_PROPERTY, "all");
+        String selected = mainDialect == null ? "all" : mainDialect;
         if ("all".equals(selected)) return ALL_DRAFTS;
         if (!ALL_DRAFTS.contains(selected)) {
             throw new IllegalArgumentException("Invalid official compiled draft: " + selected);
@@ -139,8 +126,7 @@ public final class OfficialCompiledTest {
     private String revision;
     private String selection;
 
-    // Only the standalone main entrypoint uses these arguments.
-    // JUnit continues to execute every mandatory example in the selected category.
+    // Standalone Main arguments; the JUnit/Gradle entrypoint always runs every draft and case.
     private String mainDialect;
     private String mainFile;
     private int mainGroup = -1;
@@ -151,8 +137,7 @@ public final class OfficialCompiledTest {
      *
      * <p>Arguments: [dialect [file.json [groupIndex [testIndex]]]].
      * Dialect defaults to "all"; available dialects: all, draft7,
-     * draft2019-09, draft2020-12. The standalone entrypoint ignores
-     * the Gradle/JUnit dialect and category system properties.
+     * draft2019-09, draft2020-12. No system properties select tests.
      * Requires an existing local suite and generated bindings (Gradle's
      * downloadOfficialSchemaTests + generateOfficialCompiledCases once).
      */
@@ -166,14 +151,16 @@ public final class OfficialCompiledTest {
         instance.selectedDrafts(); // Validate before reading any test resources.
         if (args.length > 1) {
             instance.mainFile = args[1];
-            if (!instance.mainFile.endsWith(".json")) {
+            if (!instance.mainFile.endsWith(".json")
+                    || instance.mainFile.contains("/") || instance.mainFile.contains("\\")) {
                 throw new IllegalArgumentException("Expected an official file ending in .json: "
                         + instance.mainFile);
             }
         }
         if (args.length > 2) instance.mainGroup = Integer.parseInt(args[2]);
         if (args.length > 3) instance.mainCase = Integer.parseInt(args[3]);
-        if (instance.mainGroup < -1 || instance.mainCase < -1) {
+        if ((args.length > 2 && instance.mainGroup < 0)
+                || (args.length > 3 && instance.mainCase < 0)) {
             throw new IllegalArgumentException("Group and test indexes must be nonnegative");
         }
         if (instance.mainGroup >= 0 && instance.mainFile == null) {
@@ -228,7 +215,8 @@ public final class OfficialCompiledTest {
     Stream<DynamicNode> officialDrafts() throws Exception {
         List<DynamicNode> drafts = new ArrayList<>();
         for (String selected : selectedDrafts()) {
-            OfficialCompiledTest test = new OfficialCompiledTest(selected);
+            OfficialCompiledTest test = new OfficialCompiledTest();
+            test.draft = selected;
             test.mainDialect = mainDialect;
             test.mainFile = mainFile;
             test.mainGroup = mainGroup;
@@ -249,14 +237,12 @@ public final class OfficialCompiledTest {
             throw new IllegalStateException("Official suite missing: " + officialDir);
         }
 
-        selection = OfficialCaseCategory.selection(mainDialect == null
-                ? System.getProperty(SELECTION, "all") : "all");
+        selection = "all";
         List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated, fallbackGroups(draft));
         List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
         for (OfficialCaseRunner.Spec spec : allSpecs) {
-            if (!OfficialCaseCategory.selected(selection, spec.file)
-                    || (mainFile != null && !mainFile.equals(spec.file))
+            if ((mainFile != null && !mainFile.equals(spec.file))
                     || (mainGroup >= 0 && mainGroup != spec.group)) continue;
             specs.add(spec);
             byFile.computeIfAbsent(spec.file, unused -> new ArrayList<>()).add(spec);
@@ -279,8 +265,8 @@ public final class OfficialCompiledTest {
         assertEquals(upstreamFiles, indexedFiles, "Official compiled manifest does not cover every file");
         jsonFiles.removeIf(p -> !byFile.containsKey(p.getFileName().toString()));
         if (specs.isEmpty()) {
-            throw new IllegalArgumentException("No official cases matched: category="
-                    + selection + ", file=" + mainFile + ", group=" + mainGroup);
+            throw new IllegalArgumentException("No official cases matched: draft="
+                    + draft + ", file=" + mainFile + ", group=" + mainGroup);
         }
         assertEquals(jsonFiles.size(), byFile.size(), "Selected official file coverage mismatch");
 
@@ -413,8 +399,7 @@ public final class OfficialCompiledTest {
         reportDir = reportBase.resolve(selection);
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
         runner = new OfficialCaseRunner(generated, compileBase.resolve(selection));
-        runner.compileAll(specs, Boolean.parseBoolean(
-                System.getProperty(PROBE_DIRECT, "true")));
+        runner.compileAll(specs, true);
         return fileNodes.stream();
     }
 
