@@ -171,8 +171,8 @@ class ValidationContextReuseTest {
         ValidationContext strict = new ValidationContext(true, true, false);
         ValidationContext permissive = new ValidationContext(true, false, false);
 
-        assertFalse(email.evaluate("not-an-email", strict));
-        assertTrue(email.evaluate("not-an-email", permissive));
+        assertFalse(email.evaluate("not-an-email", null, strict));
+        assertTrue(email.evaluate("not-an-email", null, permissive));
         assertEquals(1, strict.toResult(false).getErrors().size());
         // Collection of annotations is deliberately deferred to a later change.
         assertSame(ValidationResult.SUCCESS, permissive.toResult(true));
@@ -180,9 +180,9 @@ class ValidationContextReuseTest {
 
         SchemaPlan alwaysFalse = JsonSchema.fromJson("false").createPlan();
         SchemaPlan alwaysTrue = JsonSchema.fromJson("true").createPlan();
-        assertFalse(alwaysFalse.evaluate(new Object(), strict));
-        assertTrue(alwaysTrue.evaluate(new Object(), strict));
-        assertFalse(alwaysFalse.evaluate(null, strict));
+        assertFalse(alwaysFalse.evaluate(new Object(), null, strict));
+        assertTrue(alwaysTrue.evaluate(new Object(), null, strict));
+        assertFalse(alwaysFalse.evaluate(null, null, strict));
         assertEquals(3, strict.toResult(false).getErrors().size());
         assertEquals("false", strict.toResult(false).getLastError().getKeyword());
     }
