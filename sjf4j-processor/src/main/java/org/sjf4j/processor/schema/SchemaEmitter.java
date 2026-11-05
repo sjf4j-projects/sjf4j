@@ -58,6 +58,73 @@ final class SchemaEmitter {
                 + ", " + instancePath + ");";
     }
 
+    /**
+     * Format long fail-fast statements only in the generated requireValid body.
+     * The boolean predicates, helper implementations and failure semantics stay
+     * unchanged; PathSegment construction remains on the throwing path.
+     */
+    private static List<String> formatDiagnosticLines(List<String> lines) {
+        List<String> formatted = new ArrayList<String>(lines.size());
+        for (String line : lines) {
+            int at = line.indexOf("throw _validationFailure");
+            if (at < 0 || line.length() <= 120) {
+                formatted.add(line);
+                continue;
+            }
+            int indentEnd = 0;
+            while (indentEnd < line.length() && line.charAt(indentEnd) == ' ') indentEnd++;
+            String indent = line.substring(0, indentEnd);
+            String condition = line.substring(indentEnd, at).trim();
+            if (!condition.isEmpty()
+                    && !condition.startsWith("if (")
+                    && !condition.startsWith("else if (")) {
+                formatted.add(line);
+                continue;
+            }
+            String call = line.substring(at);
+            int open = call.indexOf('(');
+            if (open < 0 || !call.endsWith(");")) {
+                formatted.add(line);
+                continue;
+            }
+            String args = call.substring(open + 1, call.length() - 2);
+            int first = topLevelComma(args, 0);
+            int second = first < 0 ? -1 : topLevelComma(args, first + 1);
+            if (second < 0) {
+                formatted.add(line);
+                continue;
+            }
+            if (!condition.isEmpty()) formatted.add(indent + condition + " {");
+            String inner = condition.isEmpty() ? indent : indent + "    ";
+            formatted.add(inner + call.substring(0, open + 1));
+            formatted.add(inner + "        " + args.substring(0, second + 1));
+            formatted.add(inner + "        " + args.substring(second + 1).trim() + ");");
+            if (!condition.isEmpty()) formatted.add(indent + "}");
+        }
+        return formatted;
+    }
+
+    private static int topLevelComma(String expression, int start) {
+        boolean quoted = false;
+        boolean escaped = false;
+        int nesting = 0;
+        for (int i = start; i < expression.length(); i++) {
+            char c = expression.charAt(i);
+            if (escaped) {
+                escaped = false;
+            } else if (quoted && c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                quoted = !quoted;
+            } else if (!quoted) {
+                if (c == '(') nesting++;
+                else if (c == ')') nesting--;
+                else if (c == ',' && nesting == 0) return i;
+            }
+        }
+        return -1;
+    }
+
     List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
                           SchemaFallbackEmitter.Plan plan, String strictFormat,
                           String onFailure) {
@@ -66,7 +133,7 @@ final class SchemaEmitter {
         // keywords on null when no object type is required.
         List<String> lines = new ArrayList<String>();
         emitValue(lines, plan, check, value, variable, helperPrefix, strictFormat, 0, onFailure);
-        return lines;
+        return DIAGNOSTIC_FAILURE.equals(onFailure) ? formatDiagnosticLines(lines) : lines;
     }
 
     List<String> emit(SchemaCheck.ObjectCheck check, String variable, SchemaFallbackEmitter.Plan plan,
