@@ -279,7 +279,14 @@ officialRuntimeTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
  * Sources are compiled by OfficialCompiledTest with javac in isolated batches:
  * an unsupported schema must not prevent other official cases from running.
  */
-val officialCompiledDraft = providers.gradleProperty("officialCompiledDraft").orElse("draft2020-12")
+val officialCompiledDrafts = listOf("draft7", "draft2019-09", "draft2020-12")
+val officialCompiledDraft = providers.gradleProperty("officialCompiledDraft").orElse("all")
+val selectedOfficialCompiledDrafts = officialCompiledDraft.map { draft ->
+    require(draft == "all" || draft in officialCompiledDrafts) {
+        "Invalid -PofficialCompiledDraft=$draft (expected all, draft7, draft2019-09, or draft2020-12)"
+    }
+    if (draft == "all") officialCompiledDrafts else listOf(draft)
+}
 val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/officialCompiled")
 val generateOfficialCompiledCases by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -290,20 +297,20 @@ val generateOfficialCompiledCases by tasks.registering {
     outputs.dir(officialCompiledGeneratedDir)
 
     doLast {
-        val draft = officialCompiledDraft.get()
-        require(draft in setOf("draft7", "draft2019-09", "draft2020-12"))
+        val outputRoot = officialCompiledGeneratedDir.get().asFile
+        delete(outputRoot)
+        for (draft in selectedOfficialCompiledDrafts.get()) {
         val dialectUri = when (draft) {
             "draft7" -> "http://json-schema.org/draft-07/schema#"
             "draft2019-09" -> "https://json-schema.org/draft/2019-09/schema"
             else -> "https://json-schema.org/draft/2020-12/schema"
         }
         val input = officialSchemaSuiteDir.get().asFile.resolve("tests/$draft")
-        val output = officialCompiledGeneratedDir.get().asFile
-        delete(output)
+        val output = outputRoot.resolve(draft)
 
         val packageName = "org.sjf4j.testbench.schema.official.generated"
         val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
-        val resourceDir = output.resolve("resources/official")
+        val resourceDir = output.resolve("resources/official/$draft")
         // Official remotes may also omit $schema. The runtime suite assigns
         // the selected draft via SchemaRegistry; javac defaults to 2020-12.
         // Copy only for legacy drafts, retaining the relative URI layout.
@@ -386,7 +393,7 @@ val generateOfficialCompiledCases by tasks.registering {
                         "",
                         "@CompiledValidator(fallback = $allowFallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
                         "public interface $variant {",
-                        "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
+                        "    @ValidJsonSchema(ref = \"classpath:/official/$draft/$schemaPath\")",
                         "    boolean valid(Object value);",
                         "}"
                     ).joinToString("\n", postfix = "\n")
@@ -408,6 +415,7 @@ val generateOfficialCompiledCases by tasks.registering {
                 files.size + " files, " + groupCount + " schema groups, " + testCount +
                 " assertions"
         )
+        }
     }
 }
 
@@ -416,7 +424,7 @@ generateOfficialCompiledCases.configure { mustRunAfter(downloadOfficialSchemaTes
 
 val officialCompiledTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs all required cases for the selected official JSON Schema draft."
+    description = "Runs all required compiled JSON Schema cases across all three drafts (or a selected draft).";
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -426,11 +434,13 @@ val officialCompiledTest by tasks.registering(Test::class) {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
     // Runtime SchemaPlan fallback must resolve the same generated classpath resources as javac.
-    classpath = classpath + files(officialCompiledGeneratedDir.map { it.dir("resources") })
+    classpath = classpath + files(selectedOfficialCompiledDrafts.get().map { draft ->
+        officialCompiledGeneratedDir.get().dir("$draft/resources").asFile
+    })
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
-    // Optional local narrowing; full mandatory suite remains the default for build/publish.
+    // The default is all three drafts; optionally narrow local runs by draft or category.
     systemProperty("sjf4j.schema.officialDraft", officialCompiledDraft.get())
     systemProperty("sjf4j.schema.officialCategory",
         providers.gradleProperty("officialCompiledCategory").orElse("all").get())
@@ -451,7 +461,7 @@ tasks.named("check") {
     dependsOn(officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
 }
 
-// Release gate covers runtime and full compiled Draft 2020-12 official cases.
+// Release gate covers runtime and the full mandatory compiled suites of all three drafts.
 // Publication invokes the downloader; normal build/check never invokes it.
 val officialPublishGate by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -462,6 +472,9 @@ val officialPublishGate by tasks.registering {
         // A pinned local SHA may be used for debugging, never for a publication.
         check(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get() == "main") {
             "Publication requires latest upstream main; remove -PjsonSchemaSuiteRef"
+        }
+        check(officialCompiledDraft.get() == "all") {
+            "Publication requires all official compiled drafts; remove -PofficialCompiledDraft"
         }
         check(providers.gradleProperty("officialCompiledCategory").orElse("all").get() == "all") {
             "Publication requires all mandatory official compiled cases; remove -PofficialCompiledCategory"
