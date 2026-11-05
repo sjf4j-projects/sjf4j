@@ -82,7 +82,8 @@ public final class OfficialAnnotationTest {
         if (core2020.total != 4 || core2020.failed != 0 || core2020.errors != 0) {
             throw new AssertionError("Official Draft 2020-12 core annotations: "
                     + core2020.passed + "/" + core2020.total + ", failed "
-                    + core2020.failed + ", errors " + core2020.errors);
+                    + core2020.failed + ", errors " + core2020.errors
+                    + ", details: " + core2020.failures);
         }
     }
 
@@ -183,9 +184,11 @@ public final class OfficialAnnotationTest {
                     System.out.println("PASS " + label);
                 } catch (AssertionError e) {
                     report.failed++;
+                    report.failures.add(label + ": " + e.getMessage());
                     System.out.println("FAIL " + label + ": " + e.getMessage());
                 } catch (Exception e) {
                     report.errors++;
+                    report.failures.add(label + ": " + e);
                     System.out.println("ERROR " + label + ": " + e);
                     e.printStackTrace(System.out);
                 }
@@ -297,12 +300,14 @@ public final class OfficialAnnotationTest {
         int passed;
         int failed;
         int errors;
+        final java.util.List<String> failures = new java.util.ArrayList<>();
 
         void add(Report other) {
             total += other.total;
             passed += other.passed;
             failed += other.failed;
             errors += other.errors;
+            failures.addAll(other.failures);
         }
     }
 }
