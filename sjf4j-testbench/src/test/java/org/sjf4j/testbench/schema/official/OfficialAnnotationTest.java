@@ -29,7 +29,7 @@ import java.util.stream.Stream;
  * <p>JUnit runs every file and reports all results. Until the remaining annotation
  * vocabularies are implemented, the CI gate enforces the metadata and applicator
  * suites and reports the other files as pending (without concealing failures).
- * The main method is strict for any selected file or the entire suite.
+ * The standalone entrypoint is strict for any selected file or the entire suite.
  */
 public final class OfficialAnnotationTest {
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
@@ -39,14 +39,14 @@ public final class OfficialAnnotationTest {
 
     /**
      * Run all files, or select one file/group/test:
-     * OfficialAnnotationTest [suite-root] [file.json] [group-filter] [test-filter].
+     * OfficialAnnotationMain [suite-root] [file.json] [group-filter] [test-filter].
      *
      * <p>Group/test selectors match description substrings or zero-based indices
      * prefixed with '#', e.g. applicators.json '#5' '#0'.
      */
-    public static void main(String[] args) throws Exception {
+    static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
-            throw new IllegalArgumentException("Usage: OfficialAnnotationTest "
+            throw new IllegalArgumentException("Usage: OfficialAnnotationMain "
                     + "[<JSON-Schema-Test-Suite root>] [<file.json>] [<group-filter>] [<test-filter>]");
         }
         Path root = locateTestRoot(args.length > 0 ? args[0] : null);
