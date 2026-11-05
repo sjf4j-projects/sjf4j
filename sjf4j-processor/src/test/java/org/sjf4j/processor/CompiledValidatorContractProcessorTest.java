@@ -63,7 +63,7 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".containsKey(\"b\")"), generated);
-        assertTrue(generated.contains("CompiledValidatorSupport.scalarValueInObject("), generated);
+        assertTrue(generated.contains("CompiledSupport.scalarValueInObject("), generated);
         assertTrue(generated.contains(".keySet()"), generated);
         assertFalse(generated.contains("Nodes.getInObject("), generated);
     }
