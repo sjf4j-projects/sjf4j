@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -34,27 +35,32 @@ import java.util.stream.Stream;
 public final class OfficialAnnotationTest {
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
-    private static final SchemaDialect DIALECT = SchemaDialect.DRAFT_2020_12;
+    private static final SchemaDialect JUNIT_DIALECT = SchemaDialect.DRAFT_2020_12;
     private static final ValidationOptions OPTIONS = ValidationOptions.builder()
             .collectAnnotations(true).build();
 
     /**
      * Run all files, or select one file/group/test:
-     * OfficialAnnotationMain [suite-root] [file.json] [group-filter] [test-filter].
+     * OfficialAnnotationMain [dialect] [file.json] [group-filter] [test-filter].
      *
-     * <p>Group/test selectors match description substrings or zero-based indices
-     * prefixed with '#', e.g. applicators.json '#5' '#0'.
+     * <p>The optional dialect is draft7, draft2019-09, draft2020-12 (default),
+     * or all. Group/test selectors match description substrings or zero-based
+     * indices prefixed with '#', e.g. draft2019-09 applicators.json '#5' '#0'.
      */
     static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException("Usage: OfficialAnnotationMain "
-                    + "[<JSON-Schema-Test-Suite root>] [<file.json>] [<group-filter>] [<test-filter>]");
+                    + "[dialect [file.json [group-filter [test-filter]]]]");
         }
-        Path root = locateTestRoot(args.length > 0 ? args[0] : null);
+        List<SchemaDialect> dialects = standaloneDialects(args.length > 0 ? args[0] : null);
+        Path root = locateTestRoot(null);
         String file = args.length > 1 ? args[1] : null;
         String groupFilter = args.length > 2 ? args[2] : null;
         String testFilter = args.length > 3 ? args[3] : null;
-        Report report = run(root, file, groupFilter, testFilter);
+        Report report = new Report();
+        for (SchemaDialect dialect : dialects) {
+            report.add(run(root, dialect, file, groupFilter, testFilter));
+        }
         if (report.total == 0) {
             throw new IllegalArgumentException("No compatible annotation tests matched"
                     + (report.skipped == 0 ? "" : " (" + report.skipped + " skipped by compatibility)"));
@@ -65,6 +71,20 @@ public final class OfficialAnnotationTest {
         }
     }
 
+    static List<SchemaDialect> standaloneDialects(String argument) {
+        if (argument == null || "draft2020-12".equals(argument)) {
+            return List.of(SchemaDialect.DRAFT_2020_12);
+        }
+        switch (argument) {
+            case "draft7": return List.of(SchemaDialect.DRAFT_07);
+            case "draft2019-09": return List.of(SchemaDialect.DRAFT_2019_09);
+            case "all": return List.of(SchemaDialect.DRAFT_07,
+                    SchemaDialect.DRAFT_2019_09, SchemaDialect.DRAFT_2020_12);
+            default: throw new IllegalArgumentException("Invalid annotation dialect: " + argument
+                    + " (expected all, draft7, draft2019-09, or draft2020-12)");
+        }
+    }
+
     /**
      * Execute the complete official suite. Only implemented vocabularies are
      * release-gated until the remaining files are explicitly supported.
@@ -72,7 +92,7 @@ public final class OfficialAnnotationTest {
     @Test
     public void officialAnnotations() throws Exception {
         Path root = locateTestRoot(null);
-        Report all = run(root, null, null, null);
+        Report all = run(root, JUNIT_DIALECT, null, null, null);
         if (all.total == 0) throw new AssertionError("No official annotation tests found");
 
         // Reuse the single full-suite run rather than re-evaluating files for CI.
@@ -101,8 +121,8 @@ public final class OfficialAnnotationTest {
                 + TEST_ROOT_PROPERTY + "=<suite-root> or a <suite-root> main argument.");
     }
 
-    private static Report run(Path root, String file, String groupFilter,
-                              String testFilter) throws Exception {
+    private static Report run(Path root, SchemaDialect dialect, String file,
+                              String groupFilter, String testFilter) throws Exception {
         Path directory = root.resolve("annotations").resolve("tests").normalize();
         if (!Files.isDirectory(directory)) {
             throw new IllegalStateException("Official annotation suite missing: " + directory);
@@ -115,21 +135,21 @@ public final class OfficialAnnotationTest {
                     || !selected.getFileName().toString().endsWith(".json")) {
                 throw new IllegalArgumentException("Annotation suite file not found: " + selected);
             }
-            Report fileReport = runFile(selected, groupFilter, testFilter);
+            Report fileReport = runFile(selected, dialect, groupFilter, testFilter);
             total.add(fileReport);
             total.files.put(selected.getFileName().toString(), fileReport);
         } else {
             try (Stream<Path> paths = Files.list(directory)) {
                 for (Path path : (Iterable<Path>) paths.filter(p -> p.toString().endsWith(".json"))
                         .sorted(Comparator.comparing(p -> p.getFileName().toString()))::iterator) {
-                    Report fileReport = runFile(path, groupFilter, testFilter);
+                    Report fileReport = runFile(path, dialect, groupFilter, testFilter);
                     total.add(fileReport);
                     total.files.put(path.getFileName().toString(), fileReport);
                 }
             }
         }
         System.out.println("========================================");
-        System.out.println("Official Annotation Suite Summary (" + DIALECT + ")");
+        System.out.println("Official Annotation Suite Summary (" + dialect + ")");
         System.out.println("Total: " + total.total + "  Passed: " + total.passed
                 + "  Failed: " + total.failed + "  Error: " + total.errors
                 + "  Skipped: " + total.skipped);
@@ -137,10 +157,10 @@ public final class OfficialAnnotationTest {
         return total;
     }
 
-    private static Report runFile(Path file, String groupFilter,
+    private static Report runFile(Path file, SchemaDialect dialect, String groupFilter,
                                   String testFilter) throws Exception {
         JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
-        SchemaRegistry registry = new SchemaRegistry(DIALECT);
+        SchemaRegistry registry = new SchemaRegistry(dialect);
         JsonArray groups = suite.getJsonArray("suite");
         Report report = new Report();
 
@@ -153,7 +173,7 @@ public final class OfficialAnnotationTest {
             String compatibility = group.getString("compatibility");
             boolean compatible;
             try {
-                compatible = compatibleWith2020(compatibility);
+                compatible = compatibleWith(compatibility, dialect);
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(file.getFileName() + " group#" + groupIndex
                         + ": " + e.getMessage(), e);
@@ -219,17 +239,24 @@ public final class OfficialAnnotationTest {
 
     // Official Annotation Test Suite compatibility (annotations/README.md).
     // A plain version is a minimum; constraints separated by commas are combined.
-    private static boolean compatibleWith2020(String compatibility) {
+    static boolean compatibleWith(String compatibility, SchemaDialect dialect) {
         if (compatibility == null) return true;
         if (!compatibility.matches("^(<=|=)?([123467]|2019|2020|9999)(,(<=|=)?([123467]|2019|2020|9999))*$")) {
             throw new IllegalArgumentException("Invalid annotation compatibility: " + compatibility);
+        }
+        int version;
+        switch (dialect) {
+            case DRAFT_07: version = 7; break;
+            case DRAFT_2019_09: version = 2019; break;
+            case DRAFT_2020_12: version = 2020; break;
+            default: throw new IllegalArgumentException("Unsupported annotation dialect: " + dialect);
         }
         for (String constraint : compatibility.split(",")) {
             boolean maximum = constraint.startsWith("<=");
             boolean exact = constraint.startsWith("=");
             int draft = Integer.parseInt(constraint.substring(maximum ? 2 : exact ? 1 : 0));
-            if ((maximum && 2020 > draft) || (exact && 2020 != draft)
-                    || (!maximum && !exact && 2020 < draft)) return false;
+            if ((maximum && version > draft) || (exact && version != draft)
+                    || (!maximum && !exact && version < draft)) return false;
         }
         return true;
     }
