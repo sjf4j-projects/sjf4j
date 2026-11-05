@@ -82,10 +82,6 @@ final class NavigatorTestCompiler {
                     "-classpath", System.getProperty("java.class.path"),
                     "-processor", processor.getName()
             ), null, manager.getJavaFileObjectsFromFiles(files)).call();
-            if (!Boolean.TRUE.equals(success)) {
-                System.err.println("PROCESSOR DEBUG DIAGNOSTICS:\n" +
-                        new Result(directory, classes, generated, false, diagnostics).diagnostics());
-            }
             return new Result(directory, classes, generated, Boolean.TRUE.equals(success), diagnostics);
         }
     }
