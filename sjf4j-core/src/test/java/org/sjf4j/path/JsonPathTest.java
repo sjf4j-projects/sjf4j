@@ -170,6 +170,7 @@ public class JsonPathTest {
         nestedDash.put(children, 14);
         assertEquals(14, nestedDash.getNode(children));
         assertEquals(JsonPointer.parse("/-"), intermediate.parent());
+        assertTrue(intermediate.parent().isAppend());
         assertEquals(JsonPointer.parse("/-").hashCode(), intermediate.parent().hashCode());
         assertEquals(JsonPointer.parse("/-"), JsonPointer.fromLast(
                 new PathSegment.Name(PathSegment.Root.INSTANCE, "-")));
