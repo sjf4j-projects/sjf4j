@@ -162,8 +162,11 @@ class AnnotationRuntimeTest {
                 + "\"contentSchema\":{\"type\":\"number\"}}";
         ValidationResult string = validate(schema, "42");
         assertTrue(string.isValid());
-        assertEquals(Arrays.asList("base64", "application/json", "{type=number}"),
-                values(string));
+        assertEquals(3, string.getAnnotations().size());
+        assertEquals("base64", string.getAnnotations().get(0).getValue());
+        assertEquals("application/json", string.getAnnotations().get(1).getValue());
+        assertTrue(org.sjf4j.Nodes.equals(
+                JsonObject.of("type", "number"), string.getAnnotations().get(2).getValue()));
 
         ValidationResult number = validate(schema, 42);
         assertTrue(number.isValid());
