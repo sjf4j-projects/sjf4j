@@ -14,7 +14,6 @@ import org.sjf4j.util.Asserts;
 import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.IdxPredicate;
 import org.sjf4j.util.Types;
-import org.sjf4j.value.ValueInfo;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
@@ -571,53 +570,6 @@ public final class NodeWalker {
             return propertyInfo != null && propertyInfo.gettable ? propertyInfo.invokeGetter(node) : null;
         }
         throw new NodeException("expected object node, but was " + Types.name(node));
-    }
-
-    /**
-     * Returns the shallow raw representation of an object member's value.
-     * Applies a declared property's ValueCodec when present, otherwise the
-     * value type's globally registered default codec. Ordinary POJOs, maps,
-     * and lists are returned unchanged rather than recursively converted.
-     * Codec-produced maps/lists are raw value representations, not structural
-     * object/array nodes; callers must retain the original logical node type
-     * when evaluating their shape.
-     */
-    public static Object rawValueInObject(Object node, String key) {
-        Asserts.notNull(node, "node");
-        Asserts.notNull(key, "key");
-
-        Object value;
-        ValueInfo codec = null;
-        if (node instanceof Map) {
-            value = ((Map<?, ?>) node).get(key);
-        } else if (node.getClass() == JsonObject.class) {
-            value = ((JsonObject) node).getNode(key);
-        } else {
-            TypeInfo owner = TypeRegistry.registerTypeInfo(node.getClass());
-            if (owner.externalNode != null
-                    && owner.externalNode.jsonType(node) == JsonType.OBJECT) {
-                value = owner.externalNode.getInObject(node, key);
-            } else if (owner.pojoInfo != null) {
-                PropertyInfo property = owner.pojoInfo.getPropertyNoAlias(key);
-                if (property != null && property.gettable) {
-                    value = property.invokeGetter(node);
-                    codec = property.valueInfo;
-                } else if (owner.pojoInfo.isJojo) {
-                    value = ((JsonObject) node).getNode(key);
-                } else {
-                    return null;
-                }
-            } else {
-                throw new NodeException("expected object node, but was " + Types.name(node));
-            }
-        }
-
-        if (value == null) return null;
-        if (codec == null) {
-            TypeInfo valueType = TypeRegistry.registerTypeInfo(value.getClass());
-            if (valueType.valueSet != null) codec = valueType.valueSet.defaultInfo;
-        }
-        return codec == null ? value : codec.valueToRaw(value);
     }
 
     /**
