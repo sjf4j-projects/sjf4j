@@ -700,7 +700,7 @@ public class SchemaValidationTest {
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
 
-        ValidationResult result = plan.validate("not-email", true);
+        ValidationResult result = plan.validate("not-email", false, true);
         assertFalse(result.isValid());
     }
 
@@ -836,7 +836,7 @@ public class SchemaValidationTest {
 
         assertTrue(plan.isValid("a@b.com"));
         assertTrue(plan.isValid("not-email"));
-        assertFalse(plan.validate("not-email", true).isValid());
+        assertFalse(plan.validate("not-email", false, true).isValid());
     }
 
     @Test
@@ -878,132 +878,132 @@ public class SchemaValidationTest {
         JsonSchema schema = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"unknown\"}");
         SchemaPlan plan = assertDoesNotThrow(() -> schema.createPlan());
 
-        assertTrue(plan.validate("still-valid", true).isValid());
+        assertTrue(plan.validate("still-valid", false, true).isValid());
     }
 
     @Test
     public void testStrictFormatValidators() {
         JsonSchema hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}");
         SchemaPlan hostnamePlan = hostname.createPlan();
-        assertTrue(hostnamePlan.validate("hostname", true).isValid());
+        assertTrue(hostnamePlan.validate("hostname", false, true).isValid());
 
         JsonSchema ipv6 = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"ipv6\"}");
         SchemaPlan ipv6Plan = ipv6.createPlan();
-        assertTrue(ipv6Plan.validate("::1", true).isValid());
+        assertTrue(ipv6Plan.validate("::1", false, true).isValid());
 
         JsonSchema relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}");
         SchemaPlan relativeJsonPointerPlan = relativeJsonPointer.createPlan();
-        assertTrue(relativeJsonPointerPlan.validate("0#", true).isValid());
+        assertTrue(relativeJsonPointerPlan.validate("0#", false, true).isValid());
 
         JsonSchema uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}");
         SchemaPlan uriTemplatePlan = uriTemplate.createPlan();
-        assertTrue(uriTemplatePlan.validate("http://example.com/dictionary", true).isValid());
+        assertTrue(uriTemplatePlan.validate("http://example.com/dictionary", false, true).isValid());
     }
 
     @Test
     public void testStrictFormatValidatorsForDraft2020Fixes() {
         SchemaPlan time = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"time\"}").createPlan();
-        assertTrue(time.validate("23:59:60Z", true).isValid());
-        assertTrue(time.validate("01:29:60+01:30", true).isValid());
-        assertFalse(time.validate("23:59:60+00:30", true).isValid());
-        assertFalse(time.validate("12:00:00", true).isValid());
+        assertTrue(time.validate("23:59:60Z", false, true).isValid());
+        assertTrue(time.validate("01:29:60+01:30", false, true).isValid());
+        assertFalse(time.validate("23:59:60+00:30", false, true).isValid());
+        assertFalse(time.validate("12:00:00", false, true).isValid());
 
         SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").createPlan();
-        assertTrue(dateTime.validate("1998-12-31T23:59:60Z", true).isValid());
-        assertFalse(dateTime.validate("+11963-06-19T08:30:06.283185Z", true).isValid());
-        assertFalse(dateTime.validate("1990-12-31T15:59:59-24:00", true).isValid());
+        assertTrue(dateTime.validate("1998-12-31T23:59:60Z", false, true).isValid());
+        assertFalse(dateTime.validate("+11963-06-19T08:30:06.283185Z", false, true).isValid());
+        assertFalse(dateTime.validate("1990-12-31T15:59:59-24:00", false, true).isValid());
 
         SchemaPlan duration = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"duration\"}").createPlan();
-        assertTrue(duration.validate("P1Y2M3DT4H5M6S", true).isValid());
-        assertFalse(duration.validate("P", true).isValid());
-        assertFalse(duration.validate("PT", true).isValid());
-        assertFalse(duration.validate("P1YT", true).isValid());
-        assertFalse(duration.validate("PT0.5S", true).isValid());
-        assertFalse(duration.validate("P1Y2D", true).isValid());
-        assertFalse(duration.validate("PT1H2S", true).isValid());
+        assertTrue(duration.validate("P1Y2M3DT4H5M6S", false, true).isValid());
+        assertFalse(duration.validate("P", false, true).isValid());
+        assertFalse(duration.validate("PT", false, true).isValid());
+        assertFalse(duration.validate("P1YT", false, true).isValid());
+        assertFalse(duration.validate("PT0.5S", false, true).isValid());
+        assertFalse(duration.validate("P1Y2D", false, true).isValid());
+        assertFalse(duration.validate("PT1H2S", false, true).isValid());
 
         SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
-        assertTrue(email.validate("\"joe bloggs\"@example.com", true).isValid());
-        assertTrue(email.validate("joe.bloggs@[127.0.0.1]", true).isValid());
-        assertTrue(email.validate("joe.bloggs@[IPv6:::1]", true).isValid());
-        assertFalse(email.validate("joe bloggs@example.com", true).isValid());
+        assertTrue(email.validate("\"joe bloggs\"@example.com", false, true).isValid());
+        assertTrue(email.validate("joe.bloggs@[127.0.0.1]", false, true).isValid());
+        assertTrue(email.validate("joe.bloggs@[IPv6:::1]", false, true).isValid());
+        assertFalse(email.validate("joe bloggs@example.com", false, true).isValid());
 
         SchemaPlan idnEmail = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-email\"}").createPlan();
-        assertTrue(idnEmail.validate("실례@실례.테스트", true).isValid());
-        assertTrue(idnEmail.validate("\u0085@example.com", true).isValid());
-        assertFalse(idnEmail.validate("a\u0001@example.com", true).isValid());
-        assertFalse(idnEmail.validate("a b@example.com", true).isValid());
-        assertFalse(idnEmail.validate("\"a b\"@example.com", true).isValid());
-        assertFalse(idnEmail.validate("\"a@b\"@example.com", true).isValid());
-        assertFalse(idnEmail.validate(".a@example.com", true).isValid());
-        assertFalse(idnEmail.validate("a..b@example.com", true).isValid());
+        assertTrue(idnEmail.validate("실례@실례.테스트", false, true).isValid());
+        assertTrue(idnEmail.validate("\u0085@example.com", false, true).isValid());
+        assertFalse(idnEmail.validate("a\u0001@example.com", false, true).isValid());
+        assertFalse(idnEmail.validate("a b@example.com", false, true).isValid());
+        assertFalse(idnEmail.validate("\"a b\"@example.com", false, true).isValid());
+        assertFalse(idnEmail.validate("\"a@b\"@example.com", false, true).isValid());
+        assertFalse(idnEmail.validate(".a@example.com", false, true).isValid());
+        assertFalse(idnEmail.validate("a..b@example.com", false, true).isValid());
 
         SchemaPlan relativeJsonPointer = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"relative-json-pointer\"}").createPlan();
-        assertTrue(relativeJsonPointer.validate("2147483648/a", true).isValid());
-        assertTrue(relativeJsonPointer.validate("999999999999999999999999999999999999999999999999/a", true).isValid());
-        assertFalse(relativeJsonPointer.validate("١/foo", true).isValid());
-        assertFalse(relativeJsonPointer.validate("01/a", true).isValid());
+        assertTrue(relativeJsonPointer.validate("2147483648/a", false, true).isValid());
+        assertTrue(relativeJsonPointer.validate("999999999999999999999999999999999999999999999999/a", false, true).isValid());
+        assertFalse(relativeJsonPointer.validate("١/foo", false, true).isValid());
+        assertFalse(relativeJsonPointer.validate("01/a", false, true).isValid());
 
         SchemaPlan uriTemplate = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri-template\"}").createPlan();
-        assertTrue(uriTemplate.validate("a%41b{+a.b,%41:9999}{var*}", true).isValid());
-        assertFalse(uriTemplate.validate("a|b", true).isValid());
-        assertFalse(uriTemplate.validate("a'b", true).isValid());
-        assertTrue(uriTemplate.validate("a~b", true).isValid());
-        assertTrue(uriTemplate.validate("{=a,b}", true).isValid());
-        assertFalse(uriTemplate.validate("{,}", true).isValid());
-        assertTrue(uriTemplate.validate("a😀b", true).isValid());
-        assertFalse(uriTemplate.validate("a%4", true).isValid());
-        assertFalse(uriTemplate.validate("a\u0085b", true).isValid());
-        assertFalse(uriTemplate.validate("a\ud800b", true).isValid());
-        assertFalse(uriTemplate.validate("a b", true).isValid());
-        assertFalse(uriTemplate.validate("{a,,b}", true).isValid());
-        assertFalse(uriTemplate.validate("{a..b}", true).isValid());
-        assertFalse(uriTemplate.validate("{a:01}", true).isValid());
-        assertFalse(uriTemplate.validate("{a:10000}", true).isValid());
-        assertFalse(uriTemplate.validate("{a* :1}", true).isValid());
-        assertFalse(uriTemplate.validate("{,+a}", true).isValid());
-        assertFalse(uriTemplate.validate("foo}bar", true).isValid());
+        assertTrue(uriTemplate.validate("a%41b{+a.b,%41:9999}{var*}", false, true).isValid());
+        assertFalse(uriTemplate.validate("a|b", false, true).isValid());
+        assertFalse(uriTemplate.validate("a'b", false, true).isValid());
+        assertTrue(uriTemplate.validate("a~b", false, true).isValid());
+        assertTrue(uriTemplate.validate("{=a,b}", false, true).isValid());
+        assertFalse(uriTemplate.validate("{,}", false, true).isValid());
+        assertTrue(uriTemplate.validate("a😀b", false, true).isValid());
+        assertFalse(uriTemplate.validate("a%4", false, true).isValid());
+        assertFalse(uriTemplate.validate("a\u0085b", false, true).isValid());
+        assertFalse(uriTemplate.validate("a\ud800b", false, true).isValid());
+        assertFalse(uriTemplate.validate("a b", false, true).isValid());
+        assertFalse(uriTemplate.validate("{a,,b}", false, true).isValid());
+        assertFalse(uriTemplate.validate("{a..b}", false, true).isValid());
+        assertFalse(uriTemplate.validate("{a:01}", false, true).isValid());
+        assertFalse(uriTemplate.validate("{a:10000}", false, true).isValid());
+        assertFalse(uriTemplate.validate("{a* :1}", false, true).isValid());
+        assertFalse(uriTemplate.validate("{,+a}", false, true).isValid());
+        assertFalse(uriTemplate.validate("foo}bar", false, true).isValid());
 
         SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").createPlan();
-        assertTrue(iri.validate("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", true).isValid());
-        assertFalse(iri.validate("http://2001:0db8:85a3:0000:0000:8a2e:0370:7334", true).isValid());
+        assertTrue(iri.validate("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]", false, true).isValid());
+        assertFalse(iri.validate("http://2001:0db8:85a3:0000:0000:8a2e:0370:7334", false, true).isValid());
 
         SchemaPlan iriReference = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri-reference\"}").createPlan();
-        assertTrue(iriReference.validate("//[2001:0db8:85a3:0000:0000:8a2e:0370:7334]/path", true).isValid());
-        assertFalse(iriReference.validate("//2001:0db8:85a3:0000:0000:8a2e:0370:7334/path", true).isValid());
+        assertTrue(iriReference.validate("//[2001:0db8:85a3:0000:0000:8a2e:0370:7334]/path", false, true).isValid());
+        assertFalse(iriReference.validate("//2001:0db8:85a3:0000:0000:8a2e:0370:7334/path", false, true).isValid());
 
         SchemaPlan regex = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"regex\"}").createPlan();
-        assertFalse(regex.validate("\\a", true).isValid());
+        assertFalse(regex.validate("\\a", false, true).isValid());
 
         SchemaPlan hostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"hostname\"}").createPlan();
-        assertFalse(hostname.validate("xn--X", true).isValid());
-        assertFalse(hostname.validate("xn--al-0ea", true).isValid());
-        assertFalse(hostname.validate("xn--S-jib3p", true).isValid());
-        assertFalse(hostname.validate("xn--A-2hc5h", true).isValid());
-        assertFalse(hostname.validate("xn--ngb6iyr", true).isValid());
-        assertFalse(hostname.validate("xn--11b2er09f", true).isValid());
-        assertFalse(hostname.validate("XN--aa---o47jg78q", true).isValid());
-        assertTrue(hostname.validate("xn--11b2ezcw70k", true).isValid());
+        assertFalse(hostname.validate("xn--X", false, true).isValid());
+        assertFalse(hostname.validate("xn--al-0ea", false, true).isValid());
+        assertFalse(hostname.validate("xn--S-jib3p", false, true).isValid());
+        assertFalse(hostname.validate("xn--A-2hc5h", false, true).isValid());
+        assertFalse(hostname.validate("xn--ngb6iyr", false, true).isValid());
+        assertFalse(hostname.validate("xn--11b2er09f", false, true).isValid());
+        assertFalse(hostname.validate("XN--aa---o47jg78q", false, true).isValid());
+        assertTrue(hostname.validate("xn--11b2ezcw70k", false, true).isValid());
 
         SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").createPlan();
-        assertTrue(idnHostname.validate("a\u3002b", true).isValid());
-        assertFalse(idnHostname.validate("\u3002", true).isValid());
-        assertFalse(idnHostname.validate("example\u3002", true).isValid());
-        assertFalse(idnHostname.validate("\u0903hello", true).isValid());
-        assertFalse(idnHostname.validate("a\u00b7l", true).isValid());
-        assertFalse(idnHostname.validate("\u03b1\u0375", true).isValid());
-        assertFalse(idnHostname.validate("\u05f3\u05d1", true).isValid());
-        assertFalse(idnHostname.validate("def\u30fbabc", true).isValid());
-        assertFalse(idnHostname.validate("\u0628\u0660\u06f0", true).isValid());
-        assertFalse(idnHostname.validate("\u0915\u200d\u0937", true).isValid());
-        assertTrue(idnHostname.validate("\u0628\u064a\u200c\u0628\u064a", true).isValid());
+        assertTrue(idnHostname.validate("a\u3002b", false, true).isValid());
+        assertFalse(idnHostname.validate("\u3002", false, true).isValid());
+        assertFalse(idnHostname.validate("example\u3002", false, true).isValid());
+        assertFalse(idnHostname.validate("\u0903hello", false, true).isValid());
+        assertFalse(idnHostname.validate("a\u00b7l", false, true).isValid());
+        assertFalse(idnHostname.validate("\u03b1\u0375", false, true).isValid());
+        assertFalse(idnHostname.validate("\u05f3\u05d1", false, true).isValid());
+        assertFalse(idnHostname.validate("def\u30fbabc", false, true).isValid());
+        assertFalse(idnHostname.validate("\u0628\u0660\u06f0", false, true).isValid());
+        assertFalse(idnHostname.validate("\u0915\u200d\u0937", false, true).isValid());
+        assertTrue(idnHostname.validate("\u0628\u064a\u200c\u0628\u064a", false, true).isValid());
         if (FormatUtil.isIcu4jAvailable()) {
-            assertFalse(idnHostname.validate("0a.\u05d0", true).isValid());
-            assertFalse(idnHostname.validate("a\u05d0", true).isValid());
-            assertFalse(idnHostname.validate("\u05d00\u0660", true).isValid());
-            assertFalse(idnHostname.validate("xn--7a", true).isValid());
-            assertFalse(idnHostname.validate("xn--0ca24w", true).isValid());
-            assertFalse(idnHostname.validate("xn---9uc", true).isValid());
+            assertFalse(idnHostname.validate("0a.\u05d0", false, true).isValid());
+            assertFalse(idnHostname.validate("a\u05d0", false, true).isValid());
+            assertFalse(idnHostname.validate("\u05d00\u0660", false, true).isValid());
+            assertFalse(idnHostname.validate("xn--7a", false, true).isValid());
+            assertFalse(idnHostname.validate("xn--0ca24w", false, true).isValid());
+            assertFalse(idnHostname.validate("xn---9uc", false, true).isValid());
         }
     }
 
@@ -1015,24 +1015,24 @@ public class SchemaValidationTest {
     @Test
     public void testStrictFormatContractsForInternetIdentifiers() {
         SchemaPlan email = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
-        assertTrue(email.validate("user+tag@example.com", true).isValid());
-        assertFalse(email.validate("user@example..com", true).isValid());
+        assertTrue(email.validate("user+tag@example.com", false, true).isValid());
+        assertFalse(email.validate("user@example..com", false, true).isValid());
 
         SchemaPlan dateTime = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"date-time\"}").createPlan();
-        assertTrue(dateTime.validate("2024-02-29T12:30:00Z", true).isValid());
-        assertFalse(dateTime.validate("2023-02-29T12:30:00Z", true).isValid());
+        assertTrue(dateTime.validate("2024-02-29T12:30:00Z", false, true).isValid());
+        assertFalse(dateTime.validate("2023-02-29T12:30:00Z", false, true).isValid());
 
         SchemaPlan uri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"uri\"}").createPlan();
-        assertTrue(uri.validate("https://example.com/a%20path?query=value#fragment", true).isValid());
-        assertFalse(uri.validate("https://example.com/a space", true).isValid());
+        assertTrue(uri.validate("https://example.com/a%20path?query=value#fragment", false, true).isValid());
+        assertFalse(uri.validate("https://example.com/a space", false, true).isValid());
 
         SchemaPlan iri = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"iri\"}").createPlan();
-        assertTrue(iri.validate("https://例え.テスト/検索", true).isValid());
-        assertFalse(iri.validate("https://例え.テスト/has space", true).isValid());
+        assertTrue(iri.validate("https://例え.テスト/検索", false, true).isValid());
+        assertFalse(iri.validate("https://例え.テスト/has space", false, true).isValid());
 
         SchemaPlan idnHostname = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"idn-hostname\"}").createPlan();
-        assertTrue(idnHostname.validate("例え.テスト", true).isValid());
-        assertFalse(idnHostname.validate("例え..テスト", true).isValid());
+        assertTrue(idnHostname.validate("例え.テスト", false, true).isValid());
+        assertFalse(idnHostname.validate("例え..テスト", false, true).isValid());
     }
 
     @Test

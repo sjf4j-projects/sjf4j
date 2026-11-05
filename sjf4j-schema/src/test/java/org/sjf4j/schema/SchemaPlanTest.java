@@ -82,7 +82,7 @@ class SchemaPlanTest {
         SchemaPlan plan = JsonSchema.fromJson("{\"type\":\"string\",\"format\":\"email\"}").createPlan();
 
         assertTrue(plan.validate("not-email").isValid());
-        assertFalse(plan.validate("not-email", true).isValid());
+        assertFalse(plan.validate("not-email", false, true).isValid());
     }
 
     @Test
