@@ -1,7 +1,9 @@
 package org.sjf4j.testbench.schema.official;
 
 /**
- * Standalone Application entrypoint for filtering official compiled JSON Schema cases.
+ * Standalone Application entrypoint for official compiled JSON Schema cases.
+ * Arguments: [dialect [file.json [groupIndex [testIndex]]]].
+ * The dialect defaults to all; use draft7, draft2019-09, or draft2020-12 to narrow.
  * Run OfficialCompiledTest as a JUnit test to see individual dynamic cases in the IDE.
  */
 public final class OfficialCompiledMain {
