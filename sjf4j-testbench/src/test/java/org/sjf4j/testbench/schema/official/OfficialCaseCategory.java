@@ -1,6 +1,5 @@
 package org.sjf4j.testbench.schema.official;
 
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
