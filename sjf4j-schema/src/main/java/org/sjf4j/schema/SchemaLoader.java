@@ -66,12 +66,24 @@ public interface SchemaLoader {
      */
     final class Local implements SchemaLoader {
         private final URI baseUri;
+        private final ClassLoader classLoader;
 
         /**
          * Creates a loader rooted at a directory URI. Relative base URIs are
          * resolved as paths under the JVM working directory ({@code user.dir}).
+         * Classpath resources are loaded with the loader that loaded SchemaLoader.
          */
         public Local(URI baseUri) {
+            this(baseUri, SchemaLoader.class.getClassLoader());
+        }
+
+        /**
+         * Creates a loader with an explicit ClassLoader for classpath resources.
+         * This is useful when schema resources belong to a dynamically loaded
+         * validator and are not visible to SchemaLoader's defining loader.
+         */
+        public Local(URI baseUri, ClassLoader classLoader) {
+            this.classLoader = Asserts.notNull(classLoader, "classLoader");
             Asserts.notNull(baseUri, "baseUri");
             if (!baseUri.toString().endsWith("/") || baseUri.getRawQuery() != null
                     || baseUri.getRawFragment() != null) {
@@ -121,7 +133,7 @@ public interface SchemaLoader {
                 if (path == null || path.isEmpty()) path = uri.getSchemeSpecificPart();
                 // Treat classpath:/name and classpath:///name as the same resource.
                 while (path.startsWith("/")) path = path.substring(1);
-                java.io.InputStream stream = SchemaLoader.class.getClassLoader().getResourceAsStream(path);
+                java.io.InputStream stream = classLoader.getResourceAsStream(path);
                 return stream == null ? null : new InputStreamReader(stream, StandardCharsets.UTF_8);
             }
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
