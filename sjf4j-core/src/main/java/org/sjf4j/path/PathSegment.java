@@ -1,6 +1,7 @@
 package org.sjf4j.path;
 
 
+import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.util.Numbers;
 
@@ -150,6 +151,15 @@ public abstract class PathSegment {
             super(parent);
             this.index = index;
             this.pointerToken = pointerToken;
+        }
+
+        /** A parsed numeric Pointer token also addresses an object key. */
+        public boolean isObjectKey(Object container) {
+            return pointerToken != null && JsonType.of(container).isObject();
+        }
+
+        public boolean isObjectKey(JsonType type) {
+            return pointerToken != null && type.isObject();
         }
 
         /**
@@ -399,15 +409,31 @@ public abstract class PathSegment {
 
     /**
      * Append token used by JSON Pointer ({@code -}) and JSONPath ({@code [+]}).
-     * It is meaningful only for writes to an appendable array node.
+     * A parsed Pointer token can also name an object member {@code "-"}.
      */
     public static final class Append extends PathSegment {
-        /**
-         * Creates an append segment.
-         */
+        final String pointerToken;
+
+        /** Creates a JSONPath array append segment. */
         public Append(PathSegment parent) {
-            super(parent);
+            this(parent, null);
         }
+
+        /** Creates an append segment with its optional JSON Pointer token. */
+        public Append(PathSegment parent, String pointerToken) {
+            super(parent);
+            this.pointerToken = pointerToken;
+        }
+
+        /** A parsed Pointer append token also addresses an object key. */
+        public boolean isObjectKey(Object container) {
+            return pointerToken != null && JsonType.of(container).isObject();
+        }
+
+        public boolean isObjectKey(JsonType type) {
+            return pointerToken != null && type.isObject();
+        }
+
         @Override public String toString() {
             return "[+]";
         }
