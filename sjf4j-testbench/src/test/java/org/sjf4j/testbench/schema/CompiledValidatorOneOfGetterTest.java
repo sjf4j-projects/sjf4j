@@ -80,6 +80,7 @@ public class CompiledValidatorOneOfGetterTest {
     @CompiledValidator(fallback = false)
     public interface Validator {
         @ValidJsonSchema(SCHEMA) boolean valid(Model value);
+        @ValidJsonSchema(SCHEMA) void requireValid(Model value);
         @ValidJsonSchema(OVERLAPPING_SCHEMA) boolean overlapping(Model value);
     }
 
@@ -103,6 +104,25 @@ public class CompiledValidatorOneOfGetterTest {
         assertTrue(compiled.valid(new Model(new B("a", "good"))));
         assertFalse(compiled.valid(new Model(new A("other", "good"))));
         assertFalse(compiled.valid(new Model(new B("b", "go"))));
+    }
+
+    @Test
+    void diagnosticOneOfPreservesDiscriminatorMismatchSemantics() {
+        Validator compiled = CompiledInstances.create(Validator.class);
+        // A mismatched discriminator can still satisfy the other branch.
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> compiled.requireValid(new Model(new A("b", "good"))));
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> compiled.requireValid(new Model(new B("a", "good"))));
+        org.sjf4j.schema.ValidationException failure =
+                org.junit.jupiter.api.Assertions.assertThrows(
+                        org.sjf4j.schema.ValidationException.class,
+                        () -> compiled.requireValid(new Model(new A("other", "good"))));
+        assertEquals("oneOf", failure.getResult().getLastError().getKeyword());
+        assertEquals("/items/0",
+                failure.getResult().getLastError().getInstancePs().rootedPointerExpr());
+        assertEquals("/properties/items/items/oneOf",
+                failure.getResult().getLastError().getKeywordPs().rootedPointerExpr());
     }
 
     @Test

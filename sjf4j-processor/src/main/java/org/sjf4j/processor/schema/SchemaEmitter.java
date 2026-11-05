@@ -22,6 +22,7 @@ final class SchemaEmitter {
     private NameAllocator locals;
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
+    private final Map<String, String> failureHelpers = new LinkedHashMap<String, String>();
     private final java.util.Map<SchemaCheck.ReferenceCheck, String> referenceHelpers =
             new java.util.IdentityHashMap<SchemaCheck.ReferenceCheck, String>();
 
@@ -33,11 +34,95 @@ final class SchemaEmitter {
 
     private String fail(String action, SchemaCheck.Diagnostic d) {
         if (!DIAGNOSTIC_FAILURE.equals(action)) return action;
-        return "throw org.sjf4j.schema.ValidationException.failure("
+        String uri = d == null ? null : d.resourceUri;
+        String helper = failureHelpers.get(uri);
+        if (helper == null) {
+            helper = generated.names().helperMethod("validationFailure");
+            failureHelpers.put(uri, helper);
+            final String method = helper;
+            final String resource = uri == null ? "null" : literal(uri);
+            // Only called from a failing assertion. In particular, constructing
+            // the instance path and ValidationException stays off the hot path.
+            generated.addHelper(out -> {
+                out.beginBlock("private static org.sjf4j.schema.ValidationException "
+                        + method + "(String keyword, String pointer, "
+                        + "org.sjf4j.path.PathSegment instancePath)");
+                out.line("return org.sjf4j.schema.ValidationException.failure("
+                        + "keyword, " + resource + ", pointer, instancePath);");
+                out.endBlock();
+            });
+        }
+        return "throw " + helper + "("
                 + literal(d == null || d.keyword == null ? "schema" : d.keyword) + ", "
-                + (d == null || d.resourceUri == null ? "null" : literal(d.resourceUri)) + ", "
                 + literal(d == null || d.keywordPointer == null ? "" : d.keywordPointer)
                 + ", " + instancePath + ");";
+    }
+
+    /**
+     * Format long fail-fast statements only in the generated requireValid body.
+     * The boolean predicates, helper implementations and failure semantics stay
+     * unchanged; PathSegment construction remains on the throwing path.
+     */
+    private static List<String> formatDiagnosticLines(List<String> lines) {
+        List<String> formatted = new ArrayList<String>(lines.size());
+        for (String line : lines) {
+            int at = line.indexOf("throw _validationFailure");
+            if (at < 0 || line.length() <= 120) {
+                formatted.add(line);
+                continue;
+            }
+            int indentEnd = 0;
+            while (indentEnd < line.length() && line.charAt(indentEnd) == ' ') indentEnd++;
+            String indent = line.substring(0, indentEnd);
+            String condition = line.substring(indentEnd, at).trim();
+            if (!condition.isEmpty()
+                    && !condition.startsWith("if (")
+                    && !condition.startsWith("else if (")) {
+                formatted.add(line);
+                continue;
+            }
+            String call = line.substring(at);
+            int open = call.indexOf('(');
+            if (open < 0 || !call.endsWith(");")) {
+                formatted.add(line);
+                continue;
+            }
+            String args = call.substring(open + 1, call.length() - 2);
+            int first = topLevelComma(args, 0);
+            int second = first < 0 ? -1 : topLevelComma(args, first + 1);
+            if (second < 0) {
+                formatted.add(line);
+                continue;
+            }
+            if (!condition.isEmpty()) formatted.add(indent + condition + " {");
+            String inner = condition.isEmpty() ? indent : indent + "    ";
+            formatted.add(inner + call.substring(0, open + 1));
+            formatted.add(inner + "        " + args.substring(0, second + 1));
+            formatted.add(inner + "        " + args.substring(second + 1).trim() + ");");
+            if (!condition.isEmpty()) formatted.add(indent + "}");
+        }
+        return formatted;
+    }
+
+    private static int topLevelComma(String expression, int start) {
+        boolean quoted = false;
+        boolean escaped = false;
+        int nesting = 0;
+        for (int i = start; i < expression.length(); i++) {
+            char c = expression.charAt(i);
+            if (escaped) {
+                escaped = false;
+            } else if (quoted && c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
+                quoted = !quoted;
+            } else if (!quoted) {
+                if (c == '(') nesting++;
+                else if (c == ')') nesting--;
+                else if (c == ',' && nesting == 0) return i;
+            }
+        }
+        return -1;
     }
 
     List<String> emitRoot(SchemaCheck check, SchemaValue value, String variable,
@@ -48,7 +133,7 @@ final class SchemaEmitter {
         // keywords on null when no object type is required.
         List<String> lines = new ArrayList<String>();
         emitValue(lines, plan, check, value, variable, helperPrefix, strictFormat, 0, onFailure);
-        return lines;
+        return DIAGNOSTIC_FAILURE.equals(onFailure) ? formatDiagnosticLines(lines) : lines;
     }
 
     List<String> emit(SchemaCheck.ObjectCheck check, String variable, SchemaFallbackEmitter.Plan plan,
@@ -60,12 +145,13 @@ final class SchemaEmitter {
                               SchemaFallbackEmitter.Plan plan, String strictFormat,
                               String prefix, String onFailure) {
         List<String> statements = new ArrayList<String>();
-        if (check.minProperties != null || check.maxProperties != null) {
+        if ((check.minProperties != null && check.minProperties > 0)
+                || check.maxProperties != null) {
             String count = check.jsonObject ? variable + ".size()"
                     : check.dynamic
                     ? "org.sjf4j.node.NodeWalker.sizeInObject(" + variable + ")"
                     : Integer.toString(check.staticPropertyCount);
-            if (check.minProperties != null) {
+            if (check.minProperties != null && check.minProperties > 0) {
                 statements.add("if (" + count + " < " + check.minProperties + ") " + fail(onFailure, check.minPropertiesDiagnostic));
             }
             if (check.maxProperties != null) {
@@ -271,6 +357,24 @@ final class SchemaEmitter {
                 List<String> guarded = new ArrayList<String>();
                 emitValue(guarded, plan, guard.child, guard.value, expression,
                         planName + "_", strictFormat, depth, onFailure);
+                if (knownShape && value.nullable) {
+                    // The enclosing guard already proves non-null. Remove only
+                    // direct checks on this exact expression, never a nested
+                    // property's own null assertion.
+                    guarded.removeIf(line -> line.startsWith("if (" + expression + " == null) "));
+                    if (guard.child.kind == SchemaCheck.Kind.OBJECT
+                            && guarded.size() >= 2
+                            && guarded.get(0).equals("if (" + expression + " != null) {")
+                            && "}".equals(guarded.get(guarded.size() - 1))) {
+                        List<String> unwrapped = new ArrayList<String>();
+                        for (int i = 1; i < guarded.size() - 1; i++) {
+                            String line = guarded.get(i);
+                            unwrapped.add(line.startsWith("    ") ? line.substring(4) : line);
+                        }
+                        guarded = unwrapped;
+                    }
+                }
+                if (guarded.isEmpty()) return;
                 if ("true".equals(condition)) {
                     lines.addAll(guarded);
                 } else {
@@ -512,43 +616,54 @@ final class SchemaEmitter {
         return helper + "(" + expression + ", " + strictFormat + ")";
     }
 
-    /** Avoid runtime shape detection when the Java type already fixes the JSON kind. */
+    /** Fold Java-known JSON kinds without emitting redundant true/false terms. */
     private void emitType(List<String> lines, SchemaCheck.TypeCheck check,
                           SchemaValue value, String expression, String onFailure) {
-        StringBuilder matches = new StringBuilder();
+        String known = value.shape == SchemaValue.Shape.STRING ? "STRING"
+                : value.shape == SchemaValue.Shape.NUMBER ? "NUMBER"
+                : value.shape == SchemaValue.Shape.BOOLEAN ? "BOOLEAN"
+                : value.shape == SchemaValue.Shape.OBJECT ? "OBJECT"
+                : value.isArrayLike() ? "ARRAY" : null;
+        List<String> matches = new ArrayList<String>();
         for (String type : check.types) {
             String branch;
             if ("null".equals(type)) {
                 branch = value.nullable ? expression + " == null" : "false";
                 if (value.shape == SchemaValue.Shape.DYNAMIC || value.shape == SchemaValue.Shape.OTHER) {
-                    branch += " || (" + expression + " != null && org.sjf4j.JsonType.of("
-                            + expression + ") == org.sjf4j.JsonType.NULL)";
+                    String dynamicNull = expression + " != null && org.sjf4j.JsonType.of("
+                            + expression + ") == org.sjf4j.JsonType.NULL";
+                    branch = "false".equals(branch) ? dynamicNull : "(" + branch + " || (" + dynamicNull + "))";
                 }
             } else {
                 String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(java.util.Locale.ROOT);
-                String known = value.shape == SchemaValue.Shape.STRING ? "STRING"
-                        : value.shape == SchemaValue.Shape.NUMBER ? "NUMBER"
-                        : value.shape == SchemaValue.Shape.BOOLEAN ? "BOOLEAN"
-                        : value.shape == SchemaValue.Shape.OBJECT ? "OBJECT"
-                        : value.isArrayLike() ? "ARRAY" : null;
-                String shape;
-                if (known != null) {
-                    shape = known.equals(name) ? "true" : "false";
-                } else {
-                    shape = "org.sjf4j.JsonType.of(" + expression
-                            + ") == org.sjf4j.JsonType." + name;
-                }
+                String shape = known == null
+                        ? "org.sjf4j.JsonType.of(" + expression + ") == org.sjf4j.JsonType." + name
+                        : known.equals(name) ? "true" : "false";
                 if ("integer".equals(type) && !"false".equals(shape) && !isNativeInteger(value)) {
-                    shape = "(" + shape + " && org.sjf4j.util.Numbers.isSemanticInteger("
+                    String integral = "org.sjf4j.util.Numbers.isSemanticInteger("
                             + (value.shape == SchemaValue.Shape.NUMBER ? expression
-                               : "org.sjf4j.Nodes.toNumber(" + expression + ")") + "))";
+                            : "org.sjf4j.Nodes.toNumber(" + expression + ")") + ")";
+                    branch = "true".equals(shape) ? integral : "(" + shape + " && " + integral + ")";
+                } else {
+                    branch = shape;
                 }
-                branch = value.nullable ? "(" + expression + " != null && " + shape + ")" : shape;
+                if (value.nullable && !"false".equals(branch)) {
+                    branch = "true".equals(branch) ? expression + " != null"
+                            : "(" + expression + " != null && " + branch + ")";
+                }
             }
-            if (matches.length() > 0) matches.append(" || ");
-            matches.append("(").append(branch).append(")");
+            if ("true".equals(branch)) return;
+            if (!"false".equals(branch)) matches.add(branch);
         }
-        lines.add("if (!(" + matches + ")) " + fail(onFailure, check.diagnostic));
+        if (matches.isEmpty()) {
+            // A literal throw would make subsequent generated assertions unreachable.
+            lines.add("if (java.lang.Boolean.TRUE) " + fail(onFailure, check.diagnostic));
+        } else if (matches.size() == 1 && matches.get(0).equals(expression + " != null")) {
+            lines.add("if (" + expression + " == null) " + fail(onFailure, check.diagnostic));
+        } else {
+            lines.add("if (!(" + String.join(" || ", matches) + ")) "
+                    + fail(onFailure, check.diagnostic));
+        }
     }
 
     private void emitLiteral(List<String> lines, SchemaCheck.LiteralCheck check,
@@ -607,11 +722,19 @@ final class SchemaEmitter {
                 lines.add("        if (!(" + matches + ")) " + fail(onFailure, check.diagnostic));
                 lines.add("    } else {");
             }
-            List<String> candidateLines = new ArrayList<String>();
-            emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value, typed,
-                    name + "_subtype", strictFormat, onFailure);
-            for (String source : candidateLines) {
-                lines.add((subtype.guardedBranch >= 0 ? "        " : "    ") + source);
+            if (subtype.guardedBranch >= 0 && DIAGNOSTIC_FAILURE.equals(onFailure)) {
+                // The discriminator matched path remains direct. Only its
+                // exceptional mismatch path uses a boolean helper, keeping
+                // repeated oneOf counters out of the diagnostic method.
+                String matches = branchPredicate(plan, subtype.check, subtype.value, typed, strictFormat);
+                lines.add("        if (!" + matches + ") " + fail(onFailure, check.diagnostic));
+            } else {
+                List<String> candidateLines = new ArrayList<String>();
+                emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value, typed,
+                        name + "_subtype", strictFormat, onFailure);
+                for (String source : candidateLines) {
+                    lines.add((subtype.guardedBranch >= 0 ? "        " : "    ") + source);
+                }
             }
             if (subtype.guardedBranch >= 0) lines.add("    }");
             lines.add("}");
@@ -619,10 +742,15 @@ final class SchemaEmitter {
         }
         lines.add("else {");
         if (check.generic != null) {
-            List<String> genericLines = new ArrayList<String>();
-            emitGenericOneOf(genericLines, plan, check.generic, value, expression,
-                    name + "_generic", strictFormat, onFailure);
-            for (String source : genericLines) lines.add("    " + source);
+            if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
+                String matches = branchPredicate(plan, check.generic, value, expression, strictFormat);
+                lines.add("    if (!" + matches + ") " + fail(onFailure, check.diagnostic));
+            } else {
+                List<String> genericLines = new ArrayList<String>();
+                emitGenericOneOf(genericLines, plan, check.generic, value, expression,
+                        name + "_generic", strictFormat, onFailure);
+                for (String source : genericLines) lines.add("    " + source);
+            }
         } else {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
@@ -645,7 +773,8 @@ final class SchemaEmitter {
         boolean uuidFormat = value.uuidType && "uuid".equals(check.format);
         boolean uriFormat = value.uriType
                 && ("uri".equals(check.format) || "uri-reference".equals(check.format));
-        boolean stringRequired = check.minLength != null || check.maxLength != null
+        boolean stringRequired = (check.minLength != null && check.minLength > 0)
+                || check.maxLength != null
                 || check.choices != null || check.pattern != null
                 || (check.format != null && !uuidFormat && !uriFormat);
         if (value.shape == SchemaValue.Shape.STRING) {
@@ -664,11 +793,12 @@ final class SchemaEmitter {
             lines.add("String " + temp + " = org.sjf4j.Nodes.toString(" + expression + ");");
             text = temp;
         }
-        if (check.minLength != null || check.maxLength != null) {
+        if ((check.minLength != null && check.minLength > 0)
+                || check.maxLength != null) {
             String length = locals.newName("length");
             lines.add("int " + length + " = " + text
                     + ".codePointCount(0, " + text + ".length());");
-            if (check.minLength != null) lines.add("if (" + length + " < " + check.minLength + ") " + fail(onFailure, check.minLengthDiagnostic));
+            if (check.minLength != null && check.minLength > 0) lines.add("if (" + length + " < " + check.minLength + ") " + fail(onFailure, check.minLengthDiagnostic));
             if (check.maxLength != null) lines.add("if (" + length + " > " + check.maxLength + ") " + fail(onFailure, check.maxLengthDiagnostic));
         }
         if (check.pattern != null) {
@@ -800,7 +930,7 @@ final class SchemaEmitter {
         String size = knownCollection ? subject + ".size()"
                 : knownArray ? subject + ".length"
                 : "org.sjf4j.Nodes.sizeInArray(" + subject + ")";
-        if (check.minItems != null) lines.add("if (" + size + " < " + check.minItems + ") " + fail(onFailure, check.minItemsDiagnostic));
+        if (check.minItems != null && check.minItems > 0) lines.add("if (" + size + " < " + check.minItems + ") " + fail(onFailure, check.minItemsDiagnostic));
         if (check.maxItems != null) lines.add("if (" + size + " > " + check.maxItems + ") " + fail(onFailure, check.maxItemsDiagnostic));
         if (check.uniqueItems) {
             lines.add("if (org.sjf4j.Nodes.hasDuplicateInArray(" + subject
