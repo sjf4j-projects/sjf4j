@@ -15,6 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SchemaPlanTest {
 
     @Test
+    void schemaUriMetadataAccessorsArePackagePrivate() throws Exception {
+        assertFalse(java.lang.reflect.Modifier.isPublic(
+                ObjectSchema.class.getDeclaredMethod("retrievalUri").getModifiers()));
+        assertFalse(java.lang.reflect.Modifier.isPublic(
+                ObjectSchema.class.getDeclaredMethod("retrievalUri", URI.class).getModifiers()));
+        assertFalse(java.lang.reflect.Modifier.isPublic(
+                ObjectSchema.class.getDeclaredMethod("canonicalUri").getModifiers()));
+    }
+
+    @Test
     void objectSchemaPlanSnapshotsMinimalRootRuntimeState() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
         schema.retrievalUri(URI.create("file:///schemas/root.json"));
