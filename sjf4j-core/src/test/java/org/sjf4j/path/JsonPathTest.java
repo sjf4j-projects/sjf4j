@@ -169,6 +169,10 @@ public class JsonPathTest {
         JsonPointer nestedDash = JsonPointer.parse("/-/-");
         nestedDash.put(children, 14);
         assertEquals(14, nestedDash.getNode(children));
+        assertEquals(JsonPointer.parse("/-"), intermediate.parent());
+        assertEquals(JsonPointer.parse("/-").hashCode(), intermediate.parent().hashCode());
+        assertEquals(JsonPointer.parse("/-"), JsonPointer.fromLast(
+                new PathSegment.Name(PathSegment.Root.INSTANCE, "-")));
 
         List<Object> list = new ArrayList<>(List.of("a"));
         JsonPointer arrayAppend = JsonPointer.parse("/-");
