@@ -35,6 +35,24 @@ class SchemaPlanTest {
     }
 
     @Test
+    void booleanFalseFallbackKeepsExplicitInstanceLocation() {
+        SchemaPlan plan = BooleanSchema.FALSE.createPlan();
+        org.sjf4j.path.PathSegment location =
+                new org.sjf4j.path.PathSegment.Name(
+                        org.sjf4j.path.PathSegment.Root.INSTANCE, "nested");
+        ValidationContext ctx = new ValidationContext(true, false, false);
+
+        assertFalse(plan.evaluate("value", location, ctx));
+        ValidationResult result = ctx.toResult(false);
+        assertEquals(1, result.getErrors().size());
+        assertEquals("/nested", result.getErrors().get(0).getInstancePs().rootedPointerExpr());
+        assertEquals("false", result.getErrors().get(0).getKeyword());
+
+        assertTrue(BooleanSchema.TRUE.createPlan().evaluate("value", location,
+                new ValidationContext(true, false, false)));
+    }
+
+    @Test
     void booleanResourcesCanBeIndexedResolvedAndReferencedByUri() {
         URI falseUri = URI.create("https://example.test/schemas/false.json");
         URI trueUri = URI.create("https://example.test/schemas/true.json");
