@@ -115,6 +115,8 @@ To run a filtered subset as an Application, use `OfficialCompiledMain.main(Strin
 
 For example: `phase3 unevaluatedItems.json 0 1`. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
 
+Run `OfficialAnnotationTest` as a **JUnit test**. For standalone strict execution of an annotation suite or a filtered file/group/test, run `OfficialAnnotationMain.main(String[])` as an Application with optional arguments `[suite-root] [file.json] [group-filter] [test-filter]`. Group/test filters accept description substrings or zero-based indices prefixed with `#`.
+
 ### Build and publish
 
 `./gradlew build` uses the **locally cached** official suite and does not download it. If no cache exists (including after `clean`), official test tasks are skipped; download the suite explicitly to enable them.
