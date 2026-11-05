@@ -103,15 +103,21 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 
 Categories include `all` (default), `basic`, `scalar`, `object`, `array`, `applicator`, `unevaluated`, `reference`, `phase2`, and `phase3`. The last two are filters, **not separate Gradle tasks**. Reports label each group `DIRECT` or `FALLBACK` according to its explicit setting; `COMPILE_ERROR` identifies an unallowlisted unsupported schema or other compile failure. With `-PofficialCompiledProbeDirect=true`, every listed fallback group is also compiled with `fallback=false`, and a stale allowance that now compiles directly fails the test.
 
-### IntelliJ main
+### IntelliJ
 
-Run `OfficialCompiledTest.main(String[])` from `sjf4j-testbench/src/test/java` with optional arguments:
+Run `OfficialCompiledTest` as a **JUnit test** to see and rerun individual dynamic cases in the test tree.
+
+To run a filtered subset as an Application, use `OfficialCompiledMain.main(String[])` from `sjf4j-testbench/src/test/java` with optional arguments:
 
 ```text
 [category [file.json [groupIndex [testIndex]]]]
 ```
 
 For example: `phase3 unevaluatedItems.json 0 1`. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
+
+Run `OfficialAnnotationTest` as a **JUnit test**. It targets Draft 2020-12 and honors each annotation group's official `compatibility` metadata: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, which denotes future specifications) are counted as `Skipped`, not failures; `Total` counts executed cases only.
+
+For standalone strict execution of compatible annotation cases or a filtered file/group/test, run `OfficialAnnotationMain.main(String[])` as an Application with optional arguments `[suite-root] [file.json] [group-filter] [test-filter]`. Group/test filters accept description substrings or zero-based indices prefixed with `#`.
 
 ### Build and publish
 
