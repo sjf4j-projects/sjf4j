@@ -125,7 +125,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     @Test
     void combinationsRequiringEvaluationTrackingReportExactReason() throws Exception {
         for (String[] input : new String[][]{
-                {"{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}",
+                {"{\"allOf\":[{\"anyOf\":[{\"properties\":{\"a\":true}}]}],\"unevaluatedProperties\":false}",
                         "allOf + unevaluatedProperties"},
                 {"{\"$ref\":\"#/$defs/A\",\"$defs\":{\"A\":true},\"unevaluatedProperties\":false}",
                         "$ref + unevaluatedProperties"},
@@ -142,7 +142,7 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
     @Test
     void fallbackTrueDoesNotEmitWarning() throws Exception {
-        String schema = "{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}";
+        String schema = "{\"allOf\":[{\"anyOf\":[{\"properties\":{\"a\":true}}]}],\"unevaluatedProperties\":false}";
         String source = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "@CompiledValidator(fallback=true) public interface Validator { "
                 + "@ValidJsonSchema(" + JavaWriter.stringLiteral(schema) + ") "
