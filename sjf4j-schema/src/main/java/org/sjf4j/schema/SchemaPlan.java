@@ -78,6 +78,17 @@ public final class SchemaPlan {
         return ctx.toResult(valid);
     }
 
+    /** Validates with optional annotation collection. */
+    public ValidationResult validate(Object node, ValidationOptions options) {
+        Asserts.notNull(options, "options");
+        if (!options.isCollectAnnotations()) {
+            return validate(node, options.isFailFast(), options.isStrictFormat());
+        }
+        ValidationContext ctx = new ValidationContext(options, false);
+        boolean valid = evaluate(node, ctx);
+        return ctx.toResult(valid);
+    }
+
     /** Returns whether the instance passes validation in fail-fast mode. */
     public boolean isValid(Object node) {
         return isValid(node, false);
@@ -148,6 +159,27 @@ public final class SchemaPlan {
      * Executes evaluator pipeline for the current instance branch.
      */
     boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
+        if (ctx.isCollectAnnotations()) {
+            int mark = ctx.annotationMark();
+            boolean valid = false;
+            try {
+                valid = evaluateKeywords(instance, ps, ctx);
+                if (valid && annotations != null) {
+                    for (Annotation annotation : annotations) {
+                        ctx.addAnnotation(instance, ps, annotation.keywordPs,
+                                annotation.resourceUri, annotation.keyword, null, annotation.value);
+                    }
+                }
+                return valid;
+            } finally {
+                if (!valid) ctx.rollbackAnnotations(mark);
+            }
+        }
+        return evaluateKeywords(instance, ps, ctx);
+    }
+
+    /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
+    private boolean evaluateKeywords(Instance instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
                 return true;
@@ -213,6 +245,21 @@ public final class SchemaPlan {
         }
     }
 
+    /** Immutable compile-time definition; instance location is supplied at validation time. */
+    static final class Annotation {
+        final String keyword;
+        final Object value;
+        final PathSegment keywordPs;
+        final URI resourceUri;
+
+        Annotation(String keyword, Object value, PathSegment keywordPs, URI resourceUri) {
+            this.keyword = keyword;
+            this.value = value;
+            this.keywordPs = keywordPs;
+            this.resourceUri = resourceUri;
+        }
+    }
+
     /**
      * Shared dynamic-anchor selection rule, with scope ordered outermost first.
      * The first matching resource wins, including when its target is the
@@ -234,6 +281,7 @@ public final class SchemaPlan {
     final URI resourceUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
+    final Annotation[] annotations;
     final boolean booleanSchema;
     final boolean booleanValue;
 
@@ -250,8 +298,10 @@ public final class SchemaPlan {
                Map<String, SchemaPlan> byAnchorPlans,
                Map<String, SchemaPlan> byDynamicAnchorPlans,
                Map<String, SchemaPlan> byPathPlans,
-               SchemaDialect dialect, Map<String, Boolean> vocabulary) {
+               SchemaDialect dialect, Map<String, Boolean> vocabulary,
+               Annotation[] annotations) {
         this.resourceUri = resourceUri;
+        this.annotations = annotations;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
         this.schema = Asserts.notNull(schema, "schema");
@@ -267,7 +317,7 @@ public final class SchemaPlan {
 
     static SchemaPlan of(URI resourceUri, PathSegment keywordPs, BooleanSchema schema) {
         return new SchemaPlan(resourceUri, keywordPs, new Evaluator[0], schema,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
 
     static SchemaPlan of(URI resourceUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
@@ -275,8 +325,18 @@ public final class SchemaPlan {
                          Map<String, SchemaPlan> byPathPlans,
                          ObjectSchema schema, SchemaDialect dialect,
                          Map<String, Boolean> vocabulary) {
+        return of(resourceUri, keywordPs, evaluators, dynamicAnchor, byAnchorPlans,
+                byDynamicAnchorPlans, byPathPlans, schema, dialect, vocabulary, null);
+    }
+
+    static SchemaPlan of(URI resourceUri, PathSegment keywordPs, List<Evaluator> evaluators, String dynamicAnchor,
+                         Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
+                         Map<String, SchemaPlan> byPathPlans,
+                         ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary,
+                         Annotation[] annotations) {
         return new SchemaPlan(resourceUri, keywordPs, evaluators.toArray(new Evaluator[0]), schema,
-                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, dialect, vocabulary);
+                dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
+                dialect, vocabulary, annotations);
     }
 
 }

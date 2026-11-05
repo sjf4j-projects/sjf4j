@@ -19,6 +19,7 @@ public class ValidationContext {
     private final boolean failFast;
     private final boolean strictFormat;
     private final boolean booleanOnly;
+    private final boolean collectAnnotations;
     private List<ValidationResult.Message> errors;
     private List<ValidationResult.Message> annotations;
 
@@ -38,7 +39,22 @@ public class ValidationContext {
         this.failFast = failFast;
         this.strictFormat = strictFormat;
         this.booleanOnly = booleanOnly;
+        this.collectAnnotations = false;
         this.reusedLeaf = Instance.infer(null);
+    }
+
+    /** Creates a context with the requested runtime validation options. */
+    public ValidationContext(ValidationOptions options, boolean booleanOnly) {
+        java.util.Objects.requireNonNull(options, "options");
+        this.failFast = options.isFailFast();
+        this.strictFormat = options.isStrictFormat();
+        this.booleanOnly = booleanOnly;
+        this.collectAnnotations = options.isCollectAnnotations() && !booleanOnly;
+        this.reusedLeaf = Instance.infer(null);
+    }
+
+    public boolean isCollectAnnotations() {
+        return collectAnnotations;
     }
 
     /** Releases per-evaluation state, preserving configuration and output. */
@@ -64,13 +80,22 @@ public class ValidationContext {
         return annotations == null ? Collections.emptyList() : annotations;
     }
 
-    /**
-     * Reserved for keyword evaluators that produce annotations. The current
-     * schema pipeline does not yet emit annotations.
-     */
+    /** Appended annotations after this index belong to the current schema evaluation. */
+    int annotationMark() {
+        return annotations == null ? 0 : annotations.size();
+    }
+
+    /** Discard annotations produced by an unsuccessful or ignored evaluation. */
+    void rollbackAnnotations(int mark) {
+        if (annotations != null && annotations.size() > mark) {
+            annotations.subList(mark, annotations.size()).clear();
+        }
+    }
+
+    /** Collect an annotation only when explicitly requested. */
     void addAnnotation(Instance instance, PathSegment instancePs,
                        PathSegment keywordPs, URI schemaUri, String keyword, String message, Object value) {
-        if (booleanOnly) return;
+        if (!collectAnnotations) return;
         if (instancePs == null) instancePs = instance.materializePath();
         if (annotations == null) annotations = new ArrayList<>();
         annotations.add(new ValidationResult.Message(keyword, message, value, instancePs, keywordPs, schemaUri));

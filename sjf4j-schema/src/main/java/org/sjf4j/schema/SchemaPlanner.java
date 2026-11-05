@@ -398,6 +398,18 @@ public final class SchemaPlanner {
             evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), resourceUri, notPlan));
         }
 
+        // Static metadata annotations. Keep unevaluated* last for evaluated tracking.
+        List<SchemaPlan.Annotation> metadataEntries = null;
+        for (String key : VocabularyRegistry.ANNOTATION_KEYWORDS) {
+            if (schema.containsKey(key) && _allowsKeyword(dialect, vocabulary, key)) {
+                if (metadataEntries == null) metadataEntries = new ArrayList<>();
+                metadataEntries.add(new SchemaPlan.Annotation(
+                        key, schema.getNode(key), new PathSegment.Name(ps, key), resourceUri));
+            }
+        }
+        SchemaPlan.Annotation[] annotations = metadataEntries == null ? null
+                : metadataEntries.toArray(new SchemaPlan.Annotation[0]);
+
         // unevaluatedProperties / unevaluatedItems
         SchemaPlan unevaluatedPropertiesPlan = _allowsKeyword(dialect, vocabulary, "unevaluatedProperties")
                 ? _buildPlanByKey("unevaluatedProperties", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
@@ -412,7 +424,7 @@ public final class SchemaPlanner {
         // end up
         SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                schema, dialect, vocabulary);
+                schema, dialect, vocabulary, annotations);
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps);

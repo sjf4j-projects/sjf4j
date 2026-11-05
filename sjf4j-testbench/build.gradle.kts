@@ -104,7 +104,8 @@ tasks.named<JavaCompile>("compileJmhJava") {
 
 tasks.test {
     useJUnitPlatform()
-    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class")
+    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class",
+            "**/OfficialAnnotationTest.class")
     jvmArgs(
         "-Xshare:off"
     )
@@ -150,6 +151,7 @@ fun updateOfficialSuite(ref: String) {
         && revisionFile.readText().lineSequence().any { it.trim() == "revision: $sha" }
         && outDir.resolve("tests/draft2020-12").isDirectory
         && outDir.resolve("remotes").isDirectory
+        && outDir.resolve("annotations/tests").isDirectory
     if (validCache) {
         logger.lifecycle("Official JSON Schema suite already at $sha; reusing local cache")
         return
@@ -169,7 +171,8 @@ fun updateOfficialSuite(ref: String) {
                 val rootEnd = name.indexOf('/')
                 if (rootEnd < 0) continue
                 val relative = name.substring(rootEnd + 1)
-                if (!relative.startsWith("tests/") && !relative.startsWith("remotes/")) continue
+                if (!relative.startsWith("tests/") && !relative.startsWith("remotes/")
+                    && !relative.startsWith("annotations/")) continue
 
                 val target = staging.resolve(relative)
                 val targetPath = target.canonicalFile.toPath()
@@ -187,8 +190,9 @@ fun updateOfficialSuite(ref: String) {
             }
         }
         require(staging.resolve("tests/draft2020-12").isDirectory
-                && staging.resolve("remotes").isDirectory) {
-            "Downloaded suite $sha is missing tests/draft2020-12 or remotes"
+                && staging.resolve("remotes").isDirectory
+                && staging.resolve("annotations/tests").isDirectory) {
+            "Downloaded suite $sha is missing required tests, remotes, or annotations"
         }
         staging.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
             "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\n" +
@@ -238,6 +242,32 @@ val officialRuntimeTest by tasks.registering(Test::class) {
     onlyIf("local official JSON Schema suite has been downloaded") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
+
+val cachedOfficialAnnotationsExist = {
+    cachedOfficialSuiteExists() &&
+        officialSchemaSuiteDir.get().asFile.resolve("annotations/tests/meta-data.json").isFile
+}
+
+val officialAnnotationTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs the official metadata Annotation Suite against runtime validation."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    include("**/OfficialAnnotationTest.class")
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = true
+    }
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    jvmArgs("-Xshare:off")
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    onlyIf("official annotation suite is cached") { cachedOfficialAnnotationsExist() }
+    shouldRunAfter(tasks.test)
+}
+officialAnnotationTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
 
 // When a publication also schedules a download, run it before checking the suite.
 // mustRunAfter alone never invokes a network task during an ordinary build.
@@ -374,7 +404,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
 // First checkout with no cached suite simply SKIPs these tasks. The release gate
 // below always refreshes, so no publication can silently omit the official suite.
 tasks.named("check") {
-    dependsOn(officialRuntimeTest, officialCompiledTest)
+    dependsOn(officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
 }
 
 // Release gate covers runtime and full compiled Draft 2020-12 official cases.
@@ -382,7 +412,7 @@ tasks.named("check") {
 val officialPublishGate by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Refreshes upstream main and runs all required official runtime and compiled tests before publishing."
-    dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest)
+    dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
     doLast {
         check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
         // A pinned local SHA may be used for debugging, never for a publication.
@@ -407,11 +437,12 @@ evaluationDependsOn(":sjf4j-schema")
 val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
     layout.buildDirectory.file("jacoco/officialRuntimeTest.exec") +
+    layout.buildDirectory.file("jacoco/officialAnnotationTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
 tasks.jacocoTestReport {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest + officialAnnotationTest)
     executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
@@ -420,7 +451,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest)
+    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest + officialAnnotationTest)
     executionData(coverageExecFiles)
     violationRules {
         rule {

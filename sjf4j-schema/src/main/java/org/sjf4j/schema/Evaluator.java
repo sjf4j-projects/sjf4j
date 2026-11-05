@@ -970,11 +970,13 @@ public interface Evaluator {
             Object node = instance.node();
             boolean result = true;
             for (String key : NodeWalker.keySetInObject(node)) {
+                int annotationMark = ctx.isCollectAnnotations() ? ctx.annotationMark() : -1;
                 ctx.pushIgnoreError();
                 boolean probed;
                 try {
                     probed = propertyNamesPlan.evaluate(Instance.infer(key, ctx.reusedLeaf()), ps, ctx);
                 } finally {
+                    if (annotationMark >= 0) ctx.rollbackAnnotations(annotationMark);
                     ctx.popIgnoreError();
                 }
                 if (!probed) {
@@ -1229,7 +1231,8 @@ public interface Evaluator {
                     // and no unevaluated tracking is active, further scanning is
                     // unnecessary for contains semantics.
                     if (matches >= minContains && maxContains == -1
-                            && instance.peekEvaluated() == null) {
+                            && instance.peekEvaluated() == null
+                            && !ctx.isCollectAnnotations()) {
                         return true;
                     }
                 }
@@ -1391,7 +1394,7 @@ public interface Evaluator {
                 if (subResult) {
                     result = true;
                     // Without evaluated tracking, one successful branch is enough.
-                    if (cousinEvaluated == null) break;
+                    if (cousinEvaluated == null && !ctx.isCollectAnnotations()) break;
                 }
             }
             if (cousinEvaluated != null)
