@@ -16,21 +16,21 @@ import java.util.List;
  */
 public class ValidationResult {
     private final boolean valid;
-    private final List<Message> errors;
-    private final List<Message> annotations;
+    private final List<Detail> errors;
+    private final List<Detail> annotations;
 
     /** Shared success result without errors or annotations. */
     public static final ValidationResult SUCCESS = new ValidationResult(true, null, null);
 
     /** Creates a result containing assertion errors and optional annotations. */
-    public ValidationResult(boolean valid, List<Message> errors, List<Message> annotations) {
+    public ValidationResult(boolean valid, List<Detail> errors, List<Detail> annotations) {
         this.valid = valid;
         this.errors = errors;
         this.annotations = annotations;
     }
 
     /** Creates a result without annotations. */
-    public ValidationResult(boolean valid, List<Message> errors) {
+    public ValidationResult(boolean valid, List<Detail> errors) {
         this(valid, errors, null);
     }
 
@@ -43,7 +43,7 @@ public class ValidationResult {
         return errors == null ? 0 : errors.size();
     }
 
-    public List<Message> getErrors() {
+    public List<Detail> getErrors() {
         return errors == null ? Collections.emptyList() : errors;
     }
 
@@ -51,7 +51,7 @@ public class ValidationResult {
         return errors == null || errors.isEmpty() ? null : errors.get(errors.size() - 1);
     }
 
-    public List<Message> getAnnotations() {
+    public List<Detail> getAnnotations() {
         return annotations == null ? Collections.emptyList() : annotations;
     }
 
@@ -64,7 +64,7 @@ public class ValidationResult {
      * One validation error or annotation with its associated locations.
      * Membership in the errors or annotations list determines its meaning.
      */
-    public static final class Message {
+    public static final class Detail {
         private final String keyword;
         private final String message;
         private final Object annotation;
@@ -72,7 +72,7 @@ public class ValidationResult {
         private final PathSegment keywordPs;
         private final URI resourceUri;
 
-        public Message(String keyword, String message, Object annotation, PathSegment instancePs,
+        public Detail(String keyword, String message, Object annotation, PathSegment instancePs,
                        PathSegment keywordPs, URI resourceUri) {
             this.keyword = keyword;
             this.message = message;
