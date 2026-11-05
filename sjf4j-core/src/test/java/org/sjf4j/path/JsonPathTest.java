@@ -133,6 +133,69 @@ public class JsonPathTest {
     }
 
     @Test
+    public void jsonPointerDashTargetsObjectKeysButAppendsToArrays() {
+        JsonPointer dash = JsonPointer.parse("/-");
+        assertTrue(dash.isAppend());
+        // JSONPath's array append selector has no Pointer object-key token.
+        assertFalse(JsonPointer.fromLast(new PathSegment.Append(
+                PathSegment.Root.INSTANCE)).isSingleGet());
+        assertTrue(dash.isSingleGet());
+
+        Map<String, Object> object = new HashMap<>();
+        assertFalse(dash.contains(object));
+        assertNull(dash.getNode(object));
+        assertNull(dash.put(object, "first"));
+        assertEquals("first", dash.getNode(object));
+        assertTrue(dash.contains(object));
+        assertEquals(List.of("first"), dash.find(object, String.class));
+        assertEquals("first", dash.ensurePutIfAbsent(object, "ignored"));
+        assertEquals("first", dash.replace(object, "second"));
+        assertEquals("second", dash.removeIfPresent(object));
+        assertFalse(dash.contains(object));
+        dash.add(object, "third");
+        assertEquals("third", JsonPath.parse("/-").getNode(object));
+        assertEquals("third", JsonPointer.fromLast(
+                new PathSegment.Append(PathSegment.Root.INSTANCE, "-")).getNode(object));
+
+        JsonObject jo = JsonObject.of("-", "jo");
+        assertEquals("jo", dash.getNode(jo));
+        dash.put(jo, "updated");
+        assertEquals("updated", jo.getNode("-"));
+
+        Map<String, Object> children = new HashMap<>();
+        children.put("-", new HashMap<>(Map.of("child", 12)));
+        JsonPointer intermediate = JsonPointer.parse("/-/child");
+        assertEquals("/-/child", intermediate.toPointerExpr());
+        assertEquals(12, intermediate.getNode(children));
+        intermediate.put(children, 13);
+        assertEquals(13, intermediate.getNode(children));
+        JsonPointer nestedDash = JsonPointer.parse("/-/-");
+        nestedDash.put(children, 14);
+        assertEquals(14, nestedDash.getNode(children));
+        assertEquals(JsonPointer.parse("/-"), intermediate.parent());
+        assertTrue(intermediate.parent().isAppend());
+        assertEquals(JsonPointer.parse("/-").hashCode(), intermediate.parent().hashCode());
+        assertEquals(JsonPointer.parse("/-"), JsonPointer.fromLast(
+                new PathSegment.Name(PathSegment.Root.INSTANCE, "-")));
+
+        List<Object> list = new ArrayList<>(List.of("a"));
+        JsonPointer arrayAppend = JsonPointer.parse("/-");
+        assertNull(arrayAppend.getNode(list));
+        assertFalse(arrayAppend.contains(list));
+        assertTrue(arrayAppend.find(list, Object.class).isEmpty());
+        arrayAppend.add(list, "b");
+        arrayAppend.put(list, "c");
+        arrayAppend.ensurePutIfAbsent(list, "d");
+        assertEquals(List.of("a", "b", "c", "d"), list);
+        assertThrows(NodeException.class, () -> arrayAppend.replace(list, "bad"));
+        assertThrows(NodeException.class, () -> arrayAppend.removeIfPresent(list));
+
+        // JSONPath's explicit append selector remains array-only.
+        assertFalse(JsonPath.parse("$[+]").isSingleGet());
+        assertThrows(NodeException.class, () -> JsonPath.parse("$[+]").put(object, "bad"));
+    }
+
+    @Test
     public void testParse3() {
         String s1 = "$..a['b'].c";
         JsonPath p1 = JsonPath.parse(s1);

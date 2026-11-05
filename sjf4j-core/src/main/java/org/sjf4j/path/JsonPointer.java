@@ -17,8 +17,10 @@ import java.util.Objects;
  * <p>This class is a restricted {@link JsonPath}. It accepts the empty root
  * pointer and slash-delimited tokens with RFC 6901 escaping. Nonnegative
  * 32-bit integer tokens select an array index for array node parents and
- * retain their token as an object key for object node parents. The {@code -}
- * token is reserved for append writes; it does not select an existing value.
+ * retain their token as an object key for object node parents. Likewise,
+ * the terminal {@code -} selects an object member named {@code "-"} or the
+ * append position after an array's last element. Array append positions are
+ * only writable, not readable. Nonterminal {@code -} tokens are object names.
  */
 @NodeValue
 public class JsonPointer extends JsonPath {
@@ -74,6 +76,10 @@ public class JsonPointer extends JsonPath {
         if (segments.length <= 1) return null;
         PathSegment[] parentSegs = new PathSegment[segments.length - 1];
         System.arraycopy(segments, 0, parentSegs, 0, parentSegs.length);
+        PathSegment last = parentSegs[parentSegs.length - 1];
+        if (last instanceof PathSegment.Name && "-".equals(((PathSegment.Name) last).name)) {
+            parentSegs[parentSegs.length - 1] = new PathSegment.Append(last.parent(), "-");
+        }
         return new JsonPointer(null, parentSegs);
     }
 
@@ -106,7 +112,15 @@ public class JsonPointer extends JsonPath {
         for (int i = 0; i < segments.length; i++) {
             PathSegment a = segments[i];
             PathSegment b = other.segments[i];
-            if (a.getClass() != b.getClass()) return false;
+            // A nonterminal "-" is Name and a terminal "-" is Append.
+            // They identify the same RFC 6901 token after parent() truncation.
+            if (a.getClass() != b.getClass()) {
+                if (a instanceof PathSegment.Append && b instanceof PathSegment.Name
+                        && "-".equals(((PathSegment.Name) b).name)) continue;
+                if (b instanceof PathSegment.Append && a instanceof PathSegment.Name
+                        && "-".equals(((PathSegment.Name) a).name)) continue;
+                return false;
+            }
             if (a instanceof PathSegment.Name) {
                 if (!((PathSegment.Name) a).name.equals(((PathSegment.Name) b).name)) return false;
             } else if (a instanceof PathSegment.Index) {
@@ -124,8 +138,11 @@ public class JsonPointer extends JsonPath {
     public int hashCode() {
         int hash = 1;
         for (PathSegment seg : segments) {
-            int segHash = seg.getClass().hashCode();
-            if (seg instanceof PathSegment.Name) {
+            int segHash = (seg instanceof PathSegment.Append
+                    ? PathSegment.Name.class : seg.getClass()).hashCode();
+            if (seg instanceof PathSegment.Append) {
+                segHash = 31 * segHash + "-".hashCode();
+            } else if (seg instanceof PathSegment.Name) {
                 segHash = 31 * segHash + ((PathSegment.Name) seg).name.hashCode();
             } else if (seg instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) seg;

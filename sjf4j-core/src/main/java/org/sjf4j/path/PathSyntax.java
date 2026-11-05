@@ -81,7 +81,11 @@ public final class PathSyntax {
             int end = expr.indexOf('/', start);
             if (end == -1) end = len;
             if (end == start + 1 && expr.charAt(start) == '-') {
-                lastSegment = new PathSegment.Append(lastSegment);
+                // Only a terminal "-" can denote append. In the middle of a
+                // pointer it is an ordinary object member name.
+                lastSegment = end == len
+                        ? new PathSegment.Append(lastSegment, "-")
+                        : new PathSegment.Name(lastSegment, "-");
             } else {
                 String seg = expr.substring(start, end);
                 String name;
