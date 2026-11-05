@@ -136,6 +136,9 @@ public class JsonPathTest {
     public void jsonPointerDashTargetsObjectKeysButAppendsToArrays() {
         JsonPointer dash = JsonPointer.parse("/-");
         assertTrue(dash.isAppend());
+        // JSONPath's array append selector has no Pointer object-key token.
+        assertNull(JsonPointer.fromLast(new PathSegment.Append(
+                PathSegment.Root.INSTANCE)).getNode(Map.of("-", "object")));
         assertTrue(dash.isSingleGet());
 
         Map<String, Object> object = new HashMap<>();
@@ -152,7 +155,7 @@ public class JsonPathTest {
         dash.add(object, "third");
         assertEquals("third", JsonPath.parse("/-").getNode(object));
         assertEquals("third", JsonPointer.fromLast(
-                new PathSegment.Append(PathSegment.Root.INSTANCE)).getNode(object));
+                new PathSegment.Append(PathSegment.Root.INSTANCE, "-")).getNode(object));
 
         JsonObject jo = JsonObject.of("-", "jo");
         assertEquals("jo", dash.getNode(jo));
