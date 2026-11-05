@@ -12,6 +12,7 @@ import org.sjf4j.schema.SchemaRegistry;
 import org.sjf4j.schema.ValidationOptions;
 import org.sjf4j.schema.ValidationResult;
 
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -74,6 +75,15 @@ public final class OfficialAnnotationTest {
         assertPassing(all, "meta-data.json", 7);
         assertPassing(all, "applicators.json", 15);
         assertPassing(all, "unevaluated.json", 20);
+
+        // Compatibility "9999" requires a future dialect and cannot be gated
+        // as Draft 2020-12 conformance. Report these in the full-suite run.
+        Report core2020 = runFile(root.resolve("annotations/tests/core.json"), null, null, true);
+        if (core2020.total != 4 || core2020.failed != 0 || core2020.errors != 0) {
+            throw new AssertionError("Official Draft 2020-12 core annotations: "
+                    + core2020.passed + "/" + core2020.total + ", failed "
+                    + core2020.failed + ", errors " + core2020.errors);
+        }
     }
 
     private static Path locateTestRoot(String argumentRoot) {
@@ -127,6 +137,11 @@ public final class OfficialAnnotationTest {
 
     private static Report runFile(Path file, String groupFilter,
                                   String testFilter) throws Exception {
+        return runFile(file, groupFilter, testFilter, false);
+    }
+
+    private static Report runFile(Path file, String groupFilter,
+                                  String testFilter, boolean skipFuture) throws Exception {
         JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
         JsonArray groups = suite.getJsonArray("suite");
@@ -136,10 +151,14 @@ public final class OfficialAnnotationTest {
             JsonObject group = groups.getJsonObject(groupIndex);
             String groupDescription = group.getString("description", "");
             if (!selected(groupFilter, groupIndex, groupDescription)) continue;
+            if (skipFuture && "9999".equals(group.getString("compatibility"))) continue;
 
             JsonArray tests = group.getJsonArray("tests");
             SchemaPlan plan = null;
             Exception compileError = null;
+            Map<URI, String> resourceLocations = new LinkedHashMap<>();
+            indexResourceLocations(group.getNode("schema"), URI.create("sjf4j:/"),
+                    "#", resourceLocations);
             for (int testIndex = 0; testIndex < tests.size(); testIndex++) {
                 JsonObject test = tests.getJsonObject(testIndex);
                 String description = test.getString("description", "");
@@ -158,7 +177,8 @@ public final class OfficialAnnotationTest {
                         }
                     }
                     if (compileError != null) throw compileError;
-                    checkAnnotations(plan.validate(test.getNode("instance"), OPTIONS), test, label);
+                    checkAnnotations(plan.validate(test.getNode("instance"), OPTIONS),
+                            test, label, resourceLocations);
                     report.passed++;
                     System.out.println("PASS " + label);
                 } catch (AssertionError e) {
@@ -182,7 +202,8 @@ public final class OfficialAnnotationTest {
         return description.contains(filter);
     }
 
-    private static void checkAnnotations(ValidationResult result, JsonObject test, String label) {
+    private static void checkAnnotations(ValidationResult result, JsonObject test, String label,
+                                         Map<URI, String> resourceLocations) {
         if (!result.isValid()) {
             throw new AssertionError("validation failed: " + result.getErrors());
         }
@@ -198,7 +219,8 @@ public final class OfficialAnnotationTest {
                 if (!keyword.equals(message.getKeyword())) continue;
                 if (!instanceLocation.equals(message.getInstancePs().rootedPointerExpr())) continue;
 
-                String pointer = "#" + message.getKeywordPs().rootedPointerExpr();
+                String resourcePath = resourceLocations.getOrDefault(message.getSchemaUri(), "#");
+                String pointer = resourcePath + message.getKeywordPs().rootedPointerExpr();
                 String suffix = "/" + keyword.replace("~", "~0").replace("/", "~1");
                 if (!pointer.endsWith(suffix)) {
                     throw new AssertionError("invalid keyword location: " + pointer);
@@ -224,6 +246,34 @@ public final class OfficialAnnotationTest {
                     throw new AssertionError(label + ": " + keyword + " at " + location
                             + " expected " + expected.getNode(location) + ", actual " + actual);
                 }
+            }
+        }
+    }
+
+    /**
+     * Map absolute resource URIs to their original positions in the test schema.
+     * Nested $id starts a new keyword-pointer scope, but the official suite's
+     * expected locations are relative to the original test schema document.
+     */
+    private static void indexResourceLocations(Object node, URI inheritedUri, String path,
+                                               Map<URI, String> result) {
+        if (node instanceof JsonObject) {
+            JsonObject object = (JsonObject) node;
+            URI resourceUri = inheritedUri;
+            String id = object.getString("$id");
+            if (id != null) {
+                resourceUri = inheritedUri.resolve(id);
+                result.put(URI.create(resourceUri.toString().split("#", 2)[0]), path);
+            }
+            for (Map.Entry<String, Object> e : object.entrySet()) {
+                indexResourceLocations(e.getValue(), resourceUri,
+                        path + "/" + e.getKey().replace("~", "~0").replace("/", "~1"), result);
+            }
+        } else if (node instanceof JsonArray) {
+            JsonArray array = (JsonArray) node;
+            for (int i = 0; i < array.size(); i++) {
+                indexResourceLocations(array.getNode(i), inheritedUri,
+                        path + "/" + i, result);
             }
         }
     }
