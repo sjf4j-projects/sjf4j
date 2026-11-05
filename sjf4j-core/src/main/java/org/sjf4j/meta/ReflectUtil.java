@@ -158,6 +158,8 @@ public final class ReflectUtil {
 
         Map<String, PropertyFamily> families = new LinkedHashMap<>();
         Set<String> transientFields = new HashSet<>();
+        // Nearest instance-field declaration controls the implicit property name.
+        Set<String> seenFields = new HashSet<>();
         boolean includeBeans = propertyStrategy != PropertyStrategy.FIELD_ONLY;
         boolean includeFields = propertyStrategy != PropertyStrategy.BEAN_ONLY;
         Type curType = clazz;
@@ -167,7 +169,7 @@ public final class ReflectUtil {
             try {
                 AccessibleObject.setAccessible(declared, true);
             } catch (RuntimeException ignored) {}
-            if (includeFields) _reserveFieldFamilies(declared, families, transientFields);
+            if (includeFields) _reserveFieldFamilies(declared, families, seenFields, transientFields);
             if (includeBeans) _collectBeanFamilies(clazz, curClazz, curType, families);
             if (includeFields) _collectFieldFamilies(clazz, declared, curType, propertyStrategy, families);
             curType = curClazz.getGenericSuperclass();
@@ -327,14 +329,16 @@ public final class ReflectUtil {
     }
 
     private static void _reserveFieldFamilies(Field[] fields, Map<String, PropertyFamily> families,
-                                              Set<String> transientFields) {
+                                              Set<String> seenFields, Set<String> transientFields) {
         for (Field field : fields) {
             int modifiers = field.getModifiers();
             if (Modifier.isStatic(modifiers) || field.isSynthetic()) continue;
+            if (Modifier.isTransient(modifiers) && field.getAnnotation(NodeProperty.class) != null) {
+                throw new BindingException("transient field '" + field.getName() + "' cannot use @NodeProperty");
+            }
+            // A hidden ancestor field cannot override the descendant's choice.
+            if (!seenFields.add(field.getName())) continue;
             if (Modifier.isTransient(modifiers)) {
-                if (field.getAnnotation(NodeProperty.class) != null) {
-                    throw new BindingException("transient field '" + field.getName() + "' cannot use @NodeProperty");
-                }
                 transientFields.add(field.getName());
                 continue;
             }

@@ -228,6 +228,29 @@ class ReflectUtilMetadataTest {
         public String getHidden() { return hidden; }
     }
 
+    static class TransientParent {
+        public transient String value = "parent";
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    static class FieldOnlyChildWithValue extends TransientParent {
+        public String value = "child";
+    }
+
+    static class BeanFieldChildWithValue extends TransientParent {
+        public String value = "child";
+        public String getValue() { return value; }
+    }
+
+    static class NonTransientParent {
+        public String value = "parent";
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    static class FieldOnlyTransientChild extends NonTransientParent {
+        public transient String value = "child";
+    }
+
     enum SampleEnum { A }
 
     interface SampleInterface {}
@@ -386,6 +409,22 @@ class ReflectUtilMetadataTest {
         // BEAN_ONLY deliberately ignores fields, including transient fields.
         PojoInfo beanOnly = ReflectUtil.analyzePojo(BeanOnlyTransientAccessorPojo.class, true);
         assertNotNull(beanOnly.getPropertyNoAlias("hidden"));
+    }
+
+    @Test
+    void descendantFieldShadowsTransientAncestor() {
+        PojoInfo fieldOnly = ReflectUtil.analyzePojo(FieldOnlyChildWithValue.class, true);
+        assertNotNull(fieldOnly.getPropertyNoAlias("value"));
+        assertEquals(1, fieldOnly.gettableProperties.length);
+        assertEquals("child", fieldOnly.getPropertyNoAlias("value").invokeGetter(new FieldOnlyChildWithValue()));
+
+        PojoInfo beanField = ReflectUtil.analyzePojo(BeanFieldChildWithValue.class, true);
+        assertNotNull(beanField.getPropertyNoAlias("value"));
+        assertEquals(1, beanField.gettableProperties.length);
+        assertEquals("child", beanField.getPropertyNoAlias("value").invokeGetter(new BeanFieldChildWithValue()));
+
+        PojoInfo transientChild = ReflectUtil.analyzePojo(FieldOnlyTransientChild.class, true);
+        assertNull(transientChild.getPropertyNoAlias("value"));
     }
 
     @SuppressWarnings("unchecked")
