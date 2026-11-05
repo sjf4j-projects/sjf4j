@@ -14,8 +14,8 @@ import java.util.Set;
 
 /**
  * Annotation-processing-only Schema document analysis.
- * Discovers referenced resources and enforces the compiled dialect contract
- * before runtime SchemaPlanner builds evaluation plans.
+ * Discovers referenced resources and unknown dialects before runtime
+ * SchemaPlanner builds evaluation plans.
  */
 final class SchemaSupport {
     private SchemaSupport() {}
@@ -44,10 +44,6 @@ final class SchemaSupport {
         if (declaredDialect != null) {
             SchemaDialect dialect = declaredDialect instanceof String
                     ? SchemaDialect.detect((String) declaredDialect) : null;
-            if (dialect == SchemaDialect.DRAFT_07 || dialect == SchemaDialect.DRAFT_2019_09) {
-                throw new IllegalArgumentException("CompiledValidator supports only JSON Schema Draft 2020-12; "
-                        + "unsupported $schema: " + declaredDialect + " at " + scopedUri);
-            }
             if (dialect == null) result.customDialect = true;
         }
 
