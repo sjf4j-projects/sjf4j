@@ -299,7 +299,7 @@ final class SchemaEmitter {
                     statements.add("        " + covered + " = true;");
                     if (pattern.check.kind != SchemaCheck.Kind.PASS) {
                         String element = locals.newName("element");
-                        statements.add("        Object " + element + " = " + "org.sjf4j.schema.CompiledValidatorSupport.scalarValueInObject(" + variable + ", " + key + ", " + runtimeContextExpression + ")" + ";");
+                        statements.add("        Object " + element + " = " + "org.sjf4j.schema.CompiledSupport.scalarValueInObject(" + variable + ", " + key + ", " + runtimeContextExpression + ")" + ";");
                         InstancePath previousPath = instancePath;
                         instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                         List<String> children = new ArrayList<String>();
@@ -317,7 +317,7 @@ final class SchemaEmitter {
                         && check.additionalPropertiesCheck.kind != SchemaCheck.Kind.PASS) {
                     String element = locals.newName("additional");
                     statements.add("    if (!" + covered + ") {");
-                    statements.add("        Object " + element + " = " + "org.sjf4j.schema.CompiledValidatorSupport.scalarValueInObject(" + variable + ", " + key + ", " + runtimeContextExpression + ")" + ";");
+                    statements.add("        Object " + element + " = " + "org.sjf4j.schema.CompiledSupport.scalarValueInObject(" + variable + ", " + key + ", " + runtimeContextExpression + ")" + ";");
                     InstancePath previousPath = instancePath;
                     instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                     List<String> children = new ArrayList<String>();
@@ -335,7 +335,7 @@ final class SchemaEmitter {
         for (SchemaCheck.PropertyCheck property : check.properties) {
             String local = locals.newName(property.name);
             String access = check.dynamic
-                    ? "org.sjf4j.schema.CompiledValidatorSupport.scalarValueInObject(" + variable + ", " + literal(property.name) + ", " + runtimeContextExpression + ")"
+                    ? "org.sjf4j.schema.CompiledSupport.scalarValueInObject(" + variable + ", " + literal(property.name) + ", " + runtimeContextExpression + ")"
                     : check.jsonObject
                     ? variable + ".getNode(" + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
@@ -477,7 +477,7 @@ final class SchemaEmitter {
                         ((SchemaCheck.Fallback) check).uri, planName);
                 if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
                     // The runtime evaluator receives the full enclosing instance path.
-                    lines.add("org.sjf4j.schema.CompiledValidatorSupport.requireValid("
+                    lines.add("org.sjf4j.schema.CompiledSupport.requireValid("
                             + sub.reference() + ", " + expression + ", " + instancePath.segments
                             + ", " + strictFormat + ");");
                 } else {
@@ -815,7 +815,7 @@ final class SchemaEmitter {
         } else {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
-                lines.add("    org.sjf4j.schema.CompiledValidatorSupport.requireValid("
+                lines.add("    org.sjf4j.schema.CompiledSupport.requireValid("
                         + full.reference() + ", " + expression + ", " + instancePath.segments
                         + ", " + strictFormat + ");");
             } else {
