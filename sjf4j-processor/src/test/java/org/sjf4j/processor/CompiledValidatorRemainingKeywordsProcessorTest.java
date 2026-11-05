@@ -77,6 +77,36 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void simpleAllOfCoverageCompilesWithoutRuntimeTracking() throws Exception {
+        for (String schema : new String[]{
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[{\"properties\":{\"bar\":{\"type\":\"string\"}}}],\"unevaluatedProperties\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[{\"patternProperties\":{\"^bar\":{\"type\":\"string\"}}}],\"unevaluatedProperties\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[{\"additionalProperties\":true}],\"unevaluatedProperties\":false}",
+                "{\"prefixItems\":[{\"type\":\"string\"}],\"allOf\":[{\"prefixItems\":[true,{\"type\":\"number\"}]}],\"unevaluatedItems\":false}",
+                "{\"allOf\":[{\"prefixItems\":[{\"type\":\"string\"}],\"items\":true}],\"unevaluatedItems\":false}"
+        }) {
+            NavigatorTestCompiler.Result result = compile(schema, "Object");
+            assertTrue(result.success, schema + "\n" + result.diagnostics());
+            String output = result.generatedSource("fixture/Validator_Impl.java");
+            assertFalse(output.contains(".isValid("), output);
+            assertFalse(output.contains("SchemaPlan"), output);
+        }
+    }
+
+    @Test
+    void conditionalCoverageStillRequiresFallback() throws Exception {
+        for (String schema : new String[]{
+                "{\"anyOf\":[{\"properties\":{\"foo\":true}}],\"unevaluatedProperties\":false}",
+                "{\"allOf\":[{\"anyOf\":[{\"properties\":{\"foo\":true}}]}],\"unevaluatedProperties\":false}",
+                "{\"allOf\":[{\"contains\":{\"type\":\"string\"}}],\"unevaluatedItems\":false}",
+                "{\"allOf\":[{\"unevaluatedProperties\":true}],\"unevaluatedProperties\":false}"
+        }) {
+            NavigatorTestCompiler.Result result = compile(schema, "Object");
+            assertFalse(result.success, schema + "\n" + result.diagnostics());
+        }
+    }
+
+    @Test
     void coverageNeutralApplicatorsCompileWithoutFallback() throws Exception {
         for (String schema : new String[]{
                 "{\"allOf\":[true],\"unevaluatedItems\":false}",
