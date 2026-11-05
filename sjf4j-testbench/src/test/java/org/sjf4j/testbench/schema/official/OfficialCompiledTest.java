@@ -151,14 +151,16 @@ public final class OfficialCompiledTest {
         instance.selectedDrafts(); // Validate before reading any test resources.
         if (args.length > 1) {
             instance.mainFile = args[1];
-            if (!instance.mainFile.endsWith(".json")) {
+            if (!instance.mainFile.endsWith(".json")
+                    || instance.mainFile.contains("/") || instance.mainFile.contains("\\")) {
                 throw new IllegalArgumentException("Expected an official file ending in .json: "
                         + instance.mainFile);
             }
         }
         if (args.length > 2) instance.mainGroup = Integer.parseInt(args[2]);
         if (args.length > 3) instance.mainCase = Integer.parseInt(args[3]);
-        if (instance.mainGroup < -1 || instance.mainCase < -1) {
+        if ((args.length > 2 && instance.mainGroup < 0)
+                || (args.length > 3 && instance.mainCase < 0)) {
             throw new IllegalArgumentException("Group and test indexes must be nonnegative");
         }
         if (instance.mainGroup >= 0 && instance.mainFile == null) {
