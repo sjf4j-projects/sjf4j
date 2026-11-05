@@ -205,6 +205,11 @@ public final class SchemaPlan {
         return schema;
     }
 
+    /** Effective dialect of this schema node, including inherited declarations. */
+    public SchemaDialect dialect() {
+        return dialect;
+    }
+
     /** Absolute URI identifying this schema node, including its JSON Pointer. */
     public URI schemaUri() {
         if (resourceUri == null) return null;
