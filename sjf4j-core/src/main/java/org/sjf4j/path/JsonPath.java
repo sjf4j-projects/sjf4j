@@ -1487,7 +1487,7 @@ public class JsonPath {
      * Walks the path and collects matches up to {@code endExclusive}.
      */
     <T> void _findAll(Object root, Object current, int startIdx, int endExclusive,
-                              List<T> result, Function<Object, T> converter, NodeWalker.Access acc) {
+                      List<T> result, Function<Object, T> converter, NodeWalker.Access acc) {
         Object node = current;
         for (int i = startIdx; i < endExclusive; i++) {
             if (node ==  null) return;
