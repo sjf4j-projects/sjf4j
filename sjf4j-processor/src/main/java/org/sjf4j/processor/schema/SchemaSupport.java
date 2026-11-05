@@ -58,17 +58,19 @@ final class SchemaSupport {
             result.referencedDocuments.add(URI.create(SchemaUtil.stripFragment(target.toString())));
         }
 
-        if (refOnly) return;
-
+        // Definitions remain addressable by a Draft-07 $ref, even though
+        // adjacent assertions are ignored. Discover their external references.
         for (String keyword : new String[]{"$defs", "definitions", "properties",
                 "patternProperties", "dependentSchemas", "dependencies"}) {
-            if (!dialect.supportsKeyword(keyword)) continue;
+            if (!dialect.supportsKeyword(keyword) || (refOnly && !"definitions".equals(keyword))) continue;
             Object schemas = Nodes.getInObject(node, keyword);
             if (JsonType.of(schemas) != JsonType.OBJECT) continue;
             for (Map.Entry<String, Object> entry : Nodes.entrySetInObject(schemas)) {
                 collectReferences(entry.getValue(), scopedUri, dialect, result);
             }
         }
+
+        if (refOnly) return;
 
         for (String keyword : new String[]{"items", "additionalItems", "additionalProperties",
                 "contains", "propertyNames", "not", "if", "then", "else",
