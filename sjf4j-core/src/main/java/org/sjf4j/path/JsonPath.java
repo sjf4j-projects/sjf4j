@@ -103,7 +103,8 @@ public class JsonPath {
                 paramCount++;
             }
             if (!(ps instanceof PathSegment.Root || ps instanceof PathSegment.Current || ps instanceof PathSegment.Name || ps instanceof PathSegment.Index
-                    || ps instanceof PathSegment.Param)) {
+                    || ps instanceof PathSegment.Param
+                    || (ps instanceof PathSegment.Append && _isPointerAppend()))) {
                 isSingleGet = false;
                 if (i < len - 1) {
                     isSingleEval = false;
@@ -1200,6 +1201,14 @@ public class JsonPath {
             }
             return current;
         } else if (lastToken instanceof PathSegment.Append) {
+            if (_isPointerAppendObjectKey(lastContainer)) {
+                Object current = NodeWalker.getInObject(lastContainer, "-");
+                if (JsonType.of(current).isNull()) {
+                    NodeWalker.putInObject(lastContainer, "-", value);
+                    return null;
+                }
+                return current;
+            }
             NodeWalker.addInArray(lastContainer, value);
             return null;
         } else {
@@ -1278,7 +1287,8 @@ public class JsonPath {
             }
             return NodeWalker.containsInArray(lastContainer, index.index);
         } else if (lastToken instanceof PathSegment.Append) {
-            return false;
+            return _isPointerAppendObjectKey(lastContainer)
+                    && NodeWalker.containsInObject(lastContainer, "-");
         } else {
             throw new NodeException("unsupported last path token '" + lastToken +
                     "'; contains() expected Name or Index token");
@@ -1319,7 +1329,11 @@ public class JsonPath {
                 NodeWalker.addInArray(lastContainer, index.index, value);
             }
         } else if (lastToken instanceof PathSegment.Append) {
-            NodeWalker.addInArray(lastContainer, value);
+            if (_isPointerAppendObjectKey(lastContainer)) {
+                NodeWalker.putInObject(lastContainer, "-", value);
+            } else {
+                NodeWalker.addInArray(lastContainer, value);
+            }
         } else {
             throw new NodeException("unsupported last path token '" + lastToken +
                     "'; add() expected Name, Index, or Append token");
@@ -1359,6 +1373,11 @@ public class JsonPath {
                 throw new NodeException("cannot replace value at non-existent path '" + this + "'");
             }
             return NodeWalker.setInArray(lastContainer, index.index, value);
+        } else if (lastToken instanceof PathSegment.Append && _isPointerAppendObjectKey(lastContainer)) {
+            if (!NodeWalker.containsInObject(lastContainer, "-")) {
+                throw new NodeException("cannot replace value at non-existent path '" + this + "'");
+            }
+            return NodeWalker.putInObject(lastContainer, "-", value);
         } else {
             throw new NodeException("unsupported last path token '" + lastToken +
                     "'; replace() expected Name or Index token");
@@ -1392,6 +1411,8 @@ public class JsonPath {
                 return NodeWalker.removeInObject(lastContainer, index.pointerToken);
             }
             return NodeWalker.removeInArray(lastContainer, index.index);
+        } else if (lastToken instanceof PathSegment.Append && _isPointerAppendObjectKey(lastContainer)) {
+            return NodeWalker.removeInObject(lastContainer, "-");
         } else {
             throw new NodeException("unsupported last path token '" + lastToken +
                     "'; remove() expected Name or Index token");
@@ -1404,6 +1425,19 @@ public class JsonPath {
      * Private Helpers
      * --------------------------------------------------------------
      */
+
+    /** Only JSON Pointer's terminal "/-" can address an object key named "-". */
+    private boolean _isPointerAppend() {
+        return this instanceof JsonPointer || (raw != null && raw.startsWith("/"));
+    }
+
+    private boolean _isPointerAppendObjectKey(Object container) {
+        return _isPointerAppend() && JsonType.of(container).isObject();
+    }
+
+    private boolean _isPointerAppendObjectKey(JsonType type) {
+        return _isPointerAppend() && type.isObject();
+    }
 
     private static boolean _isPointerObjectKey(PathSegment.Index index, Object container) {
         if (index.pointerToken == null) {
@@ -1461,6 +1495,12 @@ public class JsonPath {
                 } else {
                     return MISSING;
                 }
+            } else if (pt instanceof PathSegment.Append && _isPointerAppend()) {
+                // On objects, "-" is a member name; on arrays it is not a readable element.
+                if (!_isPointerAppendObjectKey(jt)) return MISSING;
+                NodeWalker.getAccessInObject(node, "-", acc);
+                if (!acc.present) return MISSING;
+                node = acc.node;
             } else if (pt instanceof PathSegment.Descendant) {
                 if (i + 1 >= segments.length) throw new NodeException("descendant '..' cannot appear at the end");
                 List<Object> result = new ArrayList<>();
@@ -1513,6 +1553,14 @@ public class JsonPath {
                     continue;
                 } else if (_isPointerObjectKey(index, jt)) {
                     NodeWalker.getAccessInObject(node, index.pointerToken, acc);
+                    if (acc.present) {
+                        node = acc.node;
+                        continue;
+                    }
+                }
+            } else if (pt instanceof PathSegment.Append && _isPointerAppend()) {
+                if (_isPointerAppendObjectKey(jt)) {
+                    NodeWalker.getAccessInObject(node, "-", acc);
                     if (acc.present) {
                         node = acc.node;
                         continue;
@@ -1728,6 +1776,9 @@ public class JsonPath {
             }
             return NodeWalker.putInArray(lastContainer, index.index, value);
         } else if (lastToken instanceof PathSegment.Append) {
+            if (_isPointerAppendObjectKey(lastContainer)) {
+                return NodeWalker.putInObject(lastContainer, "-", value);
+            }
             NodeWalker.addInArray(lastContainer, value);
             return null;
         } else {
@@ -1752,7 +1803,13 @@ public class JsonPath {
                 NodeWalker.putInArray(lastContainer, index.index, computer.apply(lastContainer, current));
             }
         } else if (lastToken instanceof PathSegment.Append) {
-            NodeWalker.addInArray(lastContainer, computer.apply(lastContainer, null));
+            if (_isPointerAppendObjectKey(lastContainer)) {
+                Object current = NodeWalker.getInObject(lastContainer, "-");
+                NodeWalker.putInObject(lastContainer, "-",
+                        computer.apply(lastContainer, current));
+            } else {
+                NodeWalker.addInArray(lastContainer, computer.apply(lastContainer, null));
+            }
         } else {
             throw new NodeException("unsupported last path token '" + lastToken +
                     "'; compute() expected Name, Index, or Append token");
