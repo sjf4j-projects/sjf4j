@@ -67,16 +67,16 @@ public class ValidationResult {
     public static final class Message {
         private final String keyword;
         private final String message;
-        private final Object value;
+        private final Object annotation;
         private final PathSegment instancePs;
         private final PathSegment keywordPs;
         private final URI resourceUri;
 
-        public Message(String keyword, String message, Object value, PathSegment instancePs,
+        public Message(String keyword, String message, Object annotation, PathSegment instancePs,
                        PathSegment keywordPs, URI resourceUri) {
             this.keyword = keyword;
             this.message = message;
-            this.value = value;
+            this.annotation = annotation;
             this.instancePs = instancePs;
             this.keywordPs = keywordPs;
             this.resourceUri = resourceUri;
@@ -84,7 +84,7 @@ public class ValidationResult {
 
         public String getKeyword() { return keyword; }
         public String getMessage() { return message; }
-        public Object getValue() { return value; }
+        public Object getAnnotation() { return annotation; }
         public PathSegment getInstancePs() { return instancePs; }
         public PathSegment getKeywordPs() { return keywordPs; }
         /** Legacy accessor: returns the resource URI, excluding the keyword pointer. */
@@ -94,7 +94,7 @@ public class ValidationResult {
         @Override
         public String toString() {
             return SchemaUtil.formatValidationMessage(
-                    message != null ? message : String.valueOf(value),
+                    message != null ? message : String.valueOf(annotation),
                     instancePs, keywordPs, resourceUri, keyword);
         }
     }
