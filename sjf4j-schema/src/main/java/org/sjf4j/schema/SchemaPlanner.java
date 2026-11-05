@@ -421,7 +421,7 @@ public final class SchemaPlanner {
 
         // Unrecognized keywords are annotations regardless of their spelling.
         // Known keywords disabled by the dialect/vocabulary are not unknown.
-        for (Map.Entry<String, Object> entry : schema.entrySet()) {
+        for (Map.Entry<String, Object> entry : schema.dynamicMembers().entrySet()) {
             String key = entry.getKey();
             if (VocabularyRegistry.isKnownKeyword(key)) continue;
             if (annotationEntries == null) annotationEntries = new ArrayList<>();
