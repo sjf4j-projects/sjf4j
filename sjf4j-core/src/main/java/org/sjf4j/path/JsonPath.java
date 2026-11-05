@@ -1808,6 +1808,9 @@ public class JsonPath {
         for (int i = 1, len = segments.length - 1; i < len; i++) { // traverse up to the second-last token
             PathSegment ps = segments[i];
             JsonType jt = JsonType.of(curNode);
+            PathSegment nextPt = segments[i + 1];
+            boolean nextObject = nextPt instanceof PathSegment.Name
+                    && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name));
             // ensurePut is an SJF4J extension: a "-" name on an existing
             // array continues to create an appended intermediate container.
             boolean appendName = pointerPath && ps instanceof PathSegment.Name
@@ -1820,10 +1823,8 @@ public class JsonPath {
                         curNode = acc.node;
                         curType = acc.type;
                     } else if (acc.puttable) {
-                        PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = (nextPt instanceof PathSegment.Name
-                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
+                        Object subNode = nextObject
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.putInObject(curNode, key, subNode);
@@ -1844,10 +1845,8 @@ public class JsonPath {
                         curNode = acc.node;
                         curType = acc.type;
                     } else if (acc.puttable) {
-                        PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = (nextPt instanceof PathSegment.Name
-                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
+                        Object subNode = nextObject
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.putInArray(curNode, index.index, subNode);
@@ -1863,10 +1862,8 @@ public class JsonPath {
                         curNode = acc.node;
                         curType = acc.type;
                     } else if (acc.puttable) {
-                        PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = (nextPt instanceof PathSegment.Name
-                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
+                        Object subNode = nextObject
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.putInObject(curNode, index.pointerToken, subNode);
@@ -1883,10 +1880,8 @@ public class JsonPath {
                 if (jt.isArray()) {
                     NodeWalker.putAccessInArray(curNode, curType, null, acc);
                     if (acc.puttable) {
-                        PathSegment nextPt = segments[i + 1];
                         Class<?> subClazz = Types.rawClazz(acc.type);
-                        Object subNode = (nextPt instanceof PathSegment.Name
-                                && (!pointerPath || !"-".equals(((PathSegment.Name) nextPt).name)))
+                        Object subNode = nextObject
                                 ? NodeWalker.createObjectNode(subClazz)
                                 : NodeWalker.createArrayNode(subClazz);
                         NodeWalker.addInArray(curNode, subNode);
