@@ -12,59 +12,82 @@ import org.sjf4j.schema.SchemaRegistry;
 import org.sjf4j.schema.ValidationOptions;
 import org.sjf4j.schema.ValidationResult;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
- * Official JSON-Schema-Test-Suite annotation conformance.
+ * Official JSON Schema annotation conformance suite.
  *
- * <p>The automated test runs the metadata vocabulary only (first runtime phase).
- * The main method can run a selected annotation suite file, group, and test
- * for debugging. Group and test selectors match description substrings, or
- * zero-based indices when prefixed with '#'.
+ * <p>JUnit runs every file and reports all results. Until the remaining annotation
+ * vocabularies are implemented, the CI gate enforces the metadata and applicator
+ * suites and reports the other files as pending (without concealing failures).
+ * The main method is strict for any selected file or the entire suite.
  */
 public final class OfficialAnnotationTest {
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
-    private static final String DEFAULT_FILE = "meta-data.json";
-
     private static final ValidationOptions OPTIONS = ValidationOptions.builder()
             .collectAnnotations(true).build();
 
     /**
-     * Usage: OfficialAnnotationTest [suite-root] [file] [group-filter] [test-filter].
+     * Run all files, or select one file/group/test:
+     * OfficialAnnotationTest [suite-root] [file.json] [group-filter] [test-filter].
      *
-     * <p>With no arguments, uses the cached suite and runs meta-data.json.
-     * Examples: meta-data.json '#2' '#0', or applicators.json anyOf.
+     * <p>Group/test selectors match description substrings or zero-based indices
+     * prefixed with '#', e.g. applicators.json '#5' '#0'.
      */
     public static void main(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException("Usage: OfficialAnnotationTest "
-                    + "[<JSON-Schema-Test-Suite root>] [<file>] [<group-filter>] [<test-filter>]");
+                    + "[<JSON-Schema-Test-Suite root>] [<file.json>] [<group-filter>] [<test-filter>]");
         }
         Path root = locateTestRoot(args.length > 0 ? args[0] : null);
-        String file = args.length > 1 ? args[1] : DEFAULT_FILE;
+        String file = args.length > 1 ? args[1] : null;
         String groupFilter = args.length > 2 ? args[2] : null;
         String testFilter = args.length > 3 ? args[3] : null;
-        runFile(root, file, groupFilter, testFilter);
+        Report report = run(root, file, groupFilter, testFilter);
+        if (report.total == 0) throw new IllegalArgumentException("No annotation tests matched");
+        if (report.failed != 0 || report.errors != 0) {
+            throw new AssertionError("Annotation suite: " + report.failed
+                    + " failed, " + report.errors + " errors");
+        }
     }
 
+    /**
+     * Execute the complete official suite. Only implemented vocabularies are
+     * release-gated until the remaining files are explicitly supported.
+     */
     @Test
-    public void metadataVocabulary() throws Exception {
-        runFile(locateTestRoot(null), DEFAULT_FILE, null, null);
+    public void officialAnnotations() throws Exception {
+        Path root = locateTestRoot(null);
+        Report all = run(root, null, null, null);
+        if (all.total == 0) throw new AssertionError("No official annotation tests found");
+
+        Report metadata = run(root, "meta-data.json", null, null);
+        Report applicators = run(root, "applicators.json", null, null);
+        if (metadata.total != 7 || applicators.total != 15) {
+            throw new AssertionError("Official annotation suite changed: metadata="
+                    + metadata.total + ", applicators=" + applicators.total);
+        }
+        if (metadata.failed + metadata.errors + applicators.failed + applicators.errors != 0) {
+            throw new AssertionError("Supported annotation suites failed: metadata="
+                    + metadata.failed + "/" + metadata.errors + ", applicators="
+                    + applicators.failed + "/" + applicators.errors);
+        }
     }
 
     private static Path locateTestRoot(String argumentRoot) {
         String property = System.getProperty(TEST_ROOT_PROPERTY);
-        if (property != null && !property.isEmpty()) {
-            return Paths.get(property);
-        }
-        if (argumentRoot != null && !argumentRoot.isEmpty()) {
-            return Paths.get(argumentRoot);
-        }
+        if (property != null && !property.isEmpty()) return Paths.get(property);
+        if (argumentRoot != null && !argumentRoot.isEmpty()) return Paths.get(argumentRoot);
+
         Path moduleRoot = Paths.get("build", SUITE_DIRECTORY);
         if (Files.isDirectory(moduleRoot)) return moduleRoot;
         Path repositoryRoot = Paths.get("sjf4j-testbench", "build", SUITE_DIRECTORY);
@@ -74,21 +97,43 @@ public final class OfficialAnnotationTest {
                 + TEST_ROOT_PROPERTY + "=<suite-root> or a <suite-root> main argument.");
     }
 
-    private static void runFile(Path root, String file, String groupFilter,
-                                String testFilter) throws Exception {
-        Path directory = root.resolve("annotations").resolve("tests");
-        Path path = directory.resolve(file).normalize();
-        if (!path.startsWith(directory.normalize()) || !Files.isRegularFile(path)) {
-            throw new IllegalArgumentException("Annotation suite file not found: " + path);
+    private static Report run(Path root, String file, String groupFilter,
+                              String testFilter) throws Exception {
+        Path directory = root.resolve("annotations").resolve("tests").normalize();
+        if (!Files.isDirectory(directory)) {
+            throw new IllegalStateException("Official annotation suite missing: " + directory);
         }
 
-        JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(path), JsonObject.class);
+        Report total = new Report();
+        if (file != null && !file.isEmpty()) {
+            Path selected = directory.resolve(file).normalize();
+            if (!selected.startsWith(directory) || !Files.isRegularFile(selected)
+                    || !selected.getFileName().toString().endsWith(".json")) {
+                throw new IllegalArgumentException("Annotation suite file not found: " + selected);
+            }
+            total.add(runFile(selected, groupFilter, testFilter));
+        } else {
+            try (Stream<Path> paths = Files.list(directory)) {
+                for (Path path : (Iterable<Path>) paths.filter(p -> p.toString().endsWith(".json"))
+                        .sorted(Comparator.comparing(p -> p.getFileName().toString()))::iterator) {
+                    total.add(runFile(path, groupFilter, testFilter));
+                }
+            }
+        }
+        System.out.println("========================================");
+        System.out.println("Official Annotation Suite Summary");
+        System.out.println("Total: " + total.total + "  Passed: " + total.passed
+                + "  Failed: " + total.failed + "  Error: " + total.errors);
+        System.out.println("========================================");
+        return total;
+    }
+
+    private static Report runFile(Path file, String groupFilter,
+                                  String testFilter) throws Exception {
+        JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
         SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
         JsonArray groups = suite.getJsonArray("suite");
-        int total = 0;
-        int passed = 0;
-        int failed = 0;
-        int errors = 0;
+        Report report = new Report();
 
         for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
             JsonObject group = groups.getJsonObject(groupIndex);
@@ -100,12 +145,13 @@ public final class OfficialAnnotationTest {
             Exception compileError = null;
             for (int testIndex = 0; testIndex < tests.size(); testIndex++) {
                 JsonObject test = tests.getJsonObject(testIndex);
-                String testDescription = test.getString("description", "");
-                if (!selected(testFilter, testIndex, testDescription)) continue;
+                String description = test.getString("description", "");
+                if (!selected(testFilter, testIndex, description)) continue;
 
-                total++;
-                String label = file + " group#" + groupIndex + " (" + groupDescription + ") test#"
-                        + testIndex + " (" + testDescription + ")";
+                report.total++;
+                String label = file.getFileName() + " group#" + groupIndex
+                        + " (" + groupDescription + ") test#" + testIndex
+                        + (description.isEmpty() ? "" : " (" + description + ")");
                 try {
                     if (plan == null && compileError == null) {
                         try {
@@ -115,46 +161,27 @@ public final class OfficialAnnotationTest {
                         }
                     }
                     if (compileError != null) throw compileError;
-
-                    ValidationResult result = plan.validate(test.getNode("instance"), OPTIONS);
-                    checkAnnotations(result, test, label);
-                    passed++;
+                    checkAnnotations(plan.validate(test.getNode("instance"), OPTIONS), test, label);
+                    report.passed++;
                     System.out.println("PASS " + label);
                 } catch (AssertionError e) {
-                    failed++;
+                    report.failed++;
                     System.out.println("FAIL " + label + ": " + e.getMessage());
                 } catch (Exception e) {
-                    errors++;
+                    report.errors++;
                     System.out.println("ERROR " + label + ": " + e);
                     e.printStackTrace(System.out);
                 }
             }
         }
-
-        System.out.println("================================");
-        System.out.println(" JSON Schema Annotation Summary");
-        System.out.println("================================");
-        System.out.println("File  : " + path);
-        System.out.println("Total : " + total);
-        System.out.println("Passed: " + passed);
-        System.out.println("Failed: " + failed);
-        System.out.println("Error : " + errors);
-        System.out.println("================================");
-
-        if (total == 0) {
-            throw new IllegalArgumentException("No annotation tests matched the specified selectors");
-        }
-        if (failed != 0 || errors != 0) {
-            throw new AssertionError("Official annotation tests failed: " + failed
-                    + " failures, " + errors + " errors in " + file);
-        }
+        System.out.println(file.getFileName() + " [ " + report.passed + " / " + report.total
+                + " ] Failed: " + report.failed + " Error: " + report.errors);
+        return report;
     }
 
     private static boolean selected(String filter, int index, String description) {
         if (filter == null || filter.isEmpty()) return true;
-        if (filter.startsWith("#")) {
-            return filter.substring(1).equals(Integer.toString(index));
-        }
+        if (filter.startsWith("#")) return filter.substring(1).equals(Integer.toString(index));
         return description.contains(filter);
     }
 
@@ -168,8 +195,8 @@ public final class OfficialAnnotationTest {
             String instanceLocation = assertion.getString("location", "");
             String keyword = assertion.getString("keyword");
             JsonObject expected = assertion.getJsonObject("expected");
-
             Map<String, Object> actual = new LinkedHashMap<>();
+
             for (ValidationResult.Message message : result.getAnnotations()) {
                 if (!keyword.equals(message.getKeyword())) continue;
                 if (!instanceLocation.equals(message.getInstancePs().rootedPointerExpr())) continue;
@@ -191,12 +218,30 @@ public final class OfficialAnnotationTest {
                         + expected.keySet() + ", actual " + actual);
             }
             for (String location : expected.keySet()) {
-                if (!actual.containsKey(location)
-                        || !Nodes.equals(expected.getNode(location), actual.get(location))) {
+                // Official output locations may percent-encode JSON Pointer fragments
+                // (e.g. %5E for '^'). PathSegment stores the decoded token.
+                String decoded = URLDecoder.decode(location.replace("+", "%2B"),
+                        StandardCharsets.UTF_8);
+                if (!actual.containsKey(decoded)
+                        || !Nodes.equals(expected.getNode(location), actual.get(decoded))) {
                     throw new AssertionError(label + ": " + keyword + " at " + location
                             + " expected " + expected.getNode(location) + ", actual " + actual);
                 }
             }
+        }
+    }
+
+    private static final class Report {
+        int total;
+        int passed;
+        int failed;
+        int errors;
+
+        void add(Report other) {
+            total += other.total;
+            passed += other.passed;
+            failed += other.failed;
+            errors += other.errors;
         }
     }
 }
