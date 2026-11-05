@@ -272,7 +272,9 @@ public final class OfficialCompiledTest {
                     for (String key : original.keySet()) {
                         assertTrue(compiled.containsKey(key)
                                         && Nodes.equals(original.getNode(key), compiled.getNode(key)),
-                                spec.key() + ": generated schema changed keyword " + key);
+                                spec.key() + ": generated schema changed keyword " + key
+                                        + ": original=" + original.getNode(key)
+                                        + ", generated=" + compiled.getNode(key));
                     }
                 } else {
                     assertTrue(Nodes.equals(officialSchema, generatedSchema),
