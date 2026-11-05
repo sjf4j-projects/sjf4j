@@ -23,6 +23,7 @@ final class CompiledSupport {
     static final class Analysis {
         final Set<URI> referencedDocuments = new LinkedHashSet<URI>();
         boolean customDialect;
+        boolean hasDynamicRef;
     }
 
     static Analysis analyze(URI retrievalUri, JsonSchema schema) {
@@ -53,6 +54,7 @@ final class CompiledSupport {
         for (String keyword : new String[]{"$ref", "$dynamicRef", "$recursiveRef"}) {
             Object ref = Nodes.getInObject(node, keyword);
             if (!(ref instanceof String)) continue;
+            if ("$dynamicRef".equals(keyword)) result.hasDynamicRef = true;
             URI target = SchemaUtil.resolveUri(scopedUri, URI.create((String) ref));
             result.referencedDocuments.add(URI.create(SchemaUtil.stripFragment(target.toString())));
         }

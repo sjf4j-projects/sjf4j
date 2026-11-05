@@ -212,6 +212,24 @@ public final class SchemaPlan {
         }
     }
 
+    /**
+     * Shared dynamic-anchor selection rule, with scope ordered outermost first.
+     * The first matching resource wins, including when its target is the
+     * original static target. Repeated entries for a resource are harmless.
+     */
+    static SchemaPlan selectDynamicTarget(SchemaPlan initial, String anchor,
+                                         java.util.Iterator<SchemaPlan> outerToInner) {
+        if (anchor != null) {
+            while (outerToInner.hasNext()) {
+                SchemaPlan scoped = outerToInner.next();
+                if (scoped.byDynamicAnchorPlans == null) continue;
+                SchemaPlan candidate = scoped.byDynamicAnchorPlans.get(anchor);
+                if (candidate != null) return candidate;
+            }
+        }
+        return initial;
+    }
+
     final URI resourceUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;

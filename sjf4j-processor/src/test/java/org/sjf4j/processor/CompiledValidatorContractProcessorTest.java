@@ -177,7 +177,7 @@ class CompiledValidatorContractProcessorTest {
 
 
     @Test
-    void evaluationTrackingRequiresFallbackEvenWhenJavaShapeCannotMatch() throws Exception {
+    void neutralApplicatorCompilesRegardlessOfJavaShape() throws Exception {
         // Schema semantics, not a Java parameter's static shape, decide fallback.
         String schema = "{\"allOf\":[true],\"unevaluatedItems\":false}";
         for (String type : new String[]{"String", "int", "Model"}) {
@@ -188,22 +188,21 @@ class CompiledValidatorContractProcessorTest {
             NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                     "fixture/Model.java", MODEL, "fixture/Check.java", source),
                     CodegenProcessor.class);
-            assertFalse(result.success, type + "\n" + result.diagnostics());
-            assertTrue(result.diagnostics().contains("allOf + unevaluatedItems"),
-                    type + "\n" + result.diagnostics());
+            assertTrue(result.success, type + "\n" + result.diagnostics());
+            assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
         }
     }
 
 
     @Test
-    void rejectsUnsupportedRequireValidWhenFallbackDisabled() throws Exception {
+    void acceptsCoverageNeutralRequireValidWithoutFallback() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
                                 "{\"allOf\":[true],\"unevaluatedProperties\":false}") + ") "
                         + "void requireValid(Model value); }");
-        assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("allOf + unevaluatedProperties"), result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
     }
 
 

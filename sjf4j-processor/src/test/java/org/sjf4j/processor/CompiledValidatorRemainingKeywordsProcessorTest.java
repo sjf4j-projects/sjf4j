@@ -77,6 +77,22 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void coverageNeutralApplicatorsCompileWithoutFallback() throws Exception {
+        for (String schema : new String[]{
+                "{\"allOf\":[true],\"unevaluatedItems\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"allOf\":[true],\"unevaluatedProperties\":false}",
+                "{\"prefixItems\":[{\"const\":\"foo\"}],\"not\":{\"not\":{\"prefixItems\":[true,{\"const\":\"bar\"}]}},\"unevaluatedItems\":false}",
+                "{\"properties\":{\"foo\":{\"type\":\"string\"}},\"not\":{\"not\":{\"properties\":{\"bar\":{\"const\":\"bar\"}},\"required\":[\"bar\"]}},\"unevaluatedProperties\":false}"
+        }) {
+            NavigatorTestCompiler.Result result = compile(schema, "Object");
+            assertTrue(result.success, schema + "\n" + result.diagnostics());
+            String output = result.generatedSource("fixture/Validator_Impl.java");
+            assertFalse(output.contains(".isValid("), schema + "\n" + output);
+            assertFalse(output.contains("SchemaPlan"), schema + "\n" + output);
+        }
+    }
+
+    @Test
     void combinationsRequiringEvaluationTrackingReportExactReason() throws Exception {
         for (String[] input : new String[][]{
                 {"{\"allOf\":[{\"properties\":{\"a\":true}}],\"unevaluatedProperties\":false}",
@@ -153,6 +169,21 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
+    void escapedDynamicRefKeywordUsesParsedSchemaAnalysis() throws Exception {
+        String plain = "{\"$defs\":{\"target\":{\"$anchor\":\"name\",\"type\":\"string\"}},"
+                + "\"$dynamicRef\":\"#name\"}";
+        // The JSON parser decodes the escaped dollar sign in the keyword.
+        // Searching the raw document for the literal keyword misses this case.
+        String escaped = plain.replace("$dynamicRef", "\\" + "u0024dynamicRef");
+        assertFalse(escaped.contains("\"$dynamicRef\""));
+        NavigatorTestCompiler.Result result = compile(escaped, "Object");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Validator_Impl.java");
+        assertFalse(generated.contains(".isValid("), generated);
+        assertFalse(generated.contains("SchemaPlan"), generated);
+    }
+
+    @Test
     void adjacentStaticAndDynamicReferencesAreNotCollapsed() throws Exception {
         String schema = "{\"$defs\":{\"a\":{\"$anchor\":\"value\",\"type\":\"string\"},"
                 + "\"b\":{\"type\":\"number\"}},\"$ref\":\"#/$defs/b\","
@@ -163,15 +194,12 @@ class CompiledValidatorRemainingKeywordsProcessorTest {
     }
 
     @Test
-    void dynamicRefDiagnosisDoesNotInventSecondKeyword() throws Exception {
+    void dynamicAnchorWithKnownScopeCompilesDirectly() throws Exception {
         String schema = "{\"$defs\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"}},"
                 + "\"$dynamicRef\":\"#node\"}";
         NavigatorTestCompiler.Result result = compile(schema, "Object");
-        assertFalse(result.success, result.diagnostics());
-        assertTrue(result.diagnostics().contains("$dynamicRef"), result.diagnostics());
-        assertTrue(result.diagnostics().contains("dynamic-scope"), result.diagnostics());
-        assertTrue(result.diagnostics().contains("#/$dynamicRef"), result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Validator_Impl.java").contains(".isValid("));
     }
-
 
 }
