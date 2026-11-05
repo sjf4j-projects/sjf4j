@@ -22,6 +22,7 @@ final class SchemaEmitter {
     private NameAllocator locals;
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
+    private final Map<String, String> failureHelpers = new LinkedHashMap<String, String>();
     private final java.util.Map<SchemaCheck.ReferenceCheck, String> referenceHelpers =
             new java.util.IdentityHashMap<SchemaCheck.ReferenceCheck, String>();
 
@@ -33,9 +34,26 @@ final class SchemaEmitter {
 
     private String fail(String action, SchemaCheck.Diagnostic d) {
         if (!DIAGNOSTIC_FAILURE.equals(action)) return action;
-        return "throw org.sjf4j.schema.ValidationException.failure("
+        String uri = d == null ? null : d.resourceUri;
+        String helper = failureHelpers.get(uri);
+        if (helper == null) {
+            helper = generated.names().helperMethod("validationFailure");
+            failureHelpers.put(uri, helper);
+            final String method = helper;
+            final String resource = uri == null ? "null" : literal(uri);
+            // Only called from a failing assertion. In particular, constructing
+            // the instance path and ValidationException stays off the hot path.
+            generated.addHelper(out -> {
+                out.beginBlock("private static org.sjf4j.schema.ValidationException "
+                        + method + "(String keyword, String pointer, "
+                        + "org.sjf4j.path.PathSegment instancePath)");
+                out.line("return org.sjf4j.schema.ValidationException.failure("
+                        + "keyword, " + resource + ", pointer, instancePath);");
+                out.endBlock();
+            });
+        }
+        return "throw " + helper + "("
                 + literal(d == null || d.keyword == null ? "schema" : d.keyword) + ", "
-                + (d == null || d.resourceUri == null ? "null" : literal(d.resourceUri)) + ", "
                 + literal(d == null || d.keywordPointer == null ? "" : d.keywordPointer)
                 + ", " + instancePath + ");";
     }
