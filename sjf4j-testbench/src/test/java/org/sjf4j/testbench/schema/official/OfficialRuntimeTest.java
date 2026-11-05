@@ -31,10 +31,10 @@ public final class OfficialRuntimeTest {
      * Program arguments: [dialect [file.json [groupIndex [testIndex]]]].
      * Gradle/JUnit always run all non-optional cases for every dialect.
      */
-    public static void main(String[] args) throws Exception {
+    static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException(
-                    "Usage: OfficialRuntimeTest [dialect [file.json [groupIndex [testIndex]]]]");
+                    "Usage: OfficialRuntimeMain [dialect [file.json [groupIndex [testIndex]]]]");
         }
         List<SchemaDialect> dialects = standaloneDialects(args.length == 0 ? null : args[0]);
         String file = args.length > 1 ? args[1] : null;
