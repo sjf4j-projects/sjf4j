@@ -253,7 +253,7 @@ public final class OfficialAnnotationTest {
             JsonObject expected = assertion.getJsonObject("expected");
             Map<String, Object> actual = new LinkedHashMap<>();
 
-            for (ValidationResult.Message message : result.getAnnotations()) {
+            for (ValidationResult.Detail message : result.getAnnotations()) {
                 if (!keyword.equals(message.getKeyword())) continue;
                 if (!instanceLocation.equals(message.getInstancePs().rootedPointerExpr())) continue;
 
