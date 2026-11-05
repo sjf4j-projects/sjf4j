@@ -1,7 +1,11 @@
 package org.sjf4j.testbench.schema.official;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.schema.JsonSchema;
 import org.sjf4j.schema.SchemaDialect;
+import org.sjf4j.schema.SchemaRegistry;
+import org.sjf4j.schema.ValidationOptions;
+import org.sjf4j.schema.ValidationResult;
 
 import java.lang.reflect.Constructor;
 import java.util.List;
@@ -54,4 +58,18 @@ final class OfficialMainArgumentsTest {
         assertThrows(IllegalArgumentException.class,
                 () -> OfficialAnnotationTest.compatibleWith("bad", SchemaDialect.DRAFT_2020_12));
     }
+    @Test
+    void metadataAnnotationsAreCollectedAcrossAllSupportedDrafts() {
+        ValidationOptions options = ValidationOptions.builder()
+                .collectAnnotations(true).build();
+        for (SchemaDialect dialect : SchemaDialect.values()) {
+            ValidationResult result = JsonSchema.fromJson("{\"title\":\"Example\"}")
+                    .createPlan(new SchemaRegistry(dialect)).validate(42, options);
+            assertTrue(result.isValid(), dialect.toString());
+            assertEquals(1, result.getAnnotations().size(), dialect.toString());
+            assertEquals("title", result.getAnnotations().get(0).getKeyword(), dialect.toString());
+            assertEquals("Example", result.getAnnotations().get(0).getAnnotation(), dialect.toString());
+        }
+    }
+
 }
