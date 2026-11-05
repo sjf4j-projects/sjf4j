@@ -16,7 +16,9 @@ import java.util.Map;
  */
 final class SchemaEmitter {
     static final String DIAGNOSTIC_FAILURE = "__SJF4J_VALIDATION_FAILURE__";
-    private String instancePath = "org.sjf4j.path.PathSegment.Root.INSTANCE";
+    private InstancePath instancePath = new InstancePath(
+            "org.sjf4j.path.PathSegment.Root.INSTANCE", "\"\"", "");
+    private String pointerEscaper;
     private final GeneratedClass generated;
     private final String helperPrefix;
     private NameAllocator locals;
@@ -30,6 +32,61 @@ final class SchemaEmitter {
         this.generated = generated;
         this.helperPrefix = helperPrefix;
         this.locals = locals;
+    }
+
+    /** Segments are retained for runtime fallback; pointer source is for diagnostics. */
+    private static final class InstancePath {
+        final String segments;
+        final String pointer;
+        final String constantPointer;
+
+        InstancePath(String segments, String pointer, String constantPointer) {
+            this.segments = segments;
+            this.pointer = pointer;
+            this.constantPointer = constantPointer;
+        }
+    }
+
+    private InstancePath namePath(String expression, String constantName, boolean diagnostic) {
+        String segments = "new org.sjf4j.path.PathSegment.Name("
+                + instancePath.segments + ", " + expression + ")";
+        if (!diagnostic) {
+            return new InstancePath(segments, instancePath.pointer, instancePath.constantPointer);
+        }
+        if (constantName != null) {
+            String suffix = "/" + constantName.replace("~", "~0").replace("/", "~1");
+            String constant = instancePath.constantPointer == null
+                    ? null : instancePath.constantPointer + suffix;
+            String pointer = constant != null
+                    ? literal(constant) : instancePath.pointer + " + " + literal(suffix);
+            return new InstancePath(segments, pointer, constant);
+        }
+        String prefix = instancePath.constantPointer == null
+                ? instancePath.pointer + " + \"/\" + "
+                : literal(instancePath.constantPointer + "/") + " + ";
+        return new InstancePath(segments, prefix + pointerEscaper() + "(" + expression + ")", null);
+    }
+
+    private InstancePath indexPath(String index) {
+        String segments = "new org.sjf4j.path.PathSegment.Index("
+                + instancePath.segments + ", " + index + ")";
+        String pointer = instancePath.constantPointer == null
+                ? instancePath.pointer + " + \"/\" + " + index
+                : literal(instancePath.constantPointer + "/") + " + " + index;
+        return new InstancePath(segments, pointer, null);
+    }
+
+    private String pointerEscaper() {
+        if (pointerEscaper == null) {
+            pointerEscaper = generated.names().helperMethod("escapePointerToken");
+            final String helper = pointerEscaper;
+            generated.addHelper(out -> {
+                out.beginBlock("private static String " + helper + "(String token)");
+                out.line("return token.replace(\"~\", \"~0\").replace(\"/\", \"~1\");");
+                out.endBlock();
+            });
+        }
+        return pointerEscaper;
     }
 
     private String fail(String action, SchemaCheck.Diagnostic d) {
@@ -46,22 +103,23 @@ final class SchemaEmitter {
             generated.addHelper(out -> {
                 out.beginBlock("private static org.sjf4j.schema.ValidationException "
                         + method + "(String keyword, String pointer, "
-                        + "org.sjf4j.path.PathSegment instancePath)");
+                        + "String instancePointer)");
                 out.line("return org.sjf4j.schema.ValidationException.failure("
-                        + "keyword, " + resource + ", pointer, instancePath);");
+                        + "keyword, " + resource + ", pointer, "
+                        + "org.sjf4j.path.JsonPointer.parse(instancePointer).tail());");
                 out.endBlock();
             });
         }
         return "throw " + helper + "("
                 + literal(d == null || d.keyword == null ? "schema" : d.keyword) + ", "
                 + literal(d == null || d.keywordPointer == null ? "" : d.keywordPointer)
-                + ", " + instancePath + ");";
+                + ", " + instancePath.pointer + ");";
     }
 
     /**
      * Format long fail-fast statements only in the generated requireValid body.
      * The boolean predicates, helper implementations and failure semantics stay
-     * unchanged; PathSegment construction remains on the throwing path.
+     * unchanged; diagnostic pointers are parsed only on the throwing path.
      */
     private static List<String> formatDiagnosticLines(List<String> lines) {
         List<String> formatted = new ArrayList<String>(lines.size());
@@ -167,8 +225,8 @@ final class SchemaEmitter {
                 statements.add("for (String " + key + " : " + (check.jsonObject
                         ? variable + ".keySet()"
                         : "org.sjf4j.Nodes.keySetInObject(" + variable + ")") + ") {");
-                String previousPath = instancePath;
-                instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
+                InstancePath previousPath = instancePath;
+                instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                 String validName = branchPredicate(plan, check.propertyNamesCheck,
                         check.elementValue, key, strictFormat);
                 statements.add("    if (!(" + validName + ")) "
@@ -243,8 +301,8 @@ final class SchemaEmitter {
                         statements.add("        Object " + element + " = " + (check.jsonObject
                                 ? variable + ".getNode(" + key + ")"
                                 : "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + key + ")") + ";");
-                        String previousPath = instancePath;
-                        instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
+                        InstancePath previousPath = instancePath;
+                        instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                         List<String> children = new ArrayList<String>();
                         emitValue(children, plan, pattern.check, check.elementValue, element,
                                 prefix + "PATTERN_" + patternIndex, strictFormat, 0, onFailure);
@@ -263,8 +321,8 @@ final class SchemaEmitter {
                     statements.add("        Object " + element + " = " + (check.jsonObject
                             ? variable + ".getNode(" + key + ")"
                             : "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + key + ")") + ";");
-                    String previousPath = instancePath;
-                    instancePath = "new org.sjf4j.path.PathSegment.Name(" + previousPath + ", " + key + ")";
+                    InstancePath previousPath = instancePath;
+                    instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                     List<String> children = new ArrayList<String>();
                     emitValue(children, plan, check.additionalPropertiesCheck, check.elementValue,
                             element, prefix + "ADDITIONAL", strictFormat, 0, onFailure);
@@ -313,9 +371,9 @@ final class SchemaEmitter {
                 statements.add("if (" + contains + ") {");
             }
             List<String> lines = new ArrayList<String>();
-            String parentPath = instancePath;
-            instancePath = "new org.sjf4j.path.PathSegment.Name("
-                    + parentPath + ", " + literal(property.name) + ")";
+            InstancePath parentPath = instancePath;
+            instancePath = namePath(literal(property.name), property.name,
+                    DIAGNOSTIC_FAILURE.equals(onFailure));
             emitValue(lines, plan, property.check, property.value, checkedValue,
                     prefix + "SUB_" + index, strictFormat, 0, onFailure);
             instancePath = parentPath;
@@ -420,7 +478,7 @@ final class SchemaEmitter {
                 if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
                     // The runtime evaluator receives the full enclosing instance path.
                     lines.add("org.sjf4j.schema.CompiledValidatorSupport.requireValid("
-                            + sub.reference() + ", " + expression + ", " + instancePath
+                            + sub.reference() + ", " + expression + ", " + instancePath.segments
                             + ", " + strictFormat + ");");
                 } else {
                     lines.add("if (!" + sub.reference() + ".isValid("
@@ -755,7 +813,7 @@ final class SchemaEmitter {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
                 lines.add("    org.sjf4j.schema.CompiledValidatorSupport.requireValid("
-                        + full.reference() + ", " + expression + ", " + instancePath
+                        + full.reference() + ", " + expression + ", " + instancePath.segments
                         + ", " + strictFormat + ");");
             } else {
                 lines.add("    if (!" + full.reference()
@@ -1001,10 +1059,9 @@ final class SchemaEmitter {
             lines.add("while (" + iterator + ".hasNext()) {");
             lines.add("    Object " + itemVar + " = " + iterator + ".next();");
         }
-        String parentPath = instancePath;
+        InstancePath parentPath = instancePath;
         if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
-            instancePath = "new org.sjf4j.path.PathSegment.Index(" + parentPath
-                    + ", " + indexVar + ")";
+            instancePath = indexPath(indexVar);
         }
         for (int i = 0; i < check.prefixItems.size(); i++) {
             SchemaCheck prefix = check.prefixItems.get(i);
