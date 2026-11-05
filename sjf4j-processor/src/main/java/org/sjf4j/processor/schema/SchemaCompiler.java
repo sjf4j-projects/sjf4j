@@ -364,7 +364,7 @@ final class SchemaCompiler {
                 case "exclusiveMaximum": case "multipleOf":
                     numbers.put(keyword, schema.getNode(keyword));
                     break;
-                case "items": case "unevaluatedItems": case "prefixItems": case "uniqueItems":
+                case "items": case "additionalItems": case "unevaluatedItems": case "prefixItems": case "uniqueItems":
                 case "minItems": case "maxItems":
                 case "contains": case "minContains": case "maxContains":
                     array.put(keyword, schema.getNode(keyword));
