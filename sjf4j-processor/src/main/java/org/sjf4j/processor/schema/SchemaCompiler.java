@@ -5,6 +5,7 @@ import org.sjf4j.Sjf4j;
 import org.sjf4j.schema.BooleanSchema;
 import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.schema.SchemaPlan;
+import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaUtil;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
@@ -157,6 +158,16 @@ final class SchemaCompiler {
         JsonObject schema = schemaObject(rawSchema);
         // Canonical locations are indexed by lexical $id scope.
         schemaUri = snapshot.canonicalLocation(schemaUri);
+        SchemaDialect dialect = snapshot.dialect(schemaUri);
+        // Older drafts do not assign assertion semantics to newer keywords.
+        // Remove only known-inapplicable keywords, never arbitrary unknown ones.
+        if (dialect != SchemaDialect.DRAFT_2020_12) {
+            JsonObject applicable = new JsonObject();
+            for (String keyword : schema.keySet()) {
+                if (dialect.supportsKeyword(keyword)) applicable.put(keyword, schema.getNode(keyword));
+            }
+            schema = applicable;
+        }
         // When every allOf branch has a statically known coverage footprint,
         // project it into the local unevaluated* check. The original branches
         // remain assertions, so failed branches still reject the instance.
@@ -273,7 +284,8 @@ final class SchemaCompiler {
             }
             if (referenced.hasFallback()) return null;
             // Sibling assertions are applied in the referring schema scope.
-            if (schema.size() == 1) return referenced;
+            // In Draft-07 $ref is the entire schema assertion: siblings are ignored.
+            if (schema.size() == 1 || dialect == SchemaDialect.DRAFT_07) return referenced;
             JsonObject adjacent = new JsonObject();
             for (String keyword : schema.keySet()) {
                 if (!referenceKeyword.equals(keyword)) adjacent.put(keyword, schema.getNode(keyword));
@@ -323,6 +335,11 @@ final class SchemaCompiler {
             // semantic role for an unverified custom dialect/vocabulary.
             if (keyword.equals("contentEncoding") || keyword.equals("contentMediaType")
                     || keyword.equals("contentSchema")) {
+                if (snapshot.dialect(uri) == SchemaDialect.DRAFT_07) {
+                    unsupported("Draft-07 content assertion at " + keywordUri(uri, keyword)
+                            + " requires runtime evaluation");
+                    return null;
+                }
                 if (!canCompileStandardDialect(snapshot)) return null;
                 continue;
             }
@@ -348,6 +365,7 @@ final class SchemaCompiler {
                 case "properties": case "unevaluatedProperties": case "patternProperties": case "propertyNames":
                 case "required": case "additionalProperties": case "minProperties":
                 case "maxProperties": case "dependentRequired": case "dependentSchemas":
+                case "dependencies":
                     object.put(keyword, schema.getNode(keyword));
                     break;
                 default:
