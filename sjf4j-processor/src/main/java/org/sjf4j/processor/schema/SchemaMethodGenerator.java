@@ -108,39 +108,80 @@ final class SchemaMethodGenerator {
         String parameterDeclaration = type + " " + value + (parameterCount == 2
                 ? ", boolean " + strictParam : "");
 
-        // Boolean and void methods share the same native fail-fast checks.
-        // ValidationResult still uses the runtime engine to accumulate errors.
-        SchemaFallbackEmitter.Plan bound = null;
+        // Each inherited type binding is an independent assertion. Compile all
+        // bindings before emitting anything: a single unsupported schema means
+        // the method falls back as a whole, preserving the existing contract.
+        SchemaFallbackEmitter.Plan bound = plans.size() == 1 ? plans.get(0) : null;
         String booleanLiteral = null;
         SchemaCheck direct = null;
-        if ((isBoolean || isVoid) && plans.size() == 1) {
-            bound = plans.get(0);
-            booleanLiteral = compileBoolean(bound.snapshot);
-            if (booleanLiteral == null) {
-                SchemaCompiler compiler = new SchemaCompiler(context);
-                direct = compiler.compileRoot(parameterType, bound.snapshot);
-                if (isBoolean && direct != null && direct.kind == SchemaCheck.Kind.REJECT) {
-                    booleanLiteral = "false";
-                    direct = null;
+        String fallbackReason = null;
+        List<SchemaCheck> directBindings = new ArrayList<SchemaCheck>();
+        if (isBoolean || isVoid) {
+            for (int i = 0; i < plans.size(); i++) {
+                SchemaFallbackEmitter.Plan plan = plans.get(i);
+                String literal = compileBoolean(plan.snapshot);
+                SchemaCheck compiled;
+                if (literal != null) {
+                    compiled = "true".equals(literal) ? new SchemaCheck.Pass()
+                            : new SchemaCheck.Reject(
+                                    SchemaCompiler.schemaDiagnostic(plan.snapshot.selectedUri, "false"));
+                } else {
+                    SchemaCompiler compiler = new SchemaCompiler(context);
+                    compiled = compiler.compileRoot(parameterType, plan.snapshot);
+                    if (compiled == null || compiled.hasFallback()) {
+                        fallbackReason = "schema binding " + bindings.get(i).ownerName
+                                + " (" + plan.snapshot.selectedUri + ") requires runtime fallback: "
+                                + compiler.fallbackReason();
+                        break;
+                    }
                 }
+                directBindings.add(compiled);
+            }
+            if (directBindings.size() == plans.size()) {
+                if (plans.size() == 1) {
+                    direct = directBindings.get(0);
+                    if (direct.kind == SchemaCheck.Kind.PASS) {
+                        booleanLiteral = "true";
+                        direct = null;
+                    } else if (isBoolean && direct.kind == SchemaCheck.Kind.REJECT) {
+                        booleanLiteral = "false";
+                        direct = null;
+                    }
+                }
+            } else {
+                directBindings.clear();
             }
         }
 
-        boolean fallback = booleanLiteral == null &&
-                (direct == null || direct.hasFallback());
-        if (fallback && !allowFallback) {
-            fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile this schema and method");
-            return;
+        boolean fallback = (isResult || directBindings.isEmpty())
+                && booleanLiteral == null;
+        if (fallback) {
+            if (fallbackReason == null) {
+                fallbackReason = isResult
+                        ? "ValidationResult aggregation requires runtime SchemaPlan"
+                        : "unsupported schema construct requires runtime evaluation";
+            }
+            if (!allowFallback) {
+                fail(generated, method, "@CompiledValidator(fallback=false) cannot fully compile "
+                        + "this schema and method: " + fallbackReason
+                        + "; set @CompiledValidator(fallback=true) to enable runtime fallback");
+                return;
+            }
         }
-        // The same checks serve both APIs; only their failure action differs.
-        // Boolean branch helpers (oneOf/anyOf/not/if) still return boolean.
-        final String failure = isVoid && bound != null
+        // SchemaEmitter maintains its own helper names per root. Emit bindings
+        // in inheritance order with one shared local-name allocator.
+        final String failure = isVoid
                 ? SchemaEmitter.DIAGNOSTIC_FAILURE : "return false;";
-        List<String> emitted = direct == null ? null
-                : new SchemaEmitter(generated, "M" + methodSerial++, locals).emitRoot(
-                        direct, SchemaValue.of(context, parameterType), value, bound, strictParam,
-                        failure);
-        if (fallback && emitted == null) {
+        List<String> emitted = null;
+        if (!fallback && booleanLiteral == null) {
+            emitted = new ArrayList<String>();
+            for (int i = 0; i < directBindings.size(); i++) {
+                emitted.addAll(new SchemaEmitter(generated, "M" + methodSerial++, locals).emitRoot(
+                        directBindings.get(i), SchemaValue.of(context, parameterType), value,
+                        plans.get(i), strictParam, failure));
+            }
+        }
+        if (fallback) {
             for (SchemaFallbackEmitter.Plan plan : plans) plan.useRoot();
         }
 

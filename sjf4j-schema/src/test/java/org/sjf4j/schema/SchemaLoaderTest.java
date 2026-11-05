@@ -6,6 +6,7 @@ import org.sjf4j.annotation.schema.ValidJsonSchema;
 import java.io.StringReader;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -120,6 +121,34 @@ class SchemaLoaderTest {
             SchemaPlan plan = schema.createPlan();
             assertTrue(plan.isValid("ok"), reference);
             assertFalse(plan.isValid("x"), reference);
+        }
+    }
+
+    @Test
+    void explicitClassLoaderFindsClasspathResourcesOnlyVisibleToChildLoader() throws IOException {
+        Path directory = Files.createTempDirectory("sjf4j-child-classpath-");
+        String name = "schema-" + directory.getFileName() + ".json";
+        Path resource = directory.resolve(name);
+        URI uri = URI.create("classpath:/" + name);
+        try {
+            Files.writeString(resource, "{\"type\":\"integer\"}");
+            // The library ClassLoader cannot see dynamically added resources.
+            assertNull(new SchemaLoader.Local(URI.create("classpath:/")).load(uri));
+            try (URLClassLoader child = new URLClassLoader(
+                    new java.net.URL[]{directory.toUri().toURL()},
+                    SchemaLoader.class.getClassLoader())) {
+                SchemaLoader.Local local = new SchemaLoader.Local(URI.create("classpath:/"), child);
+                JsonSchema schema = local.load(uri);
+                assertNotNull(schema);
+                SchemaRegistry registry = new SchemaRegistry();
+                registry.index(uri, schema);
+                assertTrue(registry.resolve(uri).isValid(123));
+                assertFalse(registry.resolve(uri).isValid("not an integer"));
+                assertNull(local.load(URI.create("classpath:/missing-" + name)));
+            }
+        } finally {
+            Files.deleteIfExists(resource);
+            Files.deleteIfExists(directory);
         }
     }
 

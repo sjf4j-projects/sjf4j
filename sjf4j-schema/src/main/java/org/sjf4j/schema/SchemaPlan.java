@@ -4,6 +4,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -257,6 +258,24 @@ public final class SchemaPlan {
             this.keywordPs = keywordPs;
             this.resourceUri = resourceUri;
         }
+    }
+
+    /**
+     * Shared dynamic-anchor selection rule, with scope ordered outermost first.
+     * The first matching resource wins, including when its target is the
+     * original static target. Repeated entries for a resource are harmless.
+     */
+    static SchemaPlan findDynamicTarget(SchemaPlan initial, String anchor,
+                                        Iterator<SchemaPlan> outerToInner) {
+        if (anchor != null) {
+            while (outerToInner.hasNext()) {
+                SchemaPlan scoped = outerToInner.next();
+                if (scoped.byDynamicAnchorPlans == null) continue;
+                SchemaPlan candidate = scoped.byDynamicAnchorPlans.get(anchor);
+                if (candidate != null) return candidate;
+            }
+        }
+        return initial;
     }
 
     final URI resourceUri;

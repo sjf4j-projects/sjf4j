@@ -44,6 +44,7 @@ final class SchemaResourceResolver {
 
         org.sjf4j.schema.SchemaRegistry registry;
         boolean customDialect;
+        boolean hasDynamicRef;
 
         org.sjf4j.schema.SchemaPlan resolvePlan(String location) {
             if (registry == null) throw new IllegalStateException("schema registry not initialized");
@@ -162,11 +163,13 @@ final class SchemaResourceResolver {
         if (rootFromRegistry) registryResources.add(documentUri);
 
         boolean customDialect = false;
+        boolean hasDynamicRef = false;
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
             CompiledSupport.Analysis analysis = CompiledSupport.analyze(
                     uri, JsonSchema.fromJson(resources.get(uri)));
             customDialect |= analysis.customDialect;
+            hasDynamicRef |= analysis.hasDynamicRef;
             for (URI document : analysis.referencedDocuments) {
                 if (resources.containsKey(document)) continue;
                 String contents;
@@ -204,6 +207,7 @@ final class SchemaResourceResolver {
         snapshot.registry = registry;
         // CompiledSupport inspected schema-bearing positions before plan construction.
         snapshot.customDialect = customDialect;
+        snapshot.hasDynamicRef = hasDynamicRef;
         return snapshot;
     }
 

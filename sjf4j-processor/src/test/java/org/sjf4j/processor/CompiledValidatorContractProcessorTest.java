@@ -165,20 +165,21 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
+        String schema = "{\"type\":\"object\",\"allOf\":[{\"anyOf\":[{\"properties\":{\"name\":true}}]}],"
+                + "\"unevaluatedProperties\":false}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
-                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
-                                "{\"type\":\"object\",\"required\":[\"name\"],"
-                                + "\"unevaluatedProperties\":false}") + ") "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
                         + "boolean valid(Model value); }");
         assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("allOf + unevaluatedProperties"), result.diagnostics());
     }
 
+
     @Test
-    void unsupportedKeywordRequiresFallbackEvenWhenJavaShapeCannotMatch() throws Exception {
-        // Capability depends on schema semantics, not the Java method parameter.
-        String schema = "{\"unevaluatedItems\":false}";
+    void neutralApplicatorCompilesRegardlessOfJavaShape() throws Exception {
+        // Schema semantics, not a Java parameter's static shape, decide fallback.
+        String schema = "{\"allOf\":[true],\"unevaluatedItems\":false}";
         for (String type : new String[]{"String", "int", "Model"}) {
             String source = "package fixture; import org.sjf4j.annotation.schema.*; "
                     + "@CompiledValidator(fallback=false) public interface Check { "
@@ -187,22 +188,23 @@ class CompiledValidatorContractProcessorTest {
             NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                     "fixture/Model.java", MODEL, "fixture/Check.java", source),
                     CodegenProcessor.class);
-            assertFalse(result.success, type + "\n" + result.diagnostics());
-            assertTrue(result.diagnostics().contains("cannot fully compile"),
-                    type + "\n" + result.diagnostics());
+            assertTrue(result.success, type + "\n" + result.diagnostics());
+            assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
         }
     }
 
+
     @Test
-    void rejectsUnsupportedRequireValidWhenFallbackDisabled() throws Exception {
+    void acceptsCoverageNeutralRequireValidWithoutFallback() throws Exception {
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(
-                                "{\"type\":\"object\",\"unevaluatedProperties\":false}") + ") "
+                                "{\"allOf\":[true],\"unevaluatedProperties\":false}") + ") "
                         + "void requireValid(Model value); }");
-        assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+        assertTrue(result.success, result.diagnostics());
+        assertFalse(result.generatedSource("fixture/Check_Impl.java").contains(".isValid("));
     }
+
 
     @Test
     void rejectsResultWithoutExplicitFallback() throws Exception {
@@ -224,18 +226,23 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".validate("), generated);
+        // Generated fallback resources must be visible through the generated
+        // validator's defining loader, not SchemaLoader's parent loader.
+        assertTrue(generated.contains(".class.getClassLoader()"), generated);
+        assertTrue(generated.contains("SchemaLoader.Local("), generated);
     }
 
     @Test
     void defaultFallbackRejectsUnsupportedChecks() throws Exception {
-        String schema = "{\"unevaluatedProperties\":false}";
+        String schema = "{\"anyOf\":[true],\"unevaluatedProperties\":false}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
                         + "boolean valid(Model value); }");
         assertFalse(result.success);
-        assertTrue(result.diagnostics().contains("cannot fully compile"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("anyOf + unevaluatedProperties"), result.diagnostics());
     }
+
 
     @Test
     void allowsStrictFormatParameterOnFullyDirectMethod() throws Exception {

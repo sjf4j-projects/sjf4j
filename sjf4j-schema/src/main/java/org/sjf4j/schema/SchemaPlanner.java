@@ -665,8 +665,12 @@ public final class SchemaPlanner {
                         dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri));
             }
             dynamicRefEvaluator.initialPlan = refPlan;
-            dynamicRefEvaluator.dynamicAnchorName = fragment != null && fragment.startsWith("/")
-                    ? null : refPlan.dynamicAnchor;
+            // Dynamic rebinding only applies when the reference fragment itself
+            // identifies this $dynamicAnchor. A different ordinary $anchor on
+            // the same schema must behave like a static $ref.
+            dynamicRefEvaluator.dynamicAnchorName = fragment != null
+                    && !fragment.startsWith("/") && fragment.equals(refPlan.dynamicAnchor)
+                    ? fragment : null;
         }
     }
 

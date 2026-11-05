@@ -90,7 +90,7 @@ class CompiledValidatorRegistryDirTest {
         assertFalse(generated.contains(".isValid("), generated);
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> type = loader.loadClass("fixture.Check");
-            Object validator = CompiledInstances.create((Class) type);
+            Object validator = CompiledInstances.create(type);
             Method valid = type.getMethod("valid", Object.class);
             assertEquals(Boolean.TRUE, valid.invoke(validator, "hello"));
             assertEquals(Boolean.FALSE, valid.invoke(validator, "no"));
