@@ -152,34 +152,34 @@ public final class SchemaUtil {
         return path == null || path.isEmpty() ? "/" : path;
     }
 
-    /**
-     * Returns the canonical keyword URI with a JSON Pointer fragment.
-     * A schema URI can already contain a pointer (for example, when a schema
-     * resource has an embedded pointer identifier), so append to that fragment
-     * instead of adding a second '#'. Plain-name anchors cannot be extended
-     * into JSON Pointers without knowing their source location.
-     */
-    static String absoluteKeywordLocation(URI resourceUri, PathSegment keywordPs) {
-        if (resourceUri == null || keywordPs == null || !resourceUri.isAbsolute()
-                || "sjf4j".equalsIgnoreCase(resourceUri.getScheme())) return null;
-
-        String uri = resourceUri.toASCIIString();
-        int hash = uri.indexOf('#');
-        String existingFragment = hash < 0 ? "" : uri.substring(hash + 1);
-        if (!existingFragment.isEmpty() && !existingFragment.startsWith("/")) return null;
-
-        String pointer = keywordPs.rootedPointerExpr();
-        if (pointer == null) return null;
-        try {
-            // URI's fragment constructor escapes spaces, percent signs, '#',
-            // and non-ASCII code points, without escaping JSON Pointer '/'.
-            String encodedPointer = new URI(null, null, pointer).toASCIIString().substring(1);
-            String base = hash < 0 ? uri : uri.substring(0, hash);
-            return base + "#" + existingFragment + encodedPointer;
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Invalid keyword JSON Pointer: " + pointer, e);
-        }
-    }
+//    /**
+//     * Returns the canonical keyword URI with a JSON Pointer fragment.
+//     * A schema URI can already contain a pointer (for example, when a schema
+//     * resource has an embedded pointer identifier), so append to that fragment
+//     * instead of adding a second '#'. Plain-name anchors cannot be extended
+//     * into JSON Pointers without knowing their source location.
+//     */
+//    static String absoluteKeywordLocation(URI resourceUri, PathSegment keywordPs) {
+//        if (resourceUri == null || keywordPs == null || !resourceUri.isAbsolute()
+//                || "sjf4j".equalsIgnoreCase(resourceUri.getScheme())) return null;
+//
+//        String uri = resourceUri.toASCIIString();
+//        int hash = uri.indexOf('#');
+//        String existingFragment = hash < 0 ? "" : uri.substring(hash + 1);
+//        if (!existingFragment.isEmpty() && !existingFragment.startsWith("/")) return null;
+//
+//        String pointer = keywordPs.rootedPointerExpr();
+//        if (pointer == null) return null;
+//        try {
+//            // URI's fragment constructor escapes spaces, percent signs, '#',
+//            // and non-ASCII code points, without escaping JSON Pointer '/'.
+//            String encodedPointer = new URI(null, null, pointer).toASCIIString().substring(1);
+//            String base = hash < 0 ? uri : uri.substring(0, hash);
+//            return base + "#" + existingFragment + encodedPointer;
+//        } catch (URISyntaxException e) {
+//            throw new IllegalArgumentException("Invalid keyword JSON Pointer: " + pointer, e);
+//        }
+//    }
 
     /** Returns a display URI, using {@code <inline>} for synthetic or absent URIs. */
     public static String displaySchemaUri(URI schemaUri) {
