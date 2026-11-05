@@ -18,7 +18,7 @@ class ValidationResultTest {
     void errorCarriesLocationsAndDescriptionWithoutSeverity() {
         URI uri = URI.create("https://example.com/schema");
         PathSegment keyword = new PathSegment.Name(ROOT, "type");
-        ValidationResult.Message error = new ValidationResult.Message("type", "expected integer", null, ROOT,
+        ValidationResult.Detail error = new ValidationResult.Detail("type", "expected integer", null, ROOT,
                 keyword, uri);
         ValidationResult result = new ValidationResult(false, List.of(error));
 
@@ -33,7 +33,7 @@ class ValidationResultTest {
         assertEquals(uri.toString(), error.getSchemaUriText());
         assertTrue(error.toString().contains("type: expected integer"));
         assertFalse(error.toString().startsWith("ERROR"));
-        assertNull(error.getValue());
+        assertNull(error.getAnnotation());
         assertTrue(result.getAnnotations().isEmpty());
     }
 
@@ -41,7 +41,7 @@ class ValidationResultTest {
     void annotationPreservesOriginalJsonValueAndLocations() {
         PathSegment keyword = new PathSegment.Name(ROOT, "examples");
         Object values = List.of(Map.of("x", 1), Map.of("x", 2));
-        ValidationResult.Message annotation = new ValidationResult.Message(
+        ValidationResult.Detail annotation = new ValidationResult.Detail(
                 "examples", "Example values", values, ROOT, keyword, null);
         ValidationResult result = new ValidationResult(true, null, List.of(annotation));
 
@@ -49,7 +49,7 @@ class ValidationResultTest {
         assertEquals(0, result.count());
         assertTrue(result.getErrors().isEmpty());
         assertNull(result.getLastError());
-        assertSame(values, annotation.getValue());
+        assertSame(values, annotation.getAnnotation());
         assertEquals("examples", annotation.getKeyword());
         assertEquals("Example values", annotation.getMessage());
         assertFalse(annotation.toString().startsWith("ERROR"));
@@ -62,10 +62,10 @@ class ValidationResultTest {
 
     @Test
     void sharedMessageTypeKeepsErrorsAndAnnotationsSeparate() {
-        ValidationResult.Message error = new ValidationResult.Message(
+        ValidationResult.Detail error = new ValidationResult.Detail(
                 "required", "missing property", null, ROOT, ROOT, null);
         Object rawValue = Map.of("sample", 42);
-        ValidationResult.Message annotation = new ValidationResult.Message(
+        ValidationResult.Detail annotation = new ValidationResult.Detail(
                 "examples", "sample value", rawValue, ROOT, ROOT, null);
         ValidationResult result = new ValidationResult(
                 false, List.of(error), List.of(annotation));
@@ -75,8 +75,8 @@ class ValidationResultTest {
         assertSame(error, result.getLastError());
         assertEquals(List.of(error), result.getErrors());
         assertEquals(List.of(annotation), result.getAnnotations());
-        assertNull(error.getValue());
-        assertSame(rawValue, annotation.getValue());
+        assertNull(error.getAnnotation());
+        assertSame(rawValue, annotation.getAnnotation());
         assertTrue(ValidationResult.SUCCESS.getErrors().isEmpty());
         assertTrue(ValidationResult.SUCCESS.getAnnotations().isEmpty());
     }

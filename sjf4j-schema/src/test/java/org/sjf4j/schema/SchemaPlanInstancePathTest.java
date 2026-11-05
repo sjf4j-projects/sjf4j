@@ -31,7 +31,7 @@ class SchemaPlanInstancePathTest {
         SchemaPlan plan = schema.createPlan();
         ValidationException exception = assertThrows(ValidationException.class,
                 () -> CompiledSupport.requireValid(plan, Map.of("zip", 123), prefix(), false));
-        ValidationResult.Message error = exception.getResult().getLastError();
+        ValidationResult.Detail error = exception.getResult().getLastError();
         assertEquals("/user/address/zip", error.getInstancePs().rootedPointerExpr());
         assertEquals("/properties/zip/type", error.getKeywordPs().rootedPointerExpr());
         assertEquals(URI.create("https://example.test/address.json"), error.getSchemaUri());
@@ -42,7 +42,7 @@ class SchemaPlanInstancePathTest {
         PathSegment path = new PathSegment.Index(prefix(), 2);
         ValidationException exception = ValidationException.failure(
                 "oneOf", "sjf4j:/example", "/properties/items/oneOf", path);
-        ValidationResult.Message error = exception.getResult().getLastError();
+        ValidationResult.Detail error = exception.getResult().getLastError();
         assertEquals("/user/address/2", error.getInstancePs().rootedPointerExpr());
         assertEquals("/properties/items/oneOf", error.getKeywordPs().rootedPointerExpr());
         assertEquals(URI.create("sjf4j:/example"), error.getSchemaUri());

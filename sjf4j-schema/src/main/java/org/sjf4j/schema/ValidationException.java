@@ -33,7 +33,7 @@ public class ValidationException extends SchemaException {
      * Builds concise exception message from result state.
      */
     private static String buildMessage(ValidationResult result) {
-        ValidationResult.Message first = result.getErrors().isEmpty() ? null : result.getErrors().get(0);
+        ValidationResult.Detail first = result.getErrors().isEmpty() ? null : result.getErrors().get(0);
         if (first == null) return "Validation failed with 0 error(s)";
         return "Validation failed with " + result.count() + " error(s); first: "
                 + SchemaUtil.formatValidationError(
@@ -48,7 +48,7 @@ public class ValidationException extends SchemaException {
                                               String keywordPointer, PathSegment instancePs) {
         PathSegment keywordPs = keywordPointer == null
                 ? PathSegment.Root.INSTANCE : JsonPointer.parse(keywordPointer).tail();
-        ValidationResult.Message message = new ValidationResult.Message(
+        ValidationResult.Detail message = new ValidationResult.Detail(
                 keyword, "compiled assertion failed", null, instancePs, keywordPs,
                 resourceUri == null ? null : URI.create(resourceUri));
         return new ValidationException(new ValidationResult(false, Collections.singletonList(message)));

@@ -253,7 +253,7 @@ public final class OfficialAnnotationTest {
             JsonObject expected = assertion.getJsonObject("expected");
             Map<String, Object> actual = new LinkedHashMap<>();
 
-            for (ValidationResult.Message message : result.getAnnotations()) {
+            for (ValidationResult.Detail message : result.getAnnotations()) {
                 if (!keyword.equals(message.getKeyword())) continue;
                 if (!instanceLocation.equals(message.getInstancePs().rootedPointerExpr())) continue;
 
@@ -267,7 +267,7 @@ public final class OfficialAnnotationTest {
                 if (actual.containsKey(location)) {
                     throw new AssertionError("duplicate annotation at " + location);
                 }
-                actual.put(location, message.getValue());
+                actual.put(location, message.getAnnotation());
             }
 
             if (expected.size() != actual.size()) {

@@ -23,7 +23,7 @@ class AnnotationRuntimeTest {
 
     private static List<String> values(ValidationResult result) {
         return result.getAnnotations().stream()
-                .map(m -> String.valueOf(m.getValue()))
+                .map(m -> String.valueOf(m.getAnnotation()))
                 .collect(Collectors.toList());
     }
 
@@ -36,10 +36,10 @@ class AnnotationRuntimeTest {
         assertEquals(7, result.getAnnotations().size());
         assertEquals(Arrays.asList("title", "description", "default", "examples",
                 "deprecated", "readOnly", "writeOnly"),
-                result.getAnnotations().stream().map(ValidationResult.Message::getKeyword)
+                result.getAnnotations().stream().map(ValidationResult.Detail::getKeyword)
                         .collect(Collectors.toList()));
-        assertNull(result.getAnnotations().get(2).getValue());
-        assertEquals(Boolean.FALSE, result.getAnnotations().get(4).getValue());
+        assertNull(result.getAnnotations().get(2).getAnnotation());
+        assertEquals(Boolean.FALSE, result.getAnnotations().get(4).getAnnotation());
         assertEquals("/title", result.getAnnotations().get(0).getKeywordPs().rootedPointerExpr());
         assertEquals("", result.getAnnotations().get(0).getInstancePs().rootedPointerExpr());
     }
@@ -163,10 +163,10 @@ class AnnotationRuntimeTest {
         ValidationResult string = validate(schema, "42");
         assertTrue(string.isValid());
         assertEquals(3, string.getAnnotations().size());
-        assertEquals("base64", string.getAnnotations().get(0).getValue());
-        assertEquals("application/json", string.getAnnotations().get(1).getValue());
+        assertEquals("base64", string.getAnnotations().get(0).getAnnotation());
+        assertEquals("application/json", string.getAnnotations().get(1).getAnnotation());
         assertTrue(org.sjf4j.Nodes.equals(
-                JsonObject.of("type", "number"), string.getAnnotations().get(2).getValue()));
+                JsonObject.of("type", "number"), string.getAnnotations().get(2).getAnnotation()));
 
         ValidationResult number = validate(schema, 42);
         assertTrue(number.isValid());
@@ -184,10 +184,10 @@ class AnnotationRuntimeTest {
                 + "\"feature.name\":{\"enabled\":true},\"x-null\":null}", 42);
         assertTrue(result.isValid());
         assertEquals(Arrays.asList("x-custom", "feature.name", "x-null"),
-                result.getAnnotations().stream().map(ValidationResult.Message::getKeyword)
+                result.getAnnotations().stream().map(ValidationResult.Detail::getKeyword)
                         .collect(Collectors.toList()));
-        assertEquals(Boolean.FALSE, result.getAnnotations().get(0).getValue());
-        assertNull(result.getAnnotations().get(2).getValue());
+        assertEquals(Boolean.FALSE, result.getAnnotations().get(0).getAnnotation());
+        assertNull(result.getAnnotations().get(2).getAnnotation());
 
         ValidationResult known = validate("{\"type\":\"number\",\"$comment\":\"note\"}", 42);
         assertTrue(known.isValid());

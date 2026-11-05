@@ -59,7 +59,7 @@ public final class SchemaPlan {
             if (booleanValue) {
                 return ValidationResult.SUCCESS;
             } else {
-                ValidationResult.Message error = new ValidationResult.Message(
+                ValidationResult.Detail error = new ValidationResult.Detail(
                         "false", "schema 'false' always fails", null,
                         PathSegment.Root.INSTANCE, keywordPs, resourceUri);
                 return new ValidationResult(false, Collections.singletonList(error));
@@ -143,7 +143,7 @@ public final class SchemaPlan {
                             continue;
                         }
                         ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
-                                annotation.resourceUri, annotation.keyword, null, annotation.value);
+                                annotation.resourceUri, annotation.keyword, null, annotation.annotation);
                     }
                 }
                 return valid;
@@ -229,15 +229,15 @@ public final class SchemaPlan {
     /** Immutable compile-time definition; instance location is supplied at validation time. */
     static final class Annotation {
         final String keyword;
-        final Object value;
+        final Object annotation;
         final PathSegment keywordPs;
         final URI resourceUri;
         final boolean stringOnly;
 
-        Annotation(String keyword, Object value, PathSegment keywordPs, URI resourceUri,
+        Annotation(String keyword, Object annotation, PathSegment keywordPs, URI resourceUri,
                    boolean stringOnly) {
             this.keyword = keyword;
-            this.value = value;
+            this.annotation = annotation;
             this.keywordPs = keywordPs;
             this.resourceUri = resourceUri;
             this.stringOnly = stringOnly;
