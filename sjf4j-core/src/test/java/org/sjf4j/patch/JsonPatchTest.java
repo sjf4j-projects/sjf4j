@@ -199,6 +199,38 @@ public class JsonPatchTest {
 
 
     @Test
+    void patchDistinguishesDashObjectMembersFromArrayAppend() {
+        JsonObject object = JsonObject.of("-", 1, "nested", JsonObject.of("-", JsonObject.of("child", 2)));
+        new PatchOperation(PatchOperation.STD_TEST, JsonPointer.parse("/-"), 1, null).apply(object);
+        new PatchOperation(PatchOperation.STD_REPLACE, JsonPointer.parse("/-"), 3, null).apply(object);
+        assertEquals(3, object.getNode("-"));
+
+        new PatchOperation(PatchOperation.STD_COPY, JsonPointer.parse("/copy"), null,
+                JsonPointer.parse("/-")).apply(object);
+        assertEquals(3, object.getNode("copy"));
+        new PatchOperation(PatchOperation.STD_MOVE, JsonPointer.parse("/moved"), null,
+                JsonPointer.parse("/-")).apply(object);
+        assertFalse(object.containsKey("-"));
+        assertEquals(3, object.getNode("moved"));
+
+        new PatchOperation(PatchOperation.STD_ADD, JsonPointer.parse("/-"), 4, null).apply(object);
+        assertEquals(4, object.getNode("-"));
+        new PatchOperation(PatchOperation.STD_REMOVE, JsonPointer.parse("/-"), null, null).apply(object);
+        assertFalse(object.containsKey("-"));
+
+        JsonPointer intermediate = JsonPointer.parse("/nested/-/child");
+        assertEquals(2, intermediate.getNode(object));
+        new PatchOperation(PatchOperation.STD_REPLACE, intermediate, 5, null).apply(object);
+        assertEquals(5, intermediate.getNode(object));
+
+        List<Integer> values = new ArrayList<>(Arrays.asList(1, 2));
+        new PatchOperation(PatchOperation.STD_ADD, JsonPointer.parse("/-"), 3, null).apply(values);
+        assertEquals(Arrays.asList(1, 2, 3), values);
+        assertThrows(NodeException.class, () -> new PatchOperation(
+                PatchOperation.STD_REPLACE, JsonPointer.parse("/-"), 4, null).apply(values));
+    }
+
+    @Test
     public void testAddAppendToArray() {
         List<Integer> src = new ArrayList<>(Arrays.asList(1, 2, 3));
 
