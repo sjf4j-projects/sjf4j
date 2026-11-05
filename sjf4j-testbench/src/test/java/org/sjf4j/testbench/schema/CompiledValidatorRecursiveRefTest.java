@@ -117,10 +117,12 @@ class CompiledValidatorRecursiveRefTest {
         Direct direct = CompiledInstances.create(Direct.class);
         ValidationException error = assertThrows(ValidationException.class,
                 () -> direct.requireRecursive(Map.of("child", Map.of("value", "wrong"))));
-        assertEquals("/child/value", error.getResult().getLastError()
+        // Reference helpers report failures at the referring instance, not
+        // inside their boolean-only helper's nested assertions.
+        assertEquals("/child", error.getResult().getLastError()
                 .getInstancePs().rootedPointerExpr());
         assertTrue(error.getResult().getLastError().getKeywordPs()
-                .rootedPointerExpr().endsWith("/type"));
+                .rootedPointerExpr().endsWith("/$recursiveRef"));
     }
 
     private static void assertParity(String schema, java.util.function.Predicate<Object> compiled,
