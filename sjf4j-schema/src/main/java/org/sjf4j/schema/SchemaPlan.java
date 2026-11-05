@@ -59,7 +59,7 @@ public final class SchemaPlan {
             if (booleanValue) {
                 return ValidationResult.SUCCESS;
             } else {
-                ValidationResult.Message error = new ValidationResult.Message(
+                ValidationResult.Detail error = new ValidationResult.Detail(
                         "false", "schema 'false' always fails", null,
                         PathSegment.Root.INSTANCE, keywordPs, resourceUri);
                 return new ValidationResult(false, Collections.singletonList(error));
