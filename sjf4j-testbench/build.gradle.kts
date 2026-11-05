@@ -279,16 +279,25 @@ officialRuntimeTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
  * Sources are compiled by OfficialCompiledTest with javac in isolated batches:
  * an unsupported schema must not prevent other official cases from running.
  */
+val officialCompiledDraft = providers.gradleProperty("officialCompiledDraft").orElse("draft2020-12")
 val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/officialCompiled")
 val generateOfficialCompiledCases by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Generates source bindings for every non-optional Draft 2020-12 schema group."
+    description = "Generates official compiled bindings for the selected JSON Schema draft."
     onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     inputs.dir(officialSchemaSuiteDir)
+    inputs.property("officialCompiledDraft", officialCompiledDraft)
     outputs.dir(officialCompiledGeneratedDir)
 
     doLast {
-        val input = officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12")
+        val draft = officialCompiledDraft.get()
+        require(draft in setOf("draft7", "draft2019-09", "draft2020-12"))
+        val dialectUri = when (draft) {
+            "draft7" -> "http://json-schema.org/draft-07/schema#"
+            "draft2019-09" -> "https://json-schema.org/draft/2019-09/schema"
+            else -> "https://json-schema.org/draft/2020-12/schema"
+        }
+        val input = officialSchemaSuiteDir.get().asFile.resolve("tests/$draft")
         val output = officialCompiledGeneratedDir.get().asFile
         delete(output)
 
@@ -306,7 +315,7 @@ val generateOfficialCompiledCases by tasks.registering {
         val files = requireNotNull(input.listFiles())
             .filter { it.isFile && it.extension == "json" }
             .sortedBy { it.name }
-        require(files.isNotEmpty()) { "No official Draft 2020-12 JSON files at $input" }
+        require(files.isNotEmpty()) { "No official $draft JSON files at $input" }
 
         val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
         var groupCount = 0
@@ -361,7 +370,7 @@ val generateOfficialCompiledCases by tasks.registering {
             Charsets.UTF_8
         )
         logger.lifecycle(
-            "Generated official Draft 2020-12 bindings: " +
+            "Generated official $draft bindings: " +
                 files.size + " files, " + groupCount + " schema groups, " + testCount +
                 " assertions"
         )
@@ -373,7 +382,7 @@ generateOfficialCompiledCases.configure { mustRunAfter(downloadOfficialSchemaTes
 
 val officialCompiledTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs all non-optional Draft 2020-12 cases using isolated CompiledValidator compilation."
+    description = "Runs all required cases for the selected official JSON Schema draft."
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -388,6 +397,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
     systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
     // Optional local narrowing; full mandatory suite remains the default for build/publish.
+    systemProperty("sjf4j.schema.officialDraft", officialCompiledDraft.get())
     systemProperty("sjf4j.schema.officialCategory",
         providers.gradleProperty("officialCompiledCategory").orElse("all").get())
     systemProperty("sjf4j.schema.officialProbeDirect",
