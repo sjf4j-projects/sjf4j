@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.JsonObject;
+import org.sjf4j.annotation.node.NodeIgnore;
 
 import java.net.URI;
 import java.util.Map;
@@ -40,6 +41,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
     /**
      * Returns the retrieval URI used to load the root schema document.
      */
+    @NodeIgnore
     public URI getRetrievalUri() {
         return retrievalUri;
     }
@@ -50,6 +52,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * This is root-resource metadata. Nested subschemas do not carry their own
      * retrieval URIs.
      */
+    @NodeIgnore
     public void setRetrievalUri(URI retrievalUri) {
         this.retrievalUri = retrievalUri;
     }
@@ -60,6 +63,7 @@ public final class ObjectSchema extends JsonObject implements JsonSchema {
      * When {@code $id} is relative, callers still need a retrieval/base URI to
      * obtain the absolute resource URI used by registries and compiled plans.
      */
+    @NodeIgnore
     public URI getCanonicalUri() {
         String id = getId();
         if (id == null) return getRetrievalUri();

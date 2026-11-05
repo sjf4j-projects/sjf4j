@@ -15,6 +15,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SchemaPlanTest {
 
     @Test
+    void schemaMetadataDoesNotAppearAsJsonObjectProperties() {
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson(
+                "{\"title\":\"Example\",\"x-extra\":null}");
+        schema.setRetrievalUri(URI.create("https://example.test/schema"));
+
+        assertEquals(2, schema.entrySet().size());
+        assertTrue(schema.containsKey("title"));
+        assertTrue(schema.containsKey("x-extra"));
+        assertFalse(schema.containsKey("retrievalUri"));
+        assertFalse(schema.containsKey("canonicalUri"));
+        assertEquals("https://example.test/schema", schema.getRetrievalUri().toString());
+    }
+
+    @Test
     void objectSchemaPlanSnapshotsMinimalRootRuntimeState() {
         ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{\"$id\":\"defs/user.json\",\"type\":\"string\"}");
         schema.setRetrievalUri(URI.create("file:///schemas/root.json"));
