@@ -7,6 +7,7 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.TestInstance;
 import org.sjf4j.JsonArray;
+import org.sjf4j.JsonType;
 import org.sjf4j.JsonObject;
 import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
@@ -31,8 +32,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * All non-optional official Draft 2020-12 instances, bound to schemas at
- * annotation-processing time rather than interpreted by a runtime-only plan.
+ * All non-optional official Draft-07, 2019-09, and 2020-12 instances,
+ * bound to schemas at annotation-processing time rather than a runtime-only plan.
  *
  * <p>Compilation failures are reported per group and do not prevent other
  * groups from compiling. No invalid instances (including JSON null) are skipped.
@@ -40,8 +41,32 @@ import static org.junit.jupiter.api.Assertions.fail;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public final class OfficialCompiledTest {
 
-    private static Set<String> fallbackGroups() {
+    private static Set<String> fallbackGroups(String draft) {
         Set<String> groups = new LinkedHashSet<>();
+        // Explicit exceptions are per dialect; no old-draft group inherits
+        // the Draft 2020-12 fallback list or silently changes its mode.
+        if ("draft7".equals(draft)) return Collections.unmodifiableSet(groups);
+        if ("draft2019-09".equals(draft)) {
+            // Standard metaschema/vocabulary interpretation, not a root-level
+            // predicate that can be reduced to a direct Java check.
+            fallback(groups, "defs.json", 0);
+            fallback(groups, "ref.json", 6);
+            fallback(groups, "vocabulary.json", 0, 1);
+
+            // Cross-subschema evaluated-location propagation (including
+            // recursiveRef scope in the unevaluatedItems/Properties suites).
+            fallback(groups, "not.json", 8);
+            fallback(groups, "ref.json", 13, 36);
+            fallback(groups, "unevaluatedItems.json",
+                    7, 8, 9, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 24);
+            fallback(groups, "unevaluatedProperties.json",
+                    10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24,
+                    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 39, 40);
+            return Collections.unmodifiableSet(groups);
+        }
+        if (!"draft2020-12".equals(draft)) {
+            throw new IllegalArgumentException("Unsupported official compiled draft: " + draft);
+        }
         fallback(groups, "defs.json", 0);
         // The remaining dynamicRef case combines cross-resource dynamic scope with unevaluatedProperties.
         fallback(groups, "dynamicRef.json", 13);
@@ -61,7 +86,9 @@ public final class OfficialCompiledTest {
 
     private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
     private static final String GENERATED_ROOT = "sjf4j.schema.officialGeneratedRoot";
-    private static final String DIALECT_DIR = "tests/draft2020-12";
+    private static final String DRAFT_PROPERTY = "sjf4j.schema.officialDraft";
+    private static final List<String> ALL_DRAFTS = List.of(
+            "draft7", "draft2019-09", "draft2020-12");
     private static final String SELECTION = "sjf4j.schema.officialCategory";
     private static final String PROBE_DIRECT = "sjf4j.schema.officialProbeDirect";
 
@@ -74,7 +101,27 @@ public final class OfficialCompiledTest {
      * Existing entries were initially collected by a direct-compile probe;
      * they still need individual review before being considered permanent.
      */
-    private static final Set<String> FALLBACK_GROUPS = fallbackGroups();
+    private final String draft;
+    private final List<OfficialCompiledTest> runs = new ArrayList<>();
+
+    public OfficialCompiledTest() {
+        this(null);
+    }
+
+    private OfficialCompiledTest(String draft) {
+        this.draft = draft;
+    }
+
+    private List<String> selectedDrafts() {
+        // Standalone Main takes the dialect from argv; JUnit uses the Gradle property.
+        String selected = mainDialect != null ? mainDialect
+                : System.getProperty(DRAFT_PROPERTY, "all");
+        if ("all".equals(selected)) return ALL_DRAFTS;
+        if (!ALL_DRAFTS.contains(selected)) {
+            throw new IllegalArgumentException("Invalid official compiled draft: " + selected);
+        }
+        return List.of(selected);
+    }
 
     private static void fallback(Set<String> groups, String file, int... indices) {
         for (int index : indices) {
@@ -92,9 +139,9 @@ public final class OfficialCompiledTest {
     private String revision;
     private String selection;
 
-    // Only the standalone main entrypoint uses these filters. JUnit continues
-    // to execute every mandatory example in the selected category.
-    private String mainCategory;
+    // Only the standalone main entrypoint uses these arguments.
+    // JUnit continues to execute every mandatory example in the selected category.
+    private String mainDialect;
     private String mainFile;
     private int mainGroup = -1;
     private int mainCase = -1;
@@ -102,19 +149,21 @@ public final class OfficialCompiledTest {
     /**
      * Standalone runner invoked by OfficialCompiledMain (run that class as an Application).
      *
-     * <p>Arguments: [category [file.json [groupIndex [testIndex]]]].
-     * Category defaults to "all"; available categories include phase2, phase3,
-     * basic, scalar, object, array, applicator, unevaluated, reference.
+     * <p>Arguments: [dialect [file.json [groupIndex [testIndex]]]].
+     * Dialect defaults to "all"; available dialects: all, draft7,
+     * draft2019-09, draft2020-12. The standalone entrypoint ignores
+     * the Gradle/JUnit dialect and category system properties.
      * Requires an existing local suite and generated bindings (Gradle's
      * downloadOfficialSchemaTests + generateOfficialCompiledCases once).
      */
     static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException(
-                    "Usage: OfficialCompiledMain [category [file.json [groupIndex [testIndex]]]]");
+                    "Usage: OfficialCompiledMain [dialect [file.json [groupIndex [testIndex]]]]");
         }
         OfficialCompiledTest instance = new OfficialCompiledTest();
-        instance.mainCategory = args.length > 0 ? args[0] : "all";
+        instance.mainDialect = args.length > 0 ? args[0] : "all";
+        instance.selectedDrafts(); // Validate before reading any test resources.
         if (args.length > 1) {
             instance.mainFile = args[1];
             if (!instance.mainFile.endsWith(".json")) {
@@ -136,7 +185,7 @@ public final class OfficialCompiledTest {
 
         int[] counts = new int[2]; // executed, failed
         try {
-            try (Stream<DynamicNode> nodes = instance.draft2020_12()) {
+            try (Stream<DynamicNode> nodes = instance.officialDrafts()) {
                 nodes.forEach(node -> executeMainNode(node, counts, ""));
             }
         } finally {
@@ -176,19 +225,33 @@ public final class OfficialCompiledTest {
     }
 
     @TestFactory
-    Stream<DynamicNode> draft2020_12() throws Exception {
+    Stream<DynamicNode> officialDrafts() throws Exception {
+        List<DynamicNode> drafts = new ArrayList<>();
+        for (String selected : selectedDrafts()) {
+            OfficialCompiledTest test = new OfficialCompiledTest(selected);
+            test.mainDialect = mainDialect;
+            test.mainFile = mainFile;
+            test.mainGroup = mainGroup;
+            test.mainCase = mainCase;
+            runs.add(test);
+            drafts.add(DynamicContainer.dynamicContainer(selected, test.officialDraft()));
+        }
+        return drafts.stream();
+    }
+
+    private Stream<DynamicNode> officialDraft() throws Exception {
         Path suiteRoot = Paths.get(System.getProperty(TEST_ROOT,
                 localBuildPath("official-json-schema-tests/suite").toString()));
         Path generated = Paths.get(System.getProperty(GENERATED_ROOT,
-                localBuildPath("generated/officialCompiled").toString()));
-        Path officialDir = suiteRoot.resolve(DIALECT_DIR);
+                localBuildPath("generated/officialCompiled").toString())).resolve(draft);
+        Path officialDir = suiteRoot.resolve("tests").resolve(draft);
         if (!Files.isDirectory(officialDir)) {
             throw new IllegalStateException("Official suite missing: " + officialDir);
         }
 
-        selection = OfficialCaseCategory.selection(mainCategory == null
-                ? System.getProperty(SELECTION, "all") : mainCategory);
-        List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated, FALLBACK_GROUPS);
+        selection = OfficialCaseCategory.selection(mainDialect == null
+                ? System.getProperty(SELECTION, "all") : "all");
+        List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated, fallbackGroups(draft));
         List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
         for (OfficialCaseRunner.Spec spec : allSpecs) {
@@ -246,12 +309,32 @@ public final class OfficialCompiledTest {
                 JsonObject group = groups.getJsonObject(i);
                 Object officialSchema = group.getNode("schema");
                 String stem = fileName.substring(0, fileName.length() - ".json".length());
-                Path schemaResource = generated.resolve("resources/official")
+                Path schemaResource = generated.resolve("resources/official").resolve(draft)
                         .resolve(stem).resolve(String.format(java.util.Locale.ROOT,
                                 "%03d.json", i));
                 Object generatedSchema = Sjf4j.global().fromJson(Files.readAllBytes(schemaResource));
-                assertTrue(Nodes.equals(officialSchema, generatedSchema),
-                        fileName + " #" + i + ": generated schema differs from upstream");
+                if (!"draft2020-12".equals(draft)
+                        && JsonType.of(officialSchema) == JsonType.OBJECT
+                        && !Nodes.toJsonObject(officialSchema).containsKey("$schema")
+                        && JsonType.of(generatedSchema) == JsonType.OBJECT) {
+                    JsonObject original = Nodes.toJsonObject(officialSchema);
+                    JsonObject compiled = Nodes.toJsonObject(generatedSchema);
+                    String dialect = "draft7".equals(draft)
+                            ? "http://json-schema.org/draft-07/schema#"
+                            : "https://json-schema.org/draft/2019-09/schema";
+                    assertEquals(dialect, compiled.getString("$schema"), spec.key());
+                    assertEquals(original.size() + 1, compiled.size(), spec.key());
+                    for (String key : original.keySet()) {
+                        assertTrue(compiled.containsKey(key)
+                                        && Nodes.equals(original.getNode(key), compiled.getNode(key)),
+                                spec.key() + ": generated schema changed keyword " + key
+                                        + ": original=" + original.getNode(key)
+                                        + ", generated=" + compiled.getNode(key));
+                    }
+                } else {
+                    assertTrue(Nodes.equals(officialSchema, generatedSchema),
+                            fileName + " #" + i + ": generated schema differs from upstream");
+                }
 
                 String groupDescription = group.getString("description", "");
                 JsonArray examples = group.getJsonArray("tests");
@@ -320,26 +403,36 @@ public final class OfficialCompiledTest {
                 "Generated manifest assertion count differs from official files");
         revision = Files.readString(suiteRoot.resolve("OFFICIAL_TEST_SUITE_REV"),
                 StandardCharsets.UTF_8).trim();
-        Path moduleBuild = generated.getParent().getParent();
-        reportDir = moduleBuild.resolve("reports/officialCompiled").resolve(selection);
+        Path moduleBuild = generated.getParent().getParent().getParent();
+        Path reportBase = moduleBuild.resolve("reports/officialCompiled");
+        Path compileBase = moduleBuild.resolve("officialCompiled/compile");
+        if (!"draft2020-12".equals(draft)) {
+            reportBase = reportBase.resolve(draft);
+            compileBase = compileBase.resolve(draft);
+        }
+        reportDir = reportBase.resolve(selection);
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
-        runner = new OfficialCaseRunner(generated,
-                moduleBuild.resolve("officialCompiled/compile").resolve(selection));
+        runner = new OfficialCaseRunner(generated, compileBase.resolve(selection));
         runner.compileAll(specs, Boolean.parseBoolean(
-                System.getProperty(PROBE_DIRECT, mainCategory == null ? "false" : "true")));
+                System.getProperty(PROBE_DIRECT, "true")));
         return fileNodes.stream();
     }
 
     @AfterAll
     void writeReport() throws Exception {
         try {
-            if (report != null) {
-                report.write(reportDir, revision);
-                assertEquals(expectedTests, report.recordedTests(),
-                        "Official compiled test executions were not all accounted for");
-            }
+            for (OfficialCompiledTest run : runs) run.writeSingleReport();
         } finally {
-            if (runner != null) runner.close();
+            for (OfficialCompiledTest run : runs) {
+                if (run.runner != null) run.runner.close();
+            }
         }
+    }
+
+    private void writeSingleReport() throws Exception {
+        if (report == null) return;
+        report.write(reportDir, revision);
+        assertEquals(expectedTests, report.recordedTests(),
+                draft + ": official compiled test executions were not all accounted for");
     }
 }

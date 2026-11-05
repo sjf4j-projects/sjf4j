@@ -279,92 +279,143 @@ officialRuntimeTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
  * Sources are compiled by OfficialCompiledTest with javac in isolated batches:
  * an unsupported schema must not prevent other official cases from running.
  */
+val officialCompiledDrafts = listOf("draft7", "draft2019-09", "draft2020-12")
+val officialCompiledDraft = providers.gradleProperty("officialCompiledDraft").orElse("all")
+val selectedOfficialCompiledDrafts = officialCompiledDraft.map { draft ->
+    require(draft == "all" || draft in officialCompiledDrafts) {
+        "Invalid -PofficialCompiledDraft=$draft (expected all, draft7, draft2019-09, or draft2020-12)"
+    }
+    if (draft == "all") officialCompiledDrafts else listOf(draft)
+}
 val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/officialCompiled")
 val generateOfficialCompiledCases by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Generates source bindings for every non-optional Draft 2020-12 schema group."
+    description = "Generates official compiled bindings for the selected JSON Schema draft."
     onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
     inputs.dir(officialSchemaSuiteDir)
+    inputs.property("officialCompiledDraft", officialCompiledDraft)
     outputs.dir(officialCompiledGeneratedDir)
 
     doLast {
-        val input = officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12")
-        val output = officialCompiledGeneratedDir.get().asFile
-        delete(output)
-
-        val packageName = "org.sjf4j.testbench.schema.official.generated"
-        val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
-        val resourceDir = output.resolve("resources/official")
-        // The official remotes are local files with canonical HTTP $id values.
-        // SchemaRegistry indexes those identities; neither javac nor fallback fetches HTTP.
-        val registryDir = JsonOutput.toJson(
-            officialSchemaSuiteDir.get().asFile.resolve("remotes").toURI().toString())
-        val registryBaseUri = JsonOutput.toJson("http://localhost:1234/")
-        javaDir.mkdirs()
-        resourceDir.mkdirs()
-
-        val files = requireNotNull(input.listFiles())
-            .filter { it.isFile && it.extension == "json" }
-            .sortedBy { it.name }
-        require(files.isNotEmpty()) { "No official Draft 2020-12 JSON files at $input" }
-
-        val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
-        var groupCount = 0
-        var testCount = 0
-        for (file in files) {
-            val groups = JsonSlurper().parse(file) as? List<*>
-                ?: throw GradleException("Invalid official test file: $file")
-            val stem = file.nameWithoutExtension
-            val classStem = stem.split(Regex("[^a-zA-Z0-9]+"))
-                .filter { it.isNotEmpty() }
-                .joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
-            for ((groupIndex, raw) in groups.withIndex()) {
-                val group = raw as? Map<*, *>
-                    ?: throw GradleException("Invalid official group: $file #$groupIndex")
-                require(group.containsKey("schema")) { "Missing schema in $file #$groupIndex" }
-                val tests = group["tests"] as? List<*>
-                    ?: throw GradleException("Missing tests in $file #$groupIndex")
-                val index = groupIndex.toString().padStart(3, '0')
-                val className = "Official" + classStem + "G" + index
-                val schemaPath = stem + "/" + index + ".json"
-                val schemaFile = resourceDir.resolve(schemaPath)
-                schemaFile.parentFile.mkdirs()
-                schemaFile.writeText(JsonOutput.toJson(group["schema"]), Charsets.UTF_8)
-
-                // Generate both variants without selecting fallback here. The test
-                // class decides which groups may use the fallback variant.
-                for (allowFallback in listOf(false, true)) {
-                    val variant = if (allowFallback) className + "Fallback" else className
-                    val source = listOf(
-                        "package $packageName;",
-                        "",
-                        "import org.sjf4j.annotation.schema.CompiledValidator;",
-                        "import org.sjf4j.annotation.schema.ValidJsonSchema;",
-                        "",
-                        "@CompiledValidator(fallback = $allowFallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
-                        "public interface $variant {",
-                        "    @ValidJsonSchema(ref = \"classpath:/official/$schemaPath\")",
-                        "    boolean valid(Object value);",
-                        "}"
-                    ).joinToString("\n", postfix = "\n")
-                    javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
-                }
-                manifest.append(file.name).append('\t').append(groupIndex)
-                    .append('\t').append(className).append('\t').append(tests.size).append('\n')
-                groupCount++
-                testCount += tests.size
+        val outputRoot = officialCompiledGeneratedDir.get().asFile
+        delete(outputRoot)
+        for (draft in selectedOfficialCompiledDrafts.get()) {
+            val dialectUri = when (draft) {
+                "draft7" -> "http://json-schema.org/draft-07/schema#"
+                "draft2019-09" -> "https://json-schema.org/draft/2019-09/schema"
+                else -> "https://json-schema.org/draft/2020-12/schema"
             }
+            val input = officialSchemaSuiteDir.get().asFile.resolve("tests/$draft")
+            val output = outputRoot.resolve(draft)
+
+            val packageName = "org.sjf4j.testbench.schema.official.generated"
+            val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
+            val resourceDir = output.resolve("resources/official/$draft")
+            // Official remotes may also omit $schema. The runtime suite assigns
+            // the selected draft via SchemaRegistry; javac defaults to 2020-12.
+            // Copy only for legacy drafts, retaining the relative URI layout.
+            val upstreamRemotes = officialSchemaSuiteDir.get().asFile.resolve("remotes")
+            val registryRemotes = if (draft == "draft2020-12") upstreamRemotes
+                                  else output.resolve("remotes")
+            if (draft != "draft2020-12") {
+                upstreamRemotes.walkTopDown().filter { it.isFile && it.extension == "json" }
+                    .forEach { file ->
+                        val relative = upstreamRemotes.toPath().relativize(file.toPath())
+                        val target = registryRemotes.toPath().resolve(relative).toFile()
+                        target.parentFile.mkdirs()
+                        val original = JsonSlurper().parse(file)
+                        val schema = if (original is Map<*, *> && !original.containsKey("\$schema")) {
+                            linkedMapOf<String, Any?>("\$schema" to dialectUri).apply {
+                                for ((key, value) in original) {
+                                    require(key is String) { "Expected string remote schema key: $key" }
+                                    put(key, value)
+                                }
+                            }
+                        } else original
+                        target.writeText(JsonOutput.toJson(schema), Charsets.UTF_8)
+                    }
+            }
+            val registryDir = JsonOutput.toJson(registryRemotes.toURI().toString())
+            val registryBaseUri = JsonOutput.toJson("http://localhost:1234/")
+            javaDir.mkdirs()
+            resourceDir.mkdirs()
+
+            val files = requireNotNull(input.listFiles())
+                .filter { it.isFile && it.extension == "json" }
+                .sortedBy { it.name }
+            require(files.isNotEmpty()) { "No official $draft JSON files at $input" }
+
+            val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
+            var groupCount = 0
+            var testCount = 0
+            for (file in files) {
+                val groups = JsonSlurper().parse(file) as? List<*>
+                    ?: throw GradleException("Invalid official test file: $file")
+                val stem = file.nameWithoutExtension
+                val classStem = stem.split(Regex("[^a-zA-Z0-9]+"))
+                    .filter { it.isNotEmpty() }
+                    .joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
+                for ((groupIndex, raw) in groups.withIndex()) {
+                    val group = raw as? Map<*, *>
+                        ?: throw GradleException("Invalid official group: $file #$groupIndex")
+                    require(group.containsKey("schema")) { "Missing schema in $file #$groupIndex" }
+                    val tests = group["tests"] as? List<*>
+                        ?: throw GradleException("Missing tests in $file #$groupIndex")
+                    val index = groupIndex.toString().padStart(3, '0')
+                    val className = "Official" + classStem + "G" + index
+                    val schemaPath = stem + "/" + index + ".json"
+                    val schemaFile = resourceDir.resolve(schemaPath)
+                    schemaFile.parentFile.mkdirs()
+                    val originalSchema = group["schema"]
+                    // Official test directories imply a dialect when $schema is omitted.
+                    // Make that implicit selection explicit in the generated fixture.
+                    val compiledSchema = if (draft != "draft2020-12"
+                            && originalSchema is Map<*, *>
+                            && !originalSchema.containsKey("\$schema")) {
+                        linkedMapOf<String, Any?>("\$schema" to dialectUri).apply {
+                            for ((key, value) in originalSchema) {
+                                require(key is String) { "Expected string schema key: $key" }
+                                put(key, value)
+                            }
+                        }
+                    } else originalSchema
+                    schemaFile.writeText(JsonOutput.toJson(compiledSchema), Charsets.UTF_8)
+
+                    // Generate both variants without selecting fallback here. The test
+                    // class decides which groups may use the fallback variant.
+                    for (allowFallback in listOf(false, true)) {
+                        val variant = if (allowFallback) className + "Fallback" else className
+                        val source = listOf(
+                            "package $packageName;",
+                            "",
+                            "import org.sjf4j.annotation.schema.CompiledValidator;",
+                            "import org.sjf4j.annotation.schema.ValidJsonSchema;",
+                            "",
+                            "@CompiledValidator(fallback = $allowFallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
+                            "public interface $variant {",
+                            "    @ValidJsonSchema(ref = \"classpath:/official/$draft/$schemaPath\")",
+                            "    boolean valid(Object value);",
+                            "}"
+                        ).joinToString("\n", postfix = "\n")
+                        javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
+                    }
+                    manifest.append(file.name).append('\t').append(groupIndex)
+                        .append('\t').append(className).append('\t').append(tests.size).append('\n')
+                    groupCount++
+                    testCount += tests.size
+                }
+            }
+            output.resolve("index.tsv").writeText(manifest.toString(), Charsets.UTF_8)
+            output.resolve("counts.properties").writeText(
+                "files=" + files.size + "\ngroups=" + groupCount + "\ntests=" + testCount + "\n",
+                Charsets.UTF_8
+            )
+            logger.lifecycle(
+                "Generated official $draft bindings: " +
+                    files.size + " files, " + groupCount + " schema groups, " + testCount +
+                    " assertions"
+            )
         }
-        output.resolve("index.tsv").writeText(manifest.toString(), Charsets.UTF_8)
-        output.resolve("counts.properties").writeText(
-            "files=" + files.size + "\ngroups=" + groupCount + "\ntests=" + testCount + "\n",
-            Charsets.UTF_8
-        )
-        logger.lifecycle(
-            "Generated official Draft 2020-12 bindings: " +
-                files.size + " files, " + groupCount + " schema groups, " + testCount +
-                " assertions"
-        )
     }
 }
 
@@ -373,7 +424,7 @@ generateOfficialCompiledCases.configure { mustRunAfter(downloadOfficialSchemaTes
 
 val officialCompiledTest by tasks.registering(Test::class) {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Runs all non-optional Draft 2020-12 cases using isolated CompiledValidator compilation."
+    description = "Runs all required compiled JSON Schema cases across all three drafts (or a selected draft)."
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
@@ -383,15 +434,18 @@ val officialCompiledTest by tasks.registering(Test::class) {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
     // Runtime SchemaPlan fallback must resolve the same generated classpath resources as javac.
-    classpath = classpath + files(officialCompiledGeneratedDir.map { it.dir("resources") })
+    classpath = classpath + files(selectedOfficialCompiledDrafts.get().map { draft ->
+        officialCompiledGeneratedDir.get().dir("$draft/resources").asFile
+    })
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialGeneratedRoot", officialCompiledGeneratedDir.get().asFile.absolutePath)
     systemProperty("sjf4j.schema.officialCompilerClasspath", sourceSets.test.get().runtimeClasspath.asPath)
-    // Optional local narrowing; full mandatory suite remains the default for build/publish.
+    // The default is all three drafts; optionally narrow local runs by draft or category.
+    systemProperty("sjf4j.schema.officialDraft", officialCompiledDraft.get())
     systemProperty("sjf4j.schema.officialCategory",
         providers.gradleProperty("officialCompiledCategory").orElse("all").get())
     systemProperty("sjf4j.schema.officialProbeDirect",
-        providers.gradleProperty("officialCompiledProbeDirect").orElse("false").get())
+        providers.gradleProperty("officialCompiledProbeDirect").orElse("true").get())
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
@@ -407,7 +461,7 @@ tasks.named("check") {
     dependsOn(officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
 }
 
-// Release gate covers runtime and full compiled Draft 2020-12 official cases.
+// Release gate covers runtime and the full mandatory compiled suites of all three drafts.
 // Publication invokes the downloader; normal build/check never invokes it.
 val officialPublishGate by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -418,6 +472,9 @@ val officialPublishGate by tasks.registering {
         // A pinned local SHA may be used for debugging, never for a publication.
         check(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get() == "main") {
             "Publication requires latest upstream main; remove -PjsonSchemaSuiteRef"
+        }
+        check(officialCompiledDraft.get() == "all") {
+            "Publication requires all official compiled drafts; remove -PofficialCompiledDraft"
         }
         check(providers.gradleProperty("officialCompiledCategory").orElse("all").get() == "all") {
             "Publication requires all mandatory official compiled cases; remove -PofficialCompiledCategory"
@@ -462,6 +519,11 @@ tasks.jacocoTestCoverageVerification {
             }
         }
     }
+}
+
+// build -> check runs the official suites and enforces the CI coverage gate.
+tasks.named("check") {
+    dependsOn(tasks.jacocoTestReport, tasks.jacocoTestCoverageVerification)
 }
 
 gradle.projectsEvaluated {

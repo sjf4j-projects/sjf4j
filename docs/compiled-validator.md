@@ -46,7 +46,7 @@ Methods take one value argument and optionally a primitive `boolean strictFormat
 
 ## Compilation and fallback
 
-`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. **CompiledValidator supports Draft-07, Draft 2019-09, and Draft 2020-12.** A schema without `$schema` uses 2020-12 by default. Standard dialects use their effective keyword semantics, including nested and referenced schema scopes; tuple `items`/`additionalItems`, legacy `dependencies`, and Draft-07 `$ref` siblings are handled during direct compilation. Features not yet directly compiled (notably Draft 2019-09 `$recursiveRef` and complex cross-schema evaluated-location tracking) still require explicit `fallback = true`. Unknown custom meta-schemas require runtime fallback because their vocabularies may differ. Opt in to runtime fallback when needed:
+`fallback = false` is the default: unsupported schema constraints cause a **compile-time error**. **CompiledValidator supports Draft-07, Draft 2019-09, and Draft 2020-12.** A schema without `$schema` uses 2020-12 by default. Standard dialects use their effective keyword semantics, including nested and referenced schema scopes; tuple `items`/`additionalItems`, legacy `dependencies`, and Draft-07 `$ref` siblings are handled during direct compilation. Features not yet directly compiled (notably complex cross-schema evaluated-location tracking) still require explicit `fallback = true`. Unknown custom meta-schemas require runtime fallback because their vocabularies may differ. Opt in to runtime fallback when needed:
 
 ```java
 @CompiledValidator(fallback = true)
@@ -70,7 +70,7 @@ When a validator needs fallback, annotation processing reports the **first unsup
 | Object: `properties`, `patternProperties`, `additionalProperties` (boolean or schema), `propertyNames`, `required`, `dependentRequired`, `dependentSchemas`, legacy `dependencies`, property counts | Supported when child schemas compile; POJO/OBNT affect access code, not fallback eligibility |
 | Array: `prefixItems`, `items`, `additionalItems`, `contains`, `minContains`, `maxContains`, `uniqueItems`, `minItems`, `maxItems` | Independent compiled checks; Draft-07/2019-09 tuple `items` uses `additionalItems` for the suffix, while Draft 2020-12 uses `prefixItems` + `items`; `contains` counts matching elements; `uniqueItems` uses runtime JSON equality semantics |
 | Applicators: `allOf`, `anyOf`, `oneOf`, `not`, `if/then/else` | Supported when their branches can compile |
-| `$dynamicRef` | Uses `SchemaRegistry.resolveDynamicRef(URI, List<SchemaPlan>)` and the currently compiled schema-resource scope to specialize dynamic targets into static helper calls, including different targets reached through separate branches. Recursive contexts reuse helpers; unsupported cross-schema evaluation or excessive specialization still falls back. |
+| `$dynamicRef` / Draft 2019-09 `$recursiveRef` | Uses `SchemaRegistry.resolveDynamicRef(URI, List<SchemaPlan>)` and the currently compiled schema-resource scope to specialize dynamic targets into static helper calls, including different targets reached through separate branches. A 2019-09 `$recursiveAnchor: true` is the empty dynamic anchor. Recursive contexts reuse helpers; unsupported cross-schema evaluation or excessive specialization still falls back. |
 | `$ref`, `$defs`, `$anchor` | Direct static references resolved by `SchemaRegistry` and `SchemaPlanner` at annotation-processing time, using `SchemaPlan.schema()` / `schemaUri()`; includes nested `$id`, registered external schemas, JSON Pointer, named anchors and recursive references; generated direct validators do not invoke runtime SchemaPlan |
 | `format` | Supported typed-string checks when appropriate; `strictFormat` and vocabularies affect semantics |
 | `unevaluatedProperties`, `unevaluatedItems` | Direct only for isolated root-local coverage (object: `properties` / `patternProperties`, plus co-located `additionalProperties` which already evaluates every unmatched key; array: `prefixItems` / suffix, plus co-located `items` + `unevaluatedItems` where `items` already validates the entire remaining suffix). Co-located `not` and literal-true `allOf` do not export evaluated locations and can compile alongside `unevaluated*`. A simple `allOf` can also compile when its branches export only statically known property names, regex patterns, array prefix positions, or complete coverage (`additionalProperties: true` / `items: true`); this is planned at compile time without runtime evaluated-location state. Conditional, referenced, and nested coverage still fall back. |
@@ -91,17 +91,25 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 ./gradlew :sjf4j-testbench:officialRuntimeTest
 ./gradlew :sjf4j-testbench:officialCompiledTest
 
-# Optional: narrow a compiled test run and probe fallback=false:
-./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated -PofficialCompiledProbeDirect=true
+# Optional: run just one draft (default: all three):
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2020-12
+
+# Optional: narrow a compiled test run; stale fallback probing is enabled by default:
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated
+
+# Optional: disable the additional direct-compilation probe for faster local runs:
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledProbeDirect=false
 ```
 
-`officialCompiledTest` includes **all non-optional Draft 2020-12 cases** by default. The generated validators default to `fallback = false`; only groups manually allowlisted in `OfficialCompiledTest.fallbackGroups()` run with `fallback = true`. Each group's fallback selection is owned by that Java test class, not a separate config file. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/<category>/`:
+`officialCompiledTest` includes **all non-optional Draft-07, Draft 2019-09, and Draft 2020-12 cases** by default, in a single Gradle test task and JUnit test factory. Set `-PofficialCompiledDraft=draft7`, `draft2019-09`, or `draft2020-12` to run only one draft, or explicitly use `all` (the default). Old-draft official schemas and preloaded remotes that omit `$schema` are given the corresponding draft declaration only in generated test copies, never in the upstream files. Draft-07 currently has no explicit fallback groups; Draft 2019-09 has a manually reviewed list of 47 groups involving vocabulary/metaschema interpretation or cross-schema `unevaluated*` coverage. CI invokes only `./gradlew build`. `check` already includes `officialRuntimeTest`, `officialCompiledTest` (all three drafts), `officialAnnotationTest`, and JaCoCo report/coverage verification. The direct-compilation probe is enabled by default and rejects stale fallback entries; use `-PofficialCompiledProbeDirect=false` only to skip that extra probe during local development. The generated validators default to `fallback = false`; only groups manually allowlisted in `OfficialCompiledTest.fallbackGroups()` run with `fallback = true`. Each group's fallback selection is owned by that Java test class, not a separate config file. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/<category>/` (Draft 2020-12) or `officialCompiled/<draft>/<category>/` (legacy drafts):
 
 - `summary.json`: overall and category counts
 - `groups.json`, `gaps.json`: compilation mode and unresolved groups
 - `details.json`: individual assertions
 
-Categories include `all` (default), `basic`, `scalar`, `object`, `array`, `applicator`, `unevaluated`, `reference`, `phase2`, and `phase3`. The last two are filters, **not separate Gradle tasks**. Reports label each group `DIRECT` or `FALLBACK` according to its explicit setting; `COMPILE_ERROR` identifies an unallowlisted unsupported schema or other compile failure. With `-PofficialCompiledProbeDirect=true`, every listed fallback group is also compiled with `fallback=false`, and a stale allowance that now compiles directly fails the test.
+Categories include `all` (default), `basic`, `scalar`, `object`, `array`, `applicator`, `unevaluated`, `reference`, `phase2`, and `phase3`. The last two are filters, **not separate Gradle tasks**. Reports label each group `DIRECT` or `FALLBACK` according to its explicit setting; `COMPILE_ERROR` identifies an unallowlisted unsupported schema or other compile failure. By default, every listed fallback group is also compiled with `fallback=false`, and a stale allowance that now compiles directly fails the test. Use `-PofficialCompiledProbeDirect=false` to disable this extra check locally.
 
 ### IntelliJ
 
@@ -110,10 +118,10 @@ Run `OfficialCompiledTest` as a **JUnit test** to see and rerun individual dynam
 To run a filtered subset as an Application, use `OfficialCompiledMain.main(String[])` from `sjf4j-testbench/src/test/java` with optional arguments:
 
 ```text
-[category [file.json [groupIndex [testIndex]]]]
+[dialect [file.json [groupIndex [testIndex]]]]
 ```
 
-For example: `phase3 unevaluatedItems.json 0 1`. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
+For example: `draft2019-09 unevaluatedItems.json 0 1`, or `draft2020-12 ref.json`. The first argument is the dialect (`all`, `draft7`, `draft2019-09`, or `draft2020-12`; default: `all`). The standalone Main selects the dialect from program arguments only; it does not read `sjf4j.schema.officialDraft` or the JUnit category property. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
 
 Run `OfficialAnnotationTest` as a **JUnit test**. It targets Draft 2020-12 and honors each annotation group's official `compatibility` metadata: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, which denotes future specifications) are counted as `Skipped`, not failures; `Total` counts executed cases only.
 

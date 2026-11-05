@@ -199,7 +199,8 @@ final class SchemaCompiler {
             String interfering = unevaluatedObject && hasSchemaDependencies(schema)
                     ? "dependencies" : null;
             for (String key : new String[]{"allOf", "anyOf", "oneOf", "if", "then",
-                    "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
+                    "else", "$ref", "$dynamicRef", "$recursiveRef",
+                    "dependentSchemas", "contains"}) {
                 if (interfering != null) break;
                 if (schema.containsKey(key) && (!"allOf".equals(key)
                         || !(staticAllOfCoverage || isTrivialTrueAllOf(schema.getNode(key))))) {
@@ -226,32 +227,37 @@ final class SchemaCompiler {
                 return null;
             }
         }
-        // Adjacent $ref and $dynamicRef are independent assertions. Until
-        // both can be emitted together, preserve their semantics via fallback.
-        if (schema.containsKey("$dynamicRef") && schema.containsKey("$ref")) {
-            unsupported("$ref + $dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+        // Adjacent references are independent assertions. Until they can be
+        // emitted together, preserve their semantics through runtime fallback.
+        boolean recursiveRef = dialect == SchemaDialect.DRAFT_2019_09
+                && schema.containsKey("$recursiveRef");
+        if ((schema.containsKey("$dynamicRef") || recursiveRef)
+                && schema.containsKey("$ref")) {
+            String dynamicKeyword = recursiveRef ? "$recursiveRef" : "$dynamicRef";
+            unsupported("$ref + " + dynamicKeyword + " at " + keywordUri(schemaUri, dynamicKeyword)
                     + " requires runtime fallback: adjacent reference assertions");
             return null;
         }
         String referenceKeyword = schema.containsKey("$dynamicRef") ? "$dynamicRef"
+                : recursiveRef ? "$recursiveRef"
                 : schema.containsKey("$ref") ? "$ref" : null;
         if (referenceKeyword != null) {
             RefTarget target;
-            if ("$dynamicRef".equals(referenceKeyword)) {
+            if (!"$ref".equals(referenceKeyword)) {
                 if (!dynamicScopeEnabled || unresolvedScope != 0) {
-                    unsupported("$dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+                    unsupported(referenceKeyword + " at " + keywordUri(schemaUri, referenceKeyword)
                             + " requires runtime fallback: incomplete compilation scope");
                     return null;
                 }
                 try {
-                    URI absolute = SchemaUtil.resolveUri(
-                            URI.create(schemaUri), URI.create(schema.getString("$dynamicRef")));
+                    URI absolute = SchemaUtil.resolveUri(URI.create(schemaUri),
+                            URI.create(schema.getString(referenceKeyword)));
                     SchemaPlan selected = snapshot.registry.resolveDynamicRef(
                             absolute, new ArrayList<SchemaPlan>(scope.values()));
                     if (selected == null) return null;
                     target = new RefTarget(selected.schema(), selected.schemaUri().toString());
                 } catch (RuntimeException unresolved) {
-                    unsupported("$dynamicRef at " + keywordUri(schemaUri, "$dynamicRef")
+                    unsupported(referenceKeyword + " at " + keywordUri(schemaUri, referenceKeyword)
                             + " cannot be resolved at compile time");
                     return null;
                 }
@@ -381,8 +387,8 @@ final class SchemaCompiler {
                     break;
                 default:
                     // Never omit an unsupported keyword while compiling others.
-                    if ("$dynamicRef".equals(keyword)) {
-                        unsupported("$dynamicRef at " + keywordUri(uri, keyword)
+                    if ("$dynamicRef".equals(keyword) || "$recursiveRef".equals(keyword)) {
+                        unsupported(keyword + " at " + keywordUri(uri, keyword)
                                 + " requires runtime dynamic-scope resolution");
                     } else if ("$vocabulary".equals(keyword)) {
                         unsupported(dialectFallbackReason(snapshot, uri));
@@ -677,8 +683,9 @@ final class SchemaCompiler {
         if (JsonType.of(rawSchema) != JsonType.OBJECT)
             return "schema at " + uri + " has no supported direct representation";
         JsonObject schema = schemaObject(rawSchema);
-        if (schema.containsKey("$dynamicRef")) {
-            return "$dynamicRef at " + keywordUri(uri, "$dynamicRef")
+        if (schema.containsKey("$dynamicRef") || schema.containsKey("$recursiveRef")) {
+            String keyword = schema.containsKey("$dynamicRef") ? "$dynamicRef" : "$recursiveRef";
+            return keyword + " at " + keywordUri(uri, keyword)
                     + " requires runtime dynamic-scope resolution";
         }
         if (!canCompileStandardDialect(snapshot)) return dialectFallbackReason(snapshot, uri);
