@@ -55,8 +55,8 @@ public final class OfficialCompiledTest {
         fallback(groups, "ref.json", 6, 13);
         // Only groups that require cross-subschema evaluated-location tracking
         // remain fallback. Isolated root-local groups compile directly.
-        fallback(groups, "unevaluatedItems.json", 7, 8, 9, 10, 11, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27);
-        fallback(groups, "unevaluatedProperties.json", 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 39, 40);
+        fallback(groups, "unevaluatedItems.json", 8, 10, 11, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27);
+        fallback(groups, "unevaluatedProperties.json", 10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 39, 40);
         // Custom metaschemas need vocabulary-aware interpretation, even when
         // the schema uses a familiar validation keyword such as type.
         fallback(groups, "vocabulary.json", 0, 1);
