@@ -21,7 +21,7 @@ final class CompiledSupport {
     private CompiledSupport() {}
 
     static final class Analysis {
-        final Set<URI> referencedDocuments = new LinkedHashSet<URI>();
+        final Set<URI> referencedDocuments = new LinkedHashSet<>();
         boolean customDialect;
         boolean hasDynamicRef;
     }

@@ -393,7 +393,8 @@ public final class SchemaPlanner {
 
         // not
         SchemaPlan notPlan = _allowsKeyword(dialect, vocabulary, "not")
-                ? _buildPlanByKey("not", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary) : null;
+                ? _buildPlanByKey("not", schema, resourceUri, ps, byAnchorPlans, byDynamicAnchorPlans, byPathPlans, context, dialect, vocabulary)
+                : null;
         if (notPlan != null) {
             evaluators.add(new Evaluator.NotEvaluator(new PathSegment.Name(ps, "not"), resourceUri, notPlan));
         }
@@ -404,7 +405,8 @@ public final class SchemaPlanner {
         List<SchemaPlan.Annotation> annotationEntries = null;
         for (String key : VocabularyRegistry.ANNOTATION_KEYWORDS) {
             if (!schema.containsKey(key)) continue;
-            boolean enabled = "format".equals(key) ? _allowsFormatKeyword(vocabulary)
+            boolean enabled = "format".equals(key)
+                    ? _allowsFormatKeyword(vocabulary)
                     : _allowsKeyword(dialect, vocabulary, key);
             if (!enabled) continue;
             if ("contentSchema".equals(key)
@@ -421,7 +423,7 @@ public final class SchemaPlanner {
 
         // Unrecognized keywords are annotations regardless of their spelling.
         // Known keywords disabled by the dialect/vocabulary are not unknown.
-        for (Map.Entry<String, Object> entry : schema.dynamicMembers().entrySet()) {
+        for (Map.Entry<String, Object> entry : schema.entrySet()) {
             String key = entry.getKey();
             if (VocabularyRegistry.isKnownKeyword(key)) continue;
             if (annotationEntries == null) annotationEntries = new ArrayList<>();
@@ -430,7 +432,8 @@ public final class SchemaPlanner {
                     resourceUri, false));
         }
 
-        SchemaPlan.Annotation[] annotations = annotationEntries == null ? null
+        SchemaPlan.Annotation[] annotations = annotationEntries == null
+                ? null
                 : annotationEntries.toArray(new SchemaPlan.Annotation[0]);
 
         // unevaluatedProperties / unevaluatedItems

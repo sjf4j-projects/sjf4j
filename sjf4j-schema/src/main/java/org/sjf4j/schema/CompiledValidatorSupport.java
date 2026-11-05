@@ -1,8 +1,16 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.JsonObject;
+import org.sjf4j.Nodes;
+import org.sjf4j.meta.PropertyInfo;
+import org.sjf4j.meta.TypeInfo;
+import org.sjf4j.meta.TypeRegistry;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
+import org.sjf4j.value.ValueInfo;
+
+import java.util.Map;
 
 /**
  * Runtime support for generated compiled JSON Schema validators.
@@ -63,15 +71,14 @@ public final class CompiledValidatorSupport {
      * Raw Map/List codec values stay atomic leaves, never traversable nodes.
      */
     public static Object objectPropertyValue(Object owner, String key) {
-        Object value = org.sjf4j.Nodes.getInObject(owner, key);
-        if (value == null || owner instanceof java.util.Map || owner instanceof org.sjf4j.JsonObject)
+        Object value = Nodes.getInObject(owner, key);
+        if (value == null || owner instanceof Map || owner instanceof JsonObject)
             return value;
-        org.sjf4j.meta.TypeInfo info =
-                org.sjf4j.meta.TypeRegistry.registerTypeInfo(owner.getClass());
+        TypeInfo info = TypeRegistry.registerTypeInfo(owner.getClass());
         if (info.pojoInfo == null) return value;
-        org.sjf4j.meta.PropertyInfo property = info.pojoInfo.getPropertyNoAlias(key);
+        PropertyInfo property = info.pojoInfo.getPropertyNoAlias(key);
         if (property == null || property.valueInfo == null) return value;
-        org.sjf4j.value.ValueInfo codec = property.valueInfo;
+        ValueInfo codec = property.valueInfo;
         switch (codec.rawJsonType) {
             case STRING:
             case NUMBER:

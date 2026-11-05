@@ -158,18 +158,18 @@ public final class SchemaPlan {
     /**
      * Executes evaluator pipeline for the current instance branch.
      */
-    boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
+    boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
         if (ctx.isCollectAnnotations()) {
             int mark = ctx.annotationMark();
             boolean valid = false;
             try {
-                valid = evaluateKeywords(instance, ps, ctx);
+                valid = evaluateKeywords(instance, instancePs, ctx);
                 if (valid && annotations != null) {
                     for (Annotation annotation : annotations) {
-                        if (annotation.stringOnly && instance.jsonType() != org.sjf4j.JsonType.STRING) {
+                        if (annotation.stringOnly && !instance.jsonType().isString()) {
                             continue;
                         }
-                        ctx.addAnnotation(instance, ps, annotation.keywordPs,
+                        ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
                                 annotation.resourceUri, annotation.keyword, null, annotation.value);
                     }
                 }
@@ -178,7 +178,7 @@ public final class SchemaPlan {
                 if (!valid) ctx.rollbackAnnotations(mark);
             }
         }
-        return evaluateKeywords(instance, ps, ctx);
+        return evaluateKeywords(instance, instancePs, ctx);
     }
 
     /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
