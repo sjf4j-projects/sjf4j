@@ -338,7 +338,20 @@ val generateOfficialCompiledCases by tasks.registering {
                 val schemaPath = stem + "/" + index + ".json"
                 val schemaFile = resourceDir.resolve(schemaPath)
                 schemaFile.parentFile.mkdirs()
-                schemaFile.writeText(JsonOutput.toJson(group["schema"]), Charsets.UTF_8)
+                val originalSchema = group["schema"]
+                // Official test directories imply a dialect when $schema is omitted.
+                // Make that implicit selection explicit in the generated fixture.
+                val compiledSchema = if (draft != "draft2020-12"
+                        && originalSchema is Map<*, *>
+                        && !originalSchema.containsKey("\$schema")) {
+                    linkedMapOf<String, Any?>("\$schema" to dialectUri).apply {
+                        for ((key, value) in originalSchema) {
+                            require(key is String) { "Expected string schema key: $key" }
+                            put(key, value)
+                        }
+                    }
+                } else originalSchema
+                schemaFile.writeText(JsonOutput.toJson(compiledSchema), Charsets.UTF_8)
 
                 // Generate both variants without selecting fallback here. The test
                 // class decides which groups may use the fallback variant.
