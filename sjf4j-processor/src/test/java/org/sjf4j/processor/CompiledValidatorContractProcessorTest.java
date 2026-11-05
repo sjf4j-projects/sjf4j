@@ -99,7 +99,7 @@ class CompiledValidatorContractProcessorTest {
         for (String dialect : new String[]{
                 "http://json-schema.org/draft-07/schema#",
                 "https://json-schema.org/draft/2019-09/schema"}) {
-            String schema = "{\\"$schema\\":\\"" + dialect + "\\",\\"type\\":\\"object\\"}";
+            String schema = "{\"$schema\":\"" + dialect + "\",\"type\":\"object\"}";
             String source = "package fixture; import java.util.*; import org.sjf4j.annotation.schema.*; "
                     + "@CompiledValidator(fallback=false) public interface Check { "
                     + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
@@ -113,9 +113,9 @@ class CompiledValidatorContractProcessorTest {
 
     @Test
     void nestedDraft2019UsesItsOwnDialect() throws Exception {
-        String schema = "{\\"$defs\\":{\\"nested\\":{\\"$schema\\":"
-                + "\\"https://json-schema.org/draft/2019-09/schema\\",\\"type\\":\\"string\\"}},"
-                + "\\"$ref\\":\\"#/$defs/nested\\"}";
+        String schema = "{\"$defs\":{\"nested\":{\"$schema\":"
+                + "\"https://json-schema.org/draft/2019-09/schema\",\"type\":\"string\"}},"
+                + "\"$ref\":\"#/$defs/nested\"}";
         NavigatorTestCompiler.Result result = compile(
                 "@CompiledValidator(fallback=false) public interface Check { "
                         + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
