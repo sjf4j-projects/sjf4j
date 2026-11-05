@@ -78,7 +78,7 @@ public class JsonPointer extends JsonPath {
         System.arraycopy(segments, 0, parentSegs, 0, parentSegs.length);
         PathSegment last = parentSegs[parentSegs.length - 1];
         if (last instanceof PathSegment.Name && "-".equals(((PathSegment.Name) last).name)) {
-            parentSegs[parentSegs.length - 1] = new PathSegment.Append(last.parent());
+            parentSegs[parentSegs.length - 1] = new PathSegment.Append(last.parent(), "-");
         }
         return new JsonPointer(null, parentSegs);
     }
