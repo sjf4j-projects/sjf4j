@@ -262,15 +262,22 @@ public final class OfficialCompiledTest {
                 if (!"draft2020-12".equals(DRAFT) && officialSchema instanceof JsonObject
                         && !((JsonObject) officialSchema).containsKey("$schema")
                         && generatedSchema instanceof JsonObject) {
-                    JsonObject normalized = new JsonObject();
+                    JsonObject original = (JsonObject) officialSchema;
                     JsonObject compiled = (JsonObject) generatedSchema;
-                    for (String key : compiled.keySet()) {
-                        if (!"$schema".equals(key)) normalized.put(key, compiled.getNode(key));
+                    String dialect = "draft7".equals(DRAFT)
+                            ? "http://json-schema.org/draft-07/schema#"
+                            : "https://json-schema.org/draft/2019-09/schema";
+                    assertEquals(dialect, compiled.getString("$schema"), spec.key());
+                    assertEquals(original.size() + 1, compiled.size(), spec.key());
+                    for (String key : original.keySet()) {
+                        assertTrue(compiled.containsKey(key)
+                                        && Nodes.equals(original.getNode(key), compiled.getNode(key)),
+                                spec.key() + ": generated schema changed keyword " + key);
                     }
-                    generatedSchema = normalized;
+                } else {
+                    assertTrue(Nodes.equals(officialSchema, generatedSchema),
+                            fileName + " #" + i + ": generated schema differs from upstream");
                 }
-                assertTrue(Nodes.equals(officialSchema, generatedSchema),
-                        fileName + " #" + i + ": generated schema differs from upstream");
 
                 String groupDescription = group.getString("description", "");
                 JsonArray examples = group.getJsonArray("tests");
