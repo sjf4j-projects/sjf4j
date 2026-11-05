@@ -521,6 +521,11 @@ tasks.jacocoTestCoverageVerification {
     }
 }
 
+// build -> check runs the official suites and enforces the CI coverage gate.
+tasks.named("check") {
+    dependsOn(tasks.jacocoTestReport, tasks.jacocoTestCoverageVerification)
+}
+
 gradle.projectsEvaluated {
     val coverageMainSourceSets = coverageProjects.map {
         project(it).extensions.getByType<SourceSetContainer>().named("main")
