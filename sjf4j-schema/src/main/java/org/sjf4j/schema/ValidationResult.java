@@ -47,7 +47,7 @@ public class ValidationResult {
         return errors == null ? Collections.emptyList() : errors;
     }
 
-    public Message getLastError() {
+    public Detail getLastError() {
         return errors == null || errors.isEmpty() ? null : errors.get(errors.size() - 1);
     }
 
