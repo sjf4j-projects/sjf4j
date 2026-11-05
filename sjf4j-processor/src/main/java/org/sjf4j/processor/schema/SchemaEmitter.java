@@ -106,7 +106,7 @@ final class SchemaEmitter {
                         + "String instancePointer)");
                 out.line("return org.sjf4j.schema.ValidationException.failure("
                         + "keyword, " + resource + ", pointer, "
-                        + "org.sjf4j.schema.CompiledValidatorSupport.instancePath(instancePointer));");
+                        + "org.sjf4j.path.JsonPointer.parse(instancePointer).tail());");
                 out.endBlock();
             });
         }

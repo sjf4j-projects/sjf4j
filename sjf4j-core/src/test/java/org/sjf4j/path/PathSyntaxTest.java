@@ -57,7 +57,18 @@ public class PathSyntaxTest {
     void testAppendToken() {
         PathSegment[] segments = PathSyntax.parsePointer("/users/-/name");
         assertEquals(4, segments.length);
-        assertInstanceOf(PathSegment.Append.class, segments[2]);
+        assertInstanceOf(PathSegment.Name.class, segments[2]);
+        assertEquals("-", ((PathSegment.Name) segments[2]).name);
+        assertEquals("/users/-/name", PathSyntax.toPointerExpr(segments));
+
+        PathSegment[] terminal = PathSyntax.parsePointer("/users/-");
+        assertInstanceOf(PathSegment.Append.class, terminal[2]);
+        assertEquals("/users/-", PathSyntax.toPointerExpr(terminal));
+
+        PathSegment[] nested = PathSyntax.parsePointer("/-/-");
+        assertInstanceOf(PathSegment.Name.class, nested[1]);
+        assertInstanceOf(PathSegment.Append.class, nested[2]);
+        assertEquals("/-/-", PathSyntax.toPointerExpr(nested));
     }
 
     @Test
