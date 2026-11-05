@@ -54,39 +54,6 @@ public interface Evaluator {
      * --------------------------------------------------------------
      */
 
-    /** Static metadata of a schema object, collected only in annotation mode. */
-    final class AnnotationEvaluator implements Evaluator {
-        static final class Entry {
-            final String keyword;
-            final Object value;
-            final PathSegment keywordPs;
-            final URI resourceUri;
-
-            Entry(String keyword, Object value, PathSegment keywordPs, URI resourceUri) {
-                this.keyword = keyword;
-                this.value = value;
-                this.keywordPs = keywordPs;
-                this.resourceUri = resourceUri;
-            }
-        }
-
-        private final Entry[] entries;
-
-        AnnotationEvaluator(Entry[] entries) {
-            this.entries = entries;
-        }
-
-        @Override
-        public boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
-            if (!ctx.isCollectAnnotations()) return true;
-            for (Entry entry : entries) {
-                ctx.addAnnotation(instance, ps, entry.keywordPs,
-                        entry.resourceUri, entry.keyword, null, entry.value);
-            }
-            return true;
-        }
-    }
-
     // $ref
     final class RefEvaluator implements Evaluator {
         final PathSegment keywordPs;

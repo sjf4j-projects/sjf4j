@@ -403,17 +403,16 @@ public final class SchemaPlanner {
                 "title", "description", "default", "examples",
                 "deprecated", "readOnly", "writeOnly"
         };
-        List<Evaluator.AnnotationEvaluator.Entry> metadataEntries = null;
+        List<SchemaPlan.Annotation> metadataEntries = null;
         for (String key : metadataKeywords) {
             if (schema.containsKey(key) && _allowsKeyword(dialect, vocabulary, key)) {
                 if (metadataEntries == null) metadataEntries = new ArrayList<>();
-                metadataEntries.add(new Evaluator.AnnotationEvaluator.Entry(
+                metadataEntries.add(new SchemaPlan.Annotation(
                         key, schema.getNode(key), new PathSegment.Name(ps, key), resourceUri));
             }
         }
-        Evaluator.AnnotationEvaluator annotationEvaluator = metadataEntries == null ? null
-                : new Evaluator.AnnotationEvaluator(
-                        metadataEntries.toArray(new Evaluator.AnnotationEvaluator.Entry[0]));
+        SchemaPlan.Annotation[] annotations = metadataEntries == null ? null
+                : metadataEntries.toArray(new SchemaPlan.Annotation[0]);
 
         // unevaluatedProperties / unevaluatedItems
         SchemaPlan unevaluatedPropertiesPlan = _allowsKeyword(dialect, vocabulary, "unevaluatedProperties")
@@ -429,7 +428,7 @@ public final class SchemaPlanner {
         // end up
         SchemaPlan plan = SchemaPlan.of(resourceUri, ps, evaluators, dynamicAnchor,
                 byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                schema, dialect, vocabulary, annotationEvaluator);
+                schema, dialect, vocabulary, annotations);
         if (anchor != null) _putNamedFragment(byAnchorPlans, anchor, plan, "$anchor", resourceUri, ps);
         if (dynamicAnchor != null) {
             _putNamedFragment(byAnchorPlans, dynamicAnchor, plan, "$dynamicAnchor", resourceUri, ps);

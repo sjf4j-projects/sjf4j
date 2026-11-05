@@ -163,8 +163,11 @@ public final class SchemaPlan {
             boolean valid = false;
             try {
                 valid = evaluateKeywords(instance, ps, ctx);
-                if (valid && annotationEvaluator != null) {
-                    annotationEvaluator.evaluate(instance, ps, ctx);
+                if (valid && annotations != null) {
+                    for (Annotation annotation : annotations) {
+                        ctx.addAnnotation(instance, ps, annotation.keywordPs,
+                                annotation.resourceUri, annotation.keyword, null, annotation.value);
+                    }
                 }
                 return valid;
             } finally {
@@ -241,10 +244,25 @@ public final class SchemaPlan {
         }
     }
 
+    /** Immutable compile-time definition; instance location is supplied at validation time. */
+    static final class Annotation {
+        final String keyword;
+        final Object value;
+        final PathSegment keywordPs;
+        final URI resourceUri;
+
+        Annotation(String keyword, Object value, PathSegment keywordPs, URI resourceUri) {
+            this.keyword = keyword;
+            this.value = value;
+            this.keywordPs = keywordPs;
+            this.resourceUri = resourceUri;
+        }
+    }
+
     final URI resourceUri;
     final PathSegment keywordPs;
     final Evaluator[] evaluators;
-    final Evaluator.AnnotationEvaluator annotationEvaluator;
+    final Annotation[] annotations;
     final boolean booleanSchema;
     final boolean booleanValue;
 
@@ -262,9 +280,9 @@ public final class SchemaPlan {
                Map<String, SchemaPlan> byDynamicAnchorPlans,
                Map<String, SchemaPlan> byPathPlans,
                SchemaDialect dialect, Map<String, Boolean> vocabulary,
-               Evaluator.AnnotationEvaluator annotationEvaluator) {
+               Annotation[] annotations) {
         this.resourceUri = resourceUri;
-        this.annotationEvaluator = annotationEvaluator;
+        this.annotations = annotations;
         this.keywordPs = keywordPs;
         this.evaluators = evaluators;
         this.schema = Asserts.notNull(schema, "schema");
@@ -296,10 +314,10 @@ public final class SchemaPlan {
                          Map<String, SchemaPlan> byAnchorPlans, Map<String, SchemaPlan> byDynamicAnchorPlans,
                          Map<String, SchemaPlan> byPathPlans,
                          ObjectSchema schema, SchemaDialect dialect, Map<String, Boolean> vocabulary,
-                         Evaluator.AnnotationEvaluator annotationEvaluator) {
+                         Annotation[] annotations) {
         return new SchemaPlan(resourceUri, keywordPs, evaluators.toArray(new Evaluator[0]), schema,
                 dynamicAnchor, byAnchorPlans, byDynamicAnchorPlans, byPathPlans,
-                dialect, vocabulary, annotationEvaluator);
+                dialect, vocabulary, annotations);
     }
 
 }
