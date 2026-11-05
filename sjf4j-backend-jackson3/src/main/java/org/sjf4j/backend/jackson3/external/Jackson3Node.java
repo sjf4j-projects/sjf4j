@@ -17,6 +17,8 @@ import tools.jackson.databind.node.NumericNode;
 import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.node.StringNode;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.AbstractSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -315,8 +317,8 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
         if (value == null) return NullNode.instance;
         if (value instanceof String) return JsonNodeFactory.instance.stringNode((String) value);
         if (value instanceof Boolean) return BooleanNode.valueOf((Boolean) value);
-        if (value instanceof java.math.BigDecimal) return JsonNodeFactory.instance.numberNode((java.math.BigDecimal) value);
-        if (value instanceof java.math.BigInteger) return JsonNodeFactory.instance.numberNode((java.math.BigInteger) value);
+        if (value instanceof BigDecimal) return JsonNodeFactory.instance.numberNode((BigDecimal) value);
+        if (value instanceof BigInteger) return JsonNodeFactory.instance.numberNode((BigInteger) value);
         if (value instanceof Integer) return JsonNodeFactory.instance.numberNode((Integer) value);
         if (value instanceof Long) return JsonNodeFactory.instance.numberNode((Long) value);
         if (value instanceof Double) return JsonNodeFactory.instance.numberNode((Double) value);
@@ -324,7 +326,7 @@ public final class Jackson3Node implements ExternalNode<JsonNode> {
         if (value instanceof Short) return JsonNodeFactory.instance.numberNode((Short) value);
         if (value instanceof Byte) return JsonNodeFactory.instance.numberNode((Byte) value);
         if (value instanceof Number) {
-            return JsonNodeFactory.instance.numberNode(new java.math.BigDecimal(value.toString()));
+            return JsonNodeFactory.instance.numberNode(new BigDecimal(value.toString()));
         }
         throw new NodeException("unsupported Java value for Jackson 3 node: '" + Types.name(value) + "'");
     }

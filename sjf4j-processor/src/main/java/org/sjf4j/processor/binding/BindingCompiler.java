@@ -29,6 +29,7 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Collections;
@@ -490,7 +491,7 @@ final class BindingCompiler {
                 VariableElement arg = parameters.get(i);
                 boolean isDiscriminator = key.equals(context.annotations.propertyName(
                         arg, arg.getSimpleName().toString()))
-                        || java.util.Arrays.asList(context.annotations.propertyAliases(arg)).contains(key);
+                        || Arrays.asList(context.annotations.propertyAliases(arg)).contains(key);
                 // A consumed String creator argument can be initialized directly
                 // from the discriminator without buffering the whole object.
                 if (isDiscriminator
@@ -512,7 +513,7 @@ final class BindingCompiler {
             String[] aliases = writerAnnotation != null && writerAnnotation.aliases().length != 0
                     ? writerAnnotation.aliases()
                     : readerAnnotation == null ? new String[0] : readerAnnotation.aliases();
-            if (java.util.Arrays.asList(aliases).contains(key)) return false;
+            if (Arrays.asList(aliases).contains(key)) return false;
         }
         return true;
     }

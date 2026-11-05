@@ -306,7 +306,7 @@ public final class StreamingIO {
     public static Object readValueSet(StreamingParser parser, Type type, Class<?> boxed, ValueSet valueSet,
                                       RuntimeContext context) throws IOException {
         String preferredFormat = context.valueFormat(boxed);
-        org.sjf4j.JsonType jsonType = valueSet.multiples
+        JsonType jsonType = valueSet.multiples
                 ? parser.peekToken().jsonType()
                 : valueSet.defaultInfo.rawJsonType;
         ValueInfo codec = valueSet.selectForRead(jsonType, preferredFormat);

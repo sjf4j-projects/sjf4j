@@ -5,6 +5,7 @@ import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.processor.ProcessorContext;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -103,7 +104,7 @@ final class ArrayCompiler {
     private static int nonNegativeInteger(Object value) {
         if (!(value instanceof Number)) return -1;
         try {
-            java.math.BigDecimal decimal = new java.math.BigDecimal(value.toString());
+            BigDecimal decimal = new BigDecimal(value.toString());
             return decimal.scale() <= 0 || decimal.stripTrailingZeros().scale() <= 0
                     ? decimal.intValueExact() : -1;
         } catch (NumberFormatException | ArithmeticException ex) {

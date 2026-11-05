@@ -4,15 +4,26 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
+import org.sjf4j.annotation.node.NodeIgnore;
+import org.sjf4j.annotation.node.NodeObject;
+import org.sjf4j.annotation.node.NodeProperty;
+import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
-import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.discovery.CompiledMetadata;
+import org.sjf4j.processor.discovery.ValueCodecMetadata;
+import org.sjf4j.processor.property.Property;
+import org.sjf4j.schema.SchemaUtil;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeKind;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -86,9 +97,9 @@ final class ObjectCompiler {
         for (String expression : patternMap.keySet()) {
             String javaPattern;
             try {
-                javaPattern = org.sjf4j.schema.SchemaUtil.compileRegexPattern(
-                        expression, "patternProperties", org.sjf4j.path.PathSegment.Root.INSTANCE,
-                        java.net.URI.create("sjf4j:/compiled")).pattern();
+                javaPattern = SchemaUtil.compileRegexPattern(
+                        expression, "patternProperties", PathSegment.Root.INSTANCE,
+                        URI.create("sjf4j:/compiled")).pattern();
             } catch (RuntimeException ex) {
                 return null;
             }
@@ -126,7 +137,7 @@ final class ObjectCompiler {
                 }
             }
         }
-        Map<String, Property> javaProperties = dynamic ? java.util.Collections.emptyMap()
+        Map<String, Property> javaProperties = dynamic ? Collections.emptyMap()
                 : context.properties.resolve(type);
 
         Integer minProperties = root.getInt("minProperties");
@@ -294,7 +305,7 @@ final class ObjectCompiler {
     private static SchemaCheck missingObjectConstraint(String uri, boolean typeRequired, String keyword) {
         SchemaCheck.Diagnostic diagnostic = SchemaCompiler.diagnostic(uri, keyword);
         if (typeRequired) return new SchemaCheck.Reject(diagnostic);
-        return new SchemaCheck.TypeCheck(java.util.Collections.singletonList("null"), diagnostic);
+        return new SchemaCheck.TypeCheck(Collections.singletonList("null"), diagnostic);
     }
 
     /**
@@ -308,7 +319,7 @@ final class ObjectCompiler {
         if (metadata != null) {
             // A pattern always selects the default codec, regardless of valueFormat.
             String format = property.valuePattern() == null ? property.valueFormat() : null;
-            org.sjf4j.processor.discovery.ValueCodecMetadata codec = metadata.valueCodec(domain, format);
+            ValueCodecMetadata codec = metadata.valueCodec(domain, format);
             if (codec != null) raw = codec.rawType;
         }
         if (raw == null && context.types.isNodeValue(domain)) {
@@ -403,22 +414,22 @@ final class ObjectCompiler {
         TypeElement owner = context.types.typeElement(type);
         return owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)
                 || !owner.getModifiers().contains(Modifier.FINAL)
-                || owner.getAnnotation(org.sjf4j.annotation.node.NodeObject.class) != null
+                || owner.getAnnotation(NodeObject.class) != null
                 || hasHiddenNodeMembers(type);
     }
 
     private boolean hasHiddenNodeMembers(TypeMirror type) {
         TypeElement owner = context.types.typeElement(type);
         for (TypeElement current = owner; current != null; ) {
-            for (javax.lang.model.element.Element member : current.getEnclosedElements()) {
+            for (Element member : current.getEnclosedElements()) {
                 if (member.getModifiers().contains(Modifier.STATIC)) continue;
-                if (member.getAnnotation(org.sjf4j.annotation.node.NodeProperty.class) != null
+                if (member.getAnnotation(NodeProperty.class) != null
                         && !member.getModifiers().contains(Modifier.PUBLIC)
                         && !accessibleGetterForAnnotatedField(type, member)) return true;
-                if (member.getAnnotation(org.sjf4j.annotation.node.NodeIgnore.class) != null) return true;
+                if (member.getAnnotation(NodeIgnore.class) != null) return true;
             }
             TypeMirror parent = current.getSuperclass();
-            current = parent.getKind() == javax.lang.model.type.TypeKind.NONE
+            current = parent.getKind() == TypeKind.NONE
                     ? null : context.types.typeElement(parent);
         }
         return false;
@@ -430,15 +441,15 @@ final class ObjectCompiler {
      * The generated code uses the getter, never the private field.
      */
     private boolean accessibleGetterForAnnotatedField(TypeMirror owner,
-            javax.lang.model.element.Element field) {
+            Element field) {
         String javaName = field.getSimpleName().toString();
         String mappedName = context.annotations.explicitPropertyName(field);
-        org.sjf4j.processor.property.Property property = context.properties.resolve(owner)
+        Property property = context.properties.resolve(owner)
                 .get(mappedName == null ? javaName : mappedName);
         if (property == null || property.read() == null || !property.read().isMethod()) return false;
         // An ignored accessor cannot provide the runtime-visible property.
-        javax.lang.model.element.Element getter = property.read().member();
-        if (getter.getAnnotation(org.sjf4j.annotation.node.NodeIgnore.class) != null) return false;
+        Element getter = property.read().member();
+        if (getter.getAnnotation(NodeIgnore.class) != null) return false;
         String accessor = property.read().memberName();
         if (accessor.equals(javaName)) return true; // record component
         String suffix = javaName.isEmpty() ? javaName
@@ -460,17 +471,17 @@ final class ObjectCompiler {
         try {
             // URI's multi-argument constructor escapes quotes, whitespace and
             // reserved percent signs; toASCIIString also encodes non-ASCII.
-            return new java.net.URI(null, null, "/" + segment, null)
+            return new URI(null, null, "/" + segment, null)
                     .toASCIIString().substring(1);
-        } catch (java.net.URISyntaxException ex) {
+        } catch (URISyntaxException ex) {
             throw new IllegalArgumentException("Invalid schema property name", ex);
         }
     }
 
     private static boolean isRequired(Object required, String key) {
         if (required == null) return false;
-        for (int i = 0; i < org.sjf4j.Nodes.sizeInArray(required); i++) {
-            Object value = org.sjf4j.Nodes.getInArray(required, i);
+        for (int i = 0; i < Nodes.sizeInArray(required); i++) {
+            Object value = Nodes.getInArray(required, i);
             if (key.equals(value)) return true;
         }
         return false;

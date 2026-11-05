@@ -1,13 +1,17 @@
 package org.sjf4j.processor.schema;
 
+import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
+import org.sjf4j.util.Numbers;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -26,8 +30,8 @@ final class SchemaEmitter {
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
     private final Map<String, String> failureHelpers = new LinkedHashMap<String, String>();
-    private final java.util.Map<SchemaCheck.ReferenceCheck, String> referenceHelpers =
-            new java.util.IdentityHashMap<SchemaCheck.ReferenceCheck, String>();
+    private final Map<SchemaCheck.ReferenceCheck, String> referenceHelpers =
+            new IdentityHashMap<SchemaCheck.ReferenceCheck, String>();
 
     SchemaEmitter(GeneratedClass generated, String helperPrefix, NameAllocator locals) {
         this.generated = generated;
@@ -343,7 +347,7 @@ final class SchemaEmitter {
                     + " " + local + " = " + access + ";");
             String checkedValue = local;
             if (property.codecOwner != null && property.check.kind != SchemaCheck.Kind.PASS) {
-                String codecField = generated.names().field(property.name.toUpperCase(java.util.Locale.ROOT) + "_CODEC");
+                String codecField = generated.names().field(property.name.toUpperCase(Locale.ROOT) + "_CODEC");
                 generated.addField(out -> out.line("private static final org.sjf4j.value.ValueInfo "
                         + codecField + " = org.sjf4j.meta.TypeRegistry.requireRegisteredPojoInfo("
                         + property.codecOwner + ".class).getPropertyNoAlias("
@@ -696,7 +700,7 @@ final class SchemaEmitter {
                     branch = "false".equals(branch) ? dynamicNull : "(" + branch + " || (" + dynamicNull + "))";
                 }
             } else {
-                String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(java.util.Locale.ROOT);
+                String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(Locale.ROOT);
                 String shape = known == null
                         ? "org.sjf4j.JsonType.of(" + expression + ") == org.sjf4j.JsonType." + name
                         : known.equals(name) ? "true" : "false";
@@ -745,7 +749,7 @@ final class SchemaEmitter {
                 // Decode each immutable schema literal once per generated validator.
                 // JSON equality remains Nodes.equals (not Java Map/List equals).
                 String field = generated.names().field("JSON_LITERAL");
-                String json = new org.sjf4j.binding.simple.SimpleJsonBinder().writeNodeAsString(literal);
+                String json = new SimpleJsonBinder().writeNodeAsString(literal);
                 generated.addField(out -> out.line("private static final Object " + field
                         + " = new org.sjf4j.binding.simple.SimpleJsonBinder().readNode("
                         + javaLiteral(json) + ", Object.class);"));
@@ -954,7 +958,7 @@ final class SchemaEmitter {
     /** Return null when a fractional or out-of-range constant needs decimal arithmetic. */
     private static Long exactLong(Number number) {
         try {
-            return org.sjf4j.util.Numbers.normalizeDecimal(number).longValueExact();
+            return Numbers.normalizeDecimal(number).longValueExact();
         } catch (ArithmeticException ex) {
             return null;
         }
@@ -1135,4 +1139,3 @@ final class SchemaEmitter {
 
 
 }
-

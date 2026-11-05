@@ -26,6 +26,7 @@ import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Strings;
 import org.sjf4j.util.Types;
 import org.sjf4j.value.ValueInfo;
+import org.sjf4j.value.ValueSet;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
@@ -929,7 +930,7 @@ public final class NodeMapper {
      * Explicit property codecs still call the ValueInfo overload below.
      */
     private static Object _convertValue(Object node, Class<?> toBoxed,
-                                        org.sjf4j.value.ValueSet set,
+                                        ValueSet set,
                                         boolean deepCopy, PathSegment ps, RuntimeContext context) {
         String preferred = context.valueFormat(toBoxed);
         if (node == null) return set.selectForRead(JsonType.NULL, preferred).rawToValue(null);

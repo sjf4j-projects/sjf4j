@@ -38,6 +38,7 @@ import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -256,7 +257,7 @@ public final class ReflectUtil {
                 if (parameter != null && (!parameter.discriminatorKey.equals(member.discriminatorKey)
                         || !parameter.discriminatorPath.equals(member.discriminatorPath)
                         || parameter.scope != member.scope || parameter.onNoMatch != member.onNoMatch
-                        || !java.util.Arrays.equals(parameter.cases, member.cases))) {
+                        || !Arrays.equals(parameter.cases, member.cases))) {
                     throw new BindingException("conflicting @OneOf on creator parameter and field '"
                             + finalName + "' in " + clazz.getName());
                 }

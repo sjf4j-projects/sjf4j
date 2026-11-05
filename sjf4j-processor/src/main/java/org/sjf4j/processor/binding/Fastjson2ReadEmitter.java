@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.processor.code.JavaWriter;
 
+import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
@@ -213,7 +214,7 @@ final class Fastjson2ReadEmitter {
     }
 
 
-    private final Map<String, javax.lang.model.type.TypeMirror> enums = new LinkedHashMap<>();
+    private final Map<String, TypeMirror> enums = new LinkedHashMap<>();
 
     void register(BindingValue root) {
         Set<BindingValue> seen = Collections.newSetFromMap(
@@ -255,7 +256,7 @@ final class Fastjson2ReadEmitter {
     }
 
     void emitFields(JavaWriter out) {
-        for (javax.lang.model.type.TypeMirror type : enums.values()) {
+        for (TypeMirror type : enums.values()) {
             String rawType = type.toString();
             String base = BindingNames.fieldType(type);
             String ordinals = names.enumField(type, "ordinals", base + "_ORDINALS");
@@ -285,7 +286,7 @@ final class Fastjson2ReadEmitter {
     }
 
     void emitHelpers(JavaWriter out) {
-        for (javax.lang.model.type.TypeMirror enumType : enums.values()) {
+        for (TypeMirror enumType : enums.values()) {
             String type = enumType.toString();
             String name = BindingNames.fieldType(enumType);
             String method = names.enumHelper(enumType, "read", "read" + BindingNames.simpleType(enumType) + "Enum");

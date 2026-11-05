@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -150,7 +151,7 @@ public final class ValueRegistry {
         List<ValueInfo> named = new ArrayList<>();
         Map<Class<?>, Set<String>> declaredFormats = new HashMap<>();
         Set<Class<?>> explicitDefaults = new HashSet<>();
-        Map<Class<?>, java.util.IdentityHashMap<ValueCodec<?, ?>, String>> declaredCodecs = new HashMap<>();
+        Map<Class<?>, IdentityHashMap<ValueCodec<?, ?>, String>> declaredCodecs = new HashMap<>();
 
         for (Field field : fields) {
             NodeValue annotation = field.getAnnotation(NodeValue.class);
@@ -192,9 +193,9 @@ public final class ValueRegistry {
                 throw new BindingException("duplicate @NodeValue codec format '" + format
                         + "' for type '" + codec.valueClazz().getName() + "'");
             }
-            java.util.IdentityHashMap<ValueCodec<?, ?>, String> valueFormats =
+            IdentityHashMap<ValueCodec<?, ?>, String> valueFormats =
                     declaredCodecs.computeIfAbsent(codec.valueClazz(),
-                            k -> new java.util.IdentityHashMap<>());
+                            k -> new IdentityHashMap<>());
             String prior = valueFormats.putIfAbsent(codec, format);
             if (prior != null) {
                 throw new BindingException("same ValueCodec instance registered under multiple formats for type '"

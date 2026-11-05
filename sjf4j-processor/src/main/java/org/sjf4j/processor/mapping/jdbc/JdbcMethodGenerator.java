@@ -8,6 +8,7 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
 import org.sjf4j.processor.type.TypeSystem;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -284,7 +285,7 @@ public final class JdbcMethodGenerator {
      * --------------------------------------------------------------
      */
 
-    private void error(javax.lang.model.element.Element element, GeneratedClass generated, String message) {
+    private void error(Element element, GeneratedClass generated, String message) {
         context.error(element, message);
         generated.invalidate();
     }

@@ -1,11 +1,15 @@
 package org.sjf4j.processor.schema;
 
+import org.sjf4j.Sjf4j;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.util.Strings;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.schema.SchemaException;
+import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.SchemaRegistry;
+import org.sjf4j.schema.SchemaUtil;
 import org.sjf4j.schema.SchemaLoader;
 import org.sjf4j.schema.JsonSchema;
 
@@ -15,6 +19,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
 import java.io.IOException;
+import java.io.Reader;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,11 +27,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.stream.Stream;
 
 /**
  * Resolves complete schema documents at annotation-processing time.
@@ -41,21 +48,21 @@ final class SchemaResourceResolver {
         final boolean[] fromRegistry;
         final String selectedUri;
 
-        org.sjf4j.schema.SchemaRegistry registry;
+        SchemaRegistry registry;
         boolean customDialect;
         boolean hasDynamicRef;
 
-        org.sjf4j.schema.SchemaPlan resolvePlan(String location) {
+        SchemaPlan resolvePlan(String location) {
             if (registry == null) throw new IllegalStateException("schema registry not initialized");
             return registry.resolve(URI.create(location));
         }
 
         String canonicalLocation(String location) {
             try {
-                org.sjf4j.schema.SchemaPlan plan = resolvePlan(location);
+                SchemaPlan plan = resolvePlan(location);
                 return plan == null || plan.schemaUri() == null
                         ? location : plan.schemaUri().toString();
-            } catch (IllegalArgumentException | org.sjf4j.schema.SchemaException missingSubschema) {
+            } catch (IllegalArgumentException | SchemaException missingSubschema) {
                 // Some compiler keyword locations are synthetic (e.g. reduced
                 // sibling assertion maps), not independent runtime subschemas.
                 return location;
@@ -241,8 +248,8 @@ final class SchemaResourceResolver {
             if (!Files.isDirectory(directory)) return null;
             final Path root = directory;
             URI base = registryBaseUri.isEmpty() ? directory.toUri() : URI.create(registryBaseUri);
-            try (java.util.stream.Stream<Path> paths = Files.walk(directory)) {
-                java.util.Iterator<Path> iterator = paths.filter(Files::isRegularFile)
+            try (Stream<Path> paths = Files.walk(directory)) {
+                Iterator<Path> iterator = paths.filter(Files::isRegularFile)
                         .filter(path -> path.getFileName().toString().endsWith(".json")).iterator();
                 while (iterator.hasNext()) {
                     Path path = iterator.next();
@@ -251,13 +258,13 @@ final class SchemaResourceResolver {
                     String document = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
                     IndexedSource indexed = new IndexedSource(retrieval, document);
                     indexedSources.putIfAbsent(retrieval.toString(), indexed);
-                    Object parsed = org.sjf4j.Sjf4j.global().fromJson(document);
+                    Object parsed = Sjf4j.global().fromJson(document);
                     if (JsonType.of(parsed) == JsonType.OBJECT) {
                         Object id = Nodes.getInObject(parsed, "$id");
                         if (id instanceof String) {
-                            String stripped = org.sjf4j.schema.SchemaUtil.stripFragment((String) id);
+                            String stripped = SchemaUtil.stripFragment((String) id);
                             if (!stripped.isEmpty()) {
-                                URI canonical = org.sjf4j.schema.SchemaUtil.resolveUri(retrieval, URI.create(stripped));
+                                URI canonical = SchemaUtil.resolveUri(retrieval, URI.create(stripped));
                                 indexedSources.putIfAbsent(canonical.toString(), indexed);
                             }
                         }
@@ -272,7 +279,7 @@ final class SchemaResourceResolver {
 
     private String read(URI uri, Path resourceDirectory) {
         URI document = SchemaLoader.documentUri(uri);
-        try (java.io.Reader reader = openResource(document, resourceDirectory)) {
+        try (Reader reader = openResource(document, resourceDirectory)) {
             if (reader == null) return null;
             StringBuilder text = new StringBuilder();
             char[] buf = new char[4096];
@@ -283,10 +290,10 @@ final class SchemaResourceResolver {
         }
     }
 
-    private java.io.Reader openResource(URI uri, Path resourceDirectory) throws IOException {
+    private Reader openResource(URI uri, Path resourceDirectory) throws IOException {
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             try {
-                return java.nio.file.Files.newBufferedReader(Paths.get(uri), java.nio.charset.StandardCharsets.UTF_8);
+                return Files.newBufferedReader(Paths.get(uri), StandardCharsets.UTF_8);
             } catch (NoSuchFileException e) {
                 return null;
             }

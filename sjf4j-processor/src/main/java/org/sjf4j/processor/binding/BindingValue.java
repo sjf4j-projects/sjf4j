@@ -5,7 +5,9 @@ import org.sjf4j.processor.creator.CreatorPlan;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Recursively compiled binding semantics for one Java value type. */
 final class BindingValue {
@@ -50,7 +52,7 @@ final class BindingValue {
     private final boolean primitive;
 
     private String helperName;
-    private final java.util.Map<Integer, String> preparedNames = new java.util.HashMap<>();
+    private final Map<Integer, String> preparedNames = new HashMap<>();
     private String oneOfOwner;
     private String oneOfProperty;
     private int oneOfCreatorIndex = -1;

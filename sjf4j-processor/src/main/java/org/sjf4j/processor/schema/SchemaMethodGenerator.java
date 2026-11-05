@@ -1,5 +1,9 @@
 package org.sjf4j.processor.schema;
 
+import org.sjf4j.JsonObject;
+import org.sjf4j.JsonType;
+import org.sjf4j.Nodes;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -15,6 +19,7 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -304,12 +309,12 @@ final class SchemaMethodGenerator {
     private String compileBoolean(SchemaResourceResolver.Snapshot snapshot) {
         String literal = snapshot.documents[0].trim();
         if (!"true".equals(literal) && !"false".equals(literal)) {
-            Object parsed = org.sjf4j.Sjf4j.global().fromJson(literal);
-            if (!org.sjf4j.JsonType.of(parsed).isObject()) return null;
-            org.sjf4j.JsonObject os = org.sjf4j.Nodes.toJsonObject(parsed);
+            Object parsed = Sjf4j.global().fromJson(literal);
+            if (!JsonType.of(parsed).isObject()) return null;
+            JsonObject os = Nodes.toJsonObject(parsed);
             if (os.size() != 1 || os.getString("$ref") == null) return null;
-            java.net.URI base = java.net.URI.create(snapshot.uris[0]);
-            java.net.URI target = base.resolve(os.getString("$ref"));
+            URI base = URI.create(snapshot.uris[0]);
+            URI target = base.resolve(os.getString("$ref"));
             if (target.getFragment() != null) return null;
             for (int i = 0; i < snapshot.uris.length; i++) {
                 if (snapshot.uris[i].equals(target.toString())) {

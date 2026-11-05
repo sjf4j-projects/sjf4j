@@ -1,9 +1,12 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.JsonType;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +62,7 @@ public final class SchemaPlan {
                 ValidationResult.Message error = new ValidationResult.Message(
                         "false", "schema 'false' always fails", null,
                         PathSegment.Root.INSTANCE, keywordPs, resourceUri);
-                return new ValidationResult(false, java.util.Collections.singletonList(error));
+                return new ValidationResult(false, Collections.singletonList(error));
             }
         }
 
@@ -136,7 +139,7 @@ public final class SchemaPlan {
                 valid = _evaluateKeywords(instance, instancePs, ctx);
                 if (valid && annotations != null) {
                     for (Annotation annotation : annotations) {
-                        if (annotation.stringOnly && instance.jsonType() != org.sjf4j.JsonType.STRING) {
+                        if (annotation.stringOnly && instance.jsonType() != JsonType.STRING) {
                             continue;
                         }
                         ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
@@ -213,7 +216,7 @@ public final class SchemaPlan {
             }
             return new URI(resourceUri.getScheme(), resourceUri.getAuthority(),
                     resourceUri.getPath(), resourceUri.getQuery(), path);
-        } catch (java.net.URISyntaxException e) {
+        } catch (URISyntaxException e) {
             throw new IllegalArgumentException("invalid schema URI: " + resourceUri + "#" + path, e);
         }
     }

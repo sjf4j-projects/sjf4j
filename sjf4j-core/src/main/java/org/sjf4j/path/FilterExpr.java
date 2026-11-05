@@ -6,6 +6,8 @@ import org.sjf4j.Nodes;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -293,7 +295,7 @@ public interface FilterExpr {
 
         public ArrayExpr(List<FilterExpr> elements) {
             this.elements = elements;
-            List<Object> values = new java.util.ArrayList<>(elements.size());
+            List<Object> values = new ArrayList<>(elements.size());
             for (int i = 0, size = elements.size(); i < size; i++) {
                 FilterExpr element = elements.get(i);
                 if (!(element instanceof LiteralExpr)) {
@@ -302,14 +304,14 @@ public interface FilterExpr {
                 }
                 values.add(element.eval(null, null));
             }
-            this.literalValues = values == null ? null : java.util.Collections.unmodifiableList(values);
+            this.literalValues = values == null ? null : Collections.unmodifiableList(values);
         }
 
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             if (literalValues != null) return literalValues;
             int size = elements.size();
-            java.util.ArrayList<Object> values = new java.util.ArrayList<>(size);
+            ArrayList<Object> values = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
                 values.add(elements.get(i).eval(rootNode, currentNode));
             }

@@ -3,12 +3,14 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
+import org.sjf4j.annotation.node.NodeIgnore;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.property.PropertyAccess;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -110,7 +112,7 @@ final class OneOfCompiler {
             // Generated code has to reference and cast the exact concrete type.
             if (owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)
                     || !owner.getModifiers().contains(Modifier.FINAL)) return null;
-            for (javax.lang.model.element.Element enclosing = owner.getEnclosingElement();
+            for (Element enclosing = owner.getEnclosingElement();
                     enclosing instanceof TypeElement; enclosing = enclosing.getEnclosingElement()) {
                 if (!enclosing.getModifiers().contains(Modifier.PUBLIC)) return null;
             }
@@ -145,10 +147,10 @@ final class OneOfCompiler {
                     Property property = context.properties.resolve(subtype).get(discriminator);
                     if (property != null && property.read() != null && !property.explicitCodec()) {
                         PropertyAccess access = property.read();
-                        javax.lang.model.element.Element member = access.member();
+                        Element member = access.member();
                         if (member.getModifiers().contains(Modifier.PUBLIC)
                                 && !member.getModifiers().contains(Modifier.STATIC)
-                                && member.getAnnotation(org.sjf4j.annotation.node.NodeIgnore.class) == null
+                                && member.getAnnotation(NodeIgnore.class) == null
                                 && "java.lang.String".equals(access.type().toString())) {
                             guardAccess = access.memberName() + (access.isMethod() ? "()" : "");
                             guardValue = expected;
@@ -180,7 +182,7 @@ final class OneOfCompiler {
     private String publicConstant(TypeMirror subtype, String name) {
         TypeElement owner = context.types.typeElement(subtype);
         if (owner == null || !owner.getModifiers().contains(Modifier.FINAL)) return null;
-        for (javax.lang.model.element.Element enclosing = owner;
+        for (Element enclosing = owner;
              enclosing instanceof TypeElement; enclosing = enclosing.getEnclosingElement()) {
             if (!enclosing.getModifiers().contains(Modifier.PUBLIC)) return null;
         }

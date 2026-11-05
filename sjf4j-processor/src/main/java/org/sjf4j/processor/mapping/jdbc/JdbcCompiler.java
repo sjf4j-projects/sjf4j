@@ -12,12 +12,14 @@ import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.math.BigDecimal;
@@ -419,7 +421,7 @@ public final class JdbcCompiler {
 
         if (helper == null) return null;
 
-        javax.lang.model.type.ExecutableType helperType = types.resolveMethodType(mapper.asType(), helper);
+        ExecutableType helperType = types.resolveMethodType(mapper.asType(), helper);
 
         if (helperType == null) {
             error(method, generated, "Cannot resolve JDBC compute helper method: " + helper.getSimpleName());
@@ -502,7 +504,7 @@ public final class JdbcCompiler {
 
         ExecutableElement result = null;
 
-        for (javax.lang.model.element.Element member : mapper.getEnclosedElements()) {
+        for (Element member : mapper.getEnclosedElements()) {
             if (member.getKind() != ElementKind.METHOD || !member.getSimpleName().contentEquals(name)) continue;
 
             ExecutableElement candidate = (ExecutableElement) member;
@@ -936,7 +938,7 @@ public final class JdbcCompiler {
                 ((ArrayType) first).getComponentType(), ((ArrayType) second).getComponentType());
     }
 
-    private void error(javax.lang.model.element.Element element, GeneratedClass generated, String message) {
+    private void error(Element element, GeneratedClass generated, String message) {
         context.error(element, message);
         generated.invalidate();
     }

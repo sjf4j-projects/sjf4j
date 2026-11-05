@@ -13,9 +13,11 @@ import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.exception.NodeException;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
@@ -25,6 +27,7 @@ import java.util.Base64;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -374,8 +377,8 @@ public interface Evaluator {
             // BigInteger, BigDecimal and even a large integral double may exceed
             // 64 bits. Restrict the remainder fast path to lossless integers.
             if (isIntegerDivisor && Numbers.isIntegralType(node)
-                    && (!(node instanceof java.math.BigInteger)
-                        || ((java.math.BigInteger) node).bitLength() <= 63)) {
+                    && (!(node instanceof BigInteger)
+                        || ((BigInteger) node).bitLength() <= 63)) {
                 long v = node.longValue();
                 if (v % divisorLong != 0) {
                     ctx.addError(instance, ps, keywordPs, schemaUri, "multipleOf",
@@ -524,13 +527,13 @@ public interface Evaluator {
             // The fast paths are safe even with custom codecs: they apply only
             // when the encoded JSON text is the Java type's standard spelling.
             if (instance.converted() && raw instanceof String && "uuid".equals(format)
-                    && node instanceof java.util.UUID && raw.equals(node.toString())) {
+                    && node instanceof UUID && raw.equals(node.toString())) {
                 valid = true;
             } else if (instance.converted() && raw instanceof String
-                    && node instanceof java.net.URI
+                    && node instanceof URI
                     && ("uri".equals(format) || "uri-reference".equals(format))
                     && raw.equals(node.toString())) {
-                valid = FormatValidator.validateUri((java.net.URI) node, "uri".equals(format));
+                valid = FormatValidator.validateUri((URI) node, "uri".equals(format));
             } else {
                 valid = formatValidator.validate(Nodes.toString(raw));
             }
@@ -715,7 +718,7 @@ public interface Evaluator {
             if (typeInfo.externalNode != null) {
                 return evaluateEntries(instance, typeInfo.externalNode.entrySetInObject(node), ps, ctx);
             }
-            throw new org.sjf4j.exception.NodeException("expected object node");
+            throw new NodeException("expected object node");
         }
 
         /** Map, plain JsonObject, and external object members use their native entries. */
@@ -1581,7 +1584,7 @@ public interface Evaluator {
             if (typeInfo.externalNode != null) {
                 return evaluateEntries(instance, typeInfo.externalNode.entrySetInObject(node), merged, ps, ctx);
             }
-            throw new org.sjf4j.exception.NodeException("expected object node");
+            throw new NodeException("expected object node");
         }
 
         private boolean evaluateEntries(Instance instance, Iterable<? extends Map.Entry<String, Object>> entries,

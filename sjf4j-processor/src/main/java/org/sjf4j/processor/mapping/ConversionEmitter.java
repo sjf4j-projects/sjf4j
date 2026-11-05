@@ -4,6 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.GeneratedNames;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.discovery.CompiledMetadata;
@@ -47,7 +48,7 @@ public final class ConversionEmitter
             new IdentityHashMap<>();
     private final Map<String, SharedConversion> sharedConversions = new LinkedHashMap<>();
     private String emittingShared;
-    private org.sjf4j.processor.code.GeneratedNames generatedNames;
+    private GeneratedNames generatedNames;
 
     public ConversionEmitter(ProcessorContext context, TypeElement mapper,
                              List<MappingPlan> plans, CompiledMetadata metadata) {

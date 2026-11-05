@@ -2,6 +2,8 @@ package org.sjf4j.bytecode;
 
 import org.sjf4j.TypeReference;
 
+import java.util.function.BiFunction;
+
 /**
  * Bytecode-compiled accessor for one concrete JSON path expression.
  *
@@ -59,7 +61,7 @@ public interface BytecodePath<R, V> {
      * Recomputes matched locations from their parent and current value.
      * @return the number of locations written
      */
-    default int compute(R root, java.util.function.BiFunction<Object, Object, Object> computer) {
+    default int compute(R root, BiFunction<Object, Object, Object> computer) {
         throw new UnsupportedOperationException("compute() is not implemented");
     }
 

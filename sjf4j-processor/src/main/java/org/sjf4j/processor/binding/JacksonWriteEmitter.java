@@ -4,6 +4,8 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 
+import java.util.Map;
+
 /**
  * Jackson 2/3 compiled write generation.
  *
@@ -27,11 +29,11 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     }
 
     /** Cache enum values in the native Jackson serialized-string format. */
-    void emitEnumFields(JavaWriter out, java.util.Map<String, BindingValue> enumFields) {
+    void emitEnumFields(JavaWriter out, Map<String, BindingValue> enumFields) {
         String encoded = backend.backend() == Backend.JACKSON2
                 ? "com.fasterxml.jackson.core.io.SerializedString"
                 : "tools.jackson.core.io.SerializedString";
-        for (java.util.Map.Entry<String, BindingValue> entry : enumFields.entrySet()) {
+        for (Map.Entry<String, BindingValue> entry : enumFields.entrySet()) {
             String type = entry.getKey();
             BindingValue enumValue = entry.getValue();
             String field = writes.enumField(enumValue);

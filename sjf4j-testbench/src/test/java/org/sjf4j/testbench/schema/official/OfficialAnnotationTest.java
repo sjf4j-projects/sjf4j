@@ -193,7 +193,7 @@ public final class OfficialAnnotationTest {
                     report.errors++;
                     report.failures.add(label + ": " + e);
                     System.out.println("ERROR " + label + ": " + e);
-                    e.printStackTrace(System.out);
+//                    e.printStackTrace(System.out);
                 }
             }
         }

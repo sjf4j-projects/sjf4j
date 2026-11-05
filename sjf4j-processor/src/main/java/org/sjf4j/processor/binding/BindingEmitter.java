@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 
@@ -16,7 +17,7 @@ final class BindingEmitter {
 
     BindingEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.names = names;
-        this.fastjson2 = backend.backend() == org.sjf4j.annotation.binding.Backend.FASTJSON2;
+        this.fastjson2 = backend.backend() == Backend.FASTJSON2;
         this.reads = new ReadEmitter(context, backend, names);
         this.writes = new WriteEmitter(backend, names);
         this.helpers = new BindingHelperEmitter(context, reads, writes, names);

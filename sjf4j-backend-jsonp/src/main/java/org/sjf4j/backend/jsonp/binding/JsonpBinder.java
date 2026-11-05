@@ -7,6 +7,8 @@ import org.sjf4j.binding.Binder;
 import org.sjf4j.RuntimeContext;
 import org.sjf4j.util.Asserts;
 
+import java.io.FilterReader;
+import java.io.FilterWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
@@ -66,7 +68,7 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
 
     @Override
     public JsonpParser createParser(Reader input) throws IOException {
-        Reader protectedInput = new java.io.FilterReader(Asserts.notNull(input, "input")) {
+        Reader protectedInput = new FilterReader(Asserts.notNull(input, "input")) {
             @Override public void close() { /* Caller owns input. */ }
         };
         return createParser(provider.createParser(protectedInput));
@@ -83,7 +85,7 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
 
     @Override
     public JsonpGenerator createGenerator(Writer output) throws IOException {
-        Writer protectedOutput = new java.io.FilterWriter(Asserts.notNull(output, "output")) {
+        Writer protectedOutput = new FilterWriter(Asserts.notNull(output, "output")) {
             @Override public void close() { /* Caller owns output. */ }
         };
         return createGenerator(provider.createGenerator(protectedOutput));

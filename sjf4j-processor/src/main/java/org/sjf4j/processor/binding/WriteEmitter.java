@@ -5,6 +5,7 @@ import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
+import javax.lang.model.element.VariableElement;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -458,7 +459,7 @@ final class WriteEmitter {
 
     private NameAllocator methodNames(BindingPlan plan) {
         NameAllocator names = new NameAllocator();
-        for (javax.lang.model.element.VariableElement parameter :
+        for (VariableElement parameter :
                 plan.method().declaration().getParameters()) {
             names.reserve(parameter.getSimpleName().toString());
         }

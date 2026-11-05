@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
@@ -34,7 +35,7 @@ final class ReadEmitter {
         if (fastjson2 != null) fastjson2.register(value);
     }
 
-    void emitEnumFields(org.sjf4j.processor.code.GeneratedClass generated) {
+    void emitEnumFields(GeneratedClass generated) {
         if (fastjson2 == null || !fastjson2.hasEnums()) return;
         generated.addField(out -> fastjson2.emitFields(out));
         generated.addHelper(out -> fastjson2.emitHelpers(out));

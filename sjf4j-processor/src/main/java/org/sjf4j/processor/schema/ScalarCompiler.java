@@ -3,6 +3,9 @@ package org.sjf4j.processor.schema;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
+import org.sjf4j.schema.SchemaUtil;
+import org.sjf4j.util.Numbers;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -91,7 +94,7 @@ final class ScalarCompiler {
             String pattern = (String) rawPattern;
             if (pattern != null) {
                 try {
-                    org.sjf4j.schema.SchemaUtil.compileRegexPattern(pattern, "pattern", null, null);
+                    SchemaUtil.compileRegexPattern(pattern, "pattern", null, null);
                 } catch (RuntimeException invalid) {
                     return null;
                 }
@@ -129,7 +132,7 @@ final class ScalarCompiler {
             }
             Object rawMultiple = schema.getNode("multipleOf");
             if (rawMultiple != null && !(rawMultiple instanceof Number)) return null;
-            if (rawMultiple != null && org.sjf4j.util.Numbers.normalizeDecimal(
+            if (rawMultiple != null && Numbers.normalizeDecimal(
                     (Number) rawMultiple).signum() <= 0) return null;
             SchemaCheck.NumberCheck number = new SchemaCheck.NumberCheck(
                     "integer".equals(kind), bounds, (Number) rawMultiple,

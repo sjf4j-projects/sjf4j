@@ -1,8 +1,11 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.JsonObject;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.schema.BooleanSchema;
 import org.sjf4j.schema.ObjectSchema;
+import org.sjf4j.schema.SchemaPlan;
+import org.sjf4j.schema.SchemaUtil;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPointer;
@@ -10,10 +13,17 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.type.TypeMirror;
+import java.io.ByteArrayOutputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Coordinates schema references and dispatches supported JSON value kinds.
@@ -29,9 +39,9 @@ final class SchemaCompiler {
     private String fallbackReason;
     private int activeReferences;
     // Only present during annotation processing. Never emitted into runtime code.
-    private final java.util.LinkedHashMap<String, org.sjf4j.schema.SchemaPlan> scope =
-            new java.util.LinkedHashMap<String, org.sjf4j.schema.SchemaPlan>();
-    private final java.util.Set<String> specializedReferences = new java.util.HashSet<String>();
+    private final LinkedHashMap<String, SchemaPlan> scope =
+            new LinkedHashMap<String, SchemaPlan>();
+    private final Set<String> specializedReferences = new HashSet<String>();
     private boolean dynamicScopeEnabled;
     private int unresolvedScope;
     private static final int MAX_SPECIALIZED_REFERENCES = 256;
@@ -43,8 +53,7 @@ final class SchemaCompiler {
         String resource = hash < 0 ? canonical : canonical.substring(0, hash);
         if (scope.containsKey(resource)) return null;
         try {
-            org.sjf4j.schema.SchemaPlan plan =
-                    snapshot.registry.resolve(java.net.URI.create(resource));
+            SchemaPlan plan = snapshot.registry.resolve(URI.create(resource));
             if (plan != null) {
                 scope.put(resource, plan);
                 return resource;
@@ -102,7 +111,7 @@ final class SchemaCompiler {
             return null;
         }
         dynamicScopeEnabled = snapshot.hasDynamicRef;
-        Object root = org.sjf4j.Sjf4j.global().fromJson(snapshot.documents[0]);
+        Object root = Sjf4j.global().fromJson(snapshot.documents[0]);
         String uri = snapshot.uris[0];
         if (!snapshot.selectedUri.equals(uri)) {
             RefTarget selected = resolveRef(snapshot,
@@ -213,11 +222,10 @@ final class SchemaCompiler {
                     return null;
                 }
                 try {
-                    java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
-                            java.net.URI.create(schemaUri),
-                            java.net.URI.create(schema.getString("$dynamicRef")));
-                    org.sjf4j.schema.SchemaPlan selected = snapshot.registry.resolveDynamicRef(
-                            absolute, new ArrayList<org.sjf4j.schema.SchemaPlan>(scope.values()));
+                    URI absolute = SchemaUtil.resolveUri(
+                            URI.create(schemaUri), URI.create(schema.getString("$dynamicRef")));
+                    SchemaPlan selected = snapshot.registry.resolveDynamicRef(
+                            absolute, new ArrayList<SchemaPlan>(scope.values()));
                     if (selected == null) return null;
                     target = new RefTarget(selected.schema(), selected.schemaUri().toString());
                 } catch (RuntimeException unresolved) {
@@ -273,7 +281,7 @@ final class SchemaCompiler {
             if (!adjacent.isEmpty()) {
                 SchemaCheck siblings = compileValue(snapshot, adjacent, value, schemaUri, depth + 1);
                 if (siblings == null || siblings.hasFallback()) return null;
-                return new SchemaCheck.AllCheck(java.util.Arrays.asList(referenced, siblings));
+                return new SchemaCheck.AllCheck(Arrays.asList(referenced, siblings));
             }
             return referenced;
         }
@@ -714,11 +722,10 @@ final class SchemaCompiler {
     static String effectiveSchemaUri(String schemaUri, JsonObject schema) {
         Object rawId = schema.getNode("$id");
         if (!(rawId instanceof String)) return schemaUri;
-        String id = org.sjf4j.schema.SchemaUtil.stripFragment((String) rawId);
+        String id = SchemaUtil.stripFragment((String) rawId);
         if (id.isEmpty()) return schemaUri;
-        java.net.URI base = resourceUri(schemaUri);
-        java.net.URI resolved = org.sjf4j.schema.SchemaUtil.resolveUri(
-                base, java.net.URI.create(id));
+        URI base = resourceUri(schemaUri);
+        URI resolved = SchemaUtil.resolveUri(base, URI.create(id));
         return resolved.equals(base) ? schemaUri : resolved.toString();
     }
 
@@ -749,9 +756,9 @@ final class SchemaCompiler {
     }
 
     /** Returns the resource part without asking URI to parse a possibly raw JSON Pointer fragment. */
-    private static java.net.URI resourceUri(String schemaUri) {
+    private static URI resourceUri(String schemaUri) {
         int hash = schemaUri.indexOf('#');
-        return java.net.URI.create(hash < 0 ? schemaUri : schemaUri.substring(0, hash));
+        return URI.create(hash < 0 ? schemaUri : schemaUri.substring(0, hash));
     }
 
     /** Decodes percent-encoded UTF-8 bytes without treating '+' as a space. */
@@ -764,7 +771,7 @@ final class SchemaCompiler {
                 decoded.append(fragment.charAt(i++));
                 continue;
             }
-            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             while (i + 2 < fragment.length() && fragment.charAt(i) == '%'
                     && Character.digit(fragment.charAt(i + 1), 16) >= 0
                     && Character.digit(fragment.charAt(i + 2), 16) >= 0) {
@@ -773,7 +780,7 @@ final class SchemaCompiler {
                 bytes.write(value);
                 i += 3;
             }
-            decoded.append(new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8));
+            decoded.append(new String(bytes.toByteArray(), StandardCharsets.UTF_8));
         }
         return decoded.toString();
     }
@@ -825,9 +832,8 @@ final class SchemaCompiler {
         String literal = schema.getString("$ref");
         if (literal == null) return null;
         try {
-            java.net.URI absolute = org.sjf4j.schema.SchemaUtil.resolveUri(
-                    java.net.URI.create(sourceUri), java.net.URI.create(literal));
-            org.sjf4j.schema.SchemaPlan plan = snapshot.registry.resolve(absolute);
+            URI absolute = SchemaUtil.resolveUri(URI.create(sourceUri), URI.create(literal));
+            SchemaPlan plan = snapshot.registry.resolve(absolute);
             return plan == null ? null : new RefTarget(plan.schema(),
                     plan.schemaUri().toString());
         } catch (RuntimeException unresolved) {
