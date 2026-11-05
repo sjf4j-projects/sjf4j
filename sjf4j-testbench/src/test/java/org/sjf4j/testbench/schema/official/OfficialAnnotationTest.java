@@ -29,24 +29,25 @@ import java.util.stream.Stream;
  * <p>JUnit runs every file and reports all results. Until the remaining annotation
  * vocabularies are implemented, the CI gate enforces the metadata and applicator
  * suites and reports the other files as pending (without concealing failures).
- * The main method is strict for any selected file or the entire suite.
+ * The standalone entrypoint is strict for any selected file or the entire suite.
  */
 public final class OfficialAnnotationTest {
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
+    private static final SchemaDialect DIALECT = SchemaDialect.DRAFT_2020_12;
     private static final ValidationOptions OPTIONS = ValidationOptions.builder()
             .collectAnnotations(true).build();
 
     /**
      * Run all files, or select one file/group/test:
-     * OfficialAnnotationTest [suite-root] [file.json] [group-filter] [test-filter].
+     * OfficialAnnotationMain [suite-root] [file.json] [group-filter] [test-filter].
      *
      * <p>Group/test selectors match description substrings or zero-based indices
      * prefixed with '#', e.g. applicators.json '#5' '#0'.
      */
-    public static void main(String[] args) throws Exception {
+    static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
-            throw new IllegalArgumentException("Usage: OfficialAnnotationTest "
+            throw new IllegalArgumentException("Usage: OfficialAnnotationMain "
                     + "[<JSON-Schema-Test-Suite root>] [<file.json>] [<group-filter>] [<test-filter>]");
         }
         Path root = locateTestRoot(args.length > 0 ? args[0] : null);
@@ -54,7 +55,10 @@ public final class OfficialAnnotationTest {
         String groupFilter = args.length > 2 ? args[2] : null;
         String testFilter = args.length > 3 ? args[3] : null;
         Report report = run(root, file, groupFilter, testFilter);
-        if (report.total == 0) throw new IllegalArgumentException("No annotation tests matched");
+        if (report.total == 0) {
+            throw new IllegalArgumentException("No compatible annotation tests matched"
+                    + (report.skipped == 0 ? "" : " (" + report.skipped + " skipped by compatibility)"));
+        }
         if (report.failed != 0 || report.errors != 0) {
             throw new AssertionError("Annotation suite: " + report.failed
                     + " failed, " + report.errors + " errors");
@@ -79,15 +83,8 @@ public final class OfficialAnnotationTest {
         assertPassing(all, "format.json", 1);
         assertPassing(all, "unknown.json", 1);
 
-        // Compatibility "9999" requires a future dialect and cannot be gated
-        // as Draft 2020-12 conformance. Report these in the full-suite run.
-        Report core2020 = runFile(root.resolve("annotations/tests/core.json"), null, null, true);
-        if (core2020.total != 4 || core2020.failed != 0 || core2020.errors != 0) {
-            throw new AssertionError("Official Draft 2020-12 core annotations: "
-                    + core2020.passed + "/" + core2020.total + ", failed "
-                    + core2020.failed + ", errors " + core2020.errors
-                    + ", details: " + core2020.failures);
-        }
+        // All compatible Draft 2020-12 core cases are now included in the full-suite report.
+        assertPassing(all, "core.json", 4);
     }
 
     private static Path locateTestRoot(String argumentRoot) {
@@ -132,22 +129,18 @@ public final class OfficialAnnotationTest {
             }
         }
         System.out.println("========================================");
-        System.out.println("Official Annotation Suite Summary");
+        System.out.println("Official Annotation Suite Summary (" + DIALECT + ")");
         System.out.println("Total: " + total.total + "  Passed: " + total.passed
-                + "  Failed: " + total.failed + "  Error: " + total.errors);
+                + "  Failed: " + total.failed + "  Error: " + total.errors
+                + "  Skipped: " + total.skipped);
         System.out.println("========================================");
         return total;
     }
 
     private static Report runFile(Path file, String groupFilter,
                                   String testFilter) throws Exception {
-        return runFile(file, groupFilter, testFilter, false);
-    }
-
-    private static Report runFile(Path file, String groupFilter,
-                                  String testFilter, boolean skipFuture) throws Exception {
         JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
+        SchemaRegistry registry = new SchemaRegistry(DIALECT);
         JsonArray groups = suite.getJsonArray("suite");
         Report report = new Report();
 
@@ -155,9 +148,30 @@ public final class OfficialAnnotationTest {
             JsonObject group = groups.getJsonObject(groupIndex);
             String groupDescription = group.getString("description", "");
             if (!selected(groupFilter, groupIndex, groupDescription)) continue;
-            if (skipFuture && "9999".equals(group.getString("compatibility"))) continue;
 
             JsonArray tests = group.getJsonArray("tests");
+            String compatibility = group.getString("compatibility");
+            boolean compatible;
+            try {
+                compatible = compatibleWith2020(compatibility);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(file.getFileName() + " group#" + groupIndex
+                        + ": " + e.getMessage(), e);
+            }
+            if (!compatible) {
+                int skipped = 0;
+                for (int testIndex = 0; testIndex < tests.size(); testIndex++) {
+                    if (selected(testFilter, testIndex,
+                            tests.getJsonObject(testIndex).getString("description", ""))) skipped++;
+                }
+                report.skipped += skipped;
+                if (skipped > 0) {
+                    System.out.println("SKIP " + file.getFileName() + " group#" + groupIndex
+                            + " (compatibility=" + compatibility + ", tests=" + skipped + ")");
+                }
+                continue;
+            }
+
             SchemaPlan plan = null;
             Exception compileError = null;
             Map<URI, String> resourceLocations = new LinkedHashMap<>();
@@ -198,8 +212,26 @@ public final class OfficialAnnotationTest {
             }
         }
         System.out.println(file.getFileName() + " [ " + report.passed + " / " + report.total
-                + " ] Failed: " + report.failed + " Error: " + report.errors);
+                + " ] Failed: " + report.failed + " Error: " + report.errors
+                + " Skipped: " + report.skipped);
         return report;
+    }
+
+    // Official Annotation Test Suite compatibility (annotations/README.md).
+    // A plain version is a minimum; constraints separated by commas are combined.
+    private static boolean compatibleWith2020(String compatibility) {
+        if (compatibility == null) return true;
+        if (!compatibility.matches("^(<=|=)?([123467]|2019|2020|9999)(,(<=|=)?([123467]|2019|2020|9999))*$")) {
+            throw new IllegalArgumentException("Invalid annotation compatibility: " + compatibility);
+        }
+        for (String constraint : compatibility.split(",")) {
+            boolean maximum = constraint.startsWith("<=");
+            boolean exact = constraint.startsWith("=");
+            int draft = Integer.parseInt(constraint.substring(maximum ? 2 : exact ? 1 : 0));
+            if ((maximum && 2020 > draft) || (exact && 2020 != draft)
+                    || (!maximum && !exact && 2020 < draft)) return false;
+        }
+        return true;
     }
 
     private static boolean selected(String filter, int index, String description) {
@@ -303,6 +335,7 @@ public final class OfficialAnnotationTest {
         int passed;
         int failed;
         int errors;
+        int skipped;
         final java.util.List<String> failures = new java.util.ArrayList<>();
 
         void add(Report other) {
@@ -310,6 +343,7 @@ public final class OfficialAnnotationTest {
             passed += other.passed;
             failed += other.failed;
             errors += other.errors;
+            skipped += other.skipped;
             failures.addAll(other.failures);
         }
     }
