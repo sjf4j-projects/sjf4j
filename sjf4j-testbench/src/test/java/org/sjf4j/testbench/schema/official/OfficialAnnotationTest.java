@@ -40,31 +40,37 @@ import java.util.stream.Stream;
 public final class OfficialAnnotationTest {
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
-    private static final String DRAFT_PROPERTY = "sjf4j.schema.officialAnnotationDraft";
     private static final ValidationOptions OPTIONS = ValidationOptions.builder()
             .collectAnnotations(true).build();
 
     /**
      * Run all files, or select one file/group/test:
-     * OfficialAnnotationMain [dialect] [file.json] [group-filter] [test-filter].
-     *
-     * <p>The optional dialect is draft7, draft2019-09, draft2020-12,
-     * or all (default). Group/test selectors match description substrings or zero-based
-     * indices prefixed with '#', e.g. draft2019-09 applicators.json '#5' '#0'.
+     * OfficialAnnotationMain [dialect [file.json [groupIndex [testIndex]]]].
+     * The dialect is all (default), draft7, draft2019-09, or draft2020-12;
+     * indices are zero-based, e.g. draft2019-09 applicators.json 5 0.
      */
     static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
             throw new IllegalArgumentException("Usage: OfficialAnnotationMain "
-                    + "[dialect [file.json [group-filter [test-filter]]]]");
+                    + "[dialect [file.json [groupIndex [testIndex]]]]");
         }
         List<SchemaDialect> dialects = standaloneDialects(args.length > 0 ? args[0] : null);
         Path root = locateTestRoot();
         String file = args.length > 1 ? args[1] : null;
-        String groupFilter = args.length > 2 ? args[2] : null;
-        String testFilter = args.length > 3 ? args[3] : null;
+        Integer groupIndex = args.length > 2 ? Integer.parseInt(args[2]) : null;
+        Integer testIndex = args.length > 3 ? Integer.parseInt(args[3]) : null;
+        if (file != null && (!file.endsWith(".json") || file.contains("/") || file.contains("\\"))) {
+            throw new IllegalArgumentException("Expected a root annotation file.json: " + file);
+        }
+        if (groupIndex != null && (groupIndex < 0 || file == null)) {
+            throw new IllegalArgumentException("Specify file.json and a nonnegative group index");
+        }
+        if (testIndex != null && (testIndex < 0 || groupIndex == null)) {
+            throw new IllegalArgumentException("Specify group index and a nonnegative test index");
+        }
         Report report = new Report();
         for (SchemaDialect dialect : dialects) {
-            report.add(run(root, dialect, file, groupFilter, testFilter));
+            report.add(run(root, dialect, file, groupIndex, testIndex));
         }
         if (report.total == 0) {
             throw new IllegalArgumentException("No compatible annotation tests matched"
@@ -100,7 +106,7 @@ public final class OfficialAnnotationTest {
         List<Path> files = listAnnotationFiles(directory);
         if (files.isEmpty()) throw new IllegalStateException("Official annotation suite is empty: " + directory);
         List<DynamicNode> drafts = new ArrayList<>();
-        for (SchemaDialect dialect : standaloneDialects(System.getProperty(DRAFT_PROPERTY, "all"))) {
+        for (SchemaDialect dialect : standaloneDialects(null)) {
             List<DynamicNode> tests = new ArrayList<>();
             for (Path file : files) {
                 tests.add(DynamicTest.dynamicTest(file.getFileName().toString(), () -> {
@@ -153,7 +159,7 @@ public final class OfficialAnnotationTest {
     }
 
     private static Report run(Path root, SchemaDialect dialect, String file,
-                              String groupFilter, String testFilter) throws Exception {
+                              Integer groupIndex, Integer testIndex) throws Exception {
         Path directory = annotationDirectory(root);
 
         Report total = new Report();
@@ -163,11 +169,11 @@ public final class OfficialAnnotationTest {
                     || !selected.getFileName().toString().endsWith(".json")) {
                 throw new IllegalArgumentException("Annotation suite file not found: " + selected);
             }
-            Report fileReport = runFile(selected, dialect, groupFilter, testFilter);
+            Report fileReport = runFile(selected, dialect, groupIndex, testIndex);
             total.add(fileReport);
         } else {
             for (Path path : listAnnotationFiles(directory)) {
-                Report fileReport = runFile(path, dialect, groupFilter, testFilter);
+                Report fileReport = runFile(path, dialect, groupIndex, testIndex);
                 total.add(fileReport);
             }
         }
@@ -180,8 +186,8 @@ public final class OfficialAnnotationTest {
         return total;
     }
 
-    private static Report runFile(Path file, SchemaDialect dialect, String groupFilter,
-                                  String testFilter) throws Exception {
+    private static Report runFile(Path file, SchemaDialect dialect, Integer groupFilter,
+                                  Integer testFilter) throws Exception {
         JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
         JsonArray groups = suite.getJsonArray("suite");
         Report report = new Report();
@@ -189,7 +195,7 @@ public final class OfficialAnnotationTest {
         for (int groupIndex = 0; groupIndex < groups.size(); groupIndex++) {
             JsonObject group = groups.getJsonObject(groupIndex);
             String groupDescription = group.getString("description", "");
-            if (!selected(groupFilter, groupIndex, groupDescription)) continue;
+            if (groupFilter != null && groupFilter != groupIndex) continue;
 
             JsonArray tests = group.getJsonArray("tests");
             String compatibility = group.getString("compatibility");
@@ -203,8 +209,7 @@ public final class OfficialAnnotationTest {
             if (!compatible) {
                 int skipped = 0;
                 for (int testIndex = 0; testIndex < tests.size(); testIndex++) {
-                    if (selected(testFilter, testIndex,
-                            tests.getJsonObject(testIndex).getString("description", ""))) skipped++;
+                    if (testFilter == null || testFilter == testIndex) skipped++;
                 }
                 report.skipped += skipped;
                 if (skipped > 0) {
@@ -222,7 +227,7 @@ public final class OfficialAnnotationTest {
             for (int testIndex = 0; testIndex < tests.size(); testIndex++) {
                 JsonObject test = tests.getJsonObject(testIndex);
                 String description = test.getString("description", "");
-                if (!selected(testFilter, testIndex, description)) continue;
+                if (testFilter != null && testFilter != testIndex) continue;
 
                 report.total++;
                 String label = file.getFileName() + " group#" + groupIndex
@@ -288,12 +293,6 @@ public final class OfficialAnnotationTest {
                     || (!maximum && !exact && version < draft)) return false;
         }
         return true;
-    }
-
-    private static boolean selected(String filter, int index, String description) {
-        if (filter == null || filter.isEmpty()) return true;
-        if (filter.startsWith("#")) return filter.substring(1).equals(Integer.toString(index));
-        return description.contains(filter);
     }
 
     private static void checkAnnotations(ValidationResult result, JsonObject test, String label,
