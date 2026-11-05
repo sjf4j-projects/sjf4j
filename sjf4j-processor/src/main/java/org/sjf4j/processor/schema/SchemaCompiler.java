@@ -508,7 +508,7 @@ final class SchemaCompiler {
                         && !schema.containsKey("if") && !schema.containsKey("then")
                         && !schema.containsKey("else")
                         && (!schema.containsKey("allOf")
-                            || isTrivialTrueAllOf(schema.getNode("allOf"))));
+                            || isTrivialTrueAllOf(schema.getNode("allOf")));
                 SchemaCheck sibling = compileValue(snapshot, siblings, value, schemaUri,
                         localCoverage ? depth : depth + 1);
                 if (sibling == null || sibling.hasFallback()) return null;
