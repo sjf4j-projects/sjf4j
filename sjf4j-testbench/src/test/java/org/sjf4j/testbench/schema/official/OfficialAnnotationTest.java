@@ -260,24 +260,24 @@ public final class OfficialAnnotationTest {
      */
     private static void indexResourceLocations(Object node, URI inheritedUri, String path,
                                                Map<URI, String> result) {
-        if (node instanceof JsonObject) {
-            JsonObject object = (JsonObject) node;
+        if (node instanceof JsonObject || node instanceof Map) {
+            // Parsed test schema children may be ordinary Map/List nodes rather
+            // than JsonObject/JsonArray. Index both representations.
+            Object rawId = node instanceof JsonObject
+                    ? ((JsonObject) node).getNode("$id")
+                    : ((Map<?, ?>) node).get("$id");
             URI resourceUri = inheritedUri;
-            String id = object.getString("$id");
-            if (id != null) {
-                resourceUri = inheritedUri.resolve(id);
+            if (rawId instanceof String) {
+                resourceUri = inheritedUri.resolve((String) rawId);
                 result.put(URI.create(resourceUri.toString().split("#", 2)[0]), path);
             }
-            for (Map.Entry<String, Object> e : object.entrySet()) {
-                indexResourceLocations(e.getValue(), resourceUri,
-                        path + "/" + e.getKey().replace("~", "~0").replace("/", "~1"), result);
-            }
-        } else if (node instanceof JsonArray) {
-            JsonArray array = (JsonArray) node;
-            for (int i = 0; i < array.size(); i++) {
-                indexResourceLocations(array.getNode(i), inheritedUri,
-                        path + "/" + i, result);
-            }
+            URI childResourceUri = resourceUri;
+            Nodes.forEachObject(node, (key, value) -> indexResourceLocations(value,
+                    childResourceUri,
+                    path + "/" + key.replace("~", "~0").replace("/", "~1"), result));
+        } else if (node instanceof JsonArray || node instanceof java.util.List) {
+            Nodes.forEachArray(node, (index, value) -> indexResourceLocations(value,
+                    inheritedUri, path + "/" + index, result));
         }
     }
 
