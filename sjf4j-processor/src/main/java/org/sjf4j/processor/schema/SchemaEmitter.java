@@ -530,43 +530,54 @@ final class SchemaEmitter {
         return helper + "(" + expression + ", " + strictFormat + ")";
     }
 
-    /** Avoid runtime shape detection when the Java type already fixes the JSON kind. */
+    /** Fold Java-known JSON kinds without emitting redundant true/false terms. */
     private void emitType(List<String> lines, SchemaCheck.TypeCheck check,
                           SchemaValue value, String expression, String onFailure) {
-        StringBuilder matches = new StringBuilder();
+        String known = value.shape == SchemaValue.Shape.STRING ? "STRING"
+                : value.shape == SchemaValue.Shape.NUMBER ? "NUMBER"
+                : value.shape == SchemaValue.Shape.BOOLEAN ? "BOOLEAN"
+                : value.shape == SchemaValue.Shape.OBJECT ? "OBJECT"
+                : value.isArrayLike() ? "ARRAY" : null;
+        List<String> matches = new ArrayList<String>();
         for (String type : check.types) {
             String branch;
             if ("null".equals(type)) {
                 branch = value.nullable ? expression + " == null" : "false";
                 if (value.shape == SchemaValue.Shape.DYNAMIC || value.shape == SchemaValue.Shape.OTHER) {
-                    branch += " || (" + expression + " != null && org.sjf4j.JsonType.of("
-                            + expression + ") == org.sjf4j.JsonType.NULL)";
+                    String dynamicNull = expression + " != null && org.sjf4j.JsonType.of("
+                            + expression + ") == org.sjf4j.JsonType.NULL";
+                    branch = "false".equals(branch) ? dynamicNull : "(" + branch + " || (" + dynamicNull + "))";
                 }
             } else {
                 String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(java.util.Locale.ROOT);
-                String known = value.shape == SchemaValue.Shape.STRING ? "STRING"
-                        : value.shape == SchemaValue.Shape.NUMBER ? "NUMBER"
-                        : value.shape == SchemaValue.Shape.BOOLEAN ? "BOOLEAN"
-                        : value.shape == SchemaValue.Shape.OBJECT ? "OBJECT"
-                        : value.isArrayLike() ? "ARRAY" : null;
-                String shape;
-                if (known != null) {
-                    shape = known.equals(name) ? "true" : "false";
-                } else {
-                    shape = "org.sjf4j.JsonType.of(" + expression
-                            + ") == org.sjf4j.JsonType." + name;
-                }
+                String shape = known == null
+                        ? "org.sjf4j.JsonType.of(" + expression + ") == org.sjf4j.JsonType." + name
+                        : known.equals(name) ? "true" : "false";
                 if ("integer".equals(type) && !"false".equals(shape) && !isNativeInteger(value)) {
-                    shape = "(" + shape + " && org.sjf4j.util.Numbers.isSemanticInteger("
+                    String integral = "org.sjf4j.util.Numbers.isSemanticInteger("
                             + (value.shape == SchemaValue.Shape.NUMBER ? expression
-                               : "org.sjf4j.Nodes.toNumber(" + expression + ")") + "))";
+                            : "org.sjf4j.Nodes.toNumber(" + expression + ")") + ")";
+                    branch = "true".equals(shape) ? integral : "(" + shape + " && " + integral + ")";
+                } else {
+                    branch = shape;
                 }
-                branch = value.nullable ? "(" + expression + " != null && " + shape + ")" : shape;
+                if (value.nullable && !"false".equals(branch)) {
+                    branch = "true".equals(branch) ? expression + " != null"
+                            : "(" + expression + " != null && " + branch + ")";
+                }
             }
-            if (matches.length() > 0) matches.append(" || ");
-            matches.append("(").append(branch).append(")");
+            if ("true".equals(branch)) return;
+            if (!"false".equals(branch)) matches.add(branch);
         }
-        lines.add("if (!(" + matches + ")) " + fail(onFailure, check.diagnostic));
+        if (matches.isEmpty()) {
+            // A literal throw would make subsequent generated assertions unreachable.
+            lines.add("if (java.lang.Boolean.TRUE) " + fail(onFailure, check.diagnostic));
+        } else if (matches.size() == 1 && matches.get(0).equals(expression + " != null")) {
+            lines.add("if (" + expression + " == null) " + fail(onFailure, check.diagnostic));
+        } else {
+            lines.add("if (!(" + String.join(" || ", matches) + ")) "
+                    + fail(onFailure, check.diagnostic));
+        }
     }
 
     private void emitLiteral(List<String> lines, SchemaCheck.LiteralCheck check,
