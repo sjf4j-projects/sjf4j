@@ -226,6 +226,10 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertTrue(generated.contains(".validate("), generated);
+        // Generated fallback resources must be visible through the generated
+        // validator's defining loader, not SchemaLoader's parent loader.
+        assertTrue(generated.contains(".class.getClassLoader()"), generated);
+        assertTrue(generated.contains("new org.sjf4j.schema.SchemaLoader.Local("), generated);
     }
 
     @Test
