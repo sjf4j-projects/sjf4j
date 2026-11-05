@@ -1,6 +1,7 @@
 package org.sjf4j.schema;
 
 import org.sjf4j.path.PathSegment;
+import org.sjf4j.util.Asserts;
 
 import java.net.URI;
 import java.util.ArrayDeque;
@@ -45,7 +46,7 @@ public class ValidationContext {
 
     /** Creates a context with the requested runtime validation options. */
     public ValidationContext(ValidationOptions options, boolean booleanOnly) {
-        java.util.Objects.requireNonNull(options, "options");
+        Asserts.notNull(options, "options");
         this.failFast = options.isFailFast();
         this.strictFormat = options.isStrictFormat();
         this.booleanOnly = booleanOnly;

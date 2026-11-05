@@ -1499,7 +1499,7 @@ public class JsonPath {
      * Walks the path and collects matches up to {@code endExclusive}.
      */
     <T> void _findAll(Object root, Object current, int startIdx, int endExclusive,
-                              List<T> result, Function<Object, T> converter, NodeWalker.Access acc) {
+                      List<T> result, Function<Object, T> converter, NodeWalker.Access acc) {
         Object node = current;
         for (int i = startIdx; i < endExclusive; i++) {
             if (node ==  null) return;
@@ -1530,8 +1530,7 @@ public class JsonPath {
                         continue;
                     }
                 }
-            } else if (pt instanceof PathSegment.Append
-                    && ((PathSegment.Append) pt).pointerToken != null) {
+            } else if (pt instanceof PathSegment.Append && ((PathSegment.Append) pt).pointerToken != null) {
                 if (((PathSegment.Append) pt).isObjectKey(jt)) {
                     NodeWalker.getAccessInObject(node, "-", acc);
                     if (acc.present) {
@@ -1778,8 +1777,7 @@ public class JsonPath {
         } else if (lastToken instanceof PathSegment.Append) {
             if (((PathSegment.Append) lastToken).isObjectKey(lastContainer)) {
                 Object current = NodeWalker.getInObject(lastContainer, "-");
-                NodeWalker.putInObject(lastContainer, "-",
-                        computer.apply(lastContainer, current));
+                NodeWalker.putInObject(lastContainer, "-", computer.apply(lastContainer, current));
             } else {
                 NodeWalker.addInArray(lastContainer, computer.apply(lastContainer, null));
             }

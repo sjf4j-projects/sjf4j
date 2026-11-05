@@ -42,16 +42,6 @@ public final class SchemaPlan {
     }
 
     /**
-     * Validates one instance with aggregated errors.
-     * <p>
-     * {@code strictFormat} controls format assertions; it does not change value
-     * binding or framework input-write behavior.
-     */
-    public ValidationResult validate(Object node, boolean strictFormat) {
-        return validate(node, false, strictFormat);
-    }
-
-    /**
      * Validates one instance against this compiled schema plan.
      * <p>
      * In fail-fast mode only the first error is retained; otherwise all
@@ -74,8 +64,7 @@ public final class SchemaPlan {
         }
 
         ValidationContext ctx = new ValidationContext(failFast, strictFormat, false);
-        boolean valid = evaluate(node, ctx);
-        return ctx.toResult(valid);
+        return ctx.toResult(evaluate(node, null, ctx));
     }
 
     /** Validates with optional annotation collection. */
@@ -85,8 +74,7 @@ public final class SchemaPlan {
             return validate(node, options.isFailFast(), options.isStrictFormat());
         }
         ValidationContext ctx = new ValidationContext(options, false);
-        boolean valid = evaluate(node, ctx);
-        return ctx.toResult(valid);
+        return ctx.toResult(evaluate(node, null, ctx));
     }
 
     /** Returns whether the instance passes validation in fail-fast mode. */
@@ -98,7 +86,7 @@ public final class SchemaPlan {
     public boolean isValid(Object node, boolean strictFormat) {
         if (booleanSchema) return booleanValue;
         ValidationContext ctx = new ValidationContext(true, strictFormat, true);
-        return evaluate(node, ctx);
+        return evaluate(node, null, ctx);
     }
 
     /**
@@ -125,30 +113,12 @@ public final class SchemaPlan {
      */
 
     /**
-     * Validates one value with a caller-owned context. Returns only this call's
-     * validity; diagnostic errors accumulate in the context across calls.
-     * Options are fixed when the context is constructed, and it must not be
-     * accessed concurrently or recursively.
-     */
-    public boolean evaluate(Object node, ValidationContext ctx) {
-        Asserts.notNull(ctx, "ctx");
-        return evaluate(node, ctx.isFailFast() ? null : PathSegment.Root.INSTANCE, ctx);
-    }
-
-    /**
      * Evaluates a nested instance using an explicit enclosing instance path.
      * Used by compiled fallback support; resets per-evaluation context state.
      */
     boolean evaluate(Object node, PathSegment instancePs, ValidationContext ctx) {
         Asserts.notNull(ctx, "ctx");
         try {
-            if (booleanSchema) {
-                if (!booleanValue) {
-                    ctx.addError(null, instancePs == null ? PathSegment.Root.INSTANCE : instancePs,
-                            keywordPs, resourceUri, "false", "schema 'false' always fails");
-                }
-                return booleanValue;
-            }
             return evaluate(Instance.infer(node), instancePs, ctx);
         } finally {
             ctx.reset();
@@ -158,18 +128,18 @@ public final class SchemaPlan {
     /**
      * Executes evaluator pipeline for the current instance branch.
      */
-    boolean evaluate(Instance instance, PathSegment ps, ValidationContext ctx) {
+    boolean evaluate(Instance instance, PathSegment instancePs, ValidationContext ctx) {
         if (ctx.isCollectAnnotations()) {
             int mark = ctx.annotationMark();
             boolean valid = false;
             try {
-                valid = evaluateKeywords(instance, ps, ctx);
+                valid = _evaluateKeywords(instance, instancePs, ctx);
                 if (valid && annotations != null) {
                     for (Annotation annotation : annotations) {
                         if (annotation.stringOnly && instance.jsonType() != org.sjf4j.JsonType.STRING) {
                             continue;
                         }
-                        ctx.addAnnotation(instance, ps, annotation.keywordPs,
+                        ctx.addAnnotation(instance, instancePs, annotation.keywordPs,
                                 annotation.resourceUri, annotation.keyword, null, annotation.value);
                     }
                 }
@@ -178,11 +148,11 @@ public final class SchemaPlan {
                 if (!valid) ctx.rollbackAnnotations(mark);
             }
         }
-        return evaluateKeywords(instance, ps, ctx);
+        return _evaluateKeywords(instance, instancePs, ctx);
     }
 
     /** Unchanged fast validation path; annotation bookkeeping is outside this loop. */
-    private boolean evaluateKeywords(Instance instance, PathSegment ps, ValidationContext ctx) {
+    private boolean _evaluateKeywords(Instance instance, PathSegment ps, ValidationContext ctx) {
         if (booleanSchema) {
             if (booleanValue) {
                 return true;
