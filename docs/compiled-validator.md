@@ -91,11 +91,15 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 ./gradlew :sjf4j-testbench:officialRuntimeTest
 ./gradlew :sjf4j-testbench:officialCompiledTest
 
+# Full required compiled suites in older drafts (no optional cases):
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft7 -PofficialCompiledProbeDirect=true
+./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledDraft=draft2019-09 -PofficialCompiledProbeDirect=true
+
 # Optional: narrow a compiled test run and probe fallback=false:
 ./gradlew :sjf4j-testbench:officialCompiledTest -PofficialCompiledCategory=unevaluated -PofficialCompiledProbeDirect=true
 ```
 
-`officialCompiledTest` includes **all non-optional Draft 2020-12 cases** by default. Select Draft-07 or Draft 2019-09 using `-PofficialCompiledDraft=draft7` or `-PofficialCompiledDraft=draft2019-09` (the same generated-case runner; no additional public annotation). Old-draft official schemas that omit `$schema` are given the corresponding draft declaration only in generated test resources, never in the upstream files. The legacy suites initially have **no approved fallback groups**; a complete run may fail on not-yet-compiled keywords until each group is explicitly reviewed. CI runs the required scalar category for both older drafts. The generated validators default to `fallback = false`; only groups manually allowlisted in `OfficialCompiledTest.fallbackGroups()` run with `fallback = true`. Each group's fallback selection is owned by that Java test class, not a separate config file. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/<category>/` (Draft 2020-12) or `officialCompiled/<draft>/<category>/` (legacy drafts):
+`officialCompiledTest` includes **all non-optional Draft 2020-12 cases** by default. Select Draft-07 or Draft 2019-09 using `-PofficialCompiledDraft=draft7` or `-PofficialCompiledDraft=draft2019-09` (the same generated-case runner; no additional public annotation). Old-draft official schemas and preloaded remotes that omit `$schema` are given the corresponding draft declaration only in generated test copies, never in the upstream files. Draft-07 currently has no explicit fallback groups; Draft 2019-09 has a manually reviewed list of 47 groups involving vocabulary/metaschema interpretation or cross-schema `unevaluated*` coverage. CI runs all non-optional groups in both older drafts and probes all approved fallback groups for staleness. The generated validators default to `fallback = false`; only groups manually allowlisted in `OfficialCompiledTest.fallbackGroups()` run with `fallback = true`. Each group's fallback selection is owned by that Java test class, not a separate config file. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/<category>/` (Draft 2020-12) or `officialCompiled/<draft>/<category>/` (legacy drafts):
 
 - `summary.json`: overall and category counts
 - `groups.json`, `gaps.json`: compilation mode and unresolved groups
