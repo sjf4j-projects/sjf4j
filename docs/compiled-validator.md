@@ -108,10 +108,10 @@ Categories include `all` (default), `basic`, `scalar`, `object`, `array`, `appli
 Run `OfficialCompiledTest.main(String[])` from `sjf4j-testbench/src/test/java` with optional arguments:
 
 ```text
-[category [file.json [groupIndex [testIndex]]]]
+[file.json [groupIndex [testIndex]]]
 ```
 
-For example: `phase3 unevaluatedItems.json 0 1`. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
+For example: `unevaluatedItems.json 0 1` or `defs.json 0 0`. With no arguments, the full suite runs. Category filters remain available through Gradle's `-PofficialCompiledCategory=unevaluated`, not the standalone `main` arguments. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. `OfficialRuntimeTest.main(String[])` is also available.
 
 ### Build and publish
 
