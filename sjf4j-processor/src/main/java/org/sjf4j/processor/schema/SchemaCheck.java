@@ -342,10 +342,12 @@ abstract class SchemaCheck {
     static final class DependentRequired {
         final String trigger;
         final List<String> dependencies;
+        final Diagnostic diagnostic;
 
-        DependentRequired(String trigger, List<String> dependencies) {
+        DependentRequired(String trigger, List<String> dependencies, Diagnostic diagnostic) {
             this.trigger = trigger;
             this.dependencies = Collections.unmodifiableList(new ArrayList<String>(dependencies));
+            this.diagnostic = diagnostic;
         }
     }
 
