@@ -166,6 +166,9 @@ public final class SchemaPlan {
                 valid = evaluateKeywords(instance, ps, ctx);
                 if (valid && annotations != null) {
                     for (Annotation annotation : annotations) {
+                        if (annotation.stringOnly && instance.jsonType() != org.sjf4j.JsonType.STRING) {
+                            continue;
+                        }
                         ctx.addAnnotation(instance, ps, annotation.keywordPs,
                                 annotation.resourceUri, annotation.keyword, null, annotation.value);
                     }
@@ -251,12 +254,15 @@ public final class SchemaPlan {
         final Object value;
         final PathSegment keywordPs;
         final URI resourceUri;
+        final boolean stringOnly;
 
-        Annotation(String keyword, Object value, PathSegment keywordPs, URI resourceUri) {
+        Annotation(String keyword, Object value, PathSegment keywordPs, URI resourceUri,
+                   boolean stringOnly) {
             this.keyword = keyword;
             this.value = value;
             this.keywordPs = keywordPs;
             this.resourceUri = resourceUri;
+            this.stringOnly = stringOnly;
         }
     }
 
