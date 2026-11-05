@@ -162,6 +162,21 @@ class CompiledValidatorContractProcessorTest {
     }
 
     @Test
+    void legacySchemaDependenciesWithUnevaluatedRequireFallback() throws Exception {
+        String schema = "{\"$schema\":\"https://json-schema.org/draft/2019-09/schema\","
+                + "\"properties\":{\"a\":true},"
+                + "\"dependencies\":{\"a\":{\"properties\":{\"b\":true}}},"
+                + "\"unevaluatedProperties\":false}";
+        NavigatorTestCompiler.Result result = compile(
+                "@CompiledValidator(fallback=false) public interface Check { "
+                        + "@ValidJsonSchema(" + org.sjf4j.processor.code.JavaWriter.stringLiteral(schema) + ") "
+                        + "boolean valid(Model value); }");
+        assertFalse(result.success);
+        assertTrue(result.diagnostics().contains("dependencies + unevaluatedProperties"),
+                result.diagnostics());
+    }
+
+    @Test
     void rejectsUnsupportedSchemaWhenFallbackDisabled() throws Exception {
         String schema = "{\"type\":\"object\",\"allOf\":[{\"anyOf\":[{\"properties\":{\"name\":true}}]}],"
                 + "\"unevaluatedProperties\":false}";
