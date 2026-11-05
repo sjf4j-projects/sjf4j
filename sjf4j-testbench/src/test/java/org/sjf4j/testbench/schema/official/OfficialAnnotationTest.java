@@ -72,14 +72,18 @@ public final class OfficialAnnotationTest {
 
         Report metadata = run(root, "meta-data.json", null, null);
         Report applicators = run(root, "applicators.json", null, null);
-        if (metadata.total != 7 || applicators.total != 15) {
+        Report unevaluated = run(root, "unevaluated.json", null, null);
+        if (metadata.total != 7 || applicators.total != 15 || unevaluated.total != 20) {
             throw new AssertionError("Official annotation suite changed: metadata="
-                    + metadata.total + ", applicators=" + applicators.total);
+                    + metadata.total + ", applicators=" + applicators.total
+                    + ", unevaluated=" + unevaluated.total);
         }
-        if (metadata.failed + metadata.errors + applicators.failed + applicators.errors != 0) {
+        if (metadata.failed + metadata.errors + applicators.failed + applicators.errors
+                + unevaluated.failed + unevaluated.errors != 0) {
             throw new AssertionError("Supported annotation suites failed: metadata="
                     + metadata.failed + "/" + metadata.errors + ", applicators="
-                    + applicators.failed + "/" + applicators.errors);
+                    + applicators.failed + "/" + applicators.errors
+                    + ", unevaluated=" + unevaluated.failed + "/" + unevaluated.errors);
         }
     }
 
