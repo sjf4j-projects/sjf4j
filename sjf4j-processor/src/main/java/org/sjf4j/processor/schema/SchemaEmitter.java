@@ -22,6 +22,7 @@ final class SchemaEmitter {
     private final GeneratedClass generated;
     private final String helperPrefix;
     private NameAllocator locals;
+    private String runtimeContextExpression = "this.context";
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
     private final Map<String, String> failureHelpers = new LinkedHashMap<String, String>();
@@ -298,9 +299,7 @@ final class SchemaEmitter {
                     statements.add("        " + covered + " = true;");
                     if (pattern.check.kind != SchemaCheck.Kind.PASS) {
                         String element = locals.newName("element");
-                        statements.add("        Object " + element + " = " + (check.jsonObject
-                                ? variable + ".getNode(" + key + ")"
-                                : "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + key + ")") + ";");
+                        statements.add("        Object " + element + " = " + "org.sjf4j.schema.CompiledValidatorSupport.scalarValueInObject(" + variable + ", " + key + ", " + runtimeContextExpression + ")" + ";");
                         InstancePath previousPath = instancePath;
                         instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                         List<String> children = new ArrayList<String>();
@@ -318,9 +317,7 @@ final class SchemaEmitter {
                         && check.additionalPropertiesCheck.kind != SchemaCheck.Kind.PASS) {
                     String element = locals.newName("additional");
                     statements.add("    if (!" + covered + ") {");
-                    statements.add("        Object " + element + " = " + (check.jsonObject
-                            ? variable + ".getNode(" + key + ")"
-                            : "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + key + ")") + ";");
+                    statements.add("        Object " + element + " = " + "org.sjf4j.schema.CompiledValidatorSupport.scalarValueInObject(" + variable + ", " + key + ", " + runtimeContextExpression + ")" + ";");
                     InstancePath previousPath = instancePath;
                     instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                     List<String> children = new ArrayList<String>();
@@ -337,10 +334,10 @@ final class SchemaEmitter {
         int index = 0;
         for (SchemaCheck.PropertyCheck property : check.properties) {
             String local = locals.newName(property.name);
-            String access = check.jsonObject
+            String access = check.dynamic
+                    ? "org.sjf4j.schema.CompiledValidatorSupport.scalarValueInObject(" + variable + ", " + literal(property.name) + ", " + runtimeContextExpression + ")"
+                    : check.jsonObject
                     ? variable + ".getNode(" + literal(property.name) + ")"
-                    : check.dynamic
-                    ? "org.sjf4j.schema.CompiledValidatorSupport.objectPropertyValue(" + variable + ", " + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
             statements.add((property.codecOwner == null ? property.value.localType() : "Object")
                     + " " + local + " = " + access + ";");
@@ -452,25 +449,28 @@ final class SchemaEmitter {
                     final String parameterType = value.type == null ? "Object" : value.type.toString();
                     List<String> body = new ArrayList<String>();
                     NameAllocator parentLocals = locals;
-                    locals = generated.names().helperLocals("value", "strictFormat");
+                    String parentContext = runtimeContextExpression;
+                    locals = generated.names().helperLocals("value", "strictFormat", "context");
+                    runtimeContextExpression = "context";
                     try {
                         emitValue(body, plan, reference.target, value, "value", method,
                                 "strictFormat", 0, "return false;");
                     } finally {
                         locals = parentLocals;
+                        runtimeContextExpression = parentContext;
                     }
                     final boolean alwaysRejects = !body.isEmpty()
                             && "return false;".equals(body.get(body.size() - 1));
                     generated.addHelper(out -> {
                         out.beginBlock("private static boolean " + method + "("
-                                + parameterType + " value, boolean strictFormat)");
+                                + parameterType + " value, boolean strictFormat, org.sjf4j.RuntimeContext context)");
                         for (String statement : body) out.line(statement);
                         if (!alwaysRejects) out.line("return true;");
                         out.endBlock();
                     });
                 }
                 lines.add("if (!" + helper + "(" + expression + ", " + strictFormat
-                        + ")) " + fail(onFailure, reference.diagnostic));
+                        + ", " + runtimeContextExpression + ")) " + fail(onFailure, reference.diagnostic));
                 return;
             case FALLBACK:
                 SchemaFallbackEmitter.Subplan sub = plan.subplan(
@@ -654,24 +654,27 @@ final class SchemaEmitter {
         List<String> body = new ArrayList<String>();
         // A nested boolean helper owns an independent method-level namespace.
         NameAllocator parentLocals = locals;
-        locals = generated.names().helperLocals("value", "strictFormat");
+        String parentContext = runtimeContextExpression;
+        locals = generated.names().helperLocals("value", "strictFormat", "context");
+        runtimeContextExpression = "context";
         try {
             emitValue(body, plan, branch, value, "value", helper, "strictFormat", 0,
                     "return false;");
         } finally {
             locals = parentLocals;
+            runtimeContextExpression = parentContext;
         }
         boolean alwaysRejects = !body.isEmpty()
                 && "return false;".equals(body.get(body.size() - 1));
         String parameterType = value.type == null ? "Object" : value.type.toString();
         generated.addHelper(out -> {
             out.beginBlock("private static boolean " + helper + "("
-                    + parameterType + " value, boolean strictFormat)");
+                    + parameterType + " value, boolean strictFormat, org.sjf4j.RuntimeContext context)");
             for (String source : body) out.line(source);
             if (!alwaysRejects) out.line("return true;");
             out.endBlock();
         });
-        return helper + "(" + expression + ", " + strictFormat + ")";
+        return helper + "(" + expression + ", " + strictFormat + ", " + runtimeContextExpression + ")";
     }
 
     /** Fold Java-known JSON kinds without emitting redundant true/false terms. */

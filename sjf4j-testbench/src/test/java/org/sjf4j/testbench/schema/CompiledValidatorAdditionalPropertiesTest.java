@@ -3,6 +3,7 @@ package org.sjf4j.testbench.schema;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonObject;
+import org.sjf4j.RuntimeContext;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
@@ -46,6 +47,16 @@ public class CompiledValidatorAdditionalPropertiesTest {
 
         @ValidJsonSchema("{\"patternProperties\":{\"^mil\":{\"type\":\"number\",\"minimum\":1000}}}")
         boolean codecPattern(CodecBean value);
+
+        @ValidJsonSchema("{\"additionalProperties\":{\"type\":\"number\",\"minimum\":1000}}")
+        boolean dynamicNumber(Object value);
+
+        @ValidJsonSchema("{\"additionalProperties\":{\"type\":\"number\",\"minimum\":1000}}")
+        boolean dynamicNumberJsonObject(JsonObject value);
+
+        @ValidJsonSchema("{\"anyOf\":[{\"properties\":{\"when\":{\"type\":\"number\",\"minimum\":1000}}},"
+                + "{\"properties\":{\"flag\":{\"type\":\"boolean\"}}}]}")
+        boolean dynamicAnyOf(Object value);
     }
 
     public static final class CodecBean {
@@ -103,6 +114,28 @@ public class CompiledValidatorAdditionalPropertiesTest {
         value.millis = null;
         assertFalse(check.codecAdditional(value)); // explicit type:number rejects null.
         assertFalse(check.codecPattern(value));
+    }
+
+    @Test
+    void dynamicPropertyCodecUsesCompiledRuntimeContext() {
+        Instant when = Instant.ofEpochMilli(2_000);
+        Checks defaults = CompiledInstances.create(Checks.class);
+        Checks epoch = CompiledInstances.create(Checks.class,
+                new RuntimeContext(Map.of(Instant.class, "epochMillis")));
+
+        assertFalse(defaults.dynamicNumber(Map.of("when", when)));
+        assertTrue(epoch.dynamicNumber(Map.of("when", when)));
+        assertFalse(defaults.dynamicNumberJsonObject(JsonObject.of("when", when)));
+        assertTrue(epoch.dynamicNumberJsonObject(JsonObject.of("when", when)));
+        Map<String, Object> branch = Map.of("when", when, "flag", "not boolean");
+        assertFalse(defaults.dynamicAnyOf(branch));
+        assertTrue(epoch.dynamicAnyOf(branch));
+
+        // The explicitly declared format overrides the runtime default.
+        assertTrue(defaults.codecAdditional(new CodecBean()));
+        assertTrue(epoch.codecAdditional(new CodecBean()));
+        assertTrue(defaults.codecPattern(new CodecBean()));
+        assertTrue(epoch.codecPattern(new CodecBean()));
     }
 
     @Test

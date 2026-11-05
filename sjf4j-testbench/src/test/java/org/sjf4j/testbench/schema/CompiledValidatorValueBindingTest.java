@@ -88,6 +88,12 @@ public class CompiledValidatorValueBindingTest {
         @ValidJsonSchema("{\"type\":\"object\",\"properties\":"
                 + "{\"items\":{\"type\":\"array\",\"minItems\":1}}}")
         boolean nested(Holder value);
+
+        @ValidJsonSchema("{\"properties\":{\"items\":{\"type\":\"array\",\"minItems\":1}}}")
+        boolean nestedDynamic(Object value);
+
+        @ValidJsonSchema("{\"properties\":{\"items\":{\"type\":\"object\"}}}")
+        boolean objectDynamic(Object value);
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
@@ -139,5 +145,14 @@ public class CompiledValidatorValueBindingTest {
         assertEquals(true, JsonSchema.fromJson("{\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"minItems\":1}}}").createPlan().isValid(ordinary));
         assertEquals(true, compiled.nested(ordinary));
         assertEquals(false, compiled.nested(new Holder(listValue)));
+
+        // Dynamic object access must not traverse the raw container encoding
+        // produced by a logical @NodeValue.
+        assertEquals(true, compiled.nestedDynamic(Map.of("items", List.of("abc"))));
+        assertEquals(false, compiled.nestedDynamic(Map.of("items", listValue)));
+        assertEquals(false, compiled.nestedDynamic(new Holder(listValue)));
+        assertEquals(true, compiled.objectDynamic(Map.of("items", Map.of("name", "Alice"))));
+        assertEquals(false, compiled.objectDynamic(Map.of("items", wrapped)));
+        assertEquals(false, compiled.objectDynamic(new Holder(wrapped)));
     }
 }
