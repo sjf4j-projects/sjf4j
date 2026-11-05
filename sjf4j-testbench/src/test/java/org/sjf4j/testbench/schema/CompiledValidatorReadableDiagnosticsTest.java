@@ -56,6 +56,9 @@ class CompiledValidatorReadableDiagnosticsTest {
 
         @ValidJsonSchema("{\"properties\":{\"0\":{\"type\":\"string\"}}}")
         void numericName(Map<String, Object> value);
+
+        @ValidJsonSchema("{\"patternProperties\":{\"^-$\":{\"properties\":{\"child\":{\"type\":\"string\"}}}}}")
+        void dashName(Map<String, Object> value);
     }
 
     private static void assertPointerFailure(Runnable check, String keyword,
@@ -88,6 +91,8 @@ class CompiledValidatorReadableDiagnosticsTest {
                 "type", "/additionalProperties/type", "/a~1b~0c");
         assertPointerFailure(() -> validator.numericName(Map.of("0", 1)),
                 "type", "/properties/0/type", "/0");
+        assertPointerFailure(() -> validator.dashName(Map.of("-", Map.of("child", 1))),
+                "type", "/patternProperties/^-$/properties/child/type", "/-/child");
         assertDoesNotThrow(() -> validator.literalName(Map.of("a/b~c", List.of("ok"))));
         assertDoesNotThrow(() -> validator.dynamicName(Map.of("special/key~value", List.of("ok"))));
     }
