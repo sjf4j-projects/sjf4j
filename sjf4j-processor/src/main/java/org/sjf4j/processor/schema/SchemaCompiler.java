@@ -148,6 +148,17 @@ final class SchemaCompiler {
         JsonObject schema = schemaObject(rawSchema);
         // Canonical locations are indexed by lexical $id scope.
         schemaUri = snapshot.canonicalLocation(schemaUri);
+        // When every allOf branch has a statically known coverage footprint,
+        // project it into the local unevaluated* check. The original branches
+        // remain assertions, so failed branches still reject the instance.
+        boolean staticAllOfCoverage = false;
+        if (depth == 0 && schema.containsKey("allOf")) {
+            JsonObject projected = StaticAllOfCoverage.project(schema);
+            if (projected != null) {
+                schema = projected;
+                staticAllOfCoverage = true;
+            }
+        }
         // Static local coverage is safe only for the selected root schema,
         // with no applicator/reference or dependent-schema annotation exchange.
         // Child schemas are compiled normally but cannot claim their parent's
@@ -160,7 +171,7 @@ final class SchemaCompiler {
             for (String key : new String[]{"allOf", "anyOf", "oneOf", "if", "then",
                     "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
                 if (schema.containsKey(key) && (!"allOf".equals(key)
-                        || !isTrivialTrueAllOf(schema.getNode(key)))) {
+                        || !(staticAllOfCoverage || isTrivialTrueAllOf(schema.getNode(key))))) {
                     interfering = key;
                     break;
                 }
@@ -273,7 +284,7 @@ final class SchemaCompiler {
                 || schema.containsKey("anyOf") || schema.containsKey("not")
                 || schema.containsKey("if") || schema.containsKey("then")
                 || schema.containsKey("else")) {
-            return compileApplicators(snapshot, schema, value, schemaUri, depth);
+            return compileApplicators(snapshot, schema, value, schemaUri, depth, staticAllOfCoverage);
         }
         return compileKeywords(snapshot, schema, value, schemaUri, depth);
     }
@@ -473,7 +484,8 @@ final class SchemaCompiler {
      */
     private SchemaCheck compileApplicators(SchemaResourceResolver.Snapshot snapshot,
                                            JsonObject schema, SchemaValue value,
-                                           String schemaUri, int depth) {
+                                           String schemaUri, int depth,
+                                           boolean staticAllOfCoverage) {
         List<SchemaCheck> checks = new ArrayList<SchemaCheck>();
         JsonObject siblings = new JsonObject();
         for (String key : schema.keySet()) {
@@ -489,13 +501,14 @@ final class SchemaCompiler {
             }
             if (!annotationsOnly) {
                 // Neither not nor a literal-true allOf exports annotations.
-                boolean localCoverage = (schema.containsKey("unevaluatedProperties")
+                boolean localCoverage = staticAllOfCoverage
+                        || (schema.containsKey("unevaluatedProperties")
                         || schema.containsKey("unevaluatedItems"))
                         && !schema.containsKey("anyOf") && !schema.containsKey("oneOf")
                         && !schema.containsKey("if") && !schema.containsKey("then")
                         && !schema.containsKey("else")
                         && (!schema.containsKey("allOf")
-                            || isTrivialTrueAllOf(schema.getNode("allOf")));
+                            || isTrivialTrueAllOf(schema.getNode("allOf"))));
                 SchemaCheck sibling = compileValue(snapshot, siblings, value, schemaUri,
                         localCoverage ? depth : depth + 1);
                 if (sibling == null || sibling.hasFallback()) return null;
