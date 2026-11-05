@@ -722,11 +722,19 @@ final class SchemaEmitter {
                 lines.add("        if (!(" + matches + ")) " + fail(onFailure, check.diagnostic));
                 lines.add("    } else {");
             }
-            List<String> candidateLines = new ArrayList<String>();
-            emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value, typed,
-                    name + "_subtype", strictFormat, onFailure);
-            for (String source : candidateLines) {
-                lines.add((subtype.guardedBranch >= 0 ? "        " : "    ") + source);
+            if (subtype.guardedBranch >= 0 && DIAGNOSTIC_FAILURE.equals(onFailure)) {
+                // The discriminator matched path remains direct. Only its
+                // exceptional mismatch path uses a boolean helper, keeping
+                // repeated oneOf counters out of the diagnostic method.
+                String matches = branchPredicate(plan, subtype.check, subtype.value, typed, strictFormat);
+                lines.add("        if (!" + matches + ") " + fail(onFailure, check.diagnostic));
+            } else {
+                List<String> candidateLines = new ArrayList<String>();
+                emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value, typed,
+                        name + "_subtype", strictFormat, onFailure);
+                for (String source : candidateLines) {
+                    lines.add((subtype.guardedBranch >= 0 ? "        " : "    ") + source);
+                }
             }
             if (subtype.guardedBranch >= 0) lines.add("    }");
             lines.add("}");
@@ -734,10 +742,15 @@ final class SchemaEmitter {
         }
         lines.add("else {");
         if (check.generic != null) {
-            List<String> genericLines = new ArrayList<String>();
-            emitGenericOneOf(genericLines, plan, check.generic, value, expression,
-                    name + "_generic", strictFormat, onFailure);
-            for (String source : genericLines) lines.add("    " + source);
+            if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
+                String matches = branchPredicate(plan, check.generic, value, expression, strictFormat);
+                lines.add("    if (!" + matches + ") " + fail(onFailure, check.diagnostic));
+            } else {
+                List<String> genericLines = new ArrayList<String>();
+                emitGenericOneOf(genericLines, plan, check.generic, value, expression,
+                        name + "_generic", strictFormat, onFailure);
+                for (String source : genericLines) lines.add("    " + source);
+            }
         } else {
             SchemaFallbackEmitter.Subplan full = plan.subplan(check.uri, name);
             if (DIAGNOSTIC_FAILURE.equals(onFailure)) {
