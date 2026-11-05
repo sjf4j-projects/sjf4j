@@ -199,7 +199,8 @@ final class SchemaCompiler {
             String interfering = unevaluatedObject && hasSchemaDependencies(schema)
                     ? "dependencies" : null;
             for (String key : new String[]{"allOf", "anyOf", "oneOf", "if", "then",
-                    "else", "$ref", "$dynamicRef", "dependentSchemas", "contains"}) {
+                    "else", "$ref", "$dynamicRef", "$recursiveRef",
+                    "dependentSchemas", "contains"}) {
                 if (interfering != null) break;
                 if (schema.containsKey(key) && (!"allOf".equals(key)
                         || !(staticAllOfCoverage || isTrivialTrueAllOf(schema.getNode(key))))) {
