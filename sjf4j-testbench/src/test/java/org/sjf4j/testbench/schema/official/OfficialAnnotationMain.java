@@ -10,6 +10,7 @@ public final class OfficialAnnotationMain {
     }
 
     public static void main(String[] args) throws Exception {
-        OfficialAnnotationTest.runStandalone(args);
+//        OfficialAnnotationTest.runStandalone(args);
+        OfficialAnnotationTest.runStandalone(new String[]{"draft2019-09", "ref.json", "3", "0"});
     }
 }

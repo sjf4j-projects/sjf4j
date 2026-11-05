@@ -12,6 +12,7 @@ public final class OfficialCompiledMain {
     }
 
     public static void main(String[] args) throws Exception {
-        OfficialCompiledTest.runStandalone(args);
+//        OfficialCompiledTest.runStandalone(args);
+        OfficialCompiledTest.runStandalone(new String[]{"draft2019-09", "ref.json", "3", "0"});
     }
 }
