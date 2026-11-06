@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 /**
@@ -23,6 +24,8 @@ import java.util.Objects;
  * ordinary instance mismatches are reported later as validation messages.
  */
 public final class SchemaPlanner {
+
+    private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong();
 
     static final class PlanningContext {
         final SchemaRegistry registry;
@@ -42,9 +45,12 @@ public final class SchemaPlanner {
         Asserts.notNull(registry, "registry");
 
         URI retrievalUri = schema.retrievalUri();
-        URI resourceUri = retrievalUri != null
-                ? SchemaUtil.resolveUri(retrievalUri, schema.canonicalUri())
-                : SchemaUtil.resolveUri(URI.create("sjf4j:/schema-" + schema.hashCode() + "/"), schema.canonicalUri());
+        URI canonicalUri = schema.canonicalUri();
+        URI baseUri = retrievalUri;
+        if (baseUri == null && (canonicalUri == null || !canonicalUri.isAbsolute())) {
+            baseUri = URI.create("sjf4j:/schema-" + ANONYMOUS_SCHEMA_IDS.incrementAndGet() + "/");
+        }
+        URI resourceUri = SchemaUtil.resolveUri(baseUri, canonicalUri);
         SchemaPlan plan = registry.resolveBuilt(resourceUri);
         if (plan != null) return plan;
 
