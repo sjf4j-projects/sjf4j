@@ -109,44 +109,96 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v caffeinate >/dev/null 2>&1; the
   echo "macOS: caffeinate enabled for each backend (keep the lid open)."
 fi
 
+# A single source of truth for backend order and supported implementations.
+BACKENDS=(jackson2 jackson3 fastjson2 gson jsonp simple snake)
+BACKEND_LABELS=(Jackson2 Jackson3 Fastjson2 Gson JSONP Simple Snake)
+MODE_SETS=(
+  runtime,compiled,native,blackbird
+  runtime,compiled,native,blackbird
+  runtime,compiled,native
+  runtime,compiled,native
+  runtime,compiled
+  runtime,compiled
+  runtime,compiled,native
+)
+
+# Smoke reports each completed backend and marks any remaining backends NOT RUN.
+# Derive totals from the same matrix that drives JMH, not a second hardcoded list.
+SMOKE_RESULTS=()
+SMOKE_PASSED=0
+SMOKE_EXPECTED=0
+if [[ "$PROFILE" == "smoke" ]]; then
+  for modes in "${MODE_SETS[@]}"; do
+    IFS=, read -r -a mode_items <<< "$modes"
+    SMOKE_EXPECTED=$(( SMOKE_EXPECTED + ${#mode_items[@]} * 2 * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
+  done
+fi
+
+print_smoke_summary() {
+  local i status actual expected
+  printf '\nBinding Smoke Summary\n'
+  for (( i=0; i<${#BACKENDS[@]}; i++ )); do
+    if (( i < ${#SMOKE_RESULTS[@]} )); then
+      IFS=: read -r status actual expected <<< "${SMOKE_RESULTS[$i]}"
+      printf '%-11s %-8s %s/%s\n' "${BACKEND_LABELS[$i]}" "$status" "$actual" "$expected"
+    else
+      printf '%-11s NOT RUN\n' "${BACKEND_LABELS[$i]}"
+    fi
+  done
+  printf '\nTOTAL: %s/%s PASSED\n' "$SMOKE_PASSED" "$SMOKE_EXPECTED"
+  if [[ "$SMOKE_PASSED" -eq "$SMOKE_EXPECTED" ]]; then
+    echo "ALL PASSED"
+  else
+    echo "SMOKE FAILED"
+  fi
+}
+
 run_backend() {
   local backend="$1" modes="$2"
   local result="$OUT_DIR/binding-$SHA-$PROFILE-jdk25-$backend.json"
+  local -a mode_items
+  IFS=, read -r -a mode_items <<< "$modes"
+  local expected=$(( ${#mode_items[@]} * 2 * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
+  local actual=0 jmh_status=0
+
   echo "Running $PROFILE / $backend: implementations=$modes"
+  # Never mistake an old file for output from the current JMH invocation.
+  rm -f "$result"
   "${JAVA_CMD[@]}" -jar "$JAR" "${COMMON[@]}" "${ARGS[@]}" \
       -p "backend=$backend" \
       -p "implementation=$modes" \
       -p "shape=pojo,map" \
-      -rff "$result"
+      -rff "$result" || jmh_status=$?
 
-  # JMH can report partial results when one case fails. Insist on all requested
-  # cases before accepting a per-backend JSON as complete.
-  local -a mode_items
-  IFS=, read -r -a mode_items <<< "$modes"
-  local expected=$(( ${#mode_items[@]} * 2 * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
-  local actual
-  if [[ ! -s "$result" ]]; then
-    echo "Missing or empty JMH result: $result" >&2
-    exit 1
+  if [[ -s "$result" ]]; then
+    actual="$(grep -c '"benchmark"[[:space:]]*:' "$result" || true)"
   fi
-  actual="$(grep -c '"benchmark"[[:space:]]*:' "$result" || true)"
-  if [[ "$actual" -ne "$expected" ]]; then
+  if [[ "$jmh_status" -ne 0 || "$actual" -ne "$expected" ]]; then
+    if [[ "$PROFILE" == "smoke" ]]; then
+      SMOKE_RESULTS+=("FAIL:$actual:$expected")
+      print_smoke_summary
+    fi
+    if [[ "$jmh_status" -ne 0 ]]; then
+      echo "JMH failed for $backend (exit code $jmh_status)." >&2
+    fi
     echo "Incomplete JMH result for $backend: expected $expected entries; got $actual." >&2
     echo "Inspect the preceding JMH output: $result" >&2
-    exit 1
+    return 1
   fi
 
   echo "- $backend: $(basename "$result") (implementations=$modes, results=$actual)" >> "$META"
+  if [[ "$PROFILE" == "smoke" ]]; then
+    SMOKE_RESULTS+=("PASS:$actual:$expected")
+    SMOKE_PASSED=$((SMOKE_PASSED + actual))
+  fi
 }
 
-# The backend/implementation matrix is identical for all three profiles.
-run_backend jackson2 runtime,compiled,native,blackbird
-run_backend jackson3 runtime,compiled,native,blackbird
-run_backend fastjson2 runtime,compiled,native
-run_backend gson runtime,compiled,native
-run_backend jsonp runtime,compiled
-run_backend simple runtime,compiled
-run_backend snake runtime,compiled,native
+for (( i=0; i<${#BACKENDS[@]}; i++ )); do
+  run_backend "${BACKENDS[$i]}" "${MODE_SETS[$i]}"
+done
 
 echo "Raw JMH JSON files in: $OUT_DIR"
 echo "Environment and result index: $META"
+if [[ "$PROFILE" == "smoke" ]]; then
+  print_smoke_summary
+fi

@@ -75,6 +75,9 @@ exiting with an error if JMH reported only a subset of the requested cases.
 Smoke is a **correctness check only**: it intentionally omits warmup and forks,
 so ignore its recorded throughput and timing scores. Run Smoke first to catch
 large-payload failures before investing time in Quick or Full.
+A completed Smoke run ends with a per-backend `PASS actual/expected` summary and
+`TOTAL: 336/336 PASSED` followed by `ALL PASSED`. A failure instead prints
+the failed backend, marks later backends `NOT RUN`, and exits nonzero.
 
 Full is intentionally expensive; execute on an otherwise idle benchmark host.
 On macOS the script invokes `caffeinate -i` around each backend to inhibit idle
