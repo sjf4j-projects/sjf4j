@@ -2,12 +2,32 @@
 set -euo pipefail
 
 # ./scripts/benchmark-binding.sh quick|full [output-directory]
-PROFILE="${1:-quick}"
-OUT_DIR="${2:-build/performance/binding}"
-if [[ "$PROFILE" != "quick" && "$PROFILE" != "full" ]]; then
-  echo "Usage: $0 quick|full [output-directory]" >&2
+usage() {
+  cat <<EOF
+Usage: $0 <quick|full> [output-directory]
+
+  quick   Short local checks; a performance diagnostic, not a baseline.
+  full    All supported backend/implementation groups on JDK 25.
+
+Results default to build/performance/binding/.
+EOF
+}
+
+if [[ $# -eq 0 ]]; then
+  usage >&2
   exit 2
 fi
+if [[ $# -eq 1 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
+  usage
+  exit 0
+fi
+if [[ $# -gt 2 || ( "$1" != "quick" && "$1" != "full" ) ]]; then
+  usage >&2
+  exit 2
+fi
+
+PROFILE="$1"
+OUT_DIR="${2:-build/performance/binding}"
 
 JAVA_BIN=java
 if [[ -n "${JAVA_HOME:-}" ]]; then JAVA_BIN="$JAVA_HOME/bin/java"; fi
@@ -58,10 +78,14 @@ COMMON=(
 )
 
 if [[ "$PROFILE" == "quick" ]]; then
+  SIZE_COUNT=2
+  SEED_COUNT=1
   ARGS=(-p sizeKb=1,10
         -p seed=12345
         -f 1 -wi 3 -i 3 -w 500ms -r 500ms)
 else
+  SIZE_COUNT=3
+  SEED_COUNT=2
   ARGS=(-p sizeKb=1,10,100
         -p seed=12345,324
         -f 3 -wi 5 -i 5 -w 400ms -r 400ms)
@@ -76,6 +100,26 @@ run_group() {
       -p "implementation=$modes" \
       -p "shape=$shapes" \
       -rff "$result"
+
+  # A JMH run may produce a partial report if some cases fail. Do not silently
+  # accept missing scores as a successful Quick run or release measurement.
+  local -a backend_items mode_items shape_items
+  IFS=, read -r -a backend_items <<< "$backends"
+  IFS=, read -r -a mode_items <<< "$modes"
+  IFS=, read -r -a shape_items <<< "$shapes"
+  local expected=$(( ${#backend_items[@]} * ${#mode_items[@]} * ${#shape_items[@]} * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
+  local actual
+  if [[ ! -s "$result" ]]; then
+    echo "Missing or empty JMH result: $result" >&2
+    exit 1
+  fi
+  actual="$(grep -c '"benchmark"[[:space:]]*:' "$result" || true)"
+  if [[ "$actual" -ne "$expected" ]]; then
+    echo "Incomplete JMH result for $group: expected $expected benchmark entries; got $actual." >&2
+    echo "Inspect the preceding JMH output for setup/benchmark failures: $result" >&2
+    exit 1
+  fi
+
   echo "- $group: $(basename "$result") (backend=$backends, implementation=$modes, shape=$shapes)" >> "$META"
 }
 

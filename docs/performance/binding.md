@@ -33,8 +33,9 @@ so regular tests can reuse them.
 ## Execute
 
 ```bash
-./scripts/benchmark-binding.sh quick
-./scripts/benchmark-binding.sh full
+./scripts/benchmark-binding.sh             # Print usage (no benchmark run)
+./scripts/benchmark-binding.sh quick       # Diagnostic check
+./scripts/benchmark-binding.sh full        # Complete measurement
 ```
 
 Both benchmark classes have a `main(String[] args)` entry point for IDEA.
@@ -55,6 +56,8 @@ The runner emits **one JMH JSON per valid group** and a companion metadata
 Markdown listing all produced files under `build/performance/binding/` (optional
 second argument changes that directory). This prevents invalid cross-products,
 and retains raw per-fork measurements and `-prof gc` allocation data.
+The runner also checks the expected count of benchmark entries in each JSON file,
+exiting with an error if JMH reported only a subset of the requested cases.
 Full is intentionally expensive; execute on an otherwise idle benchmark host.
 
 ## Maintaining history in the repository
