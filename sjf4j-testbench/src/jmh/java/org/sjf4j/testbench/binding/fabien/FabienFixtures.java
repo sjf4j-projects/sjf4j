@@ -50,8 +50,48 @@ final class FabienFixtures {
             return a.equals(b) ? 0 : 1;
         }, right)) {
             throw new IllegalStateException("Fabien binding differs: " + label
-                    + "\nexpected: " + left + "\nactual: " + right);
+                    + "\n" + firstDifference(left, right, ""));
         }
+    }
+
+    /** Report one JSON Pointer rather than dumping potentially 100 KB of objects. */
+    private static String firstDifference(JsonNode expected, JsonNode actual, String path) {
+        if (expected.isObject() && actual.isObject()) {
+            for (java.util.Iterator<String> it = expected.fieldNames(); it.hasNext();) {
+                String key = it.next();
+                String child = path + "/" + key.replace("~", "~0").replace("/", "~1");
+                if (!actual.has(key)) return child + ": missing field";
+                String difference = firstDifference(expected.get(key), actual.get(key), child);
+                if (difference != null) return difference;
+            }
+            for (java.util.Iterator<String> it = actual.fieldNames(); it.hasNext();) {
+                String key = it.next();
+                if (!expected.has(key)) {
+                    return path + "/" + key.replace("~", "~0").replace("/", "~1")
+                            + ": unexpected field";
+                }
+            }
+            return null;
+        }
+        if (expected.isArray() && actual.isArray()) {
+            if (expected.size() != actual.size()) {
+                return path + ": array length expected " + expected.size()
+                        + ", actual " + actual.size();
+            }
+            for (int i = 0; i < expected.size(); i++) {
+                String difference = firstDifference(expected.get(i), actual.get(i), path + "/" + i);
+                if (difference != null) return difference;
+            }
+            return null;
+        }
+        if (expected.isNumber() && actual.isNumber()
+                && expected.decimalValue().compareTo(actual.decimalValue()) == 0) {
+            return null;
+        }
+        if (expected.equals(actual)) return null;
+        return (path.isEmpty() ? "/" : path) + ": expected " + expected
+                + " (" + expected.getNodeType() + "), actual " + actual
+                + " (" + actual.getNodeType() + ")";
     }
 
     static void verifyOutput(String label, Fixture fixture, byte[] output) throws IOException {

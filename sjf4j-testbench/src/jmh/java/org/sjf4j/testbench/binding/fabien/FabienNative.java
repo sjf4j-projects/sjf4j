@@ -9,6 +9,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.ToNumberPolicy;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
@@ -53,6 +54,9 @@ final class FabienNative {
     private static final JsonMapper JACKSON3_BLACKBIRD = JsonMapper.builder()
             .addModule(new tools.jackson.module.blackbird.BlackbirdModule()).build();
     private static final Gson GSON = new GsonBuilder()
+            // Gson defaults Object/Map numbers to Double, losing 64-bit ID
+            // precision. Preserve integral literals as Long in the native Map path.
+            .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
             .serializeNulls()
             .registerTypeAdapter(LocalDate.class, new TypeAdapter<LocalDate>() {
                 @Override public void write(JsonWriter out, LocalDate value) throws IOException {
