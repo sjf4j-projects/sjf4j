@@ -46,6 +46,11 @@ jobs:
     - name: Build and verify coverage
       run: ./gradlew build
 
+    # Standard Gradle 'build' does not compile src/jmh/java.
+    # Compile the benchmark jar to catch JMH and compiled binder generation errors.
+    - name: Compile JMH benchmarks
+      run: ./gradlew :sjf4j-testbench:jmhJar
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
