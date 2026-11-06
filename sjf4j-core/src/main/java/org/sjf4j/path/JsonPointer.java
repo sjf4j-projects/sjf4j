@@ -103,6 +103,13 @@ public class JsonPointer extends JsonPath {
     }
 
 
+    /**
+     * Compares segment types and tokens rather than only the RFC 6901 text.
+     * Pointers built via {@link #fromLast(PathSegment)} retain their segment
+     * types: {@code Name("0")} and {@code Index(0)} remain distinct even
+     * though both serialize to {@code /0}. The {@code Name("-")} and
+     * {@code Append("-")} forms are intentionally treated as equivalent.
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
