@@ -38,6 +38,47 @@ class SchemaPlanTest {
     }
 
     @Test
+    void anonymousSchemasWithCollidingContentHashesGetDistinctResourceUris() {
+        ObjectSchema first = (ObjectSchema) JsonSchema.fromJson(
+                "{\"title\":\"Aa\",\"type\":\"string\"}");
+        ObjectSchema second = (ObjectSchema) JsonSchema.fromJson(
+                "{\"title\":\"BB\",\"type\":\"string\"}");
+        assertEquals(first.hashCode(), second.hashCode());
+
+        SchemaRegistry registry = new SchemaRegistry();
+        SchemaPlan firstPlan = SchemaPlanner.buildAndPutPlan(first, registry);
+        SchemaPlan secondPlan = SchemaPlanner.buildAndPutPlan(second, registry);
+
+        assertEquals("sjf4j", firstPlan.schemaUri().getScheme());
+        assertTrue(firstPlan.schemaUri().toString().matches("sjf4j:/schema-\\d+/"));
+        assertFalse(firstPlan.schemaUri().equals(secondPlan.schemaUri()));
+        assertTrue(firstPlan.schema() == first);
+        assertTrue(secondPlan.schema() == second);
+        assertTrue(firstPlan.isValid("text"));
+        assertTrue(secondPlan.isValid("text"));
+    }
+
+    @Test
+    void anonymousBaseSupportsRelativeRootIdAndFragmentReferences() {
+        SchemaPlan plan = JsonSchema.fromJson(
+                "{\"$id\":\"child\",\"$defs\":{\"value\":{\"type\":\"string\"}},"
+                        + "\"$ref\":\"#/$defs/value\"}").createPlan();
+
+        assertTrue(plan.schemaUri().toString().matches("sjf4j:/schema-\\d+/child"));
+        assertTrue(plan.isValid("text"));
+        assertFalse(plan.isValid(42));
+    }
+
+    @Test
+    void absoluteRootIdIsPreservedWithoutAnonymousBase() {
+        URI uri = URI.create("https://example.com/schema");
+        SchemaPlan plan = JsonSchema.fromJson(
+                "{\"$id\":\"https://example.com/schema\",\"type\":\"string\"}").createPlan();
+
+        assertEquals(uri, plan.schemaUri());
+    }
+
+    @Test
     void booleanSchemaPlanStaysMinimal() {
         SchemaPlan plan = BooleanSchema.FALSE.createPlan();
 
