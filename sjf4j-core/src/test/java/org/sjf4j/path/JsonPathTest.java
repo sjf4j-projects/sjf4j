@@ -117,6 +117,41 @@ public class JsonPathTest {
     }
 
     @Test
+    public void jsonPointerEqualityUsesRfc6901Tokens() {
+        PathSegment root = PathSegment.Root.INSTANCE;
+        JsonPointer numeric = JsonPointer.parse("/0");
+        JsonPointer named = JsonPointer.fromLast(new PathSegment.Name(root, "0"));
+        JsonPointer indexed = JsonPointer.fromLast(new PathSegment.Index(root, 0));
+
+        assertEquals(numeric, named);
+        assertEquals(named, indexed);
+        assertEquals(numeric.hashCode(), named.hashCode());
+        assertEquals(numeric.hashCode(), indexed.hashCode());
+
+        Map<JsonPointer, String> values = new HashMap<>();
+        values.put(named, "zero");
+        assertEquals("zero", values.get(numeric));
+        assertEquals("zero", values.get(indexed));
+
+        PathSegment escaped = new PathSegment.Name(
+                new PathSegment.Name(root, "a/b"), "~");
+        JsonPointer fromSegments = JsonPointer.fromLast(new PathSegment.Index(escaped, 0));
+        JsonPointer fromText = JsonPointer.parse("/a~1b/~0/0");
+        assertEquals("/a~1b/~0/0", fromSegments.toPointerExpr());
+        assertEquals(fromText, fromSegments);
+        assertEquals(fromText.hashCode(), fromSegments.hashCode());
+
+        JsonPointer dash = JsonPointer.parse("/-");
+        assertEquals(dash, JsonPointer.fromLast(new PathSegment.Name(root, "-")));
+        assertEquals(dash, JsonPointer.fromLast(new PathSegment.Append(root, "-")));
+        assertEquals(dash.hashCode(), JsonPointer.fromLast(new PathSegment.Name(root, "-")).hashCode());
+
+        assertEquals(JsonPointer.parse(""), JsonPointer.fromLast(root));
+        assertNotEquals(JsonPointer.parse("/01"), JsonPointer.parse("/1"));
+        assertNotEquals(JsonPointer.parse("/a~1b"), JsonPointer.parse("/a~0b"));
+    }
+
+    @Test
     public void testJsonPointerNumericObjectKeys() {
         JsonObject jo = JsonObject.fromJson("{\"0\":{\"01\":\"value\"},\"arr\":[\"a\",\"b\"]}");
 

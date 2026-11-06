@@ -9,7 +9,6 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.util.Asserts;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 /**
  * JSON Pointer wrapper for JSON Patch paths and single-location OBNT access.
@@ -103,55 +102,20 @@ public class JsonPointer extends JsonPath {
     }
 
 
+    /**
+     * Pointer identity depends on RFC 6901 tokens, not their internal segment types.
+     * For example, Name("0") and Index(0) both represent the pointer "/0".
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        JsonPointer other = (JsonPointer) obj;
-        if (segments.length != other.segments.length) return false;
-        for (int i = 0; i < segments.length; i++) {
-            PathSegment a = segments[i];
-            PathSegment b = other.segments[i];
-            // A nonterminal "-" is Name and a terminal "-" is Append.
-            // They identify the same RFC 6901 token after parent() truncation.
-            if (a.getClass() != b.getClass()) {
-                if (a instanceof PathSegment.Append && b instanceof PathSegment.Name
-                        && "-".equals(((PathSegment.Name) b).name)) continue;
-                if (b instanceof PathSegment.Append && a instanceof PathSegment.Name
-                        && "-".equals(((PathSegment.Name) a).name)) continue;
-                return false;
-            }
-            if (a instanceof PathSegment.Name) {
-                if (!((PathSegment.Name) a).name.equals(((PathSegment.Name) b).name)) return false;
-            } else if (a instanceof PathSegment.Index) {
-                PathSegment.Index ai = (PathSegment.Index) a;
-                PathSegment.Index bi = (PathSegment.Index) b;
-                String at = ai.pointerToken != null ? ai.pointerToken : Integer.toString(ai.index);
-                String bt = bi.pointerToken != null ? bi.pointerToken : Integer.toString(bi.index);
-                if (!at.equals(bt)) return false;
-            }
-        }
-        return true;
+        if (obj == null || obj.getClass() != getClass()) return false;
+        return toPointerExpr().equals(((JsonPointer) obj).toPointerExpr());
     }
 
     @Override
     public int hashCode() {
-        int hash = 1;
-        for (PathSegment seg : segments) {
-            int segHash = (seg instanceof PathSegment.Append
-                    ? PathSegment.Name.class : seg.getClass()).hashCode();
-            if (seg instanceof PathSegment.Append) {
-                segHash = 31 * segHash + "-".hashCode();
-            } else if (seg instanceof PathSegment.Name) {
-                segHash = 31 * segHash + ((PathSegment.Name) seg).name.hashCode();
-            } else if (seg instanceof PathSegment.Index) {
-                PathSegment.Index index = (PathSegment.Index) seg;
-                String token = index.pointerToken != null ? index.pointerToken : Integer.toString(index.index);
-                segHash = 31 * segHash + token.hashCode();
-            }
-            hash = 31 * hash + segHash;
-        }
-        return hash;
+        return toPointerExpr().hashCode();
     }
     
     /**
