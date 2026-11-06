@@ -474,6 +474,7 @@ val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
     layout.buildDirectory.file("jacoco/officialRuntimeTest.exec") +
     layout.buildDirectory.file("jacoco/officialAnnotationTest.exec") +
+    layout.buildDirectory.file("jacoco/officialCompiledTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
