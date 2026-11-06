@@ -788,8 +788,8 @@ public class NodesTest {
     public void testInspect1() {
         String JSON_DATA = "{\"name\":\"Alice\",\"age\":30,\"info\":{\"email\":\"alice@example.com\",\"city\":55,\"kk\":{\"jj\":11}},\"babies\":[{\"name\":\"Baby-0\",\"age\":1},{\"name\":\"Baby-1\",\"age\":2},{\"name\":\"Baby-2\",\"age\":3}]}";
         Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
-        log.info("person={}", person.toString());
-        log.info("person={}", person.inspect());
+        assertTrue(person.inspect().contains("Alice"));
+        assertTrue(person.inspect().contains("Baby-0"));
     }
 
     @Test

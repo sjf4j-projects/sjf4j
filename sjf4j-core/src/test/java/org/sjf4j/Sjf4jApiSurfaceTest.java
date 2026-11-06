@@ -43,6 +43,7 @@ class Sjf4jApiSurfaceTest {
 
     @Test
     void coversJsonYamlNodeAndPropertiesOperations() {
+        assertEquals(Format.JSON, sjf4j.jsonBinderProvider().format());
         String json = "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"x\",\"y\"]}";
         JsonObject fromString = sjf4j.fromJson(json, JsonObject.class);
         JsonObject fromReader = sjf4j.fromJson(new StringReader(json), JsonObject.class);

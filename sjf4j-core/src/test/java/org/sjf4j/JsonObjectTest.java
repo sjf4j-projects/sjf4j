@@ -487,7 +487,6 @@ class JsonObjectTest {
         jo1.ensurePutByPath("$.query['idea.fqmn']", "::bad::good");
         assertEquals("::bad::good", jo1.getStringByPath("$.query['idea.fqmn']"));
         assertEquals("::bad::good", jo1.getJsonObject("query").getString("idea.fqmn"));
-        System.out.println("jo1: " + jo1);
     }
 
     @Test public void testByPath3() {
@@ -502,7 +501,6 @@ class JsonObjectTest {
         jo3.ensurePutByPath("$.a.b", JsonArray.of(0, JsonObject.of("d", "99")));
         jo3.ensurePutByPath("$.a.b[1].c", "444");
         assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
-        //FIXME: this is a bug!
     }
 
     @Test public void testByPath4() {
@@ -517,7 +515,6 @@ class JsonObjectTest {
         jo3.ensurePutByPath("$.a.b", JsonArray.of(0, JsonObject.of("d", "99")));
         jo3.ensurePutByPath("$.a.b[1].c", "444");
         assertEquals("444", jo3.getStringByPath("$.a.b[1].c"));
-        //FIXME: this is a bug!
     }
 
     @Test public void testBoolean1() {

@@ -19,8 +19,8 @@ import java.nio.charset.StandardCharsets;
  *
  * <p>Reads POJOs and directly populated Java containers. Streaming reads
  * do not construct native JSON-P target types (including scalar JsonValue);
-  * obtain these via {@link org.sjf4j.node.NodeMapper} conversion instead. Existing native JSON-P
- * nodes can still be written.
+ * obtain these via {@link org.sjf4j.node.NodeMapper} conversion instead. Existing native JSON-P
+ * nodes can still be written.</p>
  */
 public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
 

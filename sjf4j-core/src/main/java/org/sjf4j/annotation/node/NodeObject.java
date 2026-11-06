@@ -12,10 +12,10 @@ import java.lang.annotation.Target;
  * <p>
  * This annotation is the single place for stable binding semantics that must be
  * cached inside {@code TypeRegistry}. It replaces global naming and plain-field
- * switches for framework-owned POJO analysis.
+ * switches for framework-owned POJO analysis.</p>
  * <p>
  * Precedence is explicit {@link NodeProperty} name first, then {@link #naming()},
- * then identity naming when no override exists.
+ * then identity naming when no override exists.</p>
  */
 @Inherited
 @Target(ElementType.TYPE)

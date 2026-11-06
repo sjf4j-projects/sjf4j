@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 /**
  * Declares the JSON-facing name of a field, bean method, or creator parameter.
  * <p>
- * This annotation is used during POJO and JOJO binding.
+ * This annotation is used during POJO and JOJO binding.</p>
  * <ul>
  *     <li>On a field, {@link #value()} sets the primary property name used by object mapping</li>
  *     <li>On a getter or setter method, {@link #value()} renames that property family</li>
@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
  * </ul>
  *
  * <p>This is mainly useful when the Java member name should differ from the JSON
- * property name, or when older input names must remain gettable.
+ * property name, or when older input names must remain gettable.</p>
  */
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
