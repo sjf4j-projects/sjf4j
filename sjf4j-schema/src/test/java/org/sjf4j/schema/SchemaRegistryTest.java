@@ -47,31 +47,6 @@ class SchemaRegistryTest {
     }
 
     @Test
-    void lazyFragmentBindingFailureRestoresPublishedFragmentIndexes() {
-        SchemaRegistry registry = new SchemaRegistry();
-        URI root = URI.create("https://example.test/lazy/root.json");
-        URI nested = URI.create("https://example.test/lazy/nested.json");
-        registry.index(JsonSchema.fromJson("{"
-                + "\"$id\":\"https://example.test/lazy/root.json\","
-                + "\"x-subschema\":{\"$id\":\"nested.json\",\"$ref\":\"missing.json\"}"
-                + "}"));
-        SchemaPlan plan = registry.resolve(root);
-
-        assertThrows(SchemaException.class,
-                () -> registry.resolve(URI.create(root + "#/x-subschema")));
-        assertFalse(plan.byPathPlans.containsKey("/x-subschema"));
-        assertNull(registry.resolveBuilt(nested));
-
-        registry.index(JsonSchema.fromJson("{"
-                + "\"$id\":\"https://example.test/lazy/missing.json\","
-                + "\"type\":\"string\""
-                + "}"));
-        SchemaPlan resolved = registry.resolve(URI.create(root + "#/x-subschema"));
-        assertTrue(resolved.isValid("value"));
-        assertFalse(resolved.isValid(42));
-    }
-
-    @Test
     void recursiveCrossResourceReferencesBindBeforePublication() {
         SchemaRegistry registry = new SchemaRegistry();
         URI first = URI.create("https://example.test/cycle/a.json");

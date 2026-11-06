@@ -44,37 +44,35 @@ public final class SchemaPlanner {
         Asserts.notNull(schema, "schema");
         Asserts.notNull(registry, "registry");
 
-        synchronized (registry) {
-            registry.beginCompilation();
-            boolean success = false;
-            try {
-                URI retrievalUri = schema.retrievalUri();
-                URI canonicalUri = schema.canonicalUri();
-                URI baseUri = retrievalUri;
-                if (baseUri == null && (canonicalUri == null || !canonicalUri.isAbsolute())) {
-                    baseUri = URI.create("sjf4j:/schema-" + ANONYMOUS_SCHEMA_IDS.incrementAndGet() + "/");
-                }
-                URI resourceUri = SchemaUtil.resolveUri(baseUri, canonicalUri);
-                SchemaPlan plan = registry.resolveBuilt(resourceUri);
-                if (plan == null) {
-                    PlanningContext context = new PlanningContext(registry);
-                    SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
-                    Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
-                            resourceUri, PathSegment.Root.INSTANCE);
-                    plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
-                            new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
-                    registry.putPlan(resourceUri, plan);
-
-                    if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
-                        registry.putPlan(retrievalUri, plan);
-                    }
-                    _bindDeferredRefs(context);
-                }
-                success = true;
-                return plan;
-            } finally {
-                registry.endCompilation(success);
+        boolean owner = registry.beginCompilation();
+        boolean success = false;
+        try {
+            URI retrievalUri = schema.retrievalUri();
+            URI canonicalUri = schema.canonicalUri();
+            URI baseUri = retrievalUri;
+            if (baseUri == null && (canonicalUri == null || !canonicalUri.isAbsolute())) {
+                baseUri = URI.create("sjf4j:/schema-" + ANONYMOUS_SCHEMA_IDS.incrementAndGet() + "/");
             }
+            URI resourceUri = SchemaUtil.resolveUri(baseUri, canonicalUri);
+            SchemaPlan plan = registry.resolveBuilt(resourceUri);
+            if (plan == null) {
+                PlanningContext context = new PlanningContext(registry);
+                SchemaDialect dialect = _resolveDialect(schema, registry.getDefaultDialect());
+                Map<String, Boolean> vocabulary = _resolveVocabulary(schema, null, registry,
+                        resourceUri, PathSegment.Root.INSTANCE);
+                plan = _buildPlan(schema, resourceUri, PathSegment.Root.INSTANCE,
+                        new HashMap<>(), new HashMap<>(), new HashMap<>(), context, dialect, vocabulary);
+                registry.putPlan(resourceUri, plan);
+
+                if (retrievalUri != null && !retrievalUri.equals(resourceUri)) {
+                    registry.putPlan(retrievalUri, plan);
+                }
+                _bindDeferredRefs(context);
+            }
+            success = true;
+            return plan;
+        } finally {
+            registry.endCompilation(owner, success);
         }
     }
 
@@ -481,38 +479,15 @@ public final class SchemaPlanner {
         Asserts.notNull(registry, "registry");
         if (!path.startsWith("/") || !(resourcePlan.schema instanceof ObjectSchema)) return null;
 
-        synchronized (registry) {
-            JsonPath jsonPath = JsonPath.parse(path);
-            Object node = jsonPath.getNode(resourcePlan.schema);
-            if (node == null) return null;
-
-            // Lazy fragment compilation can extend maps of an already published
-            // resource. Restore these maps if a deferred reference cannot bind.
-            Map<String, SchemaPlan> anchors = new HashMap<>(resourcePlan.byAnchorPlans);
-            Map<String, SchemaPlan> dynamicAnchors = new HashMap<>(resourcePlan.byDynamicAnchorPlans);
-            Map<String, SchemaPlan> paths = new HashMap<>(resourcePlan.byPathPlans);
-            registry.beginCompilation();
-            boolean success = false;
-            try {
-                PlanningContext context = new PlanningContext(registry);
-                SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.resourceUri, jsonPath.tail(),
-                        resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
-                        context, resourcePlan.dialect, resourcePlan.vocabulary);
-                _bindDeferredRefs(context);
-                success = true;
-                return plan;
-            } finally {
-                if (!success) {
-                    resourcePlan.byAnchorPlans.clear();
-                    resourcePlan.byAnchorPlans.putAll(anchors);
-                    resourcePlan.byDynamicAnchorPlans.clear();
-                    resourcePlan.byDynamicAnchorPlans.putAll(dynamicAnchors);
-                    resourcePlan.byPathPlans.clear();
-                    resourcePlan.byPathPlans.putAll(paths);
-                }
-                registry.endCompilation(success);
-            }
-        }
+        JsonPath jsonPath = JsonPath.parse(path);
+        Object node = jsonPath.getNode(resourcePlan.schema);
+        if (node == null) return null;
+        PlanningContext context = new PlanningContext(registry);
+        SchemaPlan plan = _buildPlanFromNode(node, resourcePlan.resourceUri, jsonPath.tail(),
+                resourcePlan.byAnchorPlans, resourcePlan.byDynamicAnchorPlans, resourcePlan.byPathPlans,
+                context, resourcePlan.dialect, resourcePlan.vocabulary);
+        _bindDeferredRefs(context);
+        return plan;
     }
 
     private static void _putNamedFragment(Map<String, SchemaPlan> byAnchorPlans, String fragment,
