@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ./scripts/benchmark-binding.sh quick|full [output-directory]
+# ./scripts/benchmark-binding.sh smoke|quick|full [output-directory]
 usage() {
   cat <<EOF
-Usage: $0 <quick|full> [output-directory]
+Usage: $0 <smoke|quick|full> [output-directory]
 
+  smoke   Verify every backend at 100KB with both seeds; not a timing baseline.
   quick   Short local checks; a performance diagnostic, not a baseline.
   full    All supported backend/implementation cases on JDK 25.
 
@@ -21,7 +22,7 @@ if [[ $# -eq 1 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
   usage
   exit 0
 fi
-if [[ $# -gt 2 || ( "$1" != "quick" && "$1" != "full" ) ]]; then
+if [[ $# -gt 2 || ( "$1" != "smoke" && "$1" != "quick" && "$1" != "full" ) ]]; then
   usage >&2
   exit 2
 fi
@@ -58,6 +59,7 @@ cat > "$META" <<EOF
 - Hardware: $(uname -a)
 - Suite version: 2
 - Profile: $PROFILE
+- Baseline eligible: $(if [[ "$PROFILE" == "full" ]]; then echo yes; else echo no; fi)
 - Working tree clean: $(if [[ -z "$(git status --porcelain)" ]]; then echo yes; else echo no; fi)
 
 ## Java runtime
@@ -74,19 +76,29 @@ EOF
 COMMON=(
   'org.sjf4j.testbench.binding.fabien.Fabien(ReadBenchmark.read|WriteBenchmark.write)'
   -p model=users,clients
-  -rf json -prof gc -t 1
+  -rf json -t 1
 )
 
-# Quick and Full use exactly the same workloads and implementations.
-# Only JMH warmup / measurement / fork settings differ.
-SIZE_COUNT=3
+# Quick and Full have identical workloads, differing only in JMH timing.
+# Smoke exercises the 100KB edge cases at both seeds without expensive forks.
 SEED_COUNT=2
-if [[ "$PROFILE" == "quick" ]]; then
-  ARGS=(-f 1 -wi 2 -i 2 -w 200ms -r 200ms)
-else
-  ARGS=(-f 3 -wi 5 -i 5 -w 400ms -r 400ms)
-fi
-COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324)
+case "$PROFILE" in
+  smoke)
+    SIZE_COUNT=1
+    ARGS=(-f 0 -wi 0 -i 1 -r 50ms)
+    COMMON+=(-p sizeKb=100 -p seed=12345,324)
+    ;;
+  quick)
+    SIZE_COUNT=3
+    ARGS=(-f 1 -wi 2 -i 2 -w 200ms -r 200ms)
+    COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324 -prof gc)
+    ;;
+  full)
+    SIZE_COUNT=3
+    ARGS=(-f 3 -wi 5 -i 5 -w 400ms -r 400ms)
+    COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324 -prof gc)
+    ;;
+esac
 
 # macOS idle sleep can invalidate JMH timings. This inhibits idle system
 # sleep while each backend is measured, but cannot prevent MacBook lid sleep.
@@ -127,7 +139,7 @@ run_backend() {
   echo "- $backend: $(basename "$result") (implementations=$modes, results=$actual)" >> "$META"
 }
 
-# Identical backend/implementation matrix for Quick and Full.
+# The backend/implementation matrix is identical for all three profiles.
 run_backend jackson2 runtime,compiled,native,blackbird
 run_backend jackson3 runtime,compiled,native,blackbird
 run_backend fastjson2 runtime,compiled,native

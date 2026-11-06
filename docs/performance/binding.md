@@ -8,9 +8,10 @@ so regular tests can reuse them.
 ## Baseline policy
 
 - **JDK 25** is the only primary baseline. Record the exact vendor and patch version.
-- Exactly two profiles: **Quick** for diagnostics and **Full** for release baselines.
-  They execute the **same backend/implementation/model/shape/size/seed matrix**;
-  only JMH fork, warmup and measurement configurations differ.
+- Three execution profiles: **Smoke** verifies correctness at the largest payload
+  (100KB, both seeds); **Quick** diagnoses performance; **Full** establishes release
+  baselines. Quick and Full execute the **same** case matrix, differing only in
+  JMH fork, warmup and measurement parameters. Smoke is never a baseline.
 - **Suite version: 2**. Native and Blackbird were added to the comparison matrix.
   Changes to generator, workload, target semantics, or measurement boundary
   must bump this version. Do not compare incompatible versions directly.
@@ -37,8 +38,9 @@ so regular tests can reuse them.
 
 ```bash
 ./scripts/benchmark-binding.sh             # Print usage (no benchmark run)
-./scripts/benchmark-binding.sh quick       # Diagnostic check
-./scripts/benchmark-binding.sh full        # Complete measurement
+./scripts/benchmark-binding.sh smoke       # Fast correctness check at 100KB
+./scripts/benchmark-binding.sh quick       # Diagnostic performance
+./scripts/benchmark-binding.sh full        # Complete baseline measurement
 ```
 
 Both benchmark classes have a `main(String[] args)` entry point for IDEA.
@@ -46,16 +48,19 @@ Edit their local default JMH arguments to choose a backend, implementation,
 model, shape or seed. The default selects Jackson 2 (all four modes). Supplied
 command-line arguments override these defaults.
 
-**Both profiles use identical cases:** all 7 backends; Runtime / Compiled
+**Quick and Full use identical cases:** all 7 backends; Runtime / Compiled
 for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML; Blackbird for Jackson2 and Jackson3; Users / Clients; POJO / Map;
 1/10/100KB; seeds 12345 and 324.
 
-| JMH setting | Quick | Full |
-| --- | --- | --- |
-| Forks | 1 | 3 |
-| Warmup | 2 × 0.2s | 5 × 0.4s |
-| Measurement | 2 × 0.2s | 5 × 0.4s |
-| Cases, models, inputs | Same | Same |
+| JMH setting | Smoke | Quick | Full |
+| --- | --- | --- | --- |
+| Forks | 0 (in-process) | 1 | 3 |
+| Warmup | 0 | 2 × 0.2s | 5 × 0.4s |
+| Measurement | 1 × 0.05s | 2 × 0.2s | 5 × 0.4s |
+| Data size | 100KB | 1/10/100KB | 1/10/100KB |
+| Seeds | 12345/324 | 12345/324 | 12345/324 |
+| Backend / implementation / model / shape | Same | Same | Same |
+| GC profiler | No | Yes | Yes |
 
 The runner emits **one JMH JSON per backend**, not per implementation, and a companion
 `.meta.md` file under `build/performance/binding/` (the optional second argument
@@ -67,6 +72,10 @@ This avoids unsupported combinations while retaining raw fork measurements
 and `-prof gc` allocation data.
 The runner also checks the expected count of benchmark entries in each JSON file,
 exiting with an error if JMH reported only a subset of the requested cases.
+Smoke is a **correctness check only**: it intentionally omits warmup and forks,
+so ignore its recorded throughput and timing scores. Run Smoke first to catch
+large-payload failures before investing time in Quick or Full.
+
 Full is intentionally expensive; execute on an otherwise idle benchmark host.
 On macOS the script invokes `caffeinate -i` around each backend to inhibit idle
 sleep, but **closing a MacBook lid can still suspend the benchmark**. Keep the
