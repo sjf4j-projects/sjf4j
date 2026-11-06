@@ -29,6 +29,13 @@ are in `sjf4j-testbench/src/main/java` for reuse by normal tests.
 
 ## Execute
 
+Both Fabien benchmark classes also expose a `main(String[] args)` entry point.
+Launch either class directly in IDEA, and edit the default JMH arguments in
+`main` for a targeted local experiment. Supplying command-line arguments
+overrides the defaults. All `model/` testbench classes are in `src/main/java`
+so regular JUnit tests can import them.
+
+
 ```bash
 ./scripts/benchmark-binding.sh quick
 ./scripts/benchmark-binding.sh full

@@ -26,6 +26,11 @@ configurations {
 
 
 dependencies {
+    // Shared testbench models use Lombok, while ModelState retains JMH's @State.
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
+    compileOnly("org.openjdk.jmh:jmh-core:1.37")
+
     implementation(project(":sjf4j-core"))
     implementation(project(":sjf4j-asm"))
     implementation(project(":sjf4j-schema"))

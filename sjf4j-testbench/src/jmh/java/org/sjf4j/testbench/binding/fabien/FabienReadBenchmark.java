@@ -1,5 +1,6 @@
 package org.sjf4j.testbench.binding.fabien;
 
+import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -30,6 +31,21 @@ import java.util.concurrent.TimeUnit;
  * Do not change the workload without incrementing the suite version.
  */
 public class FabienReadBenchmark {
+
+    /** Run directly from IDEA; edit the defaults here for local experiments. */
+    public static void main(String[] args) throws Exception {
+        Main.main(args.length != 0 ? args : new String[]{
+                FabienReadBenchmark.class.getName() + ".read",
+                "-p", "backend=jackson2",
+                "-p", "implementation=runtime,compiled",
+                "-p", "model=users,clients",
+                "-p", "shape=pojo",
+                "-p", "sizeKb=1",
+                "-p", "seed=12345",
+                "-f", "1", "-wi", "3", "-i", "3",
+                "-w", "500ms", "-r", "500ms"
+        });
+    }
 
     @Param({"jackson2", "jackson3", "fastjson2", "gson", "jsonp", "simple", "snake"})
     public String backend;
