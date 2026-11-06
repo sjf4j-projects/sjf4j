@@ -131,7 +131,7 @@ import java.lang.annotation.Target;
  *
  * <p>Supported source reads are public fields, JavaBean getters, boolean
  * {@code isXxx} getters, and record accessors. Supported target writes are
-  * public setters and settable public fields. Targets may be no-args classes,
+ * public setters and settable public fields. Targets may be no-args classes,
  * records, classes with a unique public constructor, or types resolved through
  * {@link MappingCreator}.</p>
  *

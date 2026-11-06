@@ -11,9 +11,9 @@ import java.lang.annotation.Target;
  * <p>
  * Use this when a target type may deserialize into one of several concrete Java
  * types. SJF4J can resolve the target either by discriminator values from the
- * input object, or by the raw JSON/OBNT shape when no discriminator is used.
+ * input object, or by the raw JSON/OBNT shape when no discriminator is used.</p>
  *
- * <p>Common usage styles:
+ * <p>Common usage styles:</p>
  * <ul>
  *     <li>Annotate a base type to make reads of that type polymorphic</li>
  *     <li>Annotate a regular field to make only that location polymorphic</li>

@@ -107,7 +107,7 @@ public final class Sjf4j {
     /**
      * Returns the JSON binder provider used by this runtime.
      */
-    public BinderProvider jsonProvider() {
+    public BinderProvider jsonBinderProvider() {
         return jsonBinderProvider;
     }
 

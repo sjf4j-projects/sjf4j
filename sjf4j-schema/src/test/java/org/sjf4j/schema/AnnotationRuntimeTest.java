@@ -207,4 +207,18 @@ class AnnotationRuntimeTest {
         assertTrue(old.getAnnotations().isEmpty());
         assertTrue(disabled.getAnnotations().isEmpty());
     }
+    @Test
+    void metadataAnnotationsAreCollectedAcrossAllSupportedDrafts() {
+        ValidationOptions options = ValidationOptions.builder()
+                .collectAnnotations(true).build();
+        for (SchemaDialect dialect : SchemaDialect.values()) {
+            ValidationResult result = JsonSchema.fromJson("{\"title\":\"Example\"}")
+                    .createPlan(new SchemaRegistry(dialect)).validate(42, options);
+            assertTrue(result.isValid(), dialect.toString());
+            assertEquals(1, result.getAnnotations().size(), dialect.toString());
+            assertEquals("title", result.getAnnotations().get(0).getKeyword(), dialect.toString());
+            assertEquals("Example", result.getAnnotations().get(0).getAnnotation(), dialect.toString());
+        }
+    }
+
 }
