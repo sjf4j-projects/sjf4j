@@ -11,7 +11,9 @@ import java.math.BigInteger;
 public final class Numbers {
 
     /**
-     * Maximum number of digits allowed for numeric numbers.
+     * Known limitation: generic numeric literals over 100 characters are rejected.
+     * JSON itself imposes no such fixed limit, and backend-native readers may differ.
+     * Retain this historical limit for 1.5.0; review cross-backend consistency separately.
      */
     private final static int MAX_NUMBER_LENGTH = 100;
     

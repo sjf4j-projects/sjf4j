@@ -80,6 +80,52 @@ class SimpleJsonParserTest {
     }
 
     @Test
+    void genericNumberLengthLimitFailsDuringScanButExplicitBigNumbersRemainSupported() throws Exception {
+        StringBuilder number = new StringBuilder("1");
+        while (number.length() < 100) number.append('2');
+        String atLimit = number.toString();
+        try (SimpleJsonParser parser = new SimpleJsonParser(atLimit)) {
+            assertEquals(new BigInteger(atLimit), parser.readNumber());
+            parser.end();
+        }
+
+        number.append('3');
+        String aboveLimit = number.toString();
+        try (SimpleJsonParser parser = new SimpleJsonParser(aboveLimit)) {
+            BindingException error = assertThrows(BindingException.class, parser::readNumber);
+            assertTrue(error.getMessage().contains("100 characters"));
+        }
+
+        for (int i = 0; i < 10_000; i++) number.append('4');
+        String longNumber = number.toString();
+        int[] consumed = {0};
+        Reader oneCharReader = new Reader() {
+            @Override
+            public int read(char[] cbuf, int off, int len) {
+                if (consumed[0] == longNumber.length()) return -1;
+                cbuf[off] = longNumber.charAt(consumed[0]++);
+                return 1;
+            }
+
+            @Override
+            public void close() {}
+        };
+        try (SimpleJsonParser parser = new SimpleJsonParser(oneCharReader)) {
+            assertThrows(BindingException.class, parser::readNumber);
+            assertTrue(consumed[0] <= 101, "generic reader should stop scanning at the length limit");
+        }
+
+        try (SimpleJsonParser parser = new SimpleJsonParser(aboveLimit)) {
+            assertEquals(new BigInteger(aboveLimit), parser.readBigInteger());
+            parser.end();
+        }
+        try (SimpleJsonParser parser = new SimpleJsonParser(aboveLimit + ".5")) {
+            assertEquals(new BigDecimal(aboveLimit + ".5"), parser.readBigDecimal());
+            parser.end();
+        }
+    }
+
+    @Test
     void readsPrimitiveValues() throws Exception {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[1,2,3,4,5.5,6.5,true]"));

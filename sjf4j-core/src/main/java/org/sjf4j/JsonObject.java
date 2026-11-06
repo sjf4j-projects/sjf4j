@@ -1046,8 +1046,8 @@ public class JsonObject extends JsonContainer {
 
         if (pi != null) {
             PropertyInfo propertyInfo = pi.getPropertyNoAlias(key);
-            if (propertyInfo != null && propertyInfo.gettable) {
-                T old = (T) propertyInfo.invokeGetter(this);
+            if (propertyInfo != null) {
+                T old = propertyInfo.gettable ? (T) propertyInfo.invokeGetter(this) : null;
                 if (old != null) {
                     return old;
                 }
