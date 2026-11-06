@@ -57,13 +57,22 @@ for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML;
 | Measurement | 2 × 0.2s | 5 × 0.4s |
 | Cases, models, inputs | Same | Same |
 
-The runner emits **one JMH JSON per valid group** and a companion metadata
-Markdown listing all produced files under `build/performance/binding/` (optional
-second argument changes that directory). This prevents invalid cross-products,
-and retains raw per-fork measurements and `-prof gc` allocation data.
+The runner emits **one JMH JSON per backend**, not per implementation, and a companion
+`.meta.md` file under `build/performance/binding/` (the optional second argument
+changes the directory). The `params.implementation` field distinguishes runtime,
+compiled, native and (Jackson only) blackbird inside each backend's JSON.
+The seven files end in `-jackson2.json`, `-jackson3.json`, `-fastjson2.json`,
+`-gson.json`, `-jsonp.json`, `-simple.json`, and `-snake.json`.
+This avoids unsupported combinations while retaining raw fork measurements
+and `-prof gc` allocation data.
 The runner also checks the expected count of benchmark entries in each JSON file,
 exiting with an error if JMH reported only a subset of the requested cases.
 Full is intentionally expensive; execute on an otherwise idle benchmark host.
+On macOS the script invokes `caffeinate -i` around each backend to inhibit idle
+sleep, but **closing a MacBook lid can still suspend the benchmark**. Keep the
+lid open, use AC power, and discard results from a run interrupted by sleep.
+After a successful Full run there should be **7 per-backend JSON files plus 1
+`.meta.md`**, for 1,008 total JMH benchmark entries (including Read and Write).
 
 ## Maintaining history in the repository
 

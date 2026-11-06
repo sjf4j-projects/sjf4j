@@ -7,7 +7,7 @@ usage() {
 Usage: $0 <quick|full> [output-directory]
 
   quick   Short local checks; a performance diagnostic, not a baseline.
-  full    All supported backend/implementation groups on JDK 25.
+  full    All supported backend/implementation cases on JDK 25.
 
 Results default to build/performance/binding/.
 EOF
@@ -68,9 +68,9 @@ $("$JAVA_BIN" -version 2>&1 | sed 's/^/    /')
 
 EOF
 
-# The implementation axis cannot be a full cross product: Blackbird is
-# Jackson-only and native JSON-P/Simple POJO/Map binding does not exist.
-# Run each valid group independently, retaining all raw JMH JSON files.
+# Save one JMH JSON file per backend. Each file contains every supported
+# implementation for that backend (Blackbird only for Jackson2/3).
+# Native JSON-P (JsonValue) and Simple are not comparable POJO/Map binders.
 COMMON=(
   'org.sjf4j.testbench.binding.fabien.Fabien(ReadBenchmark.read|WriteBenchmark.write)'
   -p model=users,clients
@@ -88,23 +88,30 @@ else
 fi
 COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324)
 
-run_group() {
-  local group="$1" backends="$2" modes="$3" shapes="$4"
-  local result="$OUT_DIR/binding-$SHA-$PROFILE-jdk25-$group.json"
-  echo "Running $PROFILE / $group: backends=$backends implementations=$modes shapes=$shapes"
-  "$JAVA_BIN" -jar "$JAR" "${COMMON[@]}" "${ARGS[@]}" \
-      -p "backend=$backends" \
+# macOS idle sleep can invalidate JMH timings. This inhibits idle system
+# sleep while each backend is measured, but cannot prevent MacBook lid sleep.
+# Run Full on AC power with the lid open.
+JAVA_CMD=("$JAVA_BIN")
+if [[ "$(uname -s)" == "Darwin" ]] && command -v caffeinate >/dev/null 2>&1; then
+  JAVA_CMD=(caffeinate -i "$JAVA_BIN")
+  echo "macOS: caffeinate enabled for each backend (keep the lid open)."
+fi
+
+run_backend() {
+  local backend="$1" modes="$2"
+  local result="$OUT_DIR/binding-$SHA-$PROFILE-jdk25-$backend.json"
+  echo "Running $PROFILE / $backend: implementations=$modes"
+  "${JAVA_CMD[@]}" -jar "$JAR" "${COMMON[@]}" "${ARGS[@]}" \
+      -p "backend=$backend" \
       -p "implementation=$modes" \
-      -p "shape=$shapes" \
+      -p "shape=pojo,map" \
       -rff "$result"
 
-  # A JMH run may produce a partial report if some cases fail. Do not silently
-  # accept missing scores as a successful Quick run or release measurement.
-  local -a backend_items mode_items shape_items
-  IFS=, read -r -a backend_items <<< "$backends"
+  # JMH can report partial results when one case fails. Insist on all requested
+  # cases before accepting a per-backend JSON as complete.
+  local -a mode_items
   IFS=, read -r -a mode_items <<< "$modes"
-  IFS=, read -r -a shape_items <<< "$shapes"
-  local expected=$(( ${#backend_items[@]} * ${#mode_items[@]} * ${#shape_items[@]} * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
+  local expected=$(( ${#mode_items[@]} * 2 * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
   local actual
   if [[ ! -s "$result" ]]; then
     echo "Missing or empty JMH result: $result" >&2
@@ -112,21 +119,22 @@ run_group() {
   fi
   actual="$(grep -c '"benchmark"[[:space:]]*:' "$result" || true)"
   if [[ "$actual" -ne "$expected" ]]; then
-    echo "Incomplete JMH result for $group: expected $expected benchmark entries; got $actual." >&2
-    echo "Inspect the preceding JMH output for setup/benchmark failures: $result" >&2
+    echo "Incomplete JMH result for $backend: expected $expected entries; got $actual." >&2
+    echo "Inspect the preceding JMH output: $result" >&2
     exit 1
   fi
 
-  echo "- $group: $(basename "$result") (backend=$backends, implementation=$modes, shape=$shapes)" >> "$META"
+  echo "- $backend: $(basename "$result") (implementations=$modes, results=$actual)" >> "$META"
 }
 
-# Every group runs in both profiles, including all seven backends
-# and SnakeYAML's native Map route.
-run_group jackson jackson2,jackson3 runtime,compiled,native,blackbird pojo,map
-run_group native-json fastjson2,gson runtime,compiled,native pojo,map
-run_group jsonp-simple jsonp,simple runtime,compiled pojo,map
-run_group yaml snake runtime,compiled pojo,map
-run_group yaml-native snake native pojo,map
+# Identical backend/implementation matrix for Quick and Full.
+run_backend jackson2 runtime,compiled,native,blackbird
+run_backend jackson3 runtime,compiled,native,blackbird
+run_backend fastjson2 runtime,compiled,native
+run_backend gson runtime,compiled,native
+run_backend jsonp runtime,compiled
+run_backend simple runtime,compiled
+run_backend snake runtime,compiled,native
 
 echo "Raw JMH JSON files in: $OUT_DIR"
 echo "Environment and result index: $META"
