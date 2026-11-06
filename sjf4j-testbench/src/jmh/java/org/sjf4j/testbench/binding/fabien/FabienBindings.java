@@ -25,12 +25,12 @@ public final class FabienBindings {
 
     @FunctionalInterface
     public interface Reader {
-        Object read(byte[] input);
+        Object read(byte[] input) throws Exception;
     }
 
     @FunctionalInterface
     public interface Writer {
-        byte[] write(Object node);
+        byte[] write(Object node) throws Exception;
     }
 
     public static Reader reader(String backend, String implementation, String model, String shape) {
@@ -39,6 +39,9 @@ public final class FabienBindings {
             Class<?> target = "map".equals(shape) ? Map.class
                     : "users".equals(model) ? Users.class : Clients.class;
             return input -> binder.readNode(input, target);
+        }
+        if ("native".equals(implementation) || "blackbird".equals(implementation)) {
+            return FabienNative.reader(backend, implementation, model, shape);
         }
         if (!"compiled".equals(implementation)) {
             throw new IllegalArgumentException("unknown implementation: " + implementation);
@@ -88,6 +91,9 @@ public final class FabienBindings {
         if ("runtime".equals(implementation)) {
             Binder<?, ?> binder = runtime(backend);
             return binder::writeNodeAsBytes;
+        }
+        if ("native".equals(implementation) || "blackbird".equals(implementation)) {
+            return FabienNative.writer(backend, implementation, model, shape);
         }
         if (!"compiled".equals(implementation)) {
             throw new IllegalArgumentException("unknown implementation: " + implementation);

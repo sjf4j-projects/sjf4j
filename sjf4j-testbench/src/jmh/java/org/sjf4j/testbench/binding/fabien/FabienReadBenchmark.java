@@ -37,7 +37,7 @@ public class FabienReadBenchmark {
         Main.main(args.length != 0 ? args : new String[]{
                 FabienReadBenchmark.class.getName() + ".read",
                 "-p", "backend=jackson2",
-                "-p", "implementation=runtime,compiled",
+                "-p", "implementation=runtime,compiled,native,blackbird",
                 "-p", "model=users,clients",
                 "-p", "shape=pojo",
                 "-p", "sizeKb=1",
@@ -50,7 +50,7 @@ public class FabienReadBenchmark {
     @Param({"jackson2", "jackson3", "fastjson2", "gson", "jsonp", "simple", "snake"})
     public String backend;
 
-    @Param({"runtime", "compiled"})
+    @Param({"runtime", "compiled", "native", "blackbird"})
     public String implementation;
 
     @Param({"users", "clients"})
@@ -69,7 +69,7 @@ public class FabienReadBenchmark {
     private FabienBindings.Reader reader;
 
     @Setup(Level.Trial)
-    public void setup() throws IOException {
+    public void setup() throws Exception {
         FabienFixtures.Fixture fixture =
                 FabienFixtures.create(backend, model, shape, sizeKb, seed);
         input = fixture.input;
@@ -79,7 +79,7 @@ public class FabienReadBenchmark {
     }
 
     @Benchmark
-    public Object read() {
+    public Object read() throws Exception {
         return reader.read(input);
     }
 }

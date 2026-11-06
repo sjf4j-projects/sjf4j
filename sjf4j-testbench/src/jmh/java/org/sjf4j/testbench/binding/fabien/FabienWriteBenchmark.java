@@ -36,7 +36,7 @@ public class FabienWriteBenchmark {
         Main.main(args.length != 0 ? args : new String[]{
                 FabienWriteBenchmark.class.getName() + ".write",
                 "-p", "backend=jackson2",
-                "-p", "implementation=runtime,compiled",
+                "-p", "implementation=runtime,compiled,native,blackbird",
                 "-p", "model=users,clients",
                 "-p", "shape=pojo",
                 "-p", "sizeKb=1",
@@ -49,7 +49,7 @@ public class FabienWriteBenchmark {
     @Param({"jackson2", "jackson3", "fastjson2", "gson", "jsonp", "simple", "snake"})
     public String backend;
 
-    @Param({"runtime", "compiled"})
+    @Param({"runtime", "compiled", "native", "blackbird"})
     public String implementation;
 
     @Param({"users", "clients"})
@@ -68,7 +68,7 @@ public class FabienWriteBenchmark {
     private FabienBindings.Writer writer;
 
     @Setup(Level.Trial)
-    public void setup() throws IOException {
+    public void setup() throws Exception {
         FabienFixtures.Fixture fixture =
                 FabienFixtures.create(backend, model, shape, sizeKb, seed);
         value = fixture.value;
@@ -78,7 +78,7 @@ public class FabienWriteBenchmark {
     }
 
     @Benchmark
-    public byte[] write() {
+    public byte[] write() throws Exception {
         return writer.write(value);
     }
 }
