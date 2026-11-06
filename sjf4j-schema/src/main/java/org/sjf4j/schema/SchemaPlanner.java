@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public final class SchemaPlanner {
 
-    private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong();
+    private static final AtomicLong ANONYMOUS_SCHEMA_IDS = new AtomicLong(10000);
 
     static final class PlanningContext {
         final SchemaRegistry registry;

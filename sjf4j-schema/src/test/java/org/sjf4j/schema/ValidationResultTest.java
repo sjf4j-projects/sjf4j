@@ -92,68 +92,68 @@ class ValidationResultTest {
         assertTrue(result.getAnnotations().isEmpty());
     }
 
-//    @Test
-//    void absoluteKeywordLocationAppendsPointerToResourceUri() {
-//        PathSegment keyword = new PathSegment.Name(
-//                new PathSegment.Name(ROOT, "properties"), "type");
-//        ValidationResult.Detail plain = new ValidationResult.Detail(
-//                "type", null, null, ROOT, keyword, URI.create("https://example.com/schema"));
-//        assertEquals("https://example.com/schema#/properties/type", plain.getAbsoluteKeywordLocation());
-//
-//        ValidationResult.Detail emptyFragment = new ValidationResult.Detail(
-//                "type", null, null, ROOT, keyword, URI.create("https://example.com/schema#"));
-//        assertEquals("https://example.com/schema#/properties/type",
-//                emptyFragment.getAbsoluteKeywordLocation());
-//
-//        ValidationResult.Detail nestedPointer = new ValidationResult.Detail(
-//                "type", null, null, ROOT, keyword,
-//                URI.create("https://example.com/schema#/$defs/entry"));
-//        assertEquals("https://example.com/schema#/$defs/entry/properties/type",
-//                nestedPointer.getAbsoluteKeywordLocation());
-//
-//        ValidationResult.Detail root = new ValidationResult.Detail(
-//                "false", null, null, ROOT, ROOT,
-//                URI.create("https://example.com/schema#/$defs/entry"));
-//        assertEquals("https://example.com/schema#/$defs/entry",
-//                root.getAbsoluteKeywordLocation());
-//    }
+    @Test
+    void absoluteKeywordLocationAppendsPointerToResourceUri() {
+        PathSegment keyword = new PathSegment.Name(
+                new PathSegment.Name(ROOT, "properties"), "type");
+        ValidationResult.Detail plain = new ValidationResult.Detail(
+                "type", null, null, ROOT, keyword, URI.create("https://example.com/schema"));
+        assertEquals("https://example.com/schema#/properties/type", plain.getAbsoluteKeywordLocation());
 
-//    @Test
-//    void absoluteKeywordLocationEscapesUriFragmentWithoutDoubleEncoding() {
-//        PathSegment keyword = new PathSegment.Name(ROOT, "a b#%/~");
-//        ValidationResult.Detail detail = new ValidationResult.Detail(
-//                "custom", null, null, ROOT, keyword,
-//                URI.create("https://example.com/schema#/$defs/a%20b"));
-//        assertEquals("https://example.com/schema#/$defs/a%20b/a%20b%23%25~1~0",
-//                detail.getAbsoluteKeywordLocation());
-//    }
+        ValidationResult.Detail emptyFragment = new ValidationResult.Detail(
+                "type", null, null, ROOT, keyword, URI.create("https://example.com/schema#"));
+        assertEquals("https://example.com/schema#/properties/type",
+                emptyFragment.getAbsoluteKeywordLocation());
 
-//    @Test
-//    void absoluteKeywordLocationOmitsUnknownOrNonPointerLocations() {
-//        PathSegment keyword = new PathSegment.Name(ROOT, "type");
-//        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword, null)
-//                .getAbsoluteKeywordLocation());
-//        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword,
-//                URI.create("sjf4j:/schema-123")).getAbsoluteKeywordLocation());
-//        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword,
-//                URI.create("relative/schema")).getAbsoluteKeywordLocation());
-//        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword,
-//                URI.create("https://example.com/schema#myAnchor")).getAbsoluteKeywordLocation());
-//        assertNull(new ValidationResult.Detail("type", null, null, ROOT, null,
-//                URI.create("https://example.com/schema")).getAbsoluteKeywordLocation());
-//    }
+        ValidationResult.Detail nestedPointer = new ValidationResult.Detail(
+                "type", null, null, ROOT, keyword,
+                URI.create("https://example.com/schema#/$defs/entry"));
+        assertEquals("https://example.com/schema#/$defs/entry/properties/type",
+                nestedPointer.getAbsoluteKeywordLocation());
 
-//    @Test
-//    void absoluteKeywordLocationUsesNestedIdResourceNotParentPointer() {
-//        SchemaPlan plan = JsonSchema.fromJson(
-//                "{\"$id\":\"https://example.com/root\","
-//                        + "\"properties\":{\"value\":{\"$id\":\"https://example.com/child\","
-//                        + "\"type\":\"string\"}}}").createPlan();
-//        ValidationResult result = plan.validate(Map.of("value", 123));
-//        assertFalse(result.isValid());
-//        assertEquals("https://example.com/child#/type",
-//                result.getLastError().getAbsoluteKeywordLocation());
-//    }
+        ValidationResult.Detail root = new ValidationResult.Detail(
+                "false", null, null, ROOT, ROOT,
+                URI.create("https://example.com/schema#/$defs/entry"));
+        assertEquals("https://example.com/schema#/$defs/entry",
+                root.getAbsoluteKeywordLocation());
+    }
+
+    @Test
+    void absoluteKeywordLocationEscapesUriFragmentWithoutDoubleEncoding() {
+        PathSegment keyword = new PathSegment.Name(ROOT, "a b#%/~");
+        ValidationResult.Detail detail = new ValidationResult.Detail(
+                "custom", null, null, ROOT, keyword,
+                URI.create("https://example.com/schema#/$defs/a%20b"));
+        assertEquals("https://example.com/schema#/$defs/a%20b/a%20b%23%25~1~0",
+                detail.getAbsoluteKeywordLocation());
+    }
+
+    @Test
+    void absoluteKeywordLocationOmitsUnknownOrNonPointerLocations() {
+        PathSegment keyword = new PathSegment.Name(ROOT, "type");
+        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword, null)
+                .getAbsoluteKeywordLocation());
+        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword,
+                URI.create("sjf4j:/schema-123")).getAbsoluteKeywordLocation());
+        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword,
+                URI.create("relative/schema")).getAbsoluteKeywordLocation());
+        assertNull(new ValidationResult.Detail("type", null, null, ROOT, keyword,
+                URI.create("https://example.com/schema#myAnchor")).getAbsoluteKeywordLocation());
+        assertNull(new ValidationResult.Detail("type", null, null, ROOT, null,
+                URI.create("https://example.com/schema")).getAbsoluteKeywordLocation());
+    }
+
+    @Test
+    void absoluteKeywordLocationUsesNestedIdResourceNotParentPointer() {
+        SchemaPlan plan = JsonSchema.fromJson(
+                "{\"$id\":\"https://example.com/root\","
+                        + "\"properties\":{\"value\":{\"$id\":\"https://example.com/child\","
+                        + "\"type\":\"string\"}}}").createPlan();
+        ValidationResult result = plan.validate(Map.of("value", 123));
+        assertFalse(result.isValid());
+        assertEquals("https://example.com/child#/type",
+                result.getLastError().getAbsoluteKeywordLocation());
+    }
 
     @Test
     void contextOwnsLiveErrorListWithoutCopyingIt() {
