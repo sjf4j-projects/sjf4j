@@ -837,7 +837,7 @@ public final class SimpleJsonParser extends StreamingParser {
         _prepareToken();
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(false);
+            _scanNumber(false, Integer.MAX_VALUE);
             if (numberFraction || numberExponent || numberOverflow || numberValue < min || numberValue > max) {
                 throw new BindingException(error, _path());
             }
@@ -855,7 +855,7 @@ public final class SimpleJsonParser extends StreamingParser {
         _prepareToken();
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true);
+            _scanNumber(true, Integer.MAX_VALUE);
             // The JDK floating parsers are substantially faster than BigDecimal for
             // primitive conversion. They require a String, so this creates one
             // short-lived text object per float/double value, but avoids creating
@@ -881,7 +881,7 @@ public final class SimpleJsonParser extends StreamingParser {
         bufferedToken = null;
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true);
+            _scanNumber(true, Integer.MAX_VALUE);
             if (numberFraction || numberExponent) throw new BindingException("invalid BigInteger literal", _path());
             BigInteger value = new BigInteger(new String(numberBuffer, 0, numberLength));
             _checkValueEnd();
@@ -895,7 +895,7 @@ public final class SimpleJsonParser extends StreamingParser {
         bufferedToken = null;
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true);
+            _scanNumber(true, Integer.MAX_VALUE);
             BigDecimal value = new BigDecimal(numberBuffer, 0, numberLength);
             _checkValueEnd();
             return value;
@@ -1109,10 +1109,6 @@ public final class SimpleJsonParser extends StreamingParser {
     private boolean numberExponent;
 
     /** Scans JSON's number grammar and accumulates an integral value when possible. */
-    private void _scanNumber(boolean retainText) throws IOException {
-        _scanNumber(retainText, Integer.MAX_VALUE);
-    }
-
     private void _scanNumber(boolean retainText, int maxLength) throws IOException {
         numberLength = 0;
         numberValue = 0;
