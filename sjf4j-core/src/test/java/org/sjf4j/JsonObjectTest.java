@@ -828,6 +828,31 @@ class JsonObjectTest {
         assertEquals(1, copied.getInt("extra"));
     }
 
+    @Test
+    void computeIfAbsentDoesNotShadowWriteOnlyJojoProperty() {
+        AccessModeJojo jo = new AccessModeJojo();
+
+        assertEquals("computed", jo.computeIfAbsent("writeOnly", key -> "computed"));
+        assertEquals("computed", jo.peekWriteOnly());
+        assertFalse(jo.dynamicMembers().containsKey("writeOnly"));
+
+        // Without a getter the current value is unknown, so the mapping function runs again.
+        assertEquals("updated", Nodes.computeIfAbsentInObject(jo, "writeOnly", key -> "updated"));
+        assertEquals("updated", jo.peekWriteOnly());
+        assertFalse(jo.dynamicMembers().containsKey("writeOnly"));
+
+        assertNull(jo.computeIfAbsent("writeOnly", key -> null));
+        assertEquals("updated", jo.peekWriteOnly());
+        assertFalse(jo.dynamicMembers().containsKey("writeOnly"));
+
+        jo.setReadWrite("present");
+        assertEquals("present", jo.computeIfAbsent("readWrite", key -> {
+            throw new AssertionError("existing readable property must not be recomputed");
+        }));
+        assertEquals("dynamic", jo.computeIfAbsent("extra", key -> "dynamic"));
+        assertEquals("dynamic", jo.dynamicMembers().get("extra"));
+    }
+
     @Test public void testRemoveByPath() {
         JsonObject jo = JsonObject.fromJson("{\"a\":{\"b\":{\"c\":123}},\"array\":[1,2,3]}");
         

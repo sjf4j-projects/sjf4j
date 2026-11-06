@@ -683,6 +683,9 @@ public final class SimpleJsonParser extends StreamingParser {
     private static final int NUMBER_BUFFER_INITIAL_SIZE = 32;
     /** Do not retain an input-sized array after parsing an exceptional numeric value. */
     private static final int NUMBER_BUFFER_RETAIN_CAP = 1024;
+    // Keep aligned with the known Numbers.parseNumber() 100-character limit for generic reads.
+    // Explicit BigInteger/BigDecimal reads intentionally remain unrestricted.
+    private static final int MAX_GENERIC_NUMBER_LENGTH = 100;
     private final char[] inputBuffer;
     private int inputPos;
     private int inputLimit;
@@ -804,7 +807,7 @@ public final class SimpleJsonParser extends StreamingParser {
         bufferedToken = null;
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true);
+            _scanNumber(true, MAX_GENERIC_NUMBER_LENGTH);
             Number value;
             if (!numberFraction && !numberExponent && !numberOverflow) {
                 // _scanNumber has already decoded the entire integral literal.
@@ -834,7 +837,7 @@ public final class SimpleJsonParser extends StreamingParser {
         _prepareToken();
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(false);
+            _scanNumber(false, Integer.MAX_VALUE);
             if (numberFraction || numberExponent || numberOverflow || numberValue < min || numberValue > max) {
                 throw new BindingException(error, _path());
             }
@@ -852,7 +855,7 @@ public final class SimpleJsonParser extends StreamingParser {
         _prepareToken();
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true);
+            _scanNumber(true, Integer.MAX_VALUE);
             // The JDK floating parsers are substantially faster than BigDecimal for
             // primitive conversion. They require a String, so this creates one
             // short-lived text object per float/double value, but avoids creating
@@ -878,7 +881,7 @@ public final class SimpleJsonParser extends StreamingParser {
         bufferedToken = null;
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true);
+            _scanNumber(true, Integer.MAX_VALUE);
             if (numberFraction || numberExponent) throw new BindingException("invalid BigInteger literal", _path());
             BigInteger value = new BigInteger(new String(numberBuffer, 0, numberLength));
             _checkValueEnd();
@@ -892,7 +895,7 @@ public final class SimpleJsonParser extends StreamingParser {
         bufferedToken = null;
         _prepareValuePathUnchecked();
         try {
-            _scanNumber(true);
+            _scanNumber(true, Integer.MAX_VALUE);
             BigDecimal value = new BigDecimal(numberBuffer, 0, numberLength);
             _checkValueEnd();
             return value;
@@ -1106,7 +1109,7 @@ public final class SimpleJsonParser extends StreamingParser {
     private boolean numberExponent;
 
     /** Scans JSON's number grammar and accumulates an integral value when possible. */
-    private void _scanNumber(boolean retainText) throws IOException {
+    private void _scanNumber(boolean retainText, int maxLength) throws IOException {
         numberLength = 0;
         numberValue = 0;
         numberOverflow = false;
@@ -1115,16 +1118,16 @@ public final class SimpleJsonParser extends StreamingParser {
         int c = _peek();
         boolean negative = c == '-';
         if (c == '-') {
-            _numberChar(_read(), retainText);
+            _numberChar(_read(), retainText, maxLength);
             c = _peek();
         }
         if (c == '0') {
-            _numberDigit(_read(), negative, retainText);
+            _numberDigit(_read(), negative, retainText, maxLength);
             c = _peek();
             if (c >= '0' && c <= '9') throw _error("leading zero in number", c);
         } else if (c >= '1' && c <= '9') {
             do {
-                _numberDigit(_read(), negative, retainText);
+                _numberDigit(_read(), negative, retainText, maxLength);
                 c = _peek();
             } while (c >= '0' && c <= '9');
         } else {
@@ -1132,25 +1135,25 @@ public final class SimpleJsonParser extends StreamingParser {
         }
         if (c == '.') {
             numberFraction = true;
-            _numberChar(_read(), retainText);
+            _numberChar(_read(), retainText, maxLength);
             c = _peek();
             if (c < '0' || c > '9') throw _error("invalid fraction", c);
             do {
-                _numberChar(_read(), retainText);
+                _numberChar(_read(), retainText, maxLength);
                 c = _peek();
             } while (c >= '0' && c <= '9');
         }
         if (c == 'e' || c == 'E') {
             numberExponent = true;
-            _numberChar(_read(), retainText);
+            _numberChar(_read(), retainText, maxLength);
             c = _peek();
             if (c == '+' || c == '-') {
-                _numberChar(_read(), retainText);
+                _numberChar(_read(), retainText, maxLength);
                 c = _peek();
             }
             if (c < '0' || c > '9') throw _error("invalid exponent", c);
             do {
-                _numberChar(_read(), retainText);
+                _numberChar(_read(), retainText, maxLength);
                 c = _peek();
             } while (c >= '0' && c <= '9');
         }
@@ -1162,8 +1165,8 @@ public final class SimpleJsonParser extends StreamingParser {
         }
     }
 
-    private void _numberDigit(int c, boolean negative, boolean retainText) {
-        _numberChar(c, retainText);
+    private void _numberDigit(int c, boolean negative, boolean retainText, int maxLength) {
+        _numberChar(c, retainText, maxLength);
         int digit = c - '0';
         if (numberValue < (Long.MIN_VALUE + digit) / 10) {
             numberOverflow = true;
@@ -1172,8 +1175,11 @@ public final class SimpleJsonParser extends StreamingParser {
         }
     }
 
-    private void _numberChar(int c, boolean retainText) {
+    private void _numberChar(int c, boolean retainText, int maxLength) {
         if (!retainText) return;
+        if (numberLength >= maxLength) {
+            throw new BindingException("number literal exceeds " + maxLength + " characters", _path());
+        }
         if (numberLength == numberBuffer.length) {
             char[] next = new char[numberLength << 1];
             System.arraycopy(numberBuffer, 0, next, 0, numberLength);
