@@ -258,7 +258,6 @@ val officialAnnotationTest by tasks.registering(Test::class) {
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-        showStandardStreams = true
     }
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
     jvmArgs("-Xshare:off")
@@ -475,11 +474,14 @@ val coverageExecFiles = files(
     coverageProjects.map { project(it).layout.buildDirectory.file("jacoco/test.exec") } +
     layout.buildDirectory.file("jacoco/officialRuntimeTest.exec") +
     layout.buildDirectory.file("jacoco/officialAnnotationTest.exec") +
+    layout.buildDirectory.file("jacoco/officialCompiledTest.exec") +
     layout.buildDirectory.file("jacoco/test.exec")
 )
 
+// Coverage tasks run after every official suite; verification follows report generation.
 tasks.jacocoTestReport {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest + officialAnnotationTest)
+    dependsOn(coverageProjects.map { "$it:test" } +
+            tasks.test + officialRuntimeTest + officialAnnotationTest + officialCompiledTest)
     executionData(coverageExecFiles)
     reports {
         xml.required.set(true)
@@ -488,7 +490,7 @@ tasks.jacocoTestReport {
 }
 
 tasks.jacocoTestCoverageVerification {
-    dependsOn(coverageProjects.map { "$it:test" } + tasks.test + officialRuntimeTest + officialAnnotationTest)
+    dependsOn(tasks.jacocoTestReport)
     executionData(coverageExecFiles)
     violationRules {
         rule {
