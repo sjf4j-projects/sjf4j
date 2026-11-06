@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Stream;
 import java.util.HashSet;
@@ -20,10 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * Raw {@link ObjectSchema} entries are kept so referenced root schemas can be
  * compiled lazily and independent of load order. {@link SchemaPlan} entries are
- * cached by absolute resource URI after compilation. Fragment resolution stays
- * inside each compiled plan. The implementation is safe for concurrent access
- * at the map level, but root schema objects stored in the registry still carry
- * mutable retrieval-URI metadata.
+ * cached by absolute resource URI only after all deferred references bind.
+ * Recursive compilation may resolve staged plans on the compiling thread;
+ * other threads see published plans only. Fragment resolution stays inside each
+ * compiled plan. Root schema objects still carry mutable retrieval-URI metadata.
  * Lookup first checks local mappings and then the built-in global meta-schemas;
  * it does not fetch arbitrary remote resources.
  */
@@ -32,6 +33,12 @@ public class SchemaRegistry {
     private final Map<String, SchemaPlan> byIdPlans;
     private final Map<String, ObjectSchema> byIdSchemas;
     private final SchemaDialect defaultDialect;
+
+    // Guarded by the registry monitor. Recursive compilation resolves staged
+    // plans, but ordinary lookups cannot observe plans before refs are bound.
+    private Map<String, SchemaPlan> compilingPlans;
+    private int compilationDepth;
+    private boolean compilationFailed;
 
 
 
@@ -79,7 +86,7 @@ public class SchemaRegistry {
      * @throws SchemaException if no URI is available, the URI is not absolute,
      *                         or it conflicts with another resource
      */
-    public void index(URI retrievalUri, JsonSchema schema) {
+    public synchronized void index(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             _indexBoolean(retrievalUri, (BooleanSchema) schema, false);
@@ -114,7 +121,7 @@ public class SchemaRegistry {
      * built-in schemas remain fallback-only and do not block local indexing.
      * Boolean resources with a retrieval URI are indexed as plans.
      */
-    public void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
+    public synchronized void indexIfAbsent(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             _indexBoolean(retrievalUri, (BooleanSchema) schema, true);
@@ -211,7 +218,7 @@ public class SchemaRegistry {
      * Indexes a root schema if needed and returns its compiled root plan.
      * A missing or relative root URI without a retrieval base is rejected.
      */
-    public SchemaPlan register(URI retrievalUri, JsonSchema schema) {
+    public synchronized SchemaPlan register(URI retrievalUri, JsonSchema schema) {
         Asserts.notNull(schema, "schema");
         if (schema instanceof BooleanSchema) {
             if (retrievalUri == null) {
@@ -255,15 +262,44 @@ public class SchemaRegistry {
         }
     }
 
+    // Begin/end are invoked while holding this monitor by SchemaPlanner.
+    // Nested compilations share a single staging map and commit only when the
+    // outermost compilation has successfully bound every deferred reference.
+    void beginCompilation() {
+        if (compilationDepth++ == 0) {
+            compilingPlans = new HashMap<>();
+            compilationFailed = false;
+        }
+    }
+
+    void endCompilation(boolean success) {
+        if (!success) compilationFailed = true;
+        if (--compilationDepth == 0) {
+            boolean failed = compilationFailed;
+            if (!failed) byIdPlans.putAll(compilingPlans);
+            compilingPlans = null;
+            compilationFailed = false;
+            if (failed && success) {
+                throw new IllegalStateException("cannot publish plans after a nested schema compilation failure");
+            }
+        }
+    }
+
     /**
-     * Registers one URI mapping after validation checks.
+     * Registers a plan in the active compilation transaction, or directly
+     * when called outside compilation.
      *
      * @throws SchemaException on invalid URI shape or duplicate/conflicting map
      */
-    void putPlan(URI uri, SchemaPlan plan) {
+    synchronized void putPlan(URI uri, SchemaPlan plan) {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
-        SchemaPlan old = byIdPlans.putIfAbsent(id, plan);
+        SchemaPlan old = byIdPlans.get(id);
+        if (old == null) {
+            old = compilingPlans != null
+                    ? compilingPlans.putIfAbsent(id, plan)
+                    : byIdPlans.putIfAbsent(id, plan);
+        }
         if (old != null && old != plan) {
             throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
                     "duplicate schema uri '" + id + "'", PathSegment.Root.INSTANCE, uri));
@@ -313,22 +349,24 @@ public class SchemaRegistry {
         if (other == null) return new SchemaRegistry();
 
         SchemaRegistry registry = new SchemaRegistry(other.defaultDialect);
-        for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
-            SchemaPlan plan = entry.getValue();
-            SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
-            if (old != null && old != plan) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
-                        URI.create(entry.getKey())));
+        synchronized (other) {
+            for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
+                SchemaPlan plan = entry.getValue();
+                SchemaPlan old = registry.byIdPlans.putIfAbsent(entry.getKey(), plan);
+                if (old != null && old != plan) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                            "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
+                            URI.create(entry.getKey())));
+                }
             }
-        }
-        for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
-            ObjectSchema schema = entry.getValue();
-            ObjectSchema old = registry.byIdSchemas.putIfAbsent(entry.getKey(), schema);
-            if (old != null && old != schema) {
-                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
-                        "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
-                        URI.create(entry.getKey())));
+            for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
+                ObjectSchema schema = entry.getValue();
+                ObjectSchema old = registry.byIdSchemas.putIfAbsent(entry.getKey(), schema);
+                if (old != null && old != schema) {
+                    throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_CONFLICT,
+                            "duplicate schema uri '" + entry.getKey() + "'", PathSegment.Root.INSTANCE,
+                            URI.create(entry.getKey())));
+                }
             }
         }
         return registry;
@@ -417,7 +455,7 @@ public class SchemaRegistry {
      * {@code null} to produce context-specific messages for {@code $ref} and
      * {@code $dynamicRef}.
      */
-    SchemaPlan resolveFragment(SchemaPlan rootPlan, String fragment) {
+    synchronized SchemaPlan resolveFragment(SchemaPlan rootPlan, String fragment) {
         if (rootPlan == null || fragment == null || fragment.isEmpty()) return rootPlan;
         if (rootPlan.byAnchorPlans == null || rootPlan.byPathPlans == null) return null;
         SchemaPlan plan = rootPlan.byAnchorPlans.get(fragment);
@@ -437,9 +475,10 @@ public class SchemaRegistry {
      * as fallback. This preserves custom registry overrides and avoids remote or
      * filesystem loading beyond schemas explicitly indexed in the registry.
      */
-    private SchemaPlan _resolveResource(String id, boolean allowBuild) {
+    private synchronized SchemaPlan _resolveResource(String id, boolean allowBuild) {
         id = SchemaUtil.normalizeUriKey(id);
         SchemaPlan plan = byIdPlans.get(id);
+        if (plan == null && compilingPlans != null) plan = compilingPlans.get(id);
         if (plan != null) return plan;
 
         if (allowBuild) {

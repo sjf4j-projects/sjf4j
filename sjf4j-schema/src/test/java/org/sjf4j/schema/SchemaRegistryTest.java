@@ -19,6 +19,80 @@ class SchemaRegistryTest {
     }
 
     @Test
+    void failedReferenceBindingDoesNotPublishRootAliasesOrNestedResources() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI retrieval = URI.create("https://example.test/atomic/input.json");
+        URI root = URI.create("https://example.test/atomic/root.json");
+        URI nested = URI.create("https://example.test/atomic/nested.json");
+        ObjectSchema schema = (ObjectSchema) JsonSchema.fromJson("{"
+                + "\"$id\":\"root.json\","
+                + "\"$defs\":{\"nested\":{\"$id\":\"nested.json\",\"type\":\"string\"}},"
+                + "\"$ref\":\"missing.json\""
+                + "}");
+        registry.index(retrieval, schema);
+
+        assertThrows(SchemaException.class, () -> registry.resolve(root));
+        assertNull(registry.resolveBuilt(root));
+        assertNull(registry.resolveBuilt(retrieval));
+        assertNull(registry.resolveBuilt(nested));
+
+        registry.index(JsonSchema.fromJson("{"
+                + "\"$id\":\"https://example.test/atomic/missing.json\","
+                + "\"type\":\"string\""
+                + "}"));
+        SchemaPlan bound = registry.resolve(retrieval);
+        org.junit.jupiter.api.Assertions.assertSame(bound, registry.resolve(root));
+        assertTrue(bound.isValid("ok"));
+        assertFalse(bound.isValid(123));
+    }
+
+    @Test
+    void lazyFragmentBindingFailureRestoresPublishedFragmentIndexes() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI root = URI.create("https://example.test/lazy/root.json");
+        URI nested = URI.create("https://example.test/lazy/nested.json");
+        registry.index(JsonSchema.fromJson("{"
+                + "\"$id\":\"https://example.test/lazy/root.json\","
+                + "\"x-subschema\":{\"$id\":\"nested.json\",\"$ref\":\"missing.json\"}"
+                + "}"));
+        SchemaPlan plan = registry.resolve(root);
+
+        assertThrows(SchemaException.class,
+                () -> registry.resolve(URI.create(root + "#/x-subschema")));
+        assertFalse(plan.byPathPlans.containsKey("/x-subschema"));
+        assertNull(registry.resolveBuilt(nested));
+
+        registry.index(JsonSchema.fromJson("{"
+                + "\"$id\":\"https://example.test/lazy/missing.json\","
+                + "\"type\":\"string\""
+                + "}"));
+        SchemaPlan resolved = registry.resolve(URI.create(root + "#/x-subschema"));
+        assertTrue(resolved.isValid("value"));
+        assertFalse(resolved.isValid(42));
+    }
+
+    @Test
+    void recursiveCrossResourceReferencesBindBeforePublication() {
+        SchemaRegistry registry = new SchemaRegistry();
+        URI first = URI.create("https://example.test/cycle/a.json");
+        URI second = URI.create("https://example.test/cycle/b.json");
+        registry.index(JsonSchema.fromJson("{"
+                + "\"$id\":\"https://example.test/cycle/a.json\","
+                + "\"$ref\":\"b.json\""
+                + "}"));
+        registry.index(JsonSchema.fromJson("{"
+                + "\"$id\":\"https://example.test/cycle/b.json\","
+                + "\"$ref\":\"a.json\""
+                + "}"));
+
+        SchemaPlan plan = registry.resolve(first);
+        assertNotNull(plan);
+        org.junit.jupiter.api.Assertions.assertSame(plan, registry.resolve(first));
+        assertNotNull(registry.resolve(second));
+        assertThrows(org.sjf4j.exception.NodeException.class, () -> plan.isValid("value"));
+    }
+
+    @Test
     void resolvedPlansExposeCanonicalSchemaNodesAndLocations() {
         SchemaRegistry registry = new SchemaRegistry();
         URI retrieval = URI.create("classpath:/schemas/entry.json");
