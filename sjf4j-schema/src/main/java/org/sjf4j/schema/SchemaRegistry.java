@@ -258,11 +258,6 @@ public class SchemaRegistry {
         }
     }
 
-    /**
-     * Registers one URI mapping after validation checks.
-     *
-     * @throws SchemaException on invalid URI shape or duplicate/conflicting map
-     */
     /** Starts staging only for the outermost build on this thread. */
     boolean beginCompilation() {
         if (pendingPlans.get() != null) return false;
@@ -291,6 +286,7 @@ public class SchemaRegistry {
         }
     }
 
+    /** Registers a plan, checking URI conflicts against pending and published entries. */
     void putPlan(URI uri, SchemaPlan plan) {
         _checkUri(uri);
         String id = SchemaUtil.normalizeUriKey(uri);
