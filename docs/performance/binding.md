@@ -9,6 +9,8 @@ so regular tests can reuse them.
 
 - **JDK 25** is the only primary baseline. Record the exact vendor and patch version.
 - Exactly two profiles: **Quick** for diagnostics and **Full** for release baselines.
+  They execute the **same backend/implementation/model/shape/size/seed matrix**;
+  only JMH fork, warmup and measurement configurations differ.
 - **Suite version: 2**. Native and Blackbird were added to the comparison matrix.
   Changes to generator, workload, target semantics, or measurement boundary
   must bump this version. Do not compare incompatible versions directly.
@@ -43,14 +45,17 @@ Edit their local default JMH arguments to choose a backend, implementation,
 model, shape or seed. The default selects Jackson 2 (all four modes). Supplied
 command-line arguments override these defaults.
 
-| | Quick | Full |
+**Both profiles use identical cases:** all 7 backends; Runtime / Compiled
+for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML
+Map; Blackbird for Jackson2 and Jackson3; Users / Clients; POJO / Map;
+1/10/100KB; seeds 12345 and 324.
+
+| JMH setting | Quick | Full |
 | --- | --- | --- |
-| Backends | Jackson2, Fastjson2, SnakeYAML | All 7 |
-| Implementations | Runtime / Compiled; Native for Jackson2/Fastjson2; Blackbird for Jackson2 | Runtime / Compiled everywhere; Native for Jackson2/3, Fastjson2, Gson and SnakeYAML Map; Blackbird for Jackson2/3 |
-| Model | Users / Clients | Users / Clients |
-| Shape | POJO | POJO / Map |
-| Data | 1/10KB, seed 12345 | 1/10/100KB, seeds 12345/324 |
-| JMH | 1 fork, 3×0.5s warmup + 3×0.5s measure | 3 forks, 5×0.4s warmup + 5×0.4s measure |
+| Forks | 1 | 3 |
+| Warmup | 2 × 0.2s | 5 × 0.4s |
+| Measurement | 2 × 0.2s | 5 × 0.4s |
+| Cases, models, inputs | Same | Same |
 
 The runner emits **one JMH JSON per valid group** and a companion metadata
 Markdown listing all produced files under `build/performance/binding/` (optional

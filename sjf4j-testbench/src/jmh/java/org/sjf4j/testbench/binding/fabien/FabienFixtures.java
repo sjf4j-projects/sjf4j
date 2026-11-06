@@ -58,7 +58,28 @@ final class FabienFixtures {
         Object value = "snake".equals(fixture.backend)
                 ? YAML.readNode(output, Map.class)
                 : JSON.readValue(output, Map.class);
-        verify(label, fixture.value, value);
+
+        // Verify POJO output as the declared Java model, not as the textual
+        // intermediate representation. OffsetDateTime may serialize equivalent
+        // fractional seconds as .12345678 or .123456780; both deserialize to
+        // the same value. Keep Map verification lexical/structural instead.
+        if (fixture.value instanceof Clients) {
+            Clients actual = JSON.convertValue(value, Clients.class);
+            if (!fixture.value.equals(actual)) {
+                throw new IllegalStateException("Fabien POJO output differs: " + label
+                        + "\nexpected: " + JSON.valueToTree(fixture.value)
+                        + "\nactual: " + JSON.valueToTree(actual));
+            }
+        } else if (fixture.value instanceof Users) {
+            Users actual = JSON.convertValue(value, Users.class);
+            if (!fixture.value.equals(actual)) {
+                throw new IllegalStateException("Fabien POJO output differs: " + label
+                        + "\nexpected: " + JSON.valueToTree(fixture.value)
+                        + "\nactual: " + JSON.valueToTree(actual));
+            }
+        } else {
+            verify(label, fixture.value, value);
+        }
     }
 
     static final class Fixture {

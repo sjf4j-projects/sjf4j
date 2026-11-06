@@ -77,19 +77,16 @@ COMMON=(
   -rf json -prof gc -t 1
 )
 
+# Quick and Full use exactly the same workloads and implementations.
+# Only JMH warmup / measurement / fork settings differ.
+SIZE_COUNT=3
+SEED_COUNT=2
 if [[ "$PROFILE" == "quick" ]]; then
-  SIZE_COUNT=2
-  SEED_COUNT=1
-  ARGS=(-p sizeKb=1,10
-        -p seed=12345
-        -f 1 -wi 3 -i 3 -w 500ms -r 500ms)
+  ARGS=(-f 1 -wi 2 -i 2 -w 200ms -r 200ms)
 else
-  SIZE_COUNT=3
-  SEED_COUNT=2
-  ARGS=(-p sizeKb=1,10,100
-        -p seed=12345,324
-        -f 3 -wi 5 -i 5 -w 400ms -r 400ms)
+  ARGS=(-f 3 -wi 5 -i 5 -w 400ms -r 400ms)
 fi
+COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324)
 
 run_group() {
   local group="$1" backends="$2" modes="$3" shapes="$4"
@@ -123,17 +120,13 @@ run_group() {
   echo "- $group: $(basename "$result") (backend=$backends, implementation=$modes, shape=$shapes)" >> "$META"
 }
 
-if [[ "$PROFILE" == "quick" ]]; then
-  run_group jackson jackson2 runtime,compiled,native,blackbird pojo
-  run_group fastjson2 fastjson2 runtime,compiled,native pojo
-  run_group yaml snake runtime,compiled pojo
-else
-  run_group jackson jackson2,jackson3 runtime,compiled,native,blackbird pojo,map
-  run_group native-json fastjson2,gson runtime,compiled,native pojo,map
-  run_group jsonp-simple jsonp,simple runtime,compiled pojo,map
-  run_group yaml snake runtime,compiled pojo,map
-  run_group yaml-native snake native map
-fi
+# Every group runs in both profiles, including all seven backends
+# and SnakeYAML's native Map route.
+run_group jackson jackson2,jackson3 runtime,compiled,native,blackbird pojo,map
+run_group native-json fastjson2,gson runtime,compiled,native pojo,map
+run_group jsonp-simple jsonp,simple runtime,compiled pojo,map
+run_group yaml snake runtime,compiled pojo,map
+run_group yaml-native snake native map
 
 echo "Raw JMH JSON files in: $OUT_DIR"
 echo "Environment and result index: $META"

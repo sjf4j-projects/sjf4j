@@ -58,6 +58,7 @@ dependencies {
     testImplementation("ch.qos.logback:logback-classic:1.5.34")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.3")
     testImplementation("com.h2database:h2:2.3.232")
     testImplementation("org.springframework:spring-jdbc:6.2.19")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
