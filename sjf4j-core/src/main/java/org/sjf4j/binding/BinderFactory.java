@@ -54,14 +54,14 @@ public final class BinderFactory {
     /**
      * Returns the selected JSON binder provider.
      */
-    public static BinderProvider jsonBinderProvider() {
+    public static BinderProvider jsonProvider() {
         return provider(Format.JSON);
     }
 
     /**
      * Returns the selected YAML binder provider.
      */
-    public static BinderProvider yamlBinderProvider() {
+    public static BinderProvider yamlProvider() {
         return provider(Format.YAML);
     }
 

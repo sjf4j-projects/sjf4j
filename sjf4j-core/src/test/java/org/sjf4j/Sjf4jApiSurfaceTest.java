@@ -32,7 +32,7 @@ class Sjf4jApiSurfaceTest {
     @BeforeEach
     void setUp() {
         sjf4j = Sjf4j.builder()
-                .jsonBinderProvider(BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new))
+                .jsonProvider(BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new))
                 .build();
     }
 
@@ -43,7 +43,7 @@ class Sjf4jApiSurfaceTest {
 
     @Test
     void coversJsonYamlNodeAndPropertiesOperations() {
-        assertEquals(Format.JSON, sjf4j.jsonBinderProvider().format());
+        assertEquals(Format.JSON, sjf4j.jsonProvider().format());
         String json = "{\"name\":\"Alice\",\"age\":30,\"tags\":[\"x\",\"y\"]}";
         JsonObject fromString = sjf4j.fromJson(json, JsonObject.class);
         JsonObject fromReader = sjf4j.fromJson(new StringReader(json), JsonObject.class);

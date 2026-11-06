@@ -31,19 +31,19 @@ public class WithArgsCreatorTest {
     private Sjf4j sjf4j = Sjf4j.global();
 
     private void useSimpleJson() {
-        sjf4j = Sjf4j.builder().jsonBinderProvider(SIMPLE_JSON).build();
+        sjf4j = Sjf4j.builder().jsonProvider(SIMPLE_JSON).build();
     }
 
     private void useJackson2() {
-        sjf4j = Sjf4j.builder().jsonBinderProvider(new Jackson2BinderProvider()).build();
+        sjf4j = Sjf4j.builder().jsonProvider(new Jackson2BinderProvider()).build();
     }
 
     private void useGson() {
-        sjf4j = Sjf4j.builder().jsonBinderProvider(new GsonBinderProvider()).build();
+        sjf4j = Sjf4j.builder().jsonProvider(new GsonBinderProvider()).build();
     }
 
     private void useFastjson2() {
-        sjf4j = Sjf4j.builder().jsonBinderProvider(new Fastjson2BinderProvider()).build();
+        sjf4j = Sjf4j.builder().jsonProvider(new Fastjson2BinderProvider()).build();
     }
 
 

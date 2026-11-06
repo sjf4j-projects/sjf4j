@@ -19,7 +19,7 @@ public class RecordTest {
 
     @Test
     public void recordComponentAliasIsReadAndWrittenUsingPrimaryName() {
-        Sjf4j sjf4j = Sjf4j.builder().jsonBinderProvider(SIMPLE_JSON).build();
+        Sjf4j sjf4j = Sjf4j.builder().jsonProvider(SIMPLE_JSON).build();
 
         Person person = sjf4j.fromJson("{\"legacyName\":\"han\",\"age\":7}", Person.class);
 
@@ -35,7 +35,7 @@ public class RecordTest {
     // Direct source: creators/CreatorNullPrimitivesTest#testRecordAbsentPrimitivesShouldDefault.
     @Test
     public void creatorRecordAbsentPrimitivesUseJavaDefaults() {
-        Sjf4j sjf4j = Sjf4j.builder().jsonBinderProvider(SIMPLE_JSON).build();
+        Sjf4j sjf4j = Sjf4j.builder().jsonProvider(SIMPLE_JSON).build();
         PrimitiveRecord record = sjf4j.fromJson("{\"second\":42,\"enabled\":true}", PrimitiveRecord.class);
         assertEquals(0, record.first());
         assertEquals(42, record.second());

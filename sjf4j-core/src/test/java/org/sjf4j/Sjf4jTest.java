@@ -35,7 +35,7 @@ public class Sjf4jTest {
 
     @Test
     void testExplicitJsonBinderCreatesIsolatedRuntime() {
-        Sjf4j first = Sjf4j.builder().jsonBinderProvider(SIMPLE_JSON).build();
+        Sjf4j first = Sjf4j.builder().jsonProvider(SIMPLE_JSON).build();
         Sjf4j second = Sjf4j.builder().build();
 
         assertNotSame(first.jsonBinder(), second.jsonBinder());
@@ -148,7 +148,7 @@ public class Sjf4jTest {
     @Test
     void testBuilderCreatesUsableRuntime() {
         Sjf4j runtime = Sjf4j.builder()
-                .jsonBinderProvider(SIMPLE_JSON)
+                .jsonProvider(SIMPLE_JSON)
                 .build();
 
         JsonObject user = runtime.fromJson("{\"name\":\"han\",\"age\":18}", JsonObject.class);
@@ -260,7 +260,7 @@ public class Sjf4jTest {
         long epochMillis = instant.toEpochMilli();
 
         Sjf4j runtime = Sjf4j.builder()
-                .jsonBinderProvider(SIMPLE_JSON)
+                .jsonProvider(SIMPLE_JSON)
                 .valueFormat(Instant.class, "epochMillis")
                 .build();
 
@@ -277,7 +277,7 @@ public class Sjf4jTest {
 
         Sjf4j runtime = Sjf4j.builder()
                 .valueFormat(Instant.class, "epochMillis")
-                .jsonBinderProvider(SIMPLE_JSON)
+                .jsonProvider(SIMPLE_JSON)
                 .build();
 
         assertEquals(String.valueOf(epochMillis), runtime.toJsonString(instant));
@@ -290,7 +290,7 @@ public class Sjf4jTest {
         long epochMillis = instant.toEpochMilli();
 
         Sjf4j runtime = Sjf4j.builder()
-                .jsonBinderProvider(SIMPLE_JSON)
+                .jsonProvider(SIMPLE_JSON)
                 .valueFormat(Instant.class, "epochMillis")
                 .build();
 
@@ -305,7 +305,7 @@ public class Sjf4jTest {
 
         Sjf4j runtime = Sjf4j.builder()
                 .includeNulls(false)
-                .jsonBinderProvider(SIMPLE_JSON)
+                .jsonProvider(SIMPLE_JSON)
                 .build();
 
         JsonObject json = runtime.fromJson(runtime.toJsonString(holder), JsonObject.class);
@@ -320,7 +320,7 @@ public class Sjf4jTest {
 
         Sjf4j base = Sjf4j.builder()
                 .includeNulls(false)
-                .jsonBinderProvider(SIMPLE_JSON)
+                .jsonProvider(SIMPLE_JSON)
                 .build();
         Sjf4j derived = Sjf4j.builder(base).build();
 

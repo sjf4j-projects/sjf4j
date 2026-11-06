@@ -3,6 +3,7 @@ package org.sjf4j.testbench.binding.compiled;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.reader.ObjectReaderProvider;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
@@ -64,7 +65,8 @@ public class CompiledReadBenchmark {
     public static final byte[] JSON_UTF8 = User.JSON_DATA.getBytes(StandardCharsets.UTF_8);
 
     private static final ObjectMapper JACKSON2_NATIVE = new ObjectMapper()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
     private static final ObjectMapper JACKSON2_BLACKBIRD = new ObjectMapper()
             .registerModule(new BlackbirdModule())
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

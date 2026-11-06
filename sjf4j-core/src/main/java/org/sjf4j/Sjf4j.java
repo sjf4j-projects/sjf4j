@@ -41,8 +41,8 @@ public final class Sjf4j {
     private static final Sjf4j GLOBAL = new Builder().build();
 
     private final RuntimeContext runtimeContext;
-    private final BinderProvider jsonBinderProvider;
-    private final BinderProvider yamlBinderProvider;
+    private final BinderProvider jsonProvider;
+    private final BinderProvider yamlProvider;
 
     private final Binder<?, ?> jsonBinder;
     private final Binder<?, ?> yamlBinder;
@@ -58,13 +58,13 @@ public final class Sjf4j {
     private Sjf4j(Builder builder) {
         this.runtimeContext = new RuntimeContext(builder.valueFormats, builder.includeNulls);
 
-        this.jsonBinderProvider = builder.jsonBinderProvider == null
-                ? BinderFactory.jsonBinderProvider() : builder.jsonBinderProvider;
-        this.jsonBinder = jsonBinderProvider.create(this.runtimeContext);
+        this.jsonProvider = builder.jsonProvider == null
+                ? BinderFactory.jsonProvider() : builder.jsonProvider;
+        this.jsonBinder = jsonProvider.create(this.runtimeContext);
 
-        this.yamlBinderProvider = builder.yamlBinderProvider == null
-                ? BinderFactory.yamlBinderProvider() : builder.yamlBinderProvider;
-        this.yamlBinder = yamlBinderProvider.create(this.runtimeContext);
+        this.yamlProvider = builder.yamlProvider == null
+                ? BinderFactory.yamlProvider() : builder.yamlProvider;
+        this.yamlBinder = yamlProvider.create(this.runtimeContext);
 
         this.propertiesBinder = builder.propertiesBinder == null
                 ? new SimplePropertiesBinder() : builder.propertiesBinder;
@@ -107,8 +107,8 @@ public final class Sjf4j {
     /**
      * Returns the JSON binder provider used by this runtime.
      */
-    public BinderProvider jsonBinderProvider() {
-        return jsonBinderProvider;
+    public BinderProvider jsonProvider() {
+        return jsonProvider;
     }
 
     /**
@@ -460,8 +460,8 @@ public final class Sjf4j {
      * shared {@link Sjf4j#global()} instance.
      */
     public static final class Builder {
-        private BinderProvider jsonBinderProvider;
-        private BinderProvider yamlBinderProvider;
+        private BinderProvider jsonProvider;
+        private BinderProvider yamlProvider;
         private PropertiesBinder propertiesBinder;
 
         private final Map<Class<?>, String> valueFormats = new LinkedHashMap<>();
@@ -480,8 +480,8 @@ public final class Sjf4j {
          */
         public Builder(Sjf4j sjf4j) {
             Asserts.notNull(sjf4j, "sjf4j");
-            this.jsonBinderProvider = sjf4j.jsonBinderProvider;
-            this.yamlBinderProvider = sjf4j.yamlBinderProvider;
+            this.jsonProvider = sjf4j.jsonProvider;
+            this.yamlProvider = sjf4j.yamlProvider;
             this.propertiesBinder = sjf4j.propertiesBinder;
             sjf4j.runtimeContext.copyValueFormatsTo(this.valueFormats);
             this.includeNulls = sjf4j.runtimeContext.includeNulls;
@@ -493,26 +493,26 @@ public final class Sjf4j {
          * This controls which JSON backend implementation the instance uses, such as
          * Jackson, Gson, Fastjson2, or a custom binder.
          */
-        public Builder jsonBinderProvider(BinderProvider provider) {
+        public Builder jsonProvider(BinderProvider provider) {
             Asserts.notNull(provider, "provider");
             if (!Format.JSON.equals(provider.format())) {
                 throw new IllegalArgumentException(
                         "expected JSON binder provider, but format was '" + provider.format() + "'");
             }
-            this.jsonBinderProvider = provider;
+            this.jsonProvider = provider;
             return this;
         }
 
         /**
          * Overrides the provider used to create the runtime YAML binder.
          */
-        public Builder yamlBinderProvider(BinderProvider provider) {
+        public Builder yamlProvider(BinderProvider provider) {
             Asserts.notNull(provider, "provider");
             if (!Format.YAML.equals(provider.format())) {
                 throw new IllegalArgumentException(
                         "expected YAML binder provider, but format was '" + provider.format() + "'");
             }
-            this.yamlBinderProvider = provider;
+            this.yamlProvider = provider;
             return this;
         }
 

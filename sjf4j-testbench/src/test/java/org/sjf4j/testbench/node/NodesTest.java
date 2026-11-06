@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class NodesTest {
 
     private final Sjf4j sjf4j = Sjf4j.builder()
-            .jsonBinderProvider(BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new))
+            .jsonProvider(BinderProvider.of(Format.JSON, 0, SimpleJsonBinder::new))
             .build();
 
     record PlainRecord(String msg, LocalDate date) {}
