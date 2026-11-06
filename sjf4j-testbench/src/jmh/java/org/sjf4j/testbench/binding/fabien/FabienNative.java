@@ -16,6 +16,15 @@ import com.google.gson.stream.JsonWriter;
 import org.sjf4j.testbench.model.fabien.Users;
 import org.sjf4j.testbench.model.fabien.Clients;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.LoaderOptions;
+import org.yaml.snakeyaml.constructor.AbstractConstruct;
+import org.yaml.snakeyaml.constructor.Construct;
+import org.yaml.snakeyaml.constructor.Constructor;
+import org.yaml.snakeyaml.nodes.Node;
+import org.yaml.snakeyaml.nodes.ScalarNode;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayInputStream;
@@ -25,14 +34,15 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Direct library binding baselines, with no SJF4J code on the measured path.
  * Native and Blackbird are deliberately different implementations.
  *
  * JSON-P's native JsonValue is not Java Map/POJO binding, and Simple has no
- * external native implementation. SnakeYAML native is Map-only: its bean
- * construction does not have matching Java-time/UUID semantics for Clients.
+ * external native implementation. SnakeYAML POJO binding uses a purpose-built
+ * native SnakeYAML Constructor/Representer for java.time and UUID fields.
  */
 final class FabienNative {
     private FabienNative() {}
@@ -72,6 +82,54 @@ final class FabienNative {
             })
             .create();
     private static final Yaml SNAKE = new Yaml();
+    private static final Yaml SNAKE_POJO = snakePojo();
+
+    private static Yaml snakePojo() {
+        DumperOptions options = new DumperOptions();
+        Representer representer = new Representer(options) {
+            {
+                addClassTag(Users.class, Tag.MAP);
+                addClassTag(Users.User.class, Tag.MAP);
+                addClassTag(Users.Friend.class, Tag.MAP);
+                addClassTag(Clients.class, Tag.MAP);
+                addClassTag(Clients.Client.class, Tag.MAP);
+                addClassTag(Clients.Partner.class, Tag.MAP);
+                representers.put(UUID.class, node -> representScalar(Tag.STR, node.toString()));
+                representers.put(LocalDate.class, node -> representScalar(Tag.STR, node.toString()));
+                representers.put(OffsetDateTime.class, node -> representScalar(Tag.STR, node.toString()));
+            }
+        };
+        return new Yaml(new FabienYamlConstructor(), representer, options);
+    }
+
+    private static final class FabienYamlConstructor extends Constructor {
+        private final Construct uuid = new AbstractConstruct() {
+            @Override public Object construct(Node node) {
+                return UUID.fromString(((ScalarNode) node).getValue());
+            }
+        };
+        private final Construct date = new AbstractConstruct() {
+            @Override public Object construct(Node node) {
+                return LocalDate.parse(((ScalarNode) node).getValue());
+            }
+        };
+        private final Construct dateTime = new AbstractConstruct() {
+            @Override public Object construct(Node node) {
+                return OffsetDateTime.parse(((ScalarNode) node).getValue());
+            }
+        };
+
+        FabienYamlConstructor() {
+            super(new LoaderOptions());
+        }
+
+        @Override protected Construct getConstructor(Node node) {
+            if (node.getType() == UUID.class) return uuid;
+            if (node.getType() == LocalDate.class) return date;
+            if (node.getType() == OffsetDateTime.class) return dateTime;
+            return super.getConstructor(node);
+        }
+    }
 
     private static ObjectMapper jackson2(boolean blackbird) {
         ObjectMapper mapper = new ObjectMapper()
@@ -103,8 +161,10 @@ final class FabienNative {
                     new InputStreamReader(new ByteArrayInputStream(input), StandardCharsets.UTF_8),
                     type);
             case "snake":
-                if (!"map".equals(shape)) throw unsupported(backend, implementation, shape);
-                return input -> SNAKE.load(new String(input, StandardCharsets.UTF_8));
+                if ("map".equals(shape)) {
+                    return input -> SNAKE.load(new String(input, StandardCharsets.UTF_8));
+                }
+                return input -> SNAKE_POJO.loadAs(new String(input, StandardCharsets.UTF_8), type);
             default: throw unsupported(backend, implementation, shape);
         }
     }
@@ -127,8 +187,8 @@ final class FabienNative {
             case "fastjson2": return node -> JSON.toJSONBytes(node, JSONWriter.Feature.WriteNulls);
             case "gson": return node -> GSON.toJson(node).getBytes(StandardCharsets.UTF_8);
             case "snake":
-                if (!"map".equals(shape)) throw unsupported(backend, implementation, shape);
-                return node -> SNAKE.dump(node).getBytes(StandardCharsets.UTF_8);
+                return node -> ("map".equals(shape) ? SNAKE : SNAKE_POJO)
+                        .dump(node).getBytes(StandardCharsets.UTF_8);
             default: throw unsupported(backend, implementation, shape);
         }
     }
@@ -138,7 +198,7 @@ final class FabienNative {
         return new IllegalArgumentException("Unsupported Fabien binding combination: backend="
                 + backend + ", implementation=" + implementation + ", shape=" + shape
                 + ". Blackbird requires Jackson2/3; native is unavailable for JSON-P/Simple"
-                + " and for SnakeYAML POJO. Select a supported combination in main or the"
+                + ". Select a supported combination in main or the"
                 + " Quick/Full benchmark script.");
     }
 }

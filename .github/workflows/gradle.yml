@@ -51,6 +51,24 @@ jobs:
     - name: Compile JMH benchmarks
       run: ./gradlew :sjf4j-testbench:jmhJar
 
+    # This is a correctness smoke, not performance data: GitHub runners are
+    # noisy. Cover both read/write of SnakeYAML native Users/Clients POJO/Map.
+    - name: Smoke-check native YAML binding
+      run: |
+        JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+        test -n "$JAR"
+        java -jar "$JAR" \
+          'org.sjf4j.testbench.binding.fabien.Fabien(ReadBenchmark.read|WriteBenchmark.write)' \
+          -p backend=snake -p implementation=native \
+          -p model=users,clients -p shape=pojo,map -p sizeKb=10 -p seed=12345 \
+          -f 0 -wi 0 -i 1 -r 100ms -t 1 -rf json -rff /tmp/fabien-yaml-smoke.json
+        python3 - <<'PY'
+        import json
+        with open('/tmp/fabien-yaml-smoke.json') as f:
+            scores = json.load(f)
+        assert len(scores) == 8, f"Expected 8 YAML native JMH results, got {len(scores)}"
+        PY
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |

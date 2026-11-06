@@ -25,8 +25,9 @@ so regular tests can reuse them.
   UTF-8 decoding/encoding because its API is character-oriented.
 - JSON-P's native result is a JsonValue tree, **not** an equivalent Java POJO/Map
   binder; Simple has no external native library. Neither gets a misleading
-  native score in this matrix. SnakeYAML native is only measured for **Map**:
-  its native POJO construction lacks equivalent Java-time/UUID behavior.
+  native score in this matrix. SnakeYAML native covers **POJO and Map**: POJO uses a native
+  SnakeYAML Constructor/Representer configured for UUID and Java-time fields
+  without invoking any SJF4J mapping code in the timed operation.
 - YAML and JSON use different textual input: compare within a given backend
   and workload, not as a claim that the formats have equal complexity.
 - Incompatible backend/implementation combinations intentionally fail early.
@@ -46,8 +47,7 @@ model, shape or seed. The default selects Jackson 2 (all four modes). Supplied
 command-line arguments override these defaults.
 
 **Both profiles use identical cases:** all 7 backends; Runtime / Compiled
-for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML
-Map; Blackbird for Jackson2 and Jackson3; Users / Clients; POJO / Map;
+for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML; Blackbird for Jackson2 and Jackson3; Users / Clients; POJO / Map;
 1/10/100KB; seeds 12345 and 324.
 
 | JMH setting | Quick | Full |

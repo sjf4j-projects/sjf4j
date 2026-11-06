@@ -126,7 +126,7 @@ run_group jackson jackson2,jackson3 runtime,compiled,native,blackbird pojo,map
 run_group native-json fastjson2,gson runtime,compiled,native pojo,map
 run_group jsonp-simple jsonp,simple runtime,compiled pojo,map
 run_group yaml snake runtime,compiled pojo,map
-run_group yaml-native snake native map
+run_group yaml-native snake native pojo,map
 
 echo "Raw JMH JSON files in: $OUT_DIR"
 echo "Environment and result index: $META"
