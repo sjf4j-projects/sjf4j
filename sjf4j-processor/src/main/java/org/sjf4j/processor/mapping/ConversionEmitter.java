@@ -958,9 +958,9 @@ public final class ConversionEmitter
     private String emitCodecRaw(JavaWriter out, NameAllocator names, TypeMirror targetType, String source) {
 
         String result = names.newName("raw");
-        out.line(localType(targetType) + " " + result + " = ("
-                + localType(targetType) + ") org.sjf4j.node.NodeMapper.convertToRaw("
-                + source + ", this.context);");
+        out.line(localType(targetType) + " " + result + " = "
+                + cast(targetType, "org.sjf4j.node.NodeMapper.convertToRaw("
+                        + source + ", this.context)") + ";");
         return result;
     }
 
