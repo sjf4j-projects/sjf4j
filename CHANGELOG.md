@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed redundant casts in generated Binder, Mapper, JDBC Mapper, and Navigator implementations so generated Java also compiles under `-Xlint:cast -Werror`.
 
 
-## [1.5.0] - 2026.11.03
+## [1.5.0] - 2026.11.07
 
 SJF4J 1.5.0 is a major architectural overhaul focused on **unified structural processing, high-performance streaming binding, and compile-time code generation**.
 
