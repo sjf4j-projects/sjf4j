@@ -839,15 +839,10 @@ public final class MappingEmitter {
                                     "()";
                 }
 
-                out.line(
-                        targetType +
-                                " " +
-                                target +
-                                " = (" +
-                                targetType +
-                                ") " +
-                                call +
-                                ";");
+                String cast = context.typeUtils.isAssignable(
+                        factory.getReturnType(), creation.targetType())
+                        ? "" : "(" + targetType + ") ";
+                out.line(targetType + " " + target + " = " + cast + call + ";");
 
                 return target;
             }

@@ -1625,18 +1625,15 @@ public final class JdbcEmitter {
                         column +
                         ");");
 
-        out.line(
-                read.targetType() +
-                        " " +
-                        value +
-                        " = (" +
-                        read.targetType() +
-                        ") org.sjf4j.node.NodeMapper.to(" +
-                        raw +
-                        ", " +
-                        classLiteral(
-                                read.targetType()) +
-                        ", this.context);");
+        // NodeMapper.to(Class<T>) is already typed for non-parameterized targets.
+        // Parameterized targets still require a cast from their erased class token.
+        boolean generic = read.targetType() instanceof javax.lang.model.type.DeclaredType
+                && !((javax.lang.model.type.DeclaredType) read.targetType())
+                        .getTypeArguments().isEmpty();
+        out.line(read.targetType() + " " + value + " = "
+                + (generic ? "(" + read.targetType() + ") " : "")
+                + "org.sjf4j.node.NodeMapper.to(" + raw + ", "
+                + classLiteral(read.targetType()) + ", this.context);");
 
         return value;
     }

@@ -152,8 +152,9 @@ final class StreamingWriteEmitter {
 
         out.line("generator.writeName((String) entry.getKey());");
 
-        writeValue(out, value.mapValue(), "generator",
-                "(" + value.mapValue().type() + ") entry.getValue()");
+        String mapExpression = "java.lang.Object".equals(value.mapValue().type().toString())
+                ? "entry.getValue()" : "(" + value.mapValue().type() + ") entry.getValue()";
+        writeValue(out, value.mapValue(), "generator", mapExpression);
 
         out.endBlock();
         out.line("generator.writeObjectEnd();");

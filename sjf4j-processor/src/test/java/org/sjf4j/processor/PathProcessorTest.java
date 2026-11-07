@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -491,7 +492,8 @@ public class PathProcessorTest {
         assertTrue(source.contains("package testcase;"), source);
         assertTrue(!source.contains("INSTANCE"), source);
         assertTrue(!source.contains("Nodes.putInArray"), source);
-        assertTrue(source.contains("oldValue = (String) list.set(index, value)"), source);
+        assertTrue(source.contains("oldValue = list.set(index, value)"), source);
+        assertFalse(source.contains("(String) list.set(index, value)"), source);
         assertTrue(source.contains("String oldValue = array[index]"), source);
         assertTrue(!source.contains("Nodes.to"), source);
         assertTrue(source.contains("org.sjf4j.exception.NodeException"), source);
