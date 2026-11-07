@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
+
+### Fixed
+
+- Removed redundant casts in generated Binder, Mapper, JDBC Mapper, and Navigator implementations so generated Java also compiles under `-Xlint:cast -Werror`.
+
 
 ## [1.5.0] - 2026.11.03
 
@@ -30,7 +38,6 @@ This release substantially redesigns the internal architecture, expands the comp
 - **OBNT Improvements** — Refined node classification, property metadata, value codecs, and traversal semantics across POJOs, JOJOs, collections, and external nodes.
 - **Compile-Time Processing** — Extensively refactored and enhanced `@CompiledMapper`, `@CompiledJdbcMapper`, and `@CompiledNavigator`, alongside the new compiled binding and validation capabilities.
 - **JSON Schema Engine** — Refactored schema loading, reference resolution, validation contexts, and diagnostics, with improved correctness and more efficient validation execution.
-- **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
 
 ### Performance
 
@@ -43,7 +50,6 @@ This release substantially redesigns the internal architecture, expands the comp
 
 - Improved JSONPath RFC 9535 compliance and parsing consistency.
 - Fixed numerous edge cases in polymorphic binding, custom value codecs, generic types, and native JSON node handling.
-- Removed redundant casts in generated Binder, Mapper, JDBC Mapper, and Navigator implementations so generated Java also compiles under `-Xlint:cast -Werror`.
 - Improved JSON Schema validation correctness, particularly around references, compound schemas, property evaluation, and error reporting.
 - Strengthened JSON parsing, numeric precision, Unicode handling, and cross-backend consistency.
 
