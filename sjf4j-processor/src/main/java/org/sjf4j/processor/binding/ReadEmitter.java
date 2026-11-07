@@ -816,7 +816,7 @@ final class ReadEmitter {
                 return "(" + value.type() + ") " + parser + ".readRawArray()";
 
             case RUNTIME:
-                if (context.types.isObject(value.type())) return "(" + value.type() + ") " + parser + ".readRaw()";
+                if (context.types.isObject(value.type())) return parser + ".readRaw()";
                 return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
                         + context.typeUtils.erasure(value.type()) + ".class, this.context)";
 

@@ -45,6 +45,7 @@ class CompiledMapReadFallbackTest {
     public interface Jackson3Reader {
         @Read Map<String, Object> read(String json) throws IOException;
         @Read Map<String, Object> readBytes(byte[] json) throws IOException;
+        @Read Object readUntyped(String json) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.GSON)
@@ -85,6 +86,8 @@ class CompiledMapReadFallbackTest {
 
         Jackson3Reader jackson3 = CompiledInstances.create(Jackson3Reader.class);
         verify("jackson3", new Jackson3Binder(), jackson3::read, jackson3::readBytes);
+        assertEquals(jackson3.read(JSON), jackson3.readUntyped(JSON));
+        assertNull(jackson3.readUntyped("null"));
 
         GsonReader gson = CompiledInstances.create(GsonReader.class);
         verify("gson", new GsonBinder(), gson::read, gson::readBytes);
