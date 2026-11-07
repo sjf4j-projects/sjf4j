@@ -1287,9 +1287,9 @@ final class PathEmitter {
         if (old != null) {
             out.line(
                     old +
-                            " = (" +
-                            localType(oldType(step)) +
-                            ") " +
+                            " = " +
+                            (types.isObject(oldType(step))
+                                    ? "" : "(" + localType(oldType(step)) + ") ") +
                             owner +
                             ".set(" +
                             index +
