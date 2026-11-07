@@ -26,6 +26,11 @@ configurations {
 
 
 dependencies {
+    // Shared testbench models use Lombok, while ModelState retains JMH's @State.
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
+    compileOnly("org.openjdk.jmh:jmh-core:1.37")
+
     implementation(project(":sjf4j-core"))
     implementation(project(":sjf4j-asm"))
     implementation(project(":sjf4j-schema"))
@@ -53,6 +58,7 @@ dependencies {
     testImplementation("ch.qos.logback:logback-classic:1.5.34")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.3")
     testImplementation("com.h2database:h2:2.3.232")
     testImplementation("org.springframework:spring-jdbc:6.2.19")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

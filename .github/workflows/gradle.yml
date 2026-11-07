@@ -46,6 +46,70 @@ jobs:
     - name: Build and verify coverage
       run: ./gradlew build
 
+    # Standard Gradle 'build' does not compile src/jmh/java.
+    # Compile the benchmark jar to catch JMH and compiled binder generation errors.
+    - name: Compile JMH benchmarks
+      run: ./gradlew :sjf4j-testbench:jmhJar
+
+    # This is a correctness smoke, not performance data: GitHub runners are
+    # noisy. Cover both read/write of SnakeYAML native Users/Clients POJO/Map.
+    - name: Smoke-check native YAML binding
+      run: |
+        JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+        test -n "$JAR"
+        java -jar "$JAR" \
+          'org.sjf4j.testbench.binding.fabien.Fabien(ReadBenchmark.read|WriteBenchmark.write)' \
+          -p backend=snake -p implementation=native \
+          -p model=users,clients -p shape=pojo,map -p sizeKb=10 -p seed=12345 \
+          -f 0 -wi 0 -i 1 -r 100ms -t 1 -rf json -rff /tmp/fabien-yaml-smoke.json
+        python3 - <<'PY'
+        import json
+        with open('/tmp/fabien-yaml-smoke.json') as f:
+            scores = json.load(f)
+        assert len(scores) == 8, f"Expected 8 YAML native JMH results, got {len(scores)}"
+        PY
+
+    # Verify the largest fixture at both seeds for *every* backend, including
+    # native/blackbird. This is not a timing baseline (-f 0, short measurement).
+    # It catches precision loss in Map binding (e.g. Gson's default Double).
+    - name: Smoke-check 100KB binding across all backends
+      run: |
+        set -euo pipefail
+        JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+        test -n "$JAR"
+        for backend in jackson2 jackson3 fastjson2 gson jsonp simple snake; do
+          case "$backend" in
+            jackson2|jackson3) modes=runtime,compiled,native,blackbird ;;
+            fastjson2|gson|snake) modes=runtime,compiled,native ;;
+            jsonp|simple) modes=runtime,compiled ;;
+          esac
+          report="/tmp/fabien-100kb-$backend.json"
+          log="/tmp/fabien-100kb-$backend.log"
+          if ! java -jar "$JAR" \
+              'org.sjf4j.testbench.binding.fabien.Fabien(ReadBenchmark.read|WriteBenchmark.write)' \
+              -p "backend=$backend" -p "implementation=$modes" \
+              -p model=clients -p shape=pojo,map -p sizeKb=100 -p seed=12345,324 \
+              -f 0 -wi 0 -i 1 -r 50ms -t 1 -rf json -rff "$report" >"$log" 2>&1; then
+            tail -100 "$log"
+            exit 1
+          fi
+          expected=$(( $(echo "$modes" | tr -cd ',' | wc -c) + 1 ))
+          expected=$(( expected * 2 * 2 * 2 ))
+          if ! python3 - "$report" "$expected" <<'PY'
+        import json, sys
+        with open(sys.argv[1]) as f:
+            rows = json.load(f)
+        if len(rows) != int(sys.argv[2]):
+            print(f"Incomplete JMH smoke: {len(rows)} results vs expected {sys.argv[2]}")
+            sys.exit(1)
+        PY
+          then
+            tail -100 "$log"
+            exit 1
+          fi
+          echo "100KB $backend: $expected cases passed"
+        done
+
     - name: Print JaCoCo summary
       if: ${{ always() }}
       run: |
