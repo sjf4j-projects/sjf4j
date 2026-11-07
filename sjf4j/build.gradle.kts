@@ -38,7 +38,7 @@ mavenPublishing {
 
     pom {
         name.set("SJF4J")
-        description.set("Aggregate dependency for SJF4J core, all supported backends, and JSON Schema")
+        description.set("Aggregate dependency for SJF4J core, schema and all supported backends")
         inceptionYear.set("2025")
         url.set("https://sjf4j.org")
         licenses {
