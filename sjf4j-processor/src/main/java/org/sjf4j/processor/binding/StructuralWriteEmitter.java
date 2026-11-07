@@ -194,7 +194,9 @@ final class StructuralWriteEmitter {
             ops.beforeObjectMember(out, "memberCount++");
         }
         ops.writeMapName(out, "(String) entry.getKey()");
-        ops.writeValue(out, value.mapValue(), "(" + value.mapValue().type() + ") mapValue");
+        String mapExpression = "java.lang.Object".equals(value.mapValue().type().toString())
+                ? "mapValue" : "(" + value.mapValue().type() + ") mapValue";
+        ops.writeValue(out, value.mapValue(), mapExpression);
         out.endBlock();
         out.endBlock();
         ops.endObject(out);
