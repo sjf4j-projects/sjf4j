@@ -111,7 +111,9 @@ val lintGeneratedCasts by tasks.registering(JavaCompile::class) {
     source(fileTree(layout.buildDirectory.dir("generated/sources/annotationProcessor/java/test")) {
         include("**/*_Impl.java")
     })
-    classpath = sourceSets.test.get().runtimeClasspath
+    // Compile-only annotations are referenced in generated test signatures too.
+    classpath = sourceSets.test.get().compileClasspath +
+            sourceSets.test.get().runtimeClasspath
     destinationDirectory.set(layout.buildDirectory.dir("classes/generated-cast-lint"))
     options.compilerArgs.addAll(listOf("-proc:none", "-Xlint:cast", "-Werror"))
 }

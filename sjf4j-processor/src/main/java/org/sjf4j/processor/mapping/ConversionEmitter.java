@@ -351,7 +351,7 @@ public final class ConversionEmitter
         if (types.isCompileTimeUnknown(resolved.sourceKeyType()) &&
                 types.isCompileTimeUnknown(resolved.sourceValueType())) {
             String entryObject = names.newName("entryObject");
-            out.line("for (Object " + entryObject + " : ((java.util.Map) " + source + ").entrySet()) {");
+            out.line("for (Object " + entryObject + " : " + source + ".entrySet()) {");
 
             out.indent();
             out.line("java.util.Map.Entry<?, ?> " + entry +
@@ -492,9 +492,9 @@ public final class ConversionEmitter
          */
         if (isNumber(sourceName) && isNumber(targetName)) {
             String value = names.newName("converted");
-            out.line(localType(targetType) + " " + value + " = " + source + " == null ? null : (" +
-                    localType(targetType) + ") org.sjf4j.util.Numbers.to((java.lang.Number) " + source +
-                    ", " + classLiteral(targetType) + ");");
+            out.line(localType(targetType) + " " + value + " = " + source
+                    + " == null ? null : org.sjf4j.util.Numbers.to(" + source
+                    + ", " + classLiteral(targetType) + ");");
 
             return value;
         }
@@ -674,7 +674,7 @@ public final class ConversionEmitter
         if (types.isCompileTimeUnknown(conversion.sourceKeyType()) &&
                 types.isCompileTimeUnknown(conversion.sourceValueType())) {
             String entryObject = names.newName("entryObject");
-            out.line("for (Object " + entryObject + " : ((java.util.Map) " + source + ").entrySet()) {");
+            out.line("for (Object " + entryObject + " : " + source + ".entrySet()) {");
 
             out.indent();
 

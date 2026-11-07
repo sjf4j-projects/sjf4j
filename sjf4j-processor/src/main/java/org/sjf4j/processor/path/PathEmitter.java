@@ -1288,7 +1288,8 @@ final class PathEmitter {
             out.line(
                     old +
                             " = " +
-                            (types.isObject(oldType(step))
+                            (step.access.kind() == NodeAccess.Kind.LIST
+                                    || types.isObject(oldType(step))
                                     ? "" : "(" + localType(oldType(step)) + ") ") +
                             owner +
                             ".set(" +

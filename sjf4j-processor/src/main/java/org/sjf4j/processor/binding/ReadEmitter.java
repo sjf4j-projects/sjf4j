@@ -808,8 +808,9 @@ final class ReadEmitter {
 
             case ONE_OF:
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
-                return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
-                        + ".readOneOf(" + parser + ", " + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", this.context)";
+                return (context.types.isObject(value.type()) ? "" : "(" + value.type() + ") ")
+                        + "org.sjf4j.binding.OneOfIO.readOneOf(" + parser + ", "
+                        + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", this.context)";
 
             case RAW_MAP:
                 return rawReadExpression(value, parser, true);
