@@ -62,7 +62,7 @@ for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML;
 | Backend / implementation / model / shape | Same | Same | Same |
 | GC profiler | No | Yes | Yes |
 
-The runner emits **one JMH JSON per backend**, not per implementation, and a companion
+Quick and Full emit **one JMH JSON per backend**, not per implementation, and a companion
 `.meta.md` file under `build/performance/binding/` (the optional second argument
 changes the directory). The `params.implementation` field distinguishes runtime,
 compiled, native and (Jackson only) blackbird inside each backend's JSON.
@@ -73,7 +73,9 @@ and `-prof gc` allocation data.
 The runner also checks the expected count of benchmark entries in each JSON file,
 exiting with an error if JMH reported only a subset of the requested cases.
 Smoke is a **correctness check only**: it intentionally omits warmup and forks,
-so ignore its recorded throughput and timing scores. Run Smoke first to catch
+so ignore its recorded throughput and timing scores. Smoke creates **no persistent
+JMH JSON or metadata files**: temporary JMH result data used for completeness
+checking is deleted after each backend (and cleaned up on failure). Run Smoke first to catch
 large-payload failures before investing time in Quick or Full.
 A completed Smoke run ends with a per-backend `PASS actual/expected` summary and
 `TOTAL: 336/336 PASSED` followed by `ALL PASSED`. A failure instead prints

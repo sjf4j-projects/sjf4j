@@ -10,7 +10,8 @@ Usage: $0 <smoke|quick|full> [output-directory]
   quick   Short local checks; a performance diagnostic, not a baseline.
   full    All supported backend/implementation cases on JDK 25.
 
-Results default to build/performance/binding/.
+Quick/Full results default to build/performance/binding/.
+Smoke leaves no result or metadata files.
 EOF
 }
 
@@ -45,10 +46,16 @@ if [[ -z "$JAR" ]]; then
   exit 1
 fi
 
-mkdir -p "$OUT_DIR"
-SHA="$(git rev-parse --short=12 HEAD)"
-META="$OUT_DIR/binding-$SHA-$PROFILE-jdk25.meta.md"
-cat > "$META" <<EOF
+if [[ "$PROFILE" == "smoke" ]]; then
+  # JMH's JSON report is needed only to verify that every case completed.
+  # Keep it outside the project and remove it even if the run fails.
+  SMOKE_TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sjf4j-binding-smoke.XXXXXX")"
+  trap 'rm -rf "$SMOKE_TMP_DIR"' EXIT
+else
+  mkdir -p "$OUT_DIR"
+  SHA="$(git rev-parse --short=12 HEAD)"
+  META="$OUT_DIR/binding-$SHA-$PROFILE-jdk25.meta.md"
+  cat > "$META" <<EOF
 # Binding performance measurement
 
 - Git SHA: $(git rev-parse HEAD)
@@ -69,6 +76,7 @@ $("$JAVA_BIN" -version 2>&1 | sed 's/^/    /')
 ## JMH result files
 
 EOF
+fi
 
 # Save one JMH JSON file per backend. Each file contains every supported
 # implementation for that backend (Blackbird only for Jackson2/3).
@@ -155,7 +163,12 @@ print_smoke_summary() {
 
 run_backend() {
   local backend="$1" modes="$2"
-  local result="$OUT_DIR/binding-$SHA-$PROFILE-jdk25-$backend.json"
+  local result
+  if [[ "$PROFILE" == "smoke" ]]; then
+    result="$SMOKE_TMP_DIR/$backend.json"
+  else
+    result="$OUT_DIR/binding-$SHA-$PROFILE-jdk25-$backend.json"
+  fi
   local -a mode_items
   IFS=, read -r -a mode_items <<< "$modes"
   local expected=$(( ${#mode_items[@]} * 2 * 2 * 2 * SIZE_COUNT * SEED_COUNT ))
@@ -182,14 +195,20 @@ run_backend() {
       echo "JMH failed for $backend (exit code $jmh_status)." >&2
     fi
     echo "Incomplete JMH result for $backend: expected $expected entries; got $actual." >&2
-    echo "Inspect the preceding JMH output: $result" >&2
+    if [[ "$PROFILE" == "smoke" ]]; then
+      echo "Inspect the preceding JMH output for the failing case." >&2
+    else
+      echo "Inspect the preceding JMH output: $result" >&2
+    fi
     return 1
   fi
 
-  echo "- $backend: $(basename "$result") (implementations=$modes, results=$actual)" >> "$META"
   if [[ "$PROFILE" == "smoke" ]]; then
+    rm -f "$result"
     SMOKE_RESULTS+=("PASS:$actual:$expected")
     SMOKE_PASSED=$((SMOKE_PASSED + actual))
+  else
+    echo "- $backend: $(basename "$result") (implementations=$modes, results=$actual)" >> "$META"
   fi
 }
 
@@ -197,8 +216,9 @@ for (( i=0; i<${#BACKENDS[@]}; i++ )); do
   run_backend "${BACKENDS[$i]}" "${MODE_SETS[$i]}"
 done
 
-echo "Raw JMH JSON files in: $OUT_DIR"
-echo "Environment and result index: $META"
 if [[ "$PROFILE" == "smoke" ]]; then
   print_smoke_summary
+else
+  echo "Raw JMH JSON files in: $OUT_DIR"
+  echo "Environment and result index: $META"
 fi
