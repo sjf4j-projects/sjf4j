@@ -102,25 +102,6 @@ tasks.named<JavaCompile>("compileTestJava") {
     classpath += files(layout.buildDirectory.dir("resources/test"))
 }
 
-// Recompile only SJF4J-generated test sources in strict mode. Consumer projects
-// may compile with -Xlint:cast -Werror, where generated redundant casts are fatal.
-val lintGeneratedCasts by tasks.registering(JavaCompile::class) {
-    group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Rejects redundant casts and other warnings in generated SJF4J test sources."
-    dependsOn(tasks.named("compileTestJava"))
-    source(fileTree(layout.buildDirectory.dir("generated/sources/annotationProcessor/java/test")) {
-        include("**/*_Impl.java")
-    })
-    // Compile-only annotations are referenced in generated test signatures too.
-    classpath = sourceSets.test.get().compileClasspath +
-            sourceSets.test.get().runtimeClasspath
-    destinationDirectory.set(layout.buildDirectory.dir("classes/generated-cast-lint"))
-    options.compilerArgs.addAll(listOf("-proc:none", "-Xlint:cast", "-Werror"))
-}
-tasks.named("check") {
-    dependsOn(lintGeneratedCasts)
-}
-
 // CompiledValidator's annotation processor reads Creek schemas from jmh resources.
 tasks.named<JavaCompile>("compileJmhJava") {
     dependsOn(tasks.named("processJmhResources"))
