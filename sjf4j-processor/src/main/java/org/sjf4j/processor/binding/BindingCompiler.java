@@ -60,6 +60,9 @@ final class BindingCompiler {
 
     private final Map<String, BindingValue> cache = new LinkedHashMap<>();
     private final List<BindingValue> helpers = new ArrayList<>();
+    // A mapped OneOf subtype may inline a non-public compile-time String
+    // constant; no field access is emitted for that special case.
+    private final Set<String> inlineOneOfSubtypes = new HashSet<>();
 
     BindingCompiler(ProcessorContext context, GeneratedNames names,
                     CompiledMetadata metadata, Backend backend) {
@@ -561,7 +564,12 @@ final class BindingCompiler {
             boolean visible = isVisibleOneOfSubtype(subtype);
             BindingValue compiled = null;
             if (visible && canCompileOneOfSubtype(subtype)) {
-                compiled = compileValue(BindingPlan.Direction.WRITE_TO, subtype, method, generated);
+                inlineOneOfSubtypes.add(subtype.toString());
+                try {
+                    compiled = compileValue(BindingPlan.Direction.WRITE_TO, subtype, method, generated);
+                } finally {
+                    inlineOneOfSubtypes.remove(subtype.toString());
+                }
                 if (compiled == null) return false;
                 addOneOfConstantProperties(compiled, subtype);
             }
@@ -858,6 +866,14 @@ final class BindingCompiler {
                 continue;
             }
 
+            if (value.direction() == BindingPlan.Direction.WRITE_TO
+                    && inlineOneOfSubtypes.contains(value.type().toString())
+                    && access.isField()
+                    && isInlineStringConstant((VariableElement) access.member())) {
+                // addOneOfConstantProperties emits this literal after compiling
+                // the public properties; never generate private field access.
+                continue;
+            }
             if (!checkBindingAccess(property, access, value.type(), value.direction(),
                     method, generated)) return false;
 
