@@ -88,6 +88,34 @@ lid open, use AC power, and discard results from a run interrupted by sleep.
 After a successful Full run there should be **7 per-backend JSON files plus 1
 `.meta.md`**, for 1,008 total JMH benchmark entries (including Read and Write).
 
+## GitHub Actions Full (exploratory)
+
+The manual **Binding Full Benchmark (JDK 25)** workflow reuses this script.
+In the repository **Actions** tab, select the workflow, click **Run workflow**
+and choose the commit/branch to benchmark.
+
+- The JMH jar is compiled once, then each of the seven backends runs in a
+  separate Ubuntu 24.04 job under JDK 25. Each backend job has a 330-minute
+  timeout, below GitHub's 6-hour per-job limit.
+- Each job uploads a backend-specific artifact with **raw JMH JSON** (including
+  independent forks and GC allocation metrics), environment metadata, hardware
+  information, and a console log. Representative 100KB Users/POJO scores are
+  displayed in the Actions job summary. A final job also creates a **combined
+  artifact** containing all backend folders, so the entire Full run can be
+  downloaded in one archive.
+- **Shared GitHub-hosted runner timings are diagnostic, not release baselines.**
+  Hardware and scheduling vary between jobs and runs. The metadata explicitly
+  records `Baseline eligible: no`, even though the workload and JMH parameters
+  are identical to local Full. Do not compare absolute results across backend
+  jobs as if they used the same machine.
+- The workflow is **manual-only**; it does not run on pushes or pull requests.
+
+To run a single backend locally on JDK 25, for example:
+
+```bash
+BINDING_BACKEND=jackson2 ./scripts/benchmark-binding.sh full
+```
+
 ## Maintaining history in the repository
 
 1. Run **Full** on a clean release commit using the designated JDK 25 host.
