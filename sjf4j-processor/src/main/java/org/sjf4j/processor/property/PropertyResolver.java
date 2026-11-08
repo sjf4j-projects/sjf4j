@@ -238,8 +238,17 @@ public final class PropertyResolver {
                             || annotations.propertyAliases(member).length != 0;
                     if (!modifiers.contains(Modifier.PUBLIC) && !explicit) continue;
 
+                    if (member.getAnnotation(NodeIgnore.class) != null) continue;
                     ExecutableElement method = (ExecutableElement) member;
-                    ExecutableType resolved = (ExecutableType) typeUtils.asMemberOf(declaredOwner, method);
+                    ExecutableType resolved;
+                    try {
+                        resolved = (ExecutableType) typeUtils.asMemberOf(declaredOwner, method);
+                    } catch (IllegalArgumentException notInherited) {
+                        if (modifiers.contains(Modifier.PUBLIC)) throw notInherited;
+                        // Explicit private superclass accessors are included
+                        // by Runtime reflection but cannot be called directly.
+                        resolved = (ExecutableType) method.asType();
+                    }
                     boolean getter = method.getParameters().isEmpty()
                             && resolved.getReturnType().getKind() != TypeKind.VOID;
                     boolean setter = method.getParameters().size() == 1
@@ -251,7 +260,6 @@ public final class PropertyResolver {
                     BindingFamily family = families.computeIfAbsent(name,
                             key -> new BindingFamily(new Builder(type, key)));
                     String renamed = annotations.explicitPropertyName(method);
-                    if (member.getAnnotation(NodeIgnore.class) != null) continue;
                     if (renamed != null) {
                         if (family.beanExplicitName != null && !family.beanExplicitName.equals(renamed)) {
                             messager.printMessage(Diagnostic.Kind.ERROR,
