@@ -144,8 +144,7 @@ public final class PropertyResolver {
         if (type == null) return Collections.emptyMap();
 
         NodeObject options = nodeObject(type);
-        PropertyStrategy strategy = options == null
-                ? PropertyStrategy.BEAN_FIELD : options.propertyStrategy();
+        PropertyStrategy strategy = bindingStrategy(owner);
         String cacheKey = "binding:" + strategy + ":" + owner;
         Map<String, Property> cached = cache.get(cacheKey);
         if (cached != null) return cached;
@@ -297,6 +296,13 @@ public final class PropertyResolver {
         Map<String, Property> resolved = Collections.unmodifiableMap(result);
         cache.put(cacheKey, resolved);
         return resolved;
+    }
+
+    /** Matches @NodeObject's inherited Runtime strategy selection. */
+    public PropertyStrategy bindingStrategy(TypeMirror owner) {
+        TypeElement type = types.typeElement(owner);
+        NodeObject options = type == null ? null : nodeObject(type);
+        return options == null ? PropertyStrategy.BEAN_FIELD : options.propertyStrategy();
     }
 
     private NodeObject nodeObject(TypeElement type) {

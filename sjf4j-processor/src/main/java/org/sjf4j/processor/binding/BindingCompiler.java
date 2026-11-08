@@ -809,10 +809,7 @@ final class BindingCompiler {
                                        TypeMirror owner, BindingPlan.Direction direction,
                                        ExecutableElement method, GeneratedClass generated) {
         if (access.member().getModifiers().contains(Modifier.PUBLIC)) return true;
-        TypeElement element = context.types.typeElement(owner);
-        NodeObject options = element == null ? null : element.getAnnotation(NodeObject.class);
-        PropertyStrategy strategy = options == null
-                ? PropertyStrategy.BEAN_FIELD : options.propertyStrategy();
+        PropertyStrategy strategy = context.properties.bindingStrategy(owner);
         String operation = direction == BindingPlan.Direction.READ_FROM
                 ? "JSON deserialization" : "JSON serialization";
         error(method, generated, "@CompiledBinder cannot access non-public "
