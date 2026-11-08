@@ -194,6 +194,17 @@ class CompiledBinderPropertyStrategyTest {
     }
 
     @Test
+    void beanFieldRejectsConflictingFieldAndGetterNames() throws Exception {
+        String model = "@NodeProperty(\"wireName\") public String name;\n"
+                + "@NodeProperty(\"displayName\") public String getName() { return name; }\n"
+                + "public void setName(String next) { name = next; }";
+        NavigatorTestCompiler.Result result = compile("BEAN_FIELD", model, "WRITE");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("conflicting @NodeProperty names"),
+                result.diagnostics());
+    }
+
+    @Test
     void beanFieldRetainsFieldAliasWithPublicGetterAndSetter() throws Exception {
         String model = "@NodeProperty(value=\"name\", aliases={\"legacy\"}) public String name;\n"
                 + "public String getName() { return name; }\n"

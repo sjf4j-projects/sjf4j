@@ -315,6 +315,14 @@ public final class PropertyResolver {
             BindingFamily family = entry.getValue();
             Builder builder = family.builder;
             if (builder.read == null && builder.write == null) continue;
+            if (family.beanExplicitName != null && family.fieldExplicitName != null
+                    && !family.beanExplicitName.equals(family.fieldExplicitName)) {
+                messager.printMessage(Diagnostic.Kind.ERROR,
+                        "conflicting @NodeProperty names for property '" + entry.getKey()
+                                + "': field declares '" + family.fieldExplicitName
+                                + "', Bean declares '" + family.beanExplicitName + "'", type);
+                continue;
+            }
             String name = family.beanExplicitName != null ? family.beanExplicitName
                     : family.fieldExplicitName != null ? family.fieldExplicitName
                     : options == null ? entry.getKey() : options.naming().translate(entry.getKey());
