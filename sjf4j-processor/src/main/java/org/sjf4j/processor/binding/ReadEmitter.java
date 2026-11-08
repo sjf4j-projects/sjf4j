@@ -7,7 +7,9 @@ import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 
 /** Emits direct concrete-parser binding code. */
 final class ReadEmitter {
@@ -806,23 +808,42 @@ final class ReadEmitter {
 
             case ONE_OF:
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
-                return "(" + value.type() + ") org.sjf4j.binding.OneOfIO"
-                        + ".readOneOf(" + parser + ", " + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", this.context)";
+                return (context.types.isObject(value.type()) ? "" : "(" + value.type() + ") ")
+                        + "org.sjf4j.binding.OneOfIO.readOneOf(" + parser + ", "
+                        + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", this.context)";
 
             case RAW_MAP:
-                return "(" + value.type() + ") " + parser + ".readRawObject()";
+                return rawReadExpression(value, parser, true);
 
             case RAW_LIST:
-                return "(" + value.type() + ") " + parser + ".readRawArray()";
+                return rawReadExpression(value, parser, false);
 
             case RUNTIME:
-                if (context.types.isObject(value.type())) return "(" + value.type() + ") " + parser + ".readRaw()";
+                if (context.types.isObject(value.type())) return parser + ".readRaw()";
                 return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
                         + context.typeUtils.erasure(value.type()) + ".class, this.context)";
 
             default:
                 throw new AssertionError("Unsupported read kind " + value.kind());
         }
+    }
+
+    /**
+     * Raw JSON containers have parameterized Map<String, Object>/List<Object>
+     * return types. Avoid redundant casts when those types are already
+     * assignable, but keep casts for concrete targets such as LinkedHashMap.
+     */
+    private String rawReadExpression(BindingValue value, String parser, boolean map) {
+        String expression = parser + (map ? ".readRawObject()" : ".readRawArray()");
+        TypeElement container = context.elements.getTypeElement(
+                map ? "java.util.Map" : "java.util.List");
+        TypeMirror object = context.elements.getTypeElement("java.lang.Object").asType();
+        TypeMirror sourceType = map
+                ? context.typeUtils.getDeclaredType(container,
+                        context.elements.getTypeElement("java.lang.String").asType(), object)
+                : context.typeUtils.getDeclaredType(container, object);
+        return context.typeUtils.isAssignable(sourceType, value.type())
+                ? expression : "(" + value.type() + ") " + expression;
     }
 
     private String assignment(PropertyAccess access, String owner, String expression) {

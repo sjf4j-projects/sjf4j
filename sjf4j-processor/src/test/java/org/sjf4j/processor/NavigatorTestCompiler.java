@@ -39,6 +39,11 @@ final class NavigatorTestCompiler {
         return compile(sources, processor, java.util.Collections.emptyMap());
     }
 
+    static Result compile(Map<String, String> sources, Class<?> processor,
+                          String... compilerOptions) throws IOException {
+        return compile(sources, processor, java.util.Collections.emptyMap(), compilerOptions);
+    }
+
     /**
      * Compiles sources with an uncopied src/main/resources tree to reproduce
      * IDEA/javac compilation before resources appear in CLASS_OUTPUT.
@@ -47,6 +52,12 @@ final class NavigatorTestCompiler {
             Map<String, String> sources,
             Class<?> processor,
             Map<String, String> resources) throws IOException {
+        return compile(sources, processor, resources, new String[0]);
+    }
+
+    private static Result compile(Map<String, String> sources, Class<?> processor,
+                                  Map<String, String> resources, String... compilerOptions)
+            throws IOException {
 
         Path directory = Files.createTempDirectory("sjf4j-navigator-test");
         Path source = directory.resolve("src/main/java");
@@ -78,10 +89,12 @@ final class NavigatorTestCompiler {
                 diagnostics, null, StandardCharsets.UTF_8)) {
             manager.setLocation(StandardLocation.CLASS_OUTPUT, Arrays.asList(classes.toFile()));
             manager.setLocation(StandardLocation.SOURCE_OUTPUT, Arrays.asList(generated.toFile()));
-            Boolean success = compiler.getTask(null, manager, diagnostics, Arrays.asList(
+            List<String> options = new ArrayList<String>(Arrays.asList(
                     "-classpath", System.getProperty("java.class.path"),
-                    "-processor", processor.getName()
-            ), null, manager.getJavaFileObjectsFromFiles(files)).call();
+                    "-processor", processor.getName()));
+            options.addAll(Arrays.asList(compilerOptions));
+            Boolean success = compiler.getTask(null, manager, diagnostics, options,
+                    null, manager.getJavaFileObjectsFromFiles(files)).call();
             return new Result(directory, classes, generated, Boolean.TRUE.equals(success), diagnostics);
         }
     }
