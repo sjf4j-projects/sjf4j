@@ -107,7 +107,10 @@ final class BindingCompiler {
 
         TypeMirror type = context.types.concrete(inputType);
         String key = direction.name() + ':' + type.toString()
-                + ':' + valueFormat + ':' + valuePattern;
+                + ':' + valueFormat + ':' + valuePattern
+                // The mapped OneOf constant-inlining plan must not be reused
+                // for direct @Write bindings of the same POJO type.
+                + (inlineOneOfSubtypes.contains(type.toString()) ? ":oneOfInline" : "");
         BindingValue existing = cache.get(key);
 
         if (existing != null) return existing;
