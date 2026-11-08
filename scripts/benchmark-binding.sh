@@ -11,6 +11,8 @@ Usage: $0 <smoke|quick|full> [output-directory]
   full    All supported backend/implementation cases on JDK 25.
 
 Quick/Full results default to build/performance/binding/.
+Optional env: BINDING_BACKEND=<backend> selects one backend for quick/full;
+              BINDING_SKIP_BUILD=1 reuses a prebuilt JMH jar.
 Smoke leaves no result or metadata files.
 EOF
 }
@@ -30,6 +32,11 @@ fi
 
 PROFILE="$1"
 OUT_DIR="${2:-build/performance/binding}"
+BINDING_BACKEND="${BINDING_BACKEND:-all}"
+if [[ "$PROFILE" == "smoke" && "$BINDING_BACKEND" != "all" ]]; then
+  echo "BINDING_BACKEND selection is supported only for quick/full." >&2
+  exit 2
+fi
 
 JAVA_BIN=java
 if [[ -n "${JAVA_HOME:-}" ]]; then JAVA_BIN="$JAVA_HOME/bin/java"; fi
@@ -39,7 +46,9 @@ if ! [[ "$VERSION" =~ \"25([.\"]|$) ]]; then
   exit 1
 fi
 
-./gradlew :sjf4j-testbench:jmhJar
+if [[ "${BINDING_SKIP_BUILD:-0}" != "1" ]]; then
+  ./gradlew :sjf4j-testbench:jmhJar
+fi
 JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print | sort | head -n 1)"
 if [[ -z "$JAR" ]]; then
   echo "JMH jar missing in sjf4j-testbench/build/libs" >&2
@@ -66,7 +75,8 @@ else
 - Hardware: $(uname -a)
 - Suite version: 2
 - Profile: $PROFILE
-- Baseline eligible: $(if [[ "$PROFILE" == "full" ]]; then echo yes; else echo no; fi)
+- Baseline eligible: $(if [[ "$PROFILE" == "full" && "${GITHUB_ACTIONS:-false}" != "true" ]]; then echo yes; else echo no; fi)
+- Execution environment: $(if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then echo "GitHub Actions (shared hosted runner; exploratory timings)"; else echo "local"; fi)
 - Working tree clean: $(if [[ -z "$(git status --porcelain)" ]]; then echo yes; else echo no; fi)
 
 ## Java runtime
@@ -129,6 +139,18 @@ MODE_SETS=(
   runtime,compiled
   runtime,compiled,native
 )
+
+# Actions runs one backend per job. The default local run still covers all.
+if [[ "$BINDING_BACKEND" != "all" ]]; then
+  valid_backend=0
+  for backend in "${BACKENDS[@]}"; do
+    if [[ "$backend" == "$BINDING_BACKEND" ]]; then valid_backend=1; break; fi
+  done
+  if [[ "$valid_backend" -eq 0 ]]; then
+    echo "Unsupported BINDING_BACKEND: $BINDING_BACKEND" >&2
+    exit 2
+  fi
+fi
 
 # Smoke reports each completed backend and marks any remaining backends NOT RUN.
 # Derive totals from the same matrix that drives JMH, not a second hardcoded list.
@@ -213,6 +235,9 @@ run_backend() {
 }
 
 for (( i=0; i<${#BACKENDS[@]}; i++ )); do
+  if [[ "$BINDING_BACKEND" != "all" && "$BINDING_BACKEND" != "${BACKENDS[$i]}" ]]; then
+    continue
+  fi
   run_backend "${BACKENDS[$i]}" "${MODE_SETS[$i]}"
 done
 
