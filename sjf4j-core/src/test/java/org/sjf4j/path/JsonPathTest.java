@@ -1062,19 +1062,19 @@ public class JsonPathTest {
     public void testEval1() {
         Person person = Sjf4j.global().fromJson(JSON_DATA, Person.class);
         JsonPath pathSum = JsonPath.parse("$..age.sum()");
-        log.info("sum={}", pathSum.eval(person));
+        log.info("sum={}", pathSum.eval(person, Object.class));
 
         JsonPath pathLength = JsonPath.parse("$..age.length()");
-        log.info("length={}", pathLength.eval(person));
+        log.info("length={}", pathLength.eval(person, Object.class));
 
         JsonPath pathCount = JsonPath.parse("$..age.count()");
-        log.info("count={}", pathCount.eval(person));
+        log.info("count={}", pathCount.eval(person, Object.class));
 
         JsonPath pathMatch = JsonPath.parse("$..email.match('alice..xample.com')");
-        log.info("match={}", pathMatch.eval(person));
+        log.info("match={}", pathMatch.eval(person, Object.class));
 
         JsonPath pathSearch = JsonPath.parse("$..email.search('alice')");
-        log.info("search={}", pathSearch.eval(person));
+        log.info("search={}", pathSearch.eval(person, Object.class));
 
         JsonPath pathSearch2 = JsonPath.parse("$..email.search('zack')");
         log.info("search={}", pathSearch2.eval(person, Boolean.class));
@@ -1087,7 +1087,7 @@ public class JsonPathTest {
         int age = JsonPath.parse("$.age").eval(p1, int.class);
         log.info("age={}", age);
 
-        List babies = JsonPath.parse("$.babies").eval(p1, List.class);
+        List<?> babies = JsonPath.parse("$.babies").eval(p1, List.class);
         log.info("babies={}", babies);
 
         Long cnt = JsonPath.parse("$.babies.count()").eval(p1);

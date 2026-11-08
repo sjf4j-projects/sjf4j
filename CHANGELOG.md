@@ -12,10 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
 
-### Fixed
-
-- Removed redundant casts in generated Binder, Mapper, JDBC Mapper, and Navigator implementations so generated Java also compiles under `-Xlint:cast -Werror`.
-
 
 ## [1.5.0] - 2026.11.07
 

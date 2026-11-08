@@ -3,10 +3,10 @@
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
 [![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
-![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fsupported_versions.json)  
-![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2020-12.json)
-![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft2019-09.json)
-![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j-schema%2Fcompliance%2Fdraft7.json)    
+![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)  
+![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2020-12.json)
+![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2019-09.json)
+![Draft 7](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft7.json)    
 ![Build](https://img.shields.io/github/actions/workflow/status/sjf4j-projects/sjf4j/gradle.yml?branch=main)
 [![codecov](https://codecov.io/gh/sjf4j-projects/sjf4j/graph/badge.svg?branch=main)](https://codecov.io/gh/sjf4j-projects/sjf4j)
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
@@ -62,7 +62,11 @@ AnotherUser another = sjf4j.convert(user, AnotherUser.class);
 String output = sjf4j.toJsonString(another);
 ```
 
-**Boost performance with compile-time code generation:**
+**Accelerate with compile-time code generation:**
+
+SJF4J generates optimized, type-specific Java code at compile time, minimizing reflection, dynamic dispatch, and runtime interpretation.
+
+
 ```java
 @CompiledBinder
 interface UserBinder {
@@ -74,12 +78,18 @@ UserBinder binder = CompiledInstances.create(UserBinder.class);
 User user = binder.read(json);
 ```
 
-Compile-time code generation supports:
-- `@CompiledBinder`: Serialization and deserialization of JSON and other formats.
-- `@CompiledNavigator`: Navigation and modification with JSONPath.
-- `@CompiledMapper`: Object-to-object mapping.
-- `@CompiledJdbcMapper`: JDBC ResultSet-to-object mapping.
-- `@CompiledValidator`: Validation with JSON Schema .
+Compile-time capabilities:
+
+| Annotation | Generated implementation |
+| --- | --- |
+| `@CompiledBinder` | Optimized data binding for serialization and deserialization |
+| `@CompiledNavigator` | Direct JSONPath navigation and modification |
+| `@CompiledMapper` | Optimized object-to-object mapping |
+| `@CompiledJdbcMapper` | Direct JDBC `ResultSet`-to-object mapping |
+| `@CompiledValidator` | JSON Schema compiled into Java validation code |
+
+
+
 
 ## Why SJF4J?
 
