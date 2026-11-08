@@ -22,9 +22,8 @@ multiple serialization backends, and compile-time code generation.
 
 **Add SJF4J to your project (JDK 8+):**
 ```gradle
-implementation("org.sjf4j:sjf4j:{version}")
+implementation("org.sjf4j:sjf4j:{version}")     // All-in-one
 ```
-
 
 **Define your Java objects:**
 ```java
@@ -40,6 +39,8 @@ public class Address {
 ```
 
 **Bind, navigate, modify, patch, validate, and transform with runtime APIs:**
+
+Work directly with Java objects through flexible, ready-to-use APIs.
 ```java
 Sjf4j sjf4j = new Sjf4j();
 
@@ -64,8 +65,7 @@ String output = sjf4j.toJsonString(another);
 
 **Accelerate with compile-time code generation:**
 
-SJF4J generates optimized, type-specific Java code at compile time, minimizing reflection, dynamic dispatch, and runtime interpretation.
-
+Generates optimized, type-specific Java code at compile time, minimizing reflection, dynamic dispatch, and runtime interpretation.
 
 ```java
 @CompiledBinder
@@ -78,17 +78,17 @@ UserBinder binder = CompiledInstances.create(UserBinder.class);
 User user = binder.read(json);
 ```
 
-Compile-time capabilities:
 
-| Annotation | Generated implementation |
-| --- | --- |
-| `@CompiledBinder` | Optimized data binding for serialization and deserialization |
-| `@CompiledNavigator` | Direct JSONPath navigation and modification |
-| `@CompiledMapper` | Optimized object-to-object mapping |
-| `@CompiledJdbcMapper` | Direct JDBC `ResultSet`-to-object mapping |
-| `@CompiledValidator` | JSON Schema compiled into Java validation code |
+**Runtime and compile-time capabilities:**
 
-
+| Capability | Runtime | Compile-time |
+| --- | --- | --- |
+| Data Binding | `Sjf4j.toXx()`, `fromXxx()` | `@CompiledBinder` |
+| JSONPath Navigation | `JsonPath` | `@CompiledNavigator` |
+| JSON Schema Validation | `JsonSchema` | `@CompiledValidator` |
+| JSON Patch & Merge Patch | `JsonPatch` | — |
+| Object Mapping | `Sjf4j.convert()` | `@CompiledMapper` |
+| JDBC Mapping | — | `@CompiledJdbcMapper` |
 
 
 ## Why SJF4J?
