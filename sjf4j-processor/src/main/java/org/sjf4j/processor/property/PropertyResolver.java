@@ -160,6 +160,7 @@ public final class PropertyResolver {
         DeclaredType declaredOwner = (DeclaredType) owner;
         boolean jojo = types.nodeKind(owner) == NodeKind.OBJECT_JOJO;
         Map<String, BindingFamily> families = new LinkedHashMap<>();
+        Set<String> beanFamilyNames = new HashSet<>();
         Set<String> seenFields = new HashSet<>();
         Set<String> transientFields = new HashSet<>();
         List<TypeElement> hierarchy = new ArrayList<>();
@@ -173,6 +174,32 @@ public final class PropertyResolver {
             TypeMirror superclass = current.getSuperclass();
             current = superclass.getKind() == TypeKind.NONE
                     ? null : types.typeElement(superclass);
+        }
+
+        // Runtime associates a field renamed with @NodeProperty("name") with
+        // an existing Bean family named "name", even when the Java field's
+        // implicit name differs. Discover those Bean family names before
+        // collecting field candidates so their metadata is not stranded.
+        if (beans) {
+            for (TypeElement current : hierarchy) {
+                for (Element member : current.getEnclosedElements()) {
+                    if (member.getKind() != ElementKind.METHOD
+                            || (jojo && isJsonBaseMember(member))) continue;
+                    Set<Modifier> modifiers = member.getModifiers();
+                    if (modifiers.contains(Modifier.STATIC)) continue;
+                    boolean explicit = member.getAnnotation(NodeProperty.class) != null
+                            || annotations.explicitPropertyName(member) != null
+                            || annotations.propertyAliases(member).length != 0;
+                    if (!modifiers.contains(Modifier.PUBLIC) && !explicit) continue;
+                    ExecutableElement method = (ExecutableElement) member;
+                    String name = method.getParameters().isEmpty()
+                            ? getterPropertyName(type, method, method.getReturnType())
+                            : method.getParameters().size() == 1
+                                    && method.getReturnType().getKind() == TypeKind.VOID
+                                    ? setterPropertyName(method) : null;
+                    if (name != null) beanFamilyNames.add(name);
+                }
+            }
         }
 
         // Visit most-derived fields first, preserving Runtime's field-hiding
@@ -202,7 +229,11 @@ public final class PropertyResolver {
                 if (strategy == PropertyStrategy.BEAN_FIELD
                         && !modifiers.contains(Modifier.PUBLIC) && !explicit) continue;
 
-                BindingFamily family = families.computeIfAbsent(name,
+                String fieldName = annotations.explicitPropertyName(member);
+                String familyName = beans && fieldName != null
+                        && !fieldName.equals(name) && beanFamilyNames.contains(fieldName)
+                        ? fieldName : name;
+                BindingFamily family = families.computeIfAbsent(familyName,
                         key -> new BindingFamily(new Builder(type, key)));
                 if (family.fieldExplicitName == null) {
                     family.fieldExplicitName = annotations.explicitPropertyName(member);

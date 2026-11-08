@@ -210,6 +210,22 @@ class CompiledBinderPropertyStrategyTest {
     }
 
     @Test
+    void beanFieldJoinsExplicitlyRenamedFieldWithExistingBeanFamily() throws Exception {
+        String model = "@NodeProperty(value=\"name\", aliases={\"legacy\"}) private String storedName;\n"
+                + "public String getName() { return storedName; }\n"
+                + "public void setName(String value) { storedName = value; }";
+        NavigatorTestCompiler.Result result = compile("BEAN_FIELD", model, "READ");
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binder = Class.forName("fixture.Binder_Impl", true, loader);
+            Object instance = binder.getConstructor().newInstance();
+            Object bean = binder.getMethod("bind", String.class)
+                    .invoke(instance, "{\"legacy\":\"Alice\"}");
+            assertEquals("Alice", bean.getClass().getMethod("getName").invoke(bean));
+        }
+    }
+
+    @Test
     void beanFieldRetainsFieldValuePatternWithPublicAccessors() throws Exception {
         String model = "@NodeProperty(valuePattern=\"yyyy/MM/dd\") public java.time.LocalDate date;\n"
                 + "public java.time.LocalDate getDate() { return date; }\n"
