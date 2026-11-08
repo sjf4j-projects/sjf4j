@@ -165,7 +165,10 @@ public final class PropertyResolver {
         List<TypeElement> hierarchy = new ArrayList<>();
 
         for (TypeElement current = type; current != null; ) {
-            if (current.getQualifiedName().contentEquals(JAVA_OBJECT)) break;
+            String qualifiedName = current.getQualifiedName().toString();
+            if (qualifiedName.equals(JAVA_OBJECT)
+                    || (jojo && (qualifiedName.equals(JSON_OBJECT)
+                            || qualifiedName.equals(JSON_CONTAINER)))) break;
             hierarchy.add(current);
             TypeMirror superclass = current.getSuperclass();
             current = superclass.getKind() == TypeKind.NONE
@@ -173,8 +176,9 @@ public final class PropertyResolver {
         }
 
         // Visit most-derived fields first, preserving Runtime's field-hiding
-        // and transient-field suppression semantics.
-        for (TypeElement current : hierarchy) {
+        // and transient-field suppression semantics. BEAN_ONLY never inspects
+        // field declarations, even transient ones.
+        if (fields) for (TypeElement current : hierarchy) {
             for (Element member : current.getEnclosedElements()) {
                 if (member.getKind() != ElementKind.FIELD) continue;
                 Set<Modifier> modifiers = member.getModifiers();
@@ -237,6 +241,7 @@ public final class PropertyResolver {
                     BindingFamily family = families.computeIfAbsent(name,
                             key -> new BindingFamily(new Builder(type, key)));
                     String renamed = annotations.explicitPropertyName(method);
+                    if (member.getAnnotation(NodeIgnore.class) != null) continue;
                     if (renamed != null) {
                         if (family.beanExplicitName != null && !family.beanExplicitName.equals(renamed)) {
                             messager.printMessage(Diagnostic.Kind.ERROR,
@@ -244,7 +249,6 @@ public final class PropertyResolver {
                         }
                         family.beanExplicitName = renamed;
                     }
-                    if (member.getAnnotation(NodeIgnore.class) != null) continue;
                     family.builder.recordCodec(method);
                     PropertyAccess access = new PropertyAccess(method,
                             getter ? resolved.getReturnType() : resolved.getParameterTypes().get(0));
