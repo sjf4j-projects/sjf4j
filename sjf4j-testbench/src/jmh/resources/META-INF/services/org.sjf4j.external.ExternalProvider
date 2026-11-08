@@ -1,0 +1,4 @@
+org.sjf4j.backend.jackson2.external.Jackson2ExternalProvider
+org.sjf4j.backend.jackson3.external.Jackson3ExternalProvider
+org.sjf4j.backend.gson.external.GsonExternalProvider
+org.sjf4j.backend.jsonp.external.JsonpExternalProvider

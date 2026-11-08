@@ -36,6 +36,16 @@ jobs:
       - name: Compile JMH jar
         run: ./gradlew :sjf4j-testbench:jmhJar
 
+      - name: Verify JMH external-node service entries
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -n "$JAR"
+          providers=$(unzip -p "$JAR" META-INF/services/org.sjf4j.external.ExternalProvider)
+          echo "$providers"
+          grep -q 'org.sjf4j.backend.jackson2.external.Jackson2ExternalProvider' <<< "$providers"
+
       - name: Upload JMH jar
         uses: actions/upload-artifact@v4
         with:
