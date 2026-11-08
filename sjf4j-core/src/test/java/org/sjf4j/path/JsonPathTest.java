@@ -1087,7 +1087,7 @@ public class JsonPathTest {
         int age = JsonPath.parse("$.age").eval(p1, int.class);
         log.info("age={}", age);
 
-        List<?> babies = JsonPath.parse("$.babies").eval(p1, List.class);
+        List babies = JsonPath.parse("$.babies").eval(p1, List.class);
         log.info("babies={}", babies);
 
         Long cnt = JsonPath.parse("$.babies.count()").eval(p1);

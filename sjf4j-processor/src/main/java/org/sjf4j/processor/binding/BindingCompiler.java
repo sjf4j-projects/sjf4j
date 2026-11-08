@@ -60,6 +60,9 @@ final class BindingCompiler {
 
     private final Map<String, BindingValue> cache = new LinkedHashMap<>();
     private final List<BindingValue> helpers = new ArrayList<>();
+    // A mapped OneOf subtype may inline a non-public compile-time String
+    // constant; no field access is emitted for that special case.
+    private final Set<String> inlineOneOfSubtypes = new HashSet<>();
 
     BindingCompiler(ProcessorContext context, GeneratedNames names,
                     CompiledMetadata metadata, Backend backend) {
@@ -104,7 +107,10 @@ final class BindingCompiler {
 
         TypeMirror type = context.types.concrete(inputType);
         String key = direction.name() + ':' + type.toString()
-                + ':' + valueFormat + ':' + valuePattern;
+                + ':' + valueFormat + ':' + valuePattern
+                // The mapped OneOf constant-inlining plan must not be reused
+                // for direct @Write bindings of the same POJO type.
+                + (inlineOneOfSubtypes.contains(type.toString()) ? ":oneOfInline" : "");
         BindingValue existing = cache.get(key);
 
         if (existing != null) return existing;
@@ -397,7 +403,7 @@ final class BindingCompiler {
     }
 
     private boolean hasParentOneOf(TypeMirror type) {
-        for (Property property : context.properties.resolve(type).values()) {
+        for (Property property : context.properties.resolveForBinding(type).values()) {
             OneOf read = memberOneOf(property.read());
             OneOf write = memberOneOf(property.write());
             if ((read != null && read.scope() == OneOf.Scope.PARENT)
@@ -499,7 +505,7 @@ final class BindingCompiler {
                         : !simpleOneOfReadValue(creator.parameterTypes().get(i))) return false;
             }
         }
-        for (Property property : context.properties.resolve(subtype).values()) {
+        for (Property property : context.properties.resolveForBinding(subtype).values()) {
             PropertyAccess writable = property.write();
             if (writable == null) continue;
             if (key.equals(property.name()) || !simpleOneOfReadValue(writable.type())
@@ -561,7 +567,12 @@ final class BindingCompiler {
             boolean visible = isVisibleOneOfSubtype(subtype);
             BindingValue compiled = null;
             if (visible && canCompileOneOfSubtype(subtype)) {
-                compiled = compileValue(BindingPlan.Direction.WRITE_TO, subtype, method, generated);
+                inlineOneOfSubtypes.add(subtype.toString());
+                try {
+                    compiled = compileValue(BindingPlan.Direction.WRITE_TO, subtype, method, generated);
+                } finally {
+                    inlineOneOfSubtypes.remove(subtype.toString());
+                }
                 if (compiled == null) return false;
                 addOneOfConstantProperties(compiled, subtype);
             }
@@ -644,7 +655,7 @@ final class BindingCompiler {
             case OBJECT_JOJO:
                 if (element == null || !hasCompatibleOneOfWriteMembers(element,
                         mappedSubtype && kind == NodeKind.OBJECT_POJO)) return false;
-                for (Property property : context.properties.resolve(type).values()) {
+                for (Property property : context.properties.resolveForBinding(type).values()) {
                     PropertyAccess access = property.read();
                     if (access == null) continue;
                     if (memberOneOf(property.read()) != null || memberOneOf(property.write()) != null) {
@@ -789,6 +800,28 @@ final class BindingCompiler {
         return result;
     }
 
+    /**
+     * A generated Binder never accesses non-public members, even when its
+     * package would technically permit it. Failing here is important: silently
+     * dropping a Runtime property changes the JSON contract.
+     */
+    private boolean checkBindingAccess(Property property, PropertyAccess access,
+                                       TypeMirror owner, BindingPlan.Direction direction,
+                                       ExecutableElement method, GeneratedClass generated) {
+        if (access.member().getModifiers().contains(Modifier.PUBLIC)) return true;
+        PropertyStrategy strategy = context.properties.bindingStrategy(owner);
+        String operation = direction == BindingPlan.Direction.READ_FROM
+                ? "JSON deserialization" : "JSON serialization";
+        error(method, generated, "@CompiledBinder cannot access non-public "
+                + (access.isField() ? "field '" : "method '")
+                + owner + "." + access.member().getSimpleName()
+                + "' for " + operation + " (property '" + property.name()
+                + "', propertyStrategy=" + strategy + "); expose a public "
+                + (access.isField() ? "field" : "accessor")
+                + " or choose a different property strategy");
+        return false;
+    }
+
     private boolean compilePojo(BindingValue value, ExecutableElement method,
                                 GeneratedClass generated) {
         TypeElement element = context.types.typeElement(value.type());
@@ -810,7 +843,7 @@ final class BindingCompiler {
             }
         }
 
-        Map<String, Property> properties = context.properties.resolve(value.type());
+        Map<String, Property> properties = context.properties.resolveForBinding(value.type());
         List<BindingProperty> compiled = new ArrayList<BindingProperty>(properties.size());
 
         Map<String, String> claimedNames = new LinkedHashMap<>();
@@ -833,6 +866,17 @@ final class BindingCompiler {
                 continue;
             }
 
+            if (value.direction() == BindingPlan.Direction.WRITE_TO
+                    && inlineOneOfSubtypes.contains(value.type().toString())
+                    && access.isField()
+                    && isInlineStringConstant((VariableElement) access.member())) {
+                // addOneOfConstantProperties emits this literal after compiling
+                // the public properties; never generate private field access.
+                continue;
+            }
+            if (!checkBindingAccess(property, access, value.type(), value.direction(),
+                    method, generated)) return false;
+
             NodeProperty readAnnotation = property.read() == null ? null
                     : property.read().member().getAnnotation(NodeProperty.class);
             NodeProperty writeAnnotation = property.write() == null ? null
@@ -840,14 +884,8 @@ final class BindingCompiler {
 
             boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
 
-            String[] aliases = new String[0];
-            if (value.direction() == BindingPlan.Direction.READ_FROM) {
-                if (writeAnnotation != null && writeAnnotation.aliases().length != 0) {
-                    aliases = writeAnnotation.aliases();
-                } else if (readAnnotation != null) {
-                    aliases = readAnnotation.aliases();
-                }
-            }
+            String[] aliases = value.direction() == BindingPlan.Direction.READ_FROM
+                    ? property.aliases() : new String[0];
             if (value.direction() == BindingPlan.Direction.READ_FROM) {
                 for (String key : aliases) {
                     if (key.isEmpty()) {
@@ -879,8 +917,7 @@ final class BindingCompiler {
                             memberOneOf(property.read()) != null ? memberOneOf(property.read())
                                     : memberOneOf(property.write()), method, generated)
                     : compileValue(value.direction(), access.type(), method, generated,
-                            selectedValueFormat(readAnnotation, writeAnnotation),
-                            selectedValuePattern(readAnnotation, writeAnnotation));
+                            property.valueFormat(), property.valuePattern());
 
             if (propertyValue == null) return false;
 
@@ -968,7 +1005,7 @@ final class BindingCompiler {
     private OneOf creatorOneOf(TypeMirror ownerType, VariableElement parameter, String name) {
         OneOf onParameter = parameter.getAnnotation(OneOf.class);
         if (onParameter != null) return onParameter;
-        Property property = context.properties.resolve(ownerType).get(name);
+        Property property = context.properties.resolveForBinding(ownerType).get(name);
         if (property != null) {
             OneOf declared = memberOneOf(property.read());
             if (declared == null) declared = memberOneOf(property.write());
@@ -1004,7 +1041,7 @@ final class BindingCompiler {
     private boolean compileCreatorPojo(BindingValue value, CreatorPlan creator,
                                        ExecutableElement method, GeneratedClass generated) {
         List<? extends VariableElement> args = creator.executable().getParameters();
-        Map<String, Property> properties = context.properties.resolve(value.type());
+        Map<String, Property> properties = context.properties.resolveForBinding(value.type());
         List<BindingProperty> compiled = new ArrayList<>();
         Map<String, String> claimed = new LinkedHashMap<>();
         Map<String, Boolean> consumed = new LinkedHashMap<>();
@@ -1051,12 +1088,13 @@ final class BindingCompiler {
         int pending = 0;
         for (Property property : properties.values()) {
             if (consumed.containsKey(property.name()) || property.write() == null) continue;
+            if (!checkBindingAccess(property, property.write(), value.type(),
+                    value.direction(), method, generated)) return false;
             NodeProperty getter = property.read() == null ? null
                     : property.read().member().getAnnotation(NodeProperty.class);
             NodeProperty setter = property.write().member().getAnnotation(NodeProperty.class);
             boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
-            String[] aliases = setter != null && setter.aliases().length != 0 ? setter.aliases()
-                    : getter == null ? new String[0] : getter.aliases();
+            String[] aliases = property.aliases();
             if (!claimCreatorNames(value, method, generated, claimed, property.name(), aliases)) return false;
             if (conflictingCodecOptions(getter, setter)) {
                 error(method, generated, "Conflicting @NodeProperty valueFormat/valuePattern on "
@@ -1068,8 +1106,8 @@ final class BindingCompiler {
                             memberOneOf(property.read()) != null ? memberOneOf(property.read())
                                     : memberOneOf(property.write()), method, generated)
                     : compileValue(value.direction(), property.write().type(),
-                            method, generated, selectedValueFormat(getter, setter),
-                            selectedValuePattern(getter, setter));
+                            method, generated, property.valueFormat(),
+                            property.valuePattern());
             if (child == null) return false;
             compiled.add(new BindingProperty(property.name(), aliases,
                     property.write(), child, pending++));
@@ -1115,22 +1153,6 @@ final class BindingCompiler {
         String leftPattern = getter.valuePattern().isEmpty() ? null : getter.valuePattern();
         String rightPattern = setter.valuePattern().isEmpty() ? null : setter.valuePattern();
         return leftPattern != null && rightPattern != null && !leftPattern.equals(rightPattern);
-    }
-
-    private static String selectedValueFormat(NodeProperty getter, NodeProperty setter) {
-        String fromGetter = getter == null || NodeProperty.VALUE_FORMAT_UNSET.equals(getter.valueFormat())
-                ? null : getter.valueFormat();
-        String fromSetter = setter == null || NodeProperty.VALUE_FORMAT_UNSET.equals(setter.valueFormat())
-                ? null : setter.valueFormat();
-        return fromSetter != null ? fromSetter : fromGetter;
-    }
-
-    private static String selectedValuePattern(NodeProperty getter, NodeProperty setter) {
-        String fromGetter = getter == null || getter.valuePattern().isEmpty()
-                ? null : getter.valuePattern();
-        String fromSetter = setter == null || setter.valuePattern().isEmpty()
-                ? null : setter.valuePattern();
-        return fromSetter != null ? fromSetter : fromGetter;
     }
 
     private boolean hasMemberOneOf(PropertyAccess access) {

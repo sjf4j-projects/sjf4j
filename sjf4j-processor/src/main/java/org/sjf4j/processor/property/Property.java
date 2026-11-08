@@ -15,14 +15,21 @@ public final class Property {
     private final PropertyAccess write;
     private final String valueFormat;
     private final String valuePattern;
+    private final String[] aliases;
 
     Property(String name, PropertyAccess read, PropertyAccess write,
              String valueFormat, String valuePattern) {
+        this(name, read, write, valueFormat, valuePattern, new String[0]);
+    }
+
+    Property(String name, PropertyAccess read, PropertyAccess write,
+             String valueFormat, String valuePattern, String[] aliases) {
         this.name = Asserts.notNull(name, "name");
         this.read = read;
         this.write = write;
         this.valueFormat = valueFormat;
         this.valuePattern = valuePattern;
+        this.aliases = Asserts.notNull(aliases, "aliases");
     }
 
     public String name() {
@@ -48,6 +55,11 @@ public final class Property {
 
     public String valuePattern() {
         return valuePattern;
+    }
+
+    /** Input aliases collected across all members of the property family. */
+    public String[] aliases() {
+        return aliases;
     }
 
     public boolean gettable() {

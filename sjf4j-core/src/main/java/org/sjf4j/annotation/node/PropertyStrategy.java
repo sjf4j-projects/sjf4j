@@ -21,6 +21,10 @@ package org.sjf4j.annotation.node;
  * </ol>
  * <p>
  * Framework default is {@link #BEAN_FIELD}.
+ * <p>
+ * Compiled Binder implementations use direct public-member access only. If the
+ * selected read/write member is non-public, annotation processing fails instead
+ * of ignoring the property or changing this strategy's access priority.
  */
 public enum PropertyStrategy {
     /**
