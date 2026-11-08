@@ -1,0 +1,166 @@
+name: Binding Full Benchmark (JDK 25)
+
+# Expensive and noisy shared-runner measurements: manual invocation only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binding-full-jdk25-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  build-jmh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile JMH jar once
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Upload JMH jar for backend jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-full-jmh-jar
+          path: sjf4j-testbench/build/libs/*-jmh.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  benchmark:
+    name: Full / ${{ matrix.backend }}
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        backend: [jackson2, jackson3, fastjson2, gson, jsonp, simple, snake]
+    env:
+      BINDING_BACKEND: ${{ matrix.backend }}
+      BINDING_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Download prebuilt JMH jar
+        uses: actions/download-artifact@v4
+        with:
+          name: binding-full-jmh-jar
+          path: sjf4j-testbench/build/libs
+
+      - name: Record runner hardware
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/performance/binding
+          {
+            echo "Backend: $BINDING_BACKEND"
+            echo "Runner: $RUNNER_NAME"
+            echo "Runner OS: $RUNNER_OS"
+            echo "Runner arch: $RUNNER_ARCH"
+            echo "GitHub run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Commit: $GITHUB_SHA"
+            echo
+            echo "CPU:"
+            lscpu
+            echo
+            echo "Memory:"
+            free -h
+            echo
+            echo "JDK:"
+            java -version 2>&1
+          } > "build/performance/binding/runner-$BINDING_BACKEND.txt"
+
+      - name: Run Full JMH for ${{ matrix.backend }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/benchmark-binding.sh full build/performance/binding \
+            2>&1 | tee build/performance/binding/benchmark.log
+
+      - name: Summarize representative results
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          backend = os.environ["BINDING_BACKEND"]
+          paths = list(Path("build/performance/binding").glob(f"binding-*-full-jdk25-{backend}.json"))
+          if len(paths) != 1:
+              raise SystemExit(f"Expected one JMH JSON for {backend}, found {len(paths)}")
+          rows = json.loads(paths[0].read_text(encoding="utf-8"))
+          print(f"## Binding Full — {backend}")
+          print()
+          print(f"Completed **{len(rows)}** JMH cases. Forks, iterations and GC metrics are in the artifact.")
+          print()
+          print("Representative cases: Users, POJO, 100KB, seed 12345. Lower is better.")
+          print()
+          print("| Operation | Implementation | Score ± error | Unit |")
+          print("| --- | --- | ---: | --- |")
+          examples = [
+              row for row in rows
+              if row["params"]["model"] == "users"
+              and row["params"]["shape"] == "pojo"
+              and row["params"]["sizeKb"] == "100"
+              and row["params"]["seed"] == "12345"
+          ]
+          for row in sorted(examples, key=lambda x: (x["benchmark"], x["params"]["implementation"])):
+              operation = "Read" if "ReadBenchmark" in row["benchmark"] else "Write"
+              metric = row["primaryMetric"]
+              print(f'| {operation} | {row["params"]["implementation"]} | '
+                    f'{metric["score"]:.3f} ± {metric["scoreError"]:.3f} | '
+                    f'{metric["scoreUnit"]} |')
+          PY
+
+      - name: Upload per-backend results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-full-${{ matrix.backend }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/binding/
+          if-no-files-found: warn
+          retention-days: 30
+
+  collect-results:
+    name: Bundle all backend artifacts
+    needs: [build-jmh, benchmark]
+    if: ${{ always() && needs.build-jmh.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Download per-backend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binding-full-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results
+          merge-multiple: false
+
+      - name: Upload one combined archive for analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
