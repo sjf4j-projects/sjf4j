@@ -1,0 +1,105 @@
+name: Jackson Output Sink Investigation (JDK 25)
+
+# Diagnostic-only workflow. Runs automatically only on the experiment branch.
+on:
+  push:
+    branches:
+      - experiment/jackson-output-sink-jmh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson-output-sink-investigation
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 165
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Compile diagnostic JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Record runner and JDK
+        shell: bash
+        run: |
+          mkdir -p build/performance/jackson-sink
+          {
+            echo "Commit: $GITHUB_SHA"
+            lscpu
+            free -h
+            java -version 2>&1
+          } > build/performance/jackson-sink/runner.txt
+
+      - name: Benchmark Jackson 2/3 sink variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' | head -n 1)
+          test -n "$JAR"
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.JacksonOutputSinkBenchmark.write' \
+            -p backend=jackson2,jackson3 \
+            -p implementation=native,blackbird,runtime,compiled \
+            -p model=users,clients \
+            -p sink=baseline,pooled,baos,discard \
+            -p sizeKb=100 -p seed=12345,324 \
+            -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 \
+            -prof gc -rf json \
+            -rff build/performance/jackson-sink/results.json \
+            2>&1 | tee build/performance/jackson-sink/benchmark.log
+
+      - name: Summarize four-way comparisons
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+
+          p = Path("build/performance/jackson-sink/results.json")
+          rows = json.loads(p.read_text(encoding="utf-8"))
+          assert len(rows) == 128, f"Expected 128 completed cases, got {len(rows)}"
+          scores = defaultdict(dict)
+          for row in rows:
+              x = row["params"]
+              key = (x["backend"], x["model"], x["seed"], x["sink"])
+              scores[key][x["implementation"]] = row["primaryMetric"]["score"]
+
+          print("# Jackson output sink diagnostic")
+          print()
+          print("100 KB, JDK 25, 3 forks, 4 warmup + 5 measurement iterations.")
+          print("All values are microseconds/op; lower is better. Ratios are Runtime / Compiled.")
+          print("Compare implementations within each sink. Stream API and byte[] API differ.")
+          for backend in ("jackson2", "jackson3"):
+              for model in ("users", "clients"):
+                  print()
+                  print(f"## {backend} — {model}")
+                  print("| Seed | Sink | Native | Blackbird | Runtime | Compiled | R/C |")
+                  print("| ---: | --- | ---: | ---: | ---: | ---: | ---: |")
+                  for seed in ("12345", "324"):
+                      for sink in ("baseline", "pooled", "baos", "discard"):
+                          s = scores[(backend, model, seed, sink)]
+                          assert set(s) == {"native", "blackbird", "runtime", "compiled"}, (backend, model, seed, sink)
+                          ratio = s["runtime"] / s["compiled"]
+                          print(f'| {seed} | {sink} | {s["native"]:.2f} | {s["blackbird"]:.2f} | {s["runtime"]:.2f} | {s["compiled"]:.2f} | {ratio:.3f}x |')
+          PY
+
+      - name: Upload JMH JSON, GC metrics and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson-output-sink-jdk25
+          path: build/performance/jackson-sink/
+          retention-days: 30
+          if-no-files-found: warn
