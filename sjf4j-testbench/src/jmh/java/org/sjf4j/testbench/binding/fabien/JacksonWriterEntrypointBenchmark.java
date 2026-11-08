@@ -54,7 +54,7 @@ public class JacksonWriterEntrypointBenchmark {
     public int sizeKb;
 
     @Param({"native", "blackbird", "runtimeBytes", "runtimePooled",
-            "originalBytes", "siblingBytes", "siblingPooled",
+            "originalBytes", "originalDirect", "siblingBytes", "siblingWrapped", "siblingPooled",
             "siblingBaos", "siblingDiscard"})
     public String variant;
 
@@ -116,13 +116,32 @@ public class JacksonWriterEntrypointBenchmark {
         } else if ("originalBytes".equals(variant)) {
             FabienBindings.Writer writer = FabienBindings.writer(backend, "compiled", model, "pojo");
             operation = () -> writer.write(node);
+        } else if ("originalDirect".equals(variant)) {
+            // Same generated implementation as originalBytes, but remove the
+            // FabienBindings.Writer indirection to match siblingBytes.
+            if ("jackson2".equals(backend)) {
+                FabienBindings.Jackson2 binder = CompiledInstances.create(FabienBindings.Jackson2.class);
+                operation = "users".equals(model)
+                        ? () -> binder.writeUsers((Users) node)
+                        : () -> binder.writeClients((Clients) node);
+            } else {
+                FabienBindings.Jackson3 binder = CompiledInstances.create(FabienBindings.Jackson3.class);
+                operation = "users".equals(model)
+                        ? () -> binder.writeUsers((Users) node)
+                        : () -> binder.writeClients((Clients) node);
+            }
         } else if ("jackson2".equals(backend)) {
             JacksonOutputSinkBenchmark.Jackson2Stream binder =
                     CompiledInstances.create(JacksonOutputSinkBenchmark.Jackson2Stream.class);
-            if ("siblingBytes".equals(variant)) {
-                operation = "users".equals(model)
-                        ? () -> binder.usersBytes((Users) node)
-                        : () -> binder.clientsBytes((Clients) node);
+            if ("siblingBytes".equals(variant) || "siblingWrapped".equals(variant)) {
+                FabienBindings.Writer writer = "users".equals(model)
+                        ? v -> binder.usersBytes((Users) v)
+                        : v -> binder.clientsBytes((Clients) v);
+                operation = "siblingWrapped".equals(variant)
+                        ? () -> writer.write(node)
+                        : "users".equals(model)
+                            ? () -> binder.usersBytes((Users) node)
+                            : () -> binder.clientsBytes((Clients) node);
             } else {
                 StreamWriter stream = "users".equals(model)
                         ? out -> binder.usersStream((Users) node, out)
@@ -132,10 +151,15 @@ public class JacksonWriterEntrypointBenchmark {
         } else if ("jackson3".equals(backend)) {
             JacksonOutputSinkBenchmark.Jackson3Stream binder =
                     CompiledInstances.create(JacksonOutputSinkBenchmark.Jackson3Stream.class);
-            if ("siblingBytes".equals(variant)) {
-                operation = "users".equals(model)
-                        ? () -> binder.usersBytes((Users) node)
-                        : () -> binder.clientsBytes((Clients) node);
+            if ("siblingBytes".equals(variant) || "siblingWrapped".equals(variant)) {
+                FabienBindings.Writer writer = "users".equals(model)
+                        ? v -> binder.usersBytes((Users) v)
+                        : v -> binder.clientsBytes((Clients) v);
+                operation = "siblingWrapped".equals(variant)
+                        ? () -> writer.write(node)
+                        : "users".equals(model)
+                            ? () -> binder.usersBytes((Users) node)
+                            : () -> binder.clientsBytes((Clients) node);
             } else {
                 StreamWriter stream = "users".equals(model)
                         ? out -> binder.usersStream((Users) node, out)
