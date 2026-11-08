@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Aligned `@CompiledBinder` property discovery with `@NodeObject.propertyStrategy` (`BEAN_ONLY`, `BEAN_FIELD`, `FIELD_ONLY`, `FIELD_BEAN`) and report selected non-public members as compile errors instead of silently omitting them.
+
 ### Changed
 
 - **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.

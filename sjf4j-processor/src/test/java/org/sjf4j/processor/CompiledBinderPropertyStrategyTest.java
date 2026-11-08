@@ -1,0 +1,150 @@
+package org.sjf4j.processor;
+
+import org.junit.jupiter.api.Test;
+
+import java.net.URLClassLoader;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/** The compiled Binder must respect Runtime's property discovery and access order. */
+class CompiledBinderPropertyStrategyTest {
+
+    private NavigatorTestCompiler.Result compile(String strategy, String model,
+                                                 String direction) throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java", "package fixture;\n"
+                + "import org.sjf4j.annotation.node.*;\n"
+                + "@NodeObject(propertyStrategy=PropertyStrategy." + strategy + ")\n"
+                + "public class Bean {\n" + model + "\n}\n");
+        sources.put("fixture/Binder.java", "package fixture;\n"
+                + "import org.sjf4j.annotation.binding.*;\n"
+                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {\n"
+                + ("READ".equals(direction)
+                    ? "  @Read Bean bind(String input);\n"
+                    : "  @Write String bind(Bean input);\n")
+                + "}\n");
+        return NavigatorTestCompiler.compile(sources, CodegenProcessor.class,
+                "-Xlint:cast", "-Werror");
+    }
+
+    private void expectFailure(String strategy, String model, String direction, String member)
+            throws Exception {
+        NavigatorTestCompiler.Result result = compile(strategy, model, direction);
+        assertFalse(result.success, strategy + " " + direction + ": expected a compiler error");
+        String diagnostics = result.diagnostics();
+        assertTrue(diagnostics.contains("@CompiledBinder cannot access non-public"),
+                diagnostics);
+        assertTrue(diagnostics.contains("propertyStrategy=" + strategy), diagnostics);
+        assertTrue(diagnostics.contains(member), diagnostics);
+    }
+
+    @Test
+    void fieldOnlyRejectsPrivateFieldsInsteadOfUsingPublicBeanAccessors() throws Exception {
+        String model = "private String value;\n"
+                + "public String getValue() { return value; }\n"
+                + "public void setValue(String v) { value = v; }";
+        expectFailure("FIELD_ONLY", model, "READ", "value");
+        expectFailure("FIELD_ONLY", model, "WRITE", "value");
+    }
+
+    @Test
+    void fieldBeanRejectsInaccessiblePrimaryFieldsEvenWithPublicBeans() throws Exception {
+        String model = "private String value;\n"
+                + "public String getValue() { return value; }\n"
+                + "public void setValue(String v) { value = v; }";
+        expectFailure("FIELD_BEAN", model, "READ", "value");
+        expectFailure("FIELD_BEAN", model, "WRITE", "value");
+    }
+
+    @Test
+    void beanFieldAllowsPublicGetterButRejectsPrivateFieldSetterFallback() throws Exception {
+        String model = "@NodeProperty(\"value\") private String value;\n"
+                + "public String getValue() { return value; }";
+        NavigatorTestCompiler.Result write = compile("BEAN_FIELD", model, "WRITE");
+        assertTrue(write.success, write.diagnostics());
+        expectFailure("BEAN_FIELD", model, "READ", "value");
+    }
+
+    @Test
+    void beanOnlyIgnoresPrivateAndPublicFieldsWithoutBeanAccessors() throws Exception {
+        String model = "private String secret;\n"
+                + "public String fieldOnly;\n"
+                + "private String value;\n"
+                + "public String getValue() { return value; }\n"
+                + "public void setValue(String v) { value = v; }";
+        for (String direction : new String[]{"READ", "WRITE"}) {
+            NavigatorTestCompiler.Result result = compile("BEAN_ONLY", model, direction);
+            assertTrue(result.success, direction + ": " + result.diagnostics());
+            String generated = result.generatedSource("fixture/Binder_Impl.java");
+            assertFalse(generated.contains("fieldOnly"), direction);
+            assertFalse(generated.contains("secret"), direction);
+        }
+    }
+
+    @Test
+    void beanOnlyRejectsNonPublicAnnotatedBeanMembers() throws Exception {
+        expectFailure("BEAN_ONLY",
+                "@NodeProperty(\"wire\") private String getValue() { return \"x\"; }",
+                "WRITE", "getValue");
+        expectFailure("BEAN_ONLY",
+                "@NodeProperty(\"wire\") private void setValue(String value) {}",
+                "READ", "setValue");
+    }
+
+    @Test
+    void fieldOnlyIgnoresPublicGetterAndUsesPublicField() throws Exception {
+        String model = "public String value;\n"
+                + "public String getValue() { return \"wrong\"; }\n"
+                + "public void setValue(String v) { value = \"wrong\"; }";
+        NavigatorTestCompiler.Result result = compile("FIELD_ONLY", model, "WRITE");
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> bean = Class.forName("fixture.Bean", true, loader);
+            Object value = bean.getConstructor().newInstance();
+            bean.getField("value").set(value, "expected");
+            Class<?> binder = Class.forName("fixture.Binder_Impl", true, loader);
+            Object instance = binder.getConstructor().newInstance();
+            assertEquals("{\"value\":\"expected\"}",
+                    binder.getMethod("bind", bean).invoke(instance, value));
+        }
+    }
+
+    @Test
+    void fieldBeanUsesPublicFieldBeforePublicGetter() throws Exception {
+        String model = "public String value;\n"
+                + "public String getValue() { return \"wrong\"; }";
+        NavigatorTestCompiler.Result result = compile("FIELD_BEAN", model, "WRITE");
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("value.value"), generated);
+        assertFalse(generated.contains("value.getValue()"), generated);
+    }
+
+    @Test
+    void ignoredOrTransientFieldsDoNotTriggerErrors() throws Exception {
+        String model = "@NodeIgnore private String ignored;\n"
+                + "private transient String hidden;\n"
+                + "public String visible;";
+        for (String strategy : new String[]{"FIELD_ONLY", "FIELD_BEAN", "BEAN_FIELD", "BEAN_ONLY"}) {
+            for (String direction : new String[]{"READ", "WRITE"}) {
+                NavigatorTestCompiler.Result result = compile(strategy, model, direction);
+                assertTrue(result.success, strategy + " " + direction + ": " + result.diagnostics());
+            }
+        }
+    }
+
+    @Test
+    void defaultBeanFieldIgnoresUnannotatedPrivateBackingFields() throws Exception {
+        String model = "private String value;\n"
+                + "public String getValue() { return value; }\n"
+                + "public void setValue(String v) { value = v; }";
+        for (String direction : new String[]{"READ", "WRITE"}) {
+            NavigatorTestCompiler.Result result = compile("BEAN_FIELD", model, direction);
+            assertTrue(result.success, direction + ": " + result.diagnostics());
+        }
+    }
+}
