@@ -1155,22 +1155,6 @@ final class BindingCompiler {
         return leftPattern != null && rightPattern != null && !leftPattern.equals(rightPattern);
     }
 
-    private static String selectedValueFormat(NodeProperty getter, NodeProperty setter) {
-        String fromGetter = getter == null || NodeProperty.VALUE_FORMAT_UNSET.equals(getter.valueFormat())
-                ? null : getter.valueFormat();
-        String fromSetter = setter == null || NodeProperty.VALUE_FORMAT_UNSET.equals(setter.valueFormat())
-                ? null : setter.valueFormat();
-        return fromSetter != null ? fromSetter : fromGetter;
-    }
-
-    private static String selectedValuePattern(NodeProperty getter, NodeProperty setter) {
-        String fromGetter = getter == null || getter.valuePattern().isEmpty()
-                ? null : getter.valuePattern();
-        String fromSetter = setter == null || setter.valuePattern().isEmpty()
-                ? null : setter.valuePattern();
-        return fromSetter != null ? fromSetter : fromGetter;
-    }
-
     private boolean hasMemberOneOf(PropertyAccess access) {
         return memberOneOf(access) != null;
     }
