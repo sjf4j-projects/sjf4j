@@ -884,14 +884,8 @@ final class BindingCompiler {
 
             boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
 
-            String[] aliases = new String[0];
-            if (value.direction() == BindingPlan.Direction.READ_FROM) {
-                if (writeAnnotation != null && writeAnnotation.aliases().length != 0) {
-                    aliases = writeAnnotation.aliases();
-                } else if (readAnnotation != null) {
-                    aliases = readAnnotation.aliases();
-                }
-            }
+            String[] aliases = value.direction() == BindingPlan.Direction.READ_FROM
+                    ? property.aliases() : new String[0];
             if (value.direction() == BindingPlan.Direction.READ_FROM) {
                 for (String key : aliases) {
                     if (key.isEmpty()) {
@@ -923,8 +917,7 @@ final class BindingCompiler {
                             memberOneOf(property.read()) != null ? memberOneOf(property.read())
                                     : memberOneOf(property.write()), method, generated)
                     : compileValue(value.direction(), access.type(), method, generated,
-                            selectedValueFormat(readAnnotation, writeAnnotation),
-                            selectedValuePattern(readAnnotation, writeAnnotation));
+                            property.valueFormat(), property.valuePattern());
 
             if (propertyValue == null) return false;
 
@@ -1101,8 +1094,7 @@ final class BindingCompiler {
                     : property.read().member().getAnnotation(NodeProperty.class);
             NodeProperty setter = property.write().member().getAnnotation(NodeProperty.class);
             boolean memberOneOf = hasMemberOneOf(property.read()) || hasMemberOneOf(property.write());
-            String[] aliases = setter != null && setter.aliases().length != 0 ? setter.aliases()
-                    : getter == null ? new String[0] : getter.aliases();
+            String[] aliases = property.aliases();
             if (!claimCreatorNames(value, method, generated, claimed, property.name(), aliases)) return false;
             if (conflictingCodecOptions(getter, setter)) {
                 error(method, generated, "Conflicting @NodeProperty valueFormat/valuePattern on "
@@ -1114,8 +1106,8 @@ final class BindingCompiler {
                             memberOneOf(property.read()) != null ? memberOneOf(property.read())
                                     : memberOneOf(property.write()), method, generated)
                     : compileValue(value.direction(), property.write().type(),
-                            method, generated, selectedValueFormat(getter, setter),
-                            selectedValuePattern(getter, setter));
+                            method, generated, property.valueFormat(),
+                            property.valuePattern());
             if (child == null) return false;
             compiled.add(new BindingProperty(property.name(), aliases,
                     property.write(), child, pending++));

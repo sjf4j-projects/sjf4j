@@ -173,4 +173,37 @@ class CompiledBinderPropertyStrategyTest {
         assertTrue(result.diagnostics().contains("FIELD_ONLY"), result.diagnostics());
     }
 
+    @Test
+    void beanFieldRetainsFieldAliasWithPublicGetterAndSetter() throws Exception {
+        String model = "@NodeProperty(value=\"name\", aliases={\"legacy\"}) public String name;\n"
+                + "public String getName() { return name; }\n"
+                + "public void setName(String name) { this.name = name; }";
+        NavigatorTestCompiler.Result result = compile("BEAN_FIELD", model, "READ");
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binder = Class.forName("fixture.Binder_Impl", true, loader);
+            Object instance = binder.getConstructor().newInstance();
+            Object bean = binder.getMethod("bind", String.class)
+                    .invoke(instance, "{\"legacy\":\"Alice\"}");
+            assertEquals("Alice", bean.getClass().getField("name").get(bean));
+        }
+    }
+
+    @Test
+    void beanFieldRetainsFieldValuePatternWithPublicAccessors() throws Exception {
+        String model = "@NodeProperty(valuePattern=\"yyyy/MM/dd\") public java.time.LocalDate date;\n"
+                + "public java.time.LocalDate getDate() { return date; }\n"
+                + "public void setDate(java.time.LocalDate v) { date = v; }";
+        NavigatorTestCompiler.Result result = compile("BEAN_FIELD", model, "READ");
+        assertTrue(result.success, result.diagnostics());
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> binder = Class.forName("fixture.Binder_Impl", true, loader);
+            Object instance = binder.getConstructor().newInstance();
+            Object bean = binder.getMethod("bind", String.class)
+                    .invoke(instance, "{\"date\":\"2026/11/08\"}");
+            assertEquals(java.time.LocalDate.of(2026, 11, 8),
+                    bean.getClass().getField("date").get(bean));
+        }
+    }
 }
+

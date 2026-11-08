@@ -26,6 +26,7 @@ import javax.tools.Diagnostic;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.ArrayList;
@@ -218,6 +219,7 @@ public final class PropertyResolver {
                 }
                 PropertyAccess access = new PropertyAccess(field, fieldTypeMirror);
                 family.builder.recordCodec(field);
+                Collections.addAll(family.aliases, annotations.propertyAliases(field));
                 family.builder.offerRead(access, fieldPriority);
                 if (!modifiers.contains(Modifier.FINAL)) {
                     family.builder.offerWrite(access, fieldPriority);
@@ -267,6 +269,7 @@ public final class PropertyResolver {
                         family.beanExplicitName = renamed;
                     }
                     family.builder.recordCodec(method);
+                    Collections.addAll(family.aliases, annotations.propertyAliases(method));
                     PropertyAccess access = new PropertyAccess(method,
                             getter ? resolved.getReturnType() : resolved.getParameterTypes().get(0));
                     if (getter) family.builder.offerRead(access, beanPriority);
@@ -287,7 +290,8 @@ public final class PropertyResolver {
             Property property = new Property(name,
                     builder.read == null ? null : builder.read.access,
                     builder.write == null ? null : builder.write.access,
-                    builder.valueFormat, builder.valuePattern);
+                    builder.valueFormat, builder.valuePattern,
+                    family.aliases.toArray(new String[0]));
             if (result.putIfAbsent(name, property) != null) {
                 messager.printMessage(Diagnostic.Kind.ERROR,
                         "duplicate compiled property name '" + name + "'", type);
@@ -315,8 +319,9 @@ public final class PropertyResolver {
         return null;
     }
 
-    private final class BindingFamily {
+    private static final class BindingFamily {
         final Builder builder;
+        final Set<String> aliases = new LinkedHashSet<>();
         String beanExplicitName;
         String fieldExplicitName;
 
