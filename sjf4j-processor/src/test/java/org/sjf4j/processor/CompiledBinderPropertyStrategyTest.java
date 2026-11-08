@@ -147,4 +147,30 @@ class CompiledBinderPropertyStrategyTest {
             assertTrue(result.success, direction + ": " + result.diagnostics());
         }
     }
+    @Test
+    void inheritedPrivateFieldCannotDisappearFromFieldOnlyBinding() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Parent.java",
+                "package fixture; public class Parent {"
+                        + " private String secret;"
+                        + " public String getSecret() { return secret; }"
+                        + " public void setSecret(String v) { secret = v; }"
+                        + " }");
+        sources.put("fixture/Bean.java",
+                "package fixture; import org.sjf4j.annotation.node.*;"
+                        + " @NodeObject(propertyStrategy=PropertyStrategy.FIELD_ONLY)"
+                        + " public class Bean extends Parent {}");
+        sources.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*;"
+                        + " @CompiledBinder(backend=Backend.SIMPLE) public interface Binder {"
+                        + " @Read Bean read(String json);"
+                        + " @Write String write(Bean value);"
+                        + " }");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                sources, CodegenProcessor.class, "-Xlint:cast", "-Werror");
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("secret"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("FIELD_ONLY"), result.diagnostics());
+    }
+
 }

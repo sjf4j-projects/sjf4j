@@ -207,7 +207,16 @@ public final class PropertyResolver {
                 if (family.fieldExplicitName == null) {
                     family.fieldExplicitName = annotations.explicitPropertyName(member);
                 }
-                TypeMirror fieldTypeMirror = typeUtils.asMemberOf(declaredOwner, field);
+                TypeMirror fieldTypeMirror;
+                try {
+                    fieldTypeMirror = typeUtils.asMemberOf(declaredOwner, field);
+                } catch (IllegalArgumentException notInherited) {
+                    // Private superclass fields are visible to Runtime reflection,
+                    // but not inherited Java members. Keep them for the explicit
+                    // compiled-access diagnostic rather than dropping them.
+                    if (modifiers.contains(Modifier.PUBLIC)) throw notInherited;
+                    fieldTypeMirror = field.asType();
+                }
                 PropertyAccess access = new PropertyAccess(field, fieldTypeMirror);
                 family.builder.recordCodec(field);
                 family.builder.offerRead(access, fieldPriority);
