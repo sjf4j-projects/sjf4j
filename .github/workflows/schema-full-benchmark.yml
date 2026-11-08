@@ -1,0 +1,201 @@
+name: Schema Full Benchmark (JDK 25)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/schema-full-benchmark.yml"
+      - "scripts/benchmark-schema.sh"
+      - "scripts/analyze-schema-benchmark.py"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java"
+      - "sjf4j-testbench/build.gradle.kts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-jmh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Upload JMH jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-jmh-jar
+          path: sjf4j-testbench/build/libs/*-jmh.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  # Execute real JMH setup and validate equivalence on PRs without doing a full run.
+  smoke:
+    name: Smoke / ${{ matrix.group }}
+    if: github.event_name == 'pull_request'
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [validation, roundtrip]
+    env:
+      SCHEMA_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Download JMH jar
+        uses: actions/download-artifact@v4
+        with:
+          name: schema-jmh-jar
+          path: sjf4j-testbench/build/libs
+
+      - name: Smoke check Creek ${{ matrix.group }}
+        run: ./scripts/benchmark-schema.sh smoke "${{ matrix.group }}"
+
+      - name: Upload smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-smoke-${{ matrix.group }}-${{ github.run_id }}
+          path: build/performance/schema/
+          if-no-files-found: warn
+          retention-days: 7
+
+  benchmark:
+    name: Full / ${{ matrix.group }}
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        group: [validation, roundtrip]
+    env:
+      SCHEMA_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Download prebuilt JMH jar
+        uses: actions/download-artifact@v4
+        with:
+          name: schema-jmh-jar
+          path: sjf4j-testbench/build/libs
+
+      - name: Record runner hardware
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="build/performance/schema/${{ matrix.group }}"
+          mkdir -p "$OUT"
+          {
+            echo "Group: ${{ matrix.group }}"
+            echo "Runner: $RUNNER_NAME"
+            echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Commit: $GITHUB_SHA"
+            echo "CPU:"
+            lscpu
+            echo "Memory:"
+            free -h
+            echo "JDK:"
+            java -version 2>&1
+          } > "$OUT/runner.txt"
+
+      - name: Run Creek Full ${{ matrix.group }}
+        run: ./scripts/benchmark-schema.sh full "${{ matrix.group }}"
+
+      - name: Show JMH results in job summary
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          group = "${{ matrix.group }}"
+          file = Path(f"build/performance/schema/{group}/schema-{group}.json")
+          rows = json.loads(file.read_text(encoding="utf-8"))
+          print(f"## Creek {group}: {len(rows)} methods")
+          print()
+          print("| Method | us/op | B/op |")
+          print("| --- | ---: | ---: |")
+          for row in sorted(rows, key=lambda r: r["benchmark"]):
+              name = row["benchmark"].rsplit(".", 1)[-1]
+              metric = row["primaryMetric"]
+              alloc = row.get("secondaryMetrics", {}).get("gc.alloc.rate.norm", {}).get("score")
+              alloc_text = f"{alloc:.1f}" if alloc is not None else "n/a"
+              print(f'| {name} | {metric["score"]:.3f} | {alloc_text} |')
+          PY
+
+      - name: Upload raw results and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-full-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/schema/${{ matrix.group }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  collect-results:
+    name: Combined Creek report
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && needs.build-jmh.result == 'success' }}
+    needs: [build-jmh, benchmark]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download both result artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: schema-full-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results
+
+      - name: Build comparative report
+        shell: bash
+        run: |
+          python3 scripts/analyze-schema-benchmark.py \
+            "results/schema-full-validation-${{ github.run_id }}-${{ github.run_attempt }}/schema-validation.json" \
+            "results/schema-full-roundtrip-${{ github.run_id }}-${{ github.run_attempt }}/schema-roundtrip.json" \
+            --output results/report.md
+          cat results/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload combined artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
