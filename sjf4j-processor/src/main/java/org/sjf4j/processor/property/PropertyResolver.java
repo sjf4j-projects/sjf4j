@@ -185,11 +185,12 @@ public final class PropertyResolver {
                 if (modifiers.contains(Modifier.STATIC)
                         || member.getSimpleName().toString().startsWith("this$")) continue;
                 String name = member.getSimpleName().toString();
-                if (!seenFields.add(name)) continue;
-                if (modifiers.contains(Modifier.TRANSIENT)) {
+                // Only the nearest declaration controls transient suppression;
+                // an ineligible child field must not hide an eligible parent.
+                if (seenFields.add(name) && modifiers.contains(Modifier.TRANSIENT)) {
                     transientFields.add(name);
-                    continue;
                 }
+                if (modifiers.contains(Modifier.TRANSIENT)) continue;
                 if (!fields || member.getAnnotation(NodeIgnore.class) != null) continue;
                 VariableElement field = (VariableElement) member;
                 TypeElement fieldType = types.typeElement(field.asType());
