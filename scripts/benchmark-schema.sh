@@ -100,8 +100,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v caffeinate >/dev/null 2>&1; the
 fi
 
 echo "Running $PROFILE / $GROUP: $EXPECTED Creek methods"
+# JMH uses Matcher.find() for regex selection; anchor to avoid selecting
+# pojo_isValid_compiled_strict via the pojo_isValid_compiled prefix.
+SELECTOR="$BASE$METHODS"'$'
 # pipefail preserves JMH failure while tee keeps the diagnostic log in the artifact.
-"${JAVA_CMD[@]}" -jar "$JAR" "$BASE$METHODS" -t 1 "${ARGS[@]}" \
+"${JAVA_CMD[@]}" -jar "$JAR" "$SELECTOR" -t 1 "${ARGS[@]}" \
     -rf json -rff "$RESULT" 2>&1 | tee "$LOG"
 
 python3 - "$RESULT" "$EXPECTED" "$PROFILE" <<'PY'
