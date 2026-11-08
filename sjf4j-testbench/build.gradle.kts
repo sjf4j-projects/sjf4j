@@ -86,6 +86,8 @@ dependencies {
     jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")
     jmhImplementation("org.eclipse.parsson:parsson:1.1.7")
     jmhImplementation("com.jayway.jsonpath:json-path:3.0.0")
+    // External JSON Schema baseline using Jackson 2 (not a production dependency).
+    jmhImplementation("com.networknt:json-schema-validator:2.0.5")
 
 }
 
