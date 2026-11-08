@@ -141,3 +141,26 @@ jobs:
           path: build/performance/binding/
           if-no-files-found: warn
           retention-days: 30
+
+  collect-results:
+    name: Bundle all backend artifacts
+    needs: [build-jmh, benchmark]
+    if: ${{ always() && needs.build-jmh.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Download per-backend artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binding-full-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results
+          merge-multiple: false
+
+      - name: Upload one combined archive for analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30

@@ -100,7 +100,9 @@ and choose the commit/branch to benchmark.
 - Each job uploads a backend-specific artifact with **raw JMH JSON** (including
   independent forks and GC allocation metrics), environment metadata, hardware
   information, and a console log. Representative 100KB Users/POJO scores are
-  displayed in the Actions job summary.
+  displayed in the Actions job summary. A final job also creates a **combined
+  artifact** containing all backend folders, so the entire Full run can be
+  downloaded in one archive.
 - **Shared GitHub-hosted runner timings are diagnostic, not release baselines.**
   Hardware and scheduling vary between jobs and runs. The metadata explicitly
   records `Baseline eligible: no`, even though the workload and JMH parameters
