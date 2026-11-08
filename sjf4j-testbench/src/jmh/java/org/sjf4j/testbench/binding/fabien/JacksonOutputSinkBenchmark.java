@@ -28,7 +28,6 @@ import org.sjf4j.testbench.model.fabien.Users;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
@@ -211,12 +210,12 @@ public class JacksonOutputSinkBenchmark {
                         .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
                         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
                 if (blackbird) mapper.registerModule(new BlackbirdModule());
-                return mapper::writeValue;
+                return (v, out) -> mapper.writeValue(out, v);
             }
             JsonMapper mapper = blackbird
                     ? JsonMapper.builder().addModule(new tools.jackson.module.blackbird.BlackbirdModule()).build()
                     : new JsonMapper();
-            return mapper::writeValue;
+            return (v, out) -> mapper.writeValue(out, v);
         }
         throw new IllegalArgumentException("unknown implementation: " + implementation);
     }
