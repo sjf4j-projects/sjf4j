@@ -174,6 +174,26 @@ class CompiledBinderPropertyStrategyTest {
     }
 
     @Test
+    void beanOnlyDoesNotSuppressAccessorsForTransientBackingFields() throws Exception {
+        String model = "private transient String value;\n"
+                + "public String getValue() { return value; }\n"
+                + "public void setValue(String v) { value = v; }";
+        NavigatorTestCompiler.Result read = compile("BEAN_ONLY", model, "READ");
+        NavigatorTestCompiler.Result write = compile("BEAN_ONLY", model, "WRITE");
+        assertTrue(read.success, read.diagnostics());
+        assertTrue(write.success, write.diagnostics());
+        try (URLClassLoader loader = read.classLoader(getClass().getClassLoader())) {
+            Class<?> binder = Class.forName("fixture.Binder_Impl", true, loader);
+            Object impl = binder.getConstructor().newInstance();
+            Object bean = binder.getMethod("bind", String.class)
+                    .invoke(impl, "{\"value\":\"from-bean\"}");
+            assertEquals("from-bean", bean.getClass().getMethod("getValue").invoke(bean));
+        }
+        String generated = write.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("getValue()"), generated);
+    }
+
+    @Test
     void beanFieldRetainsFieldAliasWithPublicGetterAndSetter() throws Exception {
         String model = "@NodeProperty(value=\"name\", aliases={\"legacy\"}) public String name;\n"
                 + "public String getName() { return name; }\n"
