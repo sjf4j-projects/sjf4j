@@ -397,7 +397,7 @@ final class BindingCompiler {
     }
 
     private boolean hasParentOneOf(TypeMirror type) {
-        for (Property property : context.properties.resolve(type).values()) {
+        for (Property property : context.properties.resolveForBinding(type).values()) {
             OneOf read = memberOneOf(property.read());
             OneOf write = memberOneOf(property.write());
             if ((read != null && read.scope() == OneOf.Scope.PARENT)
@@ -499,7 +499,7 @@ final class BindingCompiler {
                         : !simpleOneOfReadValue(creator.parameterTypes().get(i))) return false;
             }
         }
-        for (Property property : context.properties.resolve(subtype).values()) {
+        for (Property property : context.properties.resolveForBinding(subtype).values()) {
             PropertyAccess writable = property.write();
             if (writable == null) continue;
             if (key.equals(property.name()) || !simpleOneOfReadValue(writable.type())
@@ -644,7 +644,7 @@ final class BindingCompiler {
             case OBJECT_JOJO:
                 if (element == null || !hasCompatibleOneOfWriteMembers(element,
                         mappedSubtype && kind == NodeKind.OBJECT_POJO)) return false;
-                for (Property property : context.properties.resolve(type).values()) {
+                for (Property property : context.properties.resolveForBinding(type).values()) {
                     PropertyAccess access = property.read();
                     if (access == null) continue;
                     if (memberOneOf(property.read()) != null || memberOneOf(property.write()) != null) {
@@ -789,6 +789,31 @@ final class BindingCompiler {
         return result;
     }
 
+    /**
+     * A generated Binder never accesses non-public members, even when its
+     * package would technically permit it. Failing here is important: silently
+     * dropping a Runtime property changes the JSON contract.
+     */
+    private boolean checkBindingAccess(Property property, PropertyAccess access,
+                                       TypeMirror owner, BindingPlan.Direction direction,
+                                       ExecutableElement method, GeneratedClass generated) {
+        if (access.member().getModifiers().contains(Modifier.PUBLIC)) return true;
+        TypeElement element = context.types.typeElement(owner);
+        NodeObject options = element == null ? null : element.getAnnotation(NodeObject.class);
+        PropertyStrategy strategy = options == null
+                ? PropertyStrategy.BEAN_FIELD : options.propertyStrategy();
+        String operation = direction == BindingPlan.Direction.READ_FROM
+                ? "JSON deserialization" : "JSON serialization";
+        error(method, generated, "@CompiledBinder cannot access non-public "
+                + (access.isField() ? "field '" : "method '")
+                + owner + "." + access.member().getSimpleName()
+                + "' for " + operation + " (property '" + property.name()
+                + "', propertyStrategy=" + strategy + "); expose a public "
+                + (access.isField() ? "field" : "accessor")
+                + " or choose a different property strategy");
+        return false;
+    }
+
     private boolean compilePojo(BindingValue value, ExecutableElement method,
                                 GeneratedClass generated) {
         TypeElement element = context.types.typeElement(value.type());
@@ -810,7 +835,7 @@ final class BindingCompiler {
             }
         }
 
-        Map<String, Property> properties = context.properties.resolve(value.type());
+        Map<String, Property> properties = context.properties.resolveForBinding(value.type());
         List<BindingProperty> compiled = new ArrayList<BindingProperty>(properties.size());
 
         Map<String, String> claimedNames = new LinkedHashMap<>();
@@ -832,6 +857,9 @@ final class BindingCompiler {
                 }
                 continue;
             }
+
+            if (!checkBindingAccess(property, access, value.type(), value.direction(),
+                    method, generated)) return false;
 
             NodeProperty readAnnotation = property.read() == null ? null
                     : property.read().member().getAnnotation(NodeProperty.class);
@@ -968,7 +996,7 @@ final class BindingCompiler {
     private OneOf creatorOneOf(TypeMirror ownerType, VariableElement parameter, String name) {
         OneOf onParameter = parameter.getAnnotation(OneOf.class);
         if (onParameter != null) return onParameter;
-        Property property = context.properties.resolve(ownerType).get(name);
+        Property property = context.properties.resolveForBinding(ownerType).get(name);
         if (property != null) {
             OneOf declared = memberOneOf(property.read());
             if (declared == null) declared = memberOneOf(property.write());
@@ -1004,7 +1032,7 @@ final class BindingCompiler {
     private boolean compileCreatorPojo(BindingValue value, CreatorPlan creator,
                                        ExecutableElement method, GeneratedClass generated) {
         List<? extends VariableElement> args = creator.executable().getParameters();
-        Map<String, Property> properties = context.properties.resolve(value.type());
+        Map<String, Property> properties = context.properties.resolveForBinding(value.type());
         List<BindingProperty> compiled = new ArrayList<>();
         Map<String, String> claimed = new LinkedHashMap<>();
         Map<String, Boolean> consumed = new LinkedHashMap<>();
@@ -1051,6 +1079,8 @@ final class BindingCompiler {
         int pending = 0;
         for (Property property : properties.values()) {
             if (consumed.containsKey(property.name()) || property.write() == null) continue;
+            if (!checkBindingAccess(property, property.write(), value.type(),
+                    value.direction(), method, generated)) return false;
             NodeProperty getter = property.read() == null ? null
                     : property.read().member().getAnnotation(NodeProperty.class);
             NodeProperty setter = property.write().member().getAnnotation(NodeProperty.class);
