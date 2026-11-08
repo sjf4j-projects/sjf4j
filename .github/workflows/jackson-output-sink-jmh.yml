@@ -1,4 +1,4 @@
-name: Jackson Compiled Entrypoint Investigation (JDK 25)
+name: Jackson Compiled Callsite Isolation (JDK 25)
 
 # Diagnostic branch only; never changes production writer or main.
 on:
@@ -60,7 +60,7 @@ jobs:
           java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.JacksonWriterEntrypointBenchmark.write' \
             -p backend=jackson2,jackson3 \
             -p model=users -p seed=12345,324 -p sizeKb=100 \
-            -p variant=native,blackbird,runtimeBytes,runtimePooled,originalBytes,siblingBytes,siblingPooled,siblingBaos,siblingDiscard \
+            -p variant=native,blackbird,runtimeBytes,originalBytes,originalDirect,siblingBytes,siblingWrapped,siblingPooled \
             -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
             -rf json -rff build/performance/jackson-entrypoint/users.json \
             > build/performance/jackson-entrypoint/users.log 2>&1
@@ -73,7 +73,7 @@ jobs:
           JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
           java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.JacksonWriterEntrypointBenchmark.write' \
             -p backend=jackson3 -p model=clients -p seed=12345 -p sizeKb=100 \
-            -p variant=native,blackbird,runtimeBytes,runtimePooled,originalBytes,siblingBytes,siblingPooled,siblingBaos,siblingDiscard \
+            -p variant=native,blackbird,runtimeBytes,originalBytes,originalDirect,siblingBytes,siblingWrapped,siblingPooled \
             -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
             -rf json -rff build/performance/jackson-entrypoint/clients.json \
             > build/performance/jackson-entrypoint/clients.log 2>&1
@@ -88,7 +88,7 @@ jobs:
           from pathlib import Path
           root = Path("build/performance/jackson-entrypoint")
           rows = json.loads((root / "users.json").read_text()) + json.loads((root / "clients.json").read_text())
-          assert len(rows) == 45, f"Expected 45 measurements, got {len(rows)}"
+          assert len(rows) == 40, f"Expected 45 measurements, got {len(rows)}"
           data = defaultdict(dict)
           for x in rows:
               p=x["params"]
@@ -102,19 +102,24 @@ jobs:
               print(f"\n## {b} / {m} / seed={s}")
               print("| Variant | µs/op | JMH Error | Alloc B/op |")
               print("| --- | ---: | ---: | ---: |")
-              for v in ("native","blackbird","runtimeBytes","runtimePooled","originalBytes","siblingBytes","siblingPooled","siblingBaos","siblingDiscard"):
+              for v in ("native","blackbird","runtimeBytes","originalBytes","originalDirect","siblingBytes","siblingWrapped","siblingPooled"):
                   score,err,alloc=data[key][v]
                   print(f"| {v} | {score:.2f} | ±{err:.2f} | {alloc:.0f} |")
-              orig=data[key]["originalBytes"][0]; sibling=data[key]["siblingBytes"][0]; stream=data[key]["siblingPooled"][0]
-              print(f"\nSame-overload class-shape difference: originalBytes / siblingBytes = {orig/sibling:.3f}x.")
-              print(f"Same-generated-class byte[] vs pooled stream: siblingBytes / siblingPooled = {sibling/stream:.3f}x.")
+              orig=data[key]["originalBytes"][0]; direct=data[key]["originalDirect"][0]
+              sib=data[key]["siblingBytes"][0]; wrapped=data[key]["siblingWrapped"][0]
+              stream=data[key]["siblingPooled"][0]
+              print(f"\\nOriginal wrapper/direct: {orig/direct:.3f}x.")
+              print(f"Sibling wrapper/direct: {wrapped/sib:.3f}x.")
+              print(f"Original/sibling when direct: {direct/sib:.3f}x.")
+              print(f"Original/sibling when wrapped: {orig/wrapped:.3f}x.")
+              print(f"Sibling byte[] / pooled stream: {sib/stream:.3f}x.")
           PY
 
       - name: Upload source comparison and raw JMH/GC
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson-entrypoint-jdk25
+          name: jackson-callsite-jdk25
           path: build/performance/jackson-entrypoint/
           retention-days: 30
           if-no-files-found: warn
