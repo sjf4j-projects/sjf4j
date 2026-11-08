@@ -1,6 +1,9 @@
 package org.sjf4j.processor.property;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.node.NodeIgnore;
+import org.sjf4j.annotation.node.NodeObject;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.processor.annotation.NodeAnnotations;
 import org.sjf4j.processor.type.TypeSystem;
@@ -24,6 +27,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -122,6 +128,173 @@ public final class PropertyResolver {
         cache.put(cacheKey, resolved);
 
         return resolved;
+    }
+
+    /**
+     * Binder-specific resolution of the four Runtime POJO property strategies.
+     *
+     * Unlike navigation/mapping discovery, this deliberately retains non-public
+     * candidates. The Binder compiler must reject an inaccessible selected
+     * member, rather than silently emitting a different JSON representation.
+     */
+    public Map<String, Property> resolveForBinding(TypeMirror owner) {
+        owner = types.concrete(owner);
+        if (!(owner instanceof DeclaredType)) return Collections.emptyMap();
+        TypeElement type = types.typeElement(owner);
+        if (type == null) return Collections.emptyMap();
+
+        NodeObject options = nodeObject(type);
+        PropertyStrategy strategy = options == null
+                ? PropertyStrategy.BEAN_FIELD : options.propertyStrategy();
+        String cacheKey = "binding:" + strategy + ":" + owner;
+        Map<String, Property> cached = cache.get(cacheKey);
+        if (cached != null) return cached;
+
+        boolean fields = strategy != PropertyStrategy.BEAN_ONLY;
+        boolean beans = strategy != PropertyStrategy.FIELD_ONLY;
+        boolean fieldFirst = strategy == PropertyStrategy.FIELD_ONLY
+                || strategy == PropertyStrategy.FIELD_BEAN;
+        int fieldPriority = fieldFirst ? 2 : 1;
+        int beanPriority = fieldFirst ? 1 : 2;
+
+        DeclaredType declaredOwner = (DeclaredType) owner;
+        boolean jojo = types.nodeKind(owner) == NodeKind.OBJECT_JOJO;
+        Map<String, BindingFamily> families = new LinkedHashMap<>();
+        Set<String> seenFields = new HashSet<>();
+        Set<String> transientFields = new HashSet<>();
+        List<TypeElement> hierarchy = new ArrayList<>();
+
+        for (TypeElement current = type; current != null; ) {
+            if (current.getQualifiedName().contentEquals(JAVA_OBJECT)) break;
+            hierarchy.add(current);
+            TypeMirror superclass = current.getSuperclass();
+            current = superclass.getKind() == TypeKind.NONE
+                    ? null : types.typeElement(superclass);
+        }
+
+        // Visit most-derived fields first, preserving Runtime's field-hiding
+        // and transient-field suppression semantics.
+        for (TypeElement current : hierarchy) {
+            for (Element member : current.getEnclosedElements()) {
+                if (member.getKind() != ElementKind.FIELD) continue;
+                Set<Modifier> modifiers = member.getModifiers();
+                if (modifiers.contains(Modifier.STATIC)
+                        || member.getSimpleName().toString().startsWith("this$")) continue;
+                String name = member.getSimpleName().toString();
+                if (!seenFields.add(name)) continue;
+                if (modifiers.contains(Modifier.TRANSIENT)) {
+                    transientFields.add(name);
+                    continue;
+                }
+                if (!fields || member.getAnnotation(NodeIgnore.class) != null) continue;
+                VariableElement field = (VariableElement) member;
+                TypeElement fieldType = types.typeElement(field.asType());
+                if (fieldType != null && fieldType.getAnnotation(NodeIgnore.class) != null) continue;
+
+                boolean explicit = member.getAnnotation(NodeProperty.class) != null
+                        || annotations.explicitPropertyName(member) != null
+                        || annotations.propertyAliases(member).length != 0;
+                if (strategy == PropertyStrategy.BEAN_FIELD
+                        && !modifiers.contains(Modifier.PUBLIC) && !explicit) continue;
+
+                BindingFamily family = families.computeIfAbsent(name,
+                        key -> new BindingFamily(new Builder(type, key)));
+                if (family.fieldExplicitName == null) {
+                    family.fieldExplicitName = annotations.explicitPropertyName(member);
+                }
+                TypeMirror fieldTypeMirror = typeUtils.asMemberOf(declaredOwner, field);
+                PropertyAccess access = new PropertyAccess(field, fieldTypeMirror);
+                family.builder.recordCodec(field);
+                family.builder.offerRead(access, fieldPriority);
+                if (!modifiers.contains(Modifier.FINAL)) {
+                    family.builder.offerWrite(access, fieldPriority);
+                }
+            }
+        }
+
+        if (beans) {
+            for (TypeElement current : hierarchy) {
+                for (Element member : current.getEnclosedElements()) {
+                    if (member.getKind() != ElementKind.METHOD
+                            || (jojo && isJsonBaseMember(member))) continue;
+                    Set<Modifier> modifiers = member.getModifiers();
+                    if (modifiers.contains(Modifier.STATIC)) continue;
+                    boolean explicit = member.getAnnotation(NodeProperty.class) != null
+                            || annotations.explicitPropertyName(member) != null
+                            || annotations.propertyAliases(member).length != 0;
+                    if (!modifiers.contains(Modifier.PUBLIC) && !explicit) continue;
+
+                    ExecutableElement method = (ExecutableElement) member;
+                    ExecutableType resolved = (ExecutableType) typeUtils.asMemberOf(declaredOwner, method);
+                    boolean getter = method.getParameters().isEmpty()
+                            && resolved.getReturnType().getKind() != TypeKind.VOID;
+                    boolean setter = method.getParameters().size() == 1
+                            && resolved.getReturnType().getKind() == TypeKind.VOID;
+                    String name = getter
+                            ? getterPropertyName(type, method, resolved.getReturnType())
+                            : setter ? setterPropertyName(method) : null;
+                    if (name == null) continue;
+                    BindingFamily family = families.computeIfAbsent(name,
+                            key -> new BindingFamily(new Builder(type, key)));
+                    String renamed = annotations.explicitPropertyName(method);
+                    if (renamed != null) {
+                        if (family.beanExplicitName != null && !family.beanExplicitName.equals(renamed)) {
+                            messager.printMessage(Diagnostic.Kind.ERROR,
+                                    "conflicting explicit names for property '" + name + "'", method);
+                        }
+                        family.beanExplicitName = renamed;
+                    }
+                    if (member.getAnnotation(NodeIgnore.class) != null) continue;
+                    family.builder.recordCodec(method);
+                    PropertyAccess access = new PropertyAccess(method,
+                            getter ? resolved.getReturnType() : resolved.getParameterTypes().get(0));
+                    if (getter) family.builder.offerRead(access, beanPriority);
+                    else family.builder.offerWrite(access, beanPriority);
+                }
+            }
+        }
+
+        Map<String, Property> result = new LinkedHashMap<>();
+        for (Map.Entry<String, BindingFamily> entry : families.entrySet()) {
+            if (transientFields.contains(entry.getKey())) continue;
+            BindingFamily family = entry.getValue();
+            Builder builder = family.builder;
+            if (builder.read == null && builder.write == null) continue;
+            String name = family.beanExplicitName != null ? family.beanExplicitName
+                    : family.fieldExplicitName != null ? family.fieldExplicitName
+                    : options == null ? entry.getKey() : options.naming().translate(entry.getKey());
+            Property property = new Property(name,
+                    builder.read == null ? null : builder.read.access,
+                    builder.write == null ? null : builder.write.access,
+                    builder.valueFormat, builder.valuePattern);
+            if (result.putIfAbsent(name, property) != null) {
+                messager.printMessage(Diagnostic.Kind.ERROR,
+                        "duplicate compiled property name '" + name + "'", type);
+            }
+        }
+        Map<String, Property> resolved = Collections.unmodifiableMap(result);
+        cache.put(cacheKey, resolved);
+        return resolved;
+    }
+
+    private NodeObject nodeObject(TypeElement type) {
+        for (TypeElement current = type; current != null; ) {
+            NodeObject annotation = current.getAnnotation(NodeObject.class);
+            if (annotation != null) return annotation;
+            TypeMirror parent = current.getSuperclass();
+            current = parent.getKind() == TypeKind.NONE ? null : types.typeElement(parent);
+        }
+        return null;
+    }
+
+    private final class BindingFamily {
+        final Builder builder;
+        String beanExplicitName;
+        String fieldExplicitName;
+
+        BindingFamily(Builder builder) {
+            this.builder = builder;
+        }
     }
 
     /**
