@@ -8,6 +8,7 @@ import org.sjf4j.util.IdxConsumer;
 import org.sjf4j.util.IdxPredicate;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.meta.PojoInfo;
+import org.sjf4j.meta.CreatorInfo;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.meta.TypeInfo;
 
@@ -543,7 +544,7 @@ public final class Nodes {
         }
         if (node instanceof JsonArray) {
             PojoInfo pi = TypeRegistry.registerTypeInfo(node.getClass()).pojoInfo;
-            JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
+            JsonArray jajo = (JsonArray) pi.requireCreatorInfo().forceNewPojo();
             jajo.addAll(node);
             return (T) jajo;
         }
@@ -572,13 +573,14 @@ public final class Nodes {
                     ? ((JsonObject) node).dynamicMembers : null;
             int capacity = pi.gettableProperties.length
                     + (dynamic == null ? 0 : dynamic.size());
+            CreatorInfo ci = pi.requireCreatorInfo();
             TypeRegistry.PojoCreationSession session =
-                    new TypeRegistry.PojoCreationSession(pi.creatorInfo, capacity);
+                    new TypeRegistry.PojoCreationSession(ci, capacity);
 
             // POJO and JOJO share the same static-property/creator path.
             for (PropertyInfo property : pi.gettableProperties) {
                 Object value = property.invokeGetter(node);
-                int argIdx = pi.creatorInfo.getArgIndexOrAlias(property.name);
+                int argIdx = ci.getArgIndexOrAlias(property.name);
                 if (argIdx >= 0) {
                     session.acceptCtorArg(argIdx, value);
                 } else if (property.settable) {

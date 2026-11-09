@@ -152,7 +152,7 @@ public final class OneOfIO {
 
         Class<?> targetClazz = target.clazz;
         PojoInfo pi = target.requirePojoInfo();
-        CreatorInfo ci = pi.creatorInfo;
+        CreatorInfo ci = pi.requireCreatorInfo();
         CreatorState state = new CreatorState(ci);
 
         /*
@@ -287,7 +287,7 @@ public final class OneOfIO {
     private static void _acceptRawField(String key, Object rawValue, Class<?> ownerClazz,
                                         PojoInfo pi, CreatorState state, RuntimeContext context) {
 
-        CreatorInfo ci = pi.creatorInfo;
+        CreatorInfo ci = pi.requireCreatorInfo();
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
             Object value;

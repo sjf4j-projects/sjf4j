@@ -401,6 +401,16 @@ public final class StreamingIO {
 
     public static Object readPojo(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                    RuntimeContext context) throws IOException {
+        // JSON null needs no construction, even for write-only POJO types.
+        if (pojoInfo.creatorInfo == null) {
+            if (parser.nextIfNull()) return null;
+            if (!parser.nextIfObjectStart()) {
+                throw new BindingException("cannot read token '" + parser.peekToken()
+                        + "' as object type '" + type.getTypeName() + "'");
+            }
+            pojoInfo.requireCreatorInfo(); // fail before reading any object member
+        }
+
         /*
          * Creator/parent-discriminator POJOs need streaming access to the
          * object members, so consume START_OBJECT here.
@@ -475,7 +485,7 @@ public final class StreamingIO {
     public static Object readPojoWithCreator(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
                                              RuntimeContext context) throws IOException {
 
-        CreatorInfo creator = pojoInfo.creatorInfo;
+        CreatorInfo creator = pojoInfo.requireCreatorInfo();
         CreatorState state = new CreatorState(creator);
 
         PropertyInfo deferred = null;
@@ -981,7 +991,7 @@ public final class StreamingIO {
             throw new BindingException("cannot read token '" + parser.peekToken() + "' as array type '" +
                     type.getTypeName() + "'");
         }
-        JsonArray array = (JsonArray) ti.pojoInfo.creatorInfo.forceNewPojo();
+        JsonArray array = (JsonArray) ti.pojoInfo.requireCreatorInfo().forceNewPojo();
         Class<?> element = array.elementClass();
         TypeInfo elementInfo = TypeRegistry.registerTypeInfo(element);
         while (!parser.nextIfArrayEnd()) {
