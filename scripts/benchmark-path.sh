@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: bash $0 <smoke|quick|full> <map|jsonnode|pojo> [output-directory]
+Usage: bash $0 <smoke|quick|full> <map|jsonnode|pojo|parse> [output-directory]
 
   smoke  Run setup/equivalence checks for all 1/10/100KB cases (not a baseline).
   quick  One fork for diagnostic performance.
@@ -20,7 +20,7 @@ if [[ $# -eq 1 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
 fi
 if [[ $# -lt 2 || $# -gt 3 ]] ||
    [[ "$1" != "smoke" && "$1" != "quick" && "$1" != "full" ]] ||
-   [[ "$2" != "map" && "$2" != "jsonnode" && "$2" != "pojo" ]]; then
+   [[ "$2" != "map" && "$2" != "jsonnode" && "$2" != "pojo" && "$2" != "parse" ]]; then
   usage >&2
   exit 2
 fi
@@ -48,6 +48,7 @@ case "$SHAPE" in
   map)      IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=45 ;;
   jsonnode) IMPLEMENTATIONS='(jayway|runtime)'; EXPECTED=30 ;;
   pojo)     IMPLEMENTATIONS='(runtime|compiled)'; EXPECTED=30 ;;
+  parse)    IMPLEMENTATIONS='(sjf4j|jayway)'; EXPECTED=14 ;;
 esac
 case "$PROFILE" in
   smoke) ARGS=(-f 0 -wi 0 -i 1 -r 50ms) ;;
@@ -76,7 +77,7 @@ cat > "$META" <<EOF
 - Sizes: 1/10/100 KiB (approximate serialized JSON bytes, generated deterministically)
 - Queries: direct, wildcard, filter, descendant, slice
 - Expected JMH cases: $EXPECTED
-- Query compilation and JSON deserialization: excluded from measured operations
+- Query compilation and JSON deserialization: excluded from Query groups; Parse group measures compilation only
 - CompiledNavigator: fallback=true (filter/descendant use runtime fallback)
 - Full reporting: Best 2 Mean per exact method + size; exclude each case's slowest fork
 - Baseline eligible: $(if [[ "$PROFILE" == "full" && "${GITHUB_ACTIONS:-false}" != "true" ]]; then echo yes; else echo no; fi)
@@ -93,7 +94,11 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v caffeinate >/dev/null 2>&1; the
   JAVA_CMD=(caffeinate -i "$JAVA_BIN")
 fi
 
-SELECTOR='^org\.sjf4j\.testbench\.path\.PathFullBenchmark\.'"$SHAPE"'_(direct|wildcard|filter|descendant|slice)_'"$IMPLEMENTATIONS"'$'
+if [[ "$SHAPE" == "parse" ]]; then
+  SELECTOR='^org\.sjf4j\.testbench\.path\.JsonPathBenchmark\.parse_(sjf4j|jayway)$'
+else
+  SELECTOR='^org\.sjf4j\.testbench\.path\.PathFullBenchmark\.'"$SHAPE"'_(direct|wildcard|filter|descendant|slice)_'"$IMPLEMENTATIONS"'$'
+fi
 echo "Path $PROFILE/$SHAPE: $EXPECTED JMH cases"
 "${JAVA_CMD[@]}" -jar "$JAR" "$SELECTOR" -t 1 "${ARGS[@]}" \
   -rf json -rff "$RESULT" 2>&1 | tee "$LOG"
@@ -104,19 +109,32 @@ import math
 import sys
 
 path, shape, profile, expected = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
-queries = ("direct", "wildcard", "filter", "descendant", "slice")
-implementations = {
-    "map": ("jayway", "runtime", "compiled"),
-    "jsonnode": ("jayway", "runtime"),
-    "pojo": ("runtime", "compiled"),
-}[shape]
-prefix = "org.sjf4j.testbench.path.PathFullBenchmark."
-expected_keys = {(prefix + f"{shape}_{query}_{impl}", size)
-                 for query in queries for impl in implementations
-                 for size in ("1", "10", "100")}
+if shape == "parse":
+    expressions = (
+        "$.store.book[1].price", "$.store.bicycle.color",
+        "$.store.book[*].author", "$..price",
+        "$.store.book[?(@.price > 10)].title",
+        "$.store.book[0,2].title", "$.store.book[1:4].title",
+    )
+    prefix = "org.sjf4j.testbench.path.JsonPathBenchmark.parse_"
+    expected_keys = {(prefix + impl, expr)
+                     for impl in ("sjf4j", "jayway") for expr in expressions}
+    param = "expr"
+else:
+    queries = ("direct", "wildcard", "filter", "descendant", "slice")
+    implementations = {
+        "map": ("jayway", "runtime", "compiled"),
+        "jsonnode": ("jayway", "runtime"),
+        "pojo": ("runtime", "compiled"),
+    }[shape]
+    prefix = "org.sjf4j.testbench.path.PathFullBenchmark."
+    expected_keys = {(prefix + f"{shape}_{query}_{impl}", size)
+                     for query in queries for impl in implementations
+                     for size in ("1", "10", "100")}
+    param = "sizeKb"
 with open(path, encoding="utf-8") as fp:
     rows = json.load(fp)
-keys = {(row["benchmark"], row["params"]["sizeKb"]) for row in rows}
+keys = {(row["benchmark"], row["params"][param]) for row in rows}
 if len(rows) != expected or keys != expected_keys:
     raise SystemExit(f"Path {profile}/{shape}: expected {expected} cases, "
                      f"got {len(rows)} (missing={expected_keys - keys}, extra={keys - expected_keys})")
