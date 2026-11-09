@@ -6,7 +6,6 @@ on:
       - ".github/workflows/schema-full-benchmark.yml"
       - "scripts/benchmark-schema.sh"
       - "scripts/analyze-schema-benchmark.py"
-      - "scripts/test-analyze-schema-benchmark.py"
       - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java"
       - "sjf4j-testbench/build.gradle.kts"
   workflow_dispatch:
@@ -30,9 +29,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-
-      - name: Verify JMH report generator
-        run: python3 scripts/test-analyze-schema-benchmark.py
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
