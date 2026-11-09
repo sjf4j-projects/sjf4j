@@ -99,8 +99,36 @@ private static void _writeStringMember(JsonGenerator g, SerializedString name,
 
 The compact instance helper alone **does not** fix the original class; the static helper and explicit includeNulls parameter jointly alter the C2 outcome. Distinguishing the effect of `static` from the extra parameter requires further factorial experimentation if necessary.
 
-## Regression gate before adopting the candidate
+## Codegen experiment #14 — broad workload and null-semantics gate
 
-[Actions #42558598460](https://github.com/sjf4j-projects/sjf4j/actions/runs/42558598460) runs baseline vs staticFlag with the same generated class name on independent hosts, covering Users and Clients, 1/10/100KB, two seeds, and Runtime controls. It also tests `includeNulls=true/false`, object-member omission, null-array retention and cross-version output hashes. Treat this run as pending until all results pass and can be analyzed.
+[Successful Actions #42558815983](https://github.com/sjf4j-projects/sjf4j/actions/runs/42558815983), commit `c848709f`. Three runners: two AMD EPYC 7763 and one AMD EPYC 9V74, Temurin JDK25.0.5. Same original generated class identity for Baseline/StaticFlag; 2 JMH forks, four 300ms warmups and five 300ms measurements per case; same-host Runtime controls and normalized GC allocation.
 
-**Scope:** all experiments remain in Draft PR #246. The diagnostic environment switch and other benchmark-only code are not proposed as a public interface or for merge; no production change or `main` merge has been performed.
+Three-host **geometric mean StaticFlag/Baseline ratio** (lower is better):
+
+| Model | Seed | 1KB | 10KB | 100KB |
+| --- | --- | ---: | ---: | ---: |
+| Users POJO | 12345 | 0.985× | 1.003× | **0.748×** |
+| Users POJO | 324 | 0.984× | **0.750×** | **0.756×** |
+| Clients POJO | 12345 | 1.015× | 0.946× | 0.907× |
+| Clients POJO | 324 | **1.065×** | 0.916× | 1.020× |
+
+Users 100KB is consistently ≈25% faster on all three AMD hosts. Clients 10KB improves on all hosts; Clients 100KB is mixed but errors are relatively large. **Potential regression:** Clients 1KB seed324 is 4–10% slower on all three hosts (geometric mean ≈6.5%). At this scale JVM state/scheduler noise can matter, so confirm with higher-repetition JMH before accepting any small-payload regression.
+
+**Output correctness:** four `NULL_PROBE` digest lines were byte-for-byte identical between versions on all three hosts. They cover `Users.sample()`/`Clients.sample()`, `includeNulls=true/false`, omission of null object properties, and preservation of null array elements. No meaningful additional GC allocation detected.
+
+The initial run [#42558598460](https://github.com/sjf4j-projects/sjf4j/actions/runs/42558598460) failed at JMH compilation because the test probe used deprecated Jackson2 `JsonNode.fields()` under `-Werror`; fixed to `fieldNames()` before successful run. No performance data from the failed run.
+
+## Codegen experiment #15 — factorial isolation of helper features
+
+[Actions #42559900890](https://github.com/sjf4j-projects/sjf4j/actions/runs/42559900890), same original generated class name, four JMH Jar variants:
+
+| Variant | Static helper? | Explicit boolean `includeNulls` argument? | Helper branch |
+| --- | --- | --- | --- |
+| baseline | No | No | Original |
+| staticFlag | Yes | Yes | Compact |
+| instanceFlag | No | Yes | Compact |
+| staticLegacy | Yes | Yes | Original |
+
+This distinguishes staticness from explicitly passing null policy and from branch reordering. Focuses on Users 100KB and Clients 1KB/10KB/100KB, includes Runtime controls, byte-identical null-policy checks and C2 diagnostic logs. **Pending: do not choose a production fix until results are verified.**
+
+**Scope:** all experiments remain in Draft PR #246. The diagnostic environment switch and benchmark-only source are not proposed as public APIs or for merge; no production change or `main` merge has been performed.
