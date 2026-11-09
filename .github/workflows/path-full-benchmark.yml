@@ -155,7 +155,7 @@ jobs:
               alloc = row.get("secondaryMetrics", {}).get("gc.alloc.rate.norm", {}).get("score")
               alloc_text = f"{alloc:.1f}" if alloc is not None else "n/a"
               name = row["benchmark"].rsplit(".", 1)[-1]
-              print(f'| {name} | \`{key}\` | {best2:.1f} | '
+              print(f'| {name} | {key} | {best2:.1f} | '
                     f'{row["primaryMetric"]["score"]:.1f} | {alloc_text} |')
           PY
 
