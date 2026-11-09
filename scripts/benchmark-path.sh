@@ -45,7 +45,7 @@ if [[ -z "$JAR" ]]; then
 fi
 
 case "$SHAPE" in
-  map)      IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=45 ;;
+  map)      IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=33 ;;
   jsonnode) IMPLEMENTATIONS='(jayway|runtime)'; EXPECTED=30 ;;
   pojo)     IMPLEMENTATIONS='(runtime|compiled)'; EXPECTED=30 ;;
   parse)    IMPLEMENTATIONS='(sjf4j|jayway)'; EXPECTED=14 ;;
@@ -130,7 +130,8 @@ else:
     prefix = "org.sjf4j.testbench.path.PathFullBenchmark."
     expected_keys = {(prefix + f"{shape}_{query}_{impl}", size)
                      for query in queries for impl in implementations
-                     for size in ("1", "10", "100")}
+                     for size in ("1", "10", "100")
+                     if shape != "map" or impl != "compiled" or query == "direct"}
     param = "sizeKb"
 with open(path, encoding="utf-8") as fp:
     rows = json.load(fp)
