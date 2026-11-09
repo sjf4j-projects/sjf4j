@@ -1,0 +1,173 @@
+name: Jackson3 StaticFlag Regression Matrix (JDK 25)
+
+# Same original generated binder name, baseline vs staticFlag across
+# Users/Clients and 1/10/100KB. Benchmark only; never merge automatically.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-staticflag-regression.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-staticflag-regression
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    name: Regression host ${{ matrix.host }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 95
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Identify CPU and JVM
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/performance/jackson3-staticflag-regression
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } \
+            > build/performance/jackson3-staticflag-regression/runner.txt
+
+      - name: Build exact same-name baseline and staticFlag JMH jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-staticflag-regression
+          for mode in baseline staticFlag; do
+            SJF4J_EXPERIMENT_STRING_MEMBER="$mode" \
+              ./gradlew --no-daemon --rerun-tasks :sjf4j-testbench:jmhJar \
+              > "$DIR/build-$mode.log" 2>&1 || {
+                tail -150 "$DIR/build-$mode.log"
+                exit 1
+              }
+            JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+            test -s "$JAR"
+            cp "$JAR" "$RUNNER_TEMP/jmh-$mode.jar"
+            javap -c -p -classpath "$JAR" \
+              'org.sjf4j.testbench.binding.fabien.FabienBindings$Jackson3_Impl' \
+              > "$DIR/$mode.javap.txt"
+          done
+          if cmp -s "$DIR/baseline.javap.txt" "$DIR/staticFlag.javap.txt"; then
+            echo "Env override did not alter original generated class bytecode"
+            exit 1
+          fi
+
+      - name: Verify null inclusion and output equality across versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-staticflag-regression
+          MAIN=org.sjf4j.testbench.binding.fabien.Jackson3StringMemberNullProbe
+          for mode in baseline staticFlag; do
+            java -cp "$RUNNER_TEMP/jmh-$mode.jar" "$MAIN" \
+              > "$DIR/null-$mode.log" 2>&1 || {
+                cat "$DIR/null-$mode.log"
+                exit 1
+              }
+            cat "$DIR/null-$mode.log"
+          done
+          # Both generated versions must emit byte-identical JSON for
+          # includeNulls=true/false and preserve null array elements.
+          diff -u "$DIR/null-baseline.log" "$DIR/null-staticFlag.log"
+
+      - name: Confirm all 24 JMH workloads initialize
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-staticflag-regression
+          BENCH=org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write
+          for mode in baseline staticFlag; do
+            java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+              -p backend=jackson3 -p implementation=compiled,runtime \
+              -p model=users,clients -p shape=pojo -p sizeKb=1,10,100 \
+              -p seed=12345,324 -f 0 -wi 0 -i 1 -r 30ms -t 1 \
+              -rf json -rff "$DIR/smoke-$mode.json" \
+              > "$DIR/smoke-$mode.log" 2>&1 || {
+                tail -120 "$DIR/smoke-$mode.log"
+                exit 1
+              }
+            MODE="$mode" python3 - <<'PY'
+          import json,os
+          mode=os.environ["MODE"]
+          rows=json.load(open("build/performance/jackson3-staticflag-regression/smoke-"+mode+".json"))
+          assert len(rows)==24, f"{mode}: expected 24 JMH setups, got {len(rows)}"
+          PY
+          done
+
+      - name: Benchmark baseline vs staticFlag, including Runtime control
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-staticflag-regression
+          BENCH=org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write
+          for mode in baseline staticFlag; do
+            java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+              -p backend=jackson3 -p implementation=compiled,runtime \
+              -p model=users,clients -p shape=pojo -p sizeKb=1,10,100 \
+              -p seed=12345,324 \
+              -f 2 -wi 4 -i 5 -w 300ms -r 300ms -t 1 -prof gc \
+              -rf json -rff "$DIR/$mode.json" > "$DIR/$mode.log" 2>&1 || {
+                tail -140 "$DIR/$mode.log"
+                exit 1
+              }
+            MODE="$mode" python3 - <<'PY'
+          import json,os
+          mode=os.environ["MODE"]
+          rows=json.load(open("build/performance/jackson3-staticflag-regression/"+mode+".json"))
+          assert len(rows)==24, f"{mode}: expected 24 results, got {len(rows)}"
+          PY
+            tail -30 "$DIR/$mode.log"
+          done
+
+      - name: Summarize size and model regressions
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-staticflag-regression/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,re
+          from pathlib import Path
+          root=Path("build/performance/jackson3-staticflag-regression")
+          cpu=re.search(r"Model name:\s*(.+)",(root/"runner.txt").read_text())
+          print("# Jackson3 StaticFlag broader regression, same compiled class identity")
+          print("CPU:",cpu.group(1) if cpu else "(unknown)")
+          print("JDK25, 2 forks × 4 warmup/5 measurement iterations × 300ms.")
+          d={}
+          for mode in ("baseline","staticFlag"):
+              for row in json.loads((root/(mode+".json")).read_text()):
+                  p=row["params"]
+                  d[(mode,p["model"],p["sizeKb"],p["seed"],p["implementation"])]=row
+          assert len(d)==48
+          print("| Model | KB | Seed | Baseline compiled µs | Static compiled µs | static/baseline | Runtime baseline µs | Runtime static µs | static allocation B/op |")
+          print("| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |")
+          for model in ("users","clients"):
+              for size in ("1","10","100"):
+                  for seed in ("12345","324"):
+                      a=d[("baseline",model,size,seed,"compiled")]["primaryMetric"]
+                      b=d[("staticFlag",model,size,seed,"compiled")]["primaryMetric"]
+                      ra=d[("baseline",model,size,seed,"runtime")]["primaryMetric"]
+                      rb=d[("staticFlag",model,size,seed,"runtime")]["primaryMetric"]
+                      alloc=d[("staticFlag",model,size,seed,"compiled")]["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+                      print(f"| {model} | {size} | {seed} | {a['score']:.2f} ±{a['scoreError']:.2f} | {b['score']:.2f} ±{b['scoreError']:.2f} | {b['score']/a['score']:.3f}x | {ra['score']:.2f} | {rb['score']:.2f} | {alloc:.0f} |")
+          print("Null semantics independently verified by byte hashes of Users.sample/Clients.sample.")
+          print("Different generated code versions are tested sequentially on each host.")
+          PY
+
+      - name: Upload all JMH and null semantics evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-staticflag-regression-host-${{ matrix.host }}
+          path: build/performance/jackson3-staticflag-regression/
+          retention-days: 30
+          if-no-files-found: warn
