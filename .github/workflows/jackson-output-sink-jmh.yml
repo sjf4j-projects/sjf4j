@@ -1,10 +1,10 @@
 name: Jackson3 Users Handwritten Field Ablation (JDK 25)
 
-# Diagnostic only, all changes confined to the experiment branch.
+# Diagnostic only. JMH exit code alone does not report individual fork failures:
+# validate exact successful case counts BEFORE accepting smoke/performance runs.
 on:
   push:
-    branches:
-      - experiment/jackson-output-sink-jmh
+    branches: [experiment/jackson-output-sink-jmh]
   workflow_dispatch:
 
 permissions:
@@ -30,7 +30,7 @@ jobs:
       - name: Build JMH
         run: ./gradlew :sjf4j-testbench:jmhJar
 
-      - name: Verify all field subsets and output parity before timing
+      - name: Verify 42 cases (manual + compiled projections; original runtime)
         shell: bash
         run: |
           set -euo pipefail
@@ -43,61 +43,114 @@ jobs:
             java -version 2>&1
             lscpu
           } > "$DIR/runner.txt"
-          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write' \
-            -p writer=manual,runtime,compiled \
-            -p fields=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly \
+
+          # Projection POJOs are supported by the generated CompiledBinder, not
+          # by the raw SJF4J runtime StreamingIO path. Only original has Runtime.
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write
+          FIELDS=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly
+          java -jar "$JAR" "$BENCH" \
+            -p writer=manual,compiled -p fields="$FIELDS" \
             -p seed=12345,324 -p sizeKb=100 \
             -f 0 -wi 0 -i 1 -r 50ms -t 1 \
-            > "$DIR/smoke.log" 2>&1 || {
-              tail -160 "$DIR/smoke.log"
+            -rf json -rff "$DIR/smoke-projections.json" > "$DIR/smoke-projections.log" 2>&1 || {
+              tail -160 "$DIR/smoke-projections.log"
               exit 1
             }
-          tail -35 "$DIR/smoke.log"
+          java -jar "$JAR" "$BENCH" \
+            -p writer=runtime -p fields=original \
+            -p seed=12345,324 -p sizeKb=100 \
+            -f 0 -wi 0 -i 1 -r 50ms -t 1 \
+            -rf json -rff "$DIR/smoke-runtime.json" > "$DIR/smoke-runtime.log" 2>&1 || {
+              tail -160 "$DIR/smoke-runtime.log"
+              exit 1
+            }
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("build/performance/jackson3-fields")
+          counts = [("smoke-projections.json", 40), ("smoke-runtime.json", 2)]
+          for name, expected in counts:
+              data = json.loads((p/name).read_text())
+              if len(data) != expected:
+                  raise SystemExit(f"{name}: expected {expected} successful cases, got {len(data)}; inspect smoke logs")
+              print(name, len(data), "cases passed")
+          PY
 
-      - name: Measure handwritten vs runtime vs compiled
+      - name: Measure 42 successful cases with GC profiler
         shell: bash
         run: |
           set -euo pipefail
           DIR=build/performance/jackson3-fields
           JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
-          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write' \
-            -p writer=manual,runtime,compiled \
-            -p fields=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly \
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write
+          FIELDS=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly
+          java -jar "$JAR" "$BENCH" \
+            -p writer=manual,compiled -p fields="$FIELDS" \
             -p seed=12345,324 -p sizeKb=100 \
             -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
-            -rf json -rff "$DIR/results.json" > "$DIR/benchmark.log" 2>&1 || {
-              tail -160 "$DIR/benchmark.log"
+            -rf json -rff "$DIR/results-projections.json" > "$DIR/benchmark-projections.log" 2>&1 || {
+              tail -160 "$DIR/benchmark-projections.log"
               exit 1
             }
-          tail -60 "$DIR/benchmark.log"
+          python3 - <<'PY'
+          import json
+          p="build/performance/jackson3-fields/results-projections.json"
+          rows=json.load(open(p))
+          assert len(rows)==40, f"Expected 40 successful projection cases, got {len(rows)}"
+          PY
 
-      - name: Summarize ratios WITHIN each field projection
+          java -jar "$JAR" "$BENCH" \
+            -p writer=runtime -p fields=original \
+            -p seed=12345,324 -p sizeKb=100 \
+            -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+            -rf json -rff "$DIR/results-runtime.json" > "$DIR/benchmark-runtime.log" 2>&1 || {
+              tail -160 "$DIR/benchmark-runtime.log"
+              exit 1
+            }
+          python3 - <<'PY'
+          import json
+          p="build/performance/jackson3-fields/results-runtime.json"
+          rows=json.load(open(p))
+          assert len(rows)==2, f"Expected 2 successful runtime cases, got {len(rows)}"
+          PY
+          tail -50 "$DIR/benchmark-projections.log"
+          tail -35 "$DIR/benchmark-runtime.log"
+
+      - name: Summarize same-field-projection comparisons
         shell: bash
         run: |
           python3 - <<'PY' | tee build/performance/jackson3-fields/summary.md >> "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
-          src = Path("build/performance/jackson3-fields/results.json")
-          rows = json.loads(src.read_text(encoding="utf-8"))
-          assert len(rows) == 60, f"expected 60 results, found {len(rows)}"
-          data = {(x["params"]["fields"], x["params"]["seed"], x["params"]["writer"]):x for x in rows}
-          for seed in ("12345", "324"):
-            print(f"\n## Jackson3 Users, input 100KB, seed={seed}")
-            print("| Projection | Manual µs | Runtime µs | Compiled µs | Compiled / Manual | Compiled / Runtime | Compiled alloc B/op |")
-            print("| --- | ---: | ---: | ---: | ---: | ---: | ---: |")
-            for fields in ("original","full","noStrings","noNumeric","noTags","noFriends","stringsOnly","numericOnly","tagsOnly","friendsOnly"):
-              d = {v:data[(fields,seed,v)] for v in ("manual","runtime","compiled")}
-              s={v:d[v]["primaryMetric"]["score"] for v in d}
-              alloc=d["compiled"]["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
-              print(f"| {fields} | {s['manual']:.3f} | {s['runtime']:.3f} | {s['compiled']:.3f} | {s['compiled']/s['manual']:.3f}x | {s['compiled']/s['runtime']:.3f}x | {alloc:.0f} |")
-          print("\nNote: Do NOT compare absolute times across different field projections: output sizes differ.")
+          p=Path("build/performance/jackson3-fields")
+          rows=json.loads((p/"results-projections.json").read_text()) + json.loads((p/"results-runtime.json").read_text())
+          assert len(rows)==42, f"Expected 42 successful measurements, got {len(rows)}"
+          data={(x["params"]["fields"],x["params"]["seed"],x["params"]["writer"]):x for x in rows}
+          assert len(data)==42, "Duplicate/missing variant keys"
+          def metric(x):
+              m=x["primaryMetric"]
+              return m["score"],m["scoreError"],x["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+          order=("original","full","noStrings","noNumeric","noTags","noFriends","stringsOnly","numericOnly","tagsOnly","friendsOnly")
+          print("# Jackson3 Users POJO field-group ablation")
+          print("Only original supports SJF4J Runtime. Other projections compare Manual and Compiled.")
+          print("All variants share the same PooledByteArrayOutputStream and Jackson3 Generator.")
+          for seed in ("12345","324"):
+              print(f"\n## 100KB source Users, seed={seed}")
+              print("| Projection | Manual µs/op (error) | Compiled µs/op (error) | Compiled/Manual | Compiled allocation B/op | Runtime µs/op |")
+              print("| --- | ---: | ---: | ---: | ---: | ---: |")
+              for fields in order:
+                  a,ae,_=metric(data[(fields,seed,"manual")])
+                  b,be,alloc=metric(data[(fields,seed,"compiled")])
+                  runtime=f'{metric(data[(fields,seed,"runtime")])[0]:.2f}' if fields=="original" else "—"
+                  print(f"| {fields} | {a:.2f} ±{ae:.2f} | {b:.2f} ±{be:.2f} | {b/a:.3f}x | {alloc:.0f} | {runtime} |")
+          print("\nDifferent projections emit different sizes. Compare manual/compiled only WITHIN each projection.")
           PY
 
-      - name: Upload JMH data and diagnostics
+      - name: Upload complete results, logs and preflight diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson3-users-field-ablation-jdk25
+          name: jackson3-users-field-ablation-fixed-jdk25
           path: build/performance/jackson3-fields/
           retention-days: 30
           if-no-files-found: warn
