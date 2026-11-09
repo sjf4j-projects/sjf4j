@@ -35,11 +35,23 @@ jobs:
           mkdir -p "$DIR"
           JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
           { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > "$DIR/runner.txt"
-          for backend in Jackson2 Jackson3; do
-            javap -c -p -classpath "$JAR" "org.sjf4j.testbench.binding.fabien.FabienBindings\${backend}_Impl" > "$DIR/${backend}_Original.javap.txt"
-            for variant in UsersOnly WritePair WriteAll FullClone; do
-              javap -c -p -classpath "$JAR" "org.sjf4j.testbench.binding.fabien.JacksonWriterClassShapeBenchmark\$${backend}${variant}_Impl" > "$DIR/${backend}_${variant}.javap.txt"
-            done
+          classes=(
+            'FabienBindings$Jackson2_Impl'
+            'FabienBindings$Jackson3_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson2UsersOnly_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson2WritePair_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson2WriteAll_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson2FullClone_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson3UsersOnly_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson3WritePair_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson3WriteAll_Impl'
+            'JacksonWriterClassShapeBenchmark$Jackson3FullClone_Impl'
+          )
+          i=0
+          for spec in "${classes[@]}"; do
+            i=$((i + 1))
+            echo "$i $spec" >> "$DIR/classes.txt"
+            javap -c -p -classpath "$JAR" "org.sjf4j.testbench.binding.fabien.$spec" > "$DIR/class-$i.javap.txt"
           done
 
       - name: Benchmark isolated class-shape variants
