@@ -926,6 +926,9 @@ public final class NodeWalker {
             }
         }
         if (ti.pojoInfo != null) {
+            if (ti.pojoInfo.creatorInfo == null) {
+                throw new NodeException("cannot create object node without a creator: " + clazz.getName());
+            }
             return ti.pojoInfo.creatorInfo.forceNewPojo();
         }
         throw new NodeException("cannot create object node of type '" + clazz + "'");
@@ -942,7 +945,11 @@ public final class NodeWalker {
             return new JsonArray();
         }
         if (JsonArray.class.isAssignableFrom(clazz)) {
-            return TypeRegistry.requireRegisteredPojoInfo(clazz).creatorInfo.forceNewPojo();
+            PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(clazz);
+            if (pi.creatorInfo == null) {
+                throw new NodeException("cannot create array node without a creator: " + clazz.getName());
+            }
+            return pi.creatorInfo.forceNewPojo();
         }
         if (Set.class.isAssignableFrom(clazz)) {
             return TypeRegistry.newSetContainer(clazz, 0, false);

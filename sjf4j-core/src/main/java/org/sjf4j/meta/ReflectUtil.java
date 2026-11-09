@@ -132,14 +132,9 @@ public final class ReflectUtil {
 
         MethodHandles.Lookup lookup = Invokers.resolveLookup(clazz);
 
-        // Creator constructor (for final fields / record-style)
-        CreatorInfo creatorInfo;
-        try {
-            creatorInfo = analyzeCreator(clazz, lookup);
-        } catch (Exception e) {
-            if (orElseThrow) throw e instanceof BindingException ? (BindingException) e : new BindingException(e);
-            else return null;
-        }
+        // Constructor metadata is optional for reading existing POJO instances.
+        // Explicitly invalid creator declarations must still fail analysis.
+        CreatorInfo creatorInfo = analyzeCreator(clazz, lookup);
 
         NodeObject nodeObject = clazz.getAnnotation(NodeObject.class);
         NamingStrategy namingStrategy = null;
@@ -224,7 +219,7 @@ public final class ReflectUtil {
             _assertCompatiblePropertyTypes(family, clazz);
 
             String finalName = family.resolveFinalName(clazz, namingStrategy);
-            if (creatorInfo.argIndexes != null) {
+            if (creatorInfo != null && creatorInfo.argIndexes != null) {
                 Integer implicitIdx = creatorInfo.argIndexes.get(family.implicitName);
                 if (implicitIdx != null && !finalName.equals(family.implicitName)) {
                     Integer finalIdx = creatorInfo.argIndexes.get(finalName);
@@ -242,7 +237,7 @@ public final class ReflectUtil {
             boolean genericDependent = Types.containsTypeVariable(type);
             // Resolve creator-bound OneOf from the same property family as ordinary
             // fields, including inherited and explicitly renamed fields.
-            int creatorArg = creatorInfo.getArgIndexOrAlias(finalName);
+            int creatorArg = creatorInfo == null ? -1 : creatorInfo.getArgIndexOrAlias(finalName);
             if (creatorArg >= 0 && family.oneOfInfo != null) {
                 OneOfInfo member = family.oneOfInfo;
                 if (member.scope != OneOf.Scope.CURRENT) {
@@ -682,8 +677,7 @@ public final class ReflectUtil {
     }
 
     private static final String[] FRAMEWORK_PREFIX = {
-            "java.", "javax.", "jakarta.", "jdk.",
-            "com.fasterxml.jackson.", "tools.jackson.", "com.google.gson."
+            "java.", "javax.", "jdk."
     };
 
     private static boolean _isFrameworkPackage(String clazzName) {
@@ -756,7 +750,8 @@ public final class ReflectUtil {
                 creatorHandle = lookup.unreflectConstructor(ctors[0]);
                 creator = ctors[0];
             } catch (IllegalAccessException e) {
-                throw new BindingException("cannot access creator constructor of " + clazz.getName(), e);
+                // An inaccessible implicit constructor is not a usable creator.
+                return null;
             }
         }
 
@@ -802,9 +797,11 @@ public final class ReflectUtil {
                         name = getNamingStrategy(creator.getDeclaringClass()).translate(params[i].getName());
                     }
                 }
-                if (name == null || name.isEmpty())
+                if (name == null || name.isEmpty()) {
+                    if (!explicitCreator) return null;
                     throw new BindingException("missing parameter name for creator in " + clazz.getName() +
                             ": parameter index " + i + " (from 0). Use @NodeProperty on parameters.");
+                }
                 argNames[i] = name;
                 String valueFormat = getValueFormat(params[i]);
                 String valuePattern = getValuePattern(params[i]);
@@ -848,7 +845,8 @@ public final class ReflectUtil {
                 try { ctor.setAccessible(true); } catch (RuntimeException ignored) {}
                 noArgsCtor = lookup.unreflectConstructor(ctor);
             } catch (NoSuchMethodException | IllegalAccessException e) {
-                throw new BindingException("no defined creator or no-args constructor of " + clazz.getName(), e);
+                // No creator does not disqualify a class from object-node access.
+                return null;
             }
             noArgsLambdaCtor = Invokers.createConstructorLambda(lookup, clazz, noArgsCtor);
         } else if (creator.getParameterCount() == 0) {

@@ -1264,7 +1264,7 @@ public final class NodeMapper {
                 JsonArray src = (JsonArray) node;
                 JsonArray target = nodeClazz == JsonArray.class
                         ? new JsonArray()
-                        : (JsonArray) TypeRegistry.requireRegisteredPojoInfo(nodeClazz).creatorInfo.forceNewPojo();
+                        : (JsonArray) TypeRegistry.requireRegisteredPojoInfo(nodeClazz).requireCreatorInfo().forceNewPojo();
                 Type elemType = Types.resolveTypeArgument(toType, List.class, 0);
                 Class<?> elemBoxed = Types.rawBox(elemType);
                 for (int i = 0; i < src.size(); i++) {
@@ -1338,7 +1338,7 @@ public final class NodeMapper {
 
     private static Object _deepCopyPojo(Object source, Type type, Class<?> boxed, PojoInfo pojoInfo, PathSegment ps,
                                         RuntimeContext context) {
-        CreatorInfo ci = pojoInfo.creatorInfo;
+        CreatorInfo ci = pojoInfo.requireCreatorInfo();
         int expected = pojoInfo.gettableProperties.length;
         if (source instanceof JsonObject) {
             expected += ((JsonObject) source).size();
@@ -1470,7 +1470,7 @@ public final class NodeMapper {
     private static Object _convertPojoFromEntries(Iterable<Map.Entry<String, Object>> entries, Type type, Class<?> toBoxed,
                                                   PojoInfo pi, boolean deepCopy, PathSegment ps,
                                                   RuntimeContext context, boolean externalSource) {
-        CreatorInfo ci = pi.creatorInfo;
+        CreatorInfo ci = pi.requireCreatorInfo();
         Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
         CreatorState state = direct == null ? new CreatorState(ci) : null;
 
@@ -1605,7 +1605,7 @@ public final class NodeMapper {
 
         if (JsonArray.class.isAssignableFrom(toBoxed)) {
             PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(toBoxed);
-            JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
+            JsonArray jajo = (JsonArray) pi.requireCreatorInfo().forceNewPojo();
             Class<?> valueRaw = jajo.elementClass();
             TypeInfo valueTi = TypeRegistry.registerTypeInfo(valueRaw);
 
@@ -1695,7 +1695,7 @@ public final class NodeMapper {
 
         if (JsonArray.class.isAssignableFrom(toBoxed)) {
             PojoInfo pi = TypeRegistry.requireRegisteredPojoInfo(toBoxed);
-            JsonArray jajo = (JsonArray) pi.creatorInfo.forceNewPojo();
+            JsonArray jajo = (JsonArray) pi.requireCreatorInfo().forceNewPojo();
             Class<?> valueRaw = jajo.elementClass();
             TypeInfo valueTi = TypeRegistry.registerTypeInfo(valueRaw);
 
@@ -1817,7 +1817,7 @@ public final class NodeMapper {
                                                      boolean deepCopy,
                                                      PathSegment ps,
                                                      RuntimeContext context) {
-        CreatorInfo ci = targetInfo.creatorInfo;
+        CreatorInfo ci = targetInfo.requireCreatorInfo();
         Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
         CreatorState state = direct == null ? new CreatorState(ci) : null;
         boolean includeDynamic = targetInfo.isJojo && targetInfo.readDynamic;

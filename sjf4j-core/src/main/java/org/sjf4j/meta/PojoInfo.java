@@ -2,6 +2,7 @@ package org.sjf4j.meta;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.binding.BackendCache;
@@ -24,6 +25,7 @@ import java.util.Set;
  */
 public final class PojoInfo {
     public final Class<?> clazz;
+    /** Nullable: an existing object can be accessed without a usable constructor. */
     public final CreatorInfo creatorInfo;
 
     public final boolean readDynamic;
@@ -39,6 +41,14 @@ public final class PojoInfo {
 
     public final PropertyInfo[] gettableProperties;
     public final PropertyGenerator[] propertyGenerators;
+
+    /** Returns the constructor metadata required by object-creating operations. */
+    public CreatorInfo requireCreatorInfo() {
+        if (creatorInfo == null) {
+            throw new BindingException("no usable creator for POJO '" + clazz.getName() + "'");
+        }
+        return creatorInfo;
+    }
 
     /** Name matching for argument-based creators and parent-scope OneOf. */
     public final String[] creatorMatchNames;
@@ -79,7 +89,7 @@ public final class PojoInfo {
         this.propertyParsers = propertyParsers;
         this.propertyGenerators = propertyGenerators;
 
-        if (hasParentScopeOneOf || !creatorInfo.hasNoArgsCreator()) {
+        if (creatorInfo != null && (hasParentScopeOneOf || !creatorInfo.hasNoArgsCreator())) {
             // Creator names and aliases take priority over declared properties.
             // Precompute index-aligned matcher names, argument indices, and properties.
             LinkedHashSet<String> keys = new LinkedHashSet<>();

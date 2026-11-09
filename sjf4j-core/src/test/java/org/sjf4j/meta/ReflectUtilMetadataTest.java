@@ -388,7 +388,10 @@ class ReflectUtilMetadataTest {
         assertFalse(ReflectUtil.isPojoCandidate(JsonObject.class));
         assertFalse(ReflectUtil.isPojoCandidate(SampleEnum.class));
         assertFalse(ReflectUtil.isPojoCandidate(SampleInterface.class));
-        assertNull(ReflectUtil.analyzePojo(WrongStaticCreatorPojo.class, false));
+        // Invalid explicit creators are errors even in non-throwing candidate mode.
+        BindingException invalidCreator = assertThrows(BindingException.class,
+                () -> ReflectUtil.analyzePojo(WrongStaticCreatorPojo.class, false));
+        assertTrue(invalidCreator.getMessage().contains("creator method must return"));
 
         try {
             Field field = FastjsonOnlyPojo.class.getDeclaredField("name");
