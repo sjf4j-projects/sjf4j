@@ -1,0 +1,191 @@
+name: Jackson3 String Helper Factorial (JDK 25)
+
+# Distinguish helper staticness from explicit boolean includeNulls and
+# conditional branching, without altering the SAME generated class name.
+# Experimental branch only; never merge or touch main automatically.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-string-helper-factorial.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-string-helper-factorial
+  cancel-in-progress: true
+
+jobs:
+  investigate:
+    name: Factorial host ${{ matrix.host }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 95
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [1, 2, 3]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Identify runtime CPU and JDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-factorial
+          mkdir -p "$DIR"
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > "$DIR/runner.txt"
+
+      - name: Build identical class name under four source variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-factorial
+          for mode in baseline staticFlag instanceFlag staticLegacy; do
+            echo "Building $mode"
+            SJF4J_EXPERIMENT_STRING_MEMBER="$mode" \
+              ./gradlew --no-daemon --rerun-tasks :sjf4j-testbench:jmhJar \
+              > "$DIR/build-$mode.log" 2>&1 || {
+                tail -145 "$DIR/build-$mode.log"
+                exit 1
+              }
+            JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+            test -s "$JAR"
+            cp "$JAR" "$RUNNER_TEMP/jmh-$mode.jar"
+            javap -c -p -classpath "$JAR" \
+              'org.sjf4j.testbench.binding.fabien.FabienBindings$Jackson3_Impl' \
+              > "$DIR/$mode.javap.txt"
+          done
+          for mode in staticFlag instanceFlag staticLegacy; do
+            if cmp -s "$DIR/baseline.javap.txt" "$DIR/$mode.javap.txt"; then
+              echo "ERROR: bytecode identical for baseline vs $mode"
+              exit 1
+            fi
+          done
+          echo "Four source variants yielded distinct original-class bytecode"
+
+      - name: Cross-check JSON null semantics and SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-factorial
+          MAIN=org.sjf4j.testbench.binding.fabien.Jackson3StringMemberNullProbe
+          for mode in baseline staticFlag instanceFlag staticLegacy; do
+            java -cp "$RUNNER_TEMP/jmh-$mode.jar" "$MAIN" \
+              > "$DIR/null-$mode.log" 2>&1 || {
+                cat "$DIR/null-$mode.log"
+                exit 1
+              }
+            diff -u "$DIR/null-baseline.log" "$DIR/null-$mode.log"
+          done
+          echo "Users and Clients null-policy probe output hashes match in all four Jars"
+
+      - name: JMH targeted Users large and Clients small/large regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-factorial
+          BENCH=org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write
+          for mode in baseline staticFlag instanceFlag staticLegacy; do
+            for target in users100 clients1 clients10and100; do
+              if [[ "$target" == "users100" ]]; then
+                model=users; size=100; seed=12345,324
+              elif [[ "$target" == "clients1" ]]; then
+                model=clients; size=1; seed=12345,324
+              else
+                model=clients; size=10,100; seed=324
+              fi
+              java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+                -p backend=jackson3 -p implementation=compiled,runtime \
+                -p model="$model" -p shape=pojo -p sizeKb="$size" -p seed="$seed" \
+                -f 3 -wi 5 -i 5 -w 300ms -r 300ms -t 1 -prof gc \
+                -rf json -rff "$DIR/$mode-$target.json" \
+                > "$DIR/$mode-$target.log" 2>&1 || {
+                  tail -140 "$DIR/$mode-$target.log"
+                  exit 1
+                }
+              MODE="$mode" TARGET="$target" python3 - <<'PY'
+          import json,os
+          path="build/performance/jackson3-factorial/"+os.environ['MODE']+"-"+os.environ['TARGET']+".json"
+          rows=json.load(open(path))
+          assert len(rows)==4, f"{path}: expected 4 JMH cases, got {len(rows)}"
+          PY
+              tail -10 "$DIR/$mode-$target.log"
+            done
+          done
+
+      - name: Collect original C2 compilation diagnostics separately
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-factorial
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write
+          for mode in baseline staticFlag instanceFlag staticLegacy; do
+            XML="$PWD/$DIR/$mode.xml"
+            java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+              -p path=originalBytes -p seed=12345 -p sizeKb=100 \
+              -f 1 -wi 5 -i 2 -w 400ms -r 400ms -t 1 \
+              -jvmArgsAppend "-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$XML" \
+              -rf json -rff "$DIR/$mode-diagnostic.json" \
+              > "$DIR/$mode-diagnostic.log" 2>&1 || {
+                tail -100 "$DIR/$mode-diagnostic.log"
+                exit 1
+              }
+            test -s "$XML" || { echo "Missing compilation log for $mode"; exit 1; }
+          done
+
+      - name: Compare ratios and original inlining
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-factorial/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,re
+          from pathlib import Path
+          p=Path("build/performance/jackson3-factorial")
+          cpu=re.search(r"Model name:\s*(.+)",(p/"runner.txt").read_text())
+          print("# Jackson3 _writeStringMember factorial codegen experiment")
+          print("CPU:",cpu.group(1) if cpu else "(unknown)")
+          print("Same original generated class identity for all four Jars; no JIT flags.")
+          print("3 forks × 5 warmup × 5 measurement iterations at 300ms; lower is better.")
+          print("| Model | KB | Seed | Generated code | Compiled µs/op | Runtime µs/op | Compiled/staticFlag | Compiled allocation B/op |")
+          print("| --- | ---: | --- | --- | ---: | ---: | ---: | ---: |")
+          modes=("baseline","staticFlag","instanceFlag","staticLegacy")
+          groups=(("users100","users","100","12345"),
+                  ("users100","users","100","324"),
+                  ("clients1","clients","1","12345"),
+                  ("clients1","clients","1","324"),
+                  ("clients10and100","clients","10","324"),
+                  ("clients10and100","clients","100","324"))
+          scores={}
+          for mode in modes:
+              for target in ("users100","clients1","clients10and100"):
+                  rows=json.loads((p/f"{mode}-{target}.json").read_text())
+                  for row in rows:
+                      x=row["params"]
+                      scores[(mode,x["model"],x["sizeKb"],x["seed"],x["implementation"])]=row
+          assert len(scores)==48
+          for target,model,kb,seed in groups:
+              ref=scores[("staticFlag",model,kb,seed,"compiled")]["primaryMetric"]["score"]
+              for mode in modes:
+                  a=scores[(mode,model,kb,seed,"compiled")]
+                  b=scores[(mode,model,kb,seed,"runtime")]
+                  av=a["primaryMetric"]["score"]
+                  rt=b["primaryMetric"]["score"]
+                  gc=a["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+                  print(f"| {model} | {kb} | {seed} | {mode} | {av:.3f} ±{a['primaryMetric']['scoreError']:.3f} | {rt:.3f} | {av/ref:.3f}x | {gc:.0f} |")
+          print("\nNote: comparisons should be paired within host/config; independent diagnostic XML forks follow.")
+          PY
+
+      - name: Upload raw JSON GC bytecode and JIT logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-factorial-host-${{ matrix.host }}
+          path: build/performance/jackson3-factorial/
+          retention-days: 30
+          if-no-files-found: warn
