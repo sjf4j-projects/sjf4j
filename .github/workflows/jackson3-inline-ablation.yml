@@ -1,0 +1,159 @@
+name: Jackson3 Original WriteStringMember Inlining Ablation
+
+# Test the proposed cause without editing any generated or production Java.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-inline-ablation.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-inline-ablation
+  cancel-in-progress: true
+
+jobs:
+  ablation:
+    name: Inline A/B host ${{ matrix.host }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [1, 2, 3]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compile the unchanged original and sibling binders
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Capture actual host CPU
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-inline-ablation
+          mkdir -p "$DIR"
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > "$DIR/runner.txt"
+
+      - name: Compare normal tiered JIT against dontinline for original helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-inline-ablation
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          test -n "$JAR"
+          BENCH='org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write'
+          DONTINLINE='-XX:CompileCommand=dontinline,org.sjf4j.testbench.binding.fabien.FabienBindings$Jackson3_Impl::_writeStringMember'
+          for mode in default dontinline; do
+            flags=()
+            if [[ "$mode" == "dontinline" ]]; then
+              flags=(-jvmArgsAppend "$DONTINLINE")
+            fi
+            java -jar "$JAR" "$BENCH" \
+              -p path=originalBytes,siblingBytes -p seed=12345,324 -p sizeKb=100 \
+              -f 3 -wi 5 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+              "${flags[@]}" \
+              -rf json -rff "$DIR/$mode.json" > "$DIR/$mode.log" 2>&1 || {
+                tail -130 "$DIR/$mode.log"
+                exit 1
+              }
+            MODE="$mode" python3 - <<'PY'
+          import json,os
+          mode=os.environ["MODE"]
+          path="build/performance/jackson3-inline-ablation/"+mode+".json"
+          rows=json.load(open(path))
+          assert len(rows)==4, f"{mode}: expected 4 results, got {len(rows)}"
+          PY
+            if [[ "$mode" == "dontinline" ]]; then
+              grep -F 'CompileCommand: dontinline' "$DIR/dontinline.log" | head -3 || {
+                echo "Missing HotSpot confirmation that dontinline was applied"
+                exit 1
+              }
+            fi
+            tail -25 "$DIR/$mode.log"
+          done
+
+      - name: Validate actual C2 inlining on same host
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-inline-ablation
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          BENCH='org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write'
+          DONTINLINE='-XX:CompileCommand=dontinline,org.sjf4j.testbench.binding.fabien.FabienBindings$Jackson3_Impl::_writeStringMember'
+          for mode in default dontinline; do
+            XML="$PWD/$DIR/$mode.xml"
+            FLAGS="-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$XML"
+            if [[ "$mode" == "dontinline" ]]; then
+              FLAGS="$FLAGS $DONTINLINE"
+            fi
+            java -jar "$JAR" "$BENCH" \
+              -p path=originalBytes -p seed=324 -p sizeKb=100 \
+              -f 1 -wi 5 -i 2 -w 400ms -r 400ms -t 1 \
+              -jvmArgsAppend "$FLAGS" \
+              -rf json -rff "$DIR/$mode-diagnostic.json" > "$DIR/$mode-diagnostic.log" 2>&1 || {
+                tail -130 "$DIR/$mode-diagnostic.log"
+                exit 1
+              }
+            test -s "$XML" || { echo "Missing $XML"; exit 1; }
+          done
+
+      - name: Assert inline suppression and summarize
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-inline-ablation/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,re,xml.etree.ElementTree as ET
+          from pathlib import Path
+          root=Path("build/performance/jackson3-inline-ablation")
+          model=re.search(r"Model name:\s*(.+)",(root/"runner.txt").read_text())
+          print("# Jackson3 original _writeStringMember dontinline A/B")
+          print("Host CPU:",model.group(1) if model else "(unknown)")
+          print("Default JDK25 tiered compilation for BOTH modes; one mode adds only the")
+          print("HotSpot directive for original class _writeStringMember.")
+          print("| Mode | Seed | Original µs/op | Sibling µs/op | Original / sibling | Original forks | Sibling forks |")
+          print("| --- | --- | ---: | ---: | ---: | --- | --- |")
+          for mode in ("default","dontinline"):
+              d={(r["params"]["seed"],r["params"]["path"]):r["primaryMetric"] for r in json.loads((root/(mode+".json")).read_text())}
+              for seed in ("12345","324"):
+                  a=d[(seed,"originalBytes")]
+                  b=d[(seed,"siblingBytes")]
+                  forks=lambda m: ", ".join(f"{sum(x)/len(x):.2f}" for x in m.get("rawData",[]) if x)
+                  print(f"| {mode} | {seed} | {a['score']:.2f} ±{a['scoreError']:.2f} | {b['score']:.2f} ±{b['scoreError']:.2f} | {a['score']/b['score']:.3f}x | {forks(a)} | {forks(b)} |")
+          for mode in ("default","dontinline"):
+              r=ET.parse(root/(mode+".xml")).getroot()
+              tasks=[x for x in r.iter("task") if "FabienBindings$Jackson3_Impl _writeUser " in x.get("method","") and not x.get("level")]
+              assert tasks, f"{mode}: missing C2 compilation task for _writeUser"
+              task=tasks[0]
+              methods={x.get("id"):x.get("name") for x in task.iter("method")}
+              nodes=list(task.find("parse"))
+              choices=[]
+              for i,node in enumerate(nodes):
+                  if node.tag!="call" or methods.get(node.get("method"))!="_writeStringMember":
+                      continue
+                  nxt=next((x for x in nodes[i+1:i+5] if x.tag in ("inline_success","inline_fail")),None)
+                  choices.append(nxt.tag if nxt is not None else "unknown")
+              nm=next(n for n in r.iter("nmethod") if n.get("compile_id")==task.get("compile_id"))
+              inline=sum(x=="inline_success" for x in choices)
+              print(f"**{mode}: C2 _writeUser nmethod size {nm.get('size')} bytes; _writeStringMember inlined {inline}/{len(choices)} calls**")
+              assert len(choices)==15, (mode,len(choices))
+              if mode=="dontinline":
+                  assert inline==0, "HotSpot did not suppress string-helper inlining"
+          print("JMH excludes XML logging; logs are separate diagnostic forks.")
+          PY
+
+      - name: Upload complete JMH and HotSpot log evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-inline-ablation-host-${{ matrix.host }}
+          path: build/performance/jackson3-inline-ablation/
+          retention-days: 30
+          if-no-files-found: warn
