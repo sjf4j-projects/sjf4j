@@ -25,7 +25,7 @@ Each input uses the same deterministic Bookstore data, with serialized JSON size
 
 **Implementation boundaries:** all queries and inputs are compiled/constructed during JMH trial setup; only navigation is timed. Equivalence is checked before measurement, including output order and values. The Map/JsonNode Jayway comparisons run against the same pre-parsed input as SJF4J Runtime. CompiledNavigator cannot generate wildcard/filter/slice traversal for arbitrary `Map<String, Object>` nesting, so **only Map Direct** is measured as Compiled. POJO is a **Runtime vs Compiled** comparison, not a Jayway comparison. `@CompiledNavigator(fallback=true)` is used: **POJO Filter and Descendant fall back to runtime** and are not fully compiled navigation results.
 
-**Expression parsing** is measured separately, using the existing `JsonPathBenchmark` seven expressions: SJF4J `JsonPath.parse()` vs Jayway `JsonPath.compile()`. Neither document parsing nor query execution is included in parsing measurements. Mutation/Put/EnsurePut is outside this initial baseline.
+**Expression parsing** is measured separately, using seven expressions defined independently in `PathFullBenchmark`: SJF4J `JsonPath.parse()` vs Jayway `JsonPath.compile()`. Neither document parsing nor query execution is included in parsing measurements. `JsonPathBenchmark` remains a standalone exploratory benchmark; the two classes do not reuse methods, states or fixtures. Mutation/Put/EnsurePut is outside this initial baseline.
 
 ## Reporting
 
