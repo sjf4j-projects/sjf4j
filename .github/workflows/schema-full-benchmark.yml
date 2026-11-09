@@ -150,22 +150,31 @@ jobs:
         run: |
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
-          import os
           from pathlib import Path
+          from statistics import mean
 
           group = "${{ matrix.group }}"
           file = Path(f"build/performance/schema/{group}/schema-{group}.json")
           rows = json.loads(file.read_text(encoding="utf-8"))
           print(f"## Creek {group}: {len(rows)} methods")
           print()
-          print("| Method | us/op | B/op |")
-          print("| --- | ---: | ---: |")
+          print("Best 2 Mean: discard the slowest of 3 fork means, independently for each method.")
+          print("The original JMH score and B/op remain untrimmed; JMH scoreError does not apply to Best 2.")
+          print()
+          print("| Method | Best 2 Mean (µs/op) | JMH 3-fork mean (µs/op) | Fork means (µs/op) | B/op |")
+          print("| --- | ---: | ---: | --- | ---: |")
           for row in sorted(rows, key=lambda r: r["benchmark"]):
               name = row["benchmark"].rsplit(".", 1)[-1]
               metric = row["primaryMetric"]
+              raw = metric.get("rawData", [])
+              if len(raw) != 3 or any(len(fork) != 5 for fork in raw):
+                  raise SystemExit(f"Incomplete 3 forks x 5 iterations for {name}")
+              forks = [mean(fork) for fork in raw]
+              best2 = mean(sorted(forks)[:2])
+              fork_text = " / ".join(f"{fork:.3f}" for fork in forks)
               alloc = row.get("secondaryMetrics", {}).get("gc.alloc.rate.norm", {}).get("score")
               alloc_text = f"{alloc:.1f}" if alloc is not None else "n/a"
-              print(f'| {name} | {metric["score"]:.3f} | {alloc_text} |')
+              print(f'| {name} | {best2:.3f} | {metric["score"]:.3f} | {fork_text} | {alloc_text} |')
           PY
 
       - name: Upload raw results and diagnostics
