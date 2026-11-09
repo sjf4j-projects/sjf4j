@@ -113,7 +113,7 @@ case "$PROFILE" in
     ;;
   full)
     SIZE_COUNT=3
-    ARGS=(-f 3 -wi 5 -i 5 -w 400ms -r 400ms)
+    ARGS=(-f 3 -wi 5 -i 5 -w 1s -r 1s)
     COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324 -prof gc)
     ;;
 esac
