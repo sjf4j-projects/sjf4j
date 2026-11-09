@@ -33,6 +33,11 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Validate runner and report scripts
+        run: |
+          bash -n scripts/benchmark-path.sh
+          python3 -m py_compile scripts/analyze-path-benchmark.py
+
       - name: Compile JMH jar
         run: ./gradlew :sjf4j-testbench:jmhJar
 
