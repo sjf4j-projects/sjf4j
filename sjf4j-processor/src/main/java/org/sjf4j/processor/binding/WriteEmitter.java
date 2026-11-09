@@ -27,7 +27,8 @@ final class WriteEmitter {
         // environment variable is explicitly supplied. Not for release use.
         if ("org.sjf4j.testbench.binding.fabien.FabienBindings.Jackson3".equals(originName)) {
             String override = System.getenv("SJF4J_EXPERIMENT_STRING_MEMBER");
-            if ("compact".equals(override) || "staticFlag".equals(override)) {
+            if ("compact".equals(override) || "staticFlag".equals(override)
+                    || "instanceFlag".equals(override) || "staticLegacy".equals(override)) {
                 stringMemberExperiment = override;
             } else {
                 stringMemberExperiment = "baseline";
@@ -48,8 +49,16 @@ final class WriteEmitter {
         return "direct".equals(stringMemberExperiment);
     }
 
-    boolean staticFlagStringMembers() {
-        return "staticFlag".equals(stringMemberExperiment);
+    /** The explicitly passed null policy changes the signature independently of staticness. */
+    boolean explicitNullFlagStringMembers() {
+        return "staticFlag".equals(stringMemberExperiment)
+                || "instanceFlag".equals(stringMemberExperiment)
+                || "staticLegacy".equals(stringMemberExperiment);
+    }
+
+    boolean staticStringMembers() {
+        return "staticFlag".equals(stringMemberExperiment)
+                || "staticLegacy".equals(stringMemberExperiment);
     }
     private final BindingNames names;
     private final Fastjson2WriteEmitter fastjson2;
@@ -457,15 +466,18 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            boolean staticFlag = staticFlagStringMembers();
-            out.beginBlock((staticFlag ? "private static void " : "private void ")
+            boolean explicitFlag = explicitNullFlagStringMembers();
+            boolean staticMethod = staticStringMembers();
+            String include = explicitFlag ? "includeNulls" : "this.context.includeNulls";
+            out.beginBlock((staticMethod ? "private static void " : "private void ")
                     + stringMemberHelper() + "(" + generator + " g, " + nameType
                     + " name, String value"
-                    + (staticFlag ? ", boolean includeNulls" : "")
+                    + (explicitFlag ? ", boolean includeNulls" : "")
                     + ") throws java.io.IOException");
-            if ("compact".equals(stringMemberExperiment) || staticFlag) {
+            if ("compact".equals(stringMemberExperiment)
+                    || "staticFlag".equals(stringMemberExperiment)
+                    || "instanceFlag".equals(stringMemberExperiment)) {
                 // One name write, same null-omission semantics as baseline.
-                String include = staticFlag ? "includeNulls" : "this.context.includeNulls";
                 out.beginBlock("if (value != null || " + include + ")");
                 out.line("g." + nameMethod + "(name);");
                 out.beginBlock("if (value == null)");
@@ -477,7 +489,7 @@ final class WriteEmitter {
                 out.endBlock();
             } else {
                 out.beginBlock("if (value == null)");
-                out.beginBlock("if (this.context.includeNulls)");
+                out.beginBlock("if (" + include + ")");
                 out.line("g." + nameMethod + "(name);");
                 out.line("g.writeNull();");
                 out.endBlock();

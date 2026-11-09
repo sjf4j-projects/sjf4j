@@ -175,7 +175,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             out.endBlock();
         } else {
             out.line(writes.stringMemberHelper() + "(g, " + encodedName + ", "
-                    + expression + (writes.staticFlagStringMembers()
+                    + expression + (writes.explicitNullFlagStringMembers()
                     ? ", this.context.includeNulls" : "") + ");");
         }
     }
