@@ -4,7 +4,7 @@ SJF4J JSON Schema validation and roundtrip performance, using the Creek model an
 
 ## Results — v1.5.0 (2026-11-09)
 
-**JDK 25 · JMH · 3 forks · µs/op (lower is better)**
+**JDK 25 · JMH · 3 forks · 5 × 400ms warmup/measurement · original JMH mean · µs/op (lower is better)**
 
 ### Validation
 
@@ -34,6 +34,12 @@ Validation uses the same prebuilt Creek fixture; the NetworkNT comparison uses t
 **[Full results and methodology](schema/creek-v150-2026-11-09.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42543397629)**
 
 ## Run
+
+Current **Full** profile: JDK 25, 3 independent forks, 5 × 1s warmup and 5 × 1s measurement.
+
+**Reporting:** Use **Best 2 Mean** for every exact benchmark method: average the five measurements within each fork, discard that method's slowest fork, and average the remaining two. Compute speedup ratios from these per-method Best 2 Means. Preserve the original JMH 3-fork mean, per-fork results, score error, and B/op; the JMH score error does **not** apply to Best 2 Mean, and B/op remains the untrimmed JMH value.
+
+The v1.5.0 results above are the original **400ms, 3-fork JMH means**, not Best 2 Mean. They remain unchanged as a historical snapshot. Re-run both implementations with the same timing settings for controlled comparisons.
 
 [Schema Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/schema-full-benchmark.yml) → **Run workflow**.
 
