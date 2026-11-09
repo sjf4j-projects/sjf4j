@@ -1,0 +1,127 @@
+name: Jackson3 Tiered Warmup and Compiler Logs (JDK 25)
+
+# Diagnostic only. Never modify SJF4J production code and never merge main.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-tiered-warmup-diagnostic.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-tiered-warmup
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Compare tiered default warmup and faster C2 thresholds
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-tiered-warmup
+          mkdir -p "$DIR"
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          test -n "$JAR"
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > "$DIR/runner.txt"
+
+          for mode in short long fasterC2; do
+            warmup=5
+            flags=()
+            case "$mode" in
+              short) ;;
+              long) warmup=20 ;;
+              fasterC2) flags=(-jvmArgsAppend "-XX:CompileThresholdScaling=0.1") ;;
+              *) exit 2 ;;
+            esac
+            echo "Running $mode, warmup=$warmup"
+            java -jar "$JAR" "$BENCH" \
+              -p path=originalBytes,siblingBytes \
+              -p seed=324 -p sizeKb=100 \
+              -f 3 -wi "$warmup" -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+              "${flags[@]}" \
+              -rf json -rff "$DIR/$mode.json" > "$DIR/$mode.log" 2>&1 || {
+                tail -130 "$DIR/$mode.log"
+                exit 1
+              }
+            MODE="$mode" python3 - <<'PY'
+          import json,os
+          mode=os.environ["MODE"]
+          rows=json.load(open("build/performance/jackson3-tiered-warmup/"+mode+".json"))
+          assert len(rows)==2, f"Expected both JMH paths for {mode}, found {len(rows)}"
+          print(mode, "2 variants completed")
+          PY
+            tail -20 "$DIR/$mode.log"
+          done
+
+      - name: Capture default tiered HotSpot compilation logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-tiered-warmup
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write
+          for path in originalBytes siblingBytes; do
+            XML="$PWD/$DIR/$path.xml"
+            JVM="-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:+PrintCompilation -XX:+PrintInlining -XX:LogFile=$XML"
+            java -jar "$JAR" "$BENCH" \
+              -p path="$path" -p seed=324 -p sizeKb=100 \
+              -f 1 -wi 6 -i 3 -w 450ms -r 450ms -t 1 \
+              -jvmArgsAppend "$JVM" \
+              -rf json -rff "$DIR/$path-diagnostic.json" > "$DIR/$path-compiler.log" 2>&1 || {
+                tail -130 "$DIR/$path-compiler.log"
+                exit 1
+              }
+            test -s "$XML" || {
+              echo "Missing HotSpot LogCompilation file: $XML"
+              exit 1
+            }
+            echo "$path: $(wc -c < "$XML") bytes compilation XML"
+            grep -E 'FabienBindings|JacksonOutputSinkBenchmark|_writeUser|_writeStringMember' "$DIR/$path-compiler.log" | tail -60 > "$DIR/$path-interesting-inlines.txt" || true
+          done
+
+      - name: Compare performance and tiers
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-tiered-warmup/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          root=Path("build/performance/jackson3-tiered-warmup")
+          print("# Jackson3 Original Users 100KB, seed324: tiered C2 threshold vs warmup")
+          print("3 forks each; all paths use the same original POJO and serialized bytes.")
+          print("| Mode | Original µs/op | Sibling µs/op | Original / Sibling | Original forks | Sibling forks |")
+          print("| --- | ---: | ---: | ---: | --- | --- |")
+          for mode in ("short","long","fasterC2"):
+              data={r["params"]["path"]:r for r in json.loads((root/(mode+".json")).read_text())}
+              a=data["originalBytes"]["primaryMetric"]
+              b=data["siblingBytes"]["primaryMetric"]
+              forks=lambda m: ", ".join(f"{sum(x)/len(x):.2f}" for x in m.get("rawData",[]) if x)
+              print(f"| {mode} | {a['score']:.2f} ±{a['scoreError']:.2f} | {b['score']:.2f} ±{b['scoreError']:.2f} | {a['score']/b['score']:.3f}x | {forks(a)} | {forks(b)} |")
+          print("\nshort = 5×400ms warmup, long = 20×400ms warmup;")
+          print("fasterC2 = -XX:CompileThresholdScaling=0.1 with 5×400ms warmup.")
+          print("\nCompiler logs: originalBytes.xml and siblingBytes.xml (HotSpot -XX:+LogCompilation).")
+          print("Diagnostic JMH runs with PrintInlining are NOT used as performance measurements.")
+          PY
+
+      - name: Upload JMH, HotSpot compiler logs and summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-tiered-warmup-and-jit-logs-jdk25
+          path: build/performance/jackson3-tiered-warmup/
+          retention-days: 30
+          if-no-files-found: warn
