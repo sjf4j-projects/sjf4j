@@ -8,26 +8,30 @@ SJF4J JSON Schema validation and roundtrip performance, using the Creek model an
 
 ### Validation
 
-| Input | Runtime | Compiled | Speedup |
+| Input | NetworkNT | Runtime | Compiled |
 | --- | ---: | ---: | ---: |
-| POJO | 3.107 | **0.058** | **53.6×** |
-| Map | 2.295 | **0.992** | **2.31×** |
-| Jackson2 JsonNode | 4.051 (SJF4J) | 9.758 (NetworkNT) | **2.41× SJF4J** |
+| POJO | — | 3.107 | **0.058** (**53.6×** vs Runtime) |
+| Map | — | 2.295 | **0.992** (**2.31×** vs Runtime) |
+| Jackson2 JsonNode | 9.758 | **4.051** (**2.41×** vs NetworkNT) | — |
+
+The NetworkNT and SJF4J Runtime results use the same pre-parsed Jackson2 `JsonNode`. Compiled validation is benchmarked on POJO and Map only.
 
 ### Roundtrip
+
+Each roundtrip serializes the Creek POJO to a JSON `byte[]` and deserializes it back to a POJO. The validation variants additionally run schema validation **on the deserialized POJO** (not during parsing): `Jackson2 + Runtime Validator` uses SJF4J Runtime validation after Jackson2 binding, while `CompiledBinder + CompiledValidator` uses compiled binding and compiled validation. The Jackson2 and CompiledBinder-only variants perform binding without validation.
 
 | Implementation | µs/op | B/op |
 | --- | ---: | ---: |
 | Jackson2 | 7.024 | 7,696 |
-| SJF4J CompiledBinder | 5.829 | 6,824 |
+| CompiledBinder | 5.829 | 6,824 |
 | Jackson2 + Runtime Validator | 10.779 | 9,816 |
-| **CompiledBinder + CompiledValidator** | **5.888** | **6,824** |
+| **CompiledBinder + CompiledValidator** | **5.888** (**1.19x** vs Jackson2) | **6,824** |
 
 **Key result:** CompiledBinder + CompiledValidator is **1.19× faster** than a plain Jackson2 roundtrip **without validation**, with **11.3% lower allocation**.
 
 Validation uses the same prebuilt Creek fixture; the NetworkNT comparison uses the same pre-parsed JsonNode. The compiled validator has `fallback=true`. These results are from GitHub-hosted runners, not a hardware-independent performance guarantee.
 
-**[Full results and methodology](baselines/creek-v150-2026-11-09.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42543397629)**
+**[Full results and methodology](schema/creek-v150-2026-11-09.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42543397629)**
 
 ## Run
 
