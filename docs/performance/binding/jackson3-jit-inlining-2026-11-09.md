@@ -129,6 +129,33 @@ The initial run [#42558598460](https://github.com/sjf4j-projects/sjf4j/actions/r
 | instanceFlag | No | Yes | Compact |
 | staticLegacy | Yes | Yes | Original |
 
-This distinguishes staticness from explicitly passing null policy and from branch reordering. Focuses on Users 100KB and Clients 1KB/10KB/100KB, includes Runtime controls, byte-identical null-policy checks and C2 diagnostic logs. **Pending: do not choose a production fix until results are verified.**
+### Results: all three hosts passed
+
+JDK 25.0.5, default tiered JIT, same original generated class binary name, three JMH forks × five 300ms warmup and five 300ms measurement iterations, with equivalent JSON bytes across all builds. Host 1: Intel Xeon Platinum 8370C; Host 2: AMD EPYC 7763; Host 3: AMD EPYC 9V74.
+
+**Compiled Users POJO 100KB, seed12345, µs/op (lower is better):**
+
+| Variant | Intel 8370C | AMD 7763 | AMD 9V74 |
+| --- | ---: | ---: | ---: |
+| baseline | **213.60** | 303.33 | 231.88 |
+| staticFlag | 218.20 | **226.72** | 172.64 |
+| instanceFlag | 237.93 (one slow fork) | 304.72 | 228.24 |
+| staticLegacy | 218.98 | 227.51 | **171.90** |
+
+For seed324 on EPYC 7763, staticFlag has one slow fork: 227.00, **290.73**, 227.54 µs/op, yielding 248.43 mean. staticLegacy remains stable: 228.10, 227.97, 225.40. Both static variants are stable on EPYC 9V74 with approximately 172 µs/op.
+
+**HotSpot C2 _writeUser inline decisions** (from independent diagnostic forks):
+
+| CPU | baseline | instanceFlag | staticFlag | staticLegacy |
+| --- | --- | --- | --- | --- |
+| AMD 7763 | 5/15, 36,024B | 5/15, 36,376B | **0/15, 22,112B** | **0/15, 22,112B** |
+| AMD 9V74 | 5/15, 36,000B | 5/15, 36,296B | **0/15, 22,120B** | **0/15, 22,120B** |
+| Intel 8370C | 0/15, 21,952B | 0/15, 23,312B | 0/15, 30,248B | 0/15, 30,528B |
+
+**Interpretation:** only the STATIC helper avoids five excess string-member inlines and restores Users 100KB speed on both AMD hosts. Passing an explicit includeNulls boolean to an INSTANCE helper (instanceFlag) is ineffective. Keeping the original conditional body with a static helper (staticLegacy) is sufficient. This makes static helper + explicit null-policy parameter the minimal practical semantic change, without requiring HotSpot directives.
+
+**Clients 1KB, seed324: staticFlag/baseline ratio** is 1.038x on Intel, 1.052x on AMD 7763 and 1.017x on AMD 9V74, with overlapping JMH error estimates. staticLegacy ratios are 1.015x, 1.069x and 1.022x. Seed12345 is essentially flat. Thus a small-payload regression remains possible; it merits a more sensitive multi-fork experiment. Clients 10KB seed324 improves with staticFlag on both AMD hosts (ratios 0.934x and 0.896x). Clients 100KB seed324 does not exhibit a stable major difference, but is noisy. Allocation is substantially unchanged.
+
+**Next gate:** high-repetition Clients 1KB seed324 with Users 100KB control, on JDK25 and ideally JDK21; no premature generalization about CPU vendors from one Intel runner.
 
 **Scope:** all experiments remain in Draft PR #246. The diagnostic environment switch and benchmark-only source are not proposed as public APIs or for merge; no production change or `main` merge has been performed.
