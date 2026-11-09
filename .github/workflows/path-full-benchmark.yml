@@ -1,0 +1,208 @@
+name: Path Full Benchmark (JDK 25)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/path-full-benchmark.yml"
+      - "scripts/benchmark-path.sh"
+      - "scripts/analyze-path-benchmark.py"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/path/PathFullBenchmark.java"
+      - "sjf4j-testbench/build.gradle.kts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: path-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-jmh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate runner and report scripts
+        run: |
+          bash -n scripts/benchmark-path.sh
+          python3 -m py_compile scripts/analyze-path-benchmark.py
+
+      - name: Compile JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Upload JMH jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-jmh-jar
+          path: sjf4j-testbench/build/libs/*-jmh.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke:
+    name: Smoke / ${{ matrix.shape }}
+    if: github.event_name == 'pull_request'
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shape: [map, jsonnode, pojo, parse]
+    env:
+      PATH_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: path-jmh-jar
+          path: sjf4j-testbench/build/libs
+
+      - name: Smoke-check Path ${{ matrix.shape }}
+        run: bash scripts/benchmark-path.sh smoke "${{ matrix.shape }}"
+
+      - name: Upload diagnostic log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-smoke-${{ matrix.shape }}-${{ github.run_id }}
+          path: build/performance/path/
+          if-no-files-found: warn
+          retention-days: 7
+
+  benchmark:
+    name: Full / ${{ matrix.shape }}
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shape: [map, jsonnode, pojo, parse]
+    env:
+      PATH_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: path-jmh-jar
+          path: sjf4j-testbench/build/libs
+
+      - name: Record runner hardware
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="build/performance/path/${{ matrix.shape }}"
+          mkdir -p "$OUT"
+          {
+            echo "Shape: ${{ matrix.shape }}"
+            echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Commit: $GITHUB_SHA"
+            lscpu
+            free -h
+            java -version 2>&1
+          } > "$OUT/runner.txt"
+
+      - name: Run Path Full ${{ matrix.shape }}
+        run: bash scripts/benchmark-path.sh full "${{ matrix.shape }}"
+
+      - name: Show Best 2 results
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          from statistics import mean
+
+          shape = "${{ matrix.shape }}"
+          rows = json.loads(Path(f"build/performance/path/{shape}/path-{shape}.json").read_text())
+          print(f"## Path Full — {shape}")
+          print()
+          print("Best 2 Mean: exclude the slowest fork **for each method + parameter combination**.")
+          print("The original 3-fork JMH score remains untrimmed; JMH error does not apply to Best 2.")
+          print()
+          print("| Method | Param | Best 2 (ns/op) | JMH 3-fork mean (ns/op) | B/op |")
+          print("| --- | --- | ---: | ---: | ---: |")
+          for row in sorted(rows, key=lambda r: (r["benchmark"], str(r["params"]))):
+              raw = row["primaryMetric"].get("rawData", [])
+              if len(raw) != 3 or any(len(fork) != 5 for fork in raw):
+                  raise SystemExit(f"Incomplete fork data: {row['benchmark']}")
+              forks = [mean(fork) for fork in raw]
+              best2 = mean(sorted(forks)[:2])
+              key = row["params"].get("expr", row["params"].get("sizeKb"))
+              alloc = row.get("secondaryMetrics", {}).get("gc.alloc.rate.norm", {}).get("score")
+              alloc_text = f"{alloc:.1f}" if alloc is not None else "n/a"
+              name = row["benchmark"].rsplit(".", 1)[-1]
+              print(f'| {name} | {key} | {best2:.1f} | '
+                    f'{row["primaryMetric"]["score"]:.1f} | {alloc_text} |')
+          PY
+
+      - name: Upload raw results and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-full-${{ matrix.shape }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/path/${{ matrix.shape }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  collect-results:
+    name: Combined Path report
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && needs.build-jmh.result == 'success' }}
+    needs: [build-jmh, benchmark]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all result artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: path-full-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results
+
+      - name: Summarize results
+        shell: bash
+        run: |
+          python3 scripts/analyze-path-benchmark.py \
+            "results/path-full-map-${{ github.run_id }}-${{ github.run_attempt }}/path-map.json" \
+            "results/path-full-jsonnode-${{ github.run_id }}-${{ github.run_attempt }}/path-jsonnode.json" \
+            "results/path-full-pojo-${{ github.run_id }}-${{ github.run_attempt }}/path-pojo.json" \
+            "results/path-full-parse-${{ github.run_id }}-${{ github.run_attempt }}/path-parse.json" \
+            --output results/report.md
+          cat results/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload combined artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
