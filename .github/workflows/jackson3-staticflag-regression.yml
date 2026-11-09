@@ -5,7 +5,9 @@ name: Jackson3 StaticFlag Regression Matrix (JDK 25)
 on:
   push:
     branches: [experiment/jackson-output-sink-jmh]
-    paths: [.github/workflows/jackson3-staticflag-regression.yml]
+    paths:
+      - .github/workflows/jackson3-staticflag-regression.yml
+      - sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/Jackson3StringMemberNullProbe.java
   workflow_dispatch:
 
 permissions:

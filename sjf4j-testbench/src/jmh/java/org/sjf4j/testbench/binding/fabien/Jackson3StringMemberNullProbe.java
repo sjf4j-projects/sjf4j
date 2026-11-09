@@ -9,7 +9,6 @@ import org.sjf4j.testbench.model.fabien.Users;
 
 import java.security.MessageDigest;
 import java.util.Iterator;
-import java.util.Map;
 
 /**
  * Semantic regression probe for baseline/staticFlag Jackson3 generated helper.
@@ -54,12 +53,13 @@ public final class Jackson3StringMemberNullProbe {
 
     private static void assertNoNullObjectFields(JsonNode node) {
         if (node.isObject()) {
-            Iterator<Map.Entry<String,JsonNode>> members = node.fields();
-            while (members.hasNext()) {
-                Map.Entry<String,JsonNode> e = members.next();
-                if (e.getValue().isNull())
-                    throw new IllegalStateException("unexpected null object property: " + e.getKey());
-                assertNoNullObjectFields(e.getValue());
+            Iterator<String> names = node.fieldNames();
+            while (names.hasNext()) {
+                String name = names.next();
+                JsonNode child = node.get(name);
+                if (child.isNull())
+                    throw new IllegalStateException("unexpected null object property: " + name);
+                assertNoNullObjectFields(child);
             }
         } else if (node.isArray()) {
             for (JsonNode child : node) if (!child.isNull()) assertNoNullObjectFields(child);
