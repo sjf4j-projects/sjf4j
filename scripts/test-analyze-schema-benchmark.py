@@ -38,7 +38,9 @@ def main():
         output = root / "report.md"
         report.run(files["validation"], files["roundtrip"], output)
         content = output.read_text(encoding="utf-8")
-        assert "10 verified" not in content
+        for names in report.METHODS.values():
+            for name in names:
+                assert f"| {name} |" in content
         assert "jsonNode_isValid_runtime" in content
         assert "roundtrip_isValid_compiled" in content
         assert "2.000x" in content
@@ -53,6 +55,20 @@ def main():
             assert "missing" in str(error)
         else:
             raise AssertionError("Incomplete Full JMH group must fail")
+        # Reject duplicated rows and malformed fork measurements as well.
+        complete = [sample(name, 2.0) for name in report.METHODS["validation"]]
+        for invalid in (complete + [complete[0]],
+                        [{**complete[0], "primaryMetric": {
+                            **complete[0]["primaryMetric"], "rawData": [[2.0] * 4] * 3}}] + complete[1:],
+                        [{**complete[0], "primaryMetric": {
+                            **complete[0]["primaryMetric"], "score": float("nan")}}] + complete[1:]):
+            files["validation"].write_text(json.dumps(invalid), encoding="utf-8")
+            try:
+                report.load_group(files["validation"], "validation")
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Malformed Full JMH input must fail")
     print("Schema JMH report tests passed")
 
 
