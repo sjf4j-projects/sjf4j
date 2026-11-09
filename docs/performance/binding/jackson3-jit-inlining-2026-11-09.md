@@ -55,8 +55,52 @@ Separate C2 diagnostic forks independently verify that the original `_writeUser`
 
 **Interpretation:** preventing these C2 helper inlines is sufficient to eliminate the tested AMD-tiered-JIT regression. It does not imply that disabling JIT inlining globally or imposing VM flags on library users is an acceptable fix.
 
-## Next engineering experiment
+## Codegen experiment #12 — distinguish code shape from class identity
 
-Find a **portable source/code-generation structure** that gives the same desirable JIT shape without VM flags. First experiment only on the Jackson3 generated string-member helper and keep output byte-identical; run the original/sibling JMH on multiple independent hosts with compilation-XML inspection. Verify no regression on Jackson2, Clients, small payloads, and read/mapping paths before proposing production changes. Do not artificially pad bytecode merely to manipulate undocumented HotSpot inline thresholds.
+[Actions #42556638600](https://github.com/sjf4j-projects/sjf4j/actions/runs/42556638600); 3 independently assigned AMD hosts, same 100KB Users model and byte output, 3 forks.
 
-**Scope:** all changes and artifacts remain in this experimental PR. No production code or `main` merge is included in these investigations.
+| Generated class | EPYC 7763 #1 µs/op | EPYC 7763 #2 µs/op | EPYC 9V74 µs/op | C2 helper inlining |
+| --- | ---: | ---: | ---: | --- |
+| Original FabienBindings.Jackson3 | 302.55 | 301.64 | 231.54 | 5 / 15 |
+| Identical API/implementation, new class identity | 217.63 | 218.01 | 165.64 | 0 / 15 |
+| Compact branch structure, new class identity | 241.05 | 219.70 | 168.94 | 0 / 15 |
+| Static helper with includeNulls argument, new class identity | 219.70 | 222.06 | 168.31 | 0 / 15 |
+| Directly expanded String property writes | 316.56 | 316.76 | 236.33 | no helper; ~36.5KB C2 |
+
+Measurements above use seed 12345 (the more repeatable of two seeds). The identical class *clone* also becomes fast: merely observing the other new classes' speed is **not** proof of a codegen fix. Directly expanding the logic worsens C2 machine-code bloat.
+
+## Codegen experiment #13 — SAME original class identity
+
+[Actions #42557554888](https://github.com/sjf4j-projects/sjf4j/actions/runs/42557554888); each host compiles `FabienBindings$Jackson3_Impl` independently three times from the same source, with the original **binary class name, method layout and unchanged workload**. Environment `SJF4J_EXPERIMENT_STRING_MEMBER=baseline|compact|staticFlag` controls only the experimental processor branch; JVM has **no JIT flags**. `javap` differences and output SHA-256 across JMH Jars are verified.
+
+100KB original Users POJO, seed 12345, 3 forks:
+
+| CPU | Baseline original/sibling | Compact original/sibling | StaticFlag original/sibling |
+| --- | ---: | ---: | ---: |
+| AMD EPYC 7763 | **1.373×** | 1.390× | **1.043×** |
+| AMD EPYC 9V74 | **1.393×** | 1.397× | **1.042×** |
+| Intel Xeon Platinum 8573C | 1.002× | 1.021× | 1.041× |
+
+On both AMD CPUs, the original helper C2 inline count changes **5/15 → 0/15**, C2 `_writeUser` code size **~36KB → ~22.1KB**, and write latency drops ~25%; the unchanged sibling Writer acts as the same-host reference. On Intel, the baseline has 0/15 inlines already and no significant performance gap, so the 4% difference needs regression checks. Normalized allocation is unchanged. Seed 324 results are substantially noisier; see the raw JMH JSON.
+
+**Candidate generated shape** (no public API and no JVM flags):
+
+```java
+private static void _writeStringMember(JsonGenerator g, SerializedString name,
+                                      String value, boolean includeNulls) {
+    if (value != null || includeNulls) {
+        g.writeName(name);
+        if (value == null) g.writeNull();
+        else g.writeString(value);
+    }
+}
+// Call site: _writeStringMember(g, PREPARED_NAME, value, this.context.includeNulls);
+```
+
+The compact instance helper alone **does not** fix the original class; the static helper and explicit includeNulls parameter jointly alter the C2 outcome. Distinguishing the effect of `static` from the extra parameter requires further factorial experimentation if necessary.
+
+## Regression gate before adopting the candidate
+
+[Actions #42558598460](https://github.com/sjf4j-projects/sjf4j/actions/runs/42558598460) runs baseline vs staticFlag with the same generated class name on independent hosts, covering Users and Clients, 1/10/100KB, two seeds, and Runtime controls. It also tests `includeNulls=true/false`, object-member omission, null-array retention and cross-version output hashes. Treat this run as pending until all results pass and can be analyzed.
+
+**Scope:** all experiments remain in Draft PR #246. The diagnostic environment switch and other benchmark-only code are not proposed as a public interface or for merge; no production change or `main` merge has been performed.
