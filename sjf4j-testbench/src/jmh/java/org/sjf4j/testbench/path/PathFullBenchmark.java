@@ -100,23 +100,12 @@ public class PathFullBenchmark {
         List<String> slice(Bookstore root);
     }
 
-    @CompiledNavigator(fallback = true)
+    // Arbitrary Map<String, Object> nested arrays do not carry the static type
+    // information required by generated multi-result path traversal.
+    @CompiledNavigator
     public interface MapPaths {
         @GetByPath("$.store.book[1].price")
         Object direct(Map<String, Object> root);
-
-        @FindByPath("$.store.book[*].author")
-        List<Object> wildcard(Map<String, Object> root);
-
-        // Filter and descendant currently invoke the runtime fallback.
-        @FindByPath("$.store.book[?(@.price > 10)].title")
-        List<Object> filter(Map<String, Object> root);
-
-        @FindByPath("$..price")
-        List<Object> descendant(Map<String, Object> root);
-
-        @FindByPath("$.store.book[1:4].title")
-        List<Object> slice(Map<String, Object> root);
     }
 
     @State(Scope.Thread)
@@ -170,7 +159,7 @@ public class PathFullBenchmark {
                 Object runtimePojo = runtime(sjf4jPaths[index], pojo, multi);
                 assertSame(query + " Map/Jayway-Runtime", jaywayMap, runtimeMap);
                 assertSame(query + " JsonNode/Jayway-Runtime", jaywayNode, runtimeNode);
-                assertSame(query + " Map/Compiled", runtimeMap, compiledMap(index));
+                if (index == 0) assertSame(query + " Map/Compiled", runtimeMap, compiledMap.direct(map));
                 assertSame(query + " POJO/Runtime-Map", runtimeMap, runtimePojo);
                 assertSame(query + " POJO/Compiled", runtimePojo, compiledPojo(index));
             }
@@ -189,16 +178,6 @@ public class PathFullBenchmark {
             }
         }
 
-        private Object compiledMap(int index) {
-            switch (index) {
-                case 0: return compiledMap.direct(map);
-                case 1: return compiledMap.wildcard(map);
-                case 2: return compiledMap.filter(map);
-                case 3: return compiledMap.descendant(map);
-                case 4: return compiledMap.slice(map);
-                default: throw new AssertionError(index);
-            }
-        }
     }
 
     private static Bookstore fixture(int count) {
@@ -278,10 +257,6 @@ public class PathFullBenchmark {
         return runtime(s.sjf4jPaths[1], s.map, true);
     }
 
-    @Benchmark
-    public Object map_wildcard_compiled(Data s) {
-        return s.compiledMap.wildcard(s.map);
-    }
 
     @Benchmark
     public Object map_filter_jayway(Data s) {
@@ -293,10 +268,6 @@ public class PathFullBenchmark {
         return runtime(s.sjf4jPaths[2], s.map, true);
     }
 
-    @Benchmark
-    public Object map_filter_compiled(Data s) {
-        return s.compiledMap.filter(s.map);
-    }
 
     @Benchmark
     public Object map_descendant_jayway(Data s) {
@@ -308,10 +279,6 @@ public class PathFullBenchmark {
         return runtime(s.sjf4jPaths[3], s.map, true);
     }
 
-    @Benchmark
-    public Object map_descendant_compiled(Data s) {
-        return s.compiledMap.descendant(s.map);
-    }
 
     @Benchmark
     public Object map_slice_jayway(Data s) {
@@ -323,10 +290,6 @@ public class PathFullBenchmark {
         return runtime(s.sjf4jPaths[4], s.map, true);
     }
 
-    @Benchmark
-    public Object map_slice_compiled(Data s) {
-        return s.compiledMap.slice(s.map);
-    }
 
     // jsonnode: prebuilt document, precompiled query.
 
