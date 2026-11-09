@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
+- **Relaxed POJO Recognition** — Recognize ordinary POJO candidates even without a usable constructor or declared properties (serializing empty objects as `{}`), and remove package-based exclusions for Jackson, Gson, and Jakarta types.
 
 ### Fixed
 
 - Aligned `@CompiledBinder` property discovery with `@NodeObject.propertyStrategy` (`BEAN_ONLY`, `BEAN_FIELD`, `FIELD_ONLY`, `FIELD_BEAN`) and report selected non-public members as compile errors instead of silently omitting them.
+- **Constructor-Optional POJO Operations** — Allow runtime serialization and structural access to existing POJOs without a `CreatorInfo`; report clear errors only when Binding Read, mapping, copying, or path operations need to create an instance. Preserve `null` input handling and strict validation of explicit `@NodeCreator` declarations.
 
 
 ## [1.5.0] - 2026.11.07
