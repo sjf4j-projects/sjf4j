@@ -27,7 +27,7 @@ def load(path: Path, shape: str):
     results = {}
     for row in rows:
         name = row["benchmark"]
-        prefix = ("org.sjf4j.testbench.path.JsonPathBenchmark.parse_"
+        prefix = ("org.sjf4j.testbench.path.PathFullBenchmark.parse_"
                   if shape == "parse" else
                   "org.sjf4j.testbench.path.PathFullBenchmark." + shape + "_")
         if not name.startswith(prefix):
