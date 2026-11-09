@@ -159,7 +159,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     public void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                   String expression) {
         out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
-                + ".serializedName, " + expression + ");");
+                + ".serializedName, " + expression
+                + (jackson2() ? "" : ", this.context.includeNulls") + ");");
     }
 
     @Override
