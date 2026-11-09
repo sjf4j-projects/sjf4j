@@ -1,10 +1,10 @@
-name: Jackson3 Users Handwritten Field Ablation (JDK 25)
+name: Jackson3 Original Users Four-Path JMH (JDK 25)
 
-# Diagnostic only. JMH exit code alone does not report individual fork failures:
-# validate exact successful case counts BEFORE accepting smoke/performance runs.
+# Experimental PR only. This workflow never touches production code or main.
 on:
   push:
-    branches: [experiment/jackson-output-sink-jmh]
+    branches:
+      - experiment/jackson-output-sink-jmh
   workflow_dispatch:
 
 permissions:
@@ -17,140 +17,109 @@ concurrency:
 jobs:
   benchmark:
     runs-on: ubuntu-24.04
-    timeout-minutes: 95
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v4
+
       - name: Build JMH
         run: ./gradlew :sjf4j-testbench:jmhJar
 
-      - name: Verify 42 cases (manual + compiled projections; original runtime)
+      - name: Preflight every variant and output equivalence
         shell: bash
         run: |
           set -euo pipefail
-          DIR=build/performance/jackson3-fields
+          DIR=build/performance/jackson3-original-path
           mkdir -p "$DIR"
-          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
-          test -n "$JAR"
           {
             echo "Commit: $GITHUB_SHA"
             java -version 2>&1
             lscpu
           } > "$DIR/runner.txt"
-
-          # Projection POJOs are supported by the generated CompiledBinder, not
-          # by the raw SJF4J runtime StreamingIO path. Only original has Runtime.
-          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write
-          FIELDS=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly
-          java -jar "$JAR" "$BENCH" \
-            -p writer=manual,compiled -p fields="$FIELDS" \
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          test -n "$JAR"
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write' \
+            -p path=originalBytes,siblingBytes,siblingStream,manual \
             -p seed=12345,324 -p sizeKb=100 \
-            -f 0 -wi 0 -i 1 -r 50ms -t 1 \
-            -rf json -rff "$DIR/smoke-projections.json" > "$DIR/smoke-projections.log" 2>&1 || {
-              tail -160 "$DIR/smoke-projections.log"
-              exit 1
-            }
-          java -jar "$JAR" "$BENCH" \
-            -p writer=runtime -p fields=original \
-            -p seed=12345,324 -p sizeKb=100 \
-            -f 0 -wi 0 -i 1 -r 50ms -t 1 \
-            -rf json -rff "$DIR/smoke-runtime.json" > "$DIR/smoke-runtime.log" 2>&1 || {
-              tail -160 "$DIR/smoke-runtime.log"
+            -f 0 -wi 0 -i 1 -r 60ms -t 1 \
+            -rf json -rff "$DIR/smoke.json" > "$DIR/smoke.log" 2>&1 || {
+              tail -160 "$DIR/smoke.log"
               exit 1
             }
           python3 - <<'PY'
           import json
-          from pathlib import Path
-          p = Path("build/performance/jackson3-fields")
-          counts = [("smoke-projections.json", 40), ("smoke-runtime.json", 2)]
-          for name, expected in counts:
-              data = json.loads((p/name).read_text())
-              if len(data) != expected:
-                  raise SystemExit(f"{name}: expected {expected} successful cases, got {len(data)}; inspect smoke logs")
-              print(name, len(data), "cases passed")
+          p="build/performance/jackson3-original-path/smoke.json"
+          rows=json.load(open(p))
+          if len(rows)!=8:
+              raise SystemExit(f"Preflight expected 8 successful paths, got {len(rows)}")
+          print("All 8 paths passed setup+output parity")
           PY
+          grep 'PATH_CHECK' "$DIR/smoke.log" | sort | tee "$DIR/output-checks.txt"
 
-      - name: Measure 42 successful cases with GC profiler
+      - name: Full original-path A/B with GC allocation
         shell: bash
         run: |
           set -euo pipefail
-          DIR=build/performance/jackson3-fields
+          DIR=build/performance/jackson3-original-path
           JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
-          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write
-          FIELDS=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly
-          java -jar "$JAR" "$BENCH" \
-            -p writer=manual,compiled -p fields="$FIELDS" \
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write' \
+            -p path=originalBytes,siblingBytes,siblingStream,manual \
             -p seed=12345,324 -p sizeKb=100 \
             -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
-            -rf json -rff "$DIR/results-projections.json" > "$DIR/benchmark-projections.log" 2>&1 || {
-              tail -160 "$DIR/benchmark-projections.log"
+            -rf json -rff "$DIR/results.json" > "$DIR/benchmark.log" 2>&1 || {
+              tail -160 "$DIR/benchmark.log"
               exit 1
             }
           python3 - <<'PY'
           import json
-          p="build/performance/jackson3-fields/results-projections.json"
+          p="build/performance/jackson3-original-path/results.json"
           rows=json.load(open(p))
-          assert len(rows)==40, f"Expected 40 successful projection cases, got {len(rows)}"
+          if len(rows)!=8:
+              raise SystemExit(f"Expected all 8 JMH results, got {len(rows)}. See benchmark.log")
           PY
+          tail -55 "$DIR/benchmark.log"
 
-          java -jar "$JAR" "$BENCH" \
-            -p writer=runtime -p fields=original \
-            -p seed=12345,324 -p sizeKb=100 \
-            -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
-            -rf json -rff "$DIR/results-runtime.json" > "$DIR/benchmark-runtime.log" 2>&1 || {
-              tail -160 "$DIR/benchmark-runtime.log"
-              exit 1
-            }
-          python3 - <<'PY'
-          import json
-          p="build/performance/jackson3-fields/results-runtime.json"
-          rows=json.load(open(p))
-          assert len(rows)==2, f"Expected 2 successful runtime cases, got {len(rows)}"
-          PY
-          tail -50 "$DIR/benchmark-projections.log"
-          tail -35 "$DIR/benchmark-runtime.log"
-
-      - name: Summarize same-field-projection comparisons
+      - name: Summarize relative differences and per-fork scores
         shell: bash
         run: |
-          python3 - <<'PY' | tee build/performance/jackson3-fields/summary.md >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY' | tee build/performance/jackson3-original-path/summary.md >> "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
-          p=Path("build/performance/jackson3-fields")
-          rows=json.loads((p/"results-projections.json").read_text()) + json.loads((p/"results-runtime.json").read_text())
-          assert len(rows)==42, f"Expected 42 successful measurements, got {len(rows)}"
-          data={(x["params"]["fields"],x["params"]["seed"],x["params"]["writer"]):x for x in rows}
-          assert len(data)==42, "Duplicate/missing variant keys"
-          def metric(x):
-              m=x["primaryMetric"]
-              return m["score"],m["scoreError"],x["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
-          order=("original","full","noStrings","noNumeric","noTags","noFriends","stringsOnly","numericOnly","tagsOnly","friendsOnly")
-          print("# Jackson3 Users POJO field-group ablation")
-          print("Only original supports SJF4J Runtime. Other projections compare Manual and Compiled.")
-          print("All variants share the same PooledByteArrayOutputStream and Jackson3 Generator.")
+          root=Path("build/performance/jackson3-original-path")
+          rows=json.loads((root/"results.json").read_text())
+          data={(r["params"]["seed"],r["params"]["path"]):r for r in rows}
+          assert len(data)==8
+          print("# Jackson3 original Users POJO, 100KB")
+          print("JDK 25. Four paths, same original Users POJO, 2 seeds; 3 forks.")
+          print("All four serialize the same data; manual and streaming use SJF4J Pooled output.")
+          print("lower µs/op and B/op is better.")
           for seed in ("12345","324"):
-              print(f"\n## 100KB source Users, seed={seed}")
-              print("| Projection | Manual µs/op (error) | Compiled µs/op (error) | Compiled/Manual | Compiled allocation B/op | Runtime µs/op |")
-              print("| --- | ---: | ---: | ---: | ---: | ---: |")
-              for fields in order:
-                  a,ae,_=metric(data[(fields,seed,"manual")])
-                  b,be,alloc=metric(data[(fields,seed,"compiled")])
-                  runtime=f'{metric(data[(fields,seed,"runtime")])[0]:.2f}' if fields=="original" else "—"
-                  print(f"| {fields} | {a:.2f} ±{ae:.2f} | {b:.2f} ±{be:.2f} | {b/a:.3f}x | {alloc:.0f} | {runtime} |")
-          print("\nDifferent projections emit different sizes. Compare manual/compiled only WITHIN each projection.")
+              print(f"\n## Seed {seed}")
+              print("| Path | µs/op | JMH error | B/op | Ratio to siblingBytes | Fork means (µs/op) |")
+              print("| --- | ---: | ---: | ---: | ---: | --- |")
+              baseline=data[(seed,"siblingBytes")]["primaryMetric"]["score"]
+              for path in ("originalBytes","siblingBytes","siblingStream","manual"):
+                  r=data[(seed,path)]
+                  m=r["primaryMetric"]
+                  gc=r["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+                  forks=m.get("rawData",[])
+                  means=[sum(x)/len(x) for x in forks if x]
+                  shown=", ".join(f"{v:.2f}" for v in means) if means else "not available"
+                  print(f"| {path} | {m['score']:.2f} | ±{m['scoreError']:.2f} | {gc:.0f} | {m['score']/baseline:.3f}x | {shown} |")
+              print()
+          print("\nNote: The hand-written path is a separate code body; the generated byte[]")
+          print("vs OutputStream path comparison is a more tightly controlled A/B.")
           PY
 
-      - name: Upload complete results, logs and preflight diagnostics
+      - name: Upload JMH JSON, GC, fork summary and validation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson3-users-field-ablation-fixed-jdk25
-          path: build/performance/jackson3-fields/
+          name: jackson3-original-four-path-jdk25
+          path: build/performance/jackson3-original-path/
           retention-days: 30
           if-no-files-found: warn
