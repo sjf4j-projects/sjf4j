@@ -22,6 +22,18 @@ final class WriteEmitter {
 
     void configureStringMemberExperiment(String originName) {
         if (backend.backend() != Backend.JACKSON3) return;
+        // Separate same-class-name experiment: the original production-style
+        // benchmark binder receives a compile-time override ONLY when this
+        // environment variable is explicitly supplied. Not for release use.
+        if ("org.sjf4j.testbench.binding.fabien.FabienBindings.Jackson3".equals(originName)) {
+            String override = System.getenv("SJF4J_EXPERIMENT_STRING_MEMBER");
+            if ("compact".equals(override) || "staticFlag".equals(override)) {
+                stringMemberExperiment = override;
+            } else {
+                stringMemberExperiment = "baseline";
+            }
+            return;
+        }
         String prefix = "org.sjf4j.testbench.binding.fabien."
                 + "Jackson3StringMemberExperimentBenchmark.";
         if (!originName.startsWith(prefix)) return;

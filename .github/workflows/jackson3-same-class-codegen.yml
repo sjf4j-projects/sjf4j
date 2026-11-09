@@ -1,0 +1,185 @@
+name: Jackson3 Same-Class Codegen A-B (JDK 25)
+
+# Compile EXACT SAME FabienBindings$Jackson3_Impl binary name three ways.
+# Avoid the JIT class-identity confound in the nested-interface experiments.
+# This workflow exists only on PR #246 experimental branch.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-same-class-codegen.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-same-class-codegen
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: Same-class A-B host ${{ matrix.host }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 95
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Record CPU and JVM
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-same-class
+          mkdir -p "$DIR"
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > "$DIR/runner.txt"
+
+      - name: Rebuild three bytecode versions of the SAME generated class
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-same-class
+          for mode in baseline compact staticFlag; do
+            echo "BUILD mode=$mode, env SJF4J_EXPERIMENT_STRING_MEMBER=$mode"
+            SJF4J_EXPERIMENT_STRING_MEMBER="$mode" \
+              ./gradlew --no-daemon --rerun-tasks :sjf4j-testbench:jmhJar \
+              > "$DIR/build-$mode.log" 2>&1 || {
+                tail -140 "$DIR/build-$mode.log"
+                exit 1
+              }
+            JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+            test -s "$JAR"
+            cp "$JAR" "$RUNNER_TEMP/jmh-$mode.jar"
+            javap -c -p -classpath "$JAR" \
+              'org.sjf4j.testbench.binding.fabien.FabienBindings$Jackson3_Impl' \
+              > "$DIR/$mode.javap.txt"
+            grep -F 'private ' "$DIR/$mode.javap.txt" | grep '_writeStringMember' | head -2
+          done
+          # Crucial control: processor env override must actually modify the
+          # SAME original generated class, not merely produce timestamp changes.
+          if cmp -s "$DIR/baseline.javap.txt" "$DIR/compact.javap.txt"; then
+            echo "ERROR: baseline and compact bytecode identical. Env override ignored!"
+            exit 1
+          fi
+          if cmp -s "$DIR/baseline.javap.txt" "$DIR/staticFlag.javap.txt"; then
+            echo "ERROR: baseline and staticFlag bytecode identical. Env override ignored!"
+            exit 1
+          fi
+          echo "All three original class bytecode variants are distinct"
+
+      - name: Verify identical JSON bytes across all JMH Jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-same-class
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write
+          for mode in baseline compact staticFlag; do
+            java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+              -p path=originalBytes,siblingBytes -p seed=12345,324 -p sizeKb=100 \
+              -f 0 -wi 0 -i 1 -r 60ms -t 1 \
+              -rf json -rff "$DIR/smoke-$mode.json" > "$DIR/smoke-$mode.log" 2>&1 || {
+                tail -140 "$DIR/smoke-$mode.log"
+                exit 1
+              }
+          done
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path("build/performance/jackson3-same-class")
+          expected={}
+          for mode in ("baseline","compact","staticFlag"):
+              rows=json.loads((p/f"smoke-{mode}.json").read_text())
+              assert len(rows)==4, f"{mode}: expected 4 successful smoke cases, got {len(rows)}"
+              matches=re.findall(r'PATH_CHECK path=(\w+) seed=(\d+) bytes=(\d+) byteIdentical=true sha256=([a-f0-9]+)',
+                                 (p/f"smoke-{mode}.log").read_text())
+              assert len(matches)==4, f"{mode}: missing byte parity hashes; found {len(matches)}"
+              hashes={(path,seed):(int(length),sha) for path,seed,length,sha in matches}
+              if not expected: expected=hashes
+              assert hashes==expected, f"{mode}: produced different JSON than baseline"
+              print(f"{mode}: all 4 paths byte-identical across Jars")
+          PY
+
+      - name: Three-fork JMH original vs sibling on each same-name version
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-same-class
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write
+          for mode in baseline compact staticFlag; do
+            java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+              -p path=originalBytes,siblingBytes -p seed=12345,324 -p sizeKb=100 \
+              -f 3 -wi 5 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+              -rf json -rff "$DIR/$mode.json" > "$DIR/$mode.log" 2>&1 || {
+                tail -140 "$DIR/$mode.log"
+                exit 1
+              }
+            MODE="$mode" python3 - <<'PY'
+          import json,os
+          mode=os.environ["MODE"]
+          rows=json.load(open("build/performance/jackson3-same-class/"+mode+".json"))
+          assert len(rows)==4, f"{mode}: expected 4 results, got {len(rows)}"
+          PY
+            tail -20 "$DIR/$mode.log"
+          done
+
+      - name: Collect independent HotSpot C2 compilation evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-same-class
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write
+          for mode in baseline compact staticFlag; do
+            XML="$PWD/$DIR/$mode.xml"
+            java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+              -p path=originalBytes -p seed=12345 -p sizeKb=100 \
+              -f 1 -wi 5 -i 2 -w 400ms -r 400ms -t 1 \
+              -jvmArgsAppend "-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$XML" \
+              -rf json -rff "$DIR/$mode-diagnostic.json" \
+              > "$DIR/$mode-diagnostic.log" 2>&1 || {
+                tail -100 "$DIR/$mode-diagnostic.log"
+                exit 1
+              }
+            test -s "$XML" || { echo "Missing $mode XML"; exit 1; }
+          done
+
+      - name: Summarize within-host causal comparisons
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-same-class/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,re
+          from pathlib import Path
+          p=Path("build/performance/jackson3-same-class")
+          match=re.search(r'Model name:\s*(.+)',(p/'runner.txt').read_text())
+          print("# Same generated class identity: baseline vs compact vs staticFlag")
+          print("CPU:", match.group(1) if match else "(unknown)")
+          print("All versions have the same class binary name, fields and API; only")
+          print("the Jackson3 string member helper implementation differs.")
+          print("JMH: three forks, five warmup, five measurement iterations, 400ms each.")
+          print("| Generated code | Seed | Original µs/op | Sibling µs/op | Original/Sibling | Original forks |")
+          print("| --- | --- | ---: | ---: | ---: | --- |")
+          for mode in ("baseline","compact","staticFlag"):
+              d={(r['params']['seed'],r['params']['path']):r for r in json.loads((p/f"{mode}.json").read_text())}
+              for seed in ("12345","324"):
+                  a=d[(seed,'originalBytes')]['primaryMetric']
+                  b=d[(seed,'siblingBytes')]['primaryMetric']
+                  forks=', '.join(f"{sum(x)/len(x):.2f}" for x in a.get('rawData',[]) if x)
+                  print(f"| {mode} | {seed} | {a['score']:.2f} ±{a['scoreError']:.2f} | {b['score']:.2f} ±{b['scoreError']:.2f} | {a['score']/b['score']:.3f}x | {forks} |")
+          print("\nByte parity and generated class bytecode diffs are independently recorded.")
+          print("Separate LogCompilation diagnostic forks must be inspected before conclusions.")
+          PY
+
+      - name: Upload JMH logs, generated bytecode and compiler decisions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-same-class-host-${{ matrix.host }}
+          path: build/performance/jackson3-same-class/
+          retention-days: 30
+          if-no-files-found: warn

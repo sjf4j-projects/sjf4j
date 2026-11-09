@@ -113,13 +113,17 @@ public class Jackson3OriginalPathBenchmark {
         byte[] result = operation.run();
         FabienFixtures.verifyOutput("Jackson3 original path reference", fixture, reference);
         FabienFixtures.verifyOutput("Jackson3 original path " + path, fixture, result);
-        if (reference.length != result.length) {
-            throw new IllegalStateException("Different output length for " + path
+        if (!Arrays.equals(reference, result)) {
+            throw new IllegalStateException("Different output bytes for " + path
                     + " (reference=" + reference.length + ", actual=" + result.length + ")");
         }
+        // Hashing is exclusively in @Setup and enables cross-JAR byte checks.
+        byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(result);
+        StringBuilder hash = new StringBuilder(digest.length * 2);
+        for (byte b : digest) hash.append(String.format("%02x", b & 0xff));
         System.out.println("PATH_CHECK path=" + path + " seed=" + seed
                 + " bytes=" + result.length
-                + " byteIdentical=" + Arrays.equals(reference, result));
+                + " byteIdentical=true sha256=" + hash);
     }
 
     @Benchmark
