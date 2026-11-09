@@ -51,13 +51,20 @@ def format_alloc(row):
     return f'{metric["score"]:.1f}' if metric and math.isfinite(metric["score"]) else "n/a"
 
 
+def fork_means(row):
+    return [statistics.mean(fork) for fork in row["primaryMetric"]["rawData"]]
+
+
 def score(row):
-    return row["primaryMetric"]["score"]
+    """Best 2 Mean: discard the slowest independent fork for this exact method."""
+    return statistics.mean(sorted(fork_means(row))[:2])
 
 
 def describe_row(name, row):
     metric = row["primaryMetric"]
-    return f'| {name} | {score(row):.3f} | {metric["scoreError"]:.3f} | {format_alloc(row)} |'
+    forks = " / ".join(f"{value:.3f}" for value in fork_means(row))
+    return (f'| {name} | {score(row):.3f} | {metric["score"]:.3f} | '
+            f'{metric["scoreError"]:.3f} | {format_alloc(row)} | {forks} |')
 
 
 def compare(rows, title, baseline, candidate):
@@ -69,7 +76,7 @@ def compare(rows, title, baseline, candidate):
 
 
 def fork_dispersion(row):
-    forks = [statistics.mean(fork) for fork in row["primaryMetric"]["rawData"]]
+    forks = fork_means(row)
     return 100 * statistics.stdev(forks) / statistics.mean(forks)
 
 
@@ -81,7 +88,12 @@ def run(validation: Path, roundtrip: Path, output: Path):
         "# Creek Schema Full Benchmark — JDK 25",
         "",
         "Draft 2020-12, prebuilt Creek fixture, AverageTime (us/op; lower is better).",
-        "3 independent JMH forks, 5 warmups × 400ms, 5 measurements × 400ms, 1 thread.",
+        "3 independent JMH forks, 5 warmups × 1s, 5 measurements × 1s, 1 thread.",
+        "**Best 2 Mean** (primary comparison): average each fork's 5 iterations, "
+        "drop the slowest fork for each method, and average the remaining two.",
+        "Original JMH 3-fork scores, score errors and all fork means are shown separately.",
+        "JMH score errors apply only to original JMH scores, **not** to Best 2 Mean.",
+        "B/op uses the original untrimmed JMH allocation score.",
         "",
         "**Important:** This GitHub-hosted runner report is exploratory, not a release baseline.",
         "Validate isValid uses non-strict format; Schema and instances are prepared before measurement.",
@@ -91,19 +103,19 @@ def run(validation: Path, roundtrip: Path, output: Path):
         "",
         "## All measurements",
         "",
-        "| Method | us/op | JMH error (±) | B/op |",
-        "| --- | ---: | ---: | ---: |",
+        "| Method | Best 2 Mean (µs/op) | JMH 3-fork mean (µs/op) | JMH error (± µs/op) | B/op | Fork means (µs/op) |",
+        "| --- | ---: | ---: | ---: | ---: | --- |",
     ]
     for group in ("validation", "roundtrip"):
-        lines.append(f"| **{group.upper()}** | | | |")
+        lines.append(f"| **{group.upper()}** | | | | | |")
         for name in METHODS[group]:
             lines.append(describe_row(name, combined[name]))
     lines += [
         "",
         "## Within-representation comparisons",
         "",
-        "Speedup is baseline time divided by candidate time (>1x means candidate faster).",
-        "Latency change = (candidate / baseline - 1) × 100%.",
+        "Speedup uses per-method Best 2 Mean: baseline / candidate (>1x means candidate faster).",
+        "Latency change = (candidate / baseline - 1) × 100%, also based on Best 2 Mean.",
         "",
         "| Comparison | Speedup | Latency change |",
         "| --- | ---: | ---: |",
@@ -118,7 +130,7 @@ def run(validation: Path, roundtrip: Path, output: Path):
         "",
         "## Fork dispersion",
         "",
-        "Sample CV of three independent fork means. Large CV or small differences warrant re-measurement.",
+        "Sample CV of all three independent fork means. Large CV or small differences warrant re-measurement.",
         "",
         "| Method | Fork-mean CV |",
         "| --- | ---: |",
@@ -134,8 +146,10 @@ def run(validation: Path, roundtrip: Path, output: Path):
         "  the compiled pipeline includes schema validation while Jackson2 does not.",
         "- The NetworkNT result is directly comparable to jsonNode_isValid_runtime",
         "  (same pre-parsed JsonNode), not to the Map or POJO validations.",
-        "- All score and allocation figures are descriptive; JMH errors and fork variability",
-        "  must be considered before making claims about performance regressions.",
+        "- Best 2 Mean intentionally favors the two faster JVM executions; it is not the",
+        "  expected mean across fresh forks or a replacement for JMH uncertainty.",
+        "- JMH 3-fork scores, their score errors, allocation and fork variability",
+        "  must be inspected before claiming performance regressions.",
         "- Use the raw JSON files and environment metadata for comparisons across runs.",
         "",
     ]
