@@ -119,6 +119,18 @@ public class CreekSchemaBenchmark {
                 || !model.getDecimal().equals(deserializedModel.getDecimal())) {
             throw new IllegalStateException("Creek model differs after Jackson2 round trip");
         }
+
+        // Verify the compiled pipeline outside the timed region, including its JSON shape.
+        byte[] compiledBytes = CreekBinder.INSTANCE.writeTestModel(model);
+        TestModel compiledModel = CreekBinder.INSTANCE.readTestModel(compiledBytes);
+        if (!model.equals(compiledModel)
+                || model.getAnEnum() != compiledModel.getAnEnum()
+                || !model.getDecimal().equals(compiledModel.getDecimal())
+                || !JACKSON.readTree(jsonBytes).equals(JACKSON.readTree(compiledBytes))) {
+            throw new IllegalStateException("Creek model differs after CompiledBinder round trip");
+        }
+        plan.requireValid(compiledModel, false);
+        CreekValidator.INSTANCE.requireValid(compiledModel);
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
