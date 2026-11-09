@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
-- **Relaxed POJO Recognition** — Recognize ordinary POJO candidates even without a usable constructor or declared properties (serializing empty objects as `{}`), and remove package-based exclusions for Jackson, Gson, and Jakarta types.
 
 ### Fixed
 
