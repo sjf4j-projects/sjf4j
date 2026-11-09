@@ -354,8 +354,12 @@ class NodesStructuralOperationsTest {
         assertTrue(Nodes.equals(new UnknownValue("v"), new UnknownValue("v")));
         assertFalse(Nodes.equals("1", 1));
         assertEquals(Nodes.hash(Arrays.asList(1, 2)), Nodes.hash(new int[]{1, 2}));
-        assertEquals("v".hashCode(), Nodes.hash(new UnknownValue("v")));
-        assertTrue(Nodes.inspect(new UnknownValue("v")).startsWith("!"));
+        // A regular user class without visible properties is now an empty POJO.
+        assertEquals(1, Nodes.hash(new UnknownValue("v")));
+        assertEquals("@UnknownValue{}", Nodes.inspect(new UnknownValue("v")));
+        // JDK platform types remain excluded and still exercise UNKNOWN.
+        assertEquals(Thread.currentThread().hashCode(), Nodes.hash(Thread.currentThread()));
+        assertTrue(Nodes.inspect(Thread.currentThread()).startsWith("!"));
 
         JsonObject objectTree = JsonObject.of("user", JsonObject.of("name", "han"));
         JsonArray arrayTree = JsonArray.of(JsonObject.of("name", "han"), 2);
@@ -377,7 +381,8 @@ class NodesStructuralOperationsTest {
 
     @Test
     void testShapeCoversUnknownNodes() {
-        assertEquals("!UnknownValue", Nodes.shape(new UnknownValue("v")));
+        assertEquals("@UnknownValue{}", Nodes.shape(new UnknownValue("v")));
+        assertEquals("!Thread", Nodes.shape(Thread.currentThread()));
     }
 
     @Test
