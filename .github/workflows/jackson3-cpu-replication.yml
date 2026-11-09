@@ -1,0 +1,179 @@
+name: Jackson3 CPU and JIT Cross-Runner Replication
+
+# Same commit, exact JMH options, different independently allocated hosted
+# runners. Capture real CPU model: ubuntu-24.04 does NOT pin microarchitecture.
+# Experimental branch only; never change production or merge into main.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-cpu-replication.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-cpu-replication
+  cancel-in-progress: true
+
+jobs:
+  replication:
+    name: Host replicate ${{ matrix.replicate }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        replicate: [1, 2, 3, 4, 5, 6]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build the same JMH benchmark on each host
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Identify CPU model, JVM and host
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-cpu-replication
+          mkdir -p "$DIR"
+          {
+            echo "Commit: $GITHUB_SHA"
+            echo "Replicate: ${{ matrix.replicate }}"
+            echo "Runner: $RUNNER_NAME"
+            java -version 2>&1
+            java -XX:+PrintFlagsFinal -version 2>&1 | grep -E 'TieredCompilation |TieredStopAtLevel |CICompilerCount ' || true
+            lscpu
+            echo '-- /proc/cpuinfo model and vendor --'
+            grep -m1 -E 'vendor_id|model name' /proc/cpuinfo || true
+          } > "$DIR/runner.txt"
+
+      - name: Preflight exactly 6 variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-cpu-replication
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' | head -n 1)
+          test -n "$JAR"
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write' \
+            -p path=originalBytes,siblingBytes,manual -p seed=12345,324 -p sizeKb=100 \
+            -f 0 -wi 0 -i 1 -r 50ms -t 1 \
+            -rf json -rff "$DIR/smoke.json" > "$DIR/smoke.log" 2>&1 || {
+              tail -120 "$DIR/smoke.log"
+              exit 1
+            }
+          python3 - <<'PY'
+          import json
+          f="build/performance/jackson3-cpu-replication/smoke.json"
+          data=json.load(open(f))
+          assert len(data)==6, f"Only {len(data)} of 6 cases completed"
+          PY
+
+      - name: Default tiered JIT fixed workload, 2 seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-cpu-replication
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' | head -n 1)
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write' \
+            -p path=originalBytes,siblingBytes,manual -p seed=12345,324 -p sizeKb=100 \
+            -f 3 -wi 5 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+            -rf json -rff "$DIR/default.json" > "$DIR/default.log" 2>&1 || {
+              tail -120 "$DIR/default.log"
+              exit 1
+            }
+          python3 - <<'PY'
+          import json
+          f="build/performance/jackson3-cpu-replication/default.json"
+          d=json.load(open(f))
+          assert len(d)==6, f"Only {len(d)} of 6 default results completed"
+          PY
+
+      - name: C2-only control for seed 324
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-cpu-replication
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' | head -n 1)
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write' \
+            -p path=originalBytes,siblingBytes -p seed=324 -p sizeKb=100 \
+            -f 3 -wi 5 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+            -jvmArgsAppend "-XX:-TieredCompilation" \
+            -rf json -rff "$DIR/c2.json" > "$DIR/c2.log" 2>&1 || {
+              tail -120 "$DIR/c2.log"
+              exit 1
+            }
+          python3 - <<'PY'
+          import json
+          f="build/performance/jackson3-cpu-replication/c2.json"
+          d=json.load(open(f))
+          assert len(d)==2, f"Only {len(d)} of 2 C2 results completed"
+          PY
+
+      - name: Capture compiler logs on this exact CPU
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-cpu-replication
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' | head -n 1)
+          for path in originalBytes siblingBytes; do
+            XML="$PWD/$DIR/$path.xml"
+            java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write' \
+              -p path="$path" -p seed=324 -p sizeKb=100 \
+              -f 1 -wi 5 -i 2 -w 400ms -r 400ms -t 1 \
+              -jvmArgsAppend "-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$XML" \
+              -rf json -rff "$DIR/$path-diagnostic.json" > "$DIR/$path-compiler.log" 2>&1 || {
+                tail -120 "$DIR/$path-compiler.log"
+                exit 1
+              }
+            test -s "$XML" || {
+              echo "Missing compilation XML for $path"
+              exit 1
+            }
+          done
+
+      - name: Summarize within-host comparisons
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-cpu-replication/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,re
+          from pathlib import Path
+          base=Path("build/performance/jackson3-cpu-replication")
+          runner=(base/"runner.txt").read_text()
+          model=re.search(r"Model name:\s*(.*)",runner)
+          print(f"# CPU/JIT replicate ${{ matrix.replicate }}")
+          print("CPU: "+(model.group(1) if model else "(unknown)"))
+          print("JDK: "+next((x for x in runner.splitlines() if x.startswith("openjdk version")), "(unknown)"))
+          print("| Mode | Seed | Path | µs/op | Error | B/op | Fork means |")
+          print("| --- | --- | --- | ---: | ---: | ---: | --- |")
+          for mode in ("default","c2"):
+            rows=json.loads((base/(mode+".json")).read_text())
+            d={(r["params"]["seed"],r["params"]["path"]):r for r in rows}
+            for seed in (("12345","324") if mode=="default" else ("324",)):
+              for path in (("originalBytes","siblingBytes","manual") if mode=="default" else ("originalBytes","siblingBytes")):
+                m=d[(seed,path)]["primaryMetric"]
+                b=d[(seed,path)]["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+                forks=", ".join(f"{sum(x)/len(x):.1f}" for x in m.get("rawData",[]) if x)
+                print(f"| {mode} | {seed} | {path} | {m['score']:.2f} | ±{m['scoreError']:.2f} | {b:.0f} | {forks} |")
+              a=d[(seed,"originalBytes")]["primaryMetric"]["score"]
+              b=d[(seed,"siblingBytes")]["primaryMetric"]["score"]
+              print(f"**{mode}, seed {seed}: original / sibling = {a/b:.3f}x**")
+          print("HotSpot LogCompilation XML captured independently for each path on this host.")
+          print("Do not interpret a different host's absolute throughput as a JIT-only effect.")
+          PY
+
+      - name: Upload raw measurements, CPU identity and compilation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-cpu-replicate-${{ matrix.replicate }}
+          path: build/performance/jackson3-cpu-replication/
+          retention-days: 30
+          if-no-files-found: warn
