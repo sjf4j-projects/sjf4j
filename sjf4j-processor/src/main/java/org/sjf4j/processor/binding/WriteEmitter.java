@@ -423,11 +423,17 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private void " + stringMemberHelper() + "(" + generator
-                    + " g, " + nameType
-                    + " name, String value) throws java.io.IOException");
+            // Keep the frequently called Jackson3 member helper independent
+            // of the generated instance. The explicit flag preserves context
+            // semantics while avoiding excessive C2 inlining in large POJOs.
+            boolean staticMember = backend.backend() == Backend.JACKSON3;
+            out.beginBlock((staticMember ? "private static void " : "private void ")
+                    + stringMemberHelper() + "(" + generator + " g, " + nameType
+                    + " name, String value"
+                    + (staticMember ? ", boolean includeNulls" : "")
+                    + ") throws java.io.IOException");
             out.beginBlock("if (value == null)");
-            out.beginBlock("if (this.context.includeNulls)");
+            out.beginBlock("if (" + (staticMember ? "includeNulls" : "this.context.includeNulls") + ")");
             out.line("g." + nameMethod + "(name);");
             out.line("g.writeNull();");
             out.endBlock();
