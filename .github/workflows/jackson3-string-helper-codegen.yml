@@ -1,0 +1,149 @@
+name: Jackson3 String Member Codegen A-B (JDK25)
+
+# PR #246 only. All variants are emitted at the same commit, benchmarked
+# on the same CPU and the same original 100KB Users input.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-string-helper-codegen.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-string-helper-codegen
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: A-B host ${{ matrix.host }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build generated classes and JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Record CPU and JDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-string-helper
+          mkdir -p "$DIR"
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > "$DIR/runner.txt"
+
+      - name: Validate all 12 combinations before measuring
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-string-helper
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3StringMemberExperimentBenchmark.write
+          java -jar "$JAR" "$BENCH" \
+            -p variant=original,sibling,baselineClone,compact,staticFlag,direct \
+            -p seed=12345,324 -p sizeKb=100 \
+            -f 0 -wi 0 -i 1 -r 60ms -t 1 \
+            -rf json -rff "$DIR/smoke.json" > "$DIR/smoke.log" 2>&1 || {
+              tail -150 "$DIR/smoke.log"
+              exit 1
+            }
+          python3 - <<'PY'
+          import json
+          p="build/performance/jackson3-string-helper/smoke.json"
+          rows=json.load(open(p))
+          assert len(rows)==12, f"Expected 12, found {len(rows)}"
+          PY
+          grep -F 'STRING_MEMBER_CHECK' "$DIR/smoke.log" > "$DIR/byte-parity.txt"
+
+      - name: JMH three forks with GC profiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-string-helper
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3StringMemberExperimentBenchmark.write
+          java -jar "$JAR" "$BENCH" \
+            -p variant=original,sibling,baselineClone,compact,staticFlag,direct \
+            -p seed=12345,324 -p sizeKb=100 \
+            -f 3 -wi 5 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+            -rf json -rff "$DIR/results.json" > "$DIR/results.log" 2>&1 || {
+              tail -160 "$DIR/results.log"
+              exit 1
+            }
+          python3 - <<'PY'
+          import json
+          p="build/performance/jackson3-string-helper/results.json"
+          rows=json.load(open(p))
+          assert len(rows)==12, f"Expected 12 valid results, found {len(rows)}"
+          PY
+          tail -45 "$DIR/results.log"
+
+      - name: Capture HotSpot C2 inline decisions without polluting JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-string-helper
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3StringMemberExperimentBenchmark.write
+          for variant in original baselineClone compact staticFlag direct; do
+            XML="$PWD/$DIR/$variant.xml"
+            java -jar "$JAR" "$BENCH" \
+              -p variant="$variant" -p seed=324 -p sizeKb=100 \
+              -f 1 -wi 5 -i 2 -w 400ms -r 400ms -t 1 \
+              -jvmArgsAppend "-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$XML" \
+              -rf json -rff "$DIR/$variant-diagnostic.json" \
+              > "$DIR/$variant-diagnostic.log" 2>&1 || {
+                tail -130 "$DIR/$variant-diagnostic.log"
+                exit 1
+              }
+            test -s "$XML" || { echo "Missing $XML"; exit 1; }
+          done
+
+      - name: Summarize comparisons on the same host
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-string-helper/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,re
+          from pathlib import Path
+          root=Path("build/performance/jackson3-string-helper")
+          info=(root/"runner.txt").read_text()
+          match=re.search(r"Model name:\s*(.+)",info)
+          print("# Jackson3 string-member generated-code structure A/B")
+          print("CPU:", match.group(1) if match else "(unknown)")
+          print("All variants: SAME Users POJO and bytes, same Pooled output, no JIT flags.")
+          print("Three forks × five 400ms measurement iterations; lower is better.")
+          data={(r["params"]["seed"],r["params"]["variant"]):r for r in json.loads((root/"results.json").read_text())}
+          for seed in ("12345","324"):
+              print("\n## Seed",seed)
+              print("| Variant | µs/op | JMH error | Alloc B/op | Original/variant | Fork means |")
+              print("| --- | ---: | ---: | ---: | ---: | --- |")
+              baseline=data[(seed,"original")]["primaryMetric"]["score"]
+              for variant in ("original","sibling","baselineClone","compact","staticFlag","direct"):
+                  r=data[(seed,variant)]
+                  m=r["primaryMetric"]
+                  gc=r["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+                  forks=", ".join(f"{sum(x)/len(x):.2f}" for x in m.get("rawData",[]) if x)
+                  print(f"| {variant} | {m['score']:.2f} | ±{m['scoreError']:.2f} | {gc:.0f} | {baseline/m['score']:.3f}x | {forks} |")
+          print("\nXML LogCompilation files contain independent diagnostic forks.")
+          print("No optimized code shape is assumed to be portable before verification.")
+          PY
+
+      - name: Upload JMH JSON logs and bytecode diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-string-codegen-host-${{ matrix.host }}
+          path: build/performance/jackson3-string-helper/
+          retention-days: 30
+          if-no-files-found: warn
