@@ -55,8 +55,8 @@ for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML;
 | JMH setting | Smoke | Quick | Full |
 | --- | --- | --- | --- |
 | Forks | 0 (in-process) | 1 | 3 |
-| Warmup | 0 | 2 × 0.2s | 5 × 0.4s |
-| Measurement | 1 × 0.05s | 2 × 0.2s | 5 × 0.4s |
+| Warmup | 0 | 2 × 0.2s | 5 × 1s |
+| Measurement | 1 × 0.05s | 2 × 0.2s | 5 × 1s |
 | Data size | 100KB | 1/10/100KB | 1/10/100KB |
 | Seeds | 12345/324 | 12345/324 | 12345/324 |
 | Backend / implementation / model / shape | Same | Same | Same |
@@ -138,10 +138,55 @@ BINDING_BACKEND=jackson2 ./scripts/benchmark-binding.sh full
 | --- | --- | --- | --- | --- |
 | _Awaiting first verified Full run_ | — | 25 | 2 | — |
 
+## Reporting and ranking results
+
+**Full uses 3 independent JMH forks. The default comparison metric is Best 2 Mean,
+computed independently for every implementation and every exact benchmark case.**
+For AverageTime (`us/op`, lower is better):
+
+1. For a fixed backend, Read/Write, Users/Clients, POJO/Map, size, **seed**, and
+   **implementation**, take the arithmetic mean of its 5 measurement iterations
+   **within each fork** (`primaryMetric.rawData`: 3 arrays of 5 values).
+2. Drop the **single slowest fork** (the **highest** fork mean). Average the
+   remaining two fork means: `best2(seed, implementation, case)`.
+3. For an overall model/shape/size result, average `best2` for seed `12345` and
+   seed `324` with **equal weight**. Retain individual-seed results for drilldown.
+
+**Do not share the excluded fork across implementations or cases.** Native,
+Blackbird, Runtime and Compiled each select their own best two forks, as does
+each backend, operation, model, shape, payload size and seed. Present the four
+implementations **in this fixed order: Native → Blackbird → Runtime → Compiled**
+at every reporting level; omit an unsupported implementation rather than
+reporting an invented score. Highlight the lowest time in each comparable row.
+
+For metrics where **higher is better** (e.g. throughput), keep the two
+**highest** fork means instead. For GC/allocation metrics, report `B/op` with
+an explicit aggregation label; if applying Best 2 to that metric, rank the
+forks **independently using that metric's own values**, not the time-selected
+forks. Preserve all raw forks and the untrimmed JMH `primaryMetric.score`.
+
+**Meaning and caveat:** Best 2 Mean describes the faster, typical compiled
+execution state; it is deliberately biased toward lower latency. It is
+**not** the expected latency of a random fresh JVM fork, and it is not a JMH
+confidence interval. When fork means diverge materially (e.g. the slowest
+exceeds the fastest by >15%), show the three fork means and original 3-fork
+JMH score alongside Best 2, rather than hiding an unstable JIT outcome.
+Do not attach JMH's `scoreError` (computed for all 3 forks) to Best 2.
+
+GitHub Actions' per-backend job summary applies Best 2 to its representative
+100KB Users/POJO/seed 12345 cases and separately shows the original JMH mean.
+The raw per-backend JSON remains unmodified and is the source for all detailed
+reports. Existing pre-change Full artifacts used 5 × 0.4s warmup and measurement;
+new Full runs use **5 × 1s** each, about **2.5×** as much timed JMH work.
+Do not treat across-duration comparisons as controlled A/B tests without
+repeating them using identical JMH settings.
+
 ## Interpreting changes
 
 For JMH AverageTime, lower is better:
-`deltaPercent = 100 * (candidateScore / baselineScore - 1)`.
+`deltaPercent = 100 * (candidateBest2 / baselineBest2 - 1)`.
+For a controlled comparison, use the same fork-selection rule and JMH timing
+on baseline and candidate; inspect the original all-fork data as a stability check.
 
 - Under 3%: often noise; continue tracking.
 - 3–5%: inspect variability.

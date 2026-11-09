@@ -104,6 +104,7 @@ jobs:
           import json
           import os
           from pathlib import Path
+          from statistics import mean
 
           backend = os.environ["BINDING_BACKEND"]
           paths = list(Path("build/performance/binding").glob(f"binding-*-full-jdk25-{backend}.json"))
@@ -112,12 +113,14 @@ jobs:
           rows = json.loads(paths[0].read_text(encoding="utf-8"))
           print(f"## Binding Full — {backend}")
           print()
-          print(f"Completed **{len(rows)}** JMH cases. Forks, iterations and GC metrics are in the artifact.")
+          print(f"Completed **{len(rows)}** JMH cases. Raw fork/iteration results and GC metrics are in the artifact.")
           print()
-          print("Representative cases: Users, POJO, 100KB, seed 12345. Lower is better.")
+          print("Users / POJO / 100KB / seed 12345 (µs/op; lower is better).")
+          print("**Best 2 Mean:** separately for each implementation, average each fork's 5 iterations, drop the slowest fork, and average the remaining two.")
+          print("The original JMH Score uses all 3 forks; JMH scoreError does **not** apply to Best 2.")
           print()
-          print("| Operation | Implementation | Score ± error | Unit |")
-          print("| --- | --- | ---: | --- |")
+          print("| Operation | Implementation | Best 2 Mean | JMH 3-Fork Mean | Individual fork means |")
+          print("| --- | --- | ---: | ---: | --- |")
           examples = [
               row for row in rows
               if row["params"]["model"] == "users"
@@ -125,12 +128,25 @@ jobs:
               and row["params"]["sizeKb"] == "100"
               and row["params"]["seed"] == "12345"
           ]
-          for row in sorted(examples, key=lambda x: (x["benchmark"], x["params"]["implementation"])):
-              operation = "Read" if "ReadBenchmark" in row["benchmark"] else "Write"
-              metric = row["primaryMetric"]
-              print(f'| {operation} | {row["params"]["implementation"]} | '
-                    f'{metric["score"]:.3f} ± {metric["scoreError"]:.3f} | '
-                    f'{metric["scoreUnit"]} |')
+          operation_order = ("Read", "Write")
+          implementation_order = ("native", "blackbird", "runtime", "compiled")
+          for operation in operation_order:
+              for implementation in implementation_order:
+                  matched = [
+                      row for row in examples
+                      if ("ReadBenchmark" in row["benchmark"]) == (operation == "Read")
+                      and row["params"]["implementation"] == implementation
+                  ]
+                  for row in matched:
+                      metric = row["primaryMetric"]
+                      forks = metric["rawData"]
+                      if len(forks) != 3 or any(not fork for fork in forks):
+                          raise SystemExit(f"Expected 3 non-empty JMH forks for {operation}/{implementation}")
+                      fork_means = [mean(fork) for fork in forks]
+                      best2 = mean(sorted(fork_means)[:2])
+                      labels = " / ".join(f"{score:.3f}" for score in fork_means)
+                      print(f"| {operation} | {implementation.capitalize()} | {best2:.3f} | "
+                            f"{metric['score']:.3f} | {labels} |")
           PY
 
       - name: Upload per-backend results
