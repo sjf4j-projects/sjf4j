@@ -63,7 +63,8 @@ def load(path: Path, shape: str):
                     for impl in ("sjf4j", "jayway")}
     else:
         expected = {(size, query, impl) for size in SIZES
-                    for query in QUERIES for impl in SHAPES[shape]}
+                    for query in QUERIES for impl in SHAPES[shape]
+                    if shape != "map" or impl != "compiled" or query == "direct"}
     if set(results) != expected:
         raise ValueError(f"{shape}: missing {expected - set(results)}, extra {set(results) - expected}")
     return results
@@ -105,7 +106,7 @@ def render(out, results):
         "Numbers below are **Best 2 Mean** in ns/op (lower is better): exclude each",
         "case's own slowest fork, then average the other two independent fork means.",
         "The original 3-fork JMH scores and B/op are preserved separately.",
-        "Filter and descendant CompiledNavigator methods use runtime fallback.",
+        "POJO Filter/Descendant CompiledNavigator methods use runtime fallback; Map only compiles Direct.",
         "**Shared GitHub-hosted runners are exploratory, not a controlled release baseline.**",
         "",
         "## Query results — Best 2 Mean (ns/op)",
@@ -117,7 +118,7 @@ def render(out, results):
         data = results[shape]
         for size in SIZES:
             for query in QUERIES:
-                rows = {impl: data[(size, query, impl)] for impl in implementations}
+                rows = {impl: data.get((size, query, impl)) for impl in implementations}
                 jayway = rows.get("jayway")
                 runtime = rows["runtime"]
                 compiled = rows.get("compiled")
@@ -154,7 +155,8 @@ def render(out, results):
     for shape in (*SHAPES, "parse"):
         data = results[shape]
         keys = ([(size, query, impl) for size in SIZES for query in QUERIES
-                 for impl in SHAPES[shape]] if shape != "parse" else
+                 for impl in SHAPES[shape]
+                 if shape != "map" or impl != "compiled" or query == "direct"] if shape != "parse" else
                 [(expr, impl) for expr in PARSE_EXPRESSIONS for impl in ("jayway", "sjf4j")])
         for key in keys:
             row = data[key]
@@ -170,7 +172,7 @@ def render(out, results):
         "",
         "- Map and JsonNode Jayway/Runtime comparisons share the **same pre-parsed input**.",
         "- POJO comparisons are SJF4J Runtime vs Compiled; do not imply Jayway POJO performance.",
-        "- Compiled filter/descendant use runtime fallback, not fully generated traversal.",
+        "- Compiled POJO filter/descendant use runtime fallback; only Map Direct is compiled.",
         "- Each result is a separate method/size/input tuple. Best 2 selection is independent.",
         "- Do not use the original JMH score error as a confidence interval for Best 2 Mean.",
         "- The serialized payload sizes are approximate; see benchmark setup log for actual bytes.",
@@ -179,7 +181,7 @@ def render(out, results):
     ]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines), encoding="utf-8")
-    print(f"Generated {out}: 119 verified cases")
+    print(f"Generated {out}: 107 verified cases")
 
 
 def main():
