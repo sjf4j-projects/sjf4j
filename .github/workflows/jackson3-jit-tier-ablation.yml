@@ -1,0 +1,122 @@
+name: Jackson3 Compiled Users JIT Tier Ablation
+
+# Isolate HotSpot tiering. Branch-only performance diagnostics; never auto-merge.
+on:
+  push:
+    branches:
+      - experiment/jackson-output-sink-jmh
+    paths:
+      - .github/workflows/jackson3-jit-tier-ablation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-jit-tier-ablation
+  cancel-in-progress: true
+
+jobs:
+  tiering:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Record JDK and machine
+        shell: bash
+        run: |
+          mkdir -p build/performance/jackson3-jit-tier
+          {
+            echo "Commit: $GITHUB_SHA"
+            java -version 2>&1
+            lscpu
+          } > build/performance/jackson3-jit-tier/runner.txt
+
+      - name: Compare default C1-only C2-only on original Users
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-jit-tier
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          test -n "$JAR"
+          BENCH=org.sjf4j.testbench.binding.fabien.Jackson3OriginalPathBenchmark.write
+          for mode in default c1 c2; do
+            flags=()
+            case "$mode" in
+              default) ;;
+              c1) flags=(-jvmArgsAppend "-XX:TieredStopAtLevel=1") ;;
+              c2) flags=(-jvmArgsAppend "-XX:-TieredCompilation") ;;
+              *) exit 2 ;;
+            esac
+            echo "Running mode $mode"
+            java -jar "$JAR" "$BENCH" \
+              -p path=originalBytes,siblingBytes,manual \
+              -p seed=324 -p sizeKb=100 \
+              -f 3 -wi 5 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+              "${flags[@]}" \
+              -rf json -rff "$DIR/$mode.json" > "$DIR/$mode.log" 2>&1 || {
+                tail -120 "$DIR/$mode.log"
+                exit 1
+              }
+            MODE="$mode" python3 - <<'PY'
+          import json,os
+          mode=os.environ["MODE"]
+          rows=json.load(open("build/performance/jackson3-jit-tier/"+mode+".json"))
+          assert len(rows)==3, f"{mode}: expected 3 results, found {len(rows)}"
+          assert {r["params"]["path"] for r in rows}=={"originalBytes","siblingBytes","manual"}
+          print(mode, "3 complete results")
+          PY
+            tail -30 "$DIR/$mode.log"
+          done
+
+      - name: Summarize slow-path ratio under each compiler
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-jit-tier/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          root=Path("build/performance/jackson3-jit-tier")
+          data={}
+          for mode in ("default","c1","c2"):
+              rows=json.loads((root/(mode+".json")).read_text())
+              for row in rows:
+                  data[(mode,row["params"]["path"])]=row
+          assert len(data)==9, len(data)
+          print("# Jackson3 Users POJO 100KB, seed=324: HotSpot JIT tiering A/B")
+          print("3 forks, five warmup + five measured iterations at 400 ms.")
+          print("C1: -XX:TieredStopAtLevel=1. C2: -XX:-TieredCompilation.")
+          print("| JIT mode | Path | µs/op | Error | Alloc B/op | Fork means |")
+          print("| --- | --- | ---: | ---: | ---: | --- |")
+          for mode in ("default","c1","c2"):
+              for path in ("originalBytes","siblingBytes","manual"):
+                  row=data[(mode,path)]
+                  m=row["primaryMetric"]
+                  alloc=row["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+                  means=[sum(f)/len(f) for f in m.get("rawData",[]) if f]
+                  print(f"| {mode} | {path} | {m['score']:.2f} | ±{m['scoreError']:.2f} | {alloc:.0f} | {', '.join(f'{v:.2f}' for v in means)} |")
+          print("\n## Original/sibling ratio by JIT mode")
+          for mode in ("default","c1","c2"):
+              a=data[(mode,"originalBytes")]["primaryMetric"]["score"]
+              b=data[(mode,"siblingBytes")]["primaryMetric"]["score"]
+              print(f"- {mode}: {a/b:.3f}x")
+          print("\nInterpretation: C1 vs C2 isolates dependence on optimizing JIT;")
+          print("C1 and C2 may have different baselines, so compare ratios WITHIN each JIT mode.")
+          PY
+
+      - name: Upload JMH and compiler-tier diagnostic metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-jit-tiers-jdk25
+          path: build/performance/jackson3-jit-tier/
+          retention-days: 30
+          if-no-files-found: warn

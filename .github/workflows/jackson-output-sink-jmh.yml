@@ -2,9 +2,6 @@ name: Jackson3 Original Users Four-Path JMH (JDK 25)
 
 # Experimental PR only. This workflow never touches production code or main.
 on:
-  push:
-    branches:
-      - experiment/jackson-output-sink-jmh
   workflow_dispatch:
 
 permissions:
