@@ -1,11 +1,30 @@
 # Path Benchmark
 
-SJF4J JSONPath runtime and compile-time navigation against **Jayway JsonPath 3.0.0**.
-The benchmark focuses on query cost over existing Java object graphs, not JSON parsing.
+SJF4J JSONPath navigation against **Jayway JsonPath 3.0.0**, with separate Runtime and CompiledNavigator measurements.
 
-## Workloads
+## Results — v1.5.0 (2026-11-09)
 
-**JDK 25 · JMH · 3 forks · Best 2 Mean · ns/op (lower is better)**
+**JDK 25.0.5 · JMH · 3 forks · Best 2 Mean · 100KB input**
+
+Each cell shows **baseline → SJF4J** in µs/op (lower is better), followed by the speedup. The baseline is Jayway for Map/JsonNode and SJF4J Runtime for POJO.
+
+| Query and JSONPath | Map: Jayway → Runtime | JsonNode: Jayway → Runtime | POJO: Runtime → Compiled |
+| --- | ---: | ---: | ---: |
+| **Direct** `$.store.book[1].price` | 0.378 → **0.052** (7.30×) | 0.488 → **0.194** (2.51×) | 0.125 → **0.0022** (57.95×) |
+| **Wildcard** `$.store.book[*].author` | 215.72 → **39.25** (5.50×) | 307.88 → **93.90** (3.28×) | 56.17 → **4.653** (12.07×) |
+| **Filter*** `$.store.book[?(@.price > 10)].title` | 393.75 → **74.11** (5.31×) | 536.96 → **165.73** (3.24×) | 82.25 → **67.20** (1.22×) |
+| **Descendant*** `$..price` | 399.56 → **133.07** (3.00×) | 556.19 → **296.66** (1.87×) | **128.03** → 131.40 (0.97×) |
+| **Slice** `$.store.book[1:4].title` | 0.847 → **0.135** (6.26×) | 1.114 → **0.372** (3.00×) | 0.226 → **0.019** (11.95×) |
+
+*POJO Compiled Filter and Descendant use **runtime fallback**, not fully generated traversal. The 0.97× Descendant result is a small regression, not a speedup.*
+
+**Highlights:** SJF4J Runtime was faster than Jayway in **all 30** equivalent Map/JsonNode query comparisons across 1/10/100KB. At 100KB, Runtime was **3.00–7.30× faster** for Map and **1.87–3.28× faster** for JsonNode. Compiled POJO Direct, Wildcard, and Slice were **57.95×**, **12.07×**, and **11.95×** faster than POJO Runtime, respectively.
+
+Allocation is also lower: at 100KB, JsonNode Filter allocates **1,881,524 B/op** with Jayway versus **26,513 B/op** with SJF4J Runtime (**98.6% less**). Expression compilation, measured separately on seven paths, was **1.77–3.02× faster** than Jayway.
+
+**[All 1/10/100KB results and methodology](path/bookstore-v150-2026-11-09.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42601902947)**
+
+## Benchmark scope
 
 | Input | Jayway | Runtime | Compiled |
 | --- | --- | --- | --- |
@@ -13,43 +32,23 @@ The benchmark focuses on query cost over existing Java object graphs, not JSON p
 | Jackson2 JsonNode | ✓ | ✓ | — |
 | POJO | — | ✓ | ✓ |
 
-Each input uses the same deterministic Bookstore data, with serialized JSON sizes of approximately **1KB / 10KB / 100KB**. The `books` array scales while the shape remains unchanged. About 30% of books match the filter. The benchmark logs the actual JSON size, book count and expected matching count.
+The same deterministic Bookstore structure is tested at approximately **1KB / 10KB / 100KB** (12 / 123 / 1,229 books). Filters match approximately 30% of books. All JSON inputs and paths are prepared before timing, and query results are checked for equivalence. The Full suite contains **107 cases** including independent expression parsing; it does not time JSON deserialization.
 
-| Query | Expression | Measures |
-| --- | --- | --- |
-| Direct | `$.store.book[1].price` | Single known-location lookup |
-| Wildcard | `$.store.book[*].author` | Array traversal and result collection |
-| Filter | `$.store.book[?(@.price > 10)].title` | Predicate selection (~30%) |
-| Descendant | `$..price` | Recursive property lookup |
-| Slice | `$.store.book[1:4].title` | Array slice |
+Full uses **3 independent forks**, 5 × 1s warmup and 5 × 1s measurement, one thread, and GC allocation profiling. **Best 2 Mean** averages the two fastest fork means independently for each exact case. The original JMH scores, errors, and B/op are untrimmed; JMH's score error does not apply to Best 2 Mean.
 
-**Implementation boundaries:** all queries and inputs are compiled/constructed during JMH trial setup; only navigation is timed. Equivalence is checked before measurement, including output order and values. The Map/JsonNode Jayway comparisons run against the same pre-parsed input as SJF4J Runtime. CompiledNavigator cannot generate wildcard/filter/slice traversal for arbitrary `Map<String, Object>` nesting, so **only Map Direct** is measured as Compiled. POJO is a **Runtime vs Compiled** comparison, not a Jayway comparison. `@CompiledNavigator(fallback=true)` is used: **POJO Filter and Descendant fall back to runtime** and are not fully compiled navigation results.
-
-**Expression parsing** is measured separately, using seven expressions defined independently in `PathFullBenchmark`: SJF4J `JsonPath.parse()` vs Jayway `JsonPath.compile()`. Neither document parsing nor query execution is included in parsing measurements. `JsonPathBenchmark` remains a standalone exploratory benchmark; the two classes do not reuse methods, states or fixtures. Mutation/Put/EnsurePut is outside this initial baseline.
-
-## Reporting
-
-Full uses **3 independent forks**, **5 × 1s warmup** and **5 × 1s measurement**, with `-prof gc`. For each exact method and payload size, average the five iterations per fork, **discard only that case's slowest fork**, then average the other two (Best 2 Mean). Apply this independently to Jayway, Runtime and Compiled, and compute speedup ratios from the respective Best 2 Means. For parsing, apply the same rule per expression and implementation.
-
-Keep the original JMH 3-fork mean, each fork mean, the original JMH error and GC allocation (B/op) alongside Best 2. The original error belongs to the untrimmed JMH score, **not** Best 2 Mean. GitHub-hosted runner scores are exploratory; controlled regressions require comparable hardware and identical benchmark versions/settings.
+Map/JsonNode and POJO were measured in different GitHub-hosted jobs on different runner CPUs. Compare implementations **within the same input representation**, not absolute POJO latency against Map/JsonNode latency. GitHub-hosted timings are exploratory, not a hardware-independent guarantee.
 
 ## Run
 
 [Path Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/path-full-benchmark.yml) → **Run workflow**.
 
-Or run locally (JDK 25):
+Or run locally:
 
 ```bash
-bash scripts/benchmark-path.sh smoke map
-bash scripts/benchmark-path.sh quick jsonnode
 bash scripts/benchmark-path.sh full map
 bash scripts/benchmark-path.sh full jsonnode
 bash scripts/benchmark-path.sh full pojo
 bash scripts/benchmark-path.sh full parse
 ```
 
-Full is manual in GitHub Actions. PRs only compile JMH and run Smoke to validate equivalence. The workflow produces raw JMH JSON, per-shape metadata/logs, a combined artifact and a Markdown analysis via `scripts/analyze-path-benchmark.py`. Results are stored under `build/performance/path/`.
-
-## Historical results
-
-No verified Full result has been recorded yet. Each future versioned run will get its own snapshot under `docs/performance/path/` (for example, `bookstore-v150-YYYY-MM-DD.md`), linked here; do not overwrite an older benchmark snapshot.
+The workflow generates the combined Markdown report and downloadable raw JMH artifacts. `JsonPathBenchmark` remains an independent exploratory benchmark and is not reused by `PathFullBenchmark`.
