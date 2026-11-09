@@ -17,6 +17,28 @@ import java.util.Set;
 final class WriteEmitter {
 
     private final BackendSpec backend;
+    // Only generated JMH testbench interfaces opt in. Other binders use the original code.
+    private String stringMemberExperiment = "baseline";
+
+    void configureStringMemberExperiment(String originName) {
+        if (backend.backend() != Backend.JACKSON3) return;
+        String prefix = "org.sjf4j.testbench.binding.fabien."
+                + "Jackson3StringMemberExperimentBenchmark.";
+        if (!originName.startsWith(prefix)) return;
+        String name = originName.substring(prefix.length());
+        if ("Compact".equals(name)) stringMemberExperiment = "compact";
+        else if ("StaticFlag".equals(name)) stringMemberExperiment = "staticFlag";
+        else if ("Direct".equals(name)) stringMemberExperiment = "direct";
+        else stringMemberExperiment = "baseline";
+    }
+
+    boolean directStringMembers() {
+        return "direct".equals(stringMemberExperiment);
+    }
+
+    boolean staticFlagStringMembers() {
+        return "staticFlag".equals(stringMemberExperiment);
+    }
     private final BindingNames names;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
@@ -423,19 +445,36 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            out.beginBlock("private void " + stringMemberHelper() + "(" + generator
-                    + " g, " + nameType
-                    + " name, String value) throws java.io.IOException");
-            out.beginBlock("if (value == null)");
-            out.beginBlock("if (this.context.includeNulls)");
-            out.line("g." + nameMethod + "(name);");
-            out.line("g.writeNull();");
-            out.endBlock();
-            out.endBlock(" else {");
-            out.indent();
-            out.line("g." + nameMethod + "(name);");
-            out.line("g.writeString(value);");
-            out.endBlock();
+            boolean staticFlag = staticFlagStringMembers();
+            out.beginBlock((staticFlag ? "private static void " : "private void ")
+                    + stringMemberHelper() + "(" + generator + " g, " + nameType
+                    + " name, String value"
+                    + (staticFlag ? ", boolean includeNulls" : "")
+                    + ") throws java.io.IOException");
+            if ("compact".equals(stringMemberExperiment) || staticFlag) {
+                // One name write, same null-omission semantics as baseline.
+                String include = staticFlag ? "includeNulls" : "this.context.includeNulls";
+                out.beginBlock("if (value != null || " + include + ")");
+                out.line("g." + nameMethod + "(name);");
+                out.beginBlock("if (value == null)");
+                out.line("g.writeNull();");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("g.writeString(value);");
+                out.endBlock();
+                out.endBlock();
+            } else {
+                out.beginBlock("if (value == null)");
+                out.beginBlock("if (this.context.includeNulls)");
+                out.line("g." + nameMethod + "(name);");
+                out.line("g.writeNull();");
+                out.endBlock();
+                out.endBlock(" else {");
+                out.indent();
+                out.line("g." + nameMethod + "(name);");
+                out.line("g.writeString(value);");
+                out.endBlock();
+            }
             out.endBlock();
         }
     }

@@ -24,6 +24,8 @@ final class BindingEmitter {
     }
 
     void emitMethod(BindingCompiler.CompiledMethod method, GeneratedClass generated) {
+        // PR #246: benchmark-only opt-in for string member codegen experiments.
+        writes.configureStringMemberExperiment(generated.originName());
         if (fastjson2 && !byteOrderFieldEmitted
                 && method.plan().direction() == BindingPlan.Direction.READ_FROM) {
             String endianField = names.sharedField("FASTJSON2_LITTLE_ENDIAN");

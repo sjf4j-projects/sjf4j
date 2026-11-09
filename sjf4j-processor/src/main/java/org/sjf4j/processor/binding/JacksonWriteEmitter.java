@@ -158,8 +158,26 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                   String expression) {
-        out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
-                + ".serializedName, " + expression + ");");
+        String encodedName = WriteEmitter.compiledNameField(owner, index) + ".serializedName";
+        if (writes.directStringMembers()) {
+            // Block-local String value evaluates each getter only once.
+            out.beginBlock("");
+            out.line("java.lang.String memberValue = " + expression + ";");
+            out.beginBlock("if (memberValue != null || this.context.includeNulls)");
+            out.line("g.writeName(" + encodedName + ");");
+            out.beginBlock("if (memberValue == null)");
+            out.line("g.writeNull();");
+            out.endBlock(" else {");
+            out.indent();
+            out.line("g.writeString(memberValue);");
+            out.endBlock();
+            out.endBlock();
+            out.endBlock();
+        } else {
+            out.line(writes.stringMemberHelper() + "(g, " + encodedName + ", "
+                    + expression + (writes.staticFlagStringMembers()
+                    ? ", this.context.includeNulls" : "") + ");");
+        }
     }
 
     @Override
