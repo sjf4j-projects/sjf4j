@@ -9,55 +9,45 @@ so regular tests can reuse them.
 
 **Full JMH on Temurin 25.0.5 · 3 independent forks · Best 2 Mean · two seeds · 1/10/100KB.** All **1,008** cases completed in [GitHub Actions run #42581094035](https://github.com/sjf4j-projects/sjf4j/actions/runs/42581094035). Results are exploratory because the seven backend jobs used shared runners. All latency comparisons below are **within each backend**; cross-backend absolute comparisons are not controlled.
 
-### Conclusions by backend
+### 100KB measurements (representative workloads)
 
-- **Jackson2:** The clearest benefit is complex **Clients POJO Read**: at 100KB, **622.862 Native / 592.055 Blackbird / 199.988 Runtime / 175.102 Compiled µs/op**, or **3.56×** faster than Native with Compiled. Allocation drops from **1,241,410 to 282,937 B/op** (**77.2% less**). Users POJO Write Compiled also beats Native and Blackbird; Map Read is near Native, while Map Write benefits mostly from Runtime.
-- **Jackson3:** The same Clients POJO Read workload measures **772.862 Native / 754.982 Blackbird / 249.817 Runtime / 218.543 Compiled µs/op** (**3.54×** Native/Compiled), with **79.0% lower allocation**. POJO Write is also faster than Native; Map Read remains near parity, with small regressions in some cases.
-- **Fastjson2:** Compiled POJO Read/Write has **approximately Native performance**, but Map Read remains slower: 100KB Users Map **95.688 Native vs 106.571 Compiled µs/op**. Users POJO Read is **63.783 Native / 89.261 Runtime / 65.893 Compiled**. Allocation is similar to Native in POJO; Map Read can allocate slightly more.
-- **Gson:** Strong Read/Write results, especially larger POJOs: 100KB Clients POJO Read improves **833.780 Native → 333.997 Compiled µs/op** (**2.50×**), and Users POJO Write **443.815 → 210.322** (**2.11×**). Clients POJO Read allocation drops **65.3%**, Users POJO Write **58.6%**. The Native write benchmark includes Gson's String-to-UTF-8 conversion to produce the required byte[].
-- **JSON-P:** No equivalent Native POJO/Map binder and no Blackbird. At 100KB Users POJO, **Read 356.928 Runtime / 322.115 Compiled µs/op** (**1.11×**) and **Write 233.514 / 190.743** (**1.22×**). Map is nearly unchanged; allocations are also essentially unchanged, so this is a CPU-side code-generation gain.
-- **Simple:** No independent Native or Blackbird implementation. At 100KB Users POJO, **Read 405.426 Runtime / 343.667 Compiled µs/op** (**1.18×**) and **Write 501.776 / 478.316** (**1.05×**). Map and B/op are close to Runtime. Some Simple Read forks had notable variability; do not over-interpret small differences.
-- **SnakeYAML:** Runtime provides most of the speedup: 100KB Users POJO Write is **9,208.703 Native / 4,141.737 Runtime / 4,108.626 Compiled µs/op** (**2.24×** Native/Compiled). Clients POJO Read is **1.53×** Native/Compiled with **32.7% less allocation**. This is a YAML-to-YAML comparison; absolute numbers should not be compared with JSON backends as equal-format workloads.
+**Latency (µs/op, lower is better).** Columns are ordered Native / Blackbird / Runtime / Compiled, followed by `Native / Compiled` (a ratio of unrounded latency measurements; below 1× means Compiled is slower). These two workloads are examples only; the [complete report](binding/fabien-v150-2026-11-09.md) includes all Read/Write, Users/Clients, POJO/Map, and 1/10/100KB combinations.
 
-### Representative 100KB measurements
+| Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled | Native / Compiled |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Read / Clients / POJO | Jackson2 | 622.862 | 592.055 | 199.988 | 175.102 | 3.56× |
+| Read / Clients / POJO | Jackson3 | 772.862 | 754.982 | 249.817 | 218.543 | 3.54× |
+| Read / Clients / POJO | Fastjson2 | 74.604 | — | 103.453 | 74.001 | 1.01× |
+| Read / Clients / POJO | Gson | 833.780 | — | 385.232 | 333.997 | 2.50× |
+| Read / Clients / POJO | JSON-P | — | — | 491.747 | 445.431 | — |
+| Read / Clients / POJO | Simple | — | — | 408.852 | 385.367 | — |
+| Read / Clients / POJO | SnakeYAML | 6,704.549 | — | 4,539.373 | 4,380.591 | 1.53× |
+| Write / Users / POJO | Jackson2 | 139.779 | 121.073 | 112.040 | 110.857 | 1.26× |
+| Write / Users / POJO | Jackson3 | 184.547 | 198.032 | 177.837 | 168.982 | 1.09× |
+| Write / Users / POJO | Fastjson2 | 53.039 | — | 74.299 | 53.399 | 0.99× |
+| Write / Users / POJO | Gson | 443.815 | — | 243.785 | 210.322 | 2.11× |
+| Write / Users / POJO | JSON-P | — | — | 233.514 | 190.743 | — |
+| Write / Users / POJO | Simple | — | — | 501.776 | 478.316 | — |
+| Write / Users / POJO | SnakeYAML | 9,208.703 | — | 4,141.737 | 4,108.626 | 2.24× |
 
-**Latency (µs/op, lower is better).** Columns are always ordered Native / Blackbird / Runtime / Compiled. The complete report retains *all* sizes, models, shapes, operations, and per-comparison ratios.
+**Allocation (B/op, lower is better).** Untrimmed JMH allocation scores, averaged equally across two seeds, not the latency-selected forks. The rightmost `Native / Compiled` is the B/op ratio (below 1× means Compiled allocates more), not a latency speedup.
 
-| Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Read / Clients / POJO | Jackson2 | 622.862 | 592.055 | 199.988 | **175.102** |
-| Read / Clients / POJO | Jackson3 | 772.862 | 754.982 | 249.817 | **218.543** |
-| Read / Clients / POJO | Fastjson2 | 74.604 | — | 103.453 | **74.001** |
-| Read / Clients / POJO | Gson | 833.780 | — | 385.232 | **333.997** |
-| Read / Clients / POJO | JSON-P | — | — | 491.747 | **445.431** |
-| Read / Clients / POJO | Simple | — | — | 408.852 | **385.367** |
-| Read / Clients / POJO | SnakeYAML | 6,704.549 | — | 4,539.373 | **4,380.591** |
-| Write / Users / POJO | Jackson2 | 139.779 | 121.073 | 112.040 | **110.857** |
-| Write / Users / POJO | Jackson3 | 184.547 | 198.032 | 177.837 | **168.982** |
-| Write / Users / POJO | Fastjson2 | **53.039** | — | 74.299 | 53.399 |
-| Write / Users / POJO | Gson | 443.815 | — | 243.785 | **210.322** |
-| Write / Users / POJO | JSON-P | — | — | 233.514 | **190.743** |
-| Write / Users / POJO | Simple | — | — | 501.776 | **478.316** |
-| Write / Users / POJO | SnakeYAML | 9,208.703 | — | 4,141.737 | **4,108.626** |
-
-**Allocation (B/op, lower is better).** Untrimmed JMH allocation scores, averaged equally across two seeds, not the latency-selected forks.
-
-| Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Read / Clients / POJO | Jackson2 | 1,241,410 | 1,225,244 | **282,793** | 282,937 |
-| Read / Clients / POJO | Jackson3 | 1,213,238 | 1,197,067 | **254,572** | 254,754 |
-| Read / Clients / POJO | Fastjson2 | 255,213 | — | 256,333 | **254,605** |
-| Read / Clients / POJO | Gson | 1,399,430 | — | **486,071** | 486,214 |
-| Read / Clients / POJO | JSON-P | — | — | **590,649** | 590,910 |
-| Read / Clients / POJO | Simple | — | — | **437,975** | 438,119 |
-| Read / Clients / POJO | SnakeYAML | 9,134,260 | — | **6,143,448** | 6,143,591 |
-| Write / Users / POJO | Jackson2 | 199,054 | 198,319 | **112,061** | **112,061** |
-| Write / Users / POJO | Jackson3 | 199,069 | 198,334 | **112,085** | **112,085** |
-| Write / Users / POJO | Fastjson2 | 105,116 | — | 105,061 | **105,060** |
-| Write / Users / POJO | Gson | 522,167 | — | 216,358 | **216,357** |
-| Write / Users / POJO | JSON-P | — | — | **317,176** | **317,176** |
-| Write / Users / POJO | Simple | — | — | 216,168 | **216,167** |
-| Write / Users / POJO | SnakeYAML | 6,824,854 | — | 5,866,154 | **5,866,153** |
+| Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled | Native / Compiled |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Read / Clients / POJO | Jackson2 | 1,241,410 | 1,225,244 | 282,793 | 282,937 | 4.39× |
+| Read / Clients / POJO | Jackson3 | 1,213,238 | 1,197,067 | 254,572 | 254,754 | 4.76× |
+| Read / Clients / POJO | Fastjson2 | 255,213 | — | 256,333 | 254,605 | 1.00× |
+| Read / Clients / POJO | Gson | 1,399,430 | — | 486,071 | 486,214 | 2.88× |
+| Read / Clients / POJO | JSON-P | — | — | 590,649 | 590,910 | — |
+| Read / Clients / POJO | Simple | — | — | 437,975 | 438,119 | — |
+| Read / Clients / POJO | SnakeYAML | 9,134,260 | — | 6,143,448 | 6,143,591 | 1.49× |
+| Write / Users / POJO | Jackson2 | 199,054 | 198,319 | 112,061 | 112,061 | 1.78× |
+| Write / Users / POJO | Jackson3 | 199,069 | 198,334 | 112,085 | 112,085 | 1.78× |
+| Write / Users / POJO | Fastjson2 | 105,116 | — | 105,061 | 105,060 | 1.00× |
+| Write / Users / POJO | Gson | 522,167 | — | 216,358 | 216,357 | 2.41× |
+| Write / Users / POJO | JSON-P | — | — | 317,176 | 317,176 | — |
+| Write / Users / POJO | Simple | — | — | 216,168 | 216,167 | — |
+| Write / Users / POJO | SnakeYAML | 6,824,854 | — | 5,866,154 | 5,866,153 | 1.16× |
 
 **[Complete 1/10/100KB results, all implementations, allocation, and fork stability](binding/fabien-v150-2026-11-09.md)** · **[Original JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/42581094035/artifacts/13675482490)**
 
