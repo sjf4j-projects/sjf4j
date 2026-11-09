@@ -1111,19 +1111,40 @@ public class Jackson3UserFieldAblationBenchmark {
             }
             default: throw new IllegalArgumentException("fields=" + fields);
         }
-        Jackson3Binder runtimeBinder = new Jackson3Binder();
-        StreamWriter runtime = out -> runtimeBinder.writeNode(out, model);
+        // Runtime StreamingIO accepts the production Users model, but not our
+        // experiment-only projection POJOs. Do not let unsupported Runtime
+        // types invalidate independently meaningful Manual/Compiled cases.
+        final StreamWriter runtime;
+        if ("original".equals(fields)) {
+            Jackson3Binder runtimeBinder = new Jackson3Binder();
+            runtime = out -> runtimeBinder.writeNode(out, model);
+        } else {
+            runtime = null;
+        }
 
         byte[] expected = pooled(compiled);
         byte[] hand = pooled(manual);
-        byte[] dynamic = pooled(runtime);
         verifySame("manual", expected, hand);
-        verifySame("runtime", expected, dynamic);
+
+        // Validate the projected model itself, not only agreement between two
+        // potentially incorrect writers. Allow benign numeric formatting.
+        JsonNode projected = JSON.valueToTree(model);
+        if (!projected.equals(JSON.readTree(expected))) {
+            throw new IllegalStateException("Compiled output is not equivalent to projected model: "
+                    + fields + "/seed=" + seed);
+        }
+        if (runtime != null) {
+            verifySame("runtime", expected, pooled(runtime));
+        }
 
         switch (writer) {
             case "compiled": operation = () -> pooled(compiled); break;
             case "manual": operation = () -> pooled(manual); break;
-            case "runtime": operation = () -> pooled(runtime); break;
+            case "runtime":
+                if (runtime == null) throw new IllegalArgumentException(
+                        "SJF4J runtime does not support projection POJOs; use original");
+                operation = () -> pooled(runtime);
+                break;
             default: throw new IllegalArgumentException("writer=" + writer);
         }
     }
