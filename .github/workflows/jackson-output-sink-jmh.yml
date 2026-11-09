@@ -1,4 +1,4 @@
-name: Jackson3 Native ByteArrayBuilder vs SJF4J Pooled (JDK 25)
+name: Jackson3 ByteArrayBuilder BufferRecycler vs SJF4J Pooled (JDK 25)
 
 # Diagnostic on experimental branch; production code remains untouched.
 on:
@@ -33,20 +33,20 @@ jobs:
       - name: Record environment
         shell: bash
         run: |
-          mkdir -p build/performance/jackson3-bytearraybuilder
-          { echo "$GITHUB_SHA"; java -version 2>&1; lscpu; } > build/performance/jackson3-bytearraybuilder/runner.txt
+          mkdir -p build/performance/jackson3-bytearraybuilder-recycler
+          { echo "$GITHUB_SHA"; java -version 2>&1; lscpu; } > build/performance/jackson3-bytearraybuilder-recycler/runner.txt
 
       - name: Run Users and Clients separately
         shell: bash
         run: |
           set -euo pipefail
-          DIR=build/performance/jackson3-bytearraybuilder
+          DIR=build/performance/jackson3-bytearraybuilder-recycler
           JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
           test -n "$JAR"
           for model in users clients; do
             java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3BufferComparisonBenchmark.write' \
               -p writer=compiled,runtime,mapper \
-              -p sink=pooled,jacksonDefault,jacksonSized,baos,nativeBytes \
+              -p sink=pooled,jacksonRecycler,jacksonDefault,jacksonSized,baos,nativeBytes \
               -p model="$model" -p seed=12345,324 -p sizeKb=100 \
               -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
               -rf json -rff "$DIR/$model.json" > "$DIR/$model.log" 2>&1 || {
@@ -59,19 +59,19 @@ jobs:
       - name: Summarize sink-only comparisons
         shell: bash
         run: |
-          python3 - <<'PY' | tee build/performance/jackson3-bytearraybuilder/summary.md >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY' | tee build/performance/jackson3-bytearraybuilder-recycler/summary.md >> "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
-          base = Path("build/performance/jackson3-bytearraybuilder")
+          base = Path("build/performance/jackson3-bytearraybuilder-recycler")
           rows = json.loads((base/"users.json").read_text()) + json.loads((base/"clients.json").read_text())
-          assert len(rows) == 60, f"Expected 60 JMH measurements, got {len(rows)}"
+          assert len(rows) == 72, f"Expected 72 JMH measurements, got {len(rows)}"
           d={}
           for row in rows:
               p=row["params"]
               d[(p["model"],p["seed"],p["writer"],p["sink"])]=row
           print("# Jackson3 PooledByteArrayOutputStream vs ByteArrayBuilder")
           print("JDK25; 100KB; 3 forks, 4 warmup and 5 measurement iterations at 400 ms each.")
-          print("Same writer & stream API for pooled/jacksonDefault/jacksonSized/baos.")
+          print("Same writer & stream API for pooled/jacksonRecycler/jacksonDefault/jacksonSized/baos. jacksonRecycler reuses a BufferRecycler per JMH thread.")
           print("nativeBytes uses the writer-specific byte[] entrypoint and is a baseline, not a sink-only comparison.")
           for model in ("users","clients"):
             for seed in ("12345","324"):
@@ -80,7 +80,7 @@ jobs:
                 print("| Sink | µs/op | JMH Error | Alloc B/op | Ratio vs Pooled |")
                 print("| --- | ---: | ---: | ---: | ---: |")
                 pooled=d[(model,seed,writer,"pooled")]["primaryMetric"]["score"]
-                for sink in ("pooled","jacksonDefault","jacksonSized","baos","nativeBytes"):
+                for sink in ("pooled","jacksonRecycler","jacksonDefault","jacksonSized","baos","nativeBytes"):
                   r=d[(model,seed,writer,sink)]
                   score=r["primaryMetric"]["score"]
                   err=r["primaryMetric"]["scoreError"]
@@ -92,7 +92,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson3-bytearraybuilder-jdk25
-          path: build/performance/jackson3-bytearraybuilder/
+          name: jackson3-bytearraybuilder-recycler-jdk25
+          path: build/performance/jackson3-bytearraybuilder-recycler/
           retention-days: 30
           if-no-files-found: warn

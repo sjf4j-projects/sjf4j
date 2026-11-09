@@ -17,6 +17,7 @@ import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.testbench.model.fabien.Clients;
 import org.sjf4j.testbench.model.fabien.Users;
 import tools.jackson.core.util.ByteArrayBuilder;
+import tools.jackson.core.util.BufferRecycler;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayOutputStream;
@@ -36,7 +37,9 @@ import java.util.concurrent.TimeUnit;
  * which is not directly comparable as a pure sink change.
  *
  * ByteArrayBuilder is Jackson3's segment-based OutputStream, not SJF4J's
- * contiguous ThreadLocal pool. jacksonSized preallocates the initial segment.
+ * contiguous ThreadLocal pool. jacksonRecycler reuses ONE BufferRecycler per
+ * benchmark thread; jacksonDefault has no recycler; jacksonSized preallocates
+ * the initial segment without a recycler (Jackson ignores size if recycler is passed).
  * Trial setup checks output correctness; no comparisons run in the measured path.
  */
 @State(Scope.Thread)
@@ -49,7 +52,7 @@ public class Jackson3BufferComparisonBenchmark {
     @Param({"compiled", "runtime", "mapper"})
     public String writer;
 
-    @Param({"pooled", "jacksonDefault", "jacksonSized", "baos", "nativeBytes"})
+    @Param({"pooled", "jacksonRecycler", "jacksonDefault", "jacksonSized", "baos", "nativeBytes"})
     public String sink;
 
     @Param({"users", "clients"})
@@ -72,9 +75,12 @@ public class Jackson3BufferComparisonBenchmark {
     }
 
     private Operation operation;
+    // JMH Scope.Thread guarantees one reusable recycler per benchmark thread.
+    private BufferRecycler recycler;
 
     @Setup(Level.Trial)
     public void setup() throws Exception {
+        recycler = new BufferRecycler();
         FabienFixtures.Fixture fixture = FabienFixtures.create("jackson3", model, "pojo", sizeKb, seed);
         Object value = fixture.value;
 
@@ -115,6 +121,19 @@ public class Jackson3BufferComparisonBenchmark {
                         return out.toByteArray();
                     } finally {
                         out.recycle();
+                    }
+                };
+                break;
+            case "jacksonRecycler":
+                operation = () -> {
+                    // Acquire a reusable concatenation buffer from the SAME recycler.
+                    // ByteArrayBuilder.release() returns its current block for reuse.
+                    ByteArrayBuilder out = new ByteArrayBuilder(recycler);
+                    try {
+                        stream.write(out);
+                        return out.toByteArray();
+                    } finally {
+                        out.release();
                     }
                 };
                 break;
