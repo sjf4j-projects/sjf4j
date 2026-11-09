@@ -11,9 +11,10 @@ SJF4J JSON Schema validation and roundtrip performance, using the Creek model an
 | Input | NetworkNT | Runtime | Compiled |
 | --- | ---: | ---: | ---: |
 | POJO | — | 3.107 | **0.058** (**53.6× vs Runtime**) |
-| Map / JsonNode | 9.758 (JsonNode) | 2.295 (Map)<br>4.051 (JsonNode, **2.41× vs NetworkNT**) | **0.992** (Map, **2.31× vs Runtime**) |
+| Map | — | 2.295 | **0.992** (**2.31× vs Runtime**) |
+| Jackson2 JsonNode | 9.758 | **4.051** (**2.41× vs NetworkNT**) | — |
 
-The NetworkNT comparison uses the same pre-parsed Jackson2 `JsonNode` as SJF4J Runtime. The Compiled result in this row uses a `Map`, and its speedup is relative to Runtime on `Map`, not NetworkNT.
+The NetworkNT and SJF4J Runtime results use the same pre-parsed Jackson2 `JsonNode`. Compiled validation is benchmarked on POJO and Map only.
 
 ### Roundtrip
 
