@@ -127,7 +127,7 @@ public class Jackson3UserFieldAblationBenchmark {
         g.writeEndArray();
     }
 
-    private static void manualOriginal(JsonGenerator g, Users root) {
+    static void manualOriginal(JsonGenerator g, Users root) {
         if (root == null) { g.writeNull(); return; }
         g.writeStartObject();
         g.writeName(USERS_NAME);
