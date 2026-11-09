@@ -1,0 +1,165 @@
+name: Jackson3 Static Helper Small-Input and JDK Cross-Check
+
+# Confirm the observed Clients 1KB regression with ABBA-order JMH, on JDK21
+# and JDK25. SAME original generated binder binary class, no VM directives.
+# Experimental PR only; never touch main.
+on:
+  push:
+    branches: [experiment/jackson-output-sink-jmh]
+    paths: [.github/workflows/jackson3-static-small-jdk-crosscheck.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jackson3-static-small-jdk-crosscheck
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    name: JDK ${{ matrix.jdk }}, host ${{ matrix.host }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: ['21','25']
+        host: [1,2]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '${{ matrix.jdk }}'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Identify CPU and JDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-small-jdk
+          mkdir -p "$DIR"
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > "$DIR/runner.txt"
+
+      - name: Build same-name baseline and staticFlag bytecode
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-small-jdk
+          for mode in baseline staticFlag; do
+            SJF4J_EXPERIMENT_STRING_MEMBER="$mode" \
+              ./gradlew --no-daemon --rerun-tasks :sjf4j-testbench:jmhJar \
+              > "$DIR/build-$mode.log" 2>&1 || {
+                tail -140 "$DIR/build-$mode.log"
+                exit 1
+              }
+            JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -type f -name '*-jmh.jar' | head -n 1)
+            test -s "$JAR"
+            cp "$JAR" "$RUNNER_TEMP/jmh-$mode.jar"
+            javap -c -p -classpath "$JAR" \
+              'org.sjf4j.testbench.binding.fabien.FabienBindings$Jackson3_Impl' \
+              > "$DIR/$mode.javap.txt"
+          done
+          if cmp -s "$DIR/baseline.javap.txt" "$DIR/staticFlag.javap.txt"; then
+            echo "Generated original-class bytecode did not change between modes"
+            exit 1
+          fi
+
+      - name: Check null semantics and output hashes on this JDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-small-jdk
+          MAIN=org.sjf4j.testbench.binding.fabien.Jackson3StringMemberNullProbe
+          for mode in baseline staticFlag; do
+            java -cp "$RUNNER_TEMP/jmh-$mode.jar" "$MAIN" \
+              > "$DIR/null-$mode.log" 2>&1 || {
+                cat "$DIR/null-$mode.log"; exit 1
+              }
+          done
+          diff -u "$DIR/null-baseline.log" "$DIR/null-staticFlag.log"
+
+      - name: Repeated ABBA order benchmark with runtime controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          DIR=build/performance/jackson3-small-jdk
+          BENCH=org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write
+          # ABBA design: baseline1 -> staticFlag1 -> staticFlag2 -> baseline2.
+          # Each run uses independent JMH forks and both compiled/runtime.
+          for phase in baseline1 staticFlag1 staticFlag2 baseline2; do
+            if [[ "$phase" == baseline* ]]; then mode=baseline; else mode=staticFlag; fi
+            for target in clients1 users100; do
+              if [[ "$target" == "clients1" ]]; then
+                model=clients; kb=1; seed=324
+              else
+                model=users; kb=100; seed=12345
+              fi
+              echo "JMH phase=$phase target=$target JDK=${{ matrix.jdk }}"
+              java -jar "$RUNNER_TEMP/jmh-$mode.jar" "$BENCH" \
+                -p backend=jackson3 -p implementation=compiled,runtime \
+                -p model="$model" -p shape=pojo -p sizeKb="$kb" -p seed="$seed" \
+                -f 5 -wi 5 -i 7 -w 300ms -r 300ms -t 1 -prof gc \
+                -rf json -rff "$DIR/$phase-$target.json" \
+                > "$DIR/$phase-$target.log" 2>&1 || {
+                  tail -125 "$DIR/$phase-$target.log"; exit 1
+                }
+              PHASE="$phase" TARGET="$target" python3 - <<'PY'
+          import json,os
+          p="build/performance/jackson3-small-jdk/"+os.environ["PHASE"]+"-"+os.environ["TARGET"]+".json"
+          rows=json.load(open(p))
+          assert len(rows)==2, f"{p}: expected 2 successful JMH measurements, got {len(rows)}"
+          assert {r["params"]["implementation"] for r in rows}=={"compiled","runtime"}
+          PY
+            done
+          done
+
+      - name: Summarize all forks and matched runtime control
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-small-jdk/summary.md >> "$GITHUB_STEP_SUMMARY"
+          from pathlib import Path
+          import json,re,statistics as st,math
+          p=Path("build/performance/jackson3-small-jdk")
+          txt=(p/"runner.txt").read_text()
+          cpu=re.search(r"Model name:\s*(.+)",txt)
+          print("# Static helper ABI: JDK ${{ matrix.jdk }} ABBA repeat")
+          print("CPU:",cpu.group(1) if cpu else "unknown")
+          print("Same original generated class, no JIT flags, null and JSON bytes verified.")
+          print("Five independent forks, 5 × 300ms warmup, 7 × 300ms measurements.")
+          print("| Workload | Phase | Compiled µs/op (error) | Runtime µs/op | Compiled / Runtime | B/op | Fork means (µs) |")
+          print("| --- | --- | ---: | ---: | ---: | ---: | --- |")
+          results={}
+          for target in ("clients1","users100"):
+            for phase in ("baseline1","staticFlag1","staticFlag2","baseline2"):
+              data=json.loads((p/f"{phase}-{target}.json").read_text())
+              d={x["params"]["implementation"]:x for x in data}
+              a=d["compiled"]["primaryMetric"]
+              b=d["runtime"]["primaryMetric"]["score"]
+              gc=d["compiled"]["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+              forks=[st.mean(f) for f in a.get("rawData",[]) if f]
+              results[(target,phase)]=(a["score"],b)
+              print(f"| {target} | {phase} | {a['score']:.4f} ±{a['scoreError']:.4f} | {b:.4f} | {a['score']/b:.4f}x | {gc:.0f} | {', '.join(f'{v:.4f}' for v in forks)} |")
+          print("\n## ABBA ratio (staticFlag / baseline)")
+          for target in ("clients1","users100"):
+            # Ratio-of-ratios uses runtime as an internal time-drift control.
+            baselines=[results[(target,x)] for x in ("baseline1","baseline2")]
+            optimized=[results[(target,x)] for x in ("staticFlag1","staticFlag2")]
+            bs=math.sqrt(baselines[0][0]*baselines[1][0])
+            ss=math.sqrt(optimized[0][0]*optimized[1][0])
+            br=math.sqrt(baselines[0][0]/baselines[0][1]*baselines[1][0]/baselines[1][1])
+            sr=math.sqrt(optimized[0][0]/optimized[0][1]*optimized[1][0]/optimized[1][1])
+            print(f"- {target}: absolute static/baseline={ss/bs:.4f}x; relative-to-runtime={sr/br:.4f}x")
+          print("\nRatios are descriptive; fork distribution and noise remain relevant.")
+          PY
+
+      - name: Upload results and bytecode for all ABBA comparisons
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-small-jdk-${{ matrix.jdk }}-host-${{ matrix.host }}
+          path: build/performance/jackson3-small-jdk/
+          retention-days: 30
+          if-no-files-found: warn
