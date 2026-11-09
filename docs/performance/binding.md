@@ -165,7 +165,7 @@ an explicit aggregation label; if applying Best 2 to that metric, rank the
 forks **independently using that metric's own values**, not the time-selected
 forks. Preserve all raw forks and the untrimmed JMH `primaryMetric.score`.
 
-**Meaning and caveat:** Best 2 Mean describes the faster, typical compiled
+**Meaning and caveat:** Best 2 Mean describes the faster observed JVM
 execution state; it is deliberately biased toward lower latency. It is
 **not** the expected latency of a random fresh JVM fork, and it is not a JMH
 confidence interval. When fork means diverge materially (e.g. the slowest
