@@ -95,7 +95,7 @@ if [[ "$(uname -s)" == "Darwin" ]] && command -v caffeinate >/dev/null 2>&1; the
 fi
 
 if [[ "$SHAPE" == "parse" ]]; then
-  SELECTOR='^org\.sjf4j\.testbench\.path\.JsonPathBenchmark\.parse_(sjf4j|jayway)$'
+  SELECTOR='^org\.sjf4j\.testbench\.path\.PathFullBenchmark\.parse_(sjf4j|jayway)$'
 else
   SELECTOR='^org\.sjf4j\.testbench\.path\.PathFullBenchmark\.'"$SHAPE"'_(direct|wildcard|filter|descendant|slice)_'"$IMPLEMENTATIONS"'$'
 fi
@@ -116,7 +116,7 @@ if shape == "parse":
         "$.store.book[?(@.price > 10)].title",
         "$.store.book[0,2].title", "$.store.book[1:4].title",
     )
-    prefix = "org.sjf4j.testbench.path.JsonPathBenchmark.parse_"
+    prefix = "org.sjf4j.testbench.path.PathFullBenchmark.parse_"
     expected_keys = {(prefix + impl, expr)
                      for impl in ("sjf4j", "jayway") for expr in expressions}
     param = "expr"
