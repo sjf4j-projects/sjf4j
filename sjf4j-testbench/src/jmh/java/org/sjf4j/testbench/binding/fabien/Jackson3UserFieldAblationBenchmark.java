@@ -995,6 +995,8 @@ public class Jackson3UserFieldAblationBenchmark {
         final Object model;
         final StreamWriter manual;
         final Compiled binder = CompiledInstances.create(Compiled.class);
+        // Match the compiled binder lifecycle: reuse the factory across invocations.
+        final Jackson3Binder manualFactory = new Jackson3Binder();
         final StreamWriter compiled;
 
         switch (fields) {
@@ -1002,8 +1004,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 model = original;
                 manual = out -> {
                     // Same factory/feature configuration as the compiled writer.
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualOriginal(gen.nativeWriter(), original);
                     }
                 };
@@ -1013,8 +1014,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 FullUsers value = new FullUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualFull(gen.nativeWriter(), value);
                     }
                 };
@@ -1025,8 +1025,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 NoStringsUsers value = new NoStringsUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualNoStrings(gen.nativeWriter(), value);
                     }
                 };
@@ -1037,8 +1036,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 NoNumericUsers value = new NoNumericUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualNoNumeric(gen.nativeWriter(), value);
                     }
                 };
@@ -1049,8 +1047,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 NoTagsUsers value = new NoTagsUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualNoTags(gen.nativeWriter(), value);
                     }
                 };
@@ -1061,8 +1058,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 NoFriendsUsers value = new NoFriendsUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualNoFriends(gen.nativeWriter(), value);
                     }
                 };
@@ -1073,8 +1069,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 StringsOnlyUsers value = new StringsOnlyUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualStringsOnly(gen.nativeWriter(), value);
                     }
                 };
@@ -1085,8 +1080,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 NumericOnlyUsers value = new NumericOnlyUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualNumericOnly(gen.nativeWriter(), value);
                     }
                 };
@@ -1097,8 +1091,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 TagsOnlyUsers value = new TagsOnlyUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualTagsOnly(gen.nativeWriter(), value);
                     }
                 };
@@ -1109,8 +1102,7 @@ public class Jackson3UserFieldAblationBenchmark {
                 FriendsOnlyUsers value = new FriendsOnlyUsers(original);
                 model = value;
                 manual = out -> {
-                    Jackson3Binder factory = new Jackson3Binder();
-                    try (Jackson3Generator gen = factory.createGenerator(out)) {
+                    try (Jackson3Generator gen = manualFactory.createGenerator(out)) {
                         manualFriendsOnly(gen.nativeWriter(), value);
                     }
                 };
