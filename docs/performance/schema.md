@@ -92,3 +92,7 @@ run a short JDK 25 smoke check to catch setup/semantic mismatches.
 Results from shared GitHub-hosted runners are **exploratory**, not release
 baselines. Treat differences smaller than run-to-run variation cautiously;
 retain original raw JMH JSON when asking AI to analyze trends.
+
+## Historical results
+
+- [2026-11-09 Creek Schema Full Benchmark baseline](baselines/creek-2026-11-09.md) — all 10 measured methods, allocation data, JMH errors, three independent fork means, exact run and commit references, and website-ready summary. Note that the linked original Actions artifact has a 30-day retention period; archive raw JMH JSON separately for byte-for-byte reproducibility.
