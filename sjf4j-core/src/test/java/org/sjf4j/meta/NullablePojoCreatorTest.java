@@ -117,7 +117,7 @@ class NullablePojoCreatorTest {
     @Test
     void settableOnlyObjectCanBeReadAndWritesEmptyObject() {
         SimpleJsonBinder binder = new SimpleJsonBinder();
-        SetterOnly target = binder.readNode("{\"value\":7}", SetterOnly.class);
+        SetterOnly target = (SetterOnly) binder.readNode("{\"value\":7}", SetterOnly.class);
         assertEquals(7, target.currentValue());
         assertEquals("{}", binder.writeNodeAsString(target));
     }
