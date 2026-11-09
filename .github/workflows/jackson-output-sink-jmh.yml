@@ -1,6 +1,6 @@
-name: Jackson3 ByteArrayBuilder BufferRecycler vs SJF4J Pooled (JDK 25)
+name: Jackson3 Users Handwritten Field Ablation (JDK 25)
 
-# Diagnostic on experimental branch; production code remains untouched.
+# Diagnostic only, all changes confined to the experiment branch.
 on:
   push:
     branches:
@@ -17,82 +17,87 @@ concurrency:
 jobs:
   benchmark:
     runs-on: ubuntu-24.04
-    timeout-minutes: 85
+    timeout-minutes: 95
     steps:
       - uses: actions/checkout@v4
-      - name: JDK 25
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
-      - name: Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-      - name: Build JMH jar
+      - name: Build JMH
         run: ./gradlew :sjf4j-testbench:jmhJar
 
-      - name: Record environment
-        shell: bash
-        run: |
-          mkdir -p build/performance/jackson3-bytearraybuilder-recycler
-          { echo "$GITHUB_SHA"; java -version 2>&1; lscpu; } > build/performance/jackson3-bytearraybuilder-recycler/runner.txt
-
-      - name: Run Users and Clients separately
+      - name: Verify all field subsets and output parity before timing
         shell: bash
         run: |
           set -euo pipefail
-          DIR=build/performance/jackson3-bytearraybuilder-recycler
+          DIR=build/performance/jackson3-fields
+          mkdir -p "$DIR"
           JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
           test -n "$JAR"
-          for model in users clients; do
-            java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3BufferComparisonBenchmark.write' \
-              -p writer=compiled,runtime,mapper \
-              -p sink=pooled,jacksonRecycler,jacksonDefault,jacksonSized,baos,nativeBytes \
-              -p model="$model" -p seed=12345,324 -p sizeKb=100 \
-              -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
-              -rf json -rff "$DIR/$model.json" > "$DIR/$model.log" 2>&1 || {
-                tail -100 "$DIR/$model.log"
-                exit 1
-              }
-            tail -35 "$DIR/$model.log"
-          done
+          {
+            echo "Commit: $GITHUB_SHA"
+            java -version 2>&1
+            lscpu
+          } > "$DIR/runner.txt"
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write' \
+            -p writer=manual,runtime,compiled \
+            -p fields=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly \
+            -p seed=12345,324 -p sizeKb=100 \
+            -f 0 -wi 0 -i 1 -r 50ms -t 1 \
+            > "$DIR/smoke.log" 2>&1 || {
+              tail -160 "$DIR/smoke.log"
+              exit 1
+            }
+          tail -35 "$DIR/smoke.log"
 
-      - name: Summarize sink-only comparisons
+      - name: Measure handwritten vs runtime vs compiled
         shell: bash
         run: |
-          python3 - <<'PY' | tee build/performance/jackson3-bytearraybuilder-recycler/summary.md >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          DIR=build/performance/jackson3-fields
+          JAR=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -type f | head -n 1)
+          java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.Jackson3UserFieldAblationBenchmark.write' \
+            -p writer=manual,runtime,compiled \
+            -p fields=original,full,noStrings,noNumeric,noTags,noFriends,stringsOnly,numericOnly,tagsOnly,friendsOnly \
+            -p seed=12345,324 -p sizeKb=100 \
+            -f 3 -wi 4 -i 5 -w 400ms -r 400ms -t 1 -prof gc \
+            -rf json -rff "$DIR/results.json" > "$DIR/benchmark.log" 2>&1 || {
+              tail -160 "$DIR/benchmark.log"
+              exit 1
+            }
+          tail -60 "$DIR/benchmark.log"
+
+      - name: Summarize ratios WITHIN each field projection
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/jackson3-fields/summary.md >> "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
-          base = Path("build/performance/jackson3-bytearraybuilder-recycler")
-          rows = json.loads((base/"users.json").read_text()) + json.loads((base/"clients.json").read_text())
-          assert len(rows) == 72, f"Expected 72 JMH measurements, got {len(rows)}"
-          d={}
-          for row in rows:
-              p=row["params"]
-              d[(p["model"],p["seed"],p["writer"],p["sink"])]=row
-          print("# Jackson3 PooledByteArrayOutputStream vs ByteArrayBuilder")
-          print("JDK25; 100KB; 3 forks, 4 warmup and 5 measurement iterations at 400 ms each.")
-          print("Same writer & stream API for pooled/jacksonRecycler/jacksonDefault/jacksonSized/baos. jacksonRecycler reuses a BufferRecycler per JMH thread.")
-          print("nativeBytes uses the writer-specific byte[] entrypoint and is a baseline, not a sink-only comparison.")
-          for model in ("users","clients"):
-            for seed in ("12345","324"):
-              for writer in ("compiled","runtime","mapper"):
-                print(f"\n## {model} seed={seed} writer={writer}")
-                print("| Sink | µs/op | JMH Error | Alloc B/op | Ratio vs Pooled |")
-                print("| --- | ---: | ---: | ---: | ---: |")
-                pooled=d[(model,seed,writer,"pooled")]["primaryMetric"]["score"]
-                for sink in ("pooled","jacksonRecycler","jacksonDefault","jacksonSized","baos","nativeBytes"):
-                  r=d[(model,seed,writer,sink)]
-                  score=r["primaryMetric"]["score"]
-                  err=r["primaryMetric"]["scoreError"]
-                  alloc=r["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
-                  print(f"| {sink} | {score:.3f} | ±{err:.3f} | {alloc:.0f} | {score/pooled:.3f}x |")
+          src = Path("build/performance/jackson3-fields/results.json")
+          rows = json.loads(src.read_text(encoding="utf-8"))
+          assert len(rows) == 60, f"expected 60 results, found {len(rows)}"
+          data = {(x["params"]["fields"], x["params"]["seed"], x["params"]["writer"]):x for x in rows}
+          for seed in ("12345", "324"):
+            print(f"\n## Jackson3 Users, input 100KB, seed={seed}")
+            print("| Projection | Manual µs | Runtime µs | Compiled µs | Compiled / Manual | Compiled / Runtime | Compiled alloc B/op |")
+            print("| --- | ---: | ---: | ---: | ---: | ---: | ---: |")
+            for fields in ("original","full","noStrings","noNumeric","noTags","noFriends","stringsOnly","numericOnly","tagsOnly","friendsOnly"):
+              d = {v:data[(fields,seed,v)] for v in ("manual","runtime","compiled")}
+              s={v:d[v]["primaryMetric"]["score"] for v in d}
+              alloc=d["compiled"]["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+              print(f"| {fields} | {s['manual']:.3f} | {s['runtime']:.3f} | {s['compiled']:.3f} | {s['compiled']/s['manual']:.3f}x | {s['compiled']/s['runtime']:.3f}x | {alloc:.0f} |")
+          print("\nNote: Do NOT compare absolute times across different field projections: output sizes differ.")
           PY
 
-      - name: Upload raw JMH metrics and logs
+      - name: Upload JMH data and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson3-bytearraybuilder-recycler-jdk25
-          path: build/performance/jackson3-bytearraybuilder-recycler/
+          name: jackson3-users-field-ablation-jdk25
+          path: build/performance/jackson3-fields/
           retention-days: 30
           if-no-files-found: warn
