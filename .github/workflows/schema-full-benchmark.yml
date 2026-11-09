@@ -6,6 +6,7 @@ on:
       - ".github/workflows/schema-full-benchmark.yml"
       - "scripts/benchmark-schema.sh"
       - "scripts/analyze-schema-benchmark.py"
+      - "scripts/test-analyze-schema-benchmark.py"
       - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java"
       - "sjf4j-testbench/build.gradle.kts"
   workflow_dispatch:
