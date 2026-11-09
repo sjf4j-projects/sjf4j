@@ -107,24 +107,38 @@ SELECTOR="$BASE$METHODS"'$'
 "${JAVA_CMD[@]}" -jar "$JAR" "$SELECTOR" -t 1 "${ARGS[@]}" \
     -rf json -rff "$RESULT" 2>&1 | tee "$LOG"
 
-python3 - "$RESULT" "$EXPECTED" "$PROFILE" <<'PY'
+python3 - "$RESULT" "$EXPECTED" "$PROFILE" "$GROUP" <<'PY'
 import json
+import math
 import sys
 
-path, expected, profile = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+path, expected, profile, group = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+methods = {
+    "validation": {"pojo_isValid_runtime", "pojo_isValid_compiled",
+                   "map_isValid_runtime", "map_isValid_compiled",
+                   "jsonNode_isValid_runtime", "jsonNode_isValid_networknt"},
+    "roundtrip": {"roundtrip_jackson", "roundtrip_compiled",
+                  "roundtrip_isValid_runtime", "roundtrip_isValid_compiled"},
+}[group]
 with open(path, encoding="utf-8") as source:
     rows = json.load(source)
-if len(rows) != expected:
-    raise SystemExit(f"Incomplete Creek {profile} benchmark: {len(rows)}/{expected} cases")
-names = [row["benchmark"].rsplit(".", 1)[-1] for row in rows]
-if len(set(names)) != expected:
-    raise SystemExit(f"Duplicate Creek benchmark methods: {names}")
-fork_count = {"smoke": 1, "quick": 1, "full": 3}[profile]
+names = [row["benchmark"] for row in rows]
+prefix = "org.sjf4j.testbench.schema.CreekSchemaBenchmark."
+if len(rows) != expected or set(names) != {prefix + name for name in methods}:
+    raise SystemExit(f"Incomplete or unexpected Creek {profile}/{group} methods: {names}")
 for row in rows:
-    raw = row["primaryMetric"].get("rawData", [])
-    if profile != "smoke" and len(raw) != fork_count:
-        raise SystemExit(f"Expected {fork_count} forks for {row['benchmark']}, got {len(raw)}")
-print(f"Creek {profile}/{sys.argv[1]}: all {expected} methods completed.")
+    metric = row["primaryMetric"]
+    if metric["scoreUnit"] != "us/op" or not math.isfinite(metric["score"]) or metric["score"] <= 0:
+        raise SystemExit(f"Invalid JMH score for {row['benchmark']}")
+    if profile == "smoke":
+        continue  # -f 0 has no independent fork rawData contract.
+    raw = metric.get("rawData", [])
+    fork_count = {"quick": 1, "full": 3}[profile]
+    iteration_count = {"quick": 2, "full": 5}[profile]
+    if len(raw) != fork_count or any(len(fork) != iteration_count for fork in raw):
+        raise SystemExit(f"Incomplete {profile} rawData for {row['benchmark']}: "
+                         f"expected {fork_count} forks x {iteration_count} iterations")
+print(f"Creek {profile}/{group}: all {expected} methods completed.")
 PY
 
 echo "Raw JMH JSON, log and metadata: $OUT_DIR"
