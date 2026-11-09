@@ -66,6 +66,32 @@ public class PathFullBenchmark {
         org.openjdk.jmh.Main.main(new String[]{PathFullBenchmark.class.getName()});
     }
 
+    // Keep the Full baseline self-contained: do not reuse JsonPathBenchmark
+    // states or parsing methods, even when comparing the same expressions.
+    @State(Scope.Thread)
+    public static class ParseData {
+        @Param({
+                "$.store.book[1].price",
+                "$.store.bicycle.color",
+                "$.store.book[*].author",
+                "$..price",
+                "$.store.book[?(@.price > 10)].title",
+                "$.store.book[0,2].title",
+                "$.store.book[1:4].title"
+        })
+        public String expr;
+    }
+
+    @Benchmark
+    public JsonPath parse_sjf4j(ParseData data) {
+        return JsonPath.parse(data.expr);
+    }
+
+    @Benchmark
+    public com.jayway.jsonpath.JsonPath parse_jayway(ParseData data) {
+        return com.jayway.jsonpath.JsonPath.compile(data.expr);
+    }
+
     public static class Bookstore {
         public Store store;
     }
