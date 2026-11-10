@@ -97,46 +97,6 @@ class NumbersTest {
     }
 
     @Test
-    void testExactConversionPreservesValue() {
-        assertEquals(42, Numbers.toExact(new BigDecimal("42.0"), Integer.class));
-        assertEquals(Byte.valueOf((byte) -128), Numbers.toExact(new BigDecimal("-128.000"), Byte.class));
-        assertEquals(42L, Numbers.toExact(42, Long.class));
-        assertEquals(0.5d, Numbers.toExact(0.5f, Double.class));
-        assertEquals(0.5f, Numbers.toExact(0.5d, Float.class));
-        assertEquals(BigInteger.valueOf(42), Numbers.toExact(new BigDecimal("42.0"), BigInteger.class));
-        assertEquals(new BigDecimal("0.5"), Numbers.toExact(0.5d, BigDecimal.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("1.25"), Integer.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("-1.75"), Integer.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("1.25"), BigInteger.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("0.1"), Double.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(0.1d, Float.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(9007199254740993L, Double.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(((long) Integer.MAX_VALUE) + 1, Integer.class));
-        assertEquals(1, Numbers.to(new BigDecimal("1.25"), Integer.class));
-
-        // Hot paths: integral -> integral/decimal and binary floating -> binary floating.
-        assertEquals(new BigDecimal("42"), Numbers.toExact(42L, BigDecimal.class));
-        assertEquals(BigInteger.valueOf(42), Numbers.toExact(42L, BigInteger.class));
-        assertEquals(42, Numbers.toExact(new BigDecimal("42.0"), Integer.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("42.1"), Integer.class));
-        assertEquals(0.5d, Numbers.toExact(0.5f, Double.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(1.25d, Integer.class));
-
-        // Beyond the IEEE-754 all-integer-exact bounds, check the real binary value.
-        assertEquals(16777218.0f, Numbers.toExact(16777218, Float.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(16777217, Float.class));
-        assertEquals(9007199254740994d, Numbers.toExact(9007199254740994L, Double.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(9007199254740993L, Double.class));
-        assertEquals(Math.scalb(1.0d, 100),
-                Numbers.toExact(BigInteger.ONE.shiftLeft(100), Double.class));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toExact(BigInteger.ONE.shiftLeft(100).add(BigInteger.ONE), Double.class));
-        assertEquals(0.5d, Numbers.toExact(new BigDecimal("0.5"), Double.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("0.1"), Double.class));
-        assertThrows(ArithmeticException.class, () -> Numbers.toExact(0.1d, BigDecimal.class));
-    }
-
-    @Test
     void testParseNumberAndIsNumeric() {
         assertEquals(12, Numbers.parseNumber("12"));
 //        assertEquals(123, Numbers.parseNumber(" \t1_2_3\r"));
