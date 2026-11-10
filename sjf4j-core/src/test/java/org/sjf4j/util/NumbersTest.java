@@ -82,6 +82,25 @@ class NumbersTest {
     }
 
     @Test
+    void testExactConversionPreservesValue() {
+        assertEquals(42, Numbers.toExact(new BigDecimal("42.0"), Integer.class));
+        assertEquals(-128, Numbers.toExact(new BigDecimal("-128.000"), Byte.class));
+        assertEquals(42L, Numbers.toExact(42, Long.class));
+        assertEquals(0.5d, Numbers.toExact(0.5f, Double.class));
+        assertEquals(0.5f, Numbers.toExact(0.5d, Float.class));
+        assertEquals(BigInteger.valueOf(42), Numbers.toExact(new BigDecimal("42.0"), BigInteger.class));
+        assertEquals(new BigDecimal("0.5"), Numbers.toExact(0.5d, BigDecimal.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("1.25"), Integer.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("-1.75"), Integer.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("1.25"), BigInteger.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("0.1"), Double.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(0.1d, Float.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(9007199254740993L, Double.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(((long) Integer.MAX_VALUE) + 1, Integer.class));
+        assertEquals(1, Numbers.to(new BigDecimal("1.25"), Integer.class));
+    }
+
+    @Test
     void testParseNumberAndIsNumeric() {
         assertEquals(12, Numbers.parseNumber("12"));
 //        assertEquals(123, Numbers.parseNumber(" \t1_2_3\r"));
