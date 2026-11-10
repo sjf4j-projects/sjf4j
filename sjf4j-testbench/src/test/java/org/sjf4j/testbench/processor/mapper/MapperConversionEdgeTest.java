@@ -3,6 +3,8 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.MappingOptions;
+import org.sjf4j.annotation.mapping.NumericPolicy;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -16,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Conversion boundaries inspired by MapStruct's conversion tests, with SJF4J's
- * strict numeric and dynamic-value conversion behavior as the oracle.
+ * range-checked numeric and strict dynamic-value conversion as the oracle.
  */
 public class MapperConversionEdgeTest {
 
@@ -37,6 +39,46 @@ public class MapperConversionEdgeTest {
     public void fractionalDecimalUsesRangeCheckedNumberTruncation() {
         assertEquals(1, mapper.toInteger(new NumericSource(new BigDecimal("1.25"))).value());
         assertEquals(-1, mapper.toInteger(new NumericSource(new BigDecimal("-1.75"))).value());
+    }
+
+    @Test
+    public void exactNumericAllowsIntegralDecimal() {
+        assertEquals(42, mapper.toIntegerExact(new NumericSource(new BigDecimal("42.0"))).value());
+        assertEquals(-128, mapper.toIntegerExact(new NumericSource(new BigDecimal("-128.000"))).value());
+    }
+
+    @Test
+    public void exactNumericRejectsFractionalDecimal() {
+        assertThrows(ArithmeticException.class,
+                () -> mapper.toIntegerExact(new NumericSource(new BigDecimal("1.25"))));
+        assertThrows(ArithmeticException.class,
+                () -> mapper.toIntegerExact(new NumericSource(new BigDecimal("-1.75"))));
+    }
+
+    @Test
+    public void exactNumericStillRejectsOutOfRange() {
+        assertThrows(ArithmeticException.class,
+                () -> mapper.toIntegerExact(new NumericSource(new BigDecimal("2147483648"))));
+    }
+
+    @Test
+    public void exactNumericAppliesToDynamicNumber() {
+        assertEquals(42, mapper.dynamicIntegerExact(new DynamicSource(new BigDecimal("42.0"))).value());
+        assertThrows(ArithmeticException.class,
+                () -> mapper.dynamicIntegerExact(new DynamicSource(new BigDecimal("1.25"))));
+        assertThrows(RuntimeException.class,
+                () -> mapper.dynamicIntegerExact(new DynamicSource("42")));
+    }
+
+    @Test
+    public void exactNumericAppliesToContainerElements() {
+        assertEquals(List.of(42), mapper.integerListExact(List.of(new BigDecimal("42.0"))));
+        assertThrows(ArithmeticException.class,
+                () -> mapper.integerListExact(List.of(new BigDecimal("42.25"))));
+
+        assertEquals(Map.of("a", 42), mapper.integerMapExact(Map.of("a", new BigDecimal("42.0"))));
+        assertThrows(ArithmeticException.class,
+                () -> mapper.integerMapExact(Map.of("a", new BigDecimal("42.25"))));
     }
 
     @Test
@@ -119,12 +161,20 @@ public class MapperConversionEdgeTest {
     @CompiledMapper
     public interface EdgeMapper {
         IntegerTarget toInteger(NumericSource source);
+        @MappingOptions(numeric = NumericPolicy.EXACT)
+        IntegerTarget toIntegerExact(NumericSource source);
         ByteTarget toByte(NumericSource source);
         IntegerTarget dynamicInteger(DynamicSource source);
+        @MappingOptions(numeric = NumericPolicy.EXACT)
+        IntegerTarget dynamicIntegerExact(DynamicSource source);
         BooleanTarget dynamicBoolean(DynamicSource source);
         EnumTarget enumValue(TextSource source);
         CharTarget character(TextSource source);
         List<Integer> integerList(List<Object> source);
+        @MappingOptions(numeric = NumericPolicy.EXACT)
+        List<Integer> integerListExact(List<Object> source);
         Map<String, Integer> integerMap(Map<String, Object> source);
+        @MappingOptions(numeric = NumericPolicy.EXACT)
+        Map<String, Integer> integerMapExact(Map<String, Object> source);
     }
 }
