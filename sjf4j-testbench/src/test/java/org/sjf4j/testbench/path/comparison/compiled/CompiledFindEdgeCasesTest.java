@@ -7,7 +7,6 @@ import org.sjf4j.annotation.path.FindByPath;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.path.JsonPath;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
