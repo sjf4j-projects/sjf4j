@@ -105,7 +105,7 @@ class DynamicCompiledComparisonTest {
     private final Paths paths = CompiledInstances.create(Paths.class);
 
     @Test
-    void recursiveDescentUsesFullRuntimeFallback() {
+    void recursiveDescentCompilesWithoutRuntimeFallback() {
         List<Object> arrays = Arrays.<Object>asList(List.of(0), List.of(1));
         CompiledComparisonSupport.assertMatches("recursive_descent_on_nested_arrays",
                 "$..*", "[[0],[1]]", "[[0],[1],0,1]",
@@ -113,7 +113,7 @@ class DynamicCompiledComparisonTest {
     }
 
     @Test
-    void dynamicallyTypedMapAndListRequireFullFallback() {
+    void dynamicallyTypedMapAndListCompileThroughObnt() {
         Map<String, Object> root = Map.of("items",
                 List.of(Map.of("title", "A"), Map.of("title", "B")));
         CompiledComparisonSupport.assertMatches("dynamic_map_element_type",
