@@ -39,9 +39,9 @@ public class CompiledMapperBatch2DiagnosticsTest {
                 invalid("explicit nested mapper is incompatible",
                         "@CompiledMapper public interface Mapper { "
                         + "class Leaf { public String name; } class Value { public String name; } "
-                        + "record From(Leaf leaf) {} record To(Value leaf) {} "
-                        + "@Mapping(target=\"leaf\",source=\"leaf\",nestedMapper=\"this::wrong\") "
-                        + "To map(From source); "
+                        + "record From(Leaf leaf) {} class To { public Value leaf; } "
+                        + "@MappingIfParentPresent(target=\"$.leaf\",source=\"leaf\",nestedMapper=\"this::wrong\") "
+                        + "void update(To target, From source); "
                         + "default Value wrong(Integer value) { return new Value(); } }",
                         "nestedMapper 'this::wrong' cannot map"),
                 invalid("unresolved preferred method reference",
@@ -50,15 +50,15 @@ public class CompiledMapperBatch2DiagnosticsTest {
                         + "@MappingOptions(using={\"this::missing\"}) Target map(Source source); }",
                         "using reference 'this::missing' cannot be resolved"),
                 invalid("duplicate MappingCreator rules",
-                        "@CompiledMapper @MappingCreator(targetType=Target.class,implementation=Target.class) "
-                        + "@MappingCreator(targetType=Target.class,implementation=Target.class) "
+                        "@CompiledMapper @MappingCreator(targetType=Mapper.Target.class,implementation=Mapper.Target.class) "
+                        + "@MappingCreator(targetType=Mapper.Target.class,implementation=Mapper.Target.class) "
                         + "public interface Mapper { "
                         + "class Target { public String name; } "
                         + "record Source(String name) {} Target map(Source source); }",
                         "duplicate @MappingCreator rules"),
                 invalid("ambiguous MappingCreator supertypes",
-                        "@CompiledMapper @MappingCreator(targetType=Left.class,implementation=Target.class) "
-                        + "@MappingCreator(targetType=Right.class,implementation=Target.class) "
+                        "@CompiledMapper @MappingCreator(targetType=Mapper.Left.class,implementation=Mapper.Target.class) "
+                        + "@MappingCreator(targetType=Mapper.Right.class,implementation=Mapper.Target.class) "
                         + "public interface Mapper { "
                         + "interface Left {} interface Right {} "
                         + "class Target implements Left,Right { public String name; } "
