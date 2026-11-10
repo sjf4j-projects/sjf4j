@@ -107,7 +107,6 @@ public final class Numbers {
      * Converts a Number to an Integer with range checking.
      */
     public static int toInt(Number number) {
-        requireRangeBeforeTruncation(number, Integer.MIN_VALUE, Integer.MAX_VALUE, "Integer");
         long longValue = toLong(number);
         return toInt(longValue);
     }
@@ -126,7 +125,6 @@ public final class Numbers {
      * Converts a Number to a short with range checking.
      */
     public static short toShort(Number number) {
-        requireRangeBeforeTruncation(number, Short.MIN_VALUE, Short.MAX_VALUE, "Short");
         long longValue = toLong(number);
         return toShort(longValue);
     }
@@ -145,7 +143,6 @@ public final class Numbers {
      * Converts a Number to a byte with range checking.
      */
     public static byte toByte(Number number) {
-        requireRangeBeforeTruncation(number, Byte.MIN_VALUE, Byte.MAX_VALUE, "Byte");
         long longValue = toLong(number);
         return toByte(longValue);
     }
@@ -158,32 +155,6 @@ public final class Numbers {
             throw new ArithmeticException("cannot convert long '" + longValue + "' to byte: out of 8-bit range");
         }
         return (byte) longValue;
-    }
-
-    /**
-     * Preserve range checks for a fractional number before truncation.
-     * A value slightly above the upper bound must not be silently truncated
-     * back into the destination range.
-     *
-     * <p>Integral inputs are already checked by toLong and the narrowing
-     * overloads, so this adds no work to their common path.</p>
-     */
-    private static void requireRangeBeforeTruncation(Number number, long min, long max,
-                                                     String target) {
-        if (number instanceof BigDecimal) {
-            BigDecimal decimal = (BigDecimal) number;
-            if (decimal.compareTo(BigDecimal.valueOf(min)) < 0 ||
-                    decimal.compareTo(BigDecimal.valueOf(max)) > 0) {
-                throw new ArithmeticException("cannot convert BigDecimal '" + number +
-                        "' to " + target + ": out of range");
-            }
-        } else if (number instanceof Double || number instanceof Float) {
-            double value = number.doubleValue();
-            if (value < min || value > max) {
-                throw new ArithmeticException("cannot convert floating-point Number '" + number +
-                        "' to " + target + ": out of range");
-            }
-        }
     }
 
     /**
@@ -265,13 +236,42 @@ public final class Numbers {
      */
     public static <T> T toExact(Number number, Class<T> clazz) {
         T converted = to(number, clazz);
-        if (converted == number) return converted;
-        if (converted instanceof Number &&
-                exactDecimal(number).compareTo(exactDecimal((Number) converted)) != 0) {
+        if (converted == number || !(converted instanceof Number)) return converted;
+        if (!sameNumericValue(number, (Number) converted)) {
             throw new ArithmeticException("cannot convert Number '" + number +
                     "' to " + clazz.getName() + " without precision loss");
         }
         return converted;
+    }
+
+    /**
+     * Common conversions need no decimal allocation. Fall back to exact
+     * decimal representations only when binary/decimal precision matters.
+     */
+    private static boolean sameNumericValue(Number source, Number target) {
+        if (isIntegralType(source)) {
+            // Numbers.to already checks the range of all integral targets.
+            if (isIntegralType(target) || target instanceof BigDecimal) return true;
+
+            if (isFloatingType(target) && !(source instanceof BigInteger)) {
+                long value = source.longValue();
+                long safe = target instanceof Float ? (1L << 24) : (1L << 53);
+                if (value >= -safe && value <= safe) return true;
+            }
+        } else if (isFloatingType(source)) {
+            if (isFloatingType(target)) {
+                return source.doubleValue() == target.doubleValue();
+            }
+            // Numbers.toLong has already ruled out the 2^63 boundary.
+            if (isIntegralType(target) && !(target instanceof BigInteger)) {
+                return source.doubleValue() == target.longValue();
+            }
+        } else if (source instanceof BigDecimal && isIntegralType(target) &&
+                !(target instanceof BigInteger)) {
+            return ((BigDecimal) source).compareTo(BigDecimal.valueOf(target.longValue())) == 0;
+        }
+
+        return exactDecimal(source).compareTo(exactDecimal(target)) == 0;
     }
 
     private static BigDecimal exactDecimal(Number number) {
