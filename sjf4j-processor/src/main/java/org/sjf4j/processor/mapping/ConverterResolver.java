@@ -83,8 +83,8 @@ public final class ConverterResolver {
     private boolean validateReferences(MappingPlan plan, GeneratedClass generated) {
         boolean valid = true;
 
-        for (String reference : using(plan)) {
-            if (!validateReference(plan, reference, "using", generated)) valid = false;
+        for (String reference : prefer(plan)) {
+            if (!validateReference(plan, reference, "prefer", generated)) valid = false;
         }
 
         for (MappingPlan.Rule rule : plan.rules()) {
@@ -182,8 +182,8 @@ public final class ConverterResolver {
         /*
          * Method-level converter preferences.
          */
-        List<String> using = using(plan);
-        Conversion preferred = resolvePreferred(using, sourceType, targetType, plan, generated);
+        List<String> prefer = prefer(plan);
+        Conversion preferred = resolvePreferred(prefer, sourceType, targetType, plan, generated);
 
         if (!generated.isValid()) return null;
 
@@ -303,14 +303,14 @@ public final class ConverterResolver {
 
     /*
      * --------------------------------------------------------------
-     * Using
+     * Preferred Converters
      * --------------------------------------------------------------
      */
 
-    private Conversion resolvePreferred(List<String> using, TypeMirror sourceType, TypeMirror targetType,
+    private Conversion resolvePreferred(List<String> prefer, TypeMirror sourceType, TypeMirror targetType,
                                         MappingPlan plan, GeneratedClass generated) {
-        for (String reference : using) {
-            String[] names = qualifiedReference(plan, reference, "using", generated);
+        for (String reference : prefer) {
+            String[] names = qualifiedReference(plan, reference, "prefer", generated);
 
             if (names == null) return null;
 
@@ -335,8 +335,8 @@ public final class ConverterResolver {
         }
 
         /*
-         * using is deliberately a preference. If none of its entries match this
-         * particular source/target pair, normal conversion resolution continues.
+         * If no preferred conversion matches this source/target pair,
+         * normal conversion resolution continues.
          */
         return null;
     }
@@ -421,12 +421,12 @@ public final class ConverterResolver {
         return true;
     }
 
-    private List<String> using(MappingPlan plan) {
+    private List<String> prefer(MappingPlan plan) {
         AnnotationMirror options = plan.options();
 
         if (options == null) return Collections.emptyList();
 
-        return stringArrayValue(options, "using");
+        return stringArrayValue(options, "prefer");
     }
 
     /*

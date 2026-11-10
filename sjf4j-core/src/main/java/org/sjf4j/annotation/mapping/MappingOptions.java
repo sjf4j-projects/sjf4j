@@ -30,7 +30,7 @@ public @interface MappingOptions {
      * that exist but are incompatible with a given conversion point are skipped;
      * references that cannot be resolved are errors.</p>
      */
-    String[] using() default {};
+    String[] prefer() default {};
 
     /**
      * Policy for reusing already-assignable source values. This is an
