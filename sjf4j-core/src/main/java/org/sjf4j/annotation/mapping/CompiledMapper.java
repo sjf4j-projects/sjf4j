@@ -43,7 +43,9 @@ import java.lang.annotation.Target;
  * string-to-number or boolean-to-string are intentionally not generated unless
  * supplied by an explicit mapper or compute expression.</p>
  *
- * <p>Collection and map mappings support recursive parameterized element/value
+ * <p>Assignable values are reused by reference by default (including root
+ * containers and nested properties). See {@link MappingOptions#reuse()}.
+ * Collection and map mappings support recursive parameterized element/value
  * conversion. When a unique compatible mapper method or generated converter is
  * available, the processor can apply it through nested {@code List},
  * {@code Set}, and parameterized {@code Map} value shapes such as
@@ -64,7 +66,7 @@ import java.lang.annotation.Target;
  * declared POJO, record, or constructor targets using public target properties
  * and constructor parameters. Root {@code Map<String,V>} create targets also
  * accept POJO/record gettable properties and {@code JsonObject}/JOJO members,
- * allocating a fresh target map and applying normal typed value conversion for
+ * allocating a fresh target map when direct assignment is not applicable and applying normal typed value conversion for
  * each first-level value. Plain {@code JsonObject} root create targets are
  * shallow projections: POJO/record gettable property values, {@code Map<String, ?>}
  * entries, or {@code JsonObject}/JOJO members are copied only at the first
@@ -90,8 +92,9 @@ import java.lang.annotation.Target;
  * source extras update/add target entries while target entries absent from the
  * source remain intact.</p>
  *
- * <p>Java array and collection root create targets allocate fresh typed
- * containers and apply the same typed element conversion rules used by
+ * <p>Java array and collection root create targets reuse assignable source values
+ * without conversion; otherwise they allocate fresh typed containers and apply
+ * the same typed element conversion rules used by
  * collection mappings, including strict scalar conversion, enum conversion,
  * {@code @NodeValue} codecs, method-level preferred or unique mapper methods,
  * and object-like to POJO conversion. This differs from plain
