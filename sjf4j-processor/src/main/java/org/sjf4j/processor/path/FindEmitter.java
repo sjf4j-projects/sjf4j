@@ -1,13 +1,12 @@
 package org.sjf4j.processor.path;
 
-import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
-import org.sjf4j.processor.property.PropertyAccess;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.VariableElement;
@@ -22,9 +21,11 @@ import java.util.Map;
  */
 final class FindEmitter {
     private final TypeSystem types;
+    private final NodeReadEmitter reads;
 
     FindEmitter(ProcessorContext context) {
         this.types = context.types;
+        this.reads = new NodeReadEmitter(context.types);
     }
 
     void emit(FindPlan plan, GeneratedClass generated) {
@@ -151,24 +152,8 @@ final class FindEmitter {
 
         if (step.segment instanceof PathSegment.Name) {
             String key = JavaWriter.stringLiteral(((PathSegment.Name) step.segment).name);
-            switch (access.kind()) {
-                case PROPERTY: {
-                    PropertyAccess read = access.property().read();
-                    expression = owner + "." + read.memberName() + (read.isMethod() ? "()" : "");
-                    break;
-                }
-                case MAP:
-                    expression = owner + ".get(" + key + ")";
-                    break;
-                case JSON_OBJECT:
-                    expression = owner + ".getNode(" + key + ")";
-                    break;
-                default:
-                    throw new AssertionError(access.kind());
-            }
-            out.line(localType(step.valueType) + " " + value + " = " +
-                    (access.kind() == NodeAccess.Kind.JSON_OBJECT
-                            ? convertResult(step.valueType, expression) : expression) + ";");
+            expression = reads.name(access, owner, key);
+            out.line(localType(step.valueType) + " " + value + " = " + expression + ";");
 
             if (access.kind() == NodeAccess.Kind.MAP ||
                     access.kind() == NodeAccess.Kind.JSON_OBJECT) {
@@ -189,10 +174,8 @@ final class FindEmitter {
             out.line("int " + index + " = " + ((PathSegment.Index) step.segment).index + ";");
             out.line("if (" + index + " < 0) " + index + " += " + size + ";");
             out.beginBlock("if (" + index + " >= 0 && " + index + " < " + size + ")");
-            expression = elementExpression(step.ownerType, owner, index);
-            out.line(localType(step.valueType) + " " + value + " = " +
-                    (access.kind() == NodeAccess.Kind.JSON_ARRAY
-                            ? convertResult(step.valueType, expression) : expression) + ";");
+            expression = reads.index(access, owner, index);
+            out.line(localType(step.valueType) + " " + value + " = " + expression + ";");
             emitStep(out, names, step.next, value, root, result, filters);
             out.endBlock();
             return;
@@ -204,10 +187,10 @@ final class FindEmitter {
     private void emitSelection(JavaWriter out, NameAllocator names, FindPlan.Step step,
                                String owner, String root, String result,
                                Map<FindPlan.Step, String> filters) {
-        NodeKind kind = types.nodeKind(step.ownerType);
-        boolean map = kind == NodeKind.OBJECT_MAP;
-        boolean array = step.ownerType.getKind() == TypeKind.ARRAY;
-        boolean list = kind == NodeKind.ARRAY_LIST;
+        NodeAccess.Kind kind = step.access.kind();
+        boolean map = kind == NodeAccess.Kind.MAP;
+        boolean array = kind == NodeAccess.Kind.ARRAY;
+        boolean list = kind == NodeAccess.Kind.LIST;
         boolean slice = step.kind == FindPlan.Kind.SLICE;
 
         String item = names.newName("item");
@@ -238,14 +221,14 @@ final class FindEmitter {
                             iterator + "." + (reverse ? "previous()" : "next()") + ";");
                 } else {
                     out.line(localType(step.valueType) + " " + item + " = " +
-                            sequenceRead(step.ownerType, step.valueType, owner, index) + ";");
+                            reads.index(step.access, owner, index) + ";");
                 }
             } else {
                 String index = names.newName("index");
                 out.beginBlock("for (int " + index + " = 0; " + index +
                         " < " + size + "; " + index + "++)");
                 out.line(localType(step.valueType) + " " + item + " = " +
-                        sequenceRead(step.ownerType, step.valueType, owner, index) + ";");
+                        reads.index(step.access, owner, index) + ";");
             }
         }
 
@@ -255,23 +238,6 @@ final class FindEmitter {
         emitStep(out, names, step.next, item, root, result, filters);
         if (step.kind == FindPlan.Kind.FILTER) out.endBlock();
         out.endBlock();
-    }
-
-    private String sequenceRead(TypeMirror ownerType, TypeMirror valueType,
-                                String receiver, String index) {
-        String expression = elementExpression(ownerType, receiver, index);
-        NodeKind kind = types.nodeKind(ownerType);
-        return kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO
-                ? convertResult(valueType, expression) : expression;
-    }
-
-    private String elementExpression(TypeMirror ownerType, String receiver, String index) {
-        if (ownerType.getKind() == TypeKind.ARRAY) return receiver + "[" + index + "]";
-        NodeKind kind = types.nodeKind(ownerType);
-        if (kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO) {
-            return receiver + ".getNode(" + index + ")";
-        }
-        return receiver + ".get(" + index + ")";
     }
 
     /** Emit a normalized slice loop, leaving the loop body indented. */
