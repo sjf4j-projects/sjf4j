@@ -82,6 +82,26 @@ class NumbersTest {
     }
 
     @Test
+    void testFractionalBoundsAreCheckedBeforeTruncation() {
+        assertEquals(127, Numbers.toInt(new BigDecimal("127.5")));
+        assertEquals(1, Numbers.toInt(new BigDecimal("1.9")));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toByte(new BigDecimal("127.5")));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toByte(new BigDecimal("-128.5")));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toShort(new BigDecimal("32767.5")));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toShort(new BigDecimal("-32768.5")));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toInt(new BigDecimal("2147483647.5")));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toInt(new BigDecimal("-2147483648.5")));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toInt(2147483647.5d));
+    }
+
+    @Test
     void testExactConversionPreservesValue() {
         assertEquals(42, Numbers.toExact(new BigDecimal("42.0"), Integer.class));
         assertEquals(Byte.valueOf((byte) -128), Numbers.toExact(new BigDecimal("-128.000"), Byte.class));
