@@ -131,16 +131,9 @@ final class FindCompiler {
             }
 
             if (access == null) {
-                // An inapplicable alternative contributes no nodes, but does
-                // not invalidate the other union members. Dynamic types still
-                // require runtime evaluation because their shape is unknown.
+                // An inapplicable static union choice selects nothing. A normal
+                // unresolved member remains a compile-time model error.
                 NodeKind kind = types.nodeKind(owner);
-                if (optional && kind != NodeKind.UNKNOWN &&
-                        kind != NodeKind.COMPILE_TIME_UNKNOWN) {
-                    return FindPlan.Step.empty(owner);
-                }
-                // Union choices with an inapplicable static shape contribute no nodes.
-                // An ordinary unresolved property is a compile-time model error.
                 if (optional && kind != NodeKind.UNKNOWN
                         && kind != NodeKind.COMPILE_TIME_UNKNOWN) {
                     return FindPlan.Step.empty(owner);
