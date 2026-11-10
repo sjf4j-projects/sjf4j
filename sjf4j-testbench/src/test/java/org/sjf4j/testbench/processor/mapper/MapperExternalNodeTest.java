@@ -9,6 +9,7 @@ import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.annotation.mapping.NullValuePolicy;
+import org.sjf4j.annotation.mapping.NumericPolicy;
 
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** CompiledMapper mapping from Jackson 2's backend-native JsonNode representations. */
 public class MapperExternalNodeTest {
@@ -86,6 +88,17 @@ public class MapperExternalNodeTest {
     }
 
     @Test
+    public void exactNumericPolicyAlsoChecksExternalJacksonNumericNodes() {
+        ExternalNodeMapper mapper = CompiledInstances.create(ExternalNodeMapper.class);
+
+        JsonNode integral = JsonNodeFactory.instance.objectNode().put("value", 2.0);
+        assertEquals(2, mapper.jacksonExactNumber(integral).value());
+
+        JsonNode fractional = JsonNodeFactory.instance.objectNode().put("value", 1.25);
+        assertThrows(ArithmeticException.class, () -> mapper.jacksonExactNumber(fractional));
+    }
+
+    @Test
     public void mapsJacksonObjectNodeToTypedMap() {
         ExternalNodeMapper mapper = CompiledInstances.create(ExternalNodeMapper.class);
 
@@ -115,6 +128,7 @@ public class MapperExternalNodeTest {
     }
 
     public record Address(String city, String zip) {}
+    public record JacksonNumericDto(Integer value) {}
 
     public record NameOnly(String name) {}
 
@@ -132,6 +146,9 @@ public class MapperExternalNodeTest {
     @CompiledMapper
     public interface ExternalNodeMapper {
         JacksonNodeDto fromJackson(JsonNode source);
+
+        @MappingOptions(numeric = NumericPolicy.EXACT)
+        JacksonNumericDto jacksonExactNumber(JsonNode source);
 
         Integer[] jacksonArray(JsonNode source);
 
