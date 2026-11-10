@@ -11,12 +11,9 @@ import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.property.PropertyAccess;
 import org.sjf4j.processor.type.TypeSystem;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
@@ -51,9 +48,6 @@ public final class ConversionEmitter
             new IdentityHashMap<>();
     private final Map<String, SharedConversion> sharedConversions = new LinkedHashMap<>();
     private String emittingShared;
-    private boolean emittingExact;
-    private final IdentityHashMap<ConversionCompiler.CompiledConversion, Boolean> exactByRoot =
-            new IdentityHashMap<>();
     private GeneratedNames generatedNames;
 
     public ConversionEmitter(ProcessorContext context, TypeElement mapper,
@@ -116,7 +110,6 @@ public final class ConversionEmitter
 
         compiled.put(conversion, resolved);
         preparedConversions.add(resolved);
-        exactByRoot.put(resolved, numericExact(plan));
         inspect(resolved);
 
         return true;
@@ -218,13 +211,7 @@ public final class ConversionEmitter
         Map<String, SharedConversion> candidates = new LinkedHashMap<>();
 
         for (ConversionCompiler.CompiledConversion conversion : preparedConversions) {
-            boolean previousExact = emittingExact;
-            emittingExact = Boolean.TRUE.equals(exactByRoot.get(conversion));
-            try {
-                collectShared(conversion, candidates);
-            } finally {
-                emittingExact = previousExact;
-            }
+            collectShared(conversion, candidates);
         }
 
         for (SharedConversion candidate : candidates.values()) {
@@ -245,15 +232,12 @@ public final class ConversionEmitter
                         + " source)");
                 NameAllocator locals = generated.names().helperLocals("source");
                 String previous = emittingShared;
-                boolean previousExact = emittingExact;
                 emittingShared = helper.signature;
-                emittingExact = helper.exactNumeric;
                 try {
                     String result = emitStructural(out, locals, helper.conversion, "source");
                     out.line("return " + result + ";");
                 } finally {
                     emittingShared = previous;
-                    emittingExact = previousExact;
                 }
                 out.endBlock();
             });
@@ -268,7 +252,7 @@ public final class ConversionEmitter
             String signature = semanticSignature(conversion);
             SharedConversion shared = candidates.get(signature);
             if (shared == null) {
-                shared = new SharedConversion(signature, conversion, emittingExact);
+                shared = new SharedConversion(signature, conversion);
                 candidates.put(signature, shared);
             }
             shared.occurrences++;
@@ -325,15 +309,12 @@ public final class ConversionEmitter
     private static final class SharedConversion {
         final String signature;
         final ConversionCompiler.CompiledConversion conversion;
-        final boolean exactNumeric;
         int occurrences;
         String name;
 
-        SharedConversion(String signature, ConversionCompiler.CompiledConversion conversion,
-                         boolean exactNumeric) {
+        SharedConversion(String signature, ConversionCompiler.CompiledConversion conversion) {
             this.signature = signature;
             this.conversion = conversion;
-            this.exactNumeric = exactNumeric;
         }
     }
 
@@ -351,13 +332,7 @@ public final class ConversionEmitter
 
         if (resolved == null) throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
 
-        boolean previousExact = emittingExact;
-        emittingExact = numericExact(plan);
-        try {
-            return emit(out, names, resolved, source);
-        } finally {
-            emittingExact = previousExact;
-        }
+        return emit(out, names, resolved, source);
     }
 
     @Override
@@ -370,9 +345,6 @@ public final class ConversionEmitter
 
         if (resolved.kind() != ConversionCompiler.CompiledConversion.Kind.MAP) throw new IllegalArgumentException("root map update requires a map conversion");
 
-        boolean previousExact = emittingExact;
-        emittingExact = numericExact(plan);
-        try {
         out.beginBlock("if (" + source + " != null)");
         String entry = names.newName("entry");
 
@@ -419,9 +391,6 @@ public final class ConversionEmitter
         out.dedent();
         out.line("}");
         out.endBlock();
-        } finally {
-            emittingExact = previousExact;
-        }
     }
 
     /*
@@ -511,18 +480,9 @@ public final class ConversionEmitter
          */
         if (types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN) {
             String value = names.newName("converted");
-            if (emittingExact && isNumber(targetName)) {
-                String raw = names.newName("raw");
-                out.line("java.lang.Object " + raw + " = " + source + ";");
-                out.line(localType(targetType) + " " + value + " = " + raw +
-                        " == null ? null : org.sjf4j.util.Numbers.toExact(" +
-                        "org.sjf4j.node.NodeMapper.toNumber(" + raw + ", this.context), " +
-                        classLiteral(targetType) + ");");
-            } else {
-                out.line(localType(targetType) + " " + value + " = " + mapperToCast(targetType) +
-                        "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
-                        ", this.context);");
-            }
+            out.line(localType(targetType) + " " + value + " = " + mapperToCast(targetType) +
+                    "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
+                    ", this.context);");
 
             return value;
         }
@@ -533,8 +493,7 @@ public final class ConversionEmitter
         if (isNumber(sourceName) && isNumber(targetName)) {
             String value = names.newName("converted");
             out.line(localType(targetType) + " " + value + " = " + source
-                    + " == null ? null : org.sjf4j.util.Numbers." +
-                    (emittingExact ? "toExact(" : "to(") + source
+                    + " == null ? null : org.sjf4j.util.Numbers.to(" + source
                     + ", " + classLiteral(targetType) + ");");
 
             return value;
@@ -1216,20 +1175,6 @@ public final class ConversionEmitter
     private boolean isEnum(TypeMirror type) {
         TypeElement element = types.typeElement(types.concrete(type));
         return element != null && "ENUM".equals(element.getKind().name());
-    }
-
-    private boolean numericExact(MappingPlan plan) {
-        AnnotationMirror options = plan.options();
-        if (options == null) return false;
-        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
-                context.elements.getElementValuesWithDefaults(options).entrySet()) {
-            if (entry.getKey().getSimpleName().contentEquals("numeric")) {
-                Object policy = entry.getValue().getValue();
-                return policy instanceof VariableElement &&
-                        ((VariableElement) policy).getSimpleName().contentEquals("EXACT");
-            }
-        }
-        return false;
     }
 
     private boolean isNumber(String name) {
