@@ -1,5 +1,6 @@
 package org.sjf4j.processor.path;
 
+import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
@@ -13,6 +14,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -30,23 +32,20 @@ final class FindEmitter {
 
     void emit(FindPlan plan, GeneratedClass generated) {
         final Map<FindPlan.Step, String> filters = new IdentityHashMap<>();
-        final String fallback;
-        if (plan.runtimeFallback) {
-            fallback = generated.names().field("FIND_PATH");
-            generated.addField(out -> out.line(
-                    "private static final org.sjf4j.path.JsonPath " + fallback +
-                    " = org.sjf4j.path.JsonPath.parse(" +
-                    JavaWriter.stringLiteral(plan.expression) + ");"));
-        } else {
-            fallback = null;
-            prepareFilters(plan.traversal, plan.expression, generated, filters, -1, -1);
+        prepareFilters(plan.traversal, plan.expression, generated, filters, -1, -1);
+
+        final Map<FindPlan.Step, String> descendants = new LinkedHashMap<>();
+        collectDescendants(plan.traversal, generated, descendants);
+        for (Map.Entry<FindPlan.Step, String> descendant : descendants.entrySet()) {
+            generated.addHelper(out -> emitDescendantHelper(
+                    out, plan, descendant.getKey(), descendant.getValue(),
+                    filters, descendants));
         }
 
         generated.addMethod(out -> {
             VariableElement root = plan.root;
             String rootName = root.getSimpleName().toString();
-            NameAllocator names = new NameAllocator();
-            names.reserve(rootName);
+            NameAllocator names = generated.names().locals(plan.method);
 
             out.line("@Override");
             out.beginBlock("public " + plan.method.getReturnType() + " " +
@@ -61,19 +60,68 @@ final class FindEmitter {
             out.line("java.util.ArrayList<" + localType(plan.elementType) + "> " + result +
                     " = new java.util.ArrayList<>();");
 
-            if (plan.runtimeFallback) {
-                // Runtime path is cached once per generated interface, not parsed per invocation.
-                out.beginBlock("for (Object value : " + fallback + ".find(" + rootName + "))");
-                out.line(result + ".add(" + convertResult(plan.elementType, "value") + ");");
-                out.endBlock();
-            } else {
-                emitStep(out, names, plan.traversal, rootName, rootName, result, filters);
+            String access = "null";
+            if (needsDynamicRead(plan.traversal)) {
+                access = names.newName("access");
+                out.line("org.sjf4j.node.NodeWalker.Access " + access +
+                        " = new org.sjf4j.node.NodeWalker.Access();");
             }
-
+            emitStep(out, names, plan.traversal, rootName, rootName, result,
+                    filters, descendants, access);
             out.line("return " + result + ";");
             out.endBlock();
         });
+    }
 
+    private void collectDescendants(FindPlan.Step step, GeneratedClass generated,
+                                    Map<FindPlan.Step, String> descendants) {
+        if (step == null) return;
+        if (step.kind == FindPlan.Kind.DESCENDANT) {
+            descendants.put(step, generated.names().helperMethod("findDescendant"));
+        }
+        for (FindPlan.Step alternative : step.alternatives) {
+            collectDescendants(alternative, generated, descendants);
+        }
+        collectDescendants(step.next, generated, descendants);
+    }
+
+    private boolean needsDynamicRead(FindPlan.Step step) {
+        if (step == null) return false;
+        if (step.kind == FindPlan.Kind.READ && step.access != null
+                && step.access.kind() == NodeAccess.Kind.DYNAMIC) return true;
+        for (FindPlan.Step alternative : step.alternatives) {
+            if (needsDynamicRead(alternative)) return true;
+        }
+        return needsDynamicRead(step.next);
+    }
+
+    private void emitDescendantHelper(JavaWriter out, FindPlan plan,
+                                      FindPlan.Step descendant, String helper,
+                                      Map<FindPlan.Step, String> filters,
+                                      Map<FindPlan.Step, String> descendants) {
+        out.beginBlock("private static void " + helper + "(" + plan.root.asType() +
+                " root, Object current, java.util.List<" + localType(plan.elementType) +
+                "> result, org.sjf4j.node.NodeWalker.Access access)");
+        out.line("if (current == null) return;");
+
+        NameAllocator names = new NameAllocator()
+                .reserve("root").reserve("current").reserve("result").reserve("access");
+        emitStep(out, names, descendant.next, "current", "root", "result",
+                filters, descendants, "access");
+
+        String shape = names.newName("shape");
+        out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(current);");
+        out.beginBlock("if (" + shape + ".isObject())");
+        out.beginBlock("org.sjf4j.node.NodeWalker.forEachObject(current, (key, child) ->");
+        out.line(helper + "(root, child, result, access);");
+        out.endBlock(");");
+        out.endBlock();
+        out.beginBlock("else if (" + shape + ".isArray())");
+        out.beginBlock("org.sjf4j.node.NodeWalker.forEachArray(current, (index, child) ->");
+        out.line(helper + "(root, child, result, access);");
+        out.endBlock(");");
+        out.endBlock();
+        out.endBlock();
     }
 
     private void prepareFilters(FindPlan.Step step, String expression,
