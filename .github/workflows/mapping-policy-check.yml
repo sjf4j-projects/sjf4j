@@ -25,18 +25,11 @@ jobs:
       - name: Processor diagnostics tests
         id: processor
         continue-on-error: true
-        run: ./gradlew :sjf4j-processor:test --tests org.sjf4j.processor.CompiledMapperDiagnosticsTest --stacktrace
+        run: ./gradlew :sjf4j-processor:test --tests 'org.sjf4j.processor.CompiledMapper*' --stacktrace
       - name: Mapping regression suites
         id: mapping
         continue-on-error: true
-        run: |
-          ./gradlew :sjf4j-testbench:test \
-            --tests org.sjf4j.testbench.processor.mapper.MapperNullSemanticsTest \
-            --tests org.sjf4j.testbench.processor.mapper.MapperConversionEdgeTest \
-            --tests org.sjf4j.testbench.processor.mapper.MapperNestedGraphTest \
-            --tests org.sjf4j.testbench.processor.mapper.MapperUpdateEdgeTest \
-            --tests org.sjf4j.testbench.processor.mapper.MapperSourceResolutionTest \
-            --stacktrace
+        run: ./gradlew :sjf4j-testbench:test --tests 'org.sjf4j.testbench.processor.mapper.Mapper*' --stacktrace
       - name: Summarize JUnit XML
         if: always()
         run: |
