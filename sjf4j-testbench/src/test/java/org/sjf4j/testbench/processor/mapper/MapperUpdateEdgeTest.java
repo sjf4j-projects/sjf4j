@@ -105,7 +105,7 @@ public class MapperUpdateEdgeTest {
         UpdateTarget target = target();
         ChildTarget existing = target.child;
 
-        mapper.ensureName(target, new UpdateSource(null, null, "updated", null));
+        mapper.ensureName(target, new NameSource("updated"));
 
         assertSame(existing, target.child);
         assertEquals("updated", target.child.label);
@@ -116,7 +116,7 @@ public class MapperUpdateEdgeTest {
         UpdateTarget target = target();
         target.child = null;
 
-        mapper.ensureName(target, new UpdateSource(null, null, "created", null));
+        mapper.ensureName(target, new NameSource("created"));
 
         assertEquals("created", target.child.label);
     }
@@ -146,6 +146,7 @@ public class MapperUpdateEdgeTest {
     public record UpdateSource(List<Integer> values, Map<String, String> flags,
                                String name, ChildSource child) {}
     public record ChildSource(String label) {}
+    public record NameSource(String name) {}
 
     public static final class UpdateTarget {
         public List<Long> values;
@@ -174,7 +175,7 @@ public class MapperUpdateEdgeTest {
         void ignoreName(UpdateTarget target, UpdateSource source);
 
         @EnsureMapping(target = "$.child.label", source = "name")
-        void ensureName(UpdateTarget target, UpdateSource source);
+        void ensureName(UpdateTarget target, NameSource source);
 
         @MappingOptions(nulls = NullValuePolicy.IGNORE)
         void preserveChild(UpdateTarget target, UpdateSource source);
