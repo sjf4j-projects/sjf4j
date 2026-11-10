@@ -225,81 +225,10 @@ public final class Numbers {
     }
 
     /**
-     * Converts a Number without losing its exact mathematical value.
-     *
-     * <p>Integral and decimal values are compared precisely. Binary
-     * floating-point inputs and outputs are compared using their exact
-     * representable values, rather than their shortest decimal formatting.
-     * The ordinary range checks still apply.</p>
-     *
-     * @throws ArithmeticException if conversion overflows or loses precision
-     */
-    public static <T> T toExact(Number number, Class<T> clazz) {
-        T converted = to(number, clazz);
-        if (converted == number || !(converted instanceof Number)) return converted;
-        if (!sameNumericValue(number, (Number) converted)) {
-            throw new ArithmeticException("cannot convert Number '" + number +
-                    "' to " + clazz.getName() + " without precision loss");
-        }
-        return converted;
-    }
-
-    /**
-     * Common conversions need no decimal allocation. Fall back to exact
-     * decimal representations only when binary/decimal precision matters.
-     */
-    private static boolean sameNumericValue(Number source, Number target) {
-        if (isIntegralType(source)) {
-            // Numbers.to already checks the range of all integral targets.
-            if (isIntegralType(target) || target instanceof BigDecimal) return true;
-
-            if (isFloatingType(target) && !(source instanceof BigInteger)) {
-                long value = source.longValue();
-                long safe = target instanceof Float ? (1L << 24) : (1L << 53);
-                if (value >= -safe && value <= safe) return true;
-            }
-        } else if (isFloatingType(source)) {
-            if (isFloatingType(target)) {
-                return source.doubleValue() == target.doubleValue();
-            }
-            // Numbers.toLong has already ruled out the 2^63 boundary.
-            if (isIntegralType(target) && !(target instanceof BigInteger)) {
-                return source.doubleValue() == target.longValue();
-            }
-        } else if (source instanceof BigDecimal && isIntegralType(target) &&
-                !(target instanceof BigInteger)) {
-            return ((BigDecimal) source).compareTo(BigDecimal.valueOf(target.longValue())) == 0;
-        }
-
-        return exactDecimal(source).compareTo(exactDecimal(target)) == 0;
-    }
-
-    private static BigDecimal exactDecimal(Number number) {
-        if (number instanceof BigDecimal) return (BigDecimal) number;
-        if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
-        if (number instanceof Double) {
-            double value = number.doubleValue();
-            if (!Double.isFinite(value)) {
-                throw new ArithmeticException("cannot compare non-finite Number '" + number + "' exactly");
-            }
-            return new BigDecimal(value);
-        }
-        if (number instanceof Float) {
-            float value = number.floatValue();
-            if (!Float.isFinite(value)) {
-                throw new ArithmeticException("cannot compare non-finite Number '" + number + "' exactly");
-            }
-            return new BigDecimal((double) value);
-        }
-        if (number instanceof Byte || number instanceof Short ||
-                number instanceof Integer || number instanceof Long) {
-            return BigDecimal.valueOf(number.longValue());
-        }
-        return new BigDecimal(number.toString());
-    }
-
-    /**
      * Converts a Number to the requested numeric target type.
+     *
+     * <p>Fractional parts and floating-point precision may be lost. The
+     * existing integral range checks still apply.</p>
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Number number, Class<T> clazz) {
