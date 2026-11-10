@@ -15,13 +15,6 @@ so regular tests can reuse them.
 
 | Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled | Native / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Read / Clients / POJO | Jackson2 | 622.862 | 592.055 | 199.988 | 175.102 | 3.56× |
-| Read / Clients / POJO | Jackson3 | 772.862 | 754.982 | 249.817 | 218.543 | 3.54× |
-| Read / Clients / POJO | Fastjson2 | 74.604 | — | 103.453 | 74.001 | 1.01× |
-| Read / Clients / POJO | Gson | 833.780 | — | 385.232 | 333.997 | 2.50× |
-| Read / Clients / POJO | JSON-P | — | — | 491.747 | 445.431 | — |
-| Read / Clients / POJO | Simple | — | — | 408.852 | 385.367 | — |
-| Read / Clients / POJO | SnakeYAML | 6,704.549 | — | 4,539.373 | 4,380.591 | 1.53× |
 | Write / Users / POJO | Jackson2 | 139.779 | 121.073 | 112.040 | 110.857 | 1.26× |
 | Write / Users / POJO | Jackson3 | 184.547 | 198.032 | 177.837 | 168.982 | 1.09× |
 | Write / Users / POJO | Fastjson2 | 53.039 | — | 74.299 | 53.399 | 0.99× |
@@ -29,18 +22,18 @@ so regular tests can reuse them.
 | Write / Users / POJO | JSON-P | — | — | 233.514 | 190.743 | — |
 | Write / Users / POJO | Simple | — | — | 501.776 | 478.316 | — |
 | Write / Users / POJO | SnakeYAML | 9,208.703 | — | 4,141.737 | 4,108.626 | 2.24× |
+| Read / Clients / POJO | Jackson2 | 622.862 | 592.055 | 199.988 | 175.102 | 3.56× |
+| Read / Clients / POJO | Jackson3 | 772.862 | 754.982 | 249.817 | 218.543 | 3.54× |
+| Read / Clients / POJO | Fastjson2 | 74.604 | — | 103.453 | 74.001 | 1.01× |
+| Read / Clients / POJO | Gson | 833.780 | — | 385.232 | 333.997 | 2.50× |
+| Read / Clients / POJO | JSON-P | — | — | 491.747 | 445.431 | — |
+| Read / Clients / POJO | Simple | — | — | 408.852 | 385.367 | — |
+| Read / Clients / POJO | SnakeYAML | 6,704.549 | — | 4,539.373 | 4,380.591 | 1.53× |
 
 **Allocation (B/op, lower is better).** Untrimmed JMH allocation scores, averaged equally across two seeds, not the latency-selected forks. The rightmost `Native / Compiled` is the B/op ratio (below 1× means Compiled allocates more), not a latency speedup.
 
 | Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled | Native / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Read / Clients / POJO | Jackson2 | 1,241,410 | 1,225,244 | 282,793 | 282,937 | 4.39× |
-| Read / Clients / POJO | Jackson3 | 1,213,238 | 1,197,067 | 254,572 | 254,754 | 4.76× |
-| Read / Clients / POJO | Fastjson2 | 255,213 | — | 256,333 | 254,605 | 1.00× |
-| Read / Clients / POJO | Gson | 1,399,430 | — | 486,071 | 486,214 | 2.88× |
-| Read / Clients / POJO | JSON-P | — | — | 590,649 | 590,910 | — |
-| Read / Clients / POJO | Simple | — | — | 437,975 | 438,119 | — |
-| Read / Clients / POJO | SnakeYAML | 9,134,260 | — | 6,143,448 | 6,143,591 | 1.49× |
 | Write / Users / POJO | Jackson2 | 199,054 | 198,319 | 112,061 | 112,061 | 1.78× |
 | Write / Users / POJO | Jackson3 | 199,069 | 198,334 | 112,085 | 112,085 | 1.78× |
 | Write / Users / POJO | Fastjson2 | 105,116 | — | 105,061 | 105,060 | 1.00× |
@@ -48,6 +41,13 @@ so regular tests can reuse them.
 | Write / Users / POJO | JSON-P | — | — | 317,176 | 317,176 | — |
 | Write / Users / POJO | Simple | — | — | 216,168 | 216,167 | — |
 | Write / Users / POJO | SnakeYAML | 6,824,854 | — | 5,866,154 | 5,866,153 | 1.16× |
+| Read / Clients / POJO | Jackson2 | 1,241,410 | 1,225,244 | 282,793 | 282,937 | 4.39× |
+| Read / Clients / POJO | Jackson3 | 1,213,238 | 1,197,067 | 254,572 | 254,754 | 4.76× |
+| Read / Clients / POJO | Fastjson2 | 255,213 | — | 256,333 | 254,605 | 1.00× |
+| Read / Clients / POJO | Gson | 1,399,430 | — | 486,071 | 486,214 | 2.88× |
+| Read / Clients / POJO | JSON-P | — | — | 590,649 | 590,910 | — |
+| Read / Clients / POJO | Simple | — | — | 437,975 | 438,119 | — |
+| Read / Clients / POJO | SnakeYAML | 9,134,260 | — | 6,143,448 | 6,143,591 | 1.49× |
 
 **[Complete 1/10/100KB results, all implementations, allocation, and fork stability](binding/fabien-v150-2026-11-09.md)** · **[Original JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/42581094035/artifacts/13675482490)**
 
