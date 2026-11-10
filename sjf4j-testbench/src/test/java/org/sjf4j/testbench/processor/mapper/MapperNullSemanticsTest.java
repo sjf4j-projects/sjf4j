@@ -6,6 +6,7 @@ import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.annotation.mapping.NullValuePolicy;
+import org.sjf4j.annotation.mapping.ReusePolicy;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -183,8 +184,10 @@ public class MapperNullSemanticsTest {
 
         OuterTarget outer(OuterSource source);
 
+        @MappingOptions(reuse = ReusePolicy.ASSIGNABLE)
         List<String> children(List<String> source);
 
+        @MappingOptions(reuse = ReusePolicy.ASSIGNABLE)
         Map<String, String> dictionary(Map<String, String> source);
 
         @Mapping(target = "name", source = "first:name")
