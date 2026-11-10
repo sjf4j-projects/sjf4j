@@ -15,7 +15,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -124,27 +123,27 @@ public class MapperNullSemanticsTest {
     }
 
     @Test
-    public void emptyListMapsToEmptyListAndAllocatesTarget() {
+    public void emptyAssignableListUsesDirectRootAssignment() {
         List<String> source = new ArrayList<>();
         List<String> result = mapper.children(source);
         assertEquals(List.of(), result);
-        assertNotSame(source, result);
+        assertSame(source, result);
     }
 
     @Test
-    public void nullListElementsArePreservedInTypedRootMapping() {
+    public void nullListElementsAndRootIdentityArePreserved() {
         List<String> source = Arrays.asList("first", null, "third");
         List<String> result = mapper.children(source);
         assertEquals(source, result);
-        assertNotSame(source, result);
+        assertSame(source, result);
     }
 
     @Test
-    public void emptyMapMapsToEmptyMapAndAllocatesTarget() {
+    public void emptyAssignableMapUsesDirectRootAssignment() {
         Map<String, String> source = new LinkedHashMap<>();
         Map<String, String> result = mapper.dictionary(source);
         assertEquals(Map.of(), result);
-        assertNotSame(source, result);
+        assertSame(source, result);
     }
 
     public record NullableSource(String name, Integer count) {}
