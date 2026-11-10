@@ -7,6 +7,8 @@ import org.sjf4j.annotation.path.FindByPath;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.LinkedHashSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -18,6 +20,8 @@ class PartialFallbackComparisonTest {
 
     record Root(int value, List<Map<String, Integer>> items) {}
     record NestedRoot(int limit, List<Object> books) {}
+    record Member(String name, int age) {}
+    record SetRoot(Set<Member> members) {}
 
     @CompiledNavigator(fallback = true)
     interface Paths {
@@ -35,6 +39,9 @@ class PartialFallbackComparisonTest {
 
         @FindByPath("$.books..[?(@.score > $.limit)].title")
         List<String> descendantFilter(NestedRoot root);
+
+        @FindByPath("$.members[?(@.age >= 18)].name")
+        List<String> filterSetMembers(SetRoot root);
     }
 
     private final Paths paths = CompiledInstances.create(Paths.class);
@@ -49,6 +56,15 @@ class PartialFallbackComparisonTest {
                 "$.books..[?(@.score > $.limit)].title",
                 root, paths.descendantFilter(root));
         assertEquals(List.of("High"), paths.descendantFilter(root));
+    }
+
+    @Test
+    void filterOnSetKeepsCompiledIterationAndCachedPredicate() {
+        SetRoot root = new SetRoot(new LinkedHashSet<>(List.of(
+                new Member("Ada", 20), new Member("Bob", 15), new Member("Cy", 30))));
+        CompiledComparisonSupport.assertEquivalent("filter_set_members",
+                "$.members[?(@.age >= 18)].name", root, paths.filterSetMembers(root));
+        assertEquals(List.of("Ada", "Cy"), paths.filterSetMembers(root));
     }
 
     @Test
