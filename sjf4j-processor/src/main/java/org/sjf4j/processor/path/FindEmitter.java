@@ -156,17 +156,29 @@ final class FindEmitter {
 
     private void emitStep(JavaWriter out, NameAllocator names, FindPlan.Step step,
                           String owner, String root, String result,
-                          Map<FindPlan.Step, String> filters) {
+                          Map<FindPlan.Step, String> filters,
+                          Map<FindPlan.Step, String> descendants, String accessVar) {
         switch (step.kind) {
-            case COLLECT:
-                out.line(result + ".add(" + owner + ");");
+            case COLLECT: {
+                String value = owner;
+                if (!types.isObject(step.valueType) &&
+                        !types.isAssignableBoxedGeneric(step.ownerType, step.valueType)) {
+                    value = "(" + localType(step.valueType) + ") " + owner;
+                }
+                out.line(result + ".add(" + value + ");");
                 return;
+            }
             case EMPTY:
                 return;
             case UNION:
                 for (FindPlan.Step alternative : step.alternatives) {
-                    emitStep(out, names, alternative, owner, root, result, filters);
+                    emitStep(out, names, alternative, owner, root, result,
+                            filters, descendants, accessVar);
                 }
+                return;
+            case DESCENDANT:
+                out.line(descendants.get(step) + "(" + root + ", " + owner +
+                        ", " + result + ", " + accessVar + ");");
                 return;
             default:
                 break;
@@ -177,40 +189,64 @@ final class FindEmitter {
 
         switch (step.kind) {
             case READ:
-                emitRead(out, names, step, owner, root, result, filters);
+                emitRead(out, names, step, owner, root, result, filters, descendants, accessVar);
                 break;
             case WILDCARD:
             case SLICE:
             case FILTER:
-                emitSelection(out, names, step, owner, root, result, filters);
+                emitSelection(out, names, step, owner, root, result, filters,
+                        descendants, accessVar);
                 break;
             default:
                 throw new AssertionError(step.kind);
         }
-
         if (guarded) out.endBlock();
     }
 
     private void emitRead(JavaWriter out, NameAllocator names, FindPlan.Step step,
                           String owner, String root, String result,
-                          Map<FindPlan.Step, String> filters) {
-        NodeAccess access = step.access;
+                          Map<FindPlan.Step, String> filters,
+                          Map<FindPlan.Step, String> descendants, String accessVar) {
+        NodeAccess nodeAccess = step.access;
         String value = names.newName("value");
-        String expression;
+        if (nodeAccess.kind() == NodeAccess.Kind.DYNAMIC) {
+            boolean name = step.segment instanceof PathSegment.Name;
+            String shape = names.newName("shape");
+            out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(" + owner + ");");
+            out.beginBlock("if (" + shape + (name ? ".isObject()" : ".isArray() && !(" +
+                    owner + " instanceof java.util.Set)") + ")");
+            if (name) {
+                String key = JavaWriter.stringLiteral(((PathSegment.Name) step.segment).name);
+                out.line("org.sjf4j.node.NodeWalker.getAccessInObject(" + owner +
+                        ", " + key + ", " + accessVar + ");");
+            } else {
+                int index = ((PathSegment.Index) step.segment).index;
+                out.line("org.sjf4j.node.NodeWalker.getAccessInArray(" + owner + ", " +
+                        index + ", " + accessVar + ");");
+            }
+            out.beginBlock("if (" + accessVar + ".present)");
+            out.line("Object " + value + " = " + accessVar + ".node;");
+            emitStep(out, names, step.next, value, root, result,
+                    filters, descendants, accessVar);
+            out.endBlock();
+            out.endBlock();
+            return;
+        }
 
         if (step.segment instanceof PathSegment.Name) {
             String key = JavaWriter.stringLiteral(((PathSegment.Name) step.segment).name);
-            expression = reads.name(access, owner, key);
+            String expression = reads.name(nodeAccess, owner, key);
             out.line(localType(step.valueType) + " " + value + " = " + expression + ";");
-
-            if (access.kind() == NodeAccess.Kind.MAP ||
-                    access.kind() == NodeAccess.Kind.JSON_OBJECT) {
+            if (nodeAccess.kind() == NodeAccess.Kind.MAP ||
+                    nodeAccess.kind() == NodeAccess.Kind.JSON_OBJECT) {
                 out.beginBlock("if (" + value + " != null || " + owner +
                         ".containsKey(" + key + "))");
-                emitStep(out, names, step.next, value, root, result, filters);
+                emitStep(out, names, step.next, value, root, result,
+                        filters, descendants, accessVar);
                 out.endBlock();
             } else {
-                emitStep(out, names, step.next, value, root, result, filters);
+                emitStep(out, names, step.next, value, root, result,
+                        filters, descendants, accessVar);
             }
             return;
         }
@@ -222,69 +258,192 @@ final class FindEmitter {
             out.line("int " + index + " = " + ((PathSegment.Index) step.segment).index + ";");
             out.line("if (" + index + " < 0) " + index + " += " + size + ";");
             out.beginBlock("if (" + index + " >= 0 && " + index + " < " + size + ")");
-            expression = reads.index(access, owner, index);
-            out.line(localType(step.valueType) + " " + value + " = " + expression + ";");
-            emitStep(out, names, step.next, value, root, result, filters);
+            out.line(localType(step.valueType) + " " + value + " = " +
+                    reads.index(nodeAccess, owner, index) + ";");
+            emitStep(out, names, step.next, value, root, result,
+                    filters, descendants, accessVar);
             out.endBlock();
             return;
         }
-
         throw new AssertionError(step.segment);
     }
 
     private void emitSelection(JavaWriter out, NameAllocator names, FindPlan.Step step,
                                String owner, String root, String result,
-                               Map<FindPlan.Step, String> filters) {
-        NodeAccess.Kind kind = step.access.kind();
-        boolean map = kind == NodeAccess.Kind.MAP;
-        boolean array = kind == NodeAccess.Kind.ARRAY;
-        boolean list = kind == NodeAccess.Kind.LIST;
+                               Map<FindPlan.Step, String> filters,
+                               Map<FindPlan.Step, String> descendants, String accessVar) {
+        NodeKind kind = types.nodeKind(step.ownerType);
         boolean slice = step.kind == FindPlan.Kind.SLICE;
-
         String item = names.newName("item");
-        if (map || (!slice && list)) {
-            String iterable = map ? owner + ".values()" : owner;
-            out.beginBlock("for (" + localType(step.valueType) + " " + item + " : " + iterable + ")");
-        } else {
-            String size = names.newName("size");
-            out.line("int " + size + " = " + (array ? owner + ".length" : owner + ".size()") + ";");
 
-            if (slice) {
-                PathSegment.Slice sliceValue = (PathSegment.Slice) step.segment;
-                if (sliceValue.step != null && sliceValue.step == 0L) return;
-                boolean reverse = sliceValue.step != null && sliceValue.step < 0L;
-                String iterator = null;
-                if (list) {
-                    iterator = names.newName("iterator");
-                    out.line("java.util.ListIterator<? extends " + localType(step.valueType) + "> " +
-                            iterator + " = " + owner + ".listIterator(" + (reverse ? size : "0") + ");");
-                }
-                String index = emitSliceLoop(out, names, sliceValue, size);
-                if (list) {
-                    out.beginBlock("while (" + iterator + "." +
-                            (reverse ? "previousIndex() > " : "nextIndex() < ") + index + ")");
-                    out.line(iterator + "." + (reverse ? "previous()" : "next()") + ";");
-                    out.endBlock();
-                    out.line(localType(step.valueType) + " " + item + " = " +
-                            iterator + "." + (reverse ? "previous()" : "next()") + ";");
-                } else {
-                    out.line(localType(step.valueType) + " " + item + " = " +
-                            reads.index(step.access, owner, index) + ";");
-                }
-            } else {
-                String index = names.newName("index");
-                out.beginBlock("for (int " + index + " = 0; " + index +
-                        " < " + size + "; " + index + "++)");
-                out.line(localType(step.valueType) + " " + item + " = " +
-                        reads.index(step.access, owner, index) + ";");
+        // Direct enhanced-for paths for known collection types.
+        if (!slice && (kind == NodeKind.OBJECT_MAP || kind == NodeKind.ARRAY_LIST
+                || kind == NodeKind.ARRAY_SET)) {
+            String iterable = kind == NodeKind.OBJECT_MAP ? owner + ".values()" : owner;
+            out.beginBlock("for (" + localType(step.valueType) + " " + item +
+                    " : " + iterable + ")");
+            emitSelectionChild(out, names, step, item, root, result,
+                    filters, descendants, accessVar);
+            out.endBlock();
+            return;
+        }
+
+        // JsonObject/JOJO preserve their declared-property and dynamic-member iteration.
+        if (!slice && (kind == NodeKind.OBJECT_JSON_OBJECT
+                || kind == NodeKind.OBJECT_JOJO)) {
+            String entry = names.newName("entry");
+            out.beginBlock("for (java.util.Map.Entry<String, Object> " + entry +
+                    " : " + owner + ".entrySet())");
+            out.line("Object " + item + " = " + entry + ".getValue();");
+            emitSelectionChild(out, names, step, item, root, result,
+                    filters, descendants, accessVar);
+            out.endBlock();
+            return;
+        }
+
+        // POJO wildcard/filter are object-property enumeration, not Java array access.
+        if (!slice && kind == NodeKind.OBJECT_POJO) {
+            emitObjectCallback(out, names, step, owner, root, result,
+                    filters, descendants, accessVar, item);
+            return;
+        }
+
+        // An Object or external tree can represent either an array or an object.
+        if (kind == NodeKind.COMPILE_TIME_UNKNOWN) {
+            String shape = names.newName("shape");
+            out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(" + owner + ");");
+            if (!slice) {
+                out.beginBlock("if (" + shape + ".isObject())");
+                emitObjectCallback(out, names, step, owner, root, result,
+                        filters, descendants, accessVar, item);
+                out.endBlock();
             }
+            out.beginBlock("if (" + shape + ".isArray())");
+            if (slice) {
+                // Set is an OBNT array, but has no indexed access or slice.
+                out.beginBlock("if (!(" + owner + " instanceof java.util.Set))");
+                emitIndexedSelection(out, names, step, owner, root, result,
+                        filters, descendants, accessVar, item, true);
+                out.endBlock();
+            } else {
+                emitArrayCallback(out, names, step, owner, root, result,
+                        filters, descendants, accessVar, item);
+            }
+            out.endBlock();
+            if (step.kind == FindPlan.Kind.FILTER) {
+                out.beginBlock("if (!" + shape + ".isObject() && !" + shape + ".isArray())");
+                out.beginBlock("if (" + filters.get(step) +
+                        ".evalTruth(" + root + ", " + owner + "))");
+                emitStep(out, names, step.next, owner, root, result,
+                        filters, descendants, accessVar);
+                out.endBlock();
+                out.endBlock();
+            }
+            return;
         }
 
-        if (step.kind == FindPlan.Kind.FILTER) {
-            out.beginBlock("if (" + filters.get(step) + ".evalTruth(" + root + ", " + item + "))");
+        if (step.kind == FindPlan.Kind.FILTER && kind.isValue()) {
+            out.beginBlock("if (" + filters.get(step) +
+                    ".evalTruth(" + root + ", " + owner + "))");
+            emitStep(out, names, step.next, owner, root, result,
+                    filters, descendants, accessVar);
+            out.endBlock();
+            return;
         }
-        emitStep(out, names, step.next, item, root, result, filters);
+
+        emitIndexedSelection(out, names, step, owner, root, result,
+                filters, descendants, accessVar, item, false);
+    }
+
+    private void emitObjectCallback(JavaWriter out, NameAllocator names, FindPlan.Step step,
+                                    String owner, String root, String result,
+                                    Map<FindPlan.Step, String> filters,
+                                    Map<FindPlan.Step, String> descendants,
+                                    String accessVar, String item) {
+        String key = names.newName("key");
+        out.beginBlock("org.sjf4j.node.NodeWalker.forEachObject(" + owner +
+                ", (" + key + ", " + item + ") ->");
+        emitSelectionChild(out, names, step, item, root, result,
+                filters, descendants, accessVar);
+        out.endBlock(");");
+    }
+
+    private void emitArrayCallback(JavaWriter out, NameAllocator names, FindPlan.Step step,
+                                   String owner, String root, String result,
+                                   Map<FindPlan.Step, String> filters,
+                                   Map<FindPlan.Step, String> descendants,
+                                   String accessVar, String item) {
+        String index = names.newName("index");
+        out.beginBlock("org.sjf4j.node.NodeWalker.forEachArray(" + owner +
+                ", (" + index + ", " + item + ") ->");
+        emitSelectionChild(out, names, step, item, root, result,
+                filters, descendants, accessVar);
+        out.endBlock(");");
+    }
+
+    private void emitSelectionChild(JavaWriter out, NameAllocator names, FindPlan.Step step,
+                                    String item, String root, String result,
+                                    Map<FindPlan.Step, String> filters,
+                                    Map<FindPlan.Step, String> descendants,
+                                    String accessVar) {
+        if (step.kind == FindPlan.Kind.FILTER) {
+            out.beginBlock("if (" + filters.get(step) +
+                    ".evalTruth(" + root + ", " + item + "))");
+        }
+        emitStep(out, names, step.next, item, root, result,
+                filters, descendants, accessVar);
         if (step.kind == FindPlan.Kind.FILTER) out.endBlock();
+    }
+
+    private void emitIndexedSelection(JavaWriter out, NameAllocator names, FindPlan.Step step,
+                                      String owner, String root, String result,
+                                      Map<FindPlan.Step, String> filters,
+                                      Map<FindPlan.Step, String> descendants, String accessVar,
+                                      String item, boolean dynamic) {
+        boolean array = step.ownerType.getKind() == TypeKind.ARRAY;
+        boolean list = types.nodeKind(step.ownerType) == NodeKind.ARRAY_LIST;
+        String size = names.newName("size");
+        out.line("int " + size + " = " +
+                (dynamic ? "org.sjf4j.node.NodeWalker.sizeInArray(" + owner + ")"
+                        : array ? owner + ".length" : owner + ".size()") + ";");
+
+        if (step.kind == FindPlan.Kind.SLICE) {
+            PathSegment.Slice slice = (PathSegment.Slice) step.segment;
+            if (slice.step != null && slice.step == 0L) return;
+            boolean reverse = slice.step != null && slice.step < 0;
+            String iterator = null;
+            if (list) {
+                iterator = names.newName("iterator");
+                out.line("java.util.ListIterator<? extends " + localType(step.valueType) +
+                        "> " + iterator + " = " + owner +
+                        ".listIterator(" + (reverse ? size : "0") + ");");
+            }
+            String index = emitSliceLoop(out, names, slice, size);
+            if (list) {
+                out.beginBlock("while (" + iterator + "." +
+                        (reverse ? "previousIndex() > " : "nextIndex() < ") + index + ")");
+                out.line(iterator + "." + (reverse ? "previous()" : "next()") + ";");
+                out.endBlock();
+                out.line(localType(step.valueType) + " " + item + " = " +
+                        iterator + "." + (reverse ? "previous()": "next()") + ";");
+            } else {
+                String expression = dynamic
+                        ? "org.sjf4j.node.NodeWalker.getInArray(" + owner + ", " + index + ")"
+                        : reads.index(step.access, owner, index);
+                out.line(localType(step.valueType) + " " + item + " = " + expression + ";");
+            }
+        } else {
+            String index = names.newName("index");
+            out.beginBlock("for (int " + index + " = 0; " + index +
+                    " < " + size + "; " + index + "++)");
+            String expression = dynamic
+                    ? "org.sjf4j.node.NodeWalker.getInArray(" + owner + ", " + index + ")"
+                    : reads.index(step.access, owner, index);
+            out.line(localType(step.valueType) + " " + item + " = " + expression + ";");
+        }
+
+        emitSelectionChild(out, names, step, item, root, result,
+                filters, descendants, accessVar);
         out.endBlock();
     }
 
