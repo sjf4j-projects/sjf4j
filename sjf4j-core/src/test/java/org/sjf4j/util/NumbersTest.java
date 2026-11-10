@@ -82,23 +82,18 @@ class NumbersTest {
     }
 
     @Test
-    void testFractionalBoundsAreCheckedBeforeTruncation() {
-        assertEquals(127, Numbers.toInt(new BigDecimal("127.5")));
+    void testLenientFractionalNarrowingRemainsUnchanged() {
+        assertEquals(127, Numbers.toByte(new BigDecimal("127.5")));
+        assertEquals(-128, Numbers.toByte(new BigDecimal("-128.5")));
+        assertEquals(32767, Numbers.toShort(new BigDecimal("32767.5")));
+        assertEquals(-32768, Numbers.toShort(new BigDecimal("-32768.5")));
+        assertEquals(Integer.MAX_VALUE, Numbers.toInt(new BigDecimal("2147483647.5")));
+        assertEquals(Integer.MIN_VALUE, Numbers.toInt(new BigDecimal("-2147483648.5")));
+        assertEquals(Integer.MAX_VALUE, Numbers.toInt(2147483647.5d));
         assertEquals(1, Numbers.toInt(new BigDecimal("1.9")));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toByte(new BigDecimal("127.5")));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toByte(new BigDecimal("-128.5")));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toShort(new BigDecimal("32767.5")));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toShort(new BigDecimal("-32768.5")));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toInt(new BigDecimal("2147483647.5")));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toInt(new BigDecimal("-2147483648.5")));
-        assertThrows(ArithmeticException.class,
-                () -> Numbers.toInt(2147483647.5d));
+        // Integer narrowing still rejects values whose truncated result is outside the target.
+        assertThrows(ArithmeticException.class, () -> Numbers.toByte(new BigDecimal("128.0")));
+        assertThrows(ArithmeticException.class, () -> Numbers.toInt(new BigDecimal("2147483648.0")));
     }
 
     @Test
@@ -118,6 +113,27 @@ class NumbersTest {
         assertThrows(ArithmeticException.class, () -> Numbers.toExact(9007199254740993L, Double.class));
         assertThrows(ArithmeticException.class, () -> Numbers.toExact(((long) Integer.MAX_VALUE) + 1, Integer.class));
         assertEquals(1, Numbers.to(new BigDecimal("1.25"), Integer.class));
+
+        // Hot paths: integral -> integral/decimal and binary floating -> binary floating.
+        assertEquals(new BigDecimal("42"), Numbers.toExact(42L, BigDecimal.class));
+        assertEquals(BigInteger.valueOf(42), Numbers.toExact(42L, BigInteger.class));
+        assertEquals(42, Numbers.toExact(new BigDecimal("42.0"), Integer.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("42.1"), Integer.class));
+        assertEquals(0.5d, Numbers.toExact(0.5f, Double.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(1.25d, Integer.class));
+
+        // Beyond the IEEE-754 all-integer-exact bounds, check the real binary value.
+        assertEquals(16777218.0f, Numbers.toExact(16777218, Float.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(16777217, Float.class));
+        assertEquals(9007199254740994d, Numbers.toExact(9007199254740994L, Double.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(9007199254740993L, Double.class));
+        assertEquals(Math.scalb(1.0d, 100),
+                Numbers.toExact(BigInteger.ONE.shiftLeft(100), Double.class));
+        assertThrows(ArithmeticException.class,
+                () -> Numbers.toExact(BigInteger.ONE.shiftLeft(100).add(BigInteger.ONE), Double.class));
+        assertEquals(0.5d, Numbers.toExact(new BigDecimal("0.5"), Double.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(new BigDecimal("0.1"), Double.class));
+        assertThrows(ArithmeticException.class, () -> Numbers.toExact(0.1d, BigDecimal.class));
     }
 
     @Test
