@@ -45,8 +45,8 @@ if [[ -z "$JAR" ]]; then
 fi
 
 case "$SHAPE" in
-  map)      IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=33 ;;
-  jsonnode) IMPLEMENTATIONS='(jayway|runtime)'; EXPECTED=30 ;;
+  map)      IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=45 ;;
+  jsonnode) IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=45 ;;
   pojo)     IMPLEMENTATIONS='(runtime|compiled)'; EXPECTED=30 ;;
   parse)    IMPLEMENTATIONS='(sjf4j|jayway)'; EXPECTED=14 ;;
 esac
@@ -78,7 +78,7 @@ cat > "$META" <<EOF
 - Queries: direct, wildcard, filter, descendant, slice
 - Expected JMH cases: $EXPECTED
 - Query compilation and JSON deserialization: excluded from Query groups; Parse group measures compilation only
-- CompiledNavigator: fallback=true (filter/descendant use runtime fallback)
+- CompiledNavigator: all five queries generated for Map, JsonNode and POJO; only Filter uses cached FilterExpr (fallback=true); no full-path fallback
 - Full reporting: Best 2 Mean per exact method + size; exclude each case's slowest fork
 - Baseline eligible: $(if [[ "$PROFILE" == "full" && "${GITHUB_ACTIONS:-false}" != "true" ]]; then echo yes; else echo no; fi)
 - Execution: $(if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then echo "GitHub Actions (shared runner, exploratory)"; else echo "local"; fi)
@@ -124,14 +124,13 @@ else:
     queries = ("direct", "wildcard", "filter", "descendant", "slice")
     implementations = {
         "map": ("jayway", "runtime", "compiled"),
-        "jsonnode": ("jayway", "runtime"),
+        "jsonnode": ("jayway", "runtime", "compiled"),
         "pojo": ("runtime", "compiled"),
     }[shape]
     prefix = "org.sjf4j.testbench.path.PathFullBenchmark."
     expected_keys = {(prefix + f"{shape}_{query}_{impl}", size)
                      for query in queries for impl in implementations
-                     for size in ("1", "10", "100")
-                     if shape != "map" or impl != "compiled" or query == "direct"}
+                     for size in ("1", "10", "100")}
     param = "sizeKb"
 with open(path, encoding="utf-8") as fp:
     rows = json.load(fp)
