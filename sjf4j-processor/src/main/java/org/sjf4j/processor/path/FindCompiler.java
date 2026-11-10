@@ -166,12 +166,18 @@ final class FindCompiler {
             if (value == null) {
                 throw unsupported("cannot enumerate " + segment + " on " + owner);
             }
+            NodeAccess iteration = types.nodeKind(owner) == NodeKind.OBJECT_MAP
+                    ? context.access.resolveDynamicName(owner)
+                    : context.access.resolveIndex(owner);
+            if (iteration == null || iteration.kind() == NodeAccess.Kind.DYNAMIC) {
+                throw unsupported("cannot statically iterate " + owner);
+            }
             FindPlan.Step next = compilePath(value, segments, index + 1, resultType);
             FindPlan.Kind kind = segment instanceof PathSegment.Wildcard
                     ? FindPlan.Kind.WILDCARD
                     : segment instanceof PathSegment.Filter ? FindPlan.Kind.FILTER
                     : FindPlan.Kind.SLICE;
-            return new FindPlan.Step(kind, segment, index, owner, value, null, next, null);
+            return new FindPlan.Step(kind, segment, index, owner, value, iteration, next, null);
         }
 
         if (segment instanceof PathSegment.Descendant) {
