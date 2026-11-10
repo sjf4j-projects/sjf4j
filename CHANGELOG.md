@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `@MappingOptions.reuse` with `ReusePolicy.ASSIGNABLE`, preserving assignable-value reuse for root containers and nested mapper values.
-- Added `@MappingOptions.numeric` with `NumericPolicy.ALLOW_PRECISION_LOSS` (default) and `EXACT`, including exact checks for nested, dynamic, and backend-native numeric nodes.
 
 ### Changed
 
