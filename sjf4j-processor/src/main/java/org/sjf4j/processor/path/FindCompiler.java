@@ -99,7 +99,7 @@ final class FindCompiler {
                 throw invalid("result type mismatch: cannot add " + owner +
                         " to List<" + resultType + ">");
             }
-            return FindPlan.Step.collect(owner);
+            return FindPlan.Step.collect(owner, resultType);
         }
 
         PathSegment segment = segments[index];
