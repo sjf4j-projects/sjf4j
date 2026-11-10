@@ -139,8 +139,10 @@ final class FindCompiler {
                         kind != NodeKind.COMPILE_TIME_UNKNOWN) {
                     return FindPlan.Step.empty(owner);
                 }
-                // A statically known incompatible selector cannot match.
-                if (kind != NodeKind.UNKNOWN && kind != NodeKind.COMPILE_TIME_UNKNOWN) {
+                // Union choices with an inapplicable static shape contribute no nodes.
+                // An ordinary unresolved property is a compile-time model error.
+                if (optional && kind != NodeKind.UNKNOWN
+                        && kind != NodeKind.COMPILE_TIME_UNKNOWN) {
                     return FindPlan.Step.empty(owner);
                 }
                 throw unsupported("cannot compile " + segment + " on " + owner);
