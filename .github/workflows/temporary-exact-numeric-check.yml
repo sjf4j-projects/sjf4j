@@ -1,0 +1,55 @@
+name: Temporary numeric policy verification
+
+on:
+  push:
+    branches:
+      - test/mapstruct-mapping-cases-batch1
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Core NumbersTest
+        id: core
+        continue-on-error: true
+        run: ./gradlew :sjf4j-core:test --tests org.sjf4j.util.NumbersTest --stacktrace
+      - name: Mapper processor tests
+        id: processor
+        continue-on-error: true
+        run: ./gradlew :sjf4j-processor:test --tests 'org.sjf4j.processor.CompiledMapper*' --stacktrace
+      - name: Mapper testbench tests
+        id: mapping
+        continue-on-error: true
+        run: ./gradlew :sjf4j-testbench:test --tests 'org.sjf4j.testbench.processor.mapper.Mapper*' --stacktrace
+      - name: JUnit summary
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          for mod in ('sjf4j-core','sjf4j-processor','sjf4j-testbench'):
+            total=failed=errors=0
+            for f in glob.glob(mod+'/build/test-results/test/TEST-*.xml'):
+              e=ET.parse(f).getroot()
+              total+=int(e.attrib.get('tests','0'))
+              failed+=int(e.attrib.get('failures','0'))
+              errors+=int(e.attrib.get('errors','0'))
+              for case in e.findall('.//testcase'):
+                for failure in case.findall('failure')+case.findall('error'):
+                  print(f,case.attrib.get('name'),(failure.attrib.get('message') or '')[:2000])
+            print(mod,'TOTAL',total,'FAILED',failed,'ERRORS',errors)
+          PY
+      - name: Enforce all suites
+        if: always()
+        env:
+          CORE: ${{ steps.core.outcome }}
+          PROCESSOR: ${{ steps.processor.outcome }}
+          MAPPING: ${{ steps.mapping.outcome }}
+        run: |
+          echo "core=$CORE processor=$PROCESSOR mapping=$MAPPING"
+          test "$CORE" = success && test "$PROCESSOR" = success && test "$MAPPING" = success
