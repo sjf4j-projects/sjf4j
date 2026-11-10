@@ -155,7 +155,8 @@ public final class ConverterResolver {
          * safety and avoids turning a writable target capture into its upper
          * bound.
          */
-        if (types.isAssignableBoxedGeneric(sourceType, targetType) &&
+        if (reuseAssignable(plan) &&
+                types.isAssignableBoxedGeneric(sourceType, targetType) &&
                 !requiresRuntimeContainerConversion(sourceType, targetType)) {
             return Conversion.direct(sourceType, targetType);
         }
@@ -399,6 +400,25 @@ public final class ConverterResolver {
         }
 
         return result;
+    }
+
+    /**
+     * ASSIGNABLE currently is the sole reuse policy. Keep this check at the
+     * conversion-selection point so future policies can change precedence
+     * without modifying code emission.
+     */
+    private boolean reuseAssignable(MappingPlan plan) {
+        AnnotationMirror options = plan.options();
+        if (options == null) return true;
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
+                context.elements.getElementValuesWithDefaults(options).entrySet()) {
+            if (entry.getKey().getSimpleName().contentEquals("reuse")) {
+                Object value = entry.getValue().getValue();
+                return value instanceof VariableElement &&
+                        ((VariableElement) value).getSimpleName().contentEquals("ASSIGNABLE");
+            }
+        }
+        return true;
     }
 
     private List<String> using(MappingPlan plan) {
