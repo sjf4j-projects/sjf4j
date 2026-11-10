@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /** Predicate evaluation is cached; surrounding Find traversal remains compiled. */
 class CompiledFilterNodeShapesTest {
@@ -88,8 +89,9 @@ class CompiledFilterNodeShapesTest {
                 Map.of("name", "Missing"),
                 null));
 
-        assertMatches("$.items[?(@.score > $.limit)].name",
-                root, paths.mixedRootFilter(root));
+        List<Object> selected = paths.mixedRootFilter(root);
+        assertMatches("$.items[?(@.score > $.limit)].name", root, selected);
+        assertEquals(8, selected.size(), "all eight supported OBNT representations should match");
     }
 
     @Test
@@ -105,6 +107,10 @@ class CompiledFilterNodeShapesTest {
         assertMatches("$[?(@ > 3)]", object, paths.scalarObjectOrArray(object));
         assertMatches("$[?(@ > 3)]", 5, paths.scalarObjectOrArray(5));
         assertMatches("$[?(@ > 3)]", 1, paths.scalarObjectOrArray(1));
+        assertEquals(List.of(5, 4), paths.scalarObjectOrArray(array));
+        assertEquals(List.of(5, 4), paths.scalarObjectOrArray(object));
+        assertEquals(List.of(5), paths.scalarObjectOrArray(5));
+        assertEquals(List.of(), paths.scalarObjectOrArray(1));
     }
 
     @Test
@@ -123,10 +129,25 @@ class CompiledFilterNodeShapesTest {
         JsonElement gson = JsonParser.parseString(json);
         JsonValue jsonp = jsonp(json);
 
-        assertMatches("$.items[?(@.score > $.limit)].name", j2, paths.jackson2(j2));
-        assertMatches("$.items[?(@.score > $.limit)].name", j3, paths.jackson3(j3));
-        assertMatches("$.items[?(@.score > $.limit)].name", gson, paths.gson(gson));
-        assertMatches("$.items[?(@.score > $.limit)].name", jsonp, paths.jsonp(jsonp));
+        String path = "$.items[?(@.score > $.limit)].name";
+        List<Object> j2Result = paths.jackson2(j2);
+        List<Object> j3Result = paths.jackson3(j3);
+        List<Object> gsonResult = paths.gson(gson);
+        List<Object> jsonpResult = paths.jsonp(jsonp);
+        assertMatches(path, j2, j2Result);
+        assertMatches(path, j3, j3Result);
+        assertMatches(path, gson, gsonResult);
+        assertMatches(path, jsonp, jsonpResult);
+        assertEquals(2, j2Result.size());
+        assertEquals(2, j3Result.size());
+        assertEquals(2, gsonResult.size());
+        assertEquals(2, jsonpResult.size());
+        assertSame(j2.get("items").get(1).get("name"), j2Result.get(0));
+        assertSame(j3.get("items").get(1).get("name"), j3Result.get(0));
+        assertSame(gson.getAsJsonObject().getAsJsonArray("items")
+                .get(1).getAsJsonObject().get("name"), gsonResult.get(0));
+        assertSame(jsonp.asJsonObject().getJsonArray("items")
+                .getJsonObject(1).get("name"), jsonpResult.get(0));
     }
 
     private static JsonValue jsonp(String text) {
