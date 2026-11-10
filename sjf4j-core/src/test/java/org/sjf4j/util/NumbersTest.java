@@ -84,7 +84,7 @@ class NumbersTest {
     @Test
     void testExactConversionPreservesValue() {
         assertEquals(42, Numbers.toExact(new BigDecimal("42.0"), Integer.class));
-        assertEquals(-128, Numbers.toExact(new BigDecimal("-128.000"), Byte.class));
+        assertEquals(Byte.valueOf((byte) -128), Numbers.toExact(new BigDecimal("-128.000"), Byte.class));
         assertEquals(42L, Numbers.toExact(42, Long.class));
         assertEquals(0.5d, Numbers.toExact(0.5f, Double.class));
         assertEquals(0.5f, Numbers.toExact(0.5d, Float.class));
