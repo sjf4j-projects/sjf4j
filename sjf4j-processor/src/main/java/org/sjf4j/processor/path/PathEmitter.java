@@ -865,14 +865,6 @@ final class PathEmitter {
         }
     }
 
-    private void emitPropertyRead(
-            JavaWriter out, NodeAccess access, String owner,
-            String target, TypeMirror type) {
-
-        out.line(localType(type) + " " + target + " = " +
-                reads.name(access, owner, null) + ";");
-    }
-
     private void emitIndexedRead(
             JavaWriter out,
             Step step,
@@ -1064,7 +1056,8 @@ final class PathEmitter {
             return;
         }
 
-        emitPropertyRead(out, step.access, owner, old, step.access.readType());
+        out.line(localType(step.access.readType()) + " " + old + " = " +
+                reads.name(step.access, owner, nameExpression(step)) + ";");
     }
 
     private void emitPropertyWrite(
