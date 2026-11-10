@@ -42,7 +42,7 @@ final class NavigatorMethodAnalyzer {
         }
 
         Operation operation = resolveOperation(method, generated);
-        if (operation == null || !generated.isValid()) return null;
+        if (operation == null) return null;
 
         switch (operation.kind) {
             case GET:
