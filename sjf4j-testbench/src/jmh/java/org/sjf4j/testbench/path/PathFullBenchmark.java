@@ -115,7 +115,7 @@ public class PathFullBenchmark {
         @FindByPath("$.store.book[*].author")
         List<String> wildcard(Bookstore root);
 
-        // Filter and descendant currently invoke the runtime fallback.
+        // Filter uses a cached FilterExpr; descendant traversal is generated.
         @FindByPath("$.store.book[?(@.price > 10)].title")
         List<String> filter(Bookstore root);
 
@@ -126,12 +126,42 @@ public class PathFullBenchmark {
         List<String> slice(Bookstore root);
     }
 
-    // Arbitrary Map<String, Object> nested arrays do not carry the static type
-    // information required by generated multi-result path traversal.
-    @CompiledNavigator
+    // Object-typed Map values and external JsonNode shapes use compiled OBNT
+    // dispatch. Only the cached FilterExpr predicate requires fallback=true.
+    @CompiledNavigator(fallback = true)
     public interface MapPaths {
         @GetByPath("$.store.book[1].price")
         Object direct(Map<String, Object> root);
+
+        @FindByPath("$.store.book[*].author")
+        List<Object> wildcard(Map<String, Object> root);
+
+        @FindByPath("$.store.book[?(@.price > 10)].title")
+        List<Object> filter(Map<String, Object> root);
+
+        @FindByPath("$..price")
+        List<Object> descendant(Map<String, Object> root);
+
+        @FindByPath("$.store.book[1:4].title")
+        List<Object> slice(Map<String, Object> root);
+    }
+
+    @CompiledNavigator(fallback = true)
+    public interface JsonNodePaths {
+        @GetByPath("$.store.book[1].price")
+        Object direct(JsonNode root);
+
+        @FindByPath("$.store.book[*].author")
+        List<Object> wildcard(JsonNode root);
+
+        @FindByPath("$.store.book[?(@.price > 10)].title")
+        List<Object> filter(JsonNode root);
+
+        @FindByPath("$..price")
+        List<Object> descendant(JsonNode root);
+
+        @FindByPath("$.store.book[1:4].title")
+        List<Object> slice(JsonNode root);
     }
 
     @State(Scope.Thread)
@@ -144,6 +174,7 @@ public class PathFullBenchmark {
         public JsonNode jsonNode;
         public PojoPaths compiledPojo;
         public MapPaths compiledMap;
+        public JsonNodePaths compiledJsonNode;
         public JsonPath[] sjf4jPaths;
         public com.jayway.jsonpath.JsonPath[] jaywayPaths;
         public int actualBytes;
@@ -170,6 +201,7 @@ public class PathFullBenchmark {
             jsonNode = JACKSON.readTree(bytes);
             compiledPojo = CompiledInstances.create(PojoPaths.class);
             compiledMap = CompiledInstances.create(MapPaths.class);
+            compiledJsonNode = CompiledInstances.create(JsonNodePaths.class);
             sjf4jPaths = new JsonPath[QUERIES.length];
             jaywayPaths = new com.jayway.jsonpath.JsonPath[QUERIES.length];
             for (int index = 0; index < QUERIES.length; index++) {
@@ -185,12 +217,35 @@ public class PathFullBenchmark {
                 Object runtimePojo = runtime(sjf4jPaths[index], pojo, multi);
                 assertSame(query + " Map/Jayway-Runtime", jaywayMap, runtimeMap);
                 assertSame(query + " JsonNode/Jayway-Runtime", jaywayNode, runtimeNode);
-                if (index == 0) assertSame(query + " Map/Compiled", runtimeMap, compiledMap.direct(map));
+                assertSame(query + " Map/Compiled", runtimeMap, compiledMap(index));
+                assertSame(query + " JsonNode/Compiled", runtimeNode, compiledJsonNode(index));
                 assertSame(query + " POJO/Runtime-Map", runtimeMap, runtimePojo);
                 assertSame(query + " POJO/Compiled", runtimePojo, compiledPojo(index));
             }
             System.out.printf("Path fixture %dKB: %d JSON bytes, %d books, filter matches %d%n",
                     sizeKb, actualBytes, bookCount, (bookCount / 10) * 3 + Math.min(3, bookCount % 10));
+        }
+
+        private Object compiledMap(int index) {
+            switch (index) {
+                case 0: return compiledMap.direct(map);
+                case 1: return compiledMap.wildcard(map);
+                case 2: return compiledMap.filter(map);
+                case 3: return compiledMap.descendant(map);
+                case 4: return compiledMap.slice(map);
+                default: throw new AssertionError(index);
+            }
+        }
+
+        private Object compiledJsonNode(int index) {
+            switch (index) {
+                case 0: return compiledJsonNode.direct(jsonNode);
+                case 1: return compiledJsonNode.wildcard(jsonNode);
+                case 2: return compiledJsonNode.filter(jsonNode);
+                case 3: return compiledJsonNode.descendant(jsonNode);
+                case 4: return compiledJsonNode.slice(jsonNode);
+                default: throw new AssertionError(index);
+            }
         }
 
         private Object compiledPojo(int index) {
@@ -283,6 +338,11 @@ public class PathFullBenchmark {
         return runtime(s.sjf4jPaths[1], s.map, true);
     }
 
+    @Benchmark
+    public Object map_wildcard_compiled(Data s) {
+        return s.compiledMap.wildcard(s.map);
+    }
+
 
     @Benchmark
     public Object map_filter_jayway(Data s) {
@@ -292,6 +352,11 @@ public class PathFullBenchmark {
     @Benchmark
     public Object map_filter_runtime(Data s) {
         return runtime(s.sjf4jPaths[2], s.map, true);
+    }
+
+    @Benchmark
+    public Object map_filter_compiled(Data s) {
+        return s.compiledMap.filter(s.map);
     }
 
 
@@ -305,6 +370,11 @@ public class PathFullBenchmark {
         return runtime(s.sjf4jPaths[3], s.map, true);
     }
 
+    @Benchmark
+    public Object map_descendant_compiled(Data s) {
+        return s.compiledMap.descendant(s.map);
+    }
+
 
     @Benchmark
     public Object map_slice_jayway(Data s) {
@@ -314,6 +384,11 @@ public class PathFullBenchmark {
     @Benchmark
     public Object map_slice_runtime(Data s) {
         return runtime(s.sjf4jPaths[4], s.map, true);
+    }
+
+    @Benchmark
+    public Object map_slice_compiled(Data s) {
+        return s.compiledMap.slice(s.map);
     }
 
 
@@ -330,6 +405,11 @@ public class PathFullBenchmark {
     }
 
     @Benchmark
+    public Object jsonnode_direct_compiled(Data s) {
+        return s.compiledJsonNode.direct(s.jsonNode);
+    }
+
+    @Benchmark
     public Object jsonnode_wildcard_jayway(Data s) {
         return s.jaywayPaths[1].read(s.jsonNode, JAYWAY_NODE_CONFIG);
     }
@@ -337,6 +417,11 @@ public class PathFullBenchmark {
     @Benchmark
     public Object jsonnode_wildcard_runtime(Data s) {
         return runtime(s.sjf4jPaths[1], s.jsonNode, true);
+    }
+
+    @Benchmark
+    public Object jsonnode_wildcard_compiled(Data s) {
+        return s.compiledJsonNode.wildcard(s.jsonNode);
     }
 
     @Benchmark
@@ -350,6 +435,11 @@ public class PathFullBenchmark {
     }
 
     @Benchmark
+    public Object jsonnode_filter_compiled(Data s) {
+        return s.compiledJsonNode.filter(s.jsonNode);
+    }
+
+    @Benchmark
     public Object jsonnode_descendant_jayway(Data s) {
         return s.jaywayPaths[3].read(s.jsonNode, JAYWAY_NODE_CONFIG);
     }
@@ -360,6 +450,11 @@ public class PathFullBenchmark {
     }
 
     @Benchmark
+    public Object jsonnode_descendant_compiled(Data s) {
+        return s.compiledJsonNode.descendant(s.jsonNode);
+    }
+
+    @Benchmark
     public Object jsonnode_slice_jayway(Data s) {
         return s.jaywayPaths[4].read(s.jsonNode, JAYWAY_NODE_CONFIG);
     }
@@ -367,6 +462,11 @@ public class PathFullBenchmark {
     @Benchmark
     public Object jsonnode_slice_runtime(Data s) {
         return runtime(s.sjf4jPaths[4], s.jsonNode, true);
+    }
+
+    @Benchmark
+    public Object jsonnode_slice_compiled(Data s) {
+        return s.compiledJsonNode.slice(s.jsonNode);
     }
 
     // pojo: prebuilt document, precompiled query.
