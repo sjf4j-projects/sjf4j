@@ -100,5 +100,27 @@ public class CompiledMapperDiagnosticsTest {
                 + "class Target { public String value; } ";
     }
 
-    private record InvalidCase(String name, String mapperSource, String diagnosticFragment) {}
+    private static final class InvalidCase {
+        private final String name;
+        private final String mapperSource;
+        private final String diagnosticFragment;
+
+        private InvalidCase(String name, String mapperSource, String diagnosticFragment) {
+            this.name = name;
+            this.mapperSource = mapperSource;
+            this.diagnosticFragment = diagnosticFragment;
+        }
+
+        String name() {
+            return name;
+        }
+
+        String mapperSource() {
+            return mapperSource;
+        }
+
+        String diagnosticFragment() {
+            return diagnosticFragment;
+        }
+    }
 }
