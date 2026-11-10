@@ -60,7 +60,7 @@ final class PathEmitter {
      */
 
     GeneratedClass.Member compileGet(
-            NavigatorMethodGenerator.GetPlan plan,
+            NavigatorPlan.Get plan,
             GeneratedClass generated) {
 
         TypeMirror currentType = plan.root.asType();
@@ -119,7 +119,7 @@ final class PathEmitter {
      */
 
     GeneratedClass.Member compilePut(
-            NavigatorMethodGenerator.PutPlan plan,
+            NavigatorPlan.Put plan,
             GeneratedClass generated) {
 
         TypeMirror currentType = plan.root.asType();
@@ -303,7 +303,7 @@ final class PathEmitter {
     }
 
     private boolean validatePutReturn(
-            NavigatorMethodGenerator.PutPlan plan,
+            NavigatorPlan.Put plan,
             Step target,
             TypeMirror oldType,
             GeneratedClass generated) {
@@ -375,7 +375,7 @@ final class PathEmitter {
      */
 
     private boolean prepareEnsureCreations(
-            NavigatorMethodGenerator.PutPlan plan,
+            NavigatorPlan.Put plan,
             List<Step> steps,
             Step target,
             GeneratedClass generated) {
@@ -619,7 +619,7 @@ final class PathEmitter {
             JavaWriter out,
             ResolvedPut resolved) {
 
-        NavigatorMethodGenerator.PutPlan plan = resolved.plan;
+        NavigatorPlan.Put plan = resolved.plan;
         ExecutableElement method = plan.method;
         NameAllocator names = names(method);
 
@@ -669,7 +669,7 @@ final class PathEmitter {
             JavaWriter out,
             ResolvedPut resolved) {
 
-        NavigatorMethodGenerator.PutPlan plan = resolved.plan;
+        NavigatorPlan.Put plan = resolved.plan;
         ExecutableElement method = plan.method;
         NameAllocator names = names(method);
 
@@ -1821,7 +1821,7 @@ final class PathEmitter {
 
     private String getMissing(
             ExecutableElement method,
-            NavigatorMethodGenerator.GetPlan plan) {
+            NavigatorPlan.Get plan) {
 
         if (!method.getReturnType()
                 .getKind()
@@ -1837,7 +1837,7 @@ final class PathEmitter {
     }
 
     private String putMissingThrow(
-            NavigatorMethodGenerator.PutPlan plan) {
+            NavigatorPlan.Put plan) {
 
         return "throw new org.sjf4j.exception.NodeException(" +
                 JavaWriter.stringLiteral(plan.annotation + " missing parent: method " +
@@ -2084,12 +2084,12 @@ final class PathEmitter {
 
     private static final class ResolvedGet {
 
-        final NavigatorMethodGenerator.GetPlan plan;
+        final NavigatorPlan.Get plan;
         final List<Step> steps;
         final TypeMirror resultType;
 
         ResolvedGet(
-                NavigatorMethodGenerator.GetPlan plan,
+                NavigatorPlan.Get plan,
                 List<Step> steps,
                 TypeMirror resultType) {
 
@@ -2101,7 +2101,7 @@ final class PathEmitter {
 
     private static final class ResolvedPut {
 
-        final NavigatorMethodGenerator.PutPlan plan;
+        final NavigatorPlan.Put plan;
 
         final List<Step> steps;
 
@@ -2112,7 +2112,7 @@ final class PathEmitter {
         final TypeMirror oldType;
 
         ResolvedPut(
-                NavigatorMethodGenerator.PutPlan plan,
+                NavigatorPlan.Put plan,
                 List<Step> steps,
                 TypeMirror parentType,
                 Step target,
