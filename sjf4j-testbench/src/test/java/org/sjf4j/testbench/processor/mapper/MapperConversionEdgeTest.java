@@ -34,9 +34,9 @@ public class MapperConversionEdgeTest {
     }
 
     @Test
-    public void narrowingToIntRejectsFractionalDecimal() {
-        assertThrows(RuntimeException.class,
-                () -> mapper.toInteger(new NumericSource(new BigDecimal("1.25"))));
+    public void fractionalDecimalUsesRangeCheckedNumberTruncation() {
+        assertEquals(1, mapper.toInteger(new NumericSource(new BigDecimal("1.25"))).value());
+        assertEquals(-1, mapper.toInteger(new NumericSource(new BigDecimal("-1.75"))).value());
     }
 
     @Test
