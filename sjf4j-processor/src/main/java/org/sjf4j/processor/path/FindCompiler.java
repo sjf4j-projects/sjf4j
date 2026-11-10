@@ -24,6 +24,7 @@ import java.util.List;
 final class FindCompiler {
     private final ProcessorContext context;
     private final TypeSystem types;
+    private boolean allowFilter;
 
     FindCompiler(ProcessorContext context) {
         this.context = context;
@@ -73,6 +74,7 @@ final class FindCompiler {
         }
 
         VariableElement root = parameters.get(0);
+        allowFilter = allowFallback;
         try {
             FindPlan.Step traversal = compilePath(root.asType(), segments, 1, elementType);
             return new FindPlan(method, root, expression, elementType, traversal, false);
@@ -152,19 +154,21 @@ final class FindCompiler {
         if (segment instanceof PathSegment.Wildcard ||
                 segment instanceof PathSegment.Slice ||
                 segment instanceof PathSegment.Filter) {
-            if (segment instanceof PathSegment.Filter) {
-                // The iterator is generated; the predicate remains an explicit
-                // precompiled runtime FilterExpr, requiring fallback=true.
+            if (segment instanceof PathSegment.Filter && !allowFilter) {
                 throw unsupported("filter predicates require runtime evaluation");
             }
 
-            TypeMirror value = elementType(owner, segment instanceof PathSegment.Wildcard);
+            TypeMirror value = elementType(owner,
+                    segment instanceof PathSegment.Wildcard ||
+                    segment instanceof PathSegment.Filter);
             if (value == null) {
                 throw unsupported("cannot enumerate " + segment + " on " + owner);
             }
             FindPlan.Step next = compilePath(value, segments, index + 1, resultType);
             FindPlan.Kind kind = segment instanceof PathSegment.Wildcard
-                    ? FindPlan.Kind.WILDCARD : FindPlan.Kind.SLICE;
+                    ? FindPlan.Kind.WILDCARD
+                    : segment instanceof PathSegment.Filter ? FindPlan.Kind.FILTER
+                    : FindPlan.Kind.SLICE;
             return new FindPlan.Step(kind, segment, index, owner, value, null, next, null);
         }
 
