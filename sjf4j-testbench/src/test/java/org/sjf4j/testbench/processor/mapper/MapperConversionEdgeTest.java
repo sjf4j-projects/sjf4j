@@ -82,6 +82,14 @@ public class MapperConversionEdgeTest {
     }
 
     @Test
+    public void nestedExactAndLossyPoliciesStayIndependent() {
+        NestedNumericSource source = new NestedNumericSource(new DeepNumericSource(new BigDecimal("1.25")));
+        assertEquals(1, mapper.nestedLossy(source).nested().value());
+        assertThrows(ArithmeticException.class, () -> mapper.nestedExact(source));
+        assertEquals(1, mapper.nestedLossy(source).nested().value());
+    }
+
+    @Test
     public void narrowingToByteAcceptsLowerBoundary() {
         assertEquals((byte) -128, mapper.toByte(new NumericSource(BigInteger.valueOf(-128))).value());
     }
@@ -149,6 +157,10 @@ public class MapperConversionEdgeTest {
     }
 
     public record NumericSource(Number value) {}
+    public record DeepNumericSource(Number value) {}
+    public record DeepNumericTarget(Integer value) {}
+    public record NestedNumericSource(DeepNumericSource nested) {}
+    public record NestedNumericTarget(DeepNumericTarget nested) {}
     public record DynamicSource(Object value) {}
     public record TextSource(String value) {}
     public record IntegerTarget(Integer value) {}
@@ -160,7 +172,11 @@ public class MapperConversionEdgeTest {
 
     @CompiledMapper
     public interface EdgeMapper {
+        @MappingOptions(numeric = NumericPolicy.ALLOW_PRECISION_LOSS)
         IntegerTarget toInteger(NumericSource source);
+        NestedNumericTarget nestedLossy(NestedNumericSource source);
+        @MappingOptions(numeric = NumericPolicy.EXACT)
+        NestedNumericTarget nestedExact(NestedNumericSource source);
         @MappingOptions(numeric = NumericPolicy.EXACT)
         IntegerTarget toIntegerExact(NumericSource source);
         ByteTarget toByte(NumericSource source);
