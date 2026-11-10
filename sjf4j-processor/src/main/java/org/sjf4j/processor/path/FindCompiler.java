@@ -93,6 +93,8 @@ final class FindCompiler {
                                       TypeMirror resultType) {
         if (index == segments.length) {
             if (!types.isObject(resultType) &&
+                    !types.isObject(owner) &&
+                    !types.isCompileTimeUnknown(owner) &&
                     !types.isAssignableBoxedGeneric(owner, resultType)) {
                 throw invalid("result type mismatch: cannot add " + owner +
                         " to List<" + resultType + ">");
