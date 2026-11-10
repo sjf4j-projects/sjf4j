@@ -25,7 +25,7 @@ Each roundtrip serializes the Creek POJO to a JSON `byte[]` and deserializes it 
 | Jackson2 | 7.024 | 7,696 |
 | CompiledBinder | 5.829 | 6,824 |
 | Jackson2 + Runtime Validator | 10.779 | 9,816 |
-| **CompiledBinder + CompiledValidator** | **5.888** (**1.19x** vs Jackson2) | **6,824** |
+| **CompiledBinder + CompiledValidator** | **5.888** | **6,824** |
 
 **Key result:** CompiledBinder + CompiledValidator is **1.19× faster** than a plain Jackson2 roundtrip **without validation**, with **11.3% lower allocation**.
 
