@@ -288,16 +288,15 @@ final class FindEmitter {
             return;
         }
 
-        // JsonObject/JOJO preserve their declared-property and dynamic-member iteration.
+        // JsonObject/JOJO can visit declared and dynamic members directly,
+        // without allocating entry snapshots for declared JOJO properties.
         if (!slice && (kind == NodeKind.OBJECT_JSON_OBJECT
                 || kind == NodeKind.OBJECT_JOJO)) {
-            String entry = names.newName("entry");
-            out.beginBlock("for (java.util.Map.Entry<String, Object> " + entry +
-                    " : " + owner + ".entrySet())");
-            out.line("Object " + item + " = " + entry + ".getValue();");
+            String key = names.newName("key");
+            out.beginBlock(owner + ".forEach((" + key + ", " + item + ") ->");
             emitSelectionChild(out, names, step, item, root, result,
                     filters, descendants, accessVar);
-            out.endBlock();
+            out.endBlock(");");
             return;
         }
 
