@@ -28,6 +28,9 @@ public class FindCompositionTest {
         @FindByPath("$.groups[0,1].books[*].title")
         List<String> unionThenWildcard(Root root);
 
+        @FindByPath("$.groups[0,'unknown',1].books[*].title")
+        List<String> mixedUnion(Root root);
+
         @FindByPath("$.groups[*].books[0:2,2].title")
         List<String> wildcardThenSliceUnion(Root root);
 
@@ -54,6 +57,7 @@ public class FindCompositionTest {
 
         assertEquals(List.of("A", "C", "D", "F"), paths.wildcardThenUnion(root));
         assertEquals(List.of("A", "B", "C", "D", "E", "F"), paths.unionThenWildcard(root));
+        assertEquals(List.of("A", "B", "C", "D", "E", "F"), paths.mixedUnion(root));
         assertEquals(List.of("A", "B", "C", "D", "E", "F"), paths.wildcardThenSliceUnion(root));
         assertEquals(List.of("A", "B", "D", "E"), paths.wildcardThenSlice(root));
         assertEquals(List.of("Ada", 35), paths.pojoNameUnion(root));
