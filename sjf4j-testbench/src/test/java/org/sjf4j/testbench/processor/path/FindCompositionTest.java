@@ -41,7 +41,7 @@ public class FindCompositionTest {
         List<String> wildcardThenSlice(Root root);
     }
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     interface Dynamic {
         @FindByPath("$.books[*].title")
         List<String> books(Map<String, Object> root);
@@ -64,7 +64,7 @@ public class FindCompositionTest {
     }
 
     @Test
-    public void dynamicUnknownShapeRequiresExplicitFallback() {
+    public void dynamicUnknownShapeUsesCompiledObntTraversal() {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("books", Arrays.asList(Map.of("title", "First"), Map.of("title", "Second")));
         assertEquals(List.of("First", "Second"), CompiledInstances.create(Dynamic.class).books(root));
