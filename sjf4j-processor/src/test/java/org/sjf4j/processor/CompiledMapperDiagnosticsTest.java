@@ -24,7 +24,7 @@ public class CompiledMapperDiagnosticsTest {
                         "@CompiledMapper interface cannot declare type parameters"),
                 new InvalidCase("generic mapper method",
                         "@CompiledMapper public interface Mapper { <T> T map(T source); }",
-                        "mapper method cannot declare type parameters"),
+                        "Mapper method contains unresolved type variables after interface specialization"),
                 new InvalidCase("create method without source",
                         "@CompiledMapper public interface Mapper { String map(); }",
                         "mapper method must declare at least one source parameter"),
