@@ -273,27 +273,27 @@ public class MapperGenericTest {
 
     @CompiledMapper
     public interface GenericMapper {
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         List<UserDto> users(List<? extends User> source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         Set<UserDto> userSet(Set<? extends User> source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         void updateUsers(List<UserDto> target, List<? extends User> source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         Map<String, UserDto> userMap(Map<? extends String, ? extends User> source);
 
-        @MappingOptions(objects = ObjectPolicy.PUT, using = {"this::toDto"})
+        @MappingOptions(objects = ObjectPolicy.PUT, prefer = {"this::toDto"})
         void updateUserMap(
                 Map<String, UserDto> target,
                 Map<? extends String, ? extends User> source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         List<List<UserDto>> nestedUsers(List<? extends List<? extends User>> source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         Map<String, List<UserDto>> groupedUsers(
                 Map<? extends String, ? extends List<? extends User>> source);
 
@@ -303,16 +303,16 @@ public class MapperGenericTest {
 
         Map<String, Object> objectMap(Map<String, ?> source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         List<UserDto> inheritedUsers(Users source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         Map<String, UserDto> inheritedMap(UsersByName source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         UserDtoValueBox inheritedBox(UserValueBox source);
 
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(prefer = {"this::toDto"})
         DtoBox box(WildcardBox source);
 
         List<? extends User> covariantList(List<User> source);
