@@ -213,8 +213,7 @@ final class FindEmitter {
             boolean name = step.segment instanceof PathSegment.Name;
             String shape = names.newName("shape");
             out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(" + owner + ");");
-            out.beginBlock("if (" + shape + (name ? ".isObject()" : ".isArray() && !(" +
-                    owner + " instanceof java.util.Set)") + ")");
+            out.beginBlock("if (" + shape + (name ? ".isObject()" : ".isArray()") + ")");
             if (name) {
                 String key = JavaWriter.stringLiteral(((PathSegment.Name) step.segment).name);
                 out.line("org.sjf4j.node.NodeWalker.getAccessInObject(" + owner +
@@ -319,11 +318,9 @@ final class FindEmitter {
             }
             out.beginBlock("if (" + shape + ".isArray())");
             if (slice) {
-                // Set is an OBNT array, but has no indexed access or slice.
-                out.beginBlock("if (!(" + owner + " instanceof java.util.Set))");
+                // NodeWalker preserves runtime bounds and Set-index rejection semantics.
                 emitIndexedSelection(out, names, step, owner, root, result,
                         filters, descendants, accessVar, item, true);
-                out.endBlock();
             } else {
                 emitArrayCallback(out, names, step, owner, root, result,
                         filters, descendants, accessVar, item);
