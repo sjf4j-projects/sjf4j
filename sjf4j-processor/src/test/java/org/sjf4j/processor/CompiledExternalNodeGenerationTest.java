@@ -61,7 +61,8 @@ class CompiledExternalNodeGenerationTest {
         assertTrue(result.success, result.diagnostics());
 
         String generated = result.generatedSource("fixture/Paths_Impl.java");
-        assertTrue(generated.contains("private static final org.sjf4j.path.FilterExpr"), generated);
+        assertTrue(generated.contains("FilterExpr"), generated);
+        assertTrue(generated.contains("FIND_FILTER"), generated);
         assertTrue(generated.contains(".evalTruth("), generated);
         assertTrue(generated.contains("NodeWalker.forEachArray("), generated);
         assertFalse(generated.contains(".find("), generated);
