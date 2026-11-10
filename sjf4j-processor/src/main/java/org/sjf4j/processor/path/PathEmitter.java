@@ -3,6 +3,7 @@ package org.sjf4j.processor.path;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
@@ -35,6 +36,7 @@ final class PathEmitter {
 
     private final ProcessorContext context;
     private final TypeSystem types;
+    private final NodeReadEmitter reads;
 
     private final TypeMirror stringType;
     private final TypeMirror mapType;
@@ -45,6 +47,7 @@ final class PathEmitter {
     PathEmitter(ProcessorContext context) {
         this.context = context;
         this.types = context.types;
+        this.reads = new NodeReadEmitter(context.types);
 
         this.stringType = type(String.class.getName());
         this.mapType = type("java.util.Map");
@@ -776,30 +779,10 @@ final class PathEmitter {
 
         switch (step.access.kind()) {
             case PROPERTY:
-                emitPropertyRead(out, step.access.property(), owner, target, type);
-                break;
-
             case MAP:
-                out.line(
-                        localType(type) +
-                                " " +
-                                target +
-                                " = " +
-                                owner +
-                                ".get(" +
-                                nameExpression(step) +
-                                ");");
-                break;
-
             case JSON_OBJECT:
-                emitObjectResult(
-                        out,
-                        type,
-                        target,
-                        owner +
-                                ".getNode(" +
-                                nameExpression(step) +
-                                ")");
+                out.line(localType(type) + " " + target + " = " +
+                        reads.name(step.access, owner, nameExpression(step)) + ";");
                 break;
 
             case LIST:
@@ -812,7 +795,6 @@ final class PathEmitter {
                         type,
                         mode,
                         missing,
-                        false,
                         false);
                 break;
 
@@ -826,8 +808,7 @@ final class PathEmitter {
                         type,
                         mode,
                         missing,
-                        true,
-                        false);
+                        true);
                 break;
 
             case JSON_ARRAY:
@@ -840,8 +821,7 @@ final class PathEmitter {
                         type,
                         mode,
                         missing,
-                        false,
-                        true);
+                        false);
                 break;
 
             case DYNAMIC:
@@ -886,28 +866,11 @@ final class PathEmitter {
     }
 
     private void emitPropertyRead(
-            JavaWriter out,
-            Property property,
-            String owner,
-            String target,
-            TypeMirror type) {
+            JavaWriter out, NodeAccess access, String owner,
+            String target, TypeMirror type) {
 
-        PropertyAccess read = property.read();
-
-        String expression;
-        if (read.isMethod()) {
-            expression = owner + "." + read.memberName() + "()";
-        } else {
-            expression = owner + "." + read.memberName();
-        }
-
-        out.line(
-                localType(type) +
-                        " " +
-                        target +
-                        " = " +
-                        expression +
-                        ";");
+        out.line(localType(type) + " " + target + " = " +
+                reads.name(access, owner, null) + ";");
     }
 
     private void emitIndexedRead(
@@ -919,29 +882,12 @@ final class PathEmitter {
             TypeMirror type,
             ReadMode mode,
             String missing,
-            boolean array,
-            boolean jsonArray) {
+            boolean array) {
 
         String size = array ? owner + ".length" : owner + ".size()";
         String index = emitIndex(out, step, size, names);
 
-        String expression;
-
-        if (array) {
-            expression = owner + "[" + index + "]";
-
-        } else if (jsonArray) {
-            expression =
-                    objectExpression(
-                            type,
-                            owner +
-                                    ".getNode(" +
-                                    index +
-                                    ")");
-
-        } else {
-            expression = owner + ".get(" + index + ")";
-        }
+        String expression = reads.index(step.access, owner, index);
 
         if (mode == ReadMode.ENSURE) {
             out.line(
@@ -1118,7 +1064,7 @@ final class PathEmitter {
             return;
         }
 
-        emitPropertyRead(out, step.access.property(), owner, old, step.access.readType());
+        emitPropertyRead(out, step.access, owner, old, step.access.readType());
     }
 
     private void emitPropertyWrite(
