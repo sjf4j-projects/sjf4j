@@ -9,8 +9,10 @@ import org.sjf4j.annotation.mapping.ReusePolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,6 +23,43 @@ import static org.junit.jupiter.api.Assertions.*;
 public class MapperReuseMatrixTest {
 
     private final ReuseMapper mapper = CompiledInstances.create(ReuseMapper.class);
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void rawListTargetReusesAssignableTypedList() {
+        List<String> source = new ArrayList<>(List.of("Ada"));
+        List result = mapper.rawList(source);
+        assertSame(source, result);
+        assertSame(source.get(0), result.get(0));
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void rawSetTargetReusesAssignableTypedSet() {
+        Set<String> source = new LinkedHashSet<>(List.of("Ada"));
+        Set result = mapper.rawSet(source);
+        assertSame(source, result);
+        assertEquals(Set.of("Ada"), result);
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void rawMapTargetReusesAssignableTypedMap() {
+        Map<String, Integer> source = new LinkedHashMap<>();
+        source.put("age", 42);
+        Map result = mapper.rawMap(source);
+        assertSame(source, result);
+        assertEquals(42, result.get("age"));
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    public void nonAssignableRawSetTargetUsesUntypedElements() {
+        List<String> source = new ArrayList<>(List.of("Ada", "Bob"));
+        Set result = mapper.rawSetFromList(source);
+        assertNotSame(source, result);
+        assertEquals(Set.of("Ada", "Bob"), result);
+    }
 
     @Test
     public void sameTypedRootListPreservesReference() {
@@ -124,6 +163,18 @@ public class MapperReuseMatrixTest {
 
     @CompiledMapper
     public interface ReuseMapper {
+        @SuppressWarnings("rawtypes")
+        List rawList(List<String> source);
+
+        @SuppressWarnings("rawtypes")
+        Set rawSet(Set<String> source);
+
+        @SuppressWarnings("rawtypes")
+        Map rawMap(Map<String, Integer> source);
+
+        @SuppressWarnings("rawtypes")
+        Set rawSetFromList(List<String> source);
+
         @MappingOptions(reuse = ReusePolicy.ASSIGNABLE)
         List<String> sameList(List<String> source);
 
