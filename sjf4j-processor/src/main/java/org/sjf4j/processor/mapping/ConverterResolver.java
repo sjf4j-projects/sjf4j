@@ -182,8 +182,8 @@ public final class ConverterResolver {
         /*
          * Method-level converter preferences.
          */
-        List<String> prefer = prefer(plan);
-        Conversion preferred = resolvePreferred(prefer, sourceType, targetType, plan, generated);
+        List<String> preferredReferences = prefer(plan);
+        Conversion preferred = resolvePreferred(preferredReferences, sourceType, targetType, plan, generated);
 
         if (!generated.isValid()) return null;
 
@@ -307,9 +307,9 @@ public final class ConverterResolver {
      * --------------------------------------------------------------
      */
 
-    private Conversion resolvePreferred(List<String> prefer, TypeMirror sourceType, TypeMirror targetType,
+    private Conversion resolvePreferred(List<String> references, TypeMirror sourceType, TypeMirror targetType,
                                         MappingPlan plan, GeneratedClass generated) {
-        for (String reference : prefer) {
+        for (String reference : references) {
             String[] names = qualifiedReference(plan, reference, "prefer", generated);
 
             if (names == null) return null;
