@@ -54,8 +54,8 @@ final class FindPlan {
                     : Collections.unmodifiableList(alternatives);
         }
 
-        static Step collect(TypeMirror type) {
-            return new Step(Kind.COLLECT, null, -1, type, type, null, null, null);
+        static Step collect(TypeMirror ownerType, TypeMirror resultType) {
+            return new Step(Kind.COLLECT, null, -1, ownerType, resultType, null, null, null);
         }
 
         static Step empty(TypeMirror type) {
