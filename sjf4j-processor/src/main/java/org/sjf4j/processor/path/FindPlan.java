@@ -13,7 +13,7 @@ import java.util.List;
 final class FindPlan {
 
     enum Kind {
-        COLLECT, READ, WILDCARD, SLICE, FILTER, UNION, EMPTY
+        COLLECT, READ, WILDCARD, SLICE, FILTER, UNION, DESCENDANT, EMPTY
     }
 
     final ExecutableElement method;
@@ -21,16 +21,14 @@ final class FindPlan {
     final String expression;
     final TypeMirror elementType;
     final Step traversal;
-    final boolean runtimeFallback;
 
     FindPlan(ExecutableElement method, VariableElement root, String expression,
-             TypeMirror elementType, Step traversal, boolean runtimeFallback) {
+             TypeMirror elementType, Step traversal) {
         this.method = method;
         this.root = root;
         this.expression = expression;
         this.elementType = elementType;
         this.traversal = traversal;
-        this.runtimeFallback = runtimeFallback;
     }
 
     static final class Step {
