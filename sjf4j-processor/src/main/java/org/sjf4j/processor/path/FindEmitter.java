@@ -167,7 +167,8 @@ final class FindEmitter {
                     throw new AssertionError(access.kind());
             }
             out.line(localType(step.valueType) + " " + value + " = " +
-                    convertResult(step.valueType, expression) + ";");
+                    (access.kind() == NodeAccess.Kind.JSON_OBJECT
+                            ? convertResult(step.valueType, expression) : expression) + ";");
 
             if (access.kind() == NodeAccess.Kind.MAP ||
                     access.kind() == NodeAccess.Kind.JSON_OBJECT) {
@@ -190,7 +191,8 @@ final class FindEmitter {
             out.beginBlock("if (" + index + " >= 0 && " + index + " < " + size + ")");
             expression = elementExpression(step.ownerType, owner, index);
             out.line(localType(step.valueType) + " " + value + " = " +
-                    convertResult(step.valueType, expression) + ";");
+                    (access.kind() == NodeAccess.Kind.JSON_ARRAY
+                            ? convertResult(step.valueType, expression) : expression) + ";");
             emitStep(out, names, step.next, value, root, result, filters);
             out.endBlock();
             return;
@@ -236,14 +238,14 @@ final class FindEmitter {
                             iterator + "." + (reverse ? "previous()" : "next()") + ";");
                 } else {
                     out.line(localType(step.valueType) + " " + item + " = " +
-                            convertResult(step.valueType, elementExpression(step.ownerType, owner, index)) + ";");
+                            sequenceRead(step.ownerType, step.valueType, owner, index) + ";");
                 }
             } else {
                 String index = names.newName("index");
                 out.beginBlock("for (int " + index + " = 0; " + index +
                         " < " + size + "; " + index + "++)");
                 out.line(localType(step.valueType) + " " + item + " = " +
-                        convertResult(step.valueType, elementExpression(step.ownerType, owner, index)) + ";");
+                        sequenceRead(step.ownerType, step.valueType, owner, index) + ";");
             }
         }
 
@@ -253,6 +255,14 @@ final class FindEmitter {
         emitStep(out, names, step.next, item, root, result, filters);
         if (step.kind == FindPlan.Kind.FILTER) out.endBlock();
         out.endBlock();
+    }
+
+    private String sequenceRead(TypeMirror ownerType, TypeMirror valueType,
+                                String receiver, String index) {
+        String expression = elementExpression(ownerType, receiver, index);
+        NodeKind kind = types.nodeKind(ownerType);
+        return kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO
+                ? convertResult(valueType, expression) : expression;
     }
 
     private String elementExpression(TypeMirror ownerType, String receiver, String index) {
