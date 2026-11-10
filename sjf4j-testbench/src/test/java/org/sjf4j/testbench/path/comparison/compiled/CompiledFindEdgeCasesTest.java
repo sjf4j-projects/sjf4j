@@ -31,6 +31,9 @@ class CompiledFindEdgeCasesTest {
         @FindByPath("$.items[0,'name',0,'name']")
         List<Object> repeatedMixedUnion(Map<String, Object> root);
 
+        @FindByPath("$.*[0,'name']")
+        List<Object> mixedUnionAcrossDifferentChildren(Map<String, Object> root);
+
         @FindByPath("$.data.name")
         List<Object> dynamicName(Map<String, Object> root);
 
@@ -77,6 +80,14 @@ class CompiledFindEdgeCasesTest {
                 List.of("first", "first"), paths.repeatedMixedUnion(list));
         assertMatches("$.items[0,'name',0,'name']", object,
                 List.of("selected", "selected"), paths.repeatedMixedUnion(object));
+
+        Map<String, Object> heterogeneous = new LinkedHashMap<>();
+        heterogeneous.put("array", List.of("first"));
+        heterogeneous.put("object", Map.of("name", "selected"));
+        heterogeneous.put("scalar", 5);
+        assertMatches("$.*[0,'name']", heterogeneous,
+                List.of("first", "selected"),
+                paths.mixedUnionAcrossDifferentChildren(heterogeneous));
     }
 
     @Test
