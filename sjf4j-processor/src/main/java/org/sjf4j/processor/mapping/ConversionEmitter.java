@@ -515,10 +515,9 @@ public final class ConversionEmitter
                 String raw = names.newName("raw");
                 out.line("java.lang.Object " + raw + " = " + source + ";");
                 out.line(localType(targetType) + " " + value + " = " + raw +
-                        " instanceof java.lang.Number ? org.sjf4j.util.Numbers.toExact((java.lang.Number) " +
-                        raw + ", " + classLiteral(targetType) + ") : " + mapperToCast(targetType) +
-                        "org.sjf4j.node.NodeMapper.to(" + raw + ", " + classLiteral(targetType) +
-                        ", this.context);");
+                        " == null ? null : org.sjf4j.util.Numbers.toExact(" +
+                        "org.sjf4j.node.NodeMapper.toNumber(" + raw + ", this.context), " +
+                        classLiteral(targetType) + ");");
             } else {
                 out.line(localType(targetType) + " " + value + " = " + mapperToCast(targetType) +
                         "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
