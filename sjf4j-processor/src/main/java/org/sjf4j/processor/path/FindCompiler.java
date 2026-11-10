@@ -19,7 +19,8 @@ import java.util.List;
 
 /**
  * Resolves a find expression once, from left to right, into composable typed
- * traversal steps. Runtime fallback is decided here, never during emission.
+ * traversal steps. All supported selectors produce Java traversal code; a
+ * dynamically typed node uses OBNT dispatch rather than whole-path fallback.
  */
 final class FindCompiler {
     private final ProcessorContext context;
@@ -71,22 +72,19 @@ final class FindCompiler {
                 fail(method, generated, "@FindByPath does not support append segments");
                 return null;
             }
+            if (segments[i] instanceof PathSegment.Function) {
+                fail(method, generated, "@FindByPath does not support function evaluation");
+                return null;
+            }
         }
 
         VariableElement root = parameters.get(0);
         allowFilter = allowFallback;
         try {
             FindPlan.Step traversal = compilePath(root.asType(), segments, 1, elementType);
-            return new FindPlan(method, root, expression, elementType, traversal, false);
+            return new FindPlan(method, root, expression, elementType, traversal);
         } catch (CompileFailure e) {
-            if (e.recoverable && allowFallback) {
-                return new FindPlan(method, root, expression, elementType, null, true);
-            }
-            String message = "@FindByPath path '" + expression + "': " + e.getMessage();
-            if (e.recoverable) {
-                message += "; set @CompiledNavigator(fallback=true) to allow runtime evaluation";
-            }
-            fail(method, generated, message);
+            fail(method, generated, "@FindByPath path '" + expression + "': " + e.getMessage());
             return null;
         }
     }
@@ -139,10 +137,11 @@ final class FindCompiler {
                         kind != NodeKind.COMPILE_TIME_UNKNOWN) {
                     return FindPlan.Step.empty(owner);
                 }
+                // A statically known incompatible selector cannot match.
+                if (kind != NodeKind.UNKNOWN && kind != NodeKind.COMPILE_TIME_UNKNOWN) {
+                    return FindPlan.Step.empty(owner);
+                }
                 throw unsupported("cannot compile " + segment + " on " + owner);
-            }
-            if (access.kind() == NodeAccess.Kind.DYNAMIC) {
-                throw unsupported("dynamic node access at " + segment);
             }
             if (!access.readable()) {
                 throw invalid("property " + segment + " of " + owner + " is not readable");
@@ -157,48 +156,75 @@ final class FindCompiler {
                 segment instanceof PathSegment.Slice ||
                 segment instanceof PathSegment.Filter) {
             if (segment instanceof PathSegment.Filter && !allowFilter) {
-                throw unsupported("filter predicates require runtime evaluation");
+                throw unsupported("filter predicates require @CompiledNavigator(fallback=true)");
             }
 
-            TypeMirror value = elementType(owner,
-                    segment instanceof PathSegment.Wildcard ||
-                    segment instanceof PathSegment.Filter);
+            NodeKind kind = types.nodeKind(owner);
+            boolean slice = segment instanceof PathSegment.Slice;
+            TypeMirror value = elementType(owner, !slice);
+
+            // An inapplicable selector on a known static shape selects nothing.
             if (value == null) {
-                throw unsupported("cannot enumerate " + segment + " on " + owner);
+                if (kind == NodeKind.UNKNOWN || kind == NodeKind.COMPILE_TIME_UNKNOWN) {
+                    throw unsupported("cannot enumerate " + segment + " on " + owner);
+                }
+                return FindPlan.Step.empty(owner);
             }
-            NodeAccess iteration = types.nodeKind(owner) == NodeKind.OBJECT_MAP
-                    ? context.access.resolveDynamicName(owner)
-                    : context.access.resolveIndex(owner);
-            if (iteration == null || iteration.kind() == NodeAccess.Kind.DYNAMIC) {
-                throw unsupported("cannot statically iterate " + owner);
+
+            NodeAccess iteration;
+            if (kind == NodeKind.OBJECT_MAP || kind == NodeKind.OBJECT_JSON_OBJECT
+                    || kind == NodeKind.OBJECT_JOJO) {
+                iteration = context.access.resolveDynamicName(owner);
+            } else if (kind == NodeKind.ARRAY_LIST || kind == NodeKind.ARRAY_ARRAY
+                    || kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO
+                    || kind == NodeKind.COMPILE_TIME_UNKNOWN) {
+                iteration = context.access.resolveIndex(owner);
+            } else {
+                // Set and POJO use their dedicated iterator / NodeWalker traversal.
+                iteration = null;
             }
+
             FindPlan.Step next = compilePath(value, segments, index + 1, resultType);
-            FindPlan.Kind kind = segment instanceof PathSegment.Wildcard
+            FindPlan.Kind selection = segment instanceof PathSegment.Wildcard
                     ? FindPlan.Kind.WILDCARD
                     : segment instanceof PathSegment.Filter ? FindPlan.Kind.FILTER
                     : FindPlan.Kind.SLICE;
-            return new FindPlan.Step(kind, segment, index, owner, value, iteration, next, null);
+            return new FindPlan.Step(selection, segment, index, owner, value, iteration, next, null);
         }
 
         if (segment instanceof PathSegment.Descendant) {
-            throw unsupported("descendant traversal cannot be fully compiled");
+            if (index + 1 >= segments.length) {
+                throw invalid("descendant '..' needs a following selector");
+            }
+            // Descendants may cross arbitrary OBNT representations. Continue
+            // using Object/NodeWalker without discarding the typed prefix.
+            FindPlan.Step next = compilePath(types.objectType(), segments, index + 1, resultType);
+            return new FindPlan.Step(FindPlan.Kind.DESCENDANT, segment, index,
+                    owner, types.objectType(), null, next, null);
         }
         throw unsupported("unsupported path segment " + segment);
     }
 
-    private TypeMirror elementType(TypeMirror type, boolean allowMap) {
+    private TypeMirror elementType(TypeMirror type, boolean allowObject) {
         type = types.concrete(type);
         NodeKind kind = types.nodeKind(type);
-        if (allowMap && kind == NodeKind.OBJECT_MAP) {
-            return types.mapReadValueType(type);
+        if (allowObject && (kind == NodeKind.OBJECT_MAP
+                || kind == NodeKind.OBJECT_JSON_OBJECT || kind == NodeKind.OBJECT_JOJO
+                || kind == NodeKind.OBJECT_POJO)) {
+            return kind == NodeKind.OBJECT_MAP
+                    ? types.mapReadValueType(type) : types.objectType();
         }
         if (type.getKind() == TypeKind.ARRAY) {
             return types.concrete(((ArrayType) type).getComponentType());
         }
         if (kind == NodeKind.ARRAY_LIST) return types.listReadElementType(type);
-        if (kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO) {
+        if (kind == NodeKind.ARRAY_SET) return allowObject ? types.setReadElementType(type) : null;
+        if (kind == NodeKind.ARRAY_JSON_ARRAY || kind == NodeKind.ARRAY_JAJO
+                || kind == NodeKind.COMPILE_TIME_UNKNOWN) {
             return types.objectType();
         }
+        // Filters can also evaluate one scalar/current node (runtime behavior).
+        if (allowObject && allowFilter && (kind.isValue())) return type;
         return null;
     }
 
