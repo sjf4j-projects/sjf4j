@@ -77,6 +77,9 @@ class DynamicCompiledComparisonTest {
         @FindByPath("$.books..name.title")
         List<String> descendantWithDynamicSuffix(LibraryRoot root);
 
+        @FindByPath("$.books..name..title")
+        List<String> nestedDescendants(LibraryRoot root);
+
         @FindByPath("$.items[*].title")
         List<String> unknownObjectMembers(Map<String, Object> root);
 
@@ -169,6 +172,9 @@ class DynamicCompiledComparisonTest {
         CompiledComparisonSupport.assertEquivalent("descendant_name_then_title",
                 "$.books..name.title", root, paths.descendantWithDynamicSuffix(root));
         assertEquals(List.of("First", "Second"), paths.descendantWithDynamicSuffix(root));
+        CompiledComparisonSupport.assertEquivalent("nested_descendant_selectors",
+                "$.books..name..title", root, paths.nestedDescendants(root));
+        assertEquals(List.of("First", "Second"), paths.nestedDescendants(root));
     }
 
     @Test
