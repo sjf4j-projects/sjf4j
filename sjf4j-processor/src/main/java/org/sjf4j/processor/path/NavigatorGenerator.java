@@ -60,8 +60,8 @@ public final class NavigatorGenerator {
             NavigatorPlan plan = analyzer.analyze(method, generated, allowFallback);
             if (plan != null) plans.add(plan);
         }
-        if (!generated.isValid()) return;
-
+        // Even with analysis errors, continue compiling valid plans to collect
+        // all diagnostics in one compiler invocation.
         // Resolve all paths and fallback decisions before emitting source.
         List<NavigatorCompiler.CompiledMethod> compiled = new java.util.ArrayList<>(plans.size());
         for (NavigatorPlan plan : plans) {
