@@ -78,7 +78,7 @@ class FullFallbackComparisonTest {
         List<String> setOfPojo(MixedRoot root);
 
         @FindByPath("$.jajo[*].name")
-        List<String> jajoWithMixedObjectElements(MixedRoot root);
+        List<Object> jajoWithMixedObjectElements(MixedRoot root);
 
         @FindByPath("$.external.items[*].name")
         List<Object> externalNodeInPojo(MixedRoot root);
