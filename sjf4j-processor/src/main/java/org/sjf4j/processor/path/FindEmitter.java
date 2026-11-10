@@ -29,7 +29,15 @@ final class FindEmitter {
 
     void emit(FindPlan plan, GeneratedClass generated) {
         final Map<FindPlan.Step, String> filters = new IdentityHashMap<>();
-        if (!plan.runtimeFallback) {
+        final String fallback;
+        if (plan.runtimeFallback) {
+            fallback = generated.names().field("FIND_PATH");
+            generated.addField(out -> out.line(
+                    "private static final org.sjf4j.path.JsonPath " + fallback +
+                    " = org.sjf4j.path.JsonPath.parse(" +
+                    JavaWriter.stringLiteral(plan.expression) + ");"));
+        } else {
+            fallback = null;
             prepareFilters(plan.traversal, plan.expression, generated, filters, -1, -1);
         }
 
@@ -54,8 +62,6 @@ final class FindEmitter {
 
             if (plan.runtimeFallback) {
                 // Runtime path is cached once per generated interface, not parsed per invocation.
-                String fallback = generated.names().field("FIND_PATH");
-                // The field is registered outside this lambda below.
                 out.beginBlock("for (Object value : " + fallback + ".find(" + rootName + "))");
                 out.line(result + ".add(" + convertResult(plan.elementType, "value") + ");");
                 out.endBlock();
@@ -67,10 +73,6 @@ final class FindEmitter {
             out.endBlock();
         });
 
-        if (plan.runtimeFallback) {
-            // IMPORTANT: this is used only when compile-time traversal cannot be emitted.
-            // Actual registration happens before emission, preserving one stable field name.
-        }
     }
 
     private void prepareFilters(FindPlan.Step step, String expression,
