@@ -131,10 +131,12 @@ final class FindCompiler {
             }
 
             if (access == null) {
-                // A statically absent POJO member in a union is an empty selection,
-                // just as an absent map key contributes no result.
-                if (optional && segment instanceof PathSegment.Name &&
-                        types.nodeKind(owner) == NodeKind.OBJECT_POJO) {
+                // An inapplicable alternative contributes no nodes, but does
+                // not invalidate the other union members. Dynamic types still
+                // require runtime evaluation because their shape is unknown.
+                NodeKind kind = types.nodeKind(owner);
+                if (optional && kind != NodeKind.UNKNOWN &&
+                        kind != NodeKind.COMPILE_TIME_UNKNOWN) {
                     return FindPlan.Step.empty(owner);
                 }
                 throw unsupported("cannot compile " + segment + " on " + owner);
