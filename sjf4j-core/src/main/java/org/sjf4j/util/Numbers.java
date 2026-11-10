@@ -225,6 +225,51 @@ public final class Numbers {
     }
 
     /**
+     * Converts a Number without losing its exact mathematical value.
+     *
+     * <p>Integral and decimal values are compared precisely. Binary
+     * floating-point inputs and outputs are compared using their exact
+     * representable values, rather than their shortest decimal formatting.
+     * The ordinary range checks still apply.</p>
+     *
+     * @throws ArithmeticException if conversion overflows or loses precision
+     */
+    public static <T> T toExact(Number number, Class<T> clazz) {
+        T converted = to(number, clazz);
+        if (converted == number) return converted;
+        if (converted instanceof Number &&
+                exactDecimal(number).compareTo(exactDecimal((Number) converted)) != 0) {
+            throw new ArithmeticException("cannot convert Number '" + number +
+                    "' to " + clazz.getName() + " without precision loss");
+        }
+        return converted;
+    }
+
+    private static BigDecimal exactDecimal(Number number) {
+        if (number instanceof BigDecimal) return (BigDecimal) number;
+        if (number instanceof BigInteger) return new BigDecimal((BigInteger) number);
+        if (number instanceof Double) {
+            double value = number.doubleValue();
+            if (!Double.isFinite(value)) {
+                throw new ArithmeticException("cannot compare non-finite Number '" + number + "' exactly");
+            }
+            return new BigDecimal(value);
+        }
+        if (number instanceof Float) {
+            float value = number.floatValue();
+            if (!Float.isFinite(value)) {
+                throw new ArithmeticException("cannot compare non-finite Number '" + number + "' exactly");
+            }
+            return new BigDecimal((double) value);
+        }
+        if (number instanceof Byte || number instanceof Short ||
+                number instanceof Integer || number instanceof Long) {
+            return BigDecimal.valueOf(number.longValue());
+        }
+        return new BigDecimal(number.toString());
+    }
+
+    /**
      * Converts a Number to the requested numeric target type.
      */
     @SuppressWarnings("unchecked")
