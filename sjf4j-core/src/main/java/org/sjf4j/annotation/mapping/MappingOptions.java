@@ -40,12 +40,6 @@ public @interface MappingOptions {
     ReusePolicy reuse() default ReusePolicy.ASSIGNABLE;
 
     /**
-     * Precision policy for generated numeric conversions. Both choices keep
-     * range checks; EXACT also rejects changes to the numeric value.
-     */
-    NumericPolicy numeric() default NumericPolicy.ALLOW_PRECISION_LOSS;
-
-    /**
      * Null handling for mutable create targets and update targets.
      *
      * <p>{@link NullValuePolicy#IGNORE} skips null source values when assigning
