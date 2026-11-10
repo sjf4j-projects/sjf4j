@@ -40,6 +40,29 @@ jobs:
             --tests org.sjf4j.testbench.processor.mapper.MapperSourceResolutionTest \
             --stacktrace
 
+      - name: Summarize XML test results
+        if: always()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for module in ("sjf4j-processor", "sjf4j-testbench"):
+              files = list(Path(module, "build/test-results/test").glob("TEST-*.xml"))
+              total = failures = errors = 0
+              print(f"=== {module}: {len(files)} XML suites ===")
+              for path in files:
+                  root = ET.parse(path).getroot()
+                  total += int(root.get("tests", 0))
+                  failures += int(root.get("failures", 0))
+                  errors += int(root.get("errors", 0))
+                  for case in root.findall("testcase"):
+                      for issue in list(case.findall("failure")) + list(case.findall("error")):
+                          print(f"FAILED {case.get('classname')}.{case.get('name')}")
+                          print("MESSAGE:", issue.get("message"))
+                          print("DETAIL:", (issue.text or "")[:1200])
+              print(f"TOTAL {total}, FAILED {failures}, ERRORS {errors}")
+          PY
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
