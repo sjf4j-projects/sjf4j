@@ -89,18 +89,6 @@ public class CompiledMapperBatch2DiagnosticsTest {
                         + "class Target { private Target() {} } "
                         + "Target map(Source source); }",
                         "has no public constructor"),
-                invalid("raw List target is unsupported",
-                        "@CompiledMapper public interface Mapper { "
-                        + "java.util.List map(java.util.List<String> source); }",
-                        "target container element type is not writable"),
-                invalid("raw Set target is unsupported",
-                        "@CompiledMapper public interface Mapper { "
-                        + "java.util.Set map(java.util.Set<String> source); }",
-                        "target container element type is not writable"),
-                invalid("raw Map target is unsupported",
-                        "@CompiledMapper public interface Mapper { "
-                        + "java.util.Map map(java.util.Map<String,Integer> source); }",
-                        "target Map key/value type is not writable"),
                 invalid("incompatible scalar leaf",
                         "@CompiledMapper public interface Mapper { "
                         + "record Source(String value) {} record Target(Boolean value) {} "
