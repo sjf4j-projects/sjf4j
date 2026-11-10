@@ -15,11 +15,12 @@ import java.lang.annotation.Target;
  *
  * <p>Direct code generation supports statically typed name/index accesses and
  * composable wildcard ({@code [*]}), slice, and union selectors, including
- * nested combinations and unions of POJO properties. A filter can generate
- * direct iteration with its predicate evaluated by a cached runtime expression
- * when {@link CompiledNavigator#fallback()} is enabled. Descendant and dynamic
- * paths require explicit runtime fallback; unsupported shapes fail at compile
- * time when fallback is disabled.</p>
+ * nested combinations and unions of POJO properties. Dynamically typed OBNT
+ * nodes are traversed through NodeWalker, and descendant selection uses
+ * generated recursive helpers. Filter traversal is generated, while its
+ * predicate is a cached runtime expression when
+ * {@link CompiledNavigator#fallback()} is enabled. There is no whole-path
+ * runtime fallback; unsupported operations fail at compile time.</p>
  *
  * <pre>{@code
  * @CompiledNavigator
