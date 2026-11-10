@@ -15,6 +15,7 @@ import java.util.Map;
 class PartialFallbackComparisonTest {
 
     record Root(int value, List<Map<String, Integer>> items) {}
+    record NestedRoot(int limit, List<Object> books) {}
 
     @CompiledNavigator(fallback = true)
     interface Paths {
@@ -29,9 +30,24 @@ class PartialFallbackComparisonTest {
 
         @FindByPath("$.items[?(@.key==$.value)].key")
         List<Integer> filteredMember(Root root);
+
+        @FindByPath("$.books..[?(@.score > $.limit)].title")
+        List<String> descendantFilter(NestedRoot root);
     }
 
     private final Paths paths = CompiledInstances.create(Paths.class);
+
+    @Test
+    void descendantFilterPreservesOriginalRoot() {
+        NestedRoot root = new NestedRoot(5, List.of(
+                Map.of("chapters", List.of(
+                        Map.of("score", 1, "title", "Low"),
+                        Map.of("score", 10, "title", "High")))));
+        CompiledComparisonSupport.assertEquivalent("descendant_filter_root_reference",
+                "$.books..[?(@.score > $.limit)].title",
+                root, paths.descendantFilter(root));
+        assertEquals(List.of("High"), paths.descendantFilter(root));
+    }
 
     @Test
     void booleanAndPredicateOnTypedMaps() {
