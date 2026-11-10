@@ -165,6 +165,9 @@ final class FindCompiler {
 
             NodeKind kind = types.nodeKind(owner);
             boolean slice = segment instanceof PathSegment.Slice;
+            if (slice && kind == NodeKind.ARRAY_SET) {
+                throw invalid("Set does not support indexed slice selection");
+            }
             TypeMirror value = elementType(owner, !slice);
 
             // An inapplicable selector on a known static shape selects nothing.
