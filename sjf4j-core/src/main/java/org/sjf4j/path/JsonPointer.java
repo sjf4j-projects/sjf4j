@@ -9,7 +9,6 @@ import org.sjf4j.exception.NodeException;
 import org.sjf4j.util.Asserts;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 /**
  * JSON Pointer wrapper for JSON Patch paths and single-location OBNT access.
@@ -133,8 +132,8 @@ public class JsonPointer extends JsonPath {
             } else if (a instanceof PathSegment.Index) {
                 PathSegment.Index ai = (PathSegment.Index) a;
                 PathSegment.Index bi = (PathSegment.Index) b;
-                String at = ai.pointerToken != null ? ai.pointerToken : Integer.toString(ai.index);
-                String bt = bi.pointerToken != null ? bi.pointerToken : Integer.toString(bi.index);
+                String at = ai.pointerRaw != null ? ai.pointerRaw : Integer.toString(ai.index);
+                String bt = bi.pointerRaw != null ? bi.pointerRaw : Integer.toString(bi.index);
                 if (!at.equals(bt)) return false;
             }
         }
@@ -153,7 +152,7 @@ public class JsonPointer extends JsonPath {
                 segHash = 31 * segHash + ((PathSegment.Name) seg).name.hashCode();
             } else if (seg instanceof PathSegment.Index) {
                 PathSegment.Index index = (PathSegment.Index) seg;
-                String token = index.pointerToken != null ? index.pointerToken : Integer.toString(index.index);
+                String token = index.pointerRaw != null ? index.pointerRaw : Integer.toString(index.index);
                 segHash = 31 * segHash + token.hashCode();
             }
             hash = 31 * hash + segHash;

@@ -1004,8 +1004,8 @@ public final class Nodes {
      * Gets a value by key from an object node and converts it to the
      * requested target type.
      */
-        public static <T> T getInObject(Object node, String key, Class<T> clazz) {
-            return NodeWalker.getInObject(node, key, clazz);
+    public static <T> T getInObject(Object node, String key, Class<T> clazz) {
+        return NodeWalker.getInObject(node, key, clazz);
     }
 
     /**

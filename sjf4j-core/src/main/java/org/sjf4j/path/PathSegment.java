@@ -9,7 +9,7 @@ import java.util.List;
 
 
 /**
- * Immutable segment in a JSONPath/JSON Pointer token chain.
+ * Immutable segment in a JSONPath/JSON Pointer segment chain.
  *
  * <p>Each segment points to its parent to allow reconstructing the full path
  * when formatting errors or converting to expressions. Segments describe syntax;
@@ -67,7 +67,7 @@ public abstract class PathSegment {
      */
 
     /**
-     * Represents the root token ({@code $}) in a JSONPath expression.
+     * Represents the root segment ({@code $}) in a JSONPath expression.
      */
     public static final class Root extends PathSegment {
         private Root() {
@@ -82,7 +82,7 @@ public abstract class PathSegment {
 
 
     /**
-     * Represents the current token ({@code @}) in a JSONPath expression.
+     * Represents the current segment ({@code @}) in a JSONPath expression.
      */
     public static final class Current extends PathSegment {
         private Current() {
@@ -96,7 +96,7 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents a named object member token in a JSON path expression.
+     * Represents a named object member segment in a JSON path expression.
      */
     public static final class Name extends PathSegment {
         public final String name;
@@ -128,14 +128,14 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents an index token in a JSONPath expression.
+     * Represents an index segment in a JSONPath expression.
      * <p>
-     * A pointer-origin token can address an object key when its runtime parent is
+     * A pointer-origin segment can address an object key when its runtime parent is
      * an object node; otherwise it addresses an array index.
      */
     public static final class Index extends PathSegment {
         public final int index;
-        final String pointerToken;
+        final String pointerRaw;
 
         /**
          * Creates an array-index segment.
@@ -145,21 +145,21 @@ public abstract class PathSegment {
         }
 
         /**
-         * Creates an index segment with optional original JSON Pointer token.
+         * Creates an index segment with optional original JSON Pointer segment.
          */
-        public Index(PathSegment parent, int index, String pointerToken) {
+        public Index(PathSegment parent, int index, String pointerRaw) {
             super(parent);
             this.index = index;
-            this.pointerToken = pointerToken;
+            this.pointerRaw = pointerRaw;
         }
 
-        /** A parsed numeric Pointer token also addresses an object key. */
+        /** A parsed numeric Pointer segment also addresses an object key. */
         boolean isObjectKey(Object container) {
-            return pointerToken != null && JsonType.of(container).isObject();
+            return pointerRaw != null && JsonType.of(container).isObject();
         }
 
         boolean isObjectKey(JsonType type) {
-            return pointerToken != null && type.isObject();
+            return pointerRaw != null && type.isObject();
         }
 
         /**
@@ -176,7 +176,7 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents a dynamic bracket path parameter token, e.g. {@code [{idx}]}.
+     * Represents a dynamic bracket path parameter segment, e.g. {@code [{idx}]}.
      * Parameters are resolved only by annotation-based path binding, not public
      * {@link JsonPath} evaluation methods.
      */
@@ -197,7 +197,7 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents a wildcard token (*) in a JSON path expression.
+     * Represents a wildcard segment (*) in a JSON path expression.
      */
     public static final class Wildcard extends PathSegment {
         /**
@@ -221,7 +221,7 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents a slice token in a JSON path expression.
+     * Represents a slice segment in a JSON path expression.
      */
     public static final class Slice extends PathSegment {
         public final Long start; // null allowed
@@ -286,7 +286,7 @@ public abstract class PathSegment {
     }
 
     /**
-     * Represents a union token in a JSON path expression.
+     * Represents a union segment in a JSON path expression.
      */
     public static final class Union extends PathSegment {
         public final PathSegment[] union;
@@ -342,7 +342,7 @@ public abstract class PathSegment {
     }
 
     /**
-     * JSONPath function call token, e.g. ".length()".
+     * JSONPath function call segment, e.g. ".length()".
      */
     public static final class Function extends PathSegment {
         public final String name;
@@ -390,7 +390,7 @@ public abstract class PathSegment {
     }
 
     /**
-     * Filter token, e.g. "[?(@.a > 1)]".
+     * Filter segment, e.g. "[?(@.a > 1)]".
      */
     public static final class Filter extends PathSegment {
         public final FilterExpr filterExpr;
@@ -408,30 +408,30 @@ public abstract class PathSegment {
     }
 
     /**
-     * Append token used by JSON Pointer ({@code -}) and JSONPath ({@code [+]}).
-     * A parsed Pointer token can also name an object member {@code "-"}.
+     * Append segment used by JSON Pointer ({@code -}) and JSONPath ({@code [+]}).
+     * A parsed Pointer segment can also name an object member {@code "-"}.
      */
     public static final class Append extends PathSegment {
-        final String pointerToken;
+        final String pointerRaw;
 
         /** Creates a JSONPath array append segment. */
         public Append(PathSegment parent) {
             this(parent, null);
         }
 
-        /** Creates an append segment with its optional JSON Pointer token. */
-        public Append(PathSegment parent, String pointerToken) {
+        /** Creates an append segment with its optional JSON Pointer segment. */
+        public Append(PathSegment parent, String pointerRaw) {
             super(parent);
-            this.pointerToken = pointerToken;
+            this.pointerRaw = pointerRaw;
         }
 
-        /** A parsed Pointer append token also addresses an object key. */
+        /** A parsed Pointer append segment also addresses an object key. */
         boolean isObjectKey(Object container) {
-            return pointerToken != null && JsonType.of(container).isObject();
+            return pointerRaw != null && JsonType.of(container).isObject();
         }
 
         boolean isObjectKey(JsonType type) {
-            return pointerToken != null && type.isObject();
+            return pointerRaw != null && type.isObject();
         }
 
         @Override public String toString() {

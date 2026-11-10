@@ -124,6 +124,12 @@ public enum NodeKind {
         Asserts.notNull(clazz, "clazz");
         if (clazz == Object.class) {
             return UNKNOWN;
+        } else if (clazz == String.class) {
+            return VALUE_STRING;
+        } else if (Number.class.isAssignableFrom(clazz)) {
+            return VALUE_NUMBER;
+        } else if (clazz == Boolean.class) {
+            return VALUE_BOOLEAN;
         } else if (clazz.isPrimitive()) {
             if (clazz == char.class) {
                 return VALUE_STRING;
@@ -134,20 +140,14 @@ public enum NodeKind {
             } else {
                 return VALUE_NUMBER;
             }
-        } else if (clazz == String.class) {
-            return VALUE_STRING;
-        } else if (Number.class.isAssignableFrom(clazz)) {
-            return VALUE_NUMBER;
-        } else if (clazz == Boolean.class) {
-            return VALUE_BOOLEAN;
         } else if (Map.class.isAssignableFrom(clazz)) {
             return OBJECT_MAP;
+        } else if (List.class.isAssignableFrom(clazz)) {
+            return ARRAY_LIST;
         } else if (clazz == JsonObject.class) {
             return OBJECT_JSON_OBJECT;
         } else if (JsonObject.class.isAssignableFrom(clazz)) {
             return OBJECT_JOJO;
-        } else if (List.class.isAssignableFrom(clazz)) {
-            return ARRAY_LIST;
         } else if (clazz == JsonArray.class) {
             return ARRAY_JSON_ARRAY;
         } else if (JsonArray.class.isAssignableFrom(clazz)) {
