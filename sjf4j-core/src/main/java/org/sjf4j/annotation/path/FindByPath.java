@@ -13,12 +13,13 @@ import java.lang.annotation.Target;
  * must be {@code List<T>} where {@code T} is the element type resolved from
  * the path expression.</p>
  *
- * <p>Currently supports root, simple wildcard ({@code [*]}), slice, and
- * union ({@code [0,2]} / {@code ['a','b']}) path expressions that the
- * annotation processor can compile directly. Filter and descendant paths
- * require {@link CompiledNavigator#fallback()} because they use precompiled runtime
- * fallback for the non-direct part. Unsupported path shapes fail at compile
- * time.</p>
+ * <p>Direct code generation supports statically typed name/index accesses and
+ * composable wildcard ({@code [*]}), slice, and union selectors, including
+ * nested combinations and unions of POJO properties. A filter can generate
+ * direct iteration with its predicate evaluated by a cached runtime expression
+ * when {@link CompiledNavigator#fallback()} is enabled. Descendant and dynamic
+ * paths require explicit runtime fallback; unsupported shapes fail at compile
+ * time when fallback is disabled.</p>
  *
  * <pre>{@code
  * @CompiledNavigator
