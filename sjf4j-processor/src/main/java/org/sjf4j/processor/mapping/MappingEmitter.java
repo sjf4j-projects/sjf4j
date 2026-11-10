@@ -1232,11 +1232,7 @@ public final class MappingEmitter {
 
             } else {
                 String expression =
-                        readExpression(
-                                current,
-                                segment,
-                                access,
-                                valueType);
+                        readExpression(current, segment, access);
 
                 if (guardParent) {
                     out.line(
@@ -1296,13 +1292,7 @@ public final class MappingEmitter {
             out.line(
                     target +
                             " = " +
-                            readExpression(
-                                    owner,
-                                    new PathSegment.Index(
-                                            PathSegment.Root.INSTANCE,
-                                            rawIndex),
-                                    access,
-                                    valueType) +
+                            readExpression(owner, new PathSegment.Index(PathSegment.Root.INSTANCE, rawIndex), access) +
                             ";");
 
             return;
@@ -1339,18 +1329,14 @@ public final class MappingEmitter {
         out.line(
                 target +
                         " = " +
-                        indexedReadExpression(
-                                owner,
-                                index,
-                                access,
-                                valueType) +
+                        indexedReadExpression(owner, index, access) +
                         ";");
 
         out.endBlock();
     }
 
     private String readExpression(String owner, PathSegment segment,
-                                  NodeAccess access, TypeMirror valueType) {
+                                  NodeAccess access) {
         if (segment instanceof PathSegment.Name) {
             return reads.name(access, owner,
                     JavaWriter.stringLiteral(((PathSegment.Name) segment).name));
@@ -1363,7 +1349,7 @@ public final class MappingEmitter {
     }
 
     private String indexedReadExpression(String owner, String index,
-                                         NodeAccess access, TypeMirror valueType) {
+                                         NodeAccess access) {
         return reads.index(access, owner, index);
     }
 
