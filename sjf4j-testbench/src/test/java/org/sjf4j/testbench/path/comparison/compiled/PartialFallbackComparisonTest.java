@@ -8,6 +8,8 @@ import org.sjf4j.annotation.path.FindByPath;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 /**
  * Partially compiled cases: collection traversal and property access are
  * generated directly; FilterExpr evaluation explicitly requires fallback=true.
