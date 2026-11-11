@@ -724,6 +724,9 @@ tasks.register("nativeCompatibility") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Builds and executes isolated Native Image Read/Write probes."
     dependsOn(nativeCompatibilityFixtures)
+    // Resolving these configurations at execution time is not enough to infer
+    // project-JAR producer dependencies; make them explicit for clean checkouts.
+    dependsOn(nativeCompatibilityConfigurations.values)
     outputs.upToDateWhen { false }
 
     doLast {
