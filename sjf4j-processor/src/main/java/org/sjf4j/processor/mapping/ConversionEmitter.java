@@ -123,7 +123,9 @@ public final class ConversionEmitter
                 }
                 return;
 
+            case RAW_CAST:
             case SCALAR:
+            case LENIENT_SCALAR:
             case ENUM:
             case VALUE_CODEC:
             case CODEC_ENCODE:
@@ -423,8 +425,14 @@ public final class ConversionEmitter
             case METHOD:
                 return emitMethod(conversion, source);
 
+            case RAW_CAST:
+                return emitRawCast(out, names, conversion.targetType(), source);
+
             case SCALAR:
                 return emitScalar(out, names, conversion, source);
+
+            case LENIENT_SCALAR:
+                return emitNodeMapperAs(out, names, conversion.targetType(), source);
 
             case ENUM:
                 return emitEnum(out, names, conversion, source);
@@ -508,6 +516,54 @@ public final class ConversionEmitter
      * Scalar Convert
      * --------------------------------------------------------------
      */
+
+    /**
+     * A CAST conversion is intentionally shallow: it does not traverse an
+     * Object/Map/List value or apply any OBNT coercion. Java's generic casts
+     * validate only the erased container type, so suppress the unavoidable
+     * unchecked diagnostic on this generated local alone, not on the method
+     * or generated class. This keeps -Xlint:unchecked -Werror builds usable.
+     */
+    private String emitRawCast(JavaWriter out, NameAllocator names, TypeMirror targetType,
+                               String source) {
+        String result = names.newName("raw");
+        String type = localType(targetType);
+        if (type.indexOf('<') >= 0) {
+            out.line("@SuppressWarnings(\"unchecked\")");
+        }
+        out.line(type + " " + result + " = (" + type + ") " + source + ";");
+        return result;
+    }
+
+    /**
+     * Scalar leniency is a leaf operation. The caller has already resolved
+     * nested Map/List/POJO structure, so each raw value can be treated
+     * independently without claiming NodeMapper.as() recursively coerces
+     * an entire object graph.
+     */
+    private String emitNodeMapperAs(JavaWriter out, NameAllocator names, TypeMirror targetType,
+                                    String source) {
+        String result = names.newName("converted");
+        String target = rawName(targetType);
+        String expr;
+        if ("java.lang.String".equals(target)) {
+            expr = "org.sjf4j.node.NodeMapper.asString(" + source + ", this.context)";
+        } else if ("java.lang.Boolean".equals(target)) {
+            expr = "org.sjf4j.node.NodeMapper.asBoolean(" + source + ", this.context)";
+        } else if ("java.lang.Character".equals(target)) {
+            expr = "org.sjf4j.node.NodeMapper.asChar(" + source + ", this.context)";
+        } else if (isEnum(targetType)) {
+            expr = "org.sjf4j.node.NodeMapper.asEnum(" + source + ", "
+                    + classLiteral(targetType) + ", this.context)";
+        } else {
+            // Numeric targets are normalized and range-checked by NodeMapper.as.
+            expr = "org.sjf4j.node.NodeMapper.as(" + source + ", "
+                    + classLiteral(targetType) + ", this.context)";
+        }
+        out.line(localType(targetType) + " " + result + " = " + expr + ";");
+        return result;
+    }
+
 
     private String emitScalar(JavaWriter out, NameAllocator names,
                               ConversionCompiler.CompiledConversion conversion, String source) {
