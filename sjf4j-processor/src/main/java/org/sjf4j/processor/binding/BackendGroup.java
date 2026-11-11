@@ -1,7 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.annotation.binding.BindingFormat;
+import org.sjf4j.annotation.binding.Format;
 import org.sjf4j.util.Asserts;
 
 import java.util.ArrayList;
@@ -17,15 +17,15 @@ import java.util.List;
  */
 final class BackendGroup {
 
-    private final BindingFormat format;
+    private final Format format;
     private final List<BackendSpec> backends;
 
-    BackendGroup(BindingFormat format, List<BackendSpec> backends) {
+    BackendGroup(Format format, List<BackendSpec> backends) {
         this.format = Asserts.notNull(format, "format");
         this.backends = Collections.unmodifiableList(new ArrayList<BackendSpec>(backends));
     }
 
-    BindingFormat format() {
+    Format format() {
         return format;
     }
 

@@ -2,7 +2,7 @@ package org.sjf4j.testbench.binding.fabien;
 
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.annotation.binding.BindingFormat;
+import org.sjf4j.annotation.binding.Format;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.binding.Write;
@@ -231,7 +231,7 @@ public final class FabienBindings {
     }
 
 
-    @CompiledBinder(format = BindingFormat.YAML, backend = Backend.SNAKE)
+    @CompiledBinder(format = Format.YAML, backend = Backend.SNAKE)
     public interface Snake {
         @Read Users readUsers(byte[] input);
         @Read Clients readClients(byte[] input);

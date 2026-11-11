@@ -1,7 +1,7 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.annotation.binding.BindingFormat;
+import org.sjf4j.annotation.binding.Format;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -29,7 +29,7 @@ final class BackendResolver {
             return null;
         }
 
-        BindingFormat format = annotation.format();
+        Format format = annotation.format();
         Backend backend = annotation.backend();
 
         BackendGroup group = BackendCatalog.group(format);

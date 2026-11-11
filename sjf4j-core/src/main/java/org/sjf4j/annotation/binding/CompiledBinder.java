@@ -38,7 +38,7 @@ public @interface CompiledBinder {
     /**
      * Structured format handled by this binder.
      */
-    BindingFormat format() default BindingFormat.JSON;
+    Format format() default Format.JSON;
 
     /**
      * Backend used by generated code.
