@@ -574,6 +574,13 @@ val jmhAgent = tasks.register<Exec>("jmhAgent") {
 
         executable("${graalVmHome.get()}/bin/java")
 
+        if (bindingNativeImage.get()) {
+            // On the JVM Fastjson2 normally uses ASM, while Native Image uses
+            // reflection. Train the tracing agent on the reflective path so
+            // the native direct-library baseline gets its required metadata.
+            args("-Dfastjson2.creator=reflect")
+        }
+
         args(
             "-agentlib:native-image-agent=config-output-dir=${outputDir.absolutePath}",
             "-cp",
@@ -590,11 +597,13 @@ val jmhAgent = tasks.register<Exec>("jmhAgent") {
 
         if (bindingNativeImage.get()) {
             args(
-                "-p", "backend=jackson2,jackson3,fastjson2",
+                "-p", "backend=jackson2,jackson3,fastjson2,gson",
                 "-p", "implementation=native,runtime,compiled",
                 "-p", "model=users,clients",
                 "-p", "shape=pojo,map",
-                "-p", "sizeKb=1",
+                // A 1KB Clients fixture may have no Partner entries, so the
+                // tracing agent never sees Fastjson2's reflective 'since' field.
+                "-p", "sizeKb=100",
                 "-p", "seed=12345"
             )
         }
@@ -613,12 +622,11 @@ graalvmNative {
             buildArgs.add("-O2")
 
             if (bindingNativeImage.get()) {
-                // GraalVM sees the following two Fastjson2 implementation objects
-                // embedded in the code path used by the generated enum-name encoder.
-                // Keep the workaround narrow; never blanket-initialize Fastjson2.
-                buildArgs.add("--initialize-at-build-time=" +
-                        "com.alibaba.fastjson2.JSONFactory\$CacheItem," +
-                        "com.alibaba.fastjson2.writer.ObjectWriterBaseModule")
+                // Diagnostic only: Fastjson2 upstream issue #2834 suggests
+                // build-time initialization of the package to cover objects
+                // retained by its eager default providers. Keep its own
+                // native-image.properties active; validate with JMH Smoke.
+                buildArgs.add("--initialize-at-build-time=com.alibaba.fastjson2")
             }
 
             buildArgs.add("--install-exit-handlers")

@@ -106,18 +106,18 @@ jobs:
           profile = os.environ["PROFILE"]
           print(f"## GraalVM Native Image Binding — {profile}")
           if profile == "smoke":
-              print("**144/144** correctness cases passed (3 backends, both seeds at 100KB).")
+              print("**192/192** correctness cases passed (4 backends, both seeds at 100KB).")
           else:
               paths = sorted(Path("build/performance/binding/native").glob(
                   f"binding-*-{profile}-graalvm25-*-run*.json"))
-              expected_files = 9 if profile == "full" else 3
-              expected_cases = 216 * (3 if profile == "full" else 1)
+              expected_files = 12 if profile == "full" else 4
+              expected_cases = 288 * (3 if profile == "full" else 1)
               count = sum(len(json.loads(p.read_text(encoding="utf-8"))) for p in paths)
               if len(paths) != expected_files or count != expected_cases:
                   raise SystemExit(
                       f"Expected {expected_files} JSON files and {expected_cases} results; "
                       f"got {len(paths)} files and {count} results.")
-              print(f"Completed **216 unique cases** in {len(paths)} files.")
+              print(f"Completed **288 unique cases** in {len(paths)} files.")
               if profile == "full":
                   print("Three independent native processes per case; aggregate with Best 2 Run Mean.")
           print("Shared-runner timings are exploratory, not release baselines.")

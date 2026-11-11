@@ -12,7 +12,7 @@ Usage: $0 <smoke|quick|full> [output-directory]
 
 Default output: build/performance/binding/native/.
 Optional env: GRAALVM_HOME=<path> (required, with native-image installed);
-              BINDING_NATIVE_BACKEND=jackson2|jackson3|fastjson2|all;
+              BINDING_NATIVE_BACKEND=jackson2|jackson3|fastjson2|gson|all;
               BINDING_NATIVE_SKIP_BUILD=1 to reuse an existing executable;
               BINDING_NATIVE_GRAALVM_VERSION=25.5.5.0.3 (default).
 EOF
@@ -34,7 +34,7 @@ BINDING_NATIVE_BACKEND="${BINDING_NATIVE_BACKEND:-all}"
 BINDING_NATIVE_SKIP_BUILD="${BINDING_NATIVE_SKIP_BUILD:-0}"
 GRAALVM_EXPECTED_VERSION="${BINDING_NATIVE_GRAALVM_VERSION:-25.5.5.0.3}"
 
-BACKENDS=(jackson2 jackson3 fastjson2)
+BACKENDS=(jackson2 jackson3 fastjson2 gson)
 if [[ "$BINDING_NATIVE_BACKEND" != "all" ]]; then
   valid=0
   for backend in "${BACKENDS[@]}"; do
@@ -135,7 +135,7 @@ else
 - Git SHA: $(git rev-parse HEAD)
 - Date (UTC): $(date -u +'%Y-%m-%dT%H:%M:%SZ')
 - Environment: GraalVM Native Image (not GraalVM JVM)
-- Suite version: 3
+- Suite version: 4
 - Profile: $PROFILE
 - JVM: $("$JAVA_BIN" -version 2>&1 | head -n 1)
 - Native Image compiler: $NATIVE_VERSION

@@ -95,19 +95,19 @@ not a GraalVM JVM/JIT benchmark. The JVM results above remain the historical ref
 **Native Image performance results are pending** until the native executable passes
 correctness checks and Full is measured; no extrapolated numbers are reported.
 
-The initial Native Image matrix is deliberately smaller:
+The Native Image JMH matrix uses a single executable for all four backends:
 
 | Dimension | Values |
 | --- | --- |
-| Backend | Jackson2, Jackson3, Fastjson2 |
+| Backend | Jackson2, Jackson3, Fastjson2, Gson |
 | Implementation | Native, Runtime, Compiled (Blackbird excluded) |
 | Operation | Read, Write |
 | Model | Users, Clients |
 | Shape | POJO, Map |
 | Payload | 1, 10, 100KB |
 | Seed | 12345 |
-| **Quick / Full cases** | **216** |
-| Smoke | **144 cases**: 100KB with seeds 12345 and 324 |
+| **Quick / Full cases** | **288** |
+| Smoke | **192 cases**: 100KB with seeds 12345 and 324 |
 
 Here **Native** (an implementation) still means direct library Binding.
 **Native Image** means a GraalVM AOT-compiled executable. The underlying model,
@@ -118,15 +118,35 @@ performance result; fix the compatibility issue first.
 #### Execute Native Image
 
 Install **GraalVM Community 25.5.5.0.3** (JDK 25) including `native-image`.
-The script deliberately checks the GraalVM version. It builds the JMH Native
-Image with `-O2` and no PGO; the existing Gradle `jmhAgent` task uses a
-representative Fabien training matrix to collect reachability metadata for
-the selected backends, implementations, models and shapes. The Native
-Image build explicitly permits Fastjson2's `JSONFactory$CacheItem` and
-`ObjectWriterBaseModule` to be initialized at build time; these two types were
-observed in compiler image-heap traces via the generated enum-name encoder.
-The workaround intentionally avoids build-time initializing all of Fastjson2.
-Native Image build and smoke success remain prerequisites for a performance baseline.
+The script deliberately checks the GraalVM version and builds one JMH Native
+Image with `-O2` and no PGO. That executable contains **all four backends**;
+backend selection changes only the JMH cases being executed, not the image.
+The separate compatibility-image matrix is not required.
+
+**Fastjson2 native-image configuration (benchmark-specific):** Fastjson2 2.0.66
+already ships `native-image.properties` that initializes its default reader
+and writer providers at build time. In GraalVM 25, their retained helper objects
+(`ObjectReaderBaseModule`, converter implementations, and
+`ObjectReaderProvider$LRUAutoTypeCache`) caused image-heap initialization
+errors. This benchmark **keeps** the library's original metadata and adds
+`--initialize-at-build-time=com.alibaba.fastjson2`. The broader setting is
+based on a [community workaround in fastjson2 issue #2834](https://github.com/alibaba/fastjson2/issues/2834);
+it has **not** been confirmed as a safe or officially recommended general
+configuration. It can embed Fastjson2 static state into the executable, and
+the result must be disclosed when discussing performance.
+
+**Reachability training:** The `jmhAgent` JVM uses Fastjson2's supported
+`-Dfastjson2.creator=reflect` strategy (instead of the JVM's default ASM
+strategy) and 100KB Fabien fixtures so nested POJO members, such as
+`Clients$Partner.since`, are encountered. This collects reflection metadata
+automatically without maintaining a custom `reflect-config.json` for the
+benchmark models. The measured native executable does not set that JVM
+property.
+
+[Native Image Smoke #43030244927](https://github.com/sjf4j-projects/sjf4j/actions/runs/43030244927)
+completed **192/192** cases for all four backends. Smoke is a correctness
+check, **not** a performance baseline; Quick and Full performance results
+remain pending.
 
 ```bash
 GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh smoke
