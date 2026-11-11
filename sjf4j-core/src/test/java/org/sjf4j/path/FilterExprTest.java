@@ -53,9 +53,9 @@ class FilterExprTest {
                 JsonObject.of("age", 2), JsonObject.of(), JsonObject.of("age", null)));
         FilterExpr.PathExpr age = new FilterExpr.PathExpr("@.age");
 
-        assertEquals(2, age.eval(root, ((JsonArray) root.get("items")).get(0)));
-        assertSame(FilterExpr.PathExpr.NOTHING, age.eval(root, ((JsonArray) root.get("items")).get(1)));
-        assertEquals(null, age.eval(root, ((JsonArray) root.get("items")).get(2)));
+        assertEquals(2, age.eval(root, ((JsonArray) root.get("items")).get(0), new NodeWalker.Access()));
+        assertSame(FilterExpr.PathExpr.NOTHING, age.eval(root, ((JsonArray) root.get("items")).get(1), new NodeWalker.Access()));
+        assertEquals(null, age.eval(root, ((JsonArray) root.get("items")).get(2), new NodeWalker.Access()));
         assertEquals(Collections.singletonList(JsonObject.of("age", null)),
                 JsonPath.parse("$.items[?(@.age == null)]").find(root));
     }
@@ -74,18 +74,18 @@ class FilterExprTest {
         // Reusing one Access must not retain a preceding item's present flag.
         for (int i = 0; i < items.size(); i++) {
             Object item = items.get(i);
-            assertEquals(predicate.evalTruth(root, item),
+            assertEquals(predicate.evalTruth(root, item, new NodeWalker.Access()),
                     predicate.evalTruth(root, item, scratch), "item " + i);
         }
         // A custom FilterExpr overriding evalTruth retains its semantics.
         FilterExpr custom = new FilterExpr() {
             @Override
-            public Object eval(Object rootNode, Object currentNode) {
+            public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
                 return false;
             }
 
             @Override
-            public boolean evalTruth(Object rootNode, Object currentNode) {
+            public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
                 return true;
             }
         };
@@ -151,37 +151,37 @@ class FilterExprTest {
         JsonObject root = JsonObject.of("name", "root", "child", JsonObject.of("name", "current"));
         FilterExpr.PathExpr rootPath = new FilterExpr.PathExpr("$.name");
         FilterExpr.PathExpr currentPath = new FilterExpr.PathExpr("@.name");
-        assertEquals("root", rootPath.eval(root, root.getJsonObject("child")));
-        assertEquals("current", currentPath.eval(root, root.getJsonObject("child")));
+        assertEquals("root", rootPath.eval(root, root.getJsonObject("child"), new NodeWalker.Access()));
+        assertEquals("current", currentPath.eval(root, root.getJsonObject("child"), new NodeWalker.Access()));
         assertEquals("$.name", rootPath.toString());
 
         FilterExpr.UnaryExpr truthy = new FilterExpr.UnaryExpr(true, currentPath);
         FilterExpr.UnaryExpr falsy = new FilterExpr.UnaryExpr(false, new FilterExpr.LiteralExpr(false));
-        assertEquals(Boolean.TRUE, truthy.eval(root, root.getJsonObject("child")));
-        assertEquals(Boolean.TRUE, falsy.eval(root, root.getJsonObject("child")));
+        assertEquals(Boolean.TRUE, truthy.eval(root, root.getJsonObject("child"), new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, falsy.eval(root, root.getJsonObject("child"), new NodeWalker.Access()));
         assertEquals("@.name", truthy.toString());
         assertEquals("!false", falsy.toString());
 
         FilterExpr left = new FilterExpr.LiteralExpr(2);
         FilterExpr right = new FilterExpr.LiteralExpr(1);
-        assertEquals(Boolean.FALSE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.EQ).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.NE).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GT).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GE).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(right, left, FilterExpr.Op.LT).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(right, left, FilterExpr.Op.LE).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr(true), new FilterExpr.LiteralExpr(true), FilterExpr.Op.AND).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr(false), new FilterExpr.LiteralExpr(true), FilterExpr.Op.OR).eval(root, root));
-        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha")), FilterExpr.Op.MATCH).eval(root, root));
-        assertEquals(Boolean.FALSE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.LiteralExpr("ha"), FilterExpr.Op.MATCH).eval(root, root));
+        assertEquals(Boolean.FALSE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.EQ).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.NE).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GT).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GE).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(right, left, FilterExpr.Op.LT).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(right, left, FilterExpr.Op.LE).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr(true), new FilterExpr.LiteralExpr(true), FilterExpr.Op.AND).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr(false), new FilterExpr.LiteralExpr(true), FilterExpr.Op.OR).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha")), FilterExpr.Op.MATCH).eval(root, root, new NodeWalker.Access()));
+        assertEquals(Boolean.FALSE, new FilterExpr.BinaryExpr(new FilterExpr.LiteralExpr("han"), new FilterExpr.LiteralExpr("ha"), FilterExpr.Op.MATCH).eval(root, root, new NodeWalker.Access()));
         assertEquals("(2 > 1)", new FilterExpr.BinaryExpr(left, right, FilterExpr.Op.GT).toString());
 
         FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("joinCount", (target, args) -> ((List<?>) target).size()));
         FilterExpr.FunctionExpr functionExpr = new FilterExpr.FunctionExpr("joinCount", Arrays.asList(new FilterExpr.LiteralExpr(Arrays.asList(1, 2, 3))));
-        assertEquals(3, functionExpr.eval(root, root));
+        assertEquals(3, functionExpr.eval(root, root, new NodeWalker.Access()));
 
         FilterExpr.RegexExpr regexExpr = new FilterExpr.RegexExpr("/ha/", Pattern.compile("ha"));
-        assertSame(regexExpr.eval(root, root), regexExpr.eval(root, root));
+        assertSame(regexExpr.eval(root, root, new NodeWalker.Access()), regexExpr.eval(root, root, new NodeWalker.Access()));
         assertEquals("/ha/", regexExpr.toString());
 
         FilterExpr.ArrayExpr arrayExpr = new FilterExpr.ArrayExpr(Arrays.asList(
@@ -190,34 +190,34 @@ class FilterExprTest {
                 new FilterExpr.LiteralExpr(true),
                 new FilterExpr.LiteralExpr(null)
         ));
-        assertEquals(Arrays.asList("han", 12, true, null), arrayExpr.eval(root, root));
+        assertEquals(Arrays.asList("han", 12, true, null), arrayExpr.eval(root, root, new NodeWalker.Access()));
         assertEquals("[\"han\", 12, true, null]", arrayExpr.toString());
 
         assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(
                 new FilterExpr.LiteralExpr("han"),
                 new FilterExpr.ArrayExpr(Arrays.asList(new FilterExpr.LiteralExpr("ha"), new FilterExpr.LiteralExpr("han"))),
-                FilterExpr.Op.IN).eval(root, root));
+                FilterExpr.Op.IN).eval(root, root, new NodeWalker.Access()));
         assertEquals(Boolean.TRUE, new FilterExpr.BinaryExpr(
                 new FilterExpr.LiteralExpr("han"),
                 new FilterExpr.ArrayExpr(Arrays.asList(new FilterExpr.LiteralExpr("ha"), new FilterExpr.LiteralExpr("ho"))),
-                FilterExpr.Op.NIN).eval(root, root));
+                FilterExpr.Op.NIN).eval(root, root, new NodeWalker.Access()));
     }
 
     @Test
     void testEscapedStringParsingAndShortCircuit() {
-        assertEquals("a'b", PathSyntax.parseFilter("'a\\'b'").eval(null, null));
-        assertEquals("a\"b\n", PathSyntax.parseFilter("\"a\\\"b\\n\"").eval(null, null));
-        assertEquals("\\'\"\b\f\n\r\tA", PathSyntax.parseFilter("'\\\\\\'\\\"\\b\\f\\n\\r\\t\\u0041'").eval(null, null));
+        assertEquals("a'b", PathSyntax.parseFilter("'a\\'b'").eval(null, null, new NodeWalker.Access()));
+        assertEquals("a\"b\n", PathSyntax.parseFilter("\"a\\\"b\\n\"").eval(null, null, new NodeWalker.Access()));
+        assertEquals("\\'\"\b\f\n\r\tA", PathSyntax.parseFilter("'\\\\\\'\\\"\\b\\f\\n\\r\\t\\u0041'").eval(null, null, new NodeWalker.Access()));
         assertThrows(NodeException.class, () -> PathSyntax.parseFilter("'\\x'"));
         assertThrows(NodeException.class, () -> PathSyntax.parseFilter("'\\u12'"));
         assertThrows(NodeException.class, () -> PathSyntax.parseFilter("'\\uZZZZ'"));
-        assertTrue(PathSyntax.parseFilter("'HAN' =~ /ha/imsug").evalTruth(null, null));
+        assertTrue(PathSyntax.parseFilter("'HAN' =~ /ha/imsug").evalTruth(null, null, new NodeWalker.Access()));
 
         FunctionRegistry.register(new FunctionRegistry.FunctionDescriptor("explodeFilterExpr", (target, args) -> {
             throw new IllegalStateException("boom");
         }));
 
-        assertFalse(PathSyntax.parseFilter("false && explodeFilterExpr()").evalTruth(null, null));
-        assertTrue(PathSyntax.parseFilter("true || explodeFilterExpr()").evalTruth(null, null));
+        assertFalse(PathSyntax.parseFilter("false && explodeFilterExpr()").evalTruth(null, null, new NodeWalker.Access()));
+        assertTrue(PathSyntax.parseFilter("true || explodeFilterExpr()").evalTruth(null, null, new NodeWalker.Access()));
     }
 }

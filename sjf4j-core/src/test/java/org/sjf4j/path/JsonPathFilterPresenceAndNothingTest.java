@@ -3,6 +3,7 @@ package org.sjf4j.path;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.node.NodeWalker;
 
 import java.util.Arrays;
 
@@ -64,17 +65,17 @@ class JsonPathFilterPresenceAndNothingTest {
         FilterExpr.PathExpr b = new FilterExpr.PathExpr("@.b");
         FilterExpr.LiteralExpr zero = new FilterExpr.LiteralExpr(0);
 
-        assertTrue(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.EQ).evalTruth(empty, empty));
-        assertFalse(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.NE).evalTruth(empty, empty));
-        assertTrue(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.LE).evalTruth(empty, empty));
-        assertTrue(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.GE).evalTruth(empty, empty));
-        assertFalse(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.LT).evalTruth(empty, empty));
-        assertFalse(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.GT).evalTruth(empty, empty));
+        assertTrue(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.EQ).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertFalse(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.NE).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertTrue(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.LE).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertTrue(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.GE).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertFalse(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.LT).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertFalse(new FilterExpr.BinaryExpr(a, b, FilterExpr.Op.GT).evalTruth(empty, empty, new NodeWalker.Access()));
 
-        assertFalse(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.EQ).evalTruth(empty, empty));
-        assertTrue(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.NE).evalTruth(empty, empty));
-        assertFalse(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.LE).evalTruth(empty, empty));
-        assertFalse(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.GE).evalTruth(empty, empty));
+        assertFalse(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.EQ).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertTrue(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.NE).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertFalse(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.LE).evalTruth(empty, empty, new NodeWalker.Access()));
+        assertFalse(new FilterExpr.BinaryExpr(a, zero, FilterExpr.Op.GE).evalTruth(empty, empty, new NodeWalker.Access()));
 
         JsonArray rows = JsonArray.of(JsonObject.of(), JsonObject.of("a", null), JsonObject.of("a", 0));
         assertEquals(Arrays.asList(rows.getNode(0)),

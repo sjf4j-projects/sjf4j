@@ -24,28 +24,14 @@ public interface FilterExpr {
     /**
      * Evaluates this expression against root and current nodes.
      */
-    Object eval(Object rootNode, Object currentNode);
-
-    /**
-     * Evaluates with query-local node-access scratch storage. Implementations
-     * outside SJF4J can continue to implement only the two-argument API.
-     */
-    default Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
-        return eval(rootNode, currentNode);
-    }
+    Object eval(Object rootNode, Object currentNode, NodeWalker.Access access);
 
     /**
      * Evaluates this expression and converts the result to boolean.
      */
-    default boolean evalTruth(Object rootNode, Object currentNode) {
-        Object v = eval(rootNode, currentNode);
-        return truth(v);
-    }
-
-    /** Evaluates truthiness with query-local node-access scratch storage. */
     default boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
-        // Preserve custom implementations that override the two-argument truth method.
-        return evalTruth(rootNode, currentNode);
+        Object v = eval(rootNode, currentNode, access);
+        return truth(v);
     }
 
     /*
@@ -68,7 +54,7 @@ public interface FilterExpr {
         }
 
         @Override
-        public Object eval(Object rootNode, Object currentNode) {
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             return value;
         }
 
@@ -109,17 +95,9 @@ public interface FilterExpr {
          * Evaluates this path against root or current context.
          */
         @Override
-        public Object eval(Object rootNode, Object currentNode) {
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             Object container = path.rooted() ? rootNode : currentNode;
             if (!path.singleGet) return path.eval(container);
-            Object value = path._findOne(container, 1, path.length());
-            return value == JsonPath.MISSING ? NOTHING : value;
-        }
-
-        @Override
-        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            if (access == null || !path.singleGet) return eval(rootNode, currentNode);
-            Object container = path.rooted() ? rootNode : currentNode;
             Object value = path._findOne(container, 1, path.length(), access);
             return value == JsonPath.MISSING ? NOTHING : value;
         }
@@ -129,10 +107,10 @@ public interface FilterExpr {
          * regardless of that node's JSON value (including false, zero, and null).
          */
         @Override
-        public boolean evalTruth(Object rootNode, Object currentNode) {
+        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
             Object container = path.rooted() ? rootNode : currentNode;
             if (path.singleGet) {
-                return path._findOne(container, 1, path.length()) != JsonPath.MISSING;
+                return path._findOne(container, 1, path.length(), access) != JsonPath.MISSING;
             }
             if (container == null) return false;
             // Function paths are SJF4J extensions: they evaluate a value,
@@ -141,13 +119,6 @@ public interface FilterExpr {
                 return truth(path._eval(container));
             }
             return !((List<?>) path._eval(container)).isEmpty();
-        }
-
-        @Override
-        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            if (access == null || !path.singleGet) return evalTruth(rootNode, currentNode);
-            Object container = path.rooted() ? rootNode : currentNode;
-            return path._findOne(container, 1, path.length(), access) != JsonPath.MISSING;
         }
 
         /**
@@ -172,19 +143,6 @@ public interface FilterExpr {
         public UnaryExpr(boolean truth, FilterExpr unary) {
             this.truth = truth;
             this.unary = unary;
-        }
-
-        /**
-         * Evaluates unary truthiness operation.
-         */
-        @Override
-        public Object eval(Object rootNode, Object currentNode) {
-            return eval(rootNode, currentNode, null);
-        }
-
-        @Override
-        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            return truth(eval(rootNode, currentNode, access));
         }
 
         @Override
@@ -227,16 +185,6 @@ public interface FilterExpr {
         /**
          * Evaluates binary operator over both operands.
          */
-        @Override
-        public Object eval(Object rootNode, Object currentNode) {
-            return eval(rootNode, currentNode, null);
-        }
-
-        @Override
-        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            return truth(eval(rootNode, currentNode, access));
-        }
-
         @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             if (op == Op.AND) {
@@ -324,16 +272,6 @@ public interface FilterExpr {
          * Evaluates function with the first evaluated argument as target and remaining values as args.
          */
         @Override
-        public Object eval(Object rootNode, Object currentNode) {
-            return eval(rootNode, currentNode, null);
-        }
-
-        @Override
-        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            return truth(eval(rootNode, currentNode, access));
-        }
-
-        @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             int size = args.size();
             if (size == 0) throw new NodeException("function '" + name + "' requires a target argument");
@@ -350,40 +288,31 @@ public interface FilterExpr {
      * Filter expression for an array literal.
      */
     class ArrayExpr implements FilterExpr {
-        final List<FilterExpr> elements;
+        final List<FilterExpr> exprs;
         private final List<Object> literalValues;
 
-        public ArrayExpr(List<FilterExpr> elements) {
-            this.elements = elements;
-            List<Object> values = new ArrayList<>(elements.size());
-            for (int i = 0, size = elements.size(); i < size; i++) {
-                FilterExpr element = elements.get(i);
-                if (!(element instanceof LiteralExpr)) {
+        public ArrayExpr(List<FilterExpr> exprs) {
+            this.exprs = exprs;
+            int size = exprs.size();
+            List<Object> values = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                FilterExpr expr = exprs.get(i);
+                if (!(expr instanceof LiteralExpr)) {
                     values = null;
                     break;
                 }
-                values.add(element.eval(null, null));
+                values.add(expr.eval(null, null, new NodeWalker.Access()));
             }
             this.literalValues = values == null ? null : Collections.unmodifiableList(values);
         }
 
         @Override
-        public Object eval(Object rootNode, Object currentNode) {
-            return eval(rootNode, currentNode, null);
-        }
-
-        @Override
-        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
-            return truth(eval(rootNode, currentNode, access));
-        }
-
-        @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             if (literalValues != null) return literalValues;
-            int size = elements.size();
+            int size = exprs.size();
             ArrayList<Object> values = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
-                values.add(elements.get(i).eval(rootNode, currentNode, access));
+                values.add(exprs.get(i).eval(rootNode, currentNode, access));
             }
             return values;
         }
@@ -392,9 +321,9 @@ public interface FilterExpr {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
-            for (int i = 0, size = elements.size(); i < size; i++) {
+            for (int i = 0, size = exprs.size(); i < size; i++) {
                 if (i > 0) sb.append(',').append(' ');
-                sb.append(elements.get(i));
+                sb.append(exprs.get(i));
             }
             sb.append(']');
             return sb.toString();
@@ -417,7 +346,7 @@ public interface FilterExpr {
          * Evaluates to compiled regex pattern.
          */
         @Override
-        public Object eval(Object rootNode, Object currentNode) {
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             return pattern;
         }
 

@@ -289,7 +289,7 @@ public class JsonPath {
      */
     public Object getNode(Object container) {
         if (container == null) return null;
-        Object value = _findOne(container, 1, segments.length);
+        Object value = _findOne(container, 1, segments.length, new NodeWalker.Access());
         return value == MISSING ? null : value;
     }
 
@@ -924,7 +924,7 @@ public class JsonPath {
         }
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
-            Object value = _findOne(container, 1, segments.length);
+            Object value = _findOne(container, 1, segments.length, new NodeWalker.Access());
             if (value != MISSING) result.add(Nodes.to(value, clazz));
             return result;
         }
@@ -955,7 +955,7 @@ public class JsonPath {
         }
         if (singleGet) {
             List<T> result = new ArrayList<>(1);
-            Object value = _findOne(container, 1, segments.length);
+            Object value = _findOne(container, 1, segments.length, new NodeWalker.Access());
             if (value != MISSING) result.add(Nodes.as(value, clazz));
             return result;
         }
@@ -983,11 +983,11 @@ public class JsonPath {
         Asserts.notNull(container, "container");
         PathSegment ps = segments[segments.length - 1];
         if (singleGet) {
-            Object value = _findOne(container, 1, segments.length);
+            Object value = _findOne(container, 1, segments.length, new NodeWalker.Access());
             return value == MISSING ? null : value;
         }
         if (singleEval) {
-            Object value = _findOne(container, 1, segments.length - 1);
+            Object value = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
             if (value == MISSING) return null;
             PathSegment.Function func = (PathSegment.Function) ps;
             return FunctionRegistry.invoke(func.name, value, func.resolvedArgs);
@@ -1101,7 +1101,7 @@ public class JsonPath {
      */
     public Object put(Object container, Object value) {
         Asserts.notNull(container, "container");
-        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        Object lastContainer = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
         if (lastContainer == MISSING || lastContainer == null) {
             throw new NodeException("cannot put value at path '" + this + "': parent container does not exist");
         }
@@ -1121,7 +1121,7 @@ public class JsonPath {
      */
     public Object putIfParentPresent(Object container, Object value) {
         Asserts.notNull(container, "container");
-        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        Object lastContainer = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
         if (lastContainer == MISSING || lastContainer == null) return null;
         return _putLast(lastContainer, segments[segments.length - 1], value, "putIfParentPresent()");
     }
@@ -1163,7 +1163,7 @@ public class JsonPath {
      */
     public Object ensurePutIfAbsent(Object container, Object value) {
         Asserts.notNull(container, "container");
-        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        Object lastContainer = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
         if (lastContainer == MISSING || lastContainer == null) {
             return ensurePut(container, value);
         }
@@ -1240,7 +1240,7 @@ public class JsonPath {
                     "'; compute() expected Name, Index, or Append token");
         }
         if (singlePut) {
-            Object parent = _findOne(container, 1, segments.length - 1);
+            Object parent = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
             if (parent == MISSING || parent == null) return 0;
             _computeLast(parent, lastPs, computer);
             return 1;
@@ -1275,7 +1275,7 @@ public class JsonPath {
     public boolean contains(Object container) {
         Asserts.notNull(container, "container");
         if (segments.length == 1 && segments[0] instanceof PathSegment.Root) return true;
-        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        Object lastContainer = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
         if (lastContainer == MISSING || lastContainer == null) return false;
         PathSegment lastPs = segments[segments.length - 1];
         if (lastPs instanceof PathSegment.Name) {
@@ -1314,7 +1314,7 @@ public class JsonPath {
      */
     public void add(Object container, Object value) {
         Asserts.notNull(container, "container");
-        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        Object lastContainer = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
         if  (lastContainer == MISSING || lastContainer == null)
             throw new NodeException("cannot add value at path '" + this + "': parent container does not exist");
 
@@ -1351,7 +1351,7 @@ public class JsonPath {
      */
     public Object replace(Object container, Object value) {
         Asserts.notNull(container, "container");
-        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        Object lastContainer = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
         if  (lastContainer == MISSING || lastContainer == null) {
             throw new NodeException("cannot replace value at path '" + this + "': parent container does not exist");
         }
@@ -1399,7 +1399,7 @@ public class JsonPath {
      */
     public Object removeIfPresent(Object container) {
         Asserts.notNull(container, "container");
-        Object lastContainer = _findOne(container, 1, segments.length - 1);
+        Object lastContainer = _findOne(container, 1, segments.length - 1, new NodeWalker.Access());
         if  (lastContainer == MISSING || lastContainer == null) return null;
 
         PathSegment lastPs = segments[segments.length - 1];
@@ -1437,11 +1437,6 @@ public class JsonPath {
      * {@link #find(Object, Class)} use the sentinel to omit missing locations while
      * preserving present-null matches.
      */
-    Object _findOne(Object container, int startIdx, int endExclusive) {
-        return _findOne(container, startIdx, endExclusive, new NodeWalker.Access());
-    }
-
-    // A query-local scratch object avoids one allocation per filter candidate.
     Object _findOne(Object container, int startIdx, int endExclusive, NodeWalker.Access acc) {
         Object node = container;
         for (int i = startIdx; i < endExclusive; i++) {
