@@ -116,6 +116,7 @@ class CompiledMapperRawPolicyTest {
                 + "@MappingOptions(raws=RawPolicy.CAST) TypedItem castItem(Source source); "
                 + "@MappingOptions(raws=RawPolicy.CAST) TypedMap castValues(KnownMapSource source); "
                 + "@MappingOptions(raws=RawPolicy.STRICT) TypedMap strictValues(KnownMapSource source); "
+                + "@MappingOptions(raws=RawPolicy.LENIENT) TypedMap lenientValues(KnownMapSource source); "
                 + "}");
 
         NavigatorTestCompiler.Result result =
@@ -158,6 +159,26 @@ class CompiledMapperRawPolicyTest {
             assertEquals(map, resultValue);
             assertSame(item, ((Map<?, ?>) resultValue).get("first"),
                     "only Object-typed Map entries are cast, not copied");
+
+            // The outer Map remains typed and is recursively traversed. The
+            // Object-valued member is a nested POJO mapping whose scalar leaves
+            // must inherit the enclosing method's LENIENT option.
+            Map<String, Object> nested = new LinkedHashMap<>();
+            nested.put("quantity", "8");
+            nested.put("name", 99);
+            Map<String, Object> nestedMap = new LinkedHashMap<>();
+            nestedMap.put("first", nested);
+            Object nestedSource = knownSource.getConstructor(Map.class).newInstance(nestedMap);
+            Object nestedDto = invoke(mapperClass, mapper, "lenientValues", knownSource, nestedSource);
+            Map<?, ?> converted = (Map<?, ?>) nestedDto.getClass()
+                    .getMethod("value").invoke(nestedDto);
+            Object nestedItem = converted.get("first");
+            assertEquals(8, itemClass.getMethod("quantity").invoke(nestedItem));
+            assertEquals("99", itemClass.getMethod("name").invoke(nestedItem));
+            assertCause(NodeException.class, () ->
+                    invoke(mapperClass, mapper, "strictValues", knownSource, nestedSource));
+            assertCause(ClassCastException.class, () ->
+                    invoke(mapperClass, mapper, "castValues", knownSource, nestedSource));
         }
     }
 
