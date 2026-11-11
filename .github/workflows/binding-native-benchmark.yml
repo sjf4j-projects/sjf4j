@@ -1,8 +1,10 @@
 name: Binding Native Image Benchmark (GraalVM 25)
 
-# PRs validate shell scripts; expensive Native Image benchmarks are manual only.
+# PRs validate scripts; same-repository PRs can opt into a Native Smoke via
+# the [run-native-smoke] marker in the PR body. Full remains manual-only.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     paths:
       - 'scripts/benchmark-binding.sh'
       - 'scripts/benchmark-binding-native.sh'
@@ -38,7 +40,11 @@ jobs:
           test -x scripts/benchmark-binding-native.sh
 
   native:
-    if: github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.pull_request.body, '[run-native-smoke]'))
     needs: script-check
     runs-on: ubuntu-24.04
     timeout-minutes: 330
@@ -70,7 +76,7 @@ jobs:
       - name: Build and run Native Image Binding
         shell: bash
         env:
-          PROFILE: ${{ inputs.profile }}
+          PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
         run: |
           set -euo pipefail
           bash scripts/benchmark-binding-native.sh "$PROFILE" \
@@ -80,7 +86,7 @@ jobs:
         if: success()
         shell: bash
         env:
-          PROFILE: ${{ inputs.profile }}
+          PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
         run: |
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -111,7 +117,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: binding-native-${{ inputs.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-native-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/performance/binding/native/
           if-no-files-found: warn
           retention-days: 30
