@@ -37,7 +37,10 @@ class CompiledMapperMapCapacityTest {
         // The generated expression can be reformatted, but this overflow
         // guard is unique to sized Map construction.
         assertTrue(generated.contains("1073741824L"), generated);
-        assertTrue(generated.contains(".size() * 4L / 3L"), generated);
+        assertTrue(generated.contains(".size() * 4L + 2L) / 3L"), generated);
+        assertFalse(generated.contains("java.lang.Math.max(16"), generated);
+        // Exact load-factor thresholds (12, 24, 48) must not force an extra
+        // power-of-two bucket-array allocation.
         // Concrete-map semantics are exercised below; constructor spelling
         // is not part of the generated API contract.
 
@@ -64,6 +67,19 @@ class CompiledMapperMapCapacityTest {
             assertEquals(new ArrayList<>(expected.keySet()), new ArrayList<>(mapped.keySet()));
             assertNotSame(source, mapped);
             assertNotSame(source.get("key-0"), mapped.get("key-0"));
+
+            for (int count : new int[] {1, 12, 24, 48, 97}) {
+                LinkedHashMap<String, Object> prefix = new LinkedHashMap<>();
+                LinkedHashMap<String, Object> prefixExpected = new LinkedHashMap<>();
+                int i = 0;
+                for (String key : source.keySet()) {
+                    if (i++ == count) break;
+                    prefix.put(key, source.get(key));
+                    prefixExpected.put(key, expected.get(key));
+                }
+                assertEquals(prefixExpected, mapMethod.invoke(mapper, prefix),
+                        "map count " + count);
+            }
 
             @SuppressWarnings("unchecked")
             Map<String, Object> concrete = (Map<String, Object>) concreteMethod.invoke(mapper, source);
