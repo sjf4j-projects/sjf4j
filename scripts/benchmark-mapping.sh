@@ -55,7 +55,7 @@ if [[ "$GROUP" == "all" ]]; then
     echo "=== Mapping $PROFILE / $group ==="
     MAPPING_SKIP_BUILD=1 bash "$0" "$PROFILE" "$group" "$ROOT/$group"
   done
-  echo "Mapping $PROFILE / all: all 58 JMH entries passed."
+  echo "Mapping $PROFILE / all: all 64 JMH entries passed."
   exit 0
 fi
 
@@ -78,8 +78,8 @@ case "$GROUP" in
     EXPECTED=10
     ;;
   collection)
-    METHODS='collection_(item|list|sequential|mapitems|map)'
-    EXPECTED=26
+    METHODS='collection_(item|list|sequential|mapitems|mapone|map)'
+    EXPECTED=32
     ;;
   json)
     METHODS='json_(map|object)'
@@ -163,7 +163,7 @@ groups = {
              ("pojo_profile", False), ("pojo_nested", False), ("pojo_update", False)),
     "collection": (("collection_item", False), ("collection_list", True),
                    ("collection_sequential", True), ("collection_mapitems", True),
-                   ("collection_map", True)),
+                   ("collection_mapone", True), ("collection_map", True)),
     "json": (("json_map", True), ("json_object", True)),
 }
 expected_keys = {
