@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: binding-native-${{ github.event.pull_request.number || github.ref }-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
+  group: binding-native-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
   cancel-in-progress: true
 
 jobs:
