@@ -103,7 +103,7 @@ cat > "$META" <<EOF
 # Mapping Full Benchmark
 
 - Source: org.sjf4j.testbench.mapping.MappingFullBenchmark
-- Suite version: 1
+- Suite version: 2
 - Git SHA: $(git rev-parse HEAD)
 - UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')
 - Java: $VERSION
