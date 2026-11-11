@@ -1144,38 +1144,24 @@ public final class MappingEmitter {
         String result =
                 names.newName("computed");
 
-        out.line(
-                targetType +
-                        " " +
-                        result +
-                        " = null;");
+        // The computation always assigns a value before leaving this scope;
+        // initializing the result to null adds no semantics.
+        out.line(targetType + " " + result + ";");
         out.line("{");
         out.indent();
 
-        String[] expressions =
-                emitComputeInputs(
-                        out,
-                        names,
-                        inputs,
-                        plan);
-
-        for (int i = 0;
-             i < parameterNames.length;
-             i++) {
-
-            String parameter =
-                    parameterNames[i]
-                            .trim();
-
-            out.line(
-                    localType(
-                            inputs.get(i)
-                                    .type()) +
-                            " " +
-                            parameter +
-                            " = " +
-                            expressions[i] +
-                            ";");
+        for (int i = 0; i < parameterNames.length; i++) {
+            String parameter = parameterNames[i].trim();
+            MappingCompiler.Read input = inputs.get(i);
+            if (input.rootValue() || input.steps().isEmpty()) {
+                out.line(localType(input.type()) + " " + parameter + " = " +
+                        input.root().getSimpleName() + ";");
+            } else {
+                // Bind the final read directly to the named compute parameter.
+                // This removes redundant sourceValue -> parameter aliases while
+                // keeping multi-step null guards and the expression scope.
+                emitRead(out, names, input, rootKnownNonNull(plan), false, parameter);
+            }
         }
 
         out.line(
@@ -1234,6 +1220,16 @@ public final class MappingEmitter {
             MappingCompiler.Read read,
             boolean rootKnownNonNull,
             boolean primitiveDirect) {
+        return emitRead(out, names, read, rootKnownNonNull, primitiveDirect, null);
+    }
+
+    private String emitRead(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.Read read,
+            boolean rootKnownNonNull,
+            boolean primitiveDirect,
+            String finalName) {
 
         String current =
                 read.root()
@@ -1259,8 +1255,9 @@ public final class MappingEmitter {
             TypeMirror valueType =
                     access.readType();
 
-            String value =
-                    names.newName("sourceValue");
+            boolean last = step == read.steps().get(read.steps().size() - 1);
+            String value = last && finalName != null
+                    ? finalName : names.newName("sourceValue");
 
             boolean parentPrimitive =
                     currentType.getKind()
