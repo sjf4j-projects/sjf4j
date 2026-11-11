@@ -1,10 +1,9 @@
-package org.sjf4j.path.comparison;
+package org.sjf4j.testbench.path.comparison;
 
 import org.sjf4j.Sjf4j;
 import org.sjf4j.path.JsonPath;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.Sjf4j;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

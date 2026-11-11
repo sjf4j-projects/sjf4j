@@ -1,0 +1,104 @@
+package org.sjf4j.testbench.path.comparison.compiled;
+
+import org.junit.jupiter.api.Test;
+import org.sjf4j.CompiledInstances;
+import org.sjf4j.annotation.path.CompiledNavigator;
+import org.sjf4j.annotation.path.FindByPath;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.LinkedHashSet;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/**
+ * Partially compiled cases: collection traversal and property access are
+ * generated directly; FilterExpr evaluation explicitly requires fallback=true.
+ */
+class PartialFallbackComparisonTest {
+
+    record Root(int value, List<Map<String, Integer>> items) {}
+    record NestedRoot(int limit, List<Object> books) {}
+    record Member(String name, int age) {}
+    record SetRoot(Set<Member> members) {}
+
+    @CompiledNavigator(fallback = true)
+    interface Paths {
+        @FindByPath("$[?(@.key>42 && @.key<44)]")
+        List<Map<String, Integer>> booleanAnd(List<Map<String, Integer>> root);
+
+        @FindByPath("$[?(@['key']==42)]")
+        List<Map<String, Integer>> bracketFilter(List<Map<String, Integer>> root);
+
+        @FindByPath("$.items[?(@.key==$.value)]")
+        List<Map<String, Integer>> rootReference(Root root);
+
+        @FindByPath("$.items[?(@.key==$.value)].key")
+        List<Integer> filteredMember(Root root);
+
+        @FindByPath("$.books..[?(@.score > $.limit)].title")
+        List<String> descendantFilter(NestedRoot root);
+
+        @FindByPath("$.members[?(@.age >= 18)].name")
+        List<String> filterSetMembers(SetRoot root);
+    }
+
+    private final Paths paths = CompiledInstances.create(Paths.class);
+
+    @Test
+    void descendantFilterPreservesOriginalRoot() {
+        NestedRoot root = new NestedRoot(5, List.of(
+                Map.of("chapters", List.of(
+                        Map.of("score", 1, "title", "Low"),
+                        Map.of("score", 10, "title", "High")))));
+        CompiledComparisonSupport.assertEquivalent("descendant_filter_root_reference",
+                "$.books..[?(@.score > $.limit)].title",
+                root, paths.descendantFilter(root));
+        assertEquals(List.of("High"), paths.descendantFilter(root));
+    }
+
+    @Test
+    void filterOnSetKeepsCompiledIterationAndCachedPredicate() {
+        SetRoot root = new SetRoot(new LinkedHashSet<>(List.of(
+                new Member("Ada", 20), new Member("Bob", 15), new Member("Cy", 30))));
+        CompiledComparisonSupport.assertEquivalent("filter_set_members",
+                "$.members[?(@.age >= 18)].name", root, paths.filterSetMembers(root));
+        assertEquals(List.of("Ada", "Cy"), paths.filterSetMembers(root));
+    }
+
+    @Test
+    void booleanAndPredicateOnTypedMaps() {
+        List<Map<String, Integer>> root = List.of(
+                Map.of("key", 42), Map.of("key", 43), Map.of("key", 44));
+        CompiledComparisonSupport.assertMatches("filter_expression_with_boolean_and_operator",
+                "$[?(@.key>42 && @.key<44)]",
+                "[{\"key\":42},{\"key\":43},{\"key\":44}]",
+                "[{\"key\":43}]", root, paths.booleanAnd(root));
+    }
+
+    @Test
+    void bracketNotationPredicateOnTypedMaps() {
+        List<Map<String, Integer>> root = List.of(
+                Map.of("key", 0), Map.of("key", 42), Map.of("key", -1),
+                Map.of("key", 41), Map.of("key", 43), Map.of("key", 100),
+                Map.of("other", 1));
+        CompiledComparisonSupport.assertMatches("filter_expression_with_bracket_notation",
+                "$[?(@['key']==42)]",
+                "[{\"key\":0},{\"key\":42},{\"key\":-1},{\"key\":41},{\"key\":43},{\"key\":100},{\"other\":1}]",
+                "[{\"key\":42}]", root, paths.bracketFilter(root));
+    }
+
+    @Test
+    void filterCanReferenceTypedRootAndContinueDirectTraversal() {
+        Root root = new Root(42, List.of(
+                Map.of("key", 10), Map.of("key", 42), Map.of("key", 50)));
+        String json = "{\"value\":42,\"items\":[{\"key\":10},{\"key\":42},{\"key\":50}]}";
+        CompiledComparisonSupport.assertMatches("filter_expression_with_equals_with_root_reference",
+                "$.items[?(@.key==$.value)]", json,
+                "[{\"key\":42}]", root, paths.rootReference(root));
+        CompiledComparisonSupport.assertMatches("filter_with_direct_member_suffix",
+                "$.items[?(@.key==$.value)].key", json,
+                "[42]", root, paths.filteredMember(root));
+    }
+}

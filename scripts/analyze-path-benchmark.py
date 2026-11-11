@@ -9,7 +9,7 @@ from statistics import mean
 
 SHAPES = {
     "map": ("jayway", "runtime", "compiled"),
-    "jsonnode": ("jayway", "runtime"),
+    "jsonnode": ("jayway", "runtime", "compiled"),
     "pojo": ("runtime", "compiled"),
 }
 QUERIES = ("direct", "wildcard", "filter", "descendant", "slice")
@@ -63,8 +63,7 @@ def load(path: Path, shape: str):
                     for impl in ("sjf4j", "jayway")}
     else:
         expected = {(size, query, impl) for size in SIZES
-                    for query in QUERIES for impl in SHAPES[shape]
-                    if shape != "map" or impl != "compiled" or query == "direct"}
+                    for query in QUERIES for impl in SHAPES[shape]}
     if set(results) != expected:
         raise ValueError(f"{shape}: missing {expected - set(results)}, extra {set(results) - expected}")
     return results
@@ -106,7 +105,8 @@ def render(out, results):
         "Numbers below are **Best 2 Mean** in ns/op (lower is better): exclude each",
         "case's own slowest fork, then average the other two independent fork means.",
         "The original 3-fork JMH scores and B/op are preserved separately.",
-        "POJO Filter/Descendant CompiledNavigator methods use runtime fallback; Map only compiles Direct.",
+        "All five query types have CompiledNavigator implementations for Map, JsonNode and POJO.",
+        "Filter uses a cached runtime FilterExpr predicate; descendant traversal is generated.",
         "**Shared GitHub-hosted runners are exploratory, not a controlled release baseline.**",
         "",
         "## Query results — Best 2 Mean (ns/op)",
@@ -155,8 +155,7 @@ def render(out, results):
     for shape in (*SHAPES, "parse"):
         data = results[shape]
         keys = ([(size, query, impl) for size in SIZES for query in QUERIES
-                 for impl in SHAPES[shape]
-                 if shape != "map" or impl != "compiled" or query == "direct"] if shape != "parse" else
+                 for impl in SHAPES[shape]] if shape != "parse" else
                 [(expr, impl) for expr in PARSE_EXPRESSIONS for impl in ("jayway", "sjf4j")])
         for key in keys:
             row = data[key]
@@ -172,7 +171,8 @@ def render(out, results):
         "",
         "- Map and JsonNode Jayway/Runtime comparisons share the **same pre-parsed input**.",
         "- POJO comparisons are SJF4J Runtime vs Compiled; do not imply Jayway POJO performance.",
-        "- Compiled POJO filter/descendant use runtime fallback; only Map Direct is compiled.",
+        "- All Map, JsonNode, and POJO query cases include their own Compiled implementation.",
+        "- Compiled Filter invokes cached FilterExpr; Descendant uses generated OBNT recursion.",
         "- Each result is a separate method/size/input tuple. Best 2 selection is independent.",
         "- Do not use the original JMH score error as a confidence interval for Best 2 Mean.",
         "- The serialized payload sizes are approximate; see benchmark setup log for actual bytes.",
@@ -181,7 +181,8 @@ def render(out, results):
     ]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(lines), encoding="utf-8")
-    print(f"Generated {out}: 107 verified cases")
+    verified = sum(len(cases) for cases in results.values())
+    print(f"Generated {out}: {verified} verified cases")
 
 
 def main():

@@ -19,11 +19,15 @@ import java.util.List;
 public final class NavigatorGenerator {
 
     private final ProcessorContext context;
-    private final NavigatorMethodGenerator methodGenerator;
+    private final NavigatorMethodAnalyzer analyzer;
+    private final NavigatorCompiler compiler;
+    private final NavigatorEmitter emitter;
 
     public NavigatorGenerator(ProcessorContext context) {
         this.context = context;
-        this.methodGenerator = new NavigatorMethodGenerator(context);
+        this.analyzer = new NavigatorMethodAnalyzer(context);
+        this.compiler = new NavigatorCompiler(context);
+        this.emitter = new NavigatorEmitter(context);
     }
 
     /**
@@ -49,8 +53,25 @@ public final class NavigatorGenerator {
 
         CompiledNavigator annotation = type.getAnnotation(CompiledNavigator.class);
         boolean allowFallback = annotation != null && annotation.fallback();
+
+        // Analyze the complete interface before compiling any node accesses.
+        List<NavigatorPlan> plans = new java.util.ArrayList<>(methods.size());
         for (ResolvedMethod method : methods) {
-            methodGenerator.generate(method.declaration(), generated, allowFallback);
+            NavigatorPlan plan = analyzer.analyze(method, generated, allowFallback);
+            if (plan != null) plans.add(plan);
+        }
+        // Even with analysis errors, continue compiling valid plans to collect
+        // all diagnostics in one compiler invocation.
+        // Resolve all paths and fallback decisions before emitting source.
+        List<NavigatorCompiler.CompiledMethod> compiled = new java.util.ArrayList<>(plans.size());
+        for (NavigatorPlan plan : plans) {
+            NavigatorCompiler.CompiledMethod method = compiler.compile(plan, generated);
+            if (method != null) compiled.add(method);
+        }
+        if (!generated.isValid()) return;
+
+        for (NavigatorCompiler.CompiledMethod method : compiled) {
+            emitter.emit(method, generated);
         }
 
         generated.write();

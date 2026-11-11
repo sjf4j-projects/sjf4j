@@ -319,8 +319,8 @@ public class FindProcessorTest {
         assertFalse(source.contains(".find("),
                 "Should not contain .find( fallback for simple wildcard; " +
                 "current source:\n" + source);
-        assertEquals(1, count(source, " == null) return result;"),
-                "Wildcard container null check should be emitted once; source:\n" + source);
+        assertTrue(source.contains(" != null)"),
+                "Wildcard must guard a nullable container; source:\n" + source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
         Class<?> rootClass = Class.forName("testcase.Root", true, loader);
@@ -500,8 +500,8 @@ public class FindProcessorTest {
                 "Union path should not fall back to JsonPath.parse; source:\n" + source);
         assertFalse(source.contains(".find("),
                 "Union path should not fall back to .find(; source:\n" + source);
-        assertEquals(1, count(source, " == null) return result;"),
-                "Prefix null check should be emitted once; source:\n" + source);
+        assertTrue(source.contains(" != null)"),
+                "Union must guard a nullable prefix; source:\n" + source);
 
         // ---- behavioral assertion ----
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());
@@ -578,7 +578,7 @@ public class FindProcessorTest {
 
         assertFalse(ok, "Integer Map keys must reject String path names after an index union");
         assertTrue(diagnosticsToString(diagnostics).contains(
-                "@FindByPath cannot use a String path key with Map key type java.lang.Integer"));
+                "cannot use String path key with Map key type java.lang.Integer"));
     }
 
     @Test
@@ -1108,7 +1108,7 @@ public class FindProcessorTest {
         ))).call();
         assertFalse(ok, "mixed union path should fail compilation");
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+        assertTrue(messages.contains("cannot compile"), "Expected unresolved path error, got: " + messages);
     }
 
     @Test
@@ -1224,7 +1224,7 @@ public class FindProcessorTest {
 
         assertFalse(ok, "generic find result mismatch should fail compilation");
         String messages = diagnosticsToString(diagnostics);
-        assertTrue(messages.contains("unsupported"), "Expected unsupported path error, got: " + messages);
+        assertTrue(messages.contains("result type mismatch"), "Expected result type error, got: " + messages);
         assertTrue(messages.contains("$.names[*]"), messages);
     }
 
