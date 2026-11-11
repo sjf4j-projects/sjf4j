@@ -621,6 +621,7 @@ public final class ConversionCompiler {
             DIRECT,
             METHOD,
             SCALAR,
+            ENUM,
             VALUE_CODEC,
             CODEC_ENCODE,
             ONE_OF,
@@ -633,6 +634,9 @@ public final class ConversionCompiler {
 
         private final TypeMirror sourceType;
         private final TypeMirror targetType;
+
+        /** ENUM: names verified against the target enum. */
+        private final List<String> enumNames;
 
         /*
          * METHOD
@@ -677,12 +681,14 @@ public final class ConversionCompiler {
                                    TypeMirror targetValueType, CompiledConversion keyConversion,
                                    CompiledConversion valueConversion, TypeMirror workingTargetType,
                                    CreatorResolver.Creation creation, List<StructuralArgument> arguments,
-                                   List<StructuralProperty> properties, DynamicObjectPlan dynamicObject) {
+                                   List<StructuralProperty> properties, DynamicObjectPlan dynamicObject,
+                                   List<String> enumNames) {
 
             this.kind = kind;
 
             this.sourceType = sourceType;
             this.targetType = targetType;
+            this.enumNames = immutable(enumNames);
 
             this.method = method;
             this.mapperType = mapperType;
@@ -715,6 +721,15 @@ public final class ConversionCompiler {
             return simple(Kind.SCALAR, source, target);
         }
 
+        static CompiledConversion enumMapping(TypeMirror source, TypeMirror target, List<String> names) {
+            return new CompiledConversion(
+                    Kind.ENUM, source, target,
+                    null, null, null, null, null,
+                    null, null, null, null, null, null,
+                    null, null, null, null, null,
+                    names);
+        }
+
         static CompiledConversion valueCodec(TypeMirror source, TypeMirror target) {
             return simple(Kind.VALUE_CODEC, source, target);
         }
@@ -736,6 +751,7 @@ public final class ConversionCompiler {
                     target,
                     method,
                     mapperType,
+                    null,
                     null,
                     null,
                     null,
@@ -774,6 +790,7 @@ public final class ConversionCompiler {
                     null,
                     null,
                     null,
+                    null,
                     null);
         }
 
@@ -796,6 +813,7 @@ public final class ConversionCompiler {
                     targetValue,
                     keyConversion,
                     valueConversion,
+                    null,
                     null,
                     null,
                     null,
@@ -826,7 +844,8 @@ public final class ConversionCompiler {
                     creation,
                     arguments,
                     properties,
-                    dynamicObject);
+                    dynamicObject,
+                    null);
         }
 
         private static CompiledConversion simple(Kind kind, TypeMirror source, TypeMirror target) {
@@ -850,11 +869,16 @@ public final class ConversionCompiler {
                     null,
                     null,
                     null,
+                    null,
                     null);
         }
 
         Kind kind() {
             return kind;
+        }
+
+        List<String> enumNames() {
+            return enumNames;
         }
 
         TypeMirror sourceType() {
