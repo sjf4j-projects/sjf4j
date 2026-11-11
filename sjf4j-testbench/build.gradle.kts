@@ -601,7 +601,9 @@ val jmhAgent = tasks.register<Exec>("jmhAgent") {
                 "-p", "implementation=native,runtime,compiled",
                 "-p", "model=users,clients",
                 "-p", "shape=pojo,map",
-                "-p", "sizeKb=1",
+                // A 1KB Clients fixture may have no Partner entries, so the
+                // tracing agent never sees Fastjson2's reflective 'since' field.
+                "-p", "sizeKb=100",
                 "-p", "seed=12345"
             )
         }
