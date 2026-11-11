@@ -590,7 +590,7 @@ val jmhAgent = tasks.register<Exec>("jmhAgent") {
 
         if (bindingNativeImage.get()) {
             args(
-                "-p", "backend=jackson2,jackson3,fastjson2",
+                "-p", "backend=jackson2,jackson3,fastjson2,gson",
                 "-p", "implementation=native,runtime,compiled",
                 "-p", "model=users,clients",
                 "-p", "shape=pojo,map",
