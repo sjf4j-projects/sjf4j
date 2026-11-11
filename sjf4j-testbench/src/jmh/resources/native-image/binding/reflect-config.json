@@ -1,0 +1,44 @@
+[
+  {
+    "name": "org.sjf4j.testbench.model.fabien.Users",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.sjf4j.testbench.model.fabien.Users$User",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.sjf4j.testbench.model.fabien.Users$Friend",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.sjf4j.testbench.model.fabien.Clients",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.sjf4j.testbench.model.fabien.Clients$Client",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.sjf4j.testbench.model.fabien.Clients$Partner",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "org.sjf4j.testbench.model.fabien.Clients$EyeColor",
+    "allDeclaredFields": true,
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  }
+]
