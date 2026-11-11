@@ -107,7 +107,7 @@ The initial Native Image matrix is deliberately smaller:
 | Payload | 1, 10, 100KB |
 | Seed | 12345 |
 | **Quick / Full cases** | **216** |
-| Smoke | **72 cases**: 100KB with seeds 12345 and 324 |
+| Smoke | **144 cases**: 100KB with seeds 12345 and 324 |
 
 Here **Native** (an implementation) still means direct library Binding.
 **Native Image** means a GraalVM AOT-compiled executable. The underlying model,
