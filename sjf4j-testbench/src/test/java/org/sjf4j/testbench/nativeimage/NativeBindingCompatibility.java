@@ -68,7 +68,7 @@ public final class NativeBindingCompatibility {
             byte[] input = Files.readAllBytes(directory.resolve(model + ".json"));
             Object expectedPojo = "users".equals(model) ? Users.sample() : Clients.sample();
             @SuppressWarnings("unchecked")
-            Map<String, Object> expectedMap = verifier.readNode(input, Map.class);
+            Map<String, Object> expectedMap = (Map<String, Object>) verifier.readNode(input, Map.class);
 
             for (String shape : new String[]{"pojo", "map"}) {
                 Class<?> target = "map".equals(shape) ? Map.class
@@ -82,7 +82,7 @@ public final class NativeBindingCompatibility {
                         throw new AssertionError("Read mismatch");
                     }
                     byte[] output = codec.write(expected, target);
-                    Map<?, ?> actualMap = verifier.readNode(output, Map.class);
+                    Map<?, ?> actualMap = (Map<?, ?>) verifier.readNode(output, Map.class);
                     if (!sameJson(expectedMap, actualMap)) {
                         throw new AssertionError("Write mismatch");
                     }
