@@ -872,6 +872,17 @@ public final class MappingEmitter {
                                     argument.value(),
                                     generated,
                                     true);
+
+                    if (argument.value().type().getKind().isPrimitive() &&
+                            !isDirectPrimitiveRead(compiled.plan(), argument.value(), true)) {
+                        // Nullable indexed reads and scalar conversions stay boxed.
+                        // A primitive constructor argument must receive its Java
+                        // default rather than unbox null when a source is absent.
+                        String raw = values[i];
+                        values[i] = "(" + raw + " == null ? " +
+                                primitiveDefault(argument.value().type().getKind()) +
+                                " : " + raw + ")";
+                    }
                 }
 
                 StringBuilder constructor =
@@ -939,16 +950,12 @@ public final class MappingEmitter {
                 MappingCompiler.Read read =
                         value.read();
 
-                // A primitive constructor argument read from a non-null direct
-                // source can stay primitive. Nullable paths must remain boxed.
+                // A direct primitive leaf need not be boxed. For constructor
+                // arguments, a missing parent supplies the primitive default;
+                // for updates, only a non-null single-source direct read is
+                // eligible so null-ignore semantics remain unchanged.
                 boolean primitiveDirect =
-                        constructorArgument
-                                && rootKnownNonNull(plan)
-                                && read.steps().size() == 1
-                                && read.type().getKind().isPrimitive()
-                                && value.type().getKind().isPrimitive()
-                                && value.conversion() != null
-                                && value.conversion().kind() == ConverterResolver.Conversion.Kind.DIRECT;
+                        isDirectPrimitiveRead(plan, value, constructorArgument);
 
                 String source =
                         emitRead(
@@ -979,6 +986,47 @@ public final class MappingEmitter {
             default:
                 throw new AssertionError(
                         value.kind());
+        }
+    }
+
+    /**
+     * A primitive declared by a getter is safe to keep unboxed when it is
+     * directly assigned to a primitive target. A nullable parent is allowed
+     * only for constructor arguments, which use Java primitive defaults.
+     * Indexed reads retain their nullable/out-of-bounds behavior.
+     */
+    private boolean isDirectPrimitiveRead(MappingPlan plan, MappingCompiler.Value value,
+                                          boolean constructorArgument) {
+        if (value.kind() != MappingCompiler.Value.Kind.READ ||
+                !value.type().getKind().isPrimitive() ||
+                value.conversion() == null ||
+                value.conversion().kind() != ConverterResolver.Conversion.Kind.DIRECT) {
+            return false;
+        }
+
+        MappingCompiler.Read read = value.read();
+        if (!read.type().getKind().isPrimitive()) return false;
+        if (read.rootValue()) return true;
+        if (read.steps().isEmpty() ||
+                read.steps().get(read.steps().size() - 1).segment() instanceof PathSegment.Index) {
+            return false;
+        }
+
+        return constructorArgument || (rootKnownNonNull(plan) && read.steps().size() == 1);
+    }
+
+    /** Default for an absent source read feeding a primitive constructor parameter. */
+    private String primitiveDefault(TypeKind kind) {
+        switch (kind) {
+            case BOOLEAN: return "false";
+            case CHAR: return "'\\0'";
+            case LONG: return "0L";
+            case FLOAT: return "0.0f";
+            case DOUBLE: return "0.0d";
+            case BYTE:
+            case SHORT:
+            case INT: return "0";
+            default: throw new IllegalArgumentException("not a primitive value: " + kind);
         }
     }
 
@@ -1222,17 +1270,21 @@ public final class MappingEmitter {
                     !parentPrimitive &&
                             !(first &&
                                     rootKnownNonNull);
+            boolean primitiveLast = primitiveDirect &&
+                    step == read.steps().get(read.steps().size() - 1) &&
+                    valueType.getKind().isPrimitive() &&
+                    !(segment instanceof PathSegment.Index);
 
             if (guardParent) {
-                /*
-                 * Box primitive values so a null parent can propagate as
-                 * null.
-                 */
+                // An optional primitive constructor argument defaults to zero
+                // (or false), while a boxed/reference result propagates null.
                 out.line(
-                        localType(valueType) +
+                        (primitiveLast ? valueType.toString() : localType(valueType)) +
                                 " " +
                                 value +
-                                " = null;");
+                                " = " +
+                                (primitiveLast ? primitiveDefault(valueType.getKind()) : "null") +
+                                ";");
 
                 out.beginBlock(
                         "if (" +
@@ -1274,8 +1326,7 @@ public final class MappingEmitter {
                                     ";");
                 } else {
                     out.line(
-                            (primitiveDirect && first && valueType.getKind().isPrimitive()
-                                    ? valueType.toString() : localType(valueType)) +
+                            (primitiveLast ? valueType.toString() : localType(valueType)) +
                                     " " +
                                     value +
                                     " = " +
@@ -1503,7 +1554,10 @@ public final class MappingEmitter {
             return;
         }
 
-        if (ignoreNull || targetType.getKind().isPrimitive()) {
+        // A proven primitive read cannot be null. Guarding it generates
+        // unnecessary boxing and an always-true check under IGNORE.
+        boolean primitiveValue = isDirectPrimitiveRead(plan, assignment.value(), false);
+        if ((ignoreNull || targetType.getKind().isPrimitive()) && !primitiveValue) {
             out.beginBlock("if (" + value + " != null)");
             emitNodeWrite(out, target, destination.name(), null, access, value);
 
