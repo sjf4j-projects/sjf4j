@@ -870,7 +870,8 @@ public final class MappingEmitter {
                                     names,
                                     compiled.plan(),
                                     argument.value(),
-                                    generated);
+                                    generated,
+                                    true);
                 }
 
                 StringBuilder constructor =
@@ -922,18 +923,40 @@ public final class MappingEmitter {
             MappingPlan plan,
             MappingCompiler.Value value,
             GeneratedClass generated) {
+        return emitValue(out, names, plan, value, generated, false);
+    }
+
+    private String emitValue(
+            JavaWriter out,
+            NameAllocator names,
+            MappingPlan plan,
+            MappingCompiler.Value value,
+            GeneratedClass generated,
+            boolean constructorArgument) {
 
         switch (value.kind()) {
             case READ: {
                 MappingCompiler.Read read =
                         value.read();
 
+                // A primitive constructor argument read from a non-null direct
+                // source can stay primitive. Nullable paths must remain boxed.
+                boolean primitiveDirect =
+                        constructorArgument
+                                && rootKnownNonNull(plan)
+                                && read.steps().size() == 1
+                                && read.type().getKind().isPrimitive()
+                                && value.type().getKind().isPrimitive()
+                                && value.conversion() != null
+                                && value.conversion().kind() == ConverterResolver.Conversion.Kind.DIRECT;
+
                 String source =
                         emitRead(
                                 out,
                                 names,
                                 read,
-                                rootKnownNonNull(plan));
+                                rootKnownNonNull(plan),
+                                primitiveDirect);
 
                 return conversions.emit(
                         out,
@@ -1154,6 +1177,15 @@ public final class MappingEmitter {
             NameAllocator names,
             MappingCompiler.Read read,
             boolean rootKnownNonNull) {
+        return emitRead(out, names, read, rootKnownNonNull, false);
+    }
+
+    private String emitRead(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.Read read,
+            boolean rootKnownNonNull,
+            boolean primitiveDirect) {
 
         String current =
                 read.root()
@@ -1242,7 +1274,8 @@ public final class MappingEmitter {
                                     ";");
                 } else {
                     out.line(
-                            localType(valueType) +
+                            (primitiveDirect && first && valueType.getKind().isPrimitive()
+                                    ? valueType.toString() : localType(valueType)) +
                                     " " +
                                     value +
                                     " = " +
