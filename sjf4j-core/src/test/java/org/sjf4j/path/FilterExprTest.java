@@ -77,6 +77,20 @@ class FilterExprTest {
             assertEquals(predicate.evalTruth(root, item),
                     predicate.evalTruth(root, item, scratch), "item " + i);
         }
+        // A custom FilterExpr overriding evalTruth retains its semantics.
+        FilterExpr custom = new FilterExpr() {
+            @Override
+            public Object eval(Object rootNode, Object currentNode) {
+                return false;
+            }
+
+            @Override
+            public boolean evalTruth(Object rootNode, Object currentNode) {
+                return true;
+            }
+        };
+        assertTrue(custom.evalTruth(root, items.get(0), scratch));
+
         FilterExpr existence = PathSyntax.parseFilter("@.price");
         assertTrue(existence.evalTruth(root, items.get(3), scratch));
         assertFalse(existence.evalTruth(root, items.get(4), scratch));
