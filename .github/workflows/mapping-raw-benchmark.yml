@@ -1,0 +1,68 @@
+name: Mapping Raw Policy Benchmark (JDK 25)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mapping-raw-benchmark.yml"
+      - "scripts/benchmark-mapping-raw.sh"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/MappingRawPolicyBenchmark.java"
+      - "sjf4j-core/src/main/java/org/sjf4j/annotation/mapping/RawPolicy.java"
+      - "sjf4j-core/src/main/java/org/sjf4j/annotation/mapping/MappingOptions.java"
+      - "sjf4j-processor/src/main/java/org/sjf4j/processor/mapping/**"
+  workflow_dispatch:
+    inputs:
+      runner_label:
+        description: "Self-hosted gives a repeatable CPU baseline; hosted is exploratory"
+        type: choice
+        required: true
+        default: ubuntu-24.04
+        options:
+          - ubuntu-24.04
+          - self-hosted
+      cpu_model:
+        description: "Optional exact CPU model required for this run"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mapping-raw-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mapping-raw:
+    name: ${{ github.event_name == 'workflow_dispatch' && 'Full' || 'Smoke' }} / 8 isolated cases
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner_label || 'ubuntu-24.04' }}
+    timeout-minutes: 60
+    env:
+      MAPPING_RAW_SKIP_BUILD: '1'
+      MAPPING_EXPECT_CPU_MODEL: ${{ inputs.cpu_model || '' }}
+      BENCHMARK_PROFILE: ${{ github.event_name == 'workflow_dispatch' && 'full' || 'smoke' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Validate runner script
+        run: bash -n scripts/benchmark-mapping-raw.sh
+      - name: Build JMH jar with MapStruct and CompiledMapper
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Validate raw policies and run JMH
+        run: bash scripts/benchmark-mapping-raw.sh "$BENCHMARK_PROFILE"
+      - name: Publish Best 2 Mean report
+        if: github.event_name == 'workflow_dispatch' && success()
+        shell: bash
+        run: cat build/performance/mapping/raw/mapping-raw-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload JMH data, environment and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-raw-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/mapping/raw/
+          if-no-files-found: warn
+          retention-days: 30
