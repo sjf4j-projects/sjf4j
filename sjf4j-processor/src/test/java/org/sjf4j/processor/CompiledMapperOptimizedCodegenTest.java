@@ -49,7 +49,8 @@ class CompiledMapperOptimizedCodegenTest {
         assertTrue(generated.contains("instanceof java.util.RandomAccess"), generated);
         assertTrue(generated.contains("int sourceValue"), generated);
         assertTrue(generated.contains("= source.quantity();"), generated);
-        assertFalse(generated.contains("java.lang.Integer sourceValue"), generated);
+        assertTrue(generated.contains("java.lang.Integer sourceValue"),
+                "nullable nested primitive reads must remain boxed: " + generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> item = loader.loadClass("fixture.Item");
