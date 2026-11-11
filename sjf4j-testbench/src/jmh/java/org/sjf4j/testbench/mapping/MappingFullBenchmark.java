@@ -66,7 +66,18 @@ public class MappingFullBenchmark {
             compiled = CompiledInstances.create(Sjf4jMapper.class);
             ClassicTarget expected = mapstruct.classic(source);
             check(Objects.equals(expected, compiled.classic(source)), "classic order");
+            check("Joe Smith".equals(expected.getCustomerName())
+                    && "San Fran".equals(expected.getBillingCity())
+                    && "Boston".equals(expected.getShippingCity()), "classic mapped fields");
             check(expected.getProducts() != null && expected.getProducts().size() == 2, "classic products");
+            ClassicOrder partial = new ClassicOrder(
+                    new ClassicCustomer("John Doe", new ClassicAddress("93 Newcastle Dr.", null), null),
+                    List.of());
+            check(Objects.equals(mapstruct.classic(partial), compiled.classic(partial)),
+                    "classic partial-order null semantics");
+            ClassicOrder empty = new ClassicOrder();
+            check(Objects.equals(mapstruct.classic(empty), compiled.classic(empty)),
+                    "classic empty-order null semantics");
             check(expected.getProducts() != (Object) source.getProducts(), "classic products must be mapped");
         }
     }
@@ -129,6 +140,12 @@ public class MappingFullBenchmark {
             ExtendedTarget expected = mapstruct.extended(source);
             ExtendedTarget actual = compiled.extended(source);
             check(Objects.equals(expected, actual), "extended order");
+            check("Ada Lovelace".equals(actual.customerName())
+                    && "gold".equals(actual.priority())
+                    && "web".equals(actual.salesChannel()), "extended mapped fields");
+            ExtendedOrder sparse = new ExtendedOrder(null, List.of(), Map.of(), null);
+            check(Objects.equals(mapstruct.extended(sparse), compiled.extended(sparse)),
+                    "extended sparse-order null semantics");
             check(actual.products() != (Object) source.products(), "extended products must be converted");
             check(actual.products().size() == products.size(), "extended product count");
         }
@@ -187,8 +204,13 @@ public class MappingFullBenchmark {
             }
             mapstruct = Mappers.getMapper(MapStructMapper.class);
             compiled = CompiledInstances.create(Sjf4jMapper.class);
-            check(Objects.equals(mapstruct.jsonMap(map), compiled.jsonMap(map)), "Map to POJO");
-            check(Objects.equals(mapstruct.jsonObject(jsonObject), compiled.jsonObject(jsonObject)),
+            JsonTarget expectedMap = mapstruct.jsonMap(map);
+            JsonTarget expectedObject = mapstruct.jsonObject(jsonObject);
+            check("sku-123".equals(expectedMap.sku())
+                    && "widget".equals(expectedMap.name())
+                    && Objects.equals(7, expectedMap.count()), "Map projected fields");
+            check(Objects.equals(expectedMap, compiled.jsonMap(map)), "Map to POJO");
+            check(Objects.equals(expectedObject, compiled.jsonObject(jsonObject)),
                     "JsonObject to POJO");
         }
     }
