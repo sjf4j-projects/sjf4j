@@ -522,12 +522,7 @@ public final class ConversionEmitter
          * a binder: NodeMapper performs strict runtime value-kind conversion.
          */
         if (types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN) {
-            String value = names.newName("converted");
-            out.line(localType(targetType) + " " + value + " = " + mapperToCast(targetType) +
-                    "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
-                    ", this.context);");
-
-            return value;
+            return emitNodeMapperTo(out, names, conversion.targetType(), source, "converted");
         }
 
         /*
@@ -628,6 +623,14 @@ public final class ConversionEmitter
         if (sourceKind == NodeKind.ARRAY_SET) {
             emitSetLoop(out, names, conversion, source, result, targetKind);
 
+        } else if (sourceKind == NodeKind.ARRAY_LIST) {
+            // RandomAccess supports efficient get(i); sequential Lists must use an Iterator.
+            out.beginBlock("if (" + source + " instanceof java.util.RandomAccess)");
+            emitIndexedContainerLoop(out, names, conversion, source, result, sourceKind, targetKind, size);
+            out.endBlock(" else {");
+            out.indent();
+            emitSetLoop(out, names, conversion, source, result, targetKind);
+            out.endBlock();
         } else {
             emitIndexedContainerLoop(out, names, conversion, source, result, sourceKind, targetKind, size);
         }
@@ -1010,9 +1013,16 @@ public final class ConversionEmitter
     private String emitNodeMapperTo(JavaWriter out, NameAllocator names, TypeMirror targetType,
                                     String source, String hint) {
         String result = names.newName(hint);
-        out.line(localType(targetType) + " " + result + " = " + mapperToCast(targetType) +
-                "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
-                ", this.context);");
+        if ("java.lang.String".equals(rawName(targetType))) {
+            // Same strict semantics as NodeMapper.to(node, String.class, context),
+            // but avoid target-class dispatch for a statically known String.
+            out.line("java.lang.String " + result + " = org.sjf4j.node.NodeMapper.toString("
+                    + source + ", this.context);");
+        } else {
+            out.line(localType(targetType) + " " + result + " = " + mapperToCast(targetType) +
+                    "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
+                    ", this.context);");
+        }
 
         return result;
     }
@@ -1031,7 +1041,9 @@ public final class ConversionEmitter
     private String emitAccessRead(JavaWriter out, NameAllocator names, String owner,
                                   String name, NodeAccess access) {
         String result = names.newName(name);
-        out.line(localType(access.readType()) + " " + result + " = " +
+        // Typed structural conversions guard the owner before reading fields.
+        // Preserve primitive locals (e.g. int -> int) instead of boxing/unboxing.
+        out.line(types.concrete(access.readType()) + " " + result + " = " +
                 accessReadExpression(owner, name, access) + ";");
 
         return result;
