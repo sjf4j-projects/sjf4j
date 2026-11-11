@@ -3,13 +3,15 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: $0 <smoke|quick|full> <validation|roundtrip> [output-directory]
+Usage: $0 <smoke|quick|full> [validation|roundtrip|all] [output-directory]
 
   smoke   Verify all selected Creek cases without forking (not a baseline).
   quick   Short diagnostic run of the selected cases.
   full    JDK 25 Full benchmark: 3 forks, 5 x 1s warmups and 5 x 1s measurements.
 
+Omit the group (or use all) to run validation and roundtrip.
 Results default to build/performance/schema/<group>/.
+For all, the optional output-directory is the parent of the group folders.
 SCHEMA_SKIP_BUILD=1 reuses the existing sjf4j-testbench JMH jar.
 EOF
 }
@@ -18,15 +20,16 @@ if [[ $# -eq 1 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
   usage
   exit 0
 fi
-if [[ $# -lt 2 || $# -gt 3 ]] ||
+if [[ $# -lt 1 || $# -gt 3 ]] ||
     [[ "$1" != "smoke" && "$1" != "quick" && "$1" != "full" ]] ||
-    [[ "$2" != "validation" && "$2" != "roundtrip" ]]; then
+    [[ "${2:-all}" != "all" && "${2:-all}" != "validation" &&
+       "${2:-all}" != "roundtrip" ]]; then
   usage >&2
   exit 2
 fi
 
 PROFILE="$1"
-GROUP="$2"
+GROUP="${2:-all}"
 OUT_DIR="${3:-build/performance/schema/$GROUP}"
 JAVA_BIN=java
 if [[ -n "${JAVA_HOME:-}" ]]; then JAVA_BIN="$JAVA_HOME/bin/java"; fi
@@ -34,6 +37,21 @@ VERSION="$("$JAVA_BIN" -version 2>&1 | head -n 1)"
 if ! [[ "$VERSION" =~ \"25([.\"]|$) ]]; then
   echo "JDK 25 required; found: $VERSION" >&2
   exit 1
+fi
+
+# Run both benchmark groups by default, reusing a single prebuilt JMH jar.
+# Supplying a group keeps the per-group Actions workflow unchanged.
+if [[ "$GROUP" == "all" ]]; then
+  OUT_ROOT="${3:-build/performance/schema}"
+  if [[ "${SCHEMA_SKIP_BUILD:-0}" != "1" ]]; then
+    ./gradlew :sjf4j-testbench:jmhJar
+  fi
+  for group in validation roundtrip; do
+    echo "=== Schema $PROFILE / $group ==="
+    SCHEMA_SKIP_BUILD=1 bash "$0" "$PROFILE" "$group" "$OUT_ROOT/$group"
+  done
+  echo "Schema $PROFILE / all: all 10 JMH cases passed."
+  exit 0
 fi
 
 if [[ "${SCHEMA_SKIP_BUILD:-0}" != "1" ]]; then
