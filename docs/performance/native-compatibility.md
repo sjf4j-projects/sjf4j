@@ -40,9 +40,8 @@ export GRAALVM_HOME=/path/to/graalvm
   -PnativeCompatibilityBackend=gson \
   -PnativeCompatibilityMode=compiled
 
-# Quick JVM-only correctness validation:
-./gradlew :sjf4j-testbench:test \
-  --tests '*NativeCompatibilityProbeTest'
+# Quick JVM-only correctness validation (twelve independent cases):
+./gradlew :sjf4j-testbench:nativeCompatibilityJvmTest
 ```
 
 The Gradle task is explicit/opt-in and **never runs as a dependency of
