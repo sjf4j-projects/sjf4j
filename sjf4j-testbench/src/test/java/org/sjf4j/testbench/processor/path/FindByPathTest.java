@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Runtime tests for {@code @FindByPath} generated implementations.
+ * Behavioral tests for {@code @FindByPath} generated implementations.
  *
  * <p>Tests wildcard, union, and raw/Object return type scenarios against
  * real POJO/Map data.</p>
@@ -47,7 +47,7 @@ public class FindByPathTest {
 
     // ---- Compiled interfaces -----------------------------------------------
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     interface FindNodes {
         @FindByPath("$.items[*].name")
         List<String> itemNames(Container root);
@@ -91,15 +91,6 @@ public class FindByPathTest {
         @FindByPath("$.items[-1,2:0:-1].name")
         List<String> unionSliceItemNames(Container root);
 
-        @FindByPath(value = "$.items[?(@.age > 18)].name")
-        List<String> adultItemNames(Container root);
-
-        @FindByPath(value = "$.items[?(@.name == \"Bob\")].age")
-        List<Integer> bobAges(Container root);
-
-        @FindByPath(value = "$.items[?(@.age > 18)].name")
-        List<String> adultRegistryNames(Registry root);
-
         @FindByPath(value = "$.families..name")
         List<String> familyDescendantNames(Container root);
 
@@ -124,14 +115,27 @@ public class FindByPathTest {
         @FindByPath("$.items[1:2].name")
         List<String> singleName(Concrete root);
 
+        @FindByPath("$.items[::-1].name")
+        List<String> finalConcreteReverseNames(FinalConcrete root);
+    }
+
+    /** Only predicate evaluation requires the explicit FilterExpr opt-in. */
+    @CompiledNavigator(fallback = true)
+    interface FilterNodes {
+        @FindByPath(value = "$.items[?(@.age > 18)].name")
+        List<String> adultItemNames(Container root);
+
+        @FindByPath(value = "$.items[?(@.name == \"Bob\")].age")
+        List<Integer> bobAges(Container root);
+
+        @FindByPath(value = "$.items[?(@.age > 18)].name")
+        List<String> adultRegistryNames(Registry root);
+
         @FindByPath(value = "$.items[?(@ == null)]")
         List<Item> nullItems(Concrete root);
 
         @FindByPath(value = "$.items[?(@.age > 18)].name")
         List<String> concreteAdultNames(Concrete root);
-
-        @FindByPath("$.items[::-1].name")
-        List<String> finalConcreteReverseNames(FinalConcrete root);
     }
 
     // ---- Tests -------------------------------------------------------------
@@ -217,21 +221,23 @@ public class FindByPathTest {
     @Test
     public void filterReturnsMatchingValuesInArrayOrder() {
         FindNodes nodes = CompiledInstances.create(FindNodes.class);
+        FilterNodes filters = CompiledInstances.create(FilterNodes.class);
         Container root = container();
 
-        assertEquals(List.of("Bob", "Charlie"), nodes.adultItemNames(root));
-        assertEquals(List.of(25), nodes.bobAges(root));
+        assertEquals(List.of("Bob", "Charlie"), filters.adultItemNames(root));
+        assertEquals(List.of(25), filters.bobAges(root));
 
         Map<String, Item> registryItems = new LinkedHashMap<>();
         registryItems.put("a", root.items().get(0));
         registryItems.put("b", root.items().get(1));
         registryItems.put("c", root.items().get(2));
-        assertEquals(List.of("Bob", "Charlie"), nodes.adultRegistryNames(new Registry(registryItems)));
+        assertEquals(List.of("Bob", "Charlie"), filters.adultRegistryNames(new Registry(registryItems)));
     }
 
     @Test
     public void sequentialListsPreserveWildcardSliceFilterAndNestedOrder() {
         FindNodes nodes = CompiledInstances.create(FindNodes.class);
+        FilterNodes filters = CompiledInstances.create(FilterNodes.class);
         Container random = container();
         IteratorOnlyList<Item> items = new IteratorOnlyList<>(random.items());
         Container sequential = new Container(items,
@@ -245,7 +251,7 @@ public class FindByPathTest {
         assertEquals(List.of("Alice", "Charlie"), nodes.everyOtherItemName(sequential));
         assertEquals(List.of("Bob", "Charlie"), nodes.lastTwoItemNames(sequential));
         assertEquals(List.of("Charlie", "Bob", "Alice"), nodes.reverseItemNames(sequential));
-        assertEquals(List.of("Bob", "Charlie"), nodes.adultItemNames(sequential));
+        assertEquals(List.of("Bob", "Charlie"), filters.adultItemNames(sequential));
 
         Concrete concrete = new Concrete(items);
         assertEquals(List.of("Alice", "Bob", "Charlie"), nodes.concreteNames(concrete));
@@ -255,18 +261,18 @@ public class FindByPathTest {
         assertEquals(List.of("Charlie", "Alice"), nodes.reverseNegativeBoundedStrideNames(concrete));
         assertTrue(nodes.zeroWidthNames(concrete).isEmpty());
         assertEquals(List.of("Bob"), nodes.singleName(concrete));
-        assertEquals(List.of("Bob", "Charlie"), nodes.concreteAdultNames(concrete));
+        assertEquals(List.of("Bob", "Charlie"), filters.concreteAdultNames(concrete));
         assertEquals(List.of("Charlie", "Bob", "Alice"),
                 nodes.finalConcreteReverseNames(new FinalConcrete(items)));
 
         assertTrue(nodes.concreteReverseNames(new Concrete(new IteratorOnlyList<>(List.of())))
                 .isEmpty());
         IteratorOnlyList<Item> withNull = new IteratorOnlyList<>(java.util.Arrays.asList(random.items().get(0), null, random.items().get(2)));
-        assertEquals(java.util.Collections.singletonList(null), nodes.nullItems(new Concrete(withNull)));
+        assertEquals(java.util.Collections.singletonList(null), filters.nullItems(new Concrete(withNull)));
     }
 
     @Test
-    public void descendantFallbackReturnsMatchingValuesInOrder() {
+    public void compiledDescendantReturnsMatchingValuesInOrder() {
         FindNodes nodes = CompiledInstances.create(FindNodes.class);
         Container root = container();
 

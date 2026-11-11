@@ -52,7 +52,8 @@ class CompiledNavigatorNamingTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Navigator_Impl.java");
         assertTrue(generated.contains("FIND_FILTER2"), generated);
-        assertTrue(generated.contains("FIND_PATH2"), generated);
+        assertFalse(generated.contains("FIND_PATH2"), generated);
+        assertFalse(generated.contains(".find("), generated);
         assertFalse(generated.contains("_sjf4j_find_filter_"), generated);
         assertFalse(generated.contains("_sjf4j_find_path_"), generated);
     }
