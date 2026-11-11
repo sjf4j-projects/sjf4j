@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Generated null-safe enum-to-enum switch mappings with compile-time same-name constant validation, including nested collection elements and Map keys/values.
 - Added `@MappingOptions.reuse` with `ReusePolicy.ASSIGNABLE`, preserving assignable-value reuse for root containers and nested mapper values.
 
 ### Changed

@@ -46,6 +46,16 @@ import java.lang.annotation.Target;
  * string-to-number or boolean-to-string are intentionally not generated unless
  * supplied by an explicit mapper or compute expression.</p>
  *
+ * <p>Statically known enum-to-enum mappings match constants by exact
+ * {@code name()}, independently of declaration order and {@code toString()}.
+ * They generate a null-safe Java {@code switch}. Every source enum constant
+ * must have a same-name target constant; otherwise compilation fails with a
+ * diagnostic, unless a compatible explicit or selected mapper method handles
+ * the conversion. Extra target constants are allowed. Enum-to-String uses
+ * {@code name()}, String-to-enum uses case-sensitive {@code valueOf()}, and
+ * dynamically typed {@code Object} values still use strict runtime adaptation.
+ * Numeric ordinals are never used for compiled enum mapping.</p>
+ *
  * <p>Assignable values are reused by reference by default (including root
  * containers and nested properties). See {@link MappingOptions#reuse()}.
  * Collection and map mappings support recursive parameterized element/value
