@@ -79,7 +79,8 @@ public final class NativeBindingCompatibility {
                     Object actual = codec.read(input, target);
                     if ("pojo".equals(shape) ? !expectedPojo.equals(actual)
                             : !sameJson(expectedMap, actual)) {
-                        throw new AssertionError("Read mismatch");
+                        throw new AssertionError("Read mismatch for " + label
+                                + ": expected=" + expected + ", actual=" + actual);
                     }
                     byte[] output = codec.write(expected, target);
                     Map<?, ?> actualMap = (Map<?, ?>) verifier.readNode(output, Map.class);
