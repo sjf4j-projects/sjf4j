@@ -574,6 +574,13 @@ val jmhAgent = tasks.register<Exec>("jmhAgent") {
 
         executable("${graalVmHome.get()}/bin/java")
 
+        if (bindingNativeImage.get()) {
+            // On the JVM Fastjson2 normally uses ASM, while Native Image uses
+            // reflection. Train the tracing agent on the reflective path so
+            // the native direct-library baseline gets its required metadata.
+            args("-Dfastjson2.creator=reflect")
+        }
+
         args(
             "-agentlib:native-image-agent=config-output-dir=${outputDir.absolutePath}",
             "-cp",
