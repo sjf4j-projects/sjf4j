@@ -7,7 +7,8 @@ it does not rank unrelated runtime mappers, JSON binding, or JDBC mapping.
 ## Workloads
 
 **16 independently observable cases**, across the same four groups, expanded to
-**64 exact JMH measurements**. This supersedes the eight composite cases in
+**70 exact JMH measurements**. The JSON group compares MapStruct with both
+SJF4J `RawPolicy.CAST` and `RawPolicy.STRICT`. This supersedes the eight composite cases in
 the original v1 suite without dropping the classic and extended baselines.
 
 | Group | Case | What is measured | Size | JMH entries |
@@ -26,8 +27,8 @@ the original v1 suite without dropping the classic and extended baselines.
 | Collection | Map item values | Map<String,Item> → Map<String,ItemDto> | 1/10/100KB | 6 |
 | Collection | Map with one List | A single Map value containing the full List | 1/10/100KB | 6 |
 | Collection | Map with eight Lists | Same total elements split into eight short Lists | 1/10/100KB | 6 |
-| JSON | Map projection | Map<String,Object> → POJO | 1/10/100KB | 6 |
-| JSON | JsonObject projection | JsonObject → POJO | 1/10/100KB | 6 |
+| JSON | Map projection | Map<String,Object> → POJO: MapStruct / CAST / STRICT | 1/10/100KB | 9 |
+| JSON | JsonObject projection | JsonObject → POJO: MapStruct / CAST / STRICT | 1/10/100KB | 9 |
 
 **Why split the cases?** The original Collection List processes one large
 List, while Map<String,List<Item>> processes **eight shorter Lists**, invoking
@@ -65,9 +66,14 @@ each benchmark method name.
   both implementations apply the same null-ignore policy.
 - Collection cases require recursively mapped DTO elements and newly allocated
   outer containers. Missing or unequal results **fail setup**.
-- The JSON MapStruct comparison uses explicit expressions for fixed key extraction
-  because JsonObject is not a JavaBean. These are documented adapter expressions,
-  not a claim of automatic MapStruct support for arbitrary JSON traversal.
+- The JSON MapStruct comparison uses explicit Java casts for fixed-key extraction
+  because JsonObject is not a JavaBean. SJF4J uses the same source and
+  target records with `@MappingOptions(raws = RawPolicy.CAST)` and
+  `@MappingOptions(raws = RawPolicy.STRICT)`. Both modes must agree with
+  MapStruct during JMH setup. CAST performs shallow Java casts, whereas
+  STRICT uses OBNT conversion. LENIENT remains validated by processor tests,
+  but is not a separate performance case. These explicit adapters are not a
+  claim that MapStruct automatically handles arbitrary JsonObject traversal.
 - Timing reports are specific to each workload and runtime environment; comparing
   a JSON projection with a full POJO-to-DTO conversion is not meaningful.
 - JDK 25 is required for an official run. Record the precise JDK patch, CPU,
@@ -99,7 +105,7 @@ MAPPING_CPU_SET='1-2' ./scripts/benchmark-mapping.sh quick collection
 | Measurement | 1 x 50ms | 2 x 200ms | 5 x 1s |
 | Threads | 1 | 1 | 1 |
 | Allocation profiler | No | Yes | Yes |
-| Measurements | All 64 | All 64 | All 64 |
+| Measurements | All 70 | All 70 | All 70 |
 
 The script validates **method and parameter completeness**, positive finite
 latency values, and for Quick/Full the full raw fork/iteration grid.
@@ -139,9 +145,12 @@ single slowest fork for **each exact case and implementation**, then average
 the other two (**Best 2 Mean**). The two implementations do not share an
 excluded fork. In each report row:
 
-- **MapStruct** and **Compiled** are absolute latency scores.
-- **MapStruct / Compiled** = MapStruct Best 2 / Compiled Best 2;
-  above 1x means Compiled is faster, below 1x means it is slower.
+- Non-JSON groups show absolute **MapStruct** and **Compiled** latency.
+- The JSON group shows three independent scores: **MapStruct**, **CAST** and
+  **STRICT**, together with both **MapStruct / CAST** and
+  **MapStruct / STRICT** ratios and B/op for all three implementations.
+- All ratios use each implementation's own Best 2 Mean; above 1× means
+  SJF4J is faster, below 1× means MapStruct is faster.
 - **B/op** is the untrimmed JMH GC normalized allocation score, not an
   allocation score selected by the latency forks.
 - Preserve all raw JMH forks and the original three-fork JMH mean. JMH
@@ -171,4 +180,4 @@ uncontrolled virtualized noise alone.
 
 | Release | Suite | Commit | Environment | Full report |
 | --- | --- | --- | --- | --- |
-| Pending | 2 (isolated) | — | JDK 25, one runner per Full | — |
+| Pending | 3 (isolated + RawPolicy) | — | JDK 25, one runner per Full | — |
