@@ -62,6 +62,20 @@ public class MapperReuseMatrixTest {
     }
 
     @Test
+    public void sameTypedRootPojoPreservesReference() {
+        BaseLeaf source = new BaseLeaf("Ada");
+        assertSame(source, mapper.sameRootPojo(source),
+                "ASSIGNABLE should not depend on whether a POJO is root or nested");
+    }
+
+    @Test
+    public void upcastRootPojoPreservesReference() {
+        SpecialLeaf source = new SpecialLeaf("Bob");
+        assertSame(source, mapper.upcastRootPojo(source),
+                "assignable subclass roots should reuse the source instance");
+    }
+
+    @Test
     public void sameTypedRootListPreservesReference() {
         List<String> source = new ArrayList<>(List.of("one", "two"));
         assertSame(source, mapper.sameList(source));
@@ -187,6 +201,10 @@ public class MapperReuseMatrixTest {
         Object[] covariantArray(String[] source);
 
         NestedTarget nested(NestedSource source);
+
+        BaseLeaf sameRootPojo(BaseLeaf source);
+
+        BaseLeaf upcastRootPojo(SpecialLeaf source);
 
         DeepTarget deep(DeepSource source);
 
