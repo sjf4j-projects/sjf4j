@@ -38,6 +38,16 @@ jobs:
           bash -n scripts/benchmark-binding-native.sh
           test -x scripts/benchmark-binding.sh
           test -x scripts/benchmark-binding-native.sh
+          ./scripts/benchmark-binding.sh --help >/dev/null
+          ./scripts/benchmark-binding-native.sh --help >/dev/null
+          if BINDING_SEEDS=bad ./scripts/benchmark-binding.sh quick >/dev/null 2>&1; then
+            echo "Invalid JVM seed accepted" >&2
+            exit 1
+          fi
+          if BINDING_NATIVE_BACKEND=invalid ./scripts/benchmark-binding-native.sh quick >/dev/null 2>&1; then
+            echo "Invalid Native Image backend accepted" >&2
+            exit 1
+          fi
 
   native:
     if: >-
