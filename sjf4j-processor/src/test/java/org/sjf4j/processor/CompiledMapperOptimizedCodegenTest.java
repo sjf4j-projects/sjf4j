@@ -84,7 +84,7 @@ class CompiledMapperOptimizedCodegenTest {
             Class<?> nullableTarget = loader.loadClass("fixture.NullableTarget");
             Object empty = nullableSource.getConstructor(item).newInstance(new Object[] {null});
             Object present = nullableSource.getConstructor(item).newInstance(a);
-            var nullable = mapperClass.getMethod("nullable", nullableSource);
+            java.lang.reflect.Method nullable = mapperClass.getMethod("nullable", nullableSource);
             assertEquals(nullableTarget.getConstructor(Integer.class)
                     .newInstance(new Object[] {null}), nullable.invoke(mapper, empty));
             assertEquals(nullableTarget.getConstructor(Integer.class)
@@ -107,7 +107,7 @@ class CompiledMapperOptimizedCodegenTest {
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> mapperClass = loader.loadClass("fixture.Mapper_Impl");
             Object mapper = mapperClass.getConstructor().newInstance();
-            var method = mapperClass.getMethod("string", Object.class);
+            java.lang.reflect.Method method = mapperClass.getMethod("string", Object.class);
             assertEquals("text", method.invoke(mapper, "text"));
             assertEquals("Z", method.invoke(mapper, Character.valueOf('Z')));
             assertEquals("MONDAY", method.invoke(mapper, java.time.DayOfWeek.MONDAY));
