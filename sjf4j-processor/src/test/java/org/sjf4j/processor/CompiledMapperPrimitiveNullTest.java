@@ -93,7 +93,10 @@ class CompiledMapperPrimitiveNullTest {
         assertTrue(updateBody.contains("source.active()"), updateBody);
         assertFalse(updateBody.contains("Integer.valueOf("), updateBody);
         assertFalse(updateBody.contains("Boolean.valueOf("), updateBody);
-        assertFalse(updateBody.contains(" != null)"), updateBody);
+        // String null-ignore still needs a guard; only primitive fields
+        // should have no boxed temporaries.
+        assertFalse(updateBody.contains("java.lang.Integer "), updateBody);
+        assertFalse(updateBody.contains("java.lang.Boolean "), updateBody);
 
         try (URLClassLoader loader = compilation.classLoader(getClass().getClassLoader())) {
             Class<?> source = loader.loadClass("fixture.UpdateSource");
@@ -112,7 +115,7 @@ class CompiledMapperPrimitiveNullTest {
             assertEquals("preserve", target.getField("name").get(to));
             assertEquals(0, target.getField("level").getInt(to));
             assertFalse(target.getField("active").getBoolean(to));
-            method.invoke(mapper, to, new Object[] {null});
+            method.invoke(mapper, to, (Object) null);
             assertEquals("preserve", target.getField("name").get(to));
         }
     }
