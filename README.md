@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
-[![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j)
+[![javadoc](https://javadoc.io/badge2/org.sjf4j/sjf4j-core/javadoc.svg)](https://javadoc.io/doc/org.sjf4j/sjf4j-core)
 ![Supported Dialects](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fsupported_versions.json)  
 ![Draft 2020-12](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2020-12.json)
 ![Draft 2019-09](https://img.shields.io/endpoint?url=https%3A%2F%2Fbowtie.report%2Fbadges%2Fjava-org.sjf4j-sjf4j%2Fcompliance%2Fdraft2019-09.json)
@@ -103,7 +103,7 @@ User user = binder.read(json);
   Enjoy flexible runtime APIs and highly optimized compile-time code generation.
 
 
-## Explore SJF4J
+## Explore Features
 
 SJF4J unifies essential structured-data processing capabilities:
 
@@ -307,7 +307,7 @@ patch.apply(user);  // Update in place
 Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
 
 
-## Compiled APIs: Under the Hood
+## Enjoy Compiled APIs
 
 SJF4J transforms annotated interfaces into optimized Java implementations at compile time, producing readable and debuggable source code.
 
@@ -338,7 +338,7 @@ public final class UserNavigator_Impl implements UserNavigator {
 
 Generated sources can be inspected, debugged, and optimized by the JVM just like hand-written Java code.
 
-### Generated Source Code
+### Where's the Code
 
 Generated implementations use the `_Impl` suffix and are written to the standard annotation-processing output directory.
 
@@ -355,7 +355,7 @@ build/
 ```
 
 
-### Using Generated Code
+### How to Use
 
 Add the annotation processor to your project:
 ```java

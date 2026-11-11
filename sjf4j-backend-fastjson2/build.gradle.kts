@@ -17,15 +17,15 @@ java {
 
 dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
-    compileOnly("com.alibaba.fastjson2:fastjson2:2.0.59")
+    compileOnly("com.alibaba.fastjson2:fastjson2:2.0.66")
 
-    testImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
+    testImplementation("com.alibaba.fastjson2:fastjson2:2.0.66")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // JMH
-    jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.59")
+    jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.66")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.36")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
