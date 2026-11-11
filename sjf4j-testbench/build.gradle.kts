@@ -789,7 +789,7 @@ tasks.register("nativeCompatibility") {
                 val mainClass = "org.sjf4j.testbench.nativeimage.NativeBindingCompatibility" +
                         "$" + backendName + modeName
                 val command = mutableListOf(
-                    executable.absolutePath, "--no-fallback", "-O0",
+                    executable.absolutePath, "-O0",
                     "-cp", classpath,
                     "-o", binary.absolutePath,
                     mainClass
