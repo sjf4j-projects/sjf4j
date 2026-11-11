@@ -613,8 +613,17 @@ graalvmNative {
             buildArgs.add("-O2")
 
             if (bindingNativeImage.get()) {
-                // Defer creation of Fastjson2's default reader/writer providers and
-                // mutable caches; these must not become constants in the image heap.
+                // Fastjson2's packaged native-image.properties forces JSONFactory
+                // and its provider caches to build-time initialization. That
+                // conflicts with the runtime initialization needed by this JMH
+                // image; exclude only this one embedded properties resource.
+                // All reflection metadata collected by jmhAgent remains active.
+                buildArgs.add("--exclude-config")
+                buildArgs.add(".*sjf4j-testbench.*-jmh\\.jar")
+                buildArgs.add(".*META-INF/native-image/com\\.alibaba\\.fastjson2/fastjson2/native-image\\.properties")
+
+                // Create Fastjson2 providers and the generated Binder contexts
+                // after the native executable starts, not in the image heap.
                 buildArgs.add("--initialize-at-run-time=" +
                         "com.alibaba.fastjson2.JSONFactory," +
                         "org.sjf4j.testbench.binding.fabien.FabienBindings\$Fastjson2_Impl")
