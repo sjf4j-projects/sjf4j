@@ -820,7 +820,14 @@ tasks.register("nativeCompatibility") {
                     runExit != 0 -> "RUN_FAILED"
                     else -> "PASS"
                 }
-                if (status != "PASS") failures++
+                if (status != "PASS") {
+                    failures++
+                    val failureLog = if (buildExit != 0) buildLog else runLog
+                    // Failure logs are also saved as artifacts. Surface the tail
+                    // in Actions so the actual exception is visible immediately.
+                    logger.error("Native compatibility $name: $status, last log lines:")
+                    failureLog.readLines().takeLast(35).forEach { logger.error(it) }
+                }
                 logger.lifecycle("Native compatibility $name: $status (build=$buildExit, run=$runExit)")
                 results.add(mapOf(
                     "backend" to backend,
