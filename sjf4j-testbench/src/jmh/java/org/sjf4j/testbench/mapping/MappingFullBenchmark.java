@@ -196,6 +196,7 @@ public class MappingFullBenchmark {
         public List<Item> list;
         public List<Item> sequentialList;
         public Map<String, Item> itemMap;
+        public Map<String, List<Item>> mapOne;
         public Map<String, List<Item>> map;
         public MapStructMapper mapstruct;
         public Sjf4jMapper compiled;
@@ -205,6 +206,8 @@ public class MappingFullBenchmark {
             list = items(Math.max(1, sizeKb * 1024 / 105));
             sequentialList = new java.util.LinkedList<>(list);
             itemMap = new LinkedHashMap<>();
+            mapOne = new LinkedHashMap<>();
+            mapOne.put("all", list);
             map = new LinkedHashMap<>();
             for (int i = 0; i < list.size(); i++) {
                 itemMap.put("sku-" + i, list.get(i));
@@ -222,6 +225,8 @@ public class MappingFullBenchmark {
                     "random versus sequential parity");
             check(Objects.equals(mapstruct.mapItems(itemMap), compiled.mapItems(itemMap)),
                     "Map of individual items");
+            check(Objects.equals(mapstruct.map(mapOne), compiled.map(mapOne)),
+                    "Map containing one large List");
             Map<String, List<ItemDto>> mappedMap = compiled.map(map);
             check(Objects.equals(mapstruct.map(map), mappedMap), "map value mapping");
             check(mappedMap != (Object) map, "map must be copied");
@@ -300,6 +305,8 @@ public class MappingFullBenchmark {
     @Benchmark public List<ItemDto> collection_sequential_compiled(CollectionState s) { return s.compiled.list(s.sequentialList); }
     @Benchmark public Map<String, ItemDto> collection_mapitems_mapstruct(CollectionState s) { return s.mapstruct.mapItems(s.itemMap); }
     @Benchmark public Map<String, ItemDto> collection_mapitems_compiled(CollectionState s) { return s.compiled.mapItems(s.itemMap); }
+    @Benchmark public Map<String, List<ItemDto>> collection_mapone_mapstruct(CollectionState s) { return s.mapstruct.map(s.mapOne); }
+    @Benchmark public Map<String, List<ItemDto>> collection_mapone_compiled(CollectionState s) { return s.compiled.map(s.mapOne); }
     @Benchmark public Map<String, List<ItemDto>> collection_map_mapstruct(CollectionState s) { return s.mapstruct.map(s.map); }
     @Benchmark public Map<String, List<ItemDto>> collection_map_compiled(CollectionState s) { return s.compiled.map(s.map); }
 
