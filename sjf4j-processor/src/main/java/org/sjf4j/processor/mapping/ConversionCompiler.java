@@ -1,6 +1,7 @@
 package org.sjf4j.processor.mapping;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.mapping.RawPolicy;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -69,9 +70,18 @@ public final class ConversionCompiler {
                 return CompiledConversion.method(conversion.sourceType(), conversion.targetType(),
                         conversion.method(), conversion.mapperType());
 
+            case RAW_CAST:
+                return CompiledConversion.rawCast(conversion.sourceType(), conversion.targetType());
+
             case SCALAR:
                 if (isEnum(conversion.sourceType()) && isEnum(conversion.targetType())) {
                     return compileEnum(plan, conversion.sourceType(), conversion.targetType(), generated);
+                }
+                // Only runtime-unknown scalar leaves participate in lenient
+                // coercion; known Java types keep their compiled conversions.
+                if (types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN
+                        && plan.rawPolicy(context) == RawPolicy.LENIENT) {
+                    return CompiledConversion.lenientScalar(conversion.sourceType(), conversion.targetType());
                 }
                 return CompiledConversion.scalar(conversion.sourceType(), conversion.targetType());
 
@@ -620,7 +630,9 @@ public final class ConversionCompiler {
         enum Kind {
             DIRECT,
             METHOD,
+            RAW_CAST,
             SCALAR,
+            LENIENT_SCALAR,
             ENUM,
             VALUE_CODEC,
             CODEC_ENCODE,
@@ -715,6 +727,14 @@ public final class ConversionCompiler {
 
         static CompiledConversion direct(TypeMirror source, TypeMirror target) {
             return simple(Kind.DIRECT, source, target);
+        }
+
+        static CompiledConversion rawCast(TypeMirror source, TypeMirror target) {
+            return simple(Kind.RAW_CAST, source, target);
+        }
+
+        static CompiledConversion lenientScalar(TypeMirror source, TypeMirror target) {
+            return simple(Kind.LENIENT_SCALAR, source, target);
         }
 
         static CompiledConversion scalar(TypeMirror source, TypeMirror target) {
