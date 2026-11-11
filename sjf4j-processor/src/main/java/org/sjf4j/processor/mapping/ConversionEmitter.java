@@ -775,7 +775,9 @@ public final class ConversionEmitter
 
         out.line(localType(conversion.targetType()) + " " + result + " = null;");
         out.beginBlock("if (" + source + " != null)");
-        out.line(result + " = " + newMapExpression(conversion.targetType()) + ";");
+        // Unlike an unsized LinkedHashMap, this avoids repeated table growth for large maps.
+        // Keep user-supplied concrete Map implementations on their existing constructor path.
+        out.line(result + " = " + newMapExpression(conversion.targetType(), source) + ";");
 
         String entry = names.newName("entry");
         if (types.isCompileTimeUnknown(conversion.sourceKeyType()) &&
@@ -1245,6 +1247,20 @@ public final class ConversionEmitter
             default:
                 throw new IllegalStateException("unsupported target container " + kind);
         }
+    }
+
+    private String newMapExpression(TypeMirror type, String source) {
+        if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) {
+            // ceil(size / 0.75) == (4 * size + 2) / 3, without floats or a
+            // redundant +1 on exact thresholds (12, 24, 48, ... entries).
+            // Use long arithmetic to avoid overflow; HashMap caps table capacity
+            // at 1 << 30. Zero and small maps can use fewer than 16 buckets.
+            // A custom concrete Map retains its original no-arg construction.
+            return "new java.util.LinkedHashMap<>((int) " +
+                    "java.lang.Math.min(1073741824L, (((long) " + source +
+                    ".size() * 4L + 2L) / 3L)))";
+        }
+        return newMapExpression(type);
     }
 
     private String newMapExpression(TypeMirror type) {

@@ -8,19 +8,29 @@ from statistics import mean
 
 PREFIX = "org.sjf4j.testbench.mapping.MappingFullBenchmark."
 GROUPS = {
-    "order": (("order_classic", False), ("order_extended", True)),
-    "pojo": (("pojo_flat", False), ("pojo_nested", False), ("pojo_update", False)),
-    "collection": (("collection_list", True), ("collection_map", True)),
+    "order": (("order_classic", False), ("order_header", False), ("order_extended", True)),
+    "pojo": (("pojo_direct", False), ("pojo_flat", False),
+             ("pojo_profile", False), ("pojo_nested", False), ("pojo_update", False)),
+    "collection": (("collection_item", False), ("collection_list", True),
+                   ("collection_sequential", True), ("collection_mapitems", True),
+                   ("collection_mapone", True), ("collection_map", True)),
     "json": (("json_map", True), ("json_object", True)),
 }
 LABELS = {
     "order_classic": "Classic Order (Arey-style)",
-    "order_extended": "Extended Order",
+    "order_header": "Order header (no products)",
+    "order_extended": "Extended Order (including products)",
+    "pojo_direct": "Direct properties → record",
     "pojo_flat": "Flat / rename / compute",
+    "pojo_profile": "Nested single-source → record",
     "pojo_nested": "Nested / multi-source / record",
     "pojo_update": "Update / null ignore",
-    "collection_list": "List mapping",
-    "collection_map": "Map value mapping",
+    "collection_item": "Item → ItemDto",
+    "collection_list": "ArrayList → List<ItemDto>",
+    "collection_sequential": "LinkedList → List<ItemDto>",
+    "collection_mapitems": "Map<String,Item> → Map<String,ItemDto>",
+    "collection_mapone": "Map with 1 large List",
+    "collection_map": "Map with 8 short Lists",
     "json_map": "Map → POJO",
     "json_object": "JsonObject → POJO",
 }
@@ -100,6 +110,8 @@ def main():
         "**Full JMH · JDK 25 · 3 forks · Best 2 Mean · ns/op (lower is better).**",
         "Each implementation independently discards its single slowest fork.",
         "B/op is the untrimmed JMH allocation score; absolute values are shown in separate columns.",
+        "Isolated component cases are not additive: JIT, allocation and call context differ.",
+        "Compare cross-run results only when CPU model and Java runtime match.",
         "",
     ]
     unstable = []
