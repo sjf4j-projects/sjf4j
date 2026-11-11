@@ -52,12 +52,12 @@ import java.util.Objects;
 public final class NativeBindingCompatibility {
     private NativeBindingCompatibility() {}
 
-    private interface Codec {
+    public interface Codec {
         Object read(byte[] input, Class<?> type) throws Exception;
         byte[] write(Object value, Class<?> type) throws Exception;
     }
 
-    private static void run(String backend, String implementation, Codec codec, String[] args)
+    public static void run(String backend, String implementation, Codec codec, String[] args)
             throws Exception {
         if (args.length != 1) throw new IllegalArgumentException("Expected fixture directory");
         Path directory = Path.of(args[0]);
@@ -97,7 +97,7 @@ public final class NativeBindingCompatibility {
     }
 
     /** Compare JSON structurally and numerically, without Java POJO introspection. */
-    private static boolean sameJson(Object left, Object right) {
+    public static boolean sameJson(Object left, Object right) {
         if (left instanceof Number && right instanceof Number) {
             return new BigDecimal(left.toString()).compareTo(new BigDecimal(right.toString())) == 0;
         }
@@ -122,7 +122,7 @@ public final class NativeBindingCompatibility {
         return Objects.equals(left, right);
     }
 
-    private static Codec runtime(Binder<?, ?> binder) {
+    public static Codec runtime(Binder<?, ?> binder) {
         return new Codec() {
             @Override public Object read(byte[] input, Class<?> type) throws Exception {
                 return binder.readNode(input, type);
@@ -133,7 +133,7 @@ public final class NativeBindingCompatibility {
         };
     }
 
-    private static Gson gson() {
+    public static Gson gson() {
         return new GsonBuilder()
                 .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
                 .serializeNulls()
@@ -158,14 +158,14 @@ public final class NativeBindingCompatibility {
                 .create();
     }
 
-    private static ObjectMapper jackson2() {
+    public static ObjectMapper jackson2() {
         return new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 
-    private static Codec compiled(Jackson2Binding binder) {
+    public static Codec compiled(Jackson2Binding binder) {
         return new Codec() {
             @Override public Object read(byte[] input, Class<?> type) {
                 if (type == Map.class) return binder.readMap(input);
@@ -177,7 +177,7 @@ public final class NativeBindingCompatibility {
             }
         };
     }
-    private static Codec compiled(Jackson3Binding binder) {
+    public static Codec compiled(Jackson3Binding binder) {
         return new Codec() {
             @Override public Object read(byte[] input, Class<?> type) {
                 if (type == Map.class) return binder.readMap(input);
@@ -189,7 +189,7 @@ public final class NativeBindingCompatibility {
             }
         };
     }
-    private static Codec compiled(Fastjson2Binding binder) {
+    public static Codec compiled(Fastjson2Binding binder) {
         return new Codec() {
             @Override public Object read(byte[] input, Class<?> type) {
                 if (type == Map.class) return binder.readMap(input);
@@ -201,7 +201,7 @@ public final class NativeBindingCompatibility {
             }
         };
     }
-    private static Codec compiled(GsonBinding binder) {
+    public static Codec compiled(GsonBinding binder) {
         return new Codec() {
             @Override public Object read(byte[] input, Class<?> type) {
                 if (type == Map.class) return binder.readMap(input);
@@ -215,7 +215,7 @@ public final class NativeBindingCompatibility {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> castMap(Object value) {
+    public static Map<String, Object> castMap(Object value) {
         return (Map<String, Object>) value;
     }
 
