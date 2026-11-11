@@ -44,8 +44,10 @@ final class Fastjson2WriteEmitter {
                 out.beginBlock("private static " + elementType + "[][] " + method + "()");
                 out.line(type + "[] constants = " + type + ".values();");
                 out.line(elementType + "[][] result = new " + elementType + "[constants.length][];");
+                out.line("org.sjf4j.binding.simple.SimpleJsonBinder jsonStrings = "
+                        + "new org.sjf4j.binding.simple.SimpleJsonBinder();");
                 out.beginBlock("for (" + type + " constant : constants)");
-                out.line("String quoted = com.alibaba.fastjson2.JSON.toJSONString(constant.name());");
+                out.line("String quoted = jsonStrings.writeNodeAsString(constant.name());");
                 out.line("result[constant.ordinal()] = " + (utf8
                         ? "quoted.getBytes(java.nio.charset.StandardCharsets.UTF_8);"
                         : "quoted.toCharArray();"));

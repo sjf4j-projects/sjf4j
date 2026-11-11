@@ -12,6 +12,7 @@ Usage: $0 <smoke|quick|full> [output-directory]
 
 Quick/Full results default to build/performance/binding/.
 Optional env: BINDING_BACKEND=<backend> selects one backend for quick/full;
+              BINDING_SEEDS=12345,324 restores the extended two-seed matrix;
               BINDING_SKIP_BUILD=1 reuses a prebuilt JMH jar.
 Smoke leaves no result or metadata files.
 EOF
@@ -33,6 +34,12 @@ fi
 PROFILE="$1"
 OUT_DIR="${2:-build/performance/binding}"
 BINDING_BACKEND="${BINDING_BACKEND:-all}"
+BINDING_SEEDS="${BINDING_SEEDS:-12345}"
+if ! [[ "$BINDING_SEEDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
+  echo "BINDING_SEEDS must be a comma-separated list of integer seeds." >&2
+  exit 2
+fi
+IFS=, read -r -a BINDING_SEED_ITEMS <<< "$BINDING_SEEDS"
 if [[ "$PROFILE" == "smoke" && "$BINDING_BACKEND" != "all" ]]; then
   echo "BINDING_BACKEND selection is supported only for quick/full." >&2
   exit 2
@@ -73,8 +80,9 @@ else
 - OS: $(uname -s)
 - Architecture: $(uname -m)
 - Hardware: $(uname -a)
-- Suite version: 2
+- Suite version: 3
 - Profile: $PROFILE
+- Seeds: $BINDING_SEEDS
 - Baseline eligible: $(if [[ "$PROFILE" == "full" && "${GITHUB_ACTIONS:-false}" != "true" ]]; then echo yes; else echo no; fi)
 - Execution environment: $(if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then echo "GitHub Actions (shared hosted runner; exploratory timings)"; else echo "local"; fi)
 - Working tree clean: $(if [[ -z "$(git status --porcelain)" ]]; then echo yes; else echo no; fi)
@@ -99,9 +107,10 @@ COMMON=(
 
 # Quick and Full have identical workloads, differing only in JMH timing.
 # Smoke exercises the 100KB edge cases at both seeds without expensive forks.
-SEED_COUNT=2
+SEED_COUNT=${#BINDING_SEED_ITEMS[@]}
 case "$PROFILE" in
   smoke)
+    SEED_COUNT=2
     SIZE_COUNT=1
     ARGS=(-f 0 -wi 0 -i 1 -r 50ms)
     COMMON+=(-p sizeKb=100 -p seed=12345,324)
@@ -109,12 +118,12 @@ case "$PROFILE" in
   quick)
     SIZE_COUNT=3
     ARGS=(-f 1 -wi 2 -i 2 -w 200ms -r 200ms)
-    COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324 -prof gc)
+    COMMON+=(-p sizeKb=1,10,100 -p "seed=$BINDING_SEEDS" -prof gc)
     ;;
   full)
     SIZE_COUNT=3
     ARGS=(-f 3 -wi 5 -i 5 -w 1s -r 1s)
-    COMMON+=(-p sizeKb=1,10,100 -p seed=12345,324 -prof gc)
+    COMMON+=(-p sizeKb=1,10,100 -p "seed=$BINDING_SEEDS" -prof gc)
     ;;
 esac
 

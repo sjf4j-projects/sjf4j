@@ -1,0 +1,133 @@
+name: Binding Native Image Benchmark (GraalVM 25)
+
+# PRs validate scripts; same-repository PRs can opt into a Native Smoke via
+# the [run-native-smoke] marker in the PR body. Full remains manual-only.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - 'scripts/benchmark-binding.sh'
+      - 'scripts/benchmark-binding-native.sh'
+      - 'sjf4j-testbench/build.gradle.kts'
+      - 'docs/performance/binding.md'
+      - '.github/workflows/binding-native-benchmark.yml'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Native Image benchmark profile
+        required: true
+        type: choice
+        default: smoke
+        options:
+          - smoke
+          - quick
+          - full
+
+permissions:
+  contents: read
+
+jobs:
+  script-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax and executable bits
+        shell: bash
+        run: |
+          bash -n scripts/benchmark-binding.sh
+          bash -n scripts/benchmark-binding-native.sh
+          test -x scripts/benchmark-binding.sh
+          test -x scripts/benchmark-binding-native.sh
+          ./scripts/benchmark-binding.sh --help >/dev/null
+          ./scripts/benchmark-binding-native.sh --help >/dev/null
+          if BINDING_SEEDS=bad ./scripts/benchmark-binding.sh quick >/dev/null 2>&1; then
+            echo "Invalid JVM seed accepted" >&2
+            exit 1
+          fi
+          if BINDING_NATIVE_BACKEND=invalid ./scripts/benchmark-binding-native.sh quick >/dev/null 2>&1; then
+            echo "Invalid Native Image backend accepted" >&2
+            exit 1
+          fi
+
+  native:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.pull_request.body, '[run-native-smoke]'))
+    needs: script-check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GraalVM Community 25.5
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.5'
+          distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: gradle
+
+      - name: Record runner hardware and toolchain
+        shell: bash
+        run: |
+          mkdir -p build/performance/binding/native
+          {
+            echo "Git SHA: $GITHUB_SHA"
+            echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Runner: $RUNNER_NAME / $RUNNER_OS / $RUNNER_ARCH"
+            lscpu
+            free -h
+            java -version 2>&1
+            native-image --version
+          } > build/performance/binding/native/runner.txt
+
+      - name: Build and run Native Image Binding
+        shell: bash
+        env:
+          PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
+        run: |
+          set -euo pipefail
+          bash scripts/benchmark-binding-native.sh "$PROFILE" \
+            build/performance/binding/native 2>&1 | tee build/performance/binding/native/console.log
+
+      - name: Summarize completed results
+        if: success()
+        shell: bash
+        env:
+          PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          profile = os.environ["PROFILE"]
+          print(f"## GraalVM Native Image Binding — {profile}")
+          if profile == "smoke":
+              print("**144/144** correctness cases passed (3 backends, both seeds at 100KB).")
+          else:
+              paths = sorted(Path("build/performance/binding/native").glob(
+                  f"binding-*-{profile}-graalvm25-*-run*.json"))
+              expected_files = 9 if profile == "full" else 3
+              expected_cases = 216 * (3 if profile == "full" else 1)
+              count = sum(len(json.loads(p.read_text(encoding="utf-8"))) for p in paths)
+              if len(paths) != expected_files or count != expected_cases:
+                  raise SystemExit(
+                      f"Expected {expected_files} JSON files and {expected_cases} results; "
+                      f"got {len(paths)} files and {count} results.")
+              print(f"Completed **216 unique cases** in {len(paths)} files.")
+              if profile == "full":
+                  print("Three independent native processes per case; aggregate with Best 2 Run Mean.")
+          print("Shared-runner timings are exploratory, not release baselines.")
+          PY
+
+      - name: Upload Native Image results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-native-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/binding/native/
+          if-no-files-found: warn
+          retention-days: 30

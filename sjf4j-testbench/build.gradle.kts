@@ -554,6 +554,11 @@ val jmhAgentOutput =
 val nativeBenchmark = providers.gradleProperty("nativeBenchmark")
     .orElse(".*(HandWriteBenchmark|HandReadBenchmark).*")
 
+// Opt-in Binding Native Image training: visit every supported backend/implementation
+// and both model shapes so the tracing agent records the required reachability metadata.
+val bindingNativeImage = providers.gradleProperty("bindingNativeImage")
+    .map { it.toBoolean() }.orElse(false)
+
 val jmhAgent = tasks.register<Exec>("jmhAgent") {
     group = "benchmark"
     description = "Runs JMH with the GraalVM Native Image tracing agent"
@@ -582,6 +587,17 @@ val jmhAgent = tasks.register<Exec>("jmhAgent") {
             "-i", "1",
             "-r", "100ms"
         )
+
+        if (bindingNativeImage.get()) {
+            args(
+                "-p", "backend=jackson2,jackson3,fastjson2",
+                "-p", "implementation=native,runtime,compiled",
+                "-p", "model=users,clients",
+                "-p", "shape=pojo,map",
+                "-p", "sizeKb=1",
+                "-p", "seed=12345"
+            )
+        }
     }
 }
 
@@ -595,6 +611,15 @@ graalvmNative {
             sharedLibrary.set(false)
 
             buildArgs.add("-O2")
+
+            if (bindingNativeImage.get()) {
+                // GraalVM sees the following two Fastjson2 implementation objects
+                // embedded in the code path used by the generated enum-name encoder.
+                // Keep the workaround narrow; never blanket-initialize Fastjson2.
+                buildArgs.add("--initialize-at-build-time=" +
+                        "com.alibaba.fastjson2.JSONFactory\$CacheItem," +
+                        "com.alibaba.fastjson2.writer.ObjectWriterBaseModule")
+            }
 
             buildArgs.add("--install-exit-handlers")
 
@@ -630,6 +655,9 @@ graalvmNative {
  */
 tasks.named<BuildNativeImageTask>("nativeCompile") {
     dependsOn(jmhAgent)
+    // Tracing-agent output is a real Native Image compilation input.
+    inputs.dir(jmhAgentOutput)
+    inputs.property("bindingNativeImage", bindingNativeImage)
 
     classpathJar.set(
         jmhJar.flatMap { it.archiveFile }

@@ -46,6 +46,11 @@ class CompiledEnumWriteTest {
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            if ("FASTJSON2".equals(backend)) {
+                String generated = compiled.generatedSource("fixture/Binder_Impl.java");
+                assertFalse(generated.contains("com.alibaba.fastjson2.JSON.toJSONString("),
+                        "Generated enum literal initialization must remain Native Image friendly");
+            }
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> modelType = loader.loadClass("fixture.Model");
