@@ -69,7 +69,8 @@ def expected_keys():
     result = set()
     for group, cases in GROUPS.items():
         for case, sized in cases:
-            for impl in ("mapstruct", "compiled"):
+            impls = ("mapstruct", "cast", "strict") if group == "json" else ("mapstruct", "compiled")
+            for impl in impls:
                 for size in (("1", "10", "100") if sized else (None,)):
                     result.add((group, case, size, impl))
     return result
@@ -116,29 +117,53 @@ def main():
     ]
     unstable = []
     for group, cases in GROUPS.items():
-        output.extend([
-            f"## {group.capitalize()}",
-            "",
-            "| Case | Size | MapStruct | Compiled | MapStruct / Compiled | MapStruct B/op | Compiled B/op |",
-            "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
-        ])
-        for case, sized in cases:
-            for size in (("1", "10", "100") if sized else (None,)):
-                ma = values[(group, case, size, "mapstruct")]
-                co = values[(group, case, size, "compiled")]
-                for impl, item in (("MapStruct", ma), ("Compiled", co)):
-                    if item[4]:
-                        unstable.append((group, case, size, impl, item[2], item[3]))
-                size_text = f"{size}KB" if size else "—"
-                output.append(
-                    f"| {LABELS[case]} | {size_text} | {ma[0]:,.2f} | {co[0]:,.2f} | "
-                    f"{ma[0] / co[0]:.2f}× | {ma[1]:,.0f} | {co[1]:,.0f} |"
-                )
+        output.append(f"## {group.capitalize()}")
+        output.append("")
+        if group == "json":
+            # JSON compares both raw policies to the same MapStruct baseline.
+            # Each implementation has its own absolute score, ratio and B/op.
+            output.extend([
+                "| Case | Size | MapStruct | CAST | STRICT | MapStruct / CAST | MapStruct / STRICT | MapStruct B/op | CAST B/op | STRICT B/op |",
+                "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ])
+            for case, sized in cases:
+                for size in (("1", "10", "100") if sized else (None,)):
+                    ma = values[(group, case, size, "mapstruct")]
+                    ca = values[(group, case, size, "cast")]
+                    st = values[(group, case, size, "strict")]
+                    for impl, item in (("MapStruct", ma), ("CAST", ca), ("STRICT", st)):
+                        if item[4]:
+                            unstable.append((group, case, size, impl, item[2], item[3]))
+                    size_text = f"{size}KB" if size else "—"
+                    output.append(
+                        f"| {LABELS[case]} | {size_text} | "
+                        f"{ma[0]:,.2f} | {ca[0]:,.2f} | {st[0]:,.2f} | "
+                        f"{ma[0] / ca[0]:.2f}× | {ma[0] / st[0]:.2f}× | "
+                        f"{ma[1]:,.0f} | {ca[1]:,.0f} | {st[1]:,.0f} |"
+                    )
+        else:
+            output.extend([
+                "| Case | Size | MapStruct | Compiled | MapStruct / Compiled | MapStruct B/op | Compiled B/op |",
+                "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
+            ])
+            for case, sized in cases:
+                for size in (("1", "10", "100") if sized else (None,)):
+                    ma = values[(group, case, size, "mapstruct")]
+                    co = values[(group, case, size, "compiled")]
+                    for impl, item in (("MapStruct", ma), ("Compiled", co)):
+                        if item[4]:
+                            unstable.append((group, case, size, impl, item[2], item[3]))
+                    size_text = f"{size}KB" if size else "—"
+                    output.append(
+                        f"| {LABELS[case]} | {size_text} | {ma[0]:,.2f} | {co[0]:,.2f} | "
+                        f"{ma[0] / co[0]:.2f}× | {ma[1]:,.0f} | {co[1]:,.0f} |"
+                    )
         output.append("")
     output.extend([
         "## Interpretation",
         "",
-        "A ratio above 1× means Compiled is faster; below 1× means MapStruct is faster.",
+        "A ratio above 1× means SJF4J is faster; below 1× means MapStruct is faster.",
+        "JSON compares MapStruct's explicit Java casts with CAST and STRICT independently.",
         "Do not average across sizes or input shapes. Update is an in-place workload.",
         "These results are exploratory when collected on shared GitHub Actions runners.",
         "Original JMH 3-fork means and error bounds remain in the raw JSON; JMH",
