@@ -95,19 +95,19 @@ not a GraalVM JVM/JIT benchmark. The JVM results above remain the historical ref
 **Native Image performance results are pending** until the native executable passes
 correctness checks and Full is measured; no extrapolated numbers are reported.
 
-The initial Native Image matrix is deliberately smaller:
+The Native Image JMH matrix uses a single executable for all four backends:
 
 | Dimension | Values |
 | --- | --- |
-| Backend | Jackson2, Jackson3, Fastjson2 |
+| Backend | Jackson2, Jackson3, Fastjson2, Gson |
 | Implementation | Native, Runtime, Compiled (Blackbird excluded) |
 | Operation | Read, Write |
 | Model | Users, Clients |
 | Shape | POJO, Map |
 | Payload | 1, 10, 100KB |
 | Seed | 12345 |
-| **Quick / Full cases** | **216** |
-| Smoke | **144 cases**: 100KB with seeds 12345 and 324 |
+| **Quick / Full cases** | **288** |
+| Smoke | **192 cases**: 100KB with seeds 12345 and 324 |
 
 Here **Native** (an implementation) still means direct library Binding.
 **Native Image** means a GraalVM AOT-compiled executable. The underlying model,
@@ -126,7 +126,7 @@ Image build explicitly permits Fastjson2's `JSONFactory$CacheItem` and
 `ObjectWriterBaseModule` to be initialized at build time; these two types were
 observed in compiler image-heap traces via the generated enum-name encoder.
 The workaround intentionally avoids build-time initializing all of Fastjson2.
-Native Image build and smoke success remain prerequisites for a performance baseline.
+The same GraalVM Native Image contains Jackson2, Jackson3, Fastjson2, and Gson.\nBackend selection only changes the JMH cases executed, not the executable being built.\nUse the JMH Smoke run to catch build and correctness failures before Full;\nno separate compatibility-image matrix is required.
 
 ```bash
 GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh smoke
