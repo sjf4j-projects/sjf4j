@@ -1,0 +1,74 @@
+name: Native Image Compatibility (GraalVM 25)
+
+# This is NOT a performance benchmark. Each backend has its own native-image
+# classpath and each implementation its own executable entry point.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/nativeimage/**'
+      - 'sjf4j-testbench/build.gradle.kts'
+      - 'docs/performance/native-compatibility.md'
+      - '.github/workflows/native-compatibility.yml'
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: Backend to inspect
+        type: choice
+        required: true
+        default: all
+        options: [all, jackson2, jackson3, fastjson2, gson]
+      mode:
+        description: Implementation
+        type: choice
+        required: true
+        default: all
+        options: [all, native, runtime, compiled]
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    # Native Image builds are expensive; opt in for a PR by adding this marker.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       contains(github.event.pull_request.body, '[run-native-compatibility]'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [jackson2, jackson3, fastjson2, gson]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up GraalVM Community 25.5
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.5'
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: gradle
+      - name: Build and execute isolated probes
+        if: >-
+          github.event_name == 'pull_request' ||
+          inputs.backend == 'all' ||
+          inputs.backend == matrix.backend
+        shell: bash
+        env:
+          BACKEND: ${{ matrix.backend }}
+          MODE: ${{ github.event_name == 'pull_request' && 'all' || inputs.mode }}
+        run: |
+          ./gradlew :sjf4j-testbench:nativeCompatibility \
+            "-PnativeCompatibilityBackend=$BACKEND" \
+            "-PnativeCompatibilityMode=$MODE"
+      - name: Upload per-case results and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-compatibility-${{ matrix.backend }}-${{ github.run_id }}
+          path: sjf4j-testbench/build/native/compatibility/
+          if-no-files-found: warn
+          retention-days: 30
