@@ -43,7 +43,7 @@ class CompiledMapperRawPolicyTest {
 
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class,
-                        "-Xlint:unchecked", "-Werror");
+                        "-Xlint:unchecked", "-Xlint:cast", "-Werror");
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/ScalarMapper_Impl.java");
         assertTrue(generated.contains("NodeMapper.asString(")
@@ -120,7 +120,7 @@ class CompiledMapperRawPolicyTest {
 
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class,
-                        "-Xlint:unchecked", "-Werror");
+                        "-Xlint:unchecked", "-Xlint:cast", "-Werror");
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/ContainerMapper_Impl.java");
         assertTrue(generated.contains("@SuppressWarnings(\"unchecked\")"), generated);
