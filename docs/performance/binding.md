@@ -131,8 +131,12 @@ the JMH fat jar via `--exclude-config`. It then defers `JSONFactory` and
 the generated `FabienBindings$Fastjson2_Impl` to executable runtime, so
 default providers and their mutable caches are not frozen into the image heap.
 This does not change normal SJF4J dependency packaging, and the benchmark's
-tracing-agent reachability metadata remains in effect. The deviation from
-Fastjson2's default AOT configuration must be disclosed alongside results.
+tracing-agent reachability metadata remains in effect. The build also includes
+explicit reflection registration for the seven Fabien fixture POJO/enum types:
+Fastjson2 uses ASM-based access on the tracing-agent JVM but requires field
+reflection in Native Image. These registrations are **benchmark-model-only**,
+not a general SJF4J application configuration. The deviation from Fastjson2's
+default AOT configuration must be disclosed alongside results.
 
 Native Image build and Smoke success remain prerequisites for a performance
 baseline.
