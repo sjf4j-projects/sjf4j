@@ -126,7 +126,10 @@ Image build explicitly permits Fastjson2's `JSONFactory$CacheItem` and
 `ObjectWriterBaseModule` to be initialized at build time; these two types were
 observed in compiler image-heap traces via the generated enum-name encoder.
 The workaround intentionally avoids build-time initializing all of Fastjson2.
-The same GraalVM Native Image contains Jackson2, Jackson3, Fastjson2, and Gson.\nBackend selection only changes the JMH cases executed, not the executable being built.\nUse the JMH Smoke run to catch build and correctness failures before Full;\nno separate compatibility-image matrix is required.
+The same GraalVM Native Image contains Jackson2, Jackson3, Fastjson2, and Gson. 
+Backend selection only changes the JMH cases executed, not the executable being built.
+Use the JMH Smoke run to catch build and correctness failures before Full;
+no separate compatibility-image matrix is required.
 
 ```bash
 GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh smoke
