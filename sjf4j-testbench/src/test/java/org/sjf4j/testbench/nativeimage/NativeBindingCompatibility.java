@@ -286,7 +286,12 @@ public final class NativeBindingCompatibility {
 
     public static final class Jackson3Native {
         public static void main(String[] args) throws Exception {
-            JsonMapper mapper = new JsonMapper();
+            // Preserve explicit JSON offsets, matching the Jackson2 fixture
+            // generator. Jackson3 otherwise normalizes OffsetDateTime to UTC.
+            JsonMapper mapper = JsonMapper.builder()
+                    .disable(tools.jackson.databind.cfg.DateTimeFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE)
+                    .disable(tools.jackson.databind.cfg.DateTimeFeature.WRITE_DATES_WITH_CONTEXT_TIME_ZONE)
+                    .build();
             run("jackson3", "native", new Codec() {
                 @Override public Object read(byte[] b, Class<?> t) throws Exception {
                     return mapper.readValue(b, t);
