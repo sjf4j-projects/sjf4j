@@ -80,6 +80,21 @@ if [[ ! -x "$IMAGE" ]]; then
   echo "Native JMH image missing: $IMAGE" >&2
   exit 1
 fi
+# A skipped build must not silently benchmark a binary from another revision
+# or GraalVM version. The stamp is written only after a successful build.
+BUILD_STAMP="$IMAGE.build-info"
+CURRENT_SHA="$(git rev-parse HEAD)"
+if [[ "$BINDING_NATIVE_SKIP_BUILD" == "1" ]]; then
+  if [[ ! -f "$BUILD_STAMP" ]] ||
+     ! grep -Fxq "Git SHA: $CURRENT_SHA" "$BUILD_STAMP" ||
+     ! grep -Fxq "Native Image: $NATIVE_VERSION" "$BUILD_STAMP"; then
+    echo "Cached Native Image has no matching Git SHA / compiler stamp; rebuild without BINDING_NATIVE_SKIP_BUILD=1." >&2
+    exit 1
+  fi
+else
+  printf 'Git SHA: %s\nNative Image: %s\n' \
+    "$CURRENT_SHA" "$NATIVE_VERSION" > "$BUILD_STAMP"
+fi
 
 JMH='org.sjf4j.testbench.binding.fabien.Fabien(ReadBenchmark.read|WriteBenchmark.write)'
 COMMON=("$JMH" -f 0 -t 1 -rf json
