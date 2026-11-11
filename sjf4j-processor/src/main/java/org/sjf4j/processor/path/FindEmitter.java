@@ -112,8 +112,44 @@ final class FindEmitter {
         // and the recursive descent. The null check above also guards the selector.
         String shape = names.newName("shape");
         out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(current);");
-        emitStep(out, names, descendant.next, "current", "root", "result",
-                filters, descendants, "access", shape);
+        FindPlan.Step selector = descendant.next;
+        if (selector.kind == FindPlan.Kind.READ
+                && selector.segment instanceof PathSegment.Index) {
+            // Ordinary indexed reads reject Set, but descendant selection
+            // matches positions in iteration order, as runtime _findMatch does.
+            out.beginBlock("if (current instanceof java.util.Set)");
+            int requested = ((PathSegment.Index) selector.segment).index;
+            String target = names.newName("target");
+            String position = requested < 0
+                    ? "org.sjf4j.node.NodeWalker.sizeInArray(current) + (" + requested + ")"
+                    : Integer.toString(requested);
+            out.line("int " + target + " = " + position + ";");
+            String index = names.newName("index");
+            String child = names.newName("child");
+            out.beginBlock("org.sjf4j.node.NodeWalker.forEachArray(current, (" +
+                    index + ", " + child + ") ->");
+            out.beginBlock("if (" + index + " == " + target + ")");
+            emitStep(out, names, selector.next, child, "root", "result",
+                    filters, descendants, "access");
+            out.endBlock();
+            out.endBlock(");");
+            out.endBlock();
+            out.beginBlock("else");
+            emitStep(out, names, selector, "current", "root", "result",
+                    filters, descendants, "access", shape);
+            out.endBlock();
+        } else if (selector.kind == FindPlan.Kind.FILTER
+                || selector.kind == FindPlan.Kind.UNION) {
+            // Descendant selection only applies filters/unions to containers.
+            // A direct scalar filter retains the ordinary selection behavior.
+            out.beginBlock("if (" + shape + ".isObject() || " + shape + ".isArray())");
+            emitStep(out, names, selector, "current", "root", "result",
+                    filters, descendants, "access", shape);
+            out.endBlock();
+        } else {
+            emitStep(out, names, selector, "current", "root", "result",
+                    filters, descendants, "access", shape);
+        }
         out.beginBlock("if (" + shape + ".isObject())");
         out.beginBlock("org.sjf4j.node.NodeWalker.forEachObject(current, (key, child) ->");
         out.line(helper + "(root, child, result, access);");

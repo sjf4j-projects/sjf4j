@@ -52,6 +52,15 @@ class CompiledFindEdgeCasesTest {
         @FindByPath("$.data..[0].name")
         List<Object> descendantIndexThenName(Map<String, Object> root);
 
+        @FindByPath("$.data..[0]")
+        List<Object> descendantSetFirst(Map<String, Object> root);
+
+        @FindByPath("$.data..[-1]")
+        List<Object> descendantSetLast(Map<String, Object> root);
+
+        @FindByPath("$..[0]")
+        List<Object> descendantFirstAcrossContainers(Map<String, Object> root);
+
         @FindByPath("$.data..[1:3].name")
         List<Object> descendantSliceThenName(Map<String, Object> root);
 
@@ -62,7 +71,17 @@ class CompiledFindEdgeCasesTest {
         List<Object> descendantMixedUnionThenTitle(Map<String, Object> root);
     }
 
+    @CompiledNavigator(fallback = true)
+    interface FilterPaths {
+        @FindByPath("$..[?(@ > 3)]")
+        List<Object> descendantGreaterThanThree(Object root);
+
+        @FindByPath("$[?(@ > 3)]")
+        List<Object> directScalarGreaterThanThree(Object root);
+    }
+
     private final Paths paths = CompiledInstances.create(Paths.class);
+    private final FilterPaths filters = CompiledInstances.create(FilterPaths.class);
 
     @Test
     void dynamicMixedUnionChoosesSelectorsByActualNodeShape() {
@@ -138,6 +157,47 @@ class CompiledFindEdgeCasesTest {
     }
 
     @Test
+    void descendantIndexSelectsSetMembersByIterationPosition() {
+        Set<Object> set = new LinkedHashSet<>(List.of("first", "second"));
+        Map<String, Object> root = Map.of("data", set);
+
+        assertMatches("$.data..[0]", root, List.of("first"), paths.descendantSetFirst(root));
+        assertMatches("$.data..[-1]", root, List.of("second"), paths.descendantSetLast(root));
+
+        Set<Object> objects = new LinkedHashSet<>(List.of(
+                Map.of("name", "first"), Map.of("name", "second")));
+        Map<String, Object> nested = Map.of("data", objects);
+        assertMatches("$.data..[0].name", nested,
+                List.of("first"), paths.descendantIndexThenName(nested));
+
+        Map<String, Object> mixed = new LinkedHashMap<>();
+        mixed.put("list", List.of("list-first", "list-second"));
+        mixed.put("set", set);
+        assertMatches("$..[0]", mixed,
+                List.of("list-first", "first"), paths.descendantFirstAcrossContainers(mixed));
+    }
+
+    @Test
+    void descendantFiltersDoNotReevaluateScalarChildren() {
+        List<Integer> single = List.of(5);
+        assertMatches("$..[?(@ > 3)]", single,
+                List.of(5), filters.descendantGreaterThanThree(single));
+        List<Integer> many = List.of(2, 5, 6);
+        assertMatches("$..[?(@ > 3)]", many,
+                List.of(5, 6), filters.descendantGreaterThanThree(many));
+
+        Map<String, Object> wrapped = Map.of("data", List.of(5));
+        assertMatches("$..[?(@ > 3)]", wrapped,
+                List.of(5), filters.descendantGreaterThanThree(wrapped));
+        assertMatches("$..[?(@ > 3)]", 5,
+                List.of(), filters.descendantGreaterThanThree(5));
+
+        // Outside descendant traversal, a scalar filter still matches itself.
+        assertMatches("$[?(@ > 3)]", 5,
+                List.of(5), filters.directScalarGreaterThanThree(5));
+    }
+
+    @Test
     void descendantIndexAndSliceContinueIntoObjectMembers() {
         Map<String, Object> root = Map.of("data", List.of(
                 List.of(Map.of("name", "A"), Map.of("name", "B"), Map.of("name", "C")),
@@ -170,7 +230,7 @@ class CompiledFindEdgeCasesTest {
                 paths.descendantMixedUnionThenTitle(mixed));
     }
 
-    private static void assertMatches(String path, Map<String, Object> root,
+    private static void assertMatches(String path, Object root,
                                       List<?> expected, List<?> compiled) {
         assertEquals(expected, JsonPath.parse(path).find(root), path + " (runtime)");
         assertEquals(expected, compiled, path + " (compiled)");
