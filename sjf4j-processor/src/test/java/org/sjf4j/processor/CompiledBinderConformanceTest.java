@@ -36,7 +36,7 @@ class CompiledBinderConformanceTest {
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
                         + "@CompiledBinder(backend=Backend." + backend
-                        + (yaml ? ", format=BindingFormat.YAML" : "") + ")\n"
+                        + (yaml ? ", format=Format.YAML" : "") + ")\n"
                         + "public interface Binder {\n"
                         + "  @Read Bean read(String source);\n"
                         + "  @Read Bean readBytes(byte[] source);\n"
