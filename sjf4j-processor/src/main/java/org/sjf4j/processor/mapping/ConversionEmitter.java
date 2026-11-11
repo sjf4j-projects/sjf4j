@@ -426,7 +426,7 @@ public final class ConversionEmitter
                 return emitMethod(conversion, source);
 
             case RAW_CAST:
-                return emitRawCast(out, names, conversion.targetType(), source);
+                return emitRawCast(out, names, conversion.sourceType(), conversion.targetType(), source);
 
             case SCALAR:
                 return emitScalar(out, names, conversion, source);
@@ -524,17 +524,19 @@ public final class ConversionEmitter
      * unchecked diagnostic on this generated local alone, not on the method
      * or generated class. This keeps -Xlint:unchecked -Werror builds usable.
      */
-    private String emitRawCast(JavaWriter out, NameAllocator names, TypeMirror targetType,
-                               String source) {
+    private String emitRawCast(JavaWriter out, NameAllocator names, TypeMirror sourceType,
+                               TypeMirror targetType, String source) {
         String result = names.newName("raw");
         String type = localType(targetType);
         if (type.indexOf('<') >= 0) {
             out.line("@SuppressWarnings(\"unchecked\")");
         }
-        // External node APIs may expose a final representation class that
-        // javac cannot cast directly to an unrelated POJO or collection.
-        // The explicit Object widening preserves runtime Java cast semantics.
-        out.line(type + " " + result + " = (" + type + ") (java.lang.Object) " + source + ";");
+        // Object-valued reads need no widening: (Object) on an Object local
+        // would trigger -Xlint:cast. Some external JSON sources have final
+        // declared classes, however, and require widening before a Java cast
+        // to an unrelated target type.
+        String value = types.isObject(sourceType) ? source : "(java.lang.Object) " + source;
+        out.line(type + " " + result + " = (" + type + ") " + value + ";");
         return result;
     }
 
