@@ -121,7 +121,9 @@ Install **GraalVM Community 25.5.5.0.3** (JDK 25) including `native-image`.
 The script deliberately checks the GraalVM version. It builds the JMH Native
 Image with `-O2` and no PGO; the existing Gradle `jmhAgent` task uses a
 representative Fabien training matrix to collect reachability metadata for
-the selected backends, implementations, models and shapes.
+the selected backends, implementations, models and shapes. The generated
+Fastjson2 Binder's enum-name initializer is deferred to native executable
+startup to keep Fastjson2 runtime caches out of the image heap.
 
 ```bash
 GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh smoke
