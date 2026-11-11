@@ -63,7 +63,7 @@ class CompiledExternalNodeGenerationTest {
         assertTrue(result.success, result.diagnostics());
 
         String generated = result.generatedSource("fixture/Paths_Impl.java");
-        assertEquals(1, generated.split("JsonType.of(current)", -1).length - 1, generated);
+        assertEquals(1, generated.split(java.util.regex.Pattern.quote("JsonType.of(current)"), -1).length - 1, generated);
         assertFalse(generated.contains("if (current != null)"), generated);
         assertTrue(generated.contains(".evalTruth(root, item, access)"), generated);
         assertTrue(generated.contains("else if ("), generated);
