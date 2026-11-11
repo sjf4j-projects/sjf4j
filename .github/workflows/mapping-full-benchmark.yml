@@ -1,0 +1,159 @@
+name: Mapping Full Benchmark (JDK 25)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mapping-full-benchmark.yml"
+      - "scripts/benchmark-mapping.sh"
+      - "scripts/analyze-mapping-benchmark.py"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/MappingFullBenchmark.java"
+      - "sjf4j-testbench/build.gradle.kts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mapping-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-jmh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check scripts
+        run: |
+          bash -n scripts/benchmark-mapping.sh
+          python3 -m py_compile scripts/analyze-mapping-benchmark.py
+          test -x scripts/benchmark-mapping.sh
+      - name: Compile JMH jar and both generated mapper implementations
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Upload JMH jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-jmh-jar
+          path: sjf4j-testbench/build/libs/*-jmh.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke:
+    name: Smoke / ${{ matrix.group }}
+    if: github.event_name == 'pull_request'
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [order, pojo, collection, json]
+    env:
+      MAPPING_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v4
+        with:
+          name: mapping-jmh-jar
+          path: sjf4j-testbench/build/libs
+      - name: Verify Mapping ${{ matrix.group }} correctness and completeness
+        run: ./scripts/benchmark-mapping.sh smoke "${{ matrix.group }}"
+      - name: Upload smoke diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-smoke-${{ matrix.group }}-${{ github.run_id }}
+          path: build/performance/mapping/${{ matrix.group }}/
+          if-no-files-found: warn
+          retention-days: 7
+
+  benchmark:
+    name: Full / ${{ matrix.group }}
+    if: github.event_name == 'workflow_dispatch'
+    needs: build-jmh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        group: [order, pojo, collection, json]
+    env:
+      MAPPING_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v4
+        with:
+          name: mapping-jmh-jar
+          path: sjf4j-testbench/build/libs
+      - name: Record runner hardware
+        shell: bash
+        run: |
+          OUT="build/performance/mapping/${{ matrix.group }}"
+          mkdir -p "$OUT"
+          {
+            echo "Group: ${{ matrix.group }}"
+            echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Commit: $GITHUB_SHA"
+            lscpu
+            free -h
+            java -version 2>&1
+          } > "$OUT/runner.txt"
+      - name: Mapping Full ${{ matrix.group }}
+        run: ./scripts/benchmark-mapping.sh full "${{ matrix.group }}"
+      - name: Upload raw results and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-full-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/mapping/${{ matrix.group }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+  collect-results:
+    name: Combined Mapping report
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && needs.build-jmh.result == 'success' }}
+    needs: [build-jmh, benchmark]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all four groups
+        uses: actions/download-artifact@v4
+        with:
+          pattern: mapping-full-*-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results
+      - name: Generate strict Best 2 report
+        shell: bash
+        run: |
+          python3 scripts/analyze-mapping-benchmark.py \
+            "results/mapping-full-order-${{ github.run_id }}-${{ github.run_attempt }}/mapping-order.json" \
+            "results/mapping-full-pojo-${{ github.run_id }}-${{ github.run_attempt }}/mapping-pojo.json" \
+            "results/mapping-full-collection-${{ github.run_id }}-${{ github.run_attempt }}/mapping-collection.json" \
+            "results/mapping-full-json-${{ github.run_id }}-${{ github.run_attempt }}/mapping-json.json" \
+            --output results/report.md
+          cat results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload combined result artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
