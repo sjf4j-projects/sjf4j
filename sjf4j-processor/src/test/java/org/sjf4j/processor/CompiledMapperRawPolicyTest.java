@@ -2,7 +2,7 @@ package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.node.NodeException;
+import org.sjf4j.exception.NodeException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
