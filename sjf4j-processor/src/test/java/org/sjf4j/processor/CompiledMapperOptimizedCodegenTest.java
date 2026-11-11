@@ -23,8 +23,12 @@ class CompiledMapperOptimizedCodegenTest {
                 "package fixture; public record Item(int quantity, String name) {}");
         sources.put("fixture/ItemDto.java",
                 "package fixture; public record ItemDto(int quantity, String name) {}");
+        sources.put("fixture/NullableSource.java",
+                "package fixture; public record NullableSource(Item child) {}");
+        sources.put("fixture/NullableTarget.java",
+                "package fixture; public record NullableTarget(Integer quantity) {}");
         sources.put("fixture/NoGetList.java",
-                "package fixture; public class NoGetList extends java.util.LinkedList<Item> { "
+                "package fixture; public final class NoGetList extends java.util.LinkedList<Item> { "
                 + " @Override public Item get(int index) { "
                 + "throw new AssertionError(\"sequential List must not use get(int)\"); } }");
         sources.put("fixture/Mapper.java",
@@ -33,6 +37,9 @@ class CompiledMapperOptimizedCodegenTest {
                 + "@CompiledMapper public interface Mapper { "
                 + "ItemDto item(Item source); "
                 + "List<ItemDto> list(List<Item> source); "
+                + "List<ItemDto> finalList(NoGetList source); "
+                + "@org.sjf4j.annotation.mapping.Mapping(target = \"quantity\", source = \"$.child.quantity\") "
+                + "NullableTarget nullable(NullableSource source); "
                 + "Map<String,List<ItemDto>> grouped(Map<String,List<Item>> source); }");
 
         NavigatorTestCompiler.Result result =
@@ -63,6 +70,9 @@ class CompiledMapperOptimizedCodegenTest {
             assertEquals(List.of(aDto, bDto),
                     mapperClass.getMethod("list", List.class).invoke(mapper, sequential));
             assertEquals(List.of(aDto, bDto),
+                    mapperClass.getMethod("finalList", loader.loadClass("fixture.NoGetList"))
+                            .invoke(mapper, sequential));
+            assertEquals(List.of(aDto, bDto),
                     mapperClass.getMethod("list", List.class)
                             .invoke(mapper, new ArrayList<>(sequential)));
             assertEquals(List.of(aDto, bDto),
@@ -70,6 +80,15 @@ class CompiledMapperOptimizedCodegenTest {
             assertEquals(Map.of("nested", List.of(aDto, bDto)),
                     mapperClass.getMethod("grouped", Map.class)
                             .invoke(mapper, Map.of("nested", sequential)));
+            Class<?> nullableSource = loader.loadClass("fixture.NullableSource");
+            Class<?> nullableTarget = loader.loadClass("fixture.NullableTarget");
+            Object empty = nullableSource.getConstructor(item).newInstance(new Object[] {null});
+            Object present = nullableSource.getConstructor(item).newInstance(a);
+            var nullable = mapperClass.getMethod("nullable", nullableSource);
+            assertEquals(nullableTarget.getConstructor(Integer.class)
+                    .newInstance(new Object[] {null}), nullable.invoke(mapper, empty));
+            assertEquals(nullableTarget.getConstructor(Integer.class)
+                    .newInstance(3), nullable.invoke(mapper, present));
         }
     }
 
