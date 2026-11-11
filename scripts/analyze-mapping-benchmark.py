@@ -13,7 +13,7 @@ GROUPS = {
              ("pojo_profile", False), ("pojo_nested", False), ("pojo_update", False)),
     "collection": (("collection_item", False), ("collection_list", True),
                    ("collection_sequential", True), ("collection_mapitems", True),
-                   ("collection_map", True)),
+                   ("collection_mapone", True), ("collection_map", True)),
     "json": (("json_map", True), ("json_object", True)),
 }
 LABELS = {
@@ -29,7 +29,8 @@ LABELS = {
     "collection_list": "ArrayList → List<ItemDto>",
     "collection_sequential": "LinkedList → List<ItemDto>",
     "collection_mapitems": "Map<String,Item> → Map<String,ItemDto>",
-    "collection_map": "Map<String,List<Item>> → Map<String,List<ItemDto>>",
+    "collection_mapone": "Map with 1 large List",
+    "collection_map": "Map with 8 short Lists",
     "json_map": "Map → POJO",
     "json_object": "JsonObject → POJO",
 }
