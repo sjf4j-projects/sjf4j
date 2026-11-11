@@ -697,6 +697,19 @@ val nativeCompatibilityConfigurations = nativeCompatibilityLibraries.mapValues {
     configuration
 }
 
+val nativeCompatibilityJvmTest = tasks.register<Test>("nativeCompatibilityJvmTest") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Runs the twelve Native Image probe entry points on the JVM with full diagnostics."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    include("**/nativeimage/NativeCompatibilityProbeTest.class")
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
 val nativeCompatibilityFixtureDir = layout.buildDirectory.dir("native/compatibility/fixtures")
 
 val nativeCompatibilityFixtures = tasks.register<JavaExec>("nativeCompatibilityFixtures") {
