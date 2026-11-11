@@ -36,6 +36,7 @@ jobs:
         run: |
           bash -n scripts/benchmark-binding.sh
           bash -n scripts/benchmark-binding-native.sh
+          python3 -m json.tool sjf4j-testbench/src/jmh/resources/native-image/binding/reflect-config.json > /dev/null
           test -x scripts/benchmark-binding.sh
           test -x scripts/benchmark-binding-native.sh
           ./scripts/benchmark-binding.sh --help >/dev/null
