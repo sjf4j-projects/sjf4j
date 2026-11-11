@@ -126,8 +126,6 @@ public enum NodeKind {
             return UNKNOWN;
         } else if (clazz == String.class) {
             return VALUE_STRING;
-        } else if (Number.class.isAssignableFrom(clazz)) {
-            return VALUE_NUMBER;
         } else if (clazz == Boolean.class) {
             return VALUE_BOOLEAN;
         } else if (clazz.isPrimitive()) {
@@ -140,6 +138,8 @@ public enum NodeKind {
             } else {
                 return VALUE_NUMBER;
             }
+        } else if (Number.class.isAssignableFrom(clazz)) {
+            return VALUE_NUMBER;
         } else if (Map.class.isAssignableFrom(clazz)) {
             return OBJECT_MAP;
         } else if (List.class.isAssignableFrom(clazz)) {
