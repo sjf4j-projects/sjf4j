@@ -531,7 +531,10 @@ public final class ConversionEmitter
         if (type.indexOf('<') >= 0) {
             out.line("@SuppressWarnings(\"unchecked\")");
         }
-        out.line(type + " " + result + " = (" + type + ") " + source + ";");
+        // External node APIs may expose a final representation class that
+        // javac cannot cast directly to an unrelated POJO or collection.
+        // The explicit Object widening preserves runtime Java cast semantics.
+        out.line(type + " " + result + " = (" + type + ") (java.lang.Object) " + source + ";");
         return result;
     }
 
