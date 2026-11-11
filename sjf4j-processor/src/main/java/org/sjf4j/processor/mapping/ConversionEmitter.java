@@ -124,6 +124,7 @@ public final class ConversionEmitter
                 return;
 
             case SCALAR:
+            case ENUM:
             case VALUE_CODEC:
             case CODEC_ENCODE:
             case ONE_OF:
@@ -425,6 +426,9 @@ public final class ConversionEmitter
             case SCALAR:
                 return emitScalar(out, names, conversion, source);
 
+            case ENUM:
+                return emitEnum(out, names, conversion, source);
+
             case VALUE_CODEC:
                 return emitNodeMapperTo(out, names, conversion.targetType(), source, "codec");
 
@@ -458,6 +462,45 @@ public final class ConversionEmitter
         if (field == null) throw new IllegalStateException("imported mapper was not prepared: " + type);
 
         return field + "." + method.getSimpleName() + "(" + source + ")";
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Enum Convert
+     * --------------------------------------------------------------
+     */
+
+    private String emitEnum(JavaWriter out, NameAllocator names,
+                            ConversionCompiler.CompiledConversion conversion, String source) {
+        String input = names.newName("enumSource");
+        String result = names.newName("converted");
+        String target = localType(conversion.targetType());
+
+        // Evaluate the source once, including when it is a property getter.
+        out.line(localType(conversion.sourceType()) + " " + input + " = " + source + ";");
+        out.line(target + " " + result + " = null;");
+        out.beginBlock("if (" + input + " != null)");
+        out.beginBlock("switch (" + input + ")");
+
+        for (String name : conversion.enumNames()) {
+            out.line("case " + name + ":");
+            out.indent();
+            out.line(result + " = " + target + "." + name + ";");
+            out.line("break;");
+            out.dedent();
+        }
+
+        // Defensive default if the enum changed after this mapper was compiled.
+        out.line("default:");
+        out.indent();
+        out.line("throw new java.lang.IllegalArgumentException(" +
+                JavaWriter.stringLiteral("unmapped enum constant for " +
+                        conversion.sourceType() + " -> " + conversion.targetType() + ": ") +
+                " + " + input + ".name());");
+        out.dedent();
+        out.endBlock();
+        out.endBlock();
+        return result;
     }
 
     /*
