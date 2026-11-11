@@ -133,6 +133,12 @@ GRAALVM_HOME=/path/to/graalvm BINDING_NATIVE_SKIP_BUILD=1 \
   BINDING_NATIVE_BACKEND=jackson3 ./scripts/benchmark-binding-native.sh quick
 ```
 
+The **Binding Native Image Benchmark (GraalVM 25)** Actions workflow supports
+manual Smoke/Quick/Full runs. To verify a same-repository PR before merging,
+include `[run-native-smoke]` in the PR description to request its Native
+Image Smoke job; remove the marker afterward. Fork PRs cannot trigger that
+expensive job.
+
 This produces `build/performance/binding/native/` JMH JSON and metadata
 for Quick/Full. Smoke emits no persisted results. The compiled executable is
 `sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native`.
