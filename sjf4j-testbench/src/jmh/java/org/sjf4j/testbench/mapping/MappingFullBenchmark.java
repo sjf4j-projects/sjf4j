@@ -20,6 +20,7 @@ import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.annotation.mapping.NullValuePolicy;
+import org.sjf4j.annotation.mapping.RawPolicy;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -266,9 +267,14 @@ public class MappingFullBenchmark {
             check("sku-123".equals(expectedMap.sku())
                     && "widget".equals(expectedMap.name())
                     && Objects.equals(7, expectedMap.count()), "Map projected fields");
-            check(Objects.equals(expectedMap, compiled.jsonMap(map)), "Map to POJO");
+            // All three methods must produce the same target from native
+            // String/Integer input; no coercion is needed for this comparison.
+            check(Objects.equals(expectedMap, compiled.jsonMap(map)), "Map STRICT to POJO");
+            check(Objects.equals(expectedMap, compiled.jsonMapCast(map)), "Map CAST to POJO");
             check(Objects.equals(expectedObject, compiled.jsonObject(jsonObject)),
-                    "JsonObject to POJO");
+                    "JsonObject STRICT to POJO");
+            check(Objects.equals(expectedObject, compiled.jsonObjectCast(jsonObject)),
+                    "JsonObject CAST to POJO");
         }
     }
 
@@ -311,9 +317,11 @@ public class MappingFullBenchmark {
     @Benchmark public Map<String, List<ItemDto>> collection_map_compiled(CollectionState s) { return s.compiled.map(s.map); }
 
     @Benchmark public JsonTarget json_map_mapstruct(JsonState s) { return s.mapstruct.jsonMap(s.map); }
-    @Benchmark public JsonTarget json_map_compiled(JsonState s) { return s.compiled.jsonMap(s.map); }
+    @Benchmark public JsonTarget json_map_cast(JsonState s) { return s.compiled.jsonMapCast(s.map); }
+    @Benchmark public JsonTarget json_map_strict(JsonState s) { return s.compiled.jsonMap(s.map); }
     @Benchmark public JsonTarget json_object_mapstruct(JsonState s) { return s.mapstruct.jsonObject(s.jsonObject); }
-    @Benchmark public JsonTarget json_object_compiled(JsonState s) { return s.compiled.jsonObject(s.jsonObject); }
+    @Benchmark public JsonTarget json_object_cast(JsonState s) { return s.compiled.jsonObjectCast(s.jsonObject); }
+    @Benchmark public JsonTarget json_object_strict(JsonState s) { return s.compiled.jsonObject(s.jsonObject); }
 
     @CompiledMapper
     public interface Sjf4jMapper {
@@ -366,8 +374,17 @@ public class MappingFullBenchmark {
         Map<String, ItemDto> mapItems(Map<String, Item> source);
         Map<String, List<ItemDto>> map(Map<String, List<Item>> source);
 
+        @MappingOptions(raws = RawPolicy.STRICT)
         JsonTarget jsonMap(Map<String, Object> source);
+
+        @MappingOptions(raws = RawPolicy.CAST)
+        JsonTarget jsonMapCast(Map<String, Object> source);
+
+        @MappingOptions(raws = RawPolicy.STRICT)
         JsonTarget jsonObject(JsonObject source);
+
+        @MappingOptions(raws = RawPolicy.CAST)
+        JsonTarget jsonObjectCast(JsonObject source);
     }
 
     @org.mapstruct.Mapper
