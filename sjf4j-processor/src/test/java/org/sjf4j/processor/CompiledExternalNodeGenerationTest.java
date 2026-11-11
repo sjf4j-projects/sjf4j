@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +45,29 @@ class CompiledExternalNodeGenerationTest {
         assertTrue(generated.contains("NodeWalker.getAccessInObject("), generated);
         assertTrue(generated.contains("NodeWalker.forEachArray("), generated);
         assertFalse(generated.contains(".find("), generated);
+    }
+
+    @Test
+    void descendantSharesShapeAndFilterUsesQueryLocalAccess() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Paths.java",
+                "package fixture; import java.util.List;"
+                + "import org.sjf4j.annotation.path.*;"
+                + "@CompiledNavigator(fallback=true) public interface Paths {"
+                + "@FindByPath(\"$..price\") List<Object> descendant(com.fasterxml.jackson.databind.JsonNode root);"
+                + "@FindByPath(\"$.items[?(@.price > 10)].title\") "
+                + "List<Object> filter(com.fasterxml.jackson.databind.JsonNode root);"
+                + "}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+
+        String generated = result.generatedSource("fixture/Paths_Impl.java");
+        assertEquals(1, generated.split(java.util.regex.Pattern.quote("JsonType.of(current)"), -1).length - 1, generated);
+        assertFalse(generated.contains("if (current != null)"), generated);
+        assertTrue(generated.contains(".evalTruth(root, item, access)"), generated);
+        assertTrue(generated.contains("else if ("), generated);
+        assertFalse(generated.contains(".isObject() && !"), generated);
     }
 
     @Test
