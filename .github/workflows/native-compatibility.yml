@@ -82,6 +82,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: native-compatibility-${{ matrix.backend }}-${{ github.run_id }}
-          path: sjf4j-testbench/build/native/compatibility/
+          path: |
+            sjf4j-testbench/build/native/compatibility/
+            sjf4j-testbench/build/generated/sources/annotationProcessor/java/test/org/sjf4j/testbench/nativeimage/
           if-no-files-found: warn
           retention-days: 30
