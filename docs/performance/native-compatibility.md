@@ -71,7 +71,7 @@ an implementation or loosen the official Native Image configuration.
 
 **By default: no `--exclude-config`, no Fastjson2-specific class
 initialization overrides, no reflection allowlist, and no tracing agent.**
-The only baseline build options are `--no-fallback` and `-O0`.
+The only baseline build option is `-O0` (diagnostic compilation, not a performance setting).
 The option `-PnativeCompatibilityReflectionConfig=path/to/reflect-config.json`
 can be used in a separate, explicitly labeled diagnostic to test minimal
 reflection metadata after a first baseline failure. Do not mix those results
