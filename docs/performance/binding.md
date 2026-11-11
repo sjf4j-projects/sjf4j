@@ -143,7 +143,8 @@ This produces `build/performance/binding/native/` JMH JSON and metadata
 for Quick/Full. Smoke emits no persisted results. The compiled executable is
 `sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native`.
 The script checks that all expected JMH case entries completed, failing early
-instead of treating a partial result as success.
+instead of treating a partial result as success. A skipped build is accepted only
+when the cached native binary has a matching Git SHA and GraalVM compiler stamp.
 
 JMH uses **`-f 0`** inside the Native Image. Full launches **three independent
 native executable processes**, each with 5 × 1s warmup and 5 × 1s measurement.
