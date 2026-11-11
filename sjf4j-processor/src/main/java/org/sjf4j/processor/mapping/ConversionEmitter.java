@@ -714,7 +714,9 @@ public final class ConversionEmitter
 
         out.line(localType(conversion.targetType()) + " " + result + " = null;");
         out.beginBlock("if (" + source + " != null)");
-        out.line(result + " = " + newMapExpression(conversion.targetType()) + ";");
+        // Unlike an unsized LinkedHashMap, this avoids repeated table growth for large maps.
+        // Keep user-supplied concrete Map implementations on their existing constructor path.
+        out.line(result + " = " + newMapExpression(conversion.targetType(), source) + ";");
 
         String entry = names.newName("entry");
         if (types.isCompileTimeUnknown(conversion.sourceKeyType()) &&
@@ -1184,6 +1186,18 @@ public final class ConversionEmitter
             default:
                 throw new IllegalStateException("unsupported target container " + kind);
         }
+    }
+
+    private String newMapExpression(TypeMirror type, String source) {
+        if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) {
+            // HashMap's default load factor is 0.75. Round the desired entry count
+            // upward to avoid rehashing, using long arithmetic to avoid overflow.
+            // A custom concrete Map retains its original no-arg construction.
+            return "new java.util.LinkedHashMap<>(java.lang.Math.max(16, (int) " +
+                    "java.lang.Math.min(1073741824L, ((long) " + source +
+                    ".size() * 4L / 3L) + 1L)))";
+        }
+        return newMapExpression(type);
     }
 
     private String newMapExpression(TypeMirror type) {
