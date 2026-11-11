@@ -613,16 +613,11 @@ graalvmNative {
             buildArgs.add("-O2")
 
             if (bindingNativeImage.get()) {
-                // Fastjson2 2.0.66 initializes ObjectReaderProvider/ObjectWriterProvider
-                // at build time via its bundled native-image.properties, but their
-                // retained modules and their converter implementations are
-                // not included in that list. This diagnostic preserves official
-                // metadata instead of excluding it.
-                buildArgs.add("--initialize-at-build-time=" +
-                        "com.alibaba.fastjson2.JSONFactory\$CacheItem," +
-                        "com.alibaba.fastjson2.reader.ObjectReaderBaseModule," +
-                        "com.alibaba.fastjson2.writer.ObjectWriterBaseModule," +
-                        "com.alibaba.fastjson2.function.impl")
+                // Diagnostic only: Fastjson2 upstream issue #2834 suggests
+                // build-time initialization of the package to cover objects
+                // retained by its eager default providers. Keep its own
+                // native-image.properties active; validate with JMH Smoke.
+                buildArgs.add("--initialize-at-build-time=com.alibaba.fastjson2")
             }
 
             buildArgs.add("--install-exit-handlers")
