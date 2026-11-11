@@ -613,12 +613,12 @@ graalvmNative {
             buildArgs.add("-O2")
 
             if (bindingNativeImage.get()) {
-                // GraalVM sees the following two Fastjson2 implementation objects
-                // embedded in the code path used by the generated enum-name encoder.
-                // Keep the workaround narrow; never blanket-initialize Fastjson2.
-                buildArgs.add("--initialize-at-build-time=" +
-                        "com.alibaba.fastjson2.JSONFactory\$CacheItem," +
-                        "com.alibaba.fastjson2.writer.ObjectWriterBaseModule")
+                // Do not snapshot Fastjson2's default reader/writer providers (and
+                // their mutable caches) into the image heap. The generated Binder
+                // creates its contexts when the native executable starts.
+                buildArgs.add("--initialize-at-run-time=" +
+                        "com.alibaba.fastjson2.JSONFactory," +
+                        "org.sjf4j.testbench.binding.fabien.FabienBindings\$Fastjson2_Impl")
             }
 
             buildArgs.add("--install-exit-handlers")
