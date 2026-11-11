@@ -9,6 +9,23 @@ on:
       - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/MappingFullBenchmark.java"
       - "sjf4j-testbench/build.gradle.kts"
   workflow_dispatch:
+    inputs:
+      runner_label:
+        description: 'Runner label: use self-hosted for a physically fixed baseline'
+        type: choice
+        required: true
+        default: ubuntu-24.04
+        options:
+          - ubuntu-24.04
+          - self-hosted
+      cpu_model:
+        description: 'Optional exact CPU model guard (from /proc/cpuinfo model name)'
+        required: false
+        type: string
+      cpu_set:
+        description: 'Optional Linux taskset CPU list for JMH and its forks (e.g. 1-2)'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -79,18 +96,15 @@ jobs:
           retention-days: 7
 
   benchmark:
-    name: Full / ${{ matrix.group }}
+    name: Full / all groups (one CPU model)
     if: github.event_name == 'workflow_dispatch'
     needs: build-jmh
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      max-parallel: 4
-      matrix:
-        group: [order, pojo, collection, json]
+    runs-on: ${{ inputs.runner_label || 'ubuntu-24.04' }}
+    timeout-minutes: 180
     env:
       MAPPING_SKIP_BUILD: '1'
+      MAPPING_EXPECT_CPU_MODEL: ${{ inputs.cpu_model || '' }}
+      MAPPING_CPU_SET: ${{ inputs.cpu_set || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 25
@@ -102,51 +116,54 @@ jobs:
         with:
           name: mapping-jmh-jar
           path: sjf4j-testbench/build/libs
-      - name: Record runner hardware
+      - name: Record benchmark runner hardware
         shell: bash
         run: |
-          OUT="build/performance/mapping/${{ matrix.group }}"
+          OUT="build/performance/mapping"
           mkdir -p "$OUT"
           {
-            echo "Group: ${{ matrix.group }}"
             echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
             echo "Commit: $GITHUB_SHA"
+            echo "Runner label: ${{ inputs.runner_label || 'ubuntu-24.04' }}"
+            echo "Expected CPU model: ${MAPPING_EXPECT_CPU_MODEL:-none}"
+            echo "CPU set: ${MAPPING_CPU_SET:-unrestricted}"
             lscpu
+            grep Cpus_allowed_list /proc/self/status || true
             free -h
             java -version 2>&1
           } > "$OUT/runner.txt"
-      - name: Mapping Full ${{ matrix.group }}
-        run: ./scripts/benchmark-mapping.sh full "${{ matrix.group }}"
-      - name: Upload raw results and diagnostics
+      - name: All four Mapping Full groups on the same runner
+        run: ./scripts/benchmark-mapping.sh full all
+      - name: Upload all raw results and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mapping-full-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/performance/mapping/${{ matrix.group }}/
+          name: mapping-full-all-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/mapping/
           if-no-files-found: warn
           retention-days: 30
 
   collect-results:
     name: Combined Mapping report
-    if: ${{ always() && github.event_name == 'workflow_dispatch' && needs.build-jmh.result == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && needs.build-jmh.result == 'success' && needs.benchmark.result == 'success' }}
     needs: [build-jmh, benchmark]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Download all four groups
+      - name: Download one-run raw results
         uses: actions/download-artifact@v4
         with:
-          pattern: mapping-full-*-${{ github.run_id }}-${{ github.run_attempt }}
+          name: mapping-full-all-${{ github.run_id }}-${{ github.run_attempt }}
           path: results
       - name: Generate strict Best 2 report
         shell: bash
         run: |
           python3 scripts/analyze-mapping-benchmark.py \
-            "results/mapping-full-order-${{ github.run_id }}-${{ github.run_attempt }}/mapping-order.json" \
-            "results/mapping-full-pojo-${{ github.run_id }}-${{ github.run_attempt }}/mapping-pojo.json" \
-            "results/mapping-full-collection-${{ github.run_id }}-${{ github.run_attempt }}/mapping-collection.json" \
-            "results/mapping-full-json-${{ github.run_id }}-${{ github.run_attempt }}/mapping-json.json" \
+            results/order/mapping-order.json \
+            results/pojo/mapping-pojo.json \
+            results/collection/mapping-collection.json \
+            results/json/mapping-json.json \
             --output results/report.md
           cat results/report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload combined result artifact
