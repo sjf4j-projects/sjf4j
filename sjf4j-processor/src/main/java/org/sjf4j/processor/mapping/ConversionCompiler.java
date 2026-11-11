@@ -9,6 +9,7 @@ import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -69,6 +70,9 @@ public final class ConversionCompiler {
                         conversion.method(), conversion.mapperType());
 
             case SCALAR:
+                if (isEnum(conversion.sourceType()) && isEnum(conversion.targetType())) {
+                    return compileEnum(plan, conversion.sourceType(), conversion.targetType(), generated);
+                }
                 return CompiledConversion.scalar(conversion.sourceType(), conversion.targetType());
 
             case VALUE_CODEC:
@@ -94,6 +98,46 @@ public final class ConversionCompiler {
             default:
                 throw new AssertionError(conversion.kind());
         }
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Enum -> Enum
+     * --------------------------------------------------------------
+     */
+
+    private CompiledConversion compileEnum(MappingPlan plan, TypeMirror sourceType,
+                                           TypeMirror targetType, GeneratedClass generated) {
+        TypeElement sourceEnum = types.typeElement(sourceType);
+        TypeElement targetEnum = types.typeElement(targetType);
+
+        Set<String> targetNames = new LinkedHashSet<>();
+        for (Element element : targetEnum.getEnclosedElements()) {
+            if (element.getKind() == ElementKind.ENUM_CONSTANT) {
+                targetNames.add(element.getSimpleName().toString());
+            }
+        }
+
+        List<String> sourceNames = new ArrayList<>();
+        for (Element element : sourceEnum.getEnclosedElements()) {
+            if (element.getKind() != ElementKind.ENUM_CONSTANT) continue;
+
+            String name = element.getSimpleName().toString();
+            if (!targetNames.contains(name)) {
+                error(plan.method(), generated, "enum constant '" + name + "' in " + sourceType
+                        + " has no same-name constant in " + targetType
+                        + "; provide an explicit mapper method");
+                return null;
+            }
+            sourceNames.add(name);
+        }
+
+        return CompiledConversion.enumMapping(sourceType, targetType, sourceNames);
+    }
+
+    private boolean isEnum(TypeMirror type) {
+        TypeElement element = types.typeElement(type);
+        return element != null && element.getKind() == ElementKind.ENUM;
     }
 
     /*
