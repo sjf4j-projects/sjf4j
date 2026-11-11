@@ -622,6 +622,12 @@ graalvmNative {
                 buildArgs.add(".*sjf4j-testbench.*-jmh\\.jar")
                 buildArgs.add(".*META-INF/native-image/com\\.alibaba\\.fastjson2/fastjson2/native-image\\.properties")
 
+                // The tracing agent runs with JVM/ASM fast paths, which do not
+                // observe all the reflective fields used by Native Image's
+                // fallback readers/writers. Register only the Fabien fixtures.
+                buildArgs.add("-H:ReflectionConfigurationFiles=" +
+                        project.file("src/jmh/resources/native-image/binding/reflect-config.json").absolutePath)
+
                 // Create Fastjson2 providers and the generated Binder contexts
                 // after the native executable starts, not in the image heap.
                 buildArgs.add("--initialize-at-run-time=" +
