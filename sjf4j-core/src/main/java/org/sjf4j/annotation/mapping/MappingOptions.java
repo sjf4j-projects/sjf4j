@@ -51,6 +51,22 @@ public @interface MappingOptions {
     /** Default array-like update behavior for target properties and nested containers. */
     ArrayPolicy arrays() default ArrayPolicy.SET;
 
+    /**
+     * Conversion behavior for a raw value whose source node kind cannot be
+     * determined at compile time (for example, an Object property, a Map
+     * value of type Object, or an external JSON node).
+     *
+     * <p>Applies to scalar, enum, object and container targets, including
+     * nested raw-value reads. In {@link RawPolicy#CAST} mode a typed object or
+     * generic container is cast directly without inspecting its members.
+     * Explicit converter methods and statically assignable values retain
+     * their usual precedence. {@link RawPolicy#STRICT} is the default to
+     * preserve existing mapper behavior.</p>
+     *
+     * @see RawPolicy
+     */
+    RawPolicy raws() default RawPolicy.STRICT;
+
     /** Default object-like update behavior for target properties and nested containers. */
     ObjectPolicy objects() default ObjectPolicy.PUT;
 
