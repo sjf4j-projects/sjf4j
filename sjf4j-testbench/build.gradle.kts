@@ -615,12 +615,14 @@ graalvmNative {
             if (bindingNativeImage.get()) {
                 // Fastjson2 2.0.66 initializes ObjectReaderProvider/ObjectWriterProvider
                 // at build time via its bundled native-image.properties, but their
-                // retained module instances are not included in that list.
-                // Keep this supplemental list narrow; do not override official metadata.
+                // retained modules and their converter implementations are
+                // not included in that list. This diagnostic preserves official
+                // metadata instead of excluding it.
                 buildArgs.add("--initialize-at-build-time=" +
                         "com.alibaba.fastjson2.JSONFactory\$CacheItem," +
                         "com.alibaba.fastjson2.reader.ObjectReaderBaseModule," +
-                        "com.alibaba.fastjson2.writer.ObjectWriterBaseModule")
+                        "com.alibaba.fastjson2.writer.ObjectWriterBaseModule," +
+                        "com.alibaba.fastjson2.function.impl")
             }
 
             buildArgs.add("--install-exit-handlers")
