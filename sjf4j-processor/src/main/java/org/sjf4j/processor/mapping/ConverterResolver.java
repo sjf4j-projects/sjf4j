@@ -83,8 +83,8 @@ public final class ConverterResolver {
     private boolean validateReferences(MappingPlan plan, GeneratedClass generated) {
         boolean valid = true;
 
-        for (String reference : using(plan)) {
-            if (!validateReference(plan, reference, "using", generated)) valid = false;
+        for (String reference : optionMethods(plan)) {
+            if (!validateReference(plan, reference, "methods", generated)) valid = false;
         }
 
         for (MappingPlan.Rule rule : plan.rules()) {
@@ -155,7 +155,13 @@ public final class ConverterResolver {
          * safety and avoids turning a writable target capture into its upper
          * bound.
          */
-        if (types.isAssignableBoxedGeneric(sourceType, targetType) &&
+        /*
+         * An explicit nestedMapper must not be bypassed by direct assignment.
+         * Method-level candidate methods remain preferences.
+         */
+        if ((rule == null || rule.nestedMapper().isEmpty()) &&
+                reuseAssignable(plan) &&
+                types.isAssignableBoxedGeneric(sourceType, targetType) &&
                 !requiresRuntimeContainerConversion(sourceType, targetType)) {
             return Conversion.direct(sourceType, targetType);
         }
@@ -181,8 +187,8 @@ public final class ConverterResolver {
         /*
          * Method-level converter preferences.
          */
-        List<String> using = using(plan);
-        Conversion preferred = resolvePreferred(using, sourceType, targetType, plan, generated);
+        List<String> preferredReferences = optionMethods(plan);
+        Conversion preferred = resolvePreferred(preferredReferences, sourceType, targetType, plan, generated);
 
         if (!generated.isValid()) return null;
 
@@ -302,14 +308,14 @@ public final class ConverterResolver {
 
     /*
      * --------------------------------------------------------------
-     * Using
+     * Preferred Converters
      * --------------------------------------------------------------
      */
 
-    private Conversion resolvePreferred(List<String> using, TypeMirror sourceType, TypeMirror targetType,
+    private Conversion resolvePreferred(List<String> references, TypeMirror sourceType, TypeMirror targetType,
                                         MappingPlan plan, GeneratedClass generated) {
-        for (String reference : using) {
-            String[] names = qualifiedReference(plan, reference, "using", generated);
+        for (String reference : references) {
+            String[] names = qualifiedReference(plan, reference, "methods", generated);
 
             if (names == null) return null;
 
@@ -334,8 +340,8 @@ public final class ConverterResolver {
         }
 
         /*
-         * using is deliberately a preference. If none of its entries match this
-         * particular source/target pair, normal conversion resolution continues.
+         * If no preferred conversion matches this source/target pair,
+         * normal conversion resolution continues.
          */
         return null;
     }
@@ -401,12 +407,31 @@ public final class ConverterResolver {
         return result;
     }
 
-    private List<String> using(MappingPlan plan) {
+    /**
+     * ASSIGNABLE currently is the sole reuse policy. Keep this check at the
+     * conversion-selection point so future policies can change precedence
+     * without modifying code emission.
+     */
+    private boolean reuseAssignable(MappingPlan plan) {
+        AnnotationMirror options = plan.options();
+        if (options == null) return true;
+        for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
+                context.elements.getElementValuesWithDefaults(options).entrySet()) {
+            if (entry.getKey().getSimpleName().contentEquals("reuse")) {
+                Object value = entry.getValue().getValue();
+                return value instanceof VariableElement &&
+                        ((VariableElement) value).getSimpleName().contentEquals("ASSIGNABLE");
+            }
+        }
+        return true;
+    }
+
+    private List<String> optionMethods(MappingPlan plan) {
         AnnotationMirror options = plan.options();
 
         if (options == null) return Collections.emptyList();
 
-        return stringArrayValue(options, "using");
+        return stringArrayValue(options, "methods");
     }
 
     /*

@@ -141,7 +141,7 @@ class CompiledBinderObntTest {
         sources.put("fixture/Binder.java",
                 "package fixture;\n"
                         + "import org.sjf4j.annotation.binding.*;\n"
-                        + "@CompiledBinder(backend=Backend.SNAKE, format=BindingFormat.YAML)\n"
+                        + "@CompiledBinder(backend=Backend.SNAKE, format=Format.YAML)\n"
                         + "public interface Binder {\n"
                         + "  @Read Tree read(String yaml) throws java.io.IOException;\n"
                         + "  @Write String write(Tree value) throws java.io.IOException;\n"

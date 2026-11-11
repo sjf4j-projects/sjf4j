@@ -8,14 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Generated null-safe enum-to-enum switch mappings with compile-time same-name constant validation, including nested collection elements and Map keys/values.
+- Added `@MappingOptions.reuse` with `ReusePolicy.ASSIGNABLE`, preserving assignable-value reuse for root containers and nested mapper values.
+
 ### Changed
 
+- Renamed `@MappingOptions.using` to `methods` (source-incompatible), clarifying that listed mapper methods are preferences rather than forced conversions.
 - **CompiledNavigator** — Reorganized navigation generation into method analysis, typed compilation plans, and source emission; combined wildcard, slice, and union selectors now generate direct Java traversal, including POJO member unions. Unsupported dynamic and descendant paths require explicit `fallback=true`.
 
 - **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
 
 ### Fixed
 
+- Aligned assignable POJO root mappings with nested-value reference reuse when no explicit property rules are present.
+- Ensured an explicit `nestedMapper` is called even when the source value is assignable to the target type.
 - Aligned `@CompiledBinder` property discovery with `@NodeObject.propertyStrategy` (`BEAN_ONLY`, `BEAN_FIELD`, `FIELD_ONLY`, `FIELD_BEAN`) and report selected non-public members as compile errors instead of silently omitting them.
 - **Constructor-Optional POJO Operations** — Allow runtime serialization and structural access to existing POJOs without a `CreatorInfo`; report clear errors only when Binding Read, mapping, copying, or path operations need to create an instance. Preserve `null` input handling and strict validation of explicit `@NodeCreator` declarations.
 

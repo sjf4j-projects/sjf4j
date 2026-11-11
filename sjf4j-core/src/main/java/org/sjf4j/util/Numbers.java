@@ -226,6 +226,9 @@ public final class Numbers {
 
     /**
      * Converts a Number to the requested numeric target type.
+     *
+     * <p>Fractional parts and floating-point precision may be lost. The
+     * existing integral range checks still apply.</p>
      */
     @SuppressWarnings("unchecked")
     public static <T> T to(Number number, Class<T> clazz) {

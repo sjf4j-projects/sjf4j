@@ -29,7 +29,7 @@ class CompiledBinderCastWarningsTest {
                     "package fixture; import org.sjf4j.annotation.binding.*;"
                             + " @CompiledBinder(backend=Backend." + backend
                             + ("SNAKE".equals(backend)
-                            ? ", format=BindingFormat.YAML" : "") + ")"
+                            ? ", format=Format.YAML" : "") + ")"
                             + " public interface Binder {"
                             + " @Read Object readAny(String json);"
                             + " @Read java.util.Map<String,Object> readMap(String json);"

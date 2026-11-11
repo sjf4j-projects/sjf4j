@@ -82,6 +82,21 @@ class NumbersTest {
     }
 
     @Test
+    void testLenientFractionalNarrowingRemainsUnchanged() {
+        assertEquals(127, Numbers.toByte(new BigDecimal("127.5")));
+        assertEquals(-128, Numbers.toByte(new BigDecimal("-128.5")));
+        assertEquals(32767, Numbers.toShort(new BigDecimal("32767.5")));
+        assertEquals(-32768, Numbers.toShort(new BigDecimal("-32768.5")));
+        assertEquals(Integer.MAX_VALUE, Numbers.toInt(new BigDecimal("2147483647.5")));
+        assertEquals(Integer.MIN_VALUE, Numbers.toInt(new BigDecimal("-2147483648.5")));
+        assertEquals(Integer.MAX_VALUE, Numbers.toInt(2147483647.5d));
+        assertEquals(1, Numbers.toInt(new BigDecimal("1.9")));
+        // Integer narrowing still rejects values whose truncated result is outside the target.
+        assertThrows(ArithmeticException.class, () -> Numbers.toByte(new BigDecimal("128.0")));
+        assertThrows(ArithmeticException.class, () -> Numbers.toInt(new BigDecimal("2147483648.0")));
+    }
+
+    @Test
     void testParseNumberAndIsNumeric() {
         assertEquals(12, Numbers.parseNumber("12"));
 //        assertEquals(123, Numbers.parseNumber(" \t1_2_3\r"));

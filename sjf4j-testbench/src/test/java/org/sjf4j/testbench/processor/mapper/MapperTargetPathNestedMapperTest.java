@@ -49,6 +49,33 @@ public class MapperTargetPathNestedMapperTest {
     }
 
     @Test
+    public void explicitNestedMapperIsUsedEvenForAssignableSameType() {
+        NestedPathMapper mapper = CompiledInstances.create(NestedPathMapper.class);
+        ChildDto original = new ChildDto();
+        original.name = "Ada";
+        OptionalTarget target = new OptionalTarget();
+        target.items = new ArrayList<>(Arrays.asList((ChildDto) null));
+
+        mapper.updateSameType(target, new SameTypeSource(original));
+
+        assertEquals("mapped:Ada", target.items.get(0).name);
+        org.junit.jupiter.api.Assertions.assertNotSame(original, target.items.get(0));
+    }
+
+    @Test
+    public void explicitEnsureMapperIsUsedEvenForAssignableSameType() {
+        NestedPathMapper mapper = CompiledInstances.create(NestedPathMapper.class);
+        ChildDto original = new ChildDto();
+        original.name = "Grace";
+        OptionalTarget target = new OptionalTarget();
+
+        mapper.ensureSameType(target, new SameTypeSource(original));
+
+        assertEquals("mapped:Grace", target.map.get("one").name);
+        org.junit.jupiter.api.Assertions.assertNotSame(original, target.map.get("one"));
+    }
+
+    @Test
     public void targetPathNestedMapperSupportsImportedMapperReference() {
         ImportedNestedPathMapper mapper =
                 CompiledInstances.create(ImportedNestedPathMapper.class);
@@ -61,6 +88,7 @@ public class MapperTargetPathNestedMapperTest {
 
     public record Source(Child child) {}
     public record Child(String name) {}
+    public record SameTypeSource(ChildDto child) {}
 
     public static final class ChildDto {
         public String name;
@@ -79,7 +107,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @CompiledMapper
     public interface NestedPathMapper {
-        @MappingOptions(using = {"this::toDto"})
+        @MappingOptions(methods = {"this::toDto"})
         @Mapping(target = "$.child", source = "child")
         @Mapping(target = "$.items[0]", source = "child")
         @Mapping(target = "$.map.one", source = "child")
@@ -90,6 +118,19 @@ public class MapperTargetPathNestedMapperTest {
 
         @EnsureMapping(target = "$.map.one", source = "child", nestedMapper = "this::toDto")
         void ensureMap(OptionalTarget target, Source source);
+
+        @MappingIfParentPresent(target = "$.items[0]", source = "child", nestedMapper = "this::decorate")
+        void updateSameType(OptionalTarget target, SameTypeSource source);
+
+        @EnsureMapping(target = "$.map.one", source = "child", nestedMapper = "this::decorate")
+        void ensureSameType(OptionalTarget target, SameTypeSource source);
+
+        default ChildDto decorate(ChildDto source) {
+            if (source == null) return null;
+            ChildDto target = new ChildDto();
+            target.name = "mapped:" + source.name;
+            return target;
+        }
 
         default ChildDto toDto(Child child) {
             ChildDto dto = new ChildDto();

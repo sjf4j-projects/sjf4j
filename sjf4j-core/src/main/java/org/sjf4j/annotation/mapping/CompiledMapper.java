@@ -10,9 +10,12 @@ import java.lang.annotation.Target;
  *
  * <p>Each non-void abstract method describes a mapping from one or more declared
  * source types to one declared target type. The generated method returns
- * {@code null} when all source arguments are {@code null}; otherwise it creates
- * the target and maps properties directly. Void methods update the first
- * argument in place from the remaining source arguments.</p>
+ * {@code null} when all source arguments are {@code null}; otherwise it maps
+ * the target directly, creating an instance when needed. An assignable
+ * single-source POJO create mapping without explicit property rules reuses
+ * its source by reference, like an assignable nested value. Explicit property
+ * rules still apply. Void methods update the first argument in place from
+ * the remaining source arguments.</p>
  *
  * <p>By default, source and target properties with the same name are mapped
  * automatically. Use repeatable {@link Mapping} annotations to rename a source
@@ -43,8 +46,25 @@ import java.lang.annotation.Target;
  * string-to-number or boolean-to-string are intentionally not generated unless
  * supplied by an explicit mapper or compute expression.</p>
  *
- * <p>Collection and map mappings support recursive parameterized element/value
- * conversion. When a unique compatible mapper method or generated converter is
+ * <p>Statically known enum-to-enum mappings match constants by exact
+ * {@code name()}, independently of declaration order and {@code toString()}.
+ * They generate a null-safe Java {@code switch}. Every source enum constant
+ * must have a same-name target constant; otherwise compilation fails with a
+ * diagnostic, unless a compatible explicit or selected mapper method handles
+ * the conversion. Extra target constants are allowed. Enum-to-String uses
+ * {@code name()}, String-to-enum uses case-sensitive {@code valueOf()}, and
+ * dynamically typed {@code Object} values still use strict runtime adaptation.
+ * Numeric ordinals are never used for compiled enum mapping.</p>
+ *
+ * <p>Assignable values are reused by reference by default (including root
+ * containers and nested properties). See {@link MappingOptions#reuse()}.
+ * Collection and map mappings support recursive parameterized element/value
+ * conversion. Raw {@code List}, {@code Set}, and {@code Map} targets accept
+ * assignable sources through direct reference reuse, without materializing or
+ * converting their elements. When a new raw container is constructed, its
+ * member types are {@code Object}; specify parameterized target types when
+ * typed element or value conversion is required. When a unique compatible
+ * mapper method or generated converter is
  * available, the processor can apply it through nested {@code List},
  * {@code Set}, and parameterized {@code Map} value shapes such as
  * {@code List<List<User>> -> List<List<UserDto>>} or {@code Map<String,
@@ -55,8 +75,7 @@ import java.lang.annotation.Target;
  * sources may feed collection targets. Declared-{@code Object} still accepts
  * only runtime {@code List}, not runtime {@code Set}. Other declared
  * {@code Collection} source types are rejected unless the declaration itself
- * is {@code List} or {@code Set}. Raw or non-parameterized collection/map
- * target shapes are rejected.
+ * is {@code List} or {@code Set}.
  * Plain {@code JsonArray}, JAJO, and Java array root targets are described
  * below.</p>
  *
@@ -64,8 +83,9 @@ import java.lang.annotation.Target;
  * declared POJO, record, or constructor targets using public target properties
  * and constructor parameters. Root {@code Map<String,V>} create targets also
  * accept POJO/record gettable properties and {@code JsonObject}/JOJO members,
- * allocating a fresh target map and applying normal typed value conversion for
- * each first-level value. Plain {@code JsonObject} root create targets are
+ * allocating a fresh target map when direct assignment is not applicable
+ * and applying normal typed value conversion for each first-level value.
+ * Plain {@code JsonObject} root create targets are
  * shallow projections: POJO/record gettable property values, {@code Map<String, ?>}
  * entries, or {@code JsonObject}/JOJO members are copied only at the first
  * level, and child object/array/POJO values are shared as-is without deep
@@ -77,8 +97,9 @@ import java.lang.annotation.Target;
  * arrays, declared {@code List}/{@code Set}, raw {@code List}/{@code Set}
  * treated as {@code List<Object>}/{@code Set<Object>},
  * {@code JsonArray}/JAJO, or declared-{@code Object} runtime-{@code List}
- * sources. Elements are copied as-is with no scalar conversion, preferred
- * mapper use, or deep materialization.</p>
+ * sources. Assignable sources are reused directly; otherwise elements are
+ * copied as-is with no scalar conversion, preferred mapper use, or deep
+ * materialization.</p>
 
  * <p>JOJO targets support the same declared-property mappings, computations,
  * ignores, and target-path writes as mutable POJO targets. Object-like sources
@@ -90,8 +111,9 @@ import java.lang.annotation.Target;
  * source extras update/add target entries while target entries absent from the
  * source remain intact.</p>
  *
- * <p>Java array and collection root create targets allocate fresh typed
- * containers and apply the same typed element conversion rules used by
+ * <p>Java array and collection root create targets reuse assignable source values
+ * without conversion; otherwise they allocate fresh typed containers and apply
+ * the same typed element conversion rules used by
  * collection mappings, including strict scalar conversion, enum conversion,
  * {@code @NodeValue} codecs, method-level preferred or unique mapper methods,
  * and object-like to POJO conversion. This differs from plain
@@ -101,8 +123,9 @@ import java.lang.annotation.Target;
  * {@code java.util.List} values. Raw root {@code List} and {@code Set}
  * sources are treated as {@code List<Object>} and {@code Set<Object>}.
  * Other declared {@code Collection} source types are not accepted for
- * array-like create/projection methods, and raw {@code List}/{@code Set}
- * targets are rejected because no element type is available.</p>
+ * array-like create/projection methods. Raw target {@code List} and
+ * {@code Set} permit direct assignment and untyped members, but cannot
+ * express a requested element type for conversion.</p>
  *
  * <p>For update methods, method-level collection/map policies default to
  * {@link ArrayPolicy#SET} for array-like containers and
@@ -119,11 +142,11 @@ import java.lang.annotation.Target;
  * {@code Map} update methods modify the supplied target in place and return
  * immediately when the source root is {@code null}.</p>
  *
- * <p>Current limits: raw or non-parameterized collection/map target types are
- * not supported for recursive conversion, except raw source {@code List} and
- * raw source {@code Set} which are treated as {@code List<Object>} and
- * {@code Set<Object>}; map key conversion is not supported and key types must
- * already match; POJO/{@code JsonObject}/{@code Object}
+ * <p>Current limits: raw container targets have {@code Object} member types
+ * and therefore do not request typed member conversion; raw source {@code List}
+ * and {@code Set} are read as {@code List<Object>} and {@code Set<Object>}.
+ * Map-to-Map key conversion may use a compatible generated or mapper conversion;
+ * POJO/{@code JsonObject}/{@code Object}
  * projection to root {@code Map} requires target key type
  * {@code java.lang.String}; plain {@code JsonObject} and JOJO root projection
  * from {@code Map} likewise requires source key type {@code String}; mapper

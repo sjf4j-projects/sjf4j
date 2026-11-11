@@ -37,7 +37,7 @@ class CompiledEnumWriteTest {
             sources.put("fixture/Binder.java", "package fixture; "
                     + "import org.sjf4j.annotation.binding.*; "
                     + "@CompiledBinder(backend=Backend." + backend
-                    + (backend.equals("SNAKE") ? ", format=BindingFormat.YAML" : "")
+                    + (backend.equals("SNAKE") ? ", format=Format.YAML" : "")
                     + ") public interface Binder { "
                     + "@Write String write(Model value) throws java.io.IOException; "
                     + "@Write String writeEnum(State value) throws java.io.IOException; "

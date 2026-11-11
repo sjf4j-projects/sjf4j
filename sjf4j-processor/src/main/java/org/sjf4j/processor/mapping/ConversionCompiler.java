@@ -9,6 +9,7 @@ import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -69,6 +70,9 @@ public final class ConversionCompiler {
                         conversion.method(), conversion.mapperType());
 
             case SCALAR:
+                if (isEnum(conversion.sourceType()) && isEnum(conversion.targetType())) {
+                    return compileEnum(plan, conversion.sourceType(), conversion.targetType(), generated);
+                }
                 return CompiledConversion.scalar(conversion.sourceType(), conversion.targetType());
 
             case VALUE_CODEC:
@@ -94,6 +98,46 @@ public final class ConversionCompiler {
             default:
                 throw new AssertionError(conversion.kind());
         }
+    }
+
+    /*
+     * --------------------------------------------------------------
+     * Enum -> Enum
+     * --------------------------------------------------------------
+     */
+
+    private CompiledConversion compileEnum(MappingPlan plan, TypeMirror sourceType,
+                                           TypeMirror targetType, GeneratedClass generated) {
+        TypeElement sourceEnum = types.typeElement(sourceType);
+        TypeElement targetEnum = types.typeElement(targetType);
+
+        Set<String> targetNames = new LinkedHashSet<>();
+        for (Element element : targetEnum.getEnclosedElements()) {
+            if (element.getKind() == ElementKind.ENUM_CONSTANT) {
+                targetNames.add(element.getSimpleName().toString());
+            }
+        }
+
+        List<String> sourceNames = new ArrayList<>();
+        for (Element element : sourceEnum.getEnclosedElements()) {
+            if (element.getKind() != ElementKind.ENUM_CONSTANT) continue;
+
+            String name = element.getSimpleName().toString();
+            if (!targetNames.contains(name)) {
+                error(plan.method(), generated, "enum constant '" + name + "' in " + sourceType
+                        + " has no same-name constant in " + targetType
+                        + "; provide an explicit mapper method");
+                return null;
+            }
+            sourceNames.add(name);
+        }
+
+        return CompiledConversion.enumMapping(sourceType, targetType, sourceNames);
+    }
+
+    private boolean isEnum(TypeMirror type) {
+        TypeElement element = types.typeElement(type);
+        return element != null && element.getKind() == ElementKind.ENUM;
     }
 
     /*
@@ -577,6 +621,7 @@ public final class ConversionCompiler {
             DIRECT,
             METHOD,
             SCALAR,
+            ENUM,
             VALUE_CODEC,
             CODEC_ENCODE,
             ONE_OF,
@@ -589,6 +634,9 @@ public final class ConversionCompiler {
 
         private final TypeMirror sourceType;
         private final TypeMirror targetType;
+
+        /** ENUM: names verified against the target enum. */
+        private final List<String> enumNames;
 
         /*
          * METHOD
@@ -633,12 +681,14 @@ public final class ConversionCompiler {
                                    TypeMirror targetValueType, CompiledConversion keyConversion,
                                    CompiledConversion valueConversion, TypeMirror workingTargetType,
                                    CreatorResolver.Creation creation, List<StructuralArgument> arguments,
-                                   List<StructuralProperty> properties, DynamicObjectPlan dynamicObject) {
+                                   List<StructuralProperty> properties, DynamicObjectPlan dynamicObject,
+                                   List<String> enumNames) {
 
             this.kind = kind;
 
             this.sourceType = sourceType;
             this.targetType = targetType;
+            this.enumNames = immutable(enumNames);
 
             this.method = method;
             this.mapperType = mapperType;
@@ -671,6 +721,15 @@ public final class ConversionCompiler {
             return simple(Kind.SCALAR, source, target);
         }
 
+        static CompiledConversion enumMapping(TypeMirror source, TypeMirror target, List<String> names) {
+            return new CompiledConversion(
+                    Kind.ENUM, source, target,
+                    null, null, null, null, null,
+                    null, null, null, null, null, null,
+                    null, null, null, null, null,
+                    names);
+        }
+
         static CompiledConversion valueCodec(TypeMirror source, TypeMirror target) {
             return simple(Kind.VALUE_CODEC, source, target);
         }
@@ -692,6 +751,7 @@ public final class ConversionCompiler {
                     target,
                     method,
                     mapperType,
+                    null,
                     null,
                     null,
                     null,
@@ -730,6 +790,7 @@ public final class ConversionCompiler {
                     null,
                     null,
                     null,
+                    null,
                     null);
         }
 
@@ -752,6 +813,7 @@ public final class ConversionCompiler {
                     targetValue,
                     keyConversion,
                     valueConversion,
+                    null,
                     null,
                     null,
                     null,
@@ -782,7 +844,8 @@ public final class ConversionCompiler {
                     creation,
                     arguments,
                     properties,
-                    dynamicObject);
+                    dynamicObject,
+                    null);
         }
 
         private static CompiledConversion simple(Kind kind, TypeMirror source, TypeMirror target) {
@@ -806,11 +869,16 @@ public final class ConversionCompiler {
                     null,
                     null,
                     null,
+                    null,
                     null);
         }
 
         Kind kind() {
             return kind;
+        }
+
+        List<String> enumNames() {
+            return enumNames;
         }
 
         TypeMirror sourceType() {
