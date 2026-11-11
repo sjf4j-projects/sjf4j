@@ -875,10 +875,13 @@ public final class MappingEmitter {
 
                     if (argument.value().type().getKind().isPrimitive() &&
                             !isDirectPrimitiveRead(compiled.plan(), argument.value(), true)) {
-                        // Nullable indexed reads and scalar conversions stay boxed.
-                        // A primitive constructor argument must receive its Java
-                        // default rather than unbox null when a source is absent.
-                        String raw = values[i];
+                        // Nullable indexed reads, scalar conversions and custom
+                        // converters may produce a boxed result. Evaluate it
+                        // exactly once: an expression-valued converter must not
+                        // be invoked twice by the null/default branch.
+                        String raw = names.newName("constructorValue");
+                        out.line(localType(argument.value().type()) + " " + raw +
+                                " = " + values[i] + ";");
                         values[i] = "(" + raw + " == null ? " +
                                 primitiveDefault(argument.value().type().getKind()) +
                                 " : " + raw + ")";
