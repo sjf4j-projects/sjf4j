@@ -1190,12 +1190,14 @@ public final class ConversionEmitter
 
     private String newMapExpression(TypeMirror type, String source) {
         if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) {
-            // HashMap's default load factor is 0.75. Round the desired entry count
-            // upward to avoid rehashing, using long arithmetic to avoid overflow.
+            // ceil(size / 0.75) == (4 * size + 2) / 3, without floats or a
+            // redundant +1 on exact thresholds (12, 24, 48, ... entries).
+            // Use long arithmetic to avoid overflow; HashMap caps table capacity
+            // at 1 << 30. Zero and small maps can use fewer than 16 buckets.
             // A custom concrete Map retains its original no-arg construction.
-            return "new java.util.LinkedHashMap<>(java.lang.Math.max(16, (int) " +
-                    "java.lang.Math.min(1073741824L, ((long) " + source +
-                    ".size() * 4L / 3L) + 1L)))";
+            return "new java.util.LinkedHashMap<>((int) " +
+                    "java.lang.Math.min(1073741824L, (((long) " + source +
+                    ".size() * 4L + 2L) / 3L)))";
         }
         return newMapExpression(type);
     }
