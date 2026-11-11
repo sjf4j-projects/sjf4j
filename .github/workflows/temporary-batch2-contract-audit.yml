@@ -1,0 +1,59 @@
+name: Temporary Batch2 Mapper contract audit
+
+on:
+  push:
+    branches:
+      - test/mapstruct-mapping-cases-batch2
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Processor mapper compilation tests
+        id: processor
+        continue-on-error: true
+        run: ./gradlew :sjf4j-processor:test --tests 'org.sjf4j.processor.CompiledMapper*' --stacktrace
+      - name: Testbench mapper behavior tests
+        id: testbench
+        continue-on-error: true
+        run: ./gradlew :sjf4j-testbench:test --tests 'org.sjf4j.testbench.processor.mapper.Mapper*' --stacktrace
+      - name: JMH benchmark compilation
+        id: jmh
+        continue-on-error: true
+        run: ./gradlew :sjf4j-testbench:jmhClasses --stacktrace
+      - name: Summarize JUnit results
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+          for mod in ('sjf4j-processor', 'sjf4j-testbench'):
+            total=failed=errors=0
+            for f in glob.glob(mod+'/build/test-results/test/TEST-*.xml'):
+              t=ET.parse(f).getroot()
+              total+=int(t.attrib.get('tests','0'))
+              failed+=int(t.attrib.get('failures','0'))
+              errors+=int(t.attrib.get('errors','0'))
+              for case in t.findall('.//testcase'):
+                for x in case.findall('failure')+case.findall('error'):
+                  print('FAIL:',case.attrib.get('classname'),case.attrib.get('name'),(x.attrib.get('message') or '')[:1800])
+            print(mod,'TOTAL',total,'FAILED',failed,'ERRORS',errors)
+          PY
+      - name: Final results (preserve contract failures)
+        if: always()
+        env:
+          PROCESSOR: ${{ steps.processor.outcome }}
+          TESTBENCH: ${{ steps.testbench.outcome }}
+          JMH: ${{ steps.jmh.outcome }}
+        run: |
+          echo "processor=$PROCESSOR testbench=$TESTBENCH jmh=$JMH"
+          test "$PROCESSOR" = success && test "$TESTBENCH" = success && test "$JMH" = success
