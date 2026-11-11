@@ -1438,8 +1438,12 @@ public class JsonPath {
      * preserving present-null matches.
      */
     Object _findOne(Object container, int startIdx, int endExclusive) {
+        return _findOne(container, startIdx, endExclusive, new NodeWalker.Access());
+    }
+
+    // A query-local scratch object avoids one allocation per filter candidate.
+    Object _findOne(Object container, int startIdx, int endExclusive, NodeWalker.Access acc) {
         Object node = container;
-        NodeWalker.Access acc = new NodeWalker.Access();
         for (int i = startIdx; i < endExclusive; i++) {
             if (node == null) return MISSING;
             PathSegment ps = segments[i];
@@ -1580,18 +1584,18 @@ public class JsonPath {
                 PathSegment.Filter filterPt = (PathSegment.Filter) ps;
                 if (jt.isArray()) {
                     NodeWalker.forEachArray(node, (j, v) -> {
-                        if (filterPt.filterExpr.evalTruth(root, v)) {
+                        if (filterPt.filterExpr.evalTruth(root, v, acc)) {
                             _findAll(root, v, nextI, endExclusive, result, converter, acc);
                         }
                     });
                 } else if (jt.isObject()) {
                     NodeWalker.forEachObject(node, (k, v) -> {
-                        if (filterPt.filterExpr.evalTruth(root, v)) {
+                        if (filterPt.filterExpr.evalTruth(root, v, acc)) {
                             _findAll(root, v, nextI, endExclusive, result, converter, acc);
                         }
                     });
                 } else {
-                    if (filterPt.filterExpr.evalTruth(root, node)) {
+                    if (filterPt.filterExpr.evalTruth(root, node, acc)) {
                         continue;
                     }
                 }
@@ -1668,7 +1672,7 @@ public class JsonPath {
             PathSegment.Filter filter = (PathSegment.Filter) ps;
             if (jt.isObject()) {
                 NodeWalker.forEachObject(current, (k, v) -> {
-                    if (filter.filterExpr.evalTruth(root, v)) {
+                    if (filter.filterExpr.evalTruth(root, v, acc)) {
                         _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
                     }
                 });
@@ -1677,7 +1681,7 @@ public class JsonPath {
             }
             if (jt.isArray()) {
                 NodeWalker.forEachArray(current, (j, v) -> {
-                    if (filter.filterExpr.evalTruth(root, v)) {
+                    if (filter.filterExpr.evalTruth(root, v, acc)) {
                         _findAll(root, v, startIdx + 1, endExclusive, result, converter, acc);
                     }
                 });

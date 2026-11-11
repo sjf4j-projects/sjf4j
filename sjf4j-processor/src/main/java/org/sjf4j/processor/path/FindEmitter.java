@@ -61,7 +61,7 @@ final class FindEmitter {
                     " = new java.util.ArrayList<>();");
 
             String access = "null";
-            if (needsDynamicRead(plan.traversal)) {
+            if (needsAccess(plan.traversal)) {
                 access = names.newName("access");
                 out.line("org.sjf4j.node.NodeWalker.Access " + access +
                         " = new org.sjf4j.node.NodeWalker.Access();");
@@ -85,14 +85,16 @@ final class FindEmitter {
         collectDescendants(step.next, generated, descendants);
     }
 
-    private boolean needsDynamicRead(FindPlan.Step step) {
+    // A query-local Access is also reused by filter path predicates.
+    private boolean needsAccess(FindPlan.Step step) {
         if (step == null) return false;
-        if (step.kind == FindPlan.Kind.READ && step.access != null
-                && step.access.kind() == NodeAccess.Kind.DYNAMIC) return true;
+        if (step.kind == FindPlan.Kind.FILTER
+                || (step.kind == FindPlan.Kind.READ && step.access != null
+                && step.access.kind() == NodeAccess.Kind.DYNAMIC)) return true;
         for (FindPlan.Step alternative : step.alternatives) {
-            if (needsDynamicRead(alternative)) return true;
+            if (needsAccess(alternative)) return true;
         }
-        return needsDynamicRead(step.next);
+        return needsAccess(step.next);
     }
 
     private void emitDescendantHelper(JavaWriter out, FindPlan plan,
@@ -106,11 +108,12 @@ final class FindEmitter {
 
         NameAllocator names = new NameAllocator()
                 .reserve("root").reserve("current").reserve("result").reserve("access");
-        emitStep(out, names, descendant.next, "current", "root", "result",
-                filters, descendants, "access");
-
+        // Classify once per visited node and reuse that shape for the selector
+        // and the recursive descent. The null check above also guards the selector.
         String shape = names.newName("shape");
         out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(current);");
+        emitStep(out, names, descendant.next, "current", "root", "result",
+                filters, descendants, "access", shape);
         out.beginBlock("if (" + shape + ".isObject())");
         out.beginBlock("org.sjf4j.node.NodeWalker.forEachObject(current, (key, child) ->");
         out.line(helper + "(root, child, result, access);");
@@ -158,6 +161,14 @@ final class FindEmitter {
                           String owner, String root, String result,
                           Map<FindPlan.Step, String> filters,
                           Map<FindPlan.Step, String> descendants, String accessVar) {
+        emitStep(out, names, step, owner, root, result, filters, descendants, accessVar, null);
+    }
+
+    private void emitStep(JavaWriter out, NameAllocator names, FindPlan.Step step,
+                          String owner, String root, String result,
+                          Map<FindPlan.Step, String> filters,
+                          Map<FindPlan.Step, String> descendants, String accessVar,
+                          String knownShape) {
         switch (step.kind) {
             case COLLECT: {
                 String value = owner;
@@ -173,7 +184,7 @@ final class FindEmitter {
             case UNION:
                 for (FindPlan.Step alternative : step.alternatives) {
                     emitStep(out, names, alternative, owner, root, result,
-                            filters, descendants, accessVar);
+                            filters, descendants, accessVar, knownShape);
                 }
                 return;
             case DESCENDANT:
@@ -184,18 +195,19 @@ final class FindEmitter {
                 break;
         }
 
-        boolean guarded = !step.ownerType.getKind().isPrimitive();
+        boolean guarded = knownShape == null && !step.ownerType.getKind().isPrimitive();
         if (guarded) out.beginBlock("if (" + owner + " != null)");
 
         switch (step.kind) {
             case READ:
-                emitRead(out, names, step, owner, root, result, filters, descendants, accessVar);
+                emitRead(out, names, step, owner, root, result, filters, descendants,
+                        accessVar, knownShape);
                 break;
             case WILDCARD:
             case SLICE:
             case FILTER:
                 emitSelection(out, names, step, owner, root, result, filters,
-                        descendants, accessVar);
+                        descendants, accessVar, knownShape);
                 break;
             default:
                 throw new AssertionError(step.kind);
@@ -206,13 +218,16 @@ final class FindEmitter {
     private void emitRead(JavaWriter out, NameAllocator names, FindPlan.Step step,
                           String owner, String root, String result,
                           Map<FindPlan.Step, String> filters,
-                          Map<FindPlan.Step, String> descendants, String accessVar) {
+                          Map<FindPlan.Step, String> descendants, String accessVar,
+                          String knownShape) {
         NodeAccess nodeAccess = step.access;
         String value = names.newName("value");
         if (nodeAccess.kind() == NodeAccess.Kind.DYNAMIC) {
             boolean name = step.segment instanceof PathSegment.Name;
-            String shape = names.newName("shape");
-            out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(" + owner + ");");
+            String shape = knownShape != null ? knownShape : names.newName("shape");
+            if (knownShape == null) {
+                out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(" + owner + ");");
+            }
             out.beginBlock("if (" + shape + (name ? ".isObject()" : ".isArray()") + ")");
             if (name) {
                 String key = JavaWriter.stringLiteral(((PathSegment.Name) step.segment).name);
@@ -270,7 +285,8 @@ final class FindEmitter {
     private void emitSelection(JavaWriter out, NameAllocator names, FindPlan.Step step,
                                String owner, String root, String result,
                                Map<FindPlan.Step, String> filters,
-                               Map<FindPlan.Step, String> descendants, String accessVar) {
+                               Map<FindPlan.Step, String> descendants, String accessVar,
+                               String knownShape) {
         NodeKind kind = types.nodeKind(step.ownerType);
         boolean slice = step.kind == FindPlan.Kind.SLICE;
         String item = names.newName("item");
@@ -308,15 +324,17 @@ final class FindEmitter {
 
         // An Object or external tree can represent either an array or an object.
         if (kind == NodeKind.COMPILE_TIME_UNKNOWN) {
-            String shape = names.newName("shape");
-            out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(" + owner + ");");
+            String shape = knownShape != null ? knownShape : names.newName("shape");
+            if (knownShape == null) {
+                out.line("org.sjf4j.JsonType " + shape + " = org.sjf4j.JsonType.of(" + owner + ");");
+            }
             if (!slice) {
                 out.beginBlock("if (" + shape + ".isObject())");
                 emitObjectCallback(out, names, step, owner, root, result,
                         filters, descendants, accessVar, item);
                 out.endBlock();
             }
-            out.beginBlock("if (" + shape + ".isArray())");
+            out.beginBlock((slice ? "if (" : "else if (") + shape + ".isArray())");
             if (slice) {
                 // NodeWalker preserves runtime bounds and Set-index rejection semantics.
                 emitIndexedSelection(out, names, step, owner, root, result,
@@ -327,9 +345,9 @@ final class FindEmitter {
             }
             out.endBlock();
             if (step.kind == FindPlan.Kind.FILTER) {
-                out.beginBlock("if (!" + shape + ".isObject() && !" + shape + ".isArray())");
+                out.beginBlock("else");
                 out.beginBlock("if (" + filters.get(step) +
-                        ".evalTruth(" + root + ", " + owner + "))");
+                        ".evalTruth(" + root + ", " + owner + ", " + accessVar + "))");
                 emitStep(out, names, step.next, owner, root, result,
                         filters, descendants, accessVar);
                 out.endBlock();
@@ -340,7 +358,7 @@ final class FindEmitter {
 
         if (step.kind == FindPlan.Kind.FILTER && kind.isValue()) {
             out.beginBlock("if (" + filters.get(step) +
-                    ".evalTruth(" + root + ", " + owner + "))");
+                    ".evalTruth(" + root + ", " + owner + ", " + accessVar + "))");
             emitStep(out, names, step.next, owner, root, result,
                     filters, descendants, accessVar);
             out.endBlock();
@@ -384,7 +402,7 @@ final class FindEmitter {
                                     String accessVar) {
         if (step.kind == FindPlan.Kind.FILTER) {
             out.beginBlock("if (" + filters.get(step) +
-                    ".evalTruth(" + root + ", " + item + "))");
+                    ".evalTruth(" + root + ", " + item + ", " + accessVar + "))");
         }
         emitStep(out, names, step.next, item, root, result,
                 filters, descendants, accessVar);

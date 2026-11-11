@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.exception.NodeException;
+import org.sjf4j.node.NodeWalker;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -57,6 +58,43 @@ class FilterExprTest {
         assertEquals(null, age.eval(root, ((JsonArray) root.get("items")).get(2)));
         assertEquals(Collections.singletonList(JsonObject.of("age", null)),
                 JsonPath.parse("$.items[?(@.age == null)]").find(root));
+    }
+
+    @Test
+    void queryLocalAccessIsReusableAcrossNestedPredicatesAndMissingValues() {
+        JsonObject root = JsonObject.fromJson("{\"threshold\":10,\"items\":["
+                + "{\"price\":12,\"active\":true},{\"price\":7,\"active\":true},"
+                + "{\"price\":14},{\"price\":null},{},"
+                + "{\"price\":20,\"active\":false}]}");
+        FilterExpr predicate = PathSyntax.parseFilter(
+                "(@.price > $.threshold && @.active) || @.price == null");
+        JsonArray items = root.getJsonArray("items");
+        NodeWalker.Access scratch = new NodeWalker.Access();
+
+        // Reusing one Access must not retain a preceding item's present flag.
+        for (int i = 0; i < items.size(); i++) {
+            Object item = items.get(i);
+            assertEquals(predicate.evalTruth(root, item),
+                    predicate.evalTruth(root, item, scratch), "item " + i);
+        }
+        // A custom FilterExpr overriding evalTruth retains its semantics.
+        FilterExpr custom = new FilterExpr() {
+            @Override
+            public Object eval(Object rootNode, Object currentNode) {
+                return false;
+            }
+
+            @Override
+            public boolean evalTruth(Object rootNode, Object currentNode) {
+                return true;
+            }
+        };
+        assertTrue(custom.evalTruth(root, items.get(0), scratch));
+
+        FilterExpr existence = PathSyntax.parseFilter("@.price");
+        assertTrue(existence.evalTruth(root, items.get(3), scratch));
+        assertFalse(existence.evalTruth(root, items.get(4), scratch));
+        assertTrue(existence.evalTruth(root, items.get(0), scratch));
     }
 
     @Test
