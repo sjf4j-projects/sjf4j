@@ -5,13 +5,15 @@ Benchmark sources are in `sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/bindi
 The models and data generator are in `sjf4j-testbench/src/main/java`
 so regular tests can reuse them.
 
-## Results — v1.5.0 (2026-11-09)
+## JVM — Temurin JDK 25
+
+### Results — v1.5.0 (2026-11-09)
 
 **Full JMH on Temurin 25.0.5 · 3 independent forks · Best 2 Mean · two seeds · 1/10/100KB.** All **1,008** cases completed in [GitHub Actions run #42581094035](https://github.com/sjf4j-projects/sjf4j/actions/runs/42581094035). Results are exploratory because the seven backend jobs used shared runners. All latency comparisons below are **within each backend**; cross-backend absolute comparisons are not controlled.
 
-### 100KB POJO measurements
+#### 100KB POJO measurements
 
-### Workload models
+#### Workload models
 
 - **Users:** ordinary JSON scalar values mapped to Java `String`, numeric primitives (`int`/`double`) and `boolean`, plus nested collections/objects. Fields such as `guid` and `registered` remain **strings**, not `UUID` or date/time objects.
 - **Clients:** strongly typed values including `UUID`, `LocalDate`, `OffsetDateTime`, `BigDecimal` and enums, alongside primitive values, arrays and nested collections/objects.
@@ -86,16 +88,86 @@ so regular tests can reuse them.
 
 **[Complete 1/10/100KB results, all implementations, allocation, and fork stability](binding/fabien-v150-2026-11-09.md)** · **[Original JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/42581094035/artifacts/13675482490)**
 
+## Native Image — GraalVM Community 25.5.5.0.3
+
+This is a **separate execution environment** for the **same Fabien Binding workloads**,
+not a GraalVM JVM/JIT benchmark. The JVM results above remain the historical reference.
+**Native Image performance results are pending** until the native executable passes
+correctness checks and Full is measured; no extrapolated numbers are reported.
+
+The initial Native Image matrix is deliberately smaller:
+
+| Dimension | Values |
+| --- | --- |
+| Backend | Jackson2, Jackson3, Fastjson2 |
+| Implementation | Native, Runtime, Compiled (Blackbird excluded) |
+| Operation | Read, Write |
+| Model | Users, Clients |
+| Shape | POJO, Map |
+| Payload | 1, 10, 100KB |
+| Seed | 12345 |
+| **Quick / Full cases** | **216** |
+| Smoke | **72 cases**: 100KB with seeds 12345 and 324 |
+
+Here **Native** (an implementation) still means direct library Binding.
+**Native Image** means a GraalVM AOT-compiled executable. The underlying model,
+data generator, correctness checks and measured Read/Write boundaries are identical
+to the JVM suite. Do not call an unsupported/failed Native Image combination a
+performance result; fix the compatibility issue first.
+
+#### Execute Native Image
+
+Install **GraalVM Community 25.5.5.0.3** (JDK 25) including `native-image`.
+The script deliberately checks the GraalVM version. It builds the JMH Native
+Image with `-O2` and no PGO; the existing Gradle `jmhAgent` task uses a
+representative Fabien training matrix to collect reachability metadata for
+the selected backends, implementations, models and shapes.
+
+```bash
+GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh smoke
+GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh quick
+GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh full
+
+# Optional: reuse a previously built native executable to avoid recompiling.
+GRAALVM_HOME=/path/to/graalvm BINDING_NATIVE_SKIP_BUILD=1 \
+  BINDING_NATIVE_BACKEND=jackson3 ./scripts/benchmark-binding-native.sh quick
+```
+
+This produces `build/performance/binding/native/` JMH JSON and metadata
+for Quick/Full. Smoke emits no persisted results. The compiled executable is
+`sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native`.
+The script checks that all expected JMH case entries completed, failing early
+instead of treating a partial result as success.
+
+JMH uses **`-f 0`** inside the Native Image. Full launches **three independent
+native executable processes**, each with 5 × 1s warmup and 5 × 1s measurement.
+For each exact backend / implementation / operation / model / shape / size / seed,
+take the per-process mean from each JSON and discard the slowest process, then
+average the remaining two (**Best 2 Run Mean**). These are independent
+*process* results, not JVM fork arrays. Quick runs once, 2 × 0.2s warmup
+and 2 × 0.2s measurement. Native Image JMH allocation is intentionally not
+reported until a valid, comparable native allocation metric is established.
+
+Metadata records the executable's byte size. On Linux, Full also saves GNU
+`/usr/bin/time -v` output with **peak process RSS** for each run (not steady
+state heap size). JMH launcher startup is **not** an application-startup
+benchmark; a separate launch-specific workload is needed for that comparison.
+For controlled JVM versus Native Image conclusions, run both on the same
+machine under equivalent load and CPU constraints. GitHub-hosted results
+remain exploratory.
+
 ## Baseline policy
 
-- **JDK 25** is the only primary baseline. Record the exact vendor and patch version.
+- **Java 25** is the primary language/runtime baseline: Temurin JDK 25 for JVM,
+  GraalVM Community 25.5.5.0.3 for Native Image. Record the exact vendor and patch build.
 - Three execution profiles: **Smoke** verifies correctness at the largest payload
   (100KB, both seeds); **Quick** diagnoses performance; **Full** establishes release
   baselines. Quick and Full execute the **same** case matrix, differing only in
   JMH fork, warmup and measurement parameters. Smoke is never a baseline.
-- **Suite version: 2**. Native and Blackbird were added to the comparison matrix.
-  Changes to generator, workload, target semantics, or measurement boundary
-  must bump this version. Do not compare incompatible versions directly.
+- **Suite version: 3** for new runs: the JVM Quick/Full default has one seed.
+  Historical v1.5.0 results used suite 2 and two seeds. Workload, generator,
+  target semantics, or measured boundary changes require another version bump.
+  Never compare different seed aggregation or suite versions as a controlled A/B test.
 - Compare measurements on the same hardware, OS, JDK build, inputs, and settings.
 - Read measures parsing from UTF-8 `byte[]` and construction of a new POJO/Map.
   Write measures serialization into a **new byte[]**; value generation, provider
@@ -131,7 +203,9 @@ command-line arguments override these defaults.
 
 **Quick and Full use identical cases:** all 7 backends; Runtime / Compiled
 for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML; Blackbird for Jackson2 and Jackson3; Users / Clients; POJO / Map;
-1/10/100KB; seeds 12345 and 324.
+1/10/100KB; seed 12345 by default (**504 cases**). Set
+`BINDING_SEEDS=12345,324` for an optional extended 1,008-case run.
+Smoke still checks **both** seeds at 100KB and remains 336 cases.
 
 | JMH setting | Smoke | Quick | Full |
 | --- | --- | --- | --- |
@@ -139,7 +213,7 @@ for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML;
 | Warmup | 0 | 2 × 0.2s | 5 × 1s |
 | Measurement | 1 × 0.05s | 2 × 0.2s | 5 × 1s |
 | Data size | 100KB | 1/10/100KB | 1/10/100KB |
-| Seeds | 12345/324 | 12345/324 | 12345/324 |
+| Seeds | 12345/324 | 12345 | 12345 |
 | Backend / implementation / model / shape | Same | Same | Same |
 | GC profiler | No | Yes | Yes |
 
@@ -167,7 +241,8 @@ On macOS the script invokes `caffeinate -i` around each backend to inhibit idle
 sleep, but **closing a MacBook lid can still suspend the benchmark**. Keep the
 lid open, use AC power, and discard results from a run interrupted by sleep.
 After a successful Full run there should be **7 per-backend JSON files plus 1
-`.meta.md`**, for 1,008 total JMH benchmark entries (including Read and Write).
+`.meta.md`**, for **504** JMH benchmark entries (including Read and Write) by default.
+The optional two-seed Full produces **1,008** entries.
 
 ## GitHub Actions Full (exploratory)
 
@@ -219,7 +294,9 @@ BINDING_BACKEND=jackson2 ./scripts/benchmark-binding.sh full
 | --- | --- | --- | --- | --- |
 | v1.5.0 (GitHub Actions; exploratory) | `c17ac35593e7` | 25.0.5 | 2 | [Full 1/10/100KB report](binding/fabien-v150-2026-11-09.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42581094035) |
 
-A controlled, same-hardware release baseline is still pending; this successful Full run used shared GitHub-hosted runners.
+A controlled, same-hardware release baseline is still pending; this historical
+suite-2 Full run used shared GitHub-hosted runners. Suite-3 Native Image results
+will be added to this document and the release history once measured.
 
 ## Reporting and ranking results
 
@@ -232,8 +309,10 @@ For AverageTime (`us/op`, lower is better):
    **within each fork** (`primaryMetric.rawData`: 3 arrays of 5 values).
 2. Drop the **single slowest fork** (the **highest** fork mean). Average the
    remaining two fork means: `best2(seed, implementation, case)`.
-3. For an overall model/shape/size result, average `best2` for seed `12345` and
-   seed `324` with **equal weight**. Retain individual-seed results for drilldown.
+3. For **suite 3** default results, report `best2` for seed `12345`.
+   For historical **suite 2** results, or optional extended runs with
+   `BINDING_SEEDS=12345,324`, average the two seed-specific `best2` scores
+   with **equal weight**. Retain individual-seed results for drilldown.
 
 **Do not share the excluded fork across implementations or cases.** Native,
 Blackbird, Runtime and Compiled each select their own best two forks, as does
