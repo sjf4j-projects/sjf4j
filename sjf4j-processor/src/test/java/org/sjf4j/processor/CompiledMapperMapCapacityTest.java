@@ -34,8 +34,9 @@ class CompiledMapperMapCapacityTest {
         assertTrue(compilation.success, compilation.diagnostics());
 
         String generated = compilation.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(generated.contains(
-                "new java.util.LinkedHashMap<>(java.lang.Math.max(16, (int)"), generated);
+        // The generated expression can be reformatted, but this overflow
+        // guard is unique to sized Map construction.
+        assertTrue(generated.contains("1073741824L"), generated);
         assertTrue(generated.contains(".size() * 4L / 3L"), generated);
         // A concrete LinkedHashMap target retains its default constructor.
         assertTrue(generated.contains("new java.util.LinkedHashMap<>()"), generated);
