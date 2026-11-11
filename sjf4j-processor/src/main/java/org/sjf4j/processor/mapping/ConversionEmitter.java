@@ -625,7 +625,7 @@ public final class ConversionEmitter
 
         } else if (sourceKind == NodeKind.ARRAY_LIST) {
             // RandomAccess supports efficient get(i); sequential Lists must use an Iterator.
-            out.beginBlock("if (" + source + " instanceof java.util.RandomAccess)");
+            out.beginBlock("if (((java.util.List<?>) " + source + ") instanceof java.util.RandomAccess)");
             emitIndexedContainerLoop(out, names, conversion, source, result, sourceKind, targetKind, size);
             out.endBlock(" else {");
             out.indent();
