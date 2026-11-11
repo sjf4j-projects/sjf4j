@@ -44,7 +44,8 @@ public interface FilterExpr {
 
     /** Evaluates truthiness with query-local node-access scratch storage. */
     default boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
-        return truth(eval(rootNode, currentNode, access));
+        // Preserve custom implementations that override the two-argument truth method.
+        return evalTruth(rootNode, currentNode);
     }
 
     /*
@@ -182,6 +183,11 @@ public interface FilterExpr {
         }
 
         @Override
+        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            return truth(eval(rootNode, currentNode, access));
+        }
+
+        @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             return truth == unary.evalTruth(rootNode, currentNode, access);
         }
@@ -224,6 +230,11 @@ public interface FilterExpr {
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             return eval(rootNode, currentNode, null);
+        }
+
+        @Override
+        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            return truth(eval(rootNode, currentNode, access));
         }
 
         @Override
@@ -318,6 +329,11 @@ public interface FilterExpr {
         }
 
         @Override
+        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            return truth(eval(rootNode, currentNode, access));
+        }
+
+        @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             int size = args.size();
             if (size == 0) throw new NodeException("function '" + name + "' requires a target argument");
@@ -354,6 +370,11 @@ public interface FilterExpr {
         @Override
         public Object eval(Object rootNode, Object currentNode) {
             return eval(rootNode, currentNode, null);
+        }
+
+        @Override
+        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            return truth(eval(rootNode, currentNode, access));
         }
 
         @Override
