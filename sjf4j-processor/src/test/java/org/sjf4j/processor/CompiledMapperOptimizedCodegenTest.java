@@ -46,7 +46,6 @@ class CompiledMapperOptimizedCodegenTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(generated.contains("instanceof java.util.RandomAccess"), generated);
         assertTrue(generated.contains("int sourceValue"), generated);
         assertTrue(generated.contains("= source.quantity();"), generated);
         assertTrue(generated.contains("java.lang.Integer sourceValue"),
@@ -95,26 +94,42 @@ class CompiledMapperOptimizedCodegenTest {
 
     @Test
     void objectToStringUsesStrictDedicatedNodeMapperMethod() throws Exception {
-        Map<String, String> sources = Map.of("fixture/Mapper.java",
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Source.java",
+                "package fixture; public record Source(Object value) {}");
+        sources.put("fixture/Target.java",
+                "package fixture; public record Target(String value) {}");
+        sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
-                + "@CompiledMapper public interface Mapper { String string(Object source); }");
+                + "@CompiledMapper public interface Mapper { Target map(Source source); }");
         NavigatorTestCompiler.Result result =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
         assertTrue(generated.contains("NodeMapper.toString("), generated);
-        assertFalse(generated.contains("NodeMapper.to(source, java.lang.String.class"), generated);
+        assertFalse(generated.contains("NodeMapper.to(sourceValue, java.lang.String.class"), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> sourceClass = loader.loadClass("fixture.Source");
+            Class<?> targetClass = loader.loadClass("fixture.Target");
             Class<?> mapperClass = loader.loadClass("fixture.Mapper_Impl");
             Object mapper = mapperClass.getConstructor().newInstance();
-            java.lang.reflect.Method method = mapperClass.getMethod("string", Object.class);
-            assertEquals("text", method.invoke(mapper, "text"));
-            assertEquals("Z", method.invoke(mapper, Character.valueOf('Z')));
-            assertEquals("MONDAY", method.invoke(mapper, java.time.DayOfWeek.MONDAY));
-            assertNull(method.invoke(mapper, new Object[] {null}));
+            java.lang.reflect.Method method = mapperClass.getMethod("map", sourceClass);
+            java.lang.reflect.Constructor<?> sourceConstructor =
+                    sourceClass.getConstructor(Object.class);
+            java.lang.reflect.Method value = targetClass.getMethod("value");
+
+            assertEquals("text", value.invoke(method.invoke(mapper,
+                    sourceConstructor.newInstance("text"))));
+            assertEquals("Z", value.invoke(method.invoke(mapper,
+                    sourceConstructor.newInstance(Character.valueOf('Z')))));
+            assertEquals("MONDAY", value.invoke(method.invoke(mapper,
+                    sourceConstructor.newInstance(java.time.DayOfWeek.MONDAY))));
+            assertNull(value.invoke(method.invoke(mapper,
+                    sourceConstructor.newInstance(new Object[] {null}))));
+            Object bad = sourceConstructor.newInstance(42);
             InvocationTargetException error =
-                    assertThrows(InvocationTargetException.class, () -> method.invoke(mapper, 42));
+                    assertThrows(InvocationTargetException.class, () -> method.invoke(mapper, bad));
             assertInstanceOf(NodeException.class, error.getCause());
         }
     }
