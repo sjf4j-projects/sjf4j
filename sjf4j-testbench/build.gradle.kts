@@ -663,3 +663,171 @@ tasks.named<BuildNativeImageTask>("nativeCompile") {
         jmhJar.flatMap { it.archiveFile }
     )
 }
+
+
+/////////////////////
+/// Native Image compatibility (not part of ordinary test/JMH)
+
+// Resolve a different, minimal runtime classpath for each JSON backend.
+// Including all JSON libraries in one native-image classpath would allow a
+// third-party native-image.properties to affect unrelated implementations.
+val nativeCompatibilityLibraries = mapOf(
+    "jackson2" to listOf(
+        "com.fasterxml.jackson.core:jackson-databind:2.22.3",
+        "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.3"
+    ),
+    "jackson3" to listOf(
+        "tools.jackson.core:jackson-databind:3.2.3"
+    ),
+    "fastjson2" to listOf(
+        "com.alibaba.fastjson2:fastjson2:2.0.66"
+    ),
+    "gson" to listOf(
+        "com.google.code.gson:gson:2.13.1"
+    )
+)
+val nativeCompatibilityConfigurations = nativeCompatibilityLibraries.mapValues { (backend, libraries) ->
+    val configuration = configurations.create("nativeCompatibility" + backend.replaceFirstChar { it.uppercase() }) {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+        description = "Isolated Native Image compatibility classpath for $backend"
+    }
+    dependencies.add(configuration.name, project(":sjf4j-backend-$backend"))
+    libraries.forEach { dependencies.add(configuration.name, it) }
+    configuration
+}
+
+val nativeCompatibilityFixtureDir = layout.buildDirectory.dir("native/compatibility/fixtures")
+
+val nativeCompatibilityFixtures = tasks.register<JavaExec>("nativeCompatibilityFixtures") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Generates Fabien Users/Clients JSON on the host JVM, outside the native image."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("org.sjf4j.testbench.nativeimage.NativeCompatibilityFixtures")
+    args(nativeCompatibilityFixtureDir.get().asFile.absolutePath)
+    outputs.dir(nativeCompatibilityFixtureDir)
+}
+
+/**
+ * Experimental AOT compatibility matrix (4 backends x 3 implementations).
+ *
+ * Each entry has a distinct main class and native-image invocation. No tracing
+ * agent, reflection allowlist, third-party class-initialization override, or
+ * shared JMH fat jar is added by default. Failures are recorded individually
+ * and the task fails only after trying every selected combination.
+ *
+ * Usage: ./gradlew :sjf4j-testbench:nativeCompatibility -PnativeCompatibilityBackend=gson
+ * Optional: -PnativeCompatibilityMode=compiled; defaults are "all".
+ */
+tasks.register("nativeCompatibility") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Builds and executes isolated Native Image Read/Write probes."
+    dependsOn(nativeCompatibilityFixtures)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val home = providers.environmentVariable("GRAALVM_HOME").orNull
+            ?: throw GradleException("GRAALVM_HOME must point to GraalVM with native-image installed")
+        val executable = file("$home/bin/native-image")
+        if (!executable.canExecute()) {
+            throw GradleException("Missing GraalVM native-image executable: $executable")
+        }
+        val backendFilter = providers.gradleProperty("nativeCompatibilityBackend").orElse("all").get()
+        val modeFilter = providers.gradleProperty("nativeCompatibilityMode").orElse("all").get()
+        val backends = nativeCompatibilityLibraries.keys
+        val modes = listOf("native", "runtime", "compiled")
+        require(backendFilter == "all" || backendFilter in backends) {
+            "nativeCompatibilityBackend must be all or one of ${backends.joinToString()}"
+        }
+        require(modeFilter == "all" || modeFilter in modes) {
+            "nativeCompatibilityMode must be all or one of ${modes.joinToString()}"
+        }
+
+        val extraReflection = providers.gradleProperty("nativeCompatibilityReflectionConfig").orNull
+        if (extraReflection != null && !file(extraReflection).isFile) {
+            throw GradleException("Reflection metadata does not exist: $extraReflection")
+        }
+
+        val root = layout.buildDirectory.dir("native/compatibility").get().asFile
+        root.mkdirs()
+        val results = mutableListOf<Map<String, String>>()
+        var failures = 0
+        for (backend in backends) {
+            if (backendFilter != "all" && backend != backendFilter) continue
+            // The selected backend project's runtime dependencies are resolved
+            // without the other three JSON backends.
+            val classpath = files(
+                sourceSets.main.get().output,
+                sourceSets.test.get().output,
+                nativeCompatibilityConfigurations.getValue(backend)
+            ).asPath
+            val backendName = backend.replaceFirstChar { it.uppercase() }
+            for (mode in modes) {
+                if (modeFilter != "all" && mode != modeFilter) continue
+                val modeName = mode.replaceFirstChar { it.uppercase() }
+                val name = "$backend-$mode"
+                val binary = root.resolve(name)
+                val buildLog = root.resolve("$name-build.log")
+                val runLog = root.resolve("$name-run.log")
+                val mainClass = "org.sjf4j.testbench.nativeimage.NativeBindingCompatibility" +
+                        "$" + backendName + modeName
+                val command = mutableListOf(
+                    executable.absolutePath, "--no-fallback", "-O0",
+                    "-cp", classpath,
+                    "-o", binary.absolutePath,
+                    mainClass
+                )
+                if (extraReflection != null) {
+                    command.add(1, "-H:ReflectionConfigurationFiles=" + file(extraReflection).absolutePath)
+                }
+
+                logger.lifecycle("Native compatibility: building $name (official library metadata)")
+                val buildExit = ProcessBuilder(command)
+                    .directory(project.projectDir)
+                    .redirectErrorStream(true)
+                    .redirectOutput(buildLog)
+                    .start().waitFor()
+                var runExit = -1
+                if (buildExit == 0) {
+                    runExit = ProcessBuilder(
+                        binary.absolutePath,
+                        nativeCompatibilityFixtureDir.get().asFile.absolutePath
+                    )
+                        .directory(project.projectDir)
+                        .redirectErrorStream(true)
+                        .redirectOutput(runLog)
+                        .start().waitFor()
+                }
+                val status = when {
+                    buildExit != 0 -> "BUILD_FAILED"
+                    runExit != 0 -> "RUN_FAILED"
+                    else -> "PASS"
+                }
+                if (status != "PASS") failures++
+                logger.lifecycle("Native compatibility $name: $status (build=$buildExit, run=$runExit)")
+                results.add(mapOf(
+                    "backend" to backend,
+                    "implementation" to mode,
+                    "status" to status,
+                    "buildExit" to buildExit.toString(),
+                    "runExit" to runExit.toString(),
+                    "buildLog" to buildLog.name,
+                    "runLog" to if (buildExit == 0) runLog.name else "",
+                    "imageBytes" to if (buildExit == 0) binary.length().toString() else ""
+                ))
+            }
+        }
+        val report = mapOf(
+            "java" to providers.environmentVariable("GRAALVM_HOME").get(),
+            "officialLibraryMetadata" to "preserved",
+            "reflectionConfig" to (extraReflection ?: "none"),
+            "cases" to results
+        )
+        root.resolve("results.json").writeText(JsonOutput.prettyPrint(JsonOutput.toJson(report)) + "\n")
+        logger.lifecycle("Native compatibility report: ${root.resolve("results.json")}")
+        if (failures > 0) {
+            throw GradleException("$failures Native Image compatibility combinations failed; see ${root.resolve("results.json")}")
+        }
+    }
+}
