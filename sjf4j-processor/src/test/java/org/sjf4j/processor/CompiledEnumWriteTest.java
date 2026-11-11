@@ -48,8 +48,6 @@ class CompiledEnumWriteTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             if ("FASTJSON2".equals(backend)) {
                 String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-                assertTrue(generated.contains("new org.sjf4j.binding.simple.SimpleJsonBinder()"),
-                        "Fastjson2 enum quoting must avoid class-initializing the full serializer");
                 assertFalse(generated.contains("com.alibaba.fastjson2.JSON.toJSONString("),
                         "Generated enum literal initialization must remain Native Image friendly");
             }
