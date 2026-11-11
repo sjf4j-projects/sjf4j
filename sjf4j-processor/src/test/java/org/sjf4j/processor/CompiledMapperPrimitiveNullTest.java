@@ -24,10 +24,15 @@ class CompiledMapperPrimitiveNullTest {
         String generated = compilation.generatedSource("fixture/Mapper_Impl.java");
         // An optional primitive parent must not produce Boolean.valueOf(...)
         // followed by Boolean.booleanValue() on a potentially null reference.
-        assertTrue(generated.contains("boolean sourceValue"), generated);
-        assertTrue(generated.contains("= false;"), generated);
-        assertFalse(generated.contains("java.lang.Boolean.valueOf("), generated);
-        assertFalse(generated.contains("java.lang.Boolean sourceValue"), generated);
+        int multiStart = generated.indexOf("Result multi(");
+        assertTrue(multiStart >= 0, generated);
+        int multiEnd = generated.indexOf("\n    }", multiStart);
+        assertTrue(multiEnd > multiStart, generated);
+        String multiBody = generated.substring(multiStart, multiEnd);
+        assertTrue(multiBody.contains("boolean sourceValue"), multiBody);
+        assertTrue(multiBody.contains("= false;"), multiBody);
+        assertFalse(multiBody.contains("java.lang.Boolean.valueOf("), multiBody);
+        assertFalse(multiBody.contains("java.lang.Boolean sourceValue"), multiBody);
 
         try (URLClassLoader loader = compilation.classLoader(getClass().getClassLoader())) {
             Class<?> profile = loader.loadClass("fixture.Profile");
