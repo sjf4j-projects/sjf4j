@@ -612,6 +612,13 @@ graalvmNative {
 
             buildArgs.add("-O2")
 
+            if (bindingNativeImage.get()) {
+                // The generated Fastjson2 binder pre-encodes enum strings in <clinit>.
+                // Do not freeze JSONFactory runtime caches into the native image heap.
+                buildArgs.add("--initialize-at-run-time=" +
+                        "org.sjf4j.testbench.binding.fabien.FabienBindings\$Fastjson2_Impl")
+            }
+
             buildArgs.add("--install-exit-handlers")
 
             buildArgs.add(
