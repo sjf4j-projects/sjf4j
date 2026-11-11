@@ -646,6 +646,9 @@ graalvmNative {
  */
 tasks.named<BuildNativeImageTask>("nativeCompile") {
     dependsOn(jmhAgent)
+    // Tracing-agent output is a real Native Image compilation input.
+    inputs.dir(jmhAgentOutput)
+    inputs.property("bindingNativeImage", bindingNativeImage)
 
     classpathJar.set(
         jmhJar.flatMap { it.archiveFile }
