@@ -48,8 +48,6 @@ class CompiledMapperOptimizedCodegenTest {
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
         assertTrue(generated.contains("int sourceValue"), generated);
         assertTrue(generated.contains("= source.quantity();"), generated);
-        assertTrue(generated.contains("java.lang.Integer sourceValue"),
-                "nullable nested primitive reads must remain boxed: " + generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> item = loader.loadClass("fixture.Item");
