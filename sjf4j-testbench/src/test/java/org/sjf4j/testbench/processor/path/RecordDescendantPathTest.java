@@ -28,7 +28,7 @@ class RecordDescendantPathTest {
     @TempDir Path directory;
 
     @Test
-    void rejectsDescendantPathWithoutFallback() throws Exception {
+    void compilesDescendantPathWithoutFallback() throws Exception {
         Path src = sourceDirectory();
         writeRecord(src);
         Files.writeString(src.resolve("FindComplex.java"),
@@ -43,12 +43,15 @@ class RecordDescendantPathTest {
                 "}\n");
 
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
-        assertFalse(compile(diagnostics, src.resolve("DeepNode.java"), src.resolve("FindComplex.java")));
-        assertTrue(messages(diagnostics).contains("fallback=true"), messages(diagnostics));
+        assertTrue(compile(diagnostics, src.resolve("DeepNode.java"), src.resolve("FindComplex.java")),
+                messages(diagnostics));
+        String source = Files.readString(directory.resolve("generated/testcase/FindComplex_Impl.java"));
+        assertFalse(source.contains(".find("), source);
+        assertTrue(source.contains("NodeWalker"), source);
     }
 
     @Test
-    void generatesDescendantFallbackForRecords() throws Exception {
+    void generatesComposedDescendantTraversalForRecords() throws Exception {
         Path src = sourceDirectory();
         writeRecord(src);
         Files.writeString(src.resolve("Root.java"),
@@ -63,7 +66,7 @@ class RecordDescendantPathTest {
                 "import java.util.List;\n" +
                 "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledNavigator(fallback=true)\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindDeep {\n" +
                 "  @FindByPath(\"$.child..name\")\n" +
                 "  List<String> names(Root root);\n" +
@@ -76,13 +79,10 @@ class RecordDescendantPathTest {
                 src.resolve("FindDeep.java")), messages(diagnostics));
 
         String source = Files.readString(directory.resolve("generated/testcase/FindDeep_Impl.java"));
-        assertTrue(source.contains("JsonPath.parse(\"$.child..name\")"), source);
-        assertTrue(source.contains("JsonPath.parse(\"$..name\")"), source);
-        assertTrue(source.contains(".find("), source);
+        assertFalse(source.contains("JsonPath.parse("), source);
+        assertFalse(source.contains(".find("), source);
+        assertTrue(source.contains("NodeWalker"), source);
         assertTrue(source.contains("ArrayList<String>"), source);
-        assertTrue(source.contains("for (Object"), source);
-        assertTrue(source.contains(".add((String)"), source);
-        assertFalse(source.contains(") (java.util.List)"), source);
 
         try (URLClassLoader loader = new URLClassLoader(new URL[]{directory.resolve("classes").toUri().toURL()},
                 getClass().getClassLoader())) {

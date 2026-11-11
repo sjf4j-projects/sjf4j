@@ -146,8 +146,8 @@ public final class PathSyntax {
             } else if (token instanceof PathSegment.Index) {
                 sb.append('/');
                 PathSegment.Index index = (PathSegment.Index) token;
-                if (index.pointerToken != null) {
-                    sb.append(index.pointerToken);
+                if (index.pointerRaw != null) {
+                    sb.append(index.pointerRaw);
                 } else {
                     sb.append(index.index);
                 }

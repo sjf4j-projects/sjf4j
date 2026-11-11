@@ -3,13 +3,15 @@ set -euo pipefail
 
 usage() {
   cat <<EOF
-Usage: bash $0 <smoke|quick|full> <map|jsonnode|pojo|parse> [output-directory]
+Usage: $0 <smoke|quick|full> [map|jsonnode|pojo|parse|all] [output-directory]
 
   smoke  Run setup/equivalence checks for all 1/10/100KB cases (not a baseline).
   quick  One fork for diagnostic performance.
   full   JDK 25 baseline: 3 forks, 5 x 1s warmup and 5 x 1s measurement.
 
+Omit the group (or use all) to run map, jsonnode, pojo and parse.
 Results default to build/performance/path/<shape>/.
+For all, the optional output-directory is the parent of the shape folders.
 PATH_SKIP_BUILD=1 reuses the already-built testbench JMH jar.
 EOF
 }
@@ -18,21 +20,38 @@ if [[ $# -eq 1 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
   usage
   exit 0
 fi
-if [[ $# -lt 2 || $# -gt 3 ]] ||
+if [[ $# -lt 1 || $# -gt 3 ]] ||
    [[ "$1" != "smoke" && "$1" != "quick" && "$1" != "full" ]] ||
-   [[ "$2" != "map" && "$2" != "jsonnode" && "$2" != "pojo" && "$2" != "parse" ]]; then
+   [[ "${2:-all}" != "all" && "${2:-all}" != "map" &&
+      "${2:-all}" != "jsonnode" && "${2:-all}" != "pojo" &&
+      "${2:-all}" != "parse" ]]; then
   usage >&2
   exit 2
 fi
 
 PROFILE="$1"
-SHAPE="$2"
+SHAPE="${2:-all}"
 OUT_DIR="${3:-build/performance/path/$SHAPE}"
 JAVA_BIN="${JAVA_HOME:+$JAVA_HOME/bin/}java"
 VERSION="$("$JAVA_BIN" -version 2>&1 | head -n 1)"
 if ! [[ "$VERSION" =~ \"25([.\"]|$) ]]; then
   echo "JDK 25 required; found: $VERSION" >&2
   exit 1
+fi
+
+# Run every shape by default; build the shared JMH jar once, not per shape.
+# Individual groups remain available for the GitHub Actions matrix.
+if [[ "$SHAPE" == "all" ]]; then
+  OUT_ROOT="${3:-build/performance/path}"
+  if [[ "${PATH_SKIP_BUILD:-0}" != "1" ]]; then
+    ./gradlew :sjf4j-testbench:jmhJar
+  fi
+  for shape in map jsonnode pojo parse; do
+    echo "=== Path $PROFILE / $shape ==="
+    PATH_SKIP_BUILD=1 bash "$0" "$PROFILE" "$shape" "$OUT_ROOT/$shape"
+  done
+  echo "Path $PROFILE / all: all 134 JMH cases passed."
+  exit 0
 fi
 
 if [[ "${PATH_SKIP_BUILD:-0}" != "1" ]]; then
@@ -45,8 +64,8 @@ if [[ -z "$JAR" ]]; then
 fi
 
 case "$SHAPE" in
-  map)      IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=33 ;;
-  jsonnode) IMPLEMENTATIONS='(jayway|runtime)'; EXPECTED=30 ;;
+  map)      IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=45 ;;
+  jsonnode) IMPLEMENTATIONS='(jayway|runtime|compiled)'; EXPECTED=45 ;;
   pojo)     IMPLEMENTATIONS='(runtime|compiled)'; EXPECTED=30 ;;
   parse)    IMPLEMENTATIONS='(sjf4j|jayway)'; EXPECTED=14 ;;
 esac
@@ -78,7 +97,7 @@ cat > "$META" <<EOF
 - Queries: direct, wildcard, filter, descendant, slice
 - Expected JMH cases: $EXPECTED
 - Query compilation and JSON deserialization: excluded from Query groups; Parse group measures compilation only
-- CompiledNavigator: fallback=true (filter/descendant use runtime fallback)
+- CompiledNavigator: all five queries generated for Map, JsonNode and POJO; only Filter uses cached FilterExpr (fallback=true); no full-path fallback
 - Full reporting: Best 2 Mean per exact method + size; exclude each case's slowest fork
 - Baseline eligible: $(if [[ "$PROFILE" == "full" && "${GITHUB_ACTIONS:-false}" != "true" ]]; then echo yes; else echo no; fi)
 - Execution: $(if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then echo "GitHub Actions (shared runner, exploratory)"; else echo "local"; fi)
@@ -124,14 +143,13 @@ else:
     queries = ("direct", "wildcard", "filter", "descendant", "slice")
     implementations = {
         "map": ("jayway", "runtime", "compiled"),
-        "jsonnode": ("jayway", "runtime"),
+        "jsonnode": ("jayway", "runtime", "compiled"),
         "pojo": ("runtime", "compiled"),
     }[shape]
     prefix = "org.sjf4j.testbench.path.PathFullBenchmark."
     expected_keys = {(prefix + f"{shape}_{query}_{impl}", size)
                      for query in queries for impl in implementations
-                     for size in ("1", "10", "100")
-                     if shape != "map" or impl != "compiled" or query == "direct"}
+                     for size in ("1", "10", "100")}
     param = "sizeKb"
 with open(path, encoding="utf-8") as fp:
     rows = json.load(fp)

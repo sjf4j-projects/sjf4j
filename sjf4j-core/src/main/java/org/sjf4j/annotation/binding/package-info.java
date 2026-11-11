@@ -2,7 +2,7 @@
  * Annotations for compile-time format binding.
  *
  * <p>{@link CompiledBinder} declares a generated binder interface with a
- * {@link BindingFormat} and {@link Backend}. Annotate its operations with
+ * {@link Format} and {@link Backend}. Annotate its operations with
  * {@link Read} or {@link Write} to generate format-specific reads and
  * writes.</p>
  */

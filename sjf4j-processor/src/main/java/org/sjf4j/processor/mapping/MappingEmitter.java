@@ -4,6 +4,7 @@ import org.sjf4j.NodeKind;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
@@ -32,12 +33,14 @@ public final class MappingEmitter {
 
     private final ProcessorContext context;
     private final TypeSystem types;
+    private final NodeReadEmitter reads;
 
     private final ConversionWriter conversions;
 
     public MappingEmitter(ProcessorContext context, ConversionWriter conversions) {
         this.context = context;
         this.types = context.types;
+        this.reads = new NodeReadEmitter(context.types);
         this.conversions = conversions;
     }
 
@@ -1229,11 +1232,7 @@ public final class MappingEmitter {
 
             } else {
                 String expression =
-                        readExpression(
-                                current,
-                                segment,
-                                access,
-                                valueType);
+                        readExpression(current, segment, access);
 
                 if (guardParent) {
                     out.line(
@@ -1293,13 +1292,7 @@ public final class MappingEmitter {
             out.line(
                     target +
                             " = " +
-                            readExpression(
-                                    owner,
-                                    new PathSegment.Index(
-                                            PathSegment.Root.INSTANCE,
-                                            rawIndex),
-                                    access,
-                                    valueType) +
+                            readExpression(owner, new PathSegment.Index(PathSegment.Root.INSTANCE, rawIndex), access) +
                             ";");
 
             return;
@@ -1336,137 +1329,28 @@ public final class MappingEmitter {
         out.line(
                 target +
                         " = " +
-                        indexedReadExpression(
-                                owner,
-                                index,
-                                access,
-                                valueType) +
+                        indexedReadExpression(owner, index, access) +
                         ";");
 
         out.endBlock();
     }
 
-    private String readExpression(
-            String owner,
-            PathSegment segment,
-            NodeAccess access,
-            TypeMirror valueType) {
-
-        if (segment instanceof
-                PathSegment.Name) {
-
-            String name =
-                    ((PathSegment.Name) segment)
-                            .name;
-
-            String key =
-                    JavaWriter.stringLiteral(
-                            name);
-
-            switch (access.kind()) {
-                case PROPERTY: {
-                    PropertyAccess read =
-                            access.property()
-                                    .read();
-
-                    return read.isMethod()
-                            ? owner +
-                            "." +
-                            read.memberName() +
-                            "()"
-                            : owner +
-                            "." +
-                            read.memberName();
-                }
-
-                case MAP:
-                    return owner +
-                            ".get(" +
-                            key +
-                            ")";
-
-                case JSON_OBJECT:
-                    return cast(
-                            valueType,
-                            owner +
-                                    ".getNode(" +
-                                    key +
-                                    ")");
-
-                case DYNAMIC:
-                    return cast(
-                            valueType,
-                            "org.sjf4j.node.NodeWalker.getInObject(" +
-                                    owner +
-                                    ", " +
-                                    key +
-                                    ")");
-
-                default:
-                    throw new IllegalStateException(
-                            "unsupported name read: " +
-                                    access.kind());
-            }
+    private String readExpression(String owner, PathSegment segment,
+                                  NodeAccess access) {
+        if (segment instanceof PathSegment.Name) {
+            return reads.name(access, owner,
+                    JavaWriter.stringLiteral(((PathSegment.Name) segment).name));
         }
-
-        if (segment instanceof
-                PathSegment.Index) {
-
-            return indexedReadExpression(
-                    owner,
-                    Integer.toString(
-                            ((PathSegment.Index) segment)
-                                    .index),
-                    access,
-                    valueType);
+        if (segment instanceof PathSegment.Index) {
+            return reads.index(access, owner,
+                    Integer.toString(((PathSegment.Index) segment).index));
         }
-
-        throw new IllegalStateException(
-                "unsupported source segment: " +
-                        segment);
+        throw new IllegalStateException("unsupported source segment: " + segment);
     }
 
-    private String indexedReadExpression(
-            String owner,
-            String index,
-            NodeAccess access,
-            TypeMirror valueType) {
-
-        switch (access.kind()) {
-            case ARRAY:
-                return owner +
-                        "[" +
-                        index +
-                        "]";
-
-            case LIST:
-                return owner +
-                        ".get(" +
-                        index +
-                        ")";
-
-            case JSON_ARRAY:
-                return cast(
-                        valueType,
-                        owner +
-                                ".getNode(" +
-                                index +
-                                ")");
-
-            case DYNAMIC:
-                return cast(
-                        valueType,
-                        "org.sjf4j.node.NodeWalker.getInArray(" +
-                                owner +
-                                ", " +
-                                index +
-                                ")");
-
-            default:
-                throw new IllegalStateException(
-                        "unsupported index read: " +
-                                access.kind());
-        }
+    private String indexedReadExpression(String owner, String index,
+                                         NodeAccess access) {
+        return reads.index(access, owner, index);
     }
 
     /*
@@ -2659,89 +2543,18 @@ public final class MappingEmitter {
                 access);
     }
 
-    private String readTargetExpression(
-            String owner,
-            PathSegment segment,
-            String index,
-            NodeAccess access) {
-
-        if (segment instanceof
-                PathSegment.Name) {
-
-            String name =
-                    ((PathSegment.Name) segment)
-                            .name;
-
-            String key =
-                    JavaWriter.stringLiteral(
-                            name);
-
-            switch (access.kind()) {
-                case PROPERTY: {
-                    PropertyAccess read =
-                            access.property()
-                                    .read();
-
-                    return read.isMethod()
-                            ? owner +
-                            "." +
-                            read.memberName() +
-                            "()"
-                            : owner +
-                            "." +
-                            read.memberName();
-                }
-
-                case MAP:
-                    return owner +
-                            ".get(" +
-                            key +
-                            ")";
-
-                case JSON_OBJECT:
-                    return cast(
-                            access.readType(),
-                            owner +
-                                    ".getNode(" +
-                                    key +
-                                    ")");
-
-                case DYNAMIC:
-                    return cast(
-                            access.readType(),
-                            "org.sjf4j.node.NodeWalker.getInObject(" +
-                                    owner +
-                                    ", " +
-                                    key +
-                                    ")");
-
-                default:
-                    throw new IllegalStateException(
-                            "unsupported target name read: " +
-                                    access.kind());
-            }
+    private String readTargetExpression(String owner, PathSegment segment,
+                                        String index, NodeAccess access) {
+        if (segment instanceof PathSegment.Name) {
+            return reads.name(access, owner,
+                    JavaWriter.stringLiteral(((PathSegment.Name) segment).name));
         }
-
-        if (segment instanceof
-                PathSegment.Index) {
-
-            String actualIndex =
-                    index != null
-                            ? index
-                            : Integer.toString(
-                            ((PathSegment.Index) segment)
-                                    .index);
-
-            return indexedReadExpression(
-                    owner,
-                    actualIndex,
-                    access,
-                    access.readType());
+        if (segment instanceof PathSegment.Index) {
+            String resolved = index != null ? index :
+                    Integer.toString(((PathSegment.Index) segment).index);
+            return reads.index(access, owner, resolved);
         }
-
-        throw new IllegalStateException(
-                "unsupported target read: " +
-                        segment);
+        throw new IllegalStateException("unsupported target read: " + segment);
     }
 
     /*

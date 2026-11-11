@@ -1,13 +1,13 @@
 package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.annotation.binding.BindingFormat;
+import org.sjf4j.annotation.binding.Format;
 import org.sjf4j.util.Asserts;
 
 /** Compile-time description of one concrete binding backend. */
 final class BackendSpec {
 
-    private final BindingFormat format;
+    private final Format format;
     private final Backend backend;
     private final String binderType;
     private final String parserType;
@@ -21,7 +21,7 @@ final class BackendSpec {
      */
     private final String libraryMarkerType;
 
-    BackendSpec(BindingFormat format, Backend backend, String binderType,
+    BackendSpec(Format format, Backend backend, String binderType,
                 String parserType, String generatorType, String libraryMarkerType) {
         this.format = Asserts.notNull(format, "format");
         this.backend = Asserts.notNull(backend, "backend");
@@ -31,7 +31,7 @@ final class BackendSpec {
         this.libraryMarkerType = libraryMarkerType;
     }
 
-    BindingFormat format() {
+    Format format() {
         return format;
     }
 

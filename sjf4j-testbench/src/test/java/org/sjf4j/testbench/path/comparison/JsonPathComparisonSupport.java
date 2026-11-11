@@ -1,4 +1,4 @@
-package org.sjf4j.path.comparison;
+package org.sjf4j.testbench.path.comparison;
 
 import org.junit.jupiter.api.function.Executable;
 import org.sjf4j.Sjf4j;
