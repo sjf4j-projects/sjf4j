@@ -155,7 +155,12 @@ public final class ConverterResolver {
          * safety and avoids turning a writable target capture into its upper
          * bound.
          */
-        if (reuseAssignable(plan) &&
+        /*
+         * An explicit nestedMapper must not be bypassed by direct assignment.
+         * Method-level candidate methods remain preferences.
+         */
+        if ((rule == null || rule.nestedMapper().isEmpty()) &&
+                reuseAssignable(plan) &&
                 types.isAssignableBoxedGeneric(sourceType, targetType) &&
                 !requiresRuntimeContainerConversion(sourceType, targetType)) {
             return Conversion.direct(sourceType, targetType);

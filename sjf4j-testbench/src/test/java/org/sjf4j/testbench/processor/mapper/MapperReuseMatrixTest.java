@@ -3,6 +3,7 @@ package org.sjf4j.testbench.processor.mapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.annotation.mapping.ReusePolicy;
 
@@ -59,6 +60,20 @@ public class MapperReuseMatrixTest {
         Set result = mapper.rawSetFromList(source);
         assertNotSame(source, result);
         assertEquals(Set.of("Ada", "Bob"), result);
+    }
+
+    @Test
+    public void explicitRootPropertyRuleIsNotSkippedByAssignableReuse() {
+        AliasUser source = new AliasUser();
+        source.name = "old";
+        source.alias = "Ada";
+
+        AliasUser mapped = mapper.renameSameRootPojo(source);
+
+        assertNotSame(source, mapped);
+        assertEquals("Ada", mapped.name);
+        assertEquals("old", source.name);
+        assertEquals("Ada", mapped.alias);
     }
 
     @Test
@@ -175,6 +190,11 @@ public class MapperReuseMatrixTest {
     public record ItemSource(String name) {}
     public record ItemTarget(String name) {}
 
+    public static final class AliasUser {
+        public String name;
+        public String alias;
+    }
+
     @CompiledMapper
     public interface ReuseMapper {
         @SuppressWarnings("rawtypes")
@@ -205,6 +225,9 @@ public class MapperReuseMatrixTest {
         BaseLeaf sameRootPojo(BaseLeaf source);
 
         BaseLeaf upcastRootPojo(SpecialLeaf source);
+
+        @Mapping(target = "name", source = "alias")
+        AliasUser renameSameRootPojo(AliasUser source);
 
         DeepTarget deep(DeepSource source);
 

@@ -73,8 +73,9 @@ public final class MappingCompiler {
      */
     public CompiledMethod compile(MappingPlan plan, GeneratedClass generated) {
         /*
-         * Root container / map / JsonObject / OneOf mapping has no finite set
-         * of settable Java properties. Treat it as one root conversion.
+         * Root projections use one root conversion. The same also applies
+         * to assignable POJO create mappings without explicit property rules:
+         * reuse at the root must agree with nested-value reuse.
          */
         if (isRootProjection(plan)) return compileRoot(plan, generated);
 
@@ -416,6 +417,17 @@ public final class MappingCompiler {
     private boolean isRootProjection(MappingPlan plan) {
 
         if (!plan.rules().isEmpty()) return false;
+
+        /*
+         * Reuse an assignable POJO regardless of its position in the mapping
+         * graph. Explicit property rules and update methods still use normal
+         * object mapping.
+         */
+        if (plan.create() && plan.sources().size() == 1 &&
+                types.nodeKind(plan.targetType()) == NodeKind.OBJECT_POJO &&
+                types.isAssignableBoxedGeneric(plan.primarySourceType(), plan.targetType())) {
+            return true;
+        }
 
         // Root logical values do not have ordinary settable POJO members.
         if (plan.sources().size() == 1 && converters.isCodecConversion(

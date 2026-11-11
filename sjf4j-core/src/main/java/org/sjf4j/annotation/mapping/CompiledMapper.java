@@ -10,9 +10,12 @@ import java.lang.annotation.Target;
  *
  * <p>Each non-void abstract method describes a mapping from one or more declared
  * source types to one declared target type. The generated method returns
- * {@code null} when all source arguments are {@code null}; otherwise it creates
- * the target and maps properties directly. Void methods update the first
- * argument in place from the remaining source arguments.</p>
+ * {@code null} when all source arguments are {@code null}; otherwise it maps
+ * the target directly, creating an instance when needed. An assignable
+ * single-source POJO create mapping without explicit property rules reuses
+ * its source by reference, like an assignable nested value. Explicit property
+ * rules still apply. Void methods update the first argument in place from
+ * the remaining source arguments.</p>
  *
  * <p>By default, source and target properties with the same name are mapped
  * automatically. Use repeatable {@link Mapping} annotations to rename a source
