@@ -861,6 +861,14 @@ public final class MappingEmitter {
                      i < arguments.size();
                      i++) {
 
+                    int groupedEnd = adjacentDirectReadEnd(compiled.plan(), arguments, i);
+                    if (groupedEnd > i + 1) {
+                        emitAdjacentDirectReads(out, names, compiled.plan(),
+                                arguments, i, groupedEnd, values);
+                        i = groupedEnd - 1;
+                        continue;
+                    }
+
                     MappingCompiler.ConstructorArgument argument =
                             arguments.get(i);
 
@@ -930,6 +938,93 @@ public final class MappingEmitter {
      * Convert
      * --------------------------------------------------------------
      */
+
+    /**
+     * Groups only adjacent direct property reads from the same nullable source.
+     * Accessors retain their original order; converters and computed values
+     * are excluded because their null and evaluation semantics are user-owned.
+     */
+    private int adjacentDirectReadEnd(
+            MappingPlan plan,
+            List<MappingCompiler.ConstructorArgument> arguments,
+            int start) {
+
+        if (plan.sources().size() < 2 ||
+                !isAdjacentDirectRead(arguments.get(start).value())) {
+            return start + 1;
+        }
+
+        MappingCompiler.Read first = arguments.get(start).value().read();
+        int end = start + 1;
+        while (end < arguments.size() &&
+                isAdjacentDirectRead(arguments.get(end).value()) &&
+                first.root().equals(arguments.get(end).value().read().root())) {
+            end++;
+        }
+        return end;
+    }
+
+    private boolean isAdjacentDirectRead(MappingCompiler.Value value) {
+        if (value.kind() != MappingCompiler.Value.Kind.READ ||
+                value.conversion() == null ||
+                value.conversion().kind() != ConverterResolver.Conversion.Kind.DIRECT) {
+            return false;
+        }
+
+        MappingCompiler.Read read = value.read();
+        return !read.rootValue() &&
+                !read.rootType().getKind().isPrimitive() &&
+                read.steps().size() == 1 &&
+                read.steps().get(0).segment() instanceof PathSegment.Name &&
+                read.steps().get(0).access().kind() == NodeAccess.Kind.PROPERTY;
+    }
+
+    /**
+     * Hoists only the common source null check. Getter calls are emitted in
+     * constructor-argument order, with the same missing-source defaults as
+     * independent emitRead calls (including primitive-to-boxed assignments).
+     */
+    private void emitAdjacentDirectReads(
+            JavaWriter out,
+            NameAllocator names,
+            MappingPlan plan,
+            List<MappingCompiler.ConstructorArgument> arguments,
+            int start,
+            int end,
+            String[] values) {
+
+        MappingCompiler.Read first = arguments.get(start).value().read();
+        String source = first.root().getSimpleName().toString();
+        String[] locals = new String[end - start];
+
+        for (int i = start; i < end; i++) {
+            MappingCompiler.Value value = arguments.get(i).value();
+            MappingCompiler.Read read = value.read();
+            boolean primitive = isDirectPrimitiveRead(plan, value, true);
+            String local = names.newName("sourceValue");
+            locals[i - start] = local;
+
+            out.line((primitive ? read.type().toString() : localType(read.type())) +
+                    " " + local + " = " +
+                    (primitive ? primitiveDefault(read.type().getKind()) : "null") + ";");
+
+            if (value.type().getKind().isPrimitive() && !primitive) {
+                values[i] = "(" + local + " == null ? " +
+                        primitiveDefault(value.type().getKind()) + " : " + local + ")";
+            } else {
+                values[i] = local;
+            }
+        }
+
+        out.beginBlock("if (" + source + " != null)");
+        for (int i = start; i < end; i++) {
+            MappingCompiler.ReadStep step =
+                    arguments.get(i).value().read().steps().get(0);
+            out.line(locals[i - start] + " = " +
+                    readExpression(source, step.segment(), step.access()) + ";");
+        }
+        out.endBlock();
+    }
 
     private String emitValue(
             JavaWriter out,
