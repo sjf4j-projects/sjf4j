@@ -96,6 +96,9 @@ class CompiledMapperRawPolicyTest {
                 "package fixture; public record Item(int quantity, String name) {}");
         sources.put("fixture/Source.java",
                 "package fixture; public record Source(Object value) {}");
+        sources.put("fixture/KnownMapSource.java",
+                "package fixture; import java.util.Map; "
+                + "public record KnownMapSource(Map<String,Object> value) {}");
         sources.put("fixture/TypedMap.java",
                 "package fixture; import java.util.Map; "
                 + "public record TypedMap(Map<String,Item> value) {}");
@@ -111,8 +114,8 @@ class CompiledMapperRawPolicyTest {
                 + "@MappingOptions(raws=RawPolicy.CAST) TypedMap castMap(Source source); "
                 + "@MappingOptions(raws=RawPolicy.CAST) TypedList castList(Source source); "
                 + "@MappingOptions(raws=RawPolicy.CAST) TypedItem castItem(Source source); "
-                + "@MappingOptions(raws=RawPolicy.CAST) TypedMap castValues(Map<String,Object> source); "
-                + "@MappingOptions(raws=RawPolicy.STRICT) TypedMap strictValues(Map<String,Object> source); "
+                + "@MappingOptions(raws=RawPolicy.CAST) TypedMap castValues(KnownMapSource source); "
+                + "@MappingOptions(raws=RawPolicy.STRICT) TypedMap strictValues(KnownMapSource source); "
                 + "}");
 
         NavigatorTestCompiler.Result result =
@@ -146,12 +149,15 @@ class CompiledMapperRawPolicyTest {
             Object itemDto = invoke(mapperClass, mapper, "castItem", sourceClass, itemSource);
             assertSame(item, itemDto.getClass().getMethod("value").invoke(itemDto));
 
-            Map<String, Object> source = new LinkedHashMap<>();
-            source.put("value", map);
-            Object valueDto = invoke(mapperClass, mapper, "castValues", Map.class, source);
+            Class<?> knownSource = loader.loadClass("fixture.KnownMapSource");
+            Object source = knownSource.getConstructor(Map.class).newInstance(map);
+            Object valueDto = invoke(mapperClass, mapper, "castValues", knownSource, source);
             Object resultValue = valueDto.getClass().getMethod("value").invoke(valueDto);
             assertNotSame(map, resultValue,
-                    "statically typed outer mapping stays structural");
+                    "statically typed Map<String,Object> stays structural");
+            assertEquals(map, resultValue);
+            assertSame(item, ((Map<?, ?>) resultValue).get("first"),
+                    "only Object-typed Map entries are cast, not copied");
         }
     }
 
