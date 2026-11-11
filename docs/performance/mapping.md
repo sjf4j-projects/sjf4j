@@ -6,8 +6,8 @@ it does not rank unrelated runtime mappers, JSON binding, or JDBC mapping.
 
 ## Workloads
 
-**15 independently observable cases**, across the same four groups, expanded to
-**58 exact JMH measurements**. This supersedes the eight composite cases in
+**16 independently observable cases**, across the same four groups, expanded to
+**64 exact JMH measurements**. This supersedes the eight composite cases in
 the original v1 suite without dropping the classic and extended baselines.
 
 | Group | Case | What is measured | Size | JMH entries |
@@ -24,7 +24,8 @@ the original v1 suite without dropping the classic and extended baselines.
 | Collection | Random-access List | ArrayList<Item> → List<ItemDto> | 1/10/100KB | 6 |
 | Collection | Sequential List | LinkedList<Item> → List<ItemDto> | 1/10/100KB | 6 |
 | Collection | Map item values | Map<String,Item> → Map<String,ItemDto> | 1/10/100KB | 6 |
-| Collection | Map nested Lists | Map<String,List<Item>> → Map<String,List<ItemDto>> | 1/10/100KB | 6 |
+| Collection | Map with one List | A single Map value containing the full List | 1/10/100KB | 6 |
+| Collection | Map with eight Lists | Same total elements split into eight short Lists | 1/10/100KB | 6 |
 | JSON | Map projection | Map<String,Object> → POJO | 1/10/100KB | 6 |
 | JSON | JsonObject projection | JsonObject → POJO | 1/10/100KB | 6 |
 
@@ -32,7 +33,8 @@ the original v1 suite without dropping the classic and extended baselines.
 List, while Map<String,List<Item>> processes **eight shorter Lists**, invoking
 conversion multiple times. A direct comparison cannot isolate map traversal
 overhead from list sizes and JIT inlining behavior. The new item, sequential
-list, and Map-of-item cases isolate those costs. An Order header-only case
+list, Map-of-item and **one-value versus eight-value** Map cases isolate those
+costs. An Order header-only case
 separates property extraction from product collection conversion.
 
 The isolated cases are **not additive**: Item + List ≠ Extended Order.
@@ -97,7 +99,7 @@ MAPPING_CPU_SET='1-2' ./scripts/benchmark-mapping.sh quick collection
 | Measurement | 1 x 50ms | 2 x 200ms | 5 x 1s |
 | Threads | 1 | 1 | 1 |
 | Allocation profiler | No | Yes | Yes |
-| Measurements | All 58 | All 58 | All 58 |
+| Measurements | All 64 | All 64 | All 64 |
 
 The script validates **method and parameter completeness**, positive finite
 latency values, and for Quick/Full the full raw fork/iteration grid.
