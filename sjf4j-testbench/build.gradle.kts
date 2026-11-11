@@ -613,10 +613,12 @@ graalvmNative {
             buildArgs.add("-O2")
 
             if (bindingNativeImage.get()) {
-                // Fastjson2's JSONWriter embeds CacheItem constants while compiling the
-                // generated enum-name encoder. Mark only this cache item type as
-                // build-time initialized; do not initialize all of Fastjson2 eagerly.
-                buildArgs.add("--initialize-at-build-time=com.alibaba.fastjson2.JSONFactory\$CacheItem")
+                // GraalVM sees the following two Fastjson2 implementation objects
+                // embedded in the code path used by the generated enum-name encoder.
+                // Keep the workaround narrow; never blanket-initialize Fastjson2.
+                buildArgs.add("--initialize-at-build-time=" +
+                        "com.alibaba.fastjson2.JSONFactory\$CacheItem," +
+                        "com.alibaba.fastjson2.writer.ObjectWriterBaseModule")
             }
 
             buildArgs.add("--install-exit-handlers")
