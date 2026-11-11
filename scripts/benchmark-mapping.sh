@@ -30,6 +30,15 @@ PROFILE="$1"
 GROUP="${2:-all}"
 JAVA_BIN="${JAVA_HOME:+$JAVA_HOME/bin/}java"
 VERSION="$("$JAVA_BIN" -version 2>&1 | head -n 1)"
+CPU_MODEL="$( (grep -m1 -E '^model name[[:space:]]*:' /proc/cpuinfo 2>/dev/null || true) | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+if [[ -z "$CPU_MODEL" ]] && command -v lscpu >/dev/null 2>&1; then
+  CPU_MODEL="$(lscpu | awk -F: '/^Model name:/ {gsub(/^[[:space:]]+/, "", $2); print $2; exit}')"
+fi
+CPU_MODEL="${CPU_MODEL:-unknown}"
+if [[ -n "${MAPPING_EXPECT_CPU_MODEL:-}" && "$CPU_MODEL" != "$MAPPING_EXPECT_CPU_MODEL" ]]; then
+  echo "CPU mismatch: expected '$MAPPING_EXPECT_CPU_MODEL', actual '$CPU_MODEL'" >&2
+  exit 1
+fi
 if ! [[ "$VERSION" =~ \"25([.\"]|$) ]]; then
   echo "JDK 25 required, found: $VERSION" >&2
   exit 1
@@ -46,7 +55,7 @@ if [[ "$GROUP" == "all" ]]; then
     echo "=== Mapping $PROFILE / $group ==="
     MAPPING_SKIP_BUILD=1 bash "$0" "$PROFILE" "$group" "$ROOT/$group"
   done
-  echo "Mapping $PROFILE / all: all 38 JMH entries passed."
+  echo "Mapping $PROFILE / all: all 70 JMH entries passed."
   exit 0
 fi
 
@@ -61,20 +70,20 @@ fi
 
 case "$GROUP" in
   order)
-    METHODS='order_(classic|extended)'
-    EXPECTED=8
+    METHODS='order_(classic|extended|header)'
+    EXPECTED=10
     ;;
   pojo)
-    METHODS='pojo_(flat|nested|update)'
-    EXPECTED=6
+    METHODS='pojo_(direct|flat|profile|nested|update)'
+    EXPECTED=10
     ;;
   collection)
-    METHODS='collection_(list|map)'
-    EXPECTED=12
+    METHODS='collection_(item|list|sequential|mapitems|mapone|map)'
+    EXPECTED=32
     ;;
   json)
     METHODS='json_(map|object)'
-    EXPECTED=12
+    EXPECTED=18
     ;;
 esac
 case "$PROFILE" in
@@ -94,17 +103,20 @@ cat > "$META" <<EOF
 # Mapping Full Benchmark
 
 - Source: org.sjf4j.testbench.mapping.MappingFullBenchmark
-- Suite version: 1
+- Suite version: 3
 - Git SHA: $(git rev-parse HEAD)
 - UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')
 - Java: $VERSION
 - OS: $(uname -s)
 - Architecture: $(uname -m)
 - Hardware: $(uname -a)
+- CPU model: $CPU_MODEL
+- CPU affinity: ${MAPPING_CPU_SET:-unrestricted}
+- Required CPU model: ${MAPPING_EXPECT_CPU_MODEL:-none}
 - Profile: $PROFILE
 - Group: $GROUP
 - Expected JMH entries: $EXPECTED
-- Implementations: MapStruct 1.6.3 and SJF4J CompiledMapper
+- Implementations: MapStruct 1.6.3 and SJF4J CompiledMapper (JSON: CAST/STRICT)
 - Full: 3 forks, 5 x 1s warmup, 5 x 1s measurement, one thread
 - Full reporting: Best 2 Mean per exact method and size; exclude slowest fork independently
 - Allocation: untrimmed JMH gc.alloc.rate.norm
@@ -118,12 +130,27 @@ $("$JAVA_BIN" -version 2>&1 | sed 's/^/    /')
 EOF
 
 JAVA_CMD=("$JAVA_BIN")
-if [[ "$(uname -s)" == "Darwin" ]] && command -v caffeinate >/dev/null 2>&1; then
+if [[ -n "${MAPPING_CPU_SET:-}" ]]; then
+  if [[ "$(uname -s)" != "Linux" ]] || ! command -v taskset >/dev/null 2>&1; then
+    echo "MAPPING_CPU_SET requires Linux taskset" >&2
+    exit 1
+  fi
+  # Inherited by JMH forks, but does not isolate their compiler/GC threads.
+  JAVA_CMD=(taskset -c "$MAPPING_CPU_SET" "$JAVA_BIN")
+fi
+if [[ -z "${MAPPING_CPU_SET:-}" && "$(uname -s)" == "Darwin" ]] && command -v caffeinate >/dev/null 2>&1; then
   JAVA_CMD=(caffeinate -i "$JAVA_BIN")
 fi
 
 # Selector is anchored: JMH supports Matcher.find(), not only full matches.
-SELECTOR='^org\.sjf4j\.testbench\.mapping\.MappingFullBenchmark\.'"$METHODS"'_(mapstruct|compiled)$'
+# JSON compares MapStruct's native Java casts with both raw policies.
+# The remaining groups retain their existing two-way comparison.
+if [[ "$GROUP" == "json" ]]; then
+  IMPLEMENTATIONS='mapstruct|cast|strict'
+else
+  IMPLEMENTATIONS='mapstruct|compiled'
+fi
+SELECTOR='^org\.sjf4j\.testbench\.mapping\.MappingFullBenchmark\.'"$METHODS"'_('"$IMPLEMENTATIONS"')$'
 echo "Mapping $PROFILE/$GROUP: $EXPECTED expected methods + params"
 "${JAVA_CMD[@]}" -jar "$JAR" "$SELECTOR" -t 1 "${ARGS[@]}" \
   -rf json -rff "$RESULT" 2>&1 | tee "$LOG"
@@ -136,17 +163,20 @@ import sys
 path, group, profile, expected = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 prefix = "org.sjf4j.testbench.mapping.MappingFullBenchmark."
 sizes = ("1", "10", "100")
-impls = ("mapstruct", "compiled")
 groups = {
-    "order": (("order_classic", False), ("order_extended", True)),
-    "pojo": (("pojo_flat", False), ("pojo_nested", False), ("pojo_update", False)),
-    "collection": (("collection_list", True), ("collection_map", True)),
+    "order": (("order_classic", False), ("order_header", False), ("order_extended", True)),
+    "pojo": (("pojo_direct", False), ("pojo_flat", False),
+             ("pojo_profile", False), ("pojo_nested", False), ("pojo_update", False)),
+    "collection": (("collection_item", False), ("collection_list", True),
+                   ("collection_sequential", True), ("collection_mapitems", True),
+                   ("collection_mapone", True), ("collection_map", True)),
     "json": (("json_map", True), ("json_object", True)),
 }
 expected_keys = {
     (prefix + case + "_" + impl, size)
     for case, sized in groups[group]
-    for impl in impls
+    for impl in (("mapstruct", "cast", "strict") if group == "json"
+                 else ("mapstruct", "compiled"))
     for size in (sizes if sized else (None,))
 }
 with open(path, encoding="utf-8") as handle:

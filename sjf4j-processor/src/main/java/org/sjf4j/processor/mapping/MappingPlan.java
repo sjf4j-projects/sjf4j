@@ -1,8 +1,11 @@
 package org.sjf4j.processor.mapping;
 
+import org.sjf4j.annotation.mapping.RawPolicy;
+import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.util.Asserts;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ExecutableType;
@@ -113,6 +116,24 @@ final class MappingPlan {
 
     AnnotationMirror options() {
         return options;
+    }
+
+    /**
+     * Resolves the method-level policy from the annotation mirror, including
+     * default values. Source-retained annotations are not reliably available
+     * through runtime annotation proxies in an annotation processor.
+     */
+    RawPolicy rawPolicy(ProcessorContext context) {
+        if (options == null) return RawPolicy.STRICT;
+        for (java.util.Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
+                context.elements.getElementValuesWithDefaults(options).entrySet()) {
+            if (!entry.getKey().getSimpleName().contentEquals("raws")) continue;
+            Object value = entry.getValue().getValue();
+            if (value instanceof VariableElement) {
+                return RawPolicy.valueOf(((VariableElement) value).getSimpleName().toString());
+            }
+        }
+        return RawPolicy.STRICT;
     }
 
     static final class Rule {

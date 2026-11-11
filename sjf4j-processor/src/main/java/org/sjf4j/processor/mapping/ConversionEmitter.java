@@ -123,7 +123,9 @@ public final class ConversionEmitter
                 }
                 return;
 
+            case RAW_CAST:
             case SCALAR:
+            case LENIENT_SCALAR:
             case ENUM:
             case VALUE_CODEC:
             case CODEC_ENCODE:
@@ -423,8 +425,14 @@ public final class ConversionEmitter
             case METHOD:
                 return emitMethod(conversion, source);
 
+            case RAW_CAST:
+                return emitRawCast(out, names, conversion.sourceType(), conversion.targetType(), source);
+
             case SCALAR:
                 return emitScalar(out, names, conversion, source);
+
+            case LENIENT_SCALAR:
+                return emitNodeMapperAs(out, names, conversion.targetType(), source);
 
             case ENUM:
                 return emitEnum(out, names, conversion, source);
@@ -508,6 +516,59 @@ public final class ConversionEmitter
      * Scalar Convert
      * --------------------------------------------------------------
      */
+
+    /**
+     * A CAST conversion is intentionally shallow: it does not traverse an
+     * Object/Map/List value or apply any OBNT coercion. Java's generic casts
+     * validate only the erased container type, so suppress the unavoidable
+     * unchecked diagnostic on this generated local alone, not on the method
+     * or generated class. This keeps -Xlint:unchecked -Werror builds usable.
+     */
+    private String emitRawCast(JavaWriter out, NameAllocator names, TypeMirror sourceType,
+                               TypeMirror targetType, String source) {
+        String result = names.newName("raw");
+        String type = localType(targetType);
+        if (type.indexOf('<') >= 0) {
+            out.line("@SuppressWarnings(\"unchecked\")");
+        }
+        // Object-valued reads need no widening: (Object) on an Object local
+        // would trigger -Xlint:cast. Some external JSON sources have final
+        // declared classes, however, and require widening before a Java cast
+        // to an unrelated target type.
+        String value = types.isObject(sourceType) ? source : "(java.lang.Object) " + source;
+        out.line(type + " " + result + " = (" + type + ") " + value + ";");
+        return result;
+    }
+
+    /**
+     * Scalar leniency is a leaf operation. The caller has already resolved
+     * nested Map/List/POJO structure, so each raw value can be treated
+     * independently without claiming NodeMapper.as() recursively coerces
+     * an entire object graph.
+     */
+    private String emitNodeMapperAs(JavaWriter out, NameAllocator names, TypeMirror targetType,
+                                    String source) {
+        String result = names.newName("converted");
+        String target = rawName(targetType);
+        String expr;
+        if ("java.lang.String".equals(target)) {
+            expr = "org.sjf4j.node.NodeMapper.asString(" + source + ", this.context)";
+        } else if ("java.lang.Boolean".equals(target)) {
+            expr = "org.sjf4j.node.NodeMapper.asBoolean(" + source + ", this.context)";
+        } else if ("java.lang.Character".equals(target)) {
+            expr = "org.sjf4j.node.NodeMapper.asChar(" + source + ", this.context)";
+        } else if (isEnum(targetType)) {
+            expr = "org.sjf4j.node.NodeMapper.asEnum(" + source + ", "
+                    + classLiteral(targetType) + ", this.context)";
+        } else {
+            // Numeric targets are normalized and range-checked by NodeMapper.as.
+            expr = "org.sjf4j.node.NodeMapper.as(" + source + ", "
+                    + classLiteral(targetType) + ", this.context)";
+        }
+        out.line(localType(targetType) + " " + result + " = " + expr + ";");
+        return result;
+    }
+
 
     private String emitScalar(JavaWriter out, NameAllocator names,
                               ConversionCompiler.CompiledConversion conversion, String source) {
@@ -714,7 +775,9 @@ public final class ConversionEmitter
 
         out.line(localType(conversion.targetType()) + " " + result + " = null;");
         out.beginBlock("if (" + source + " != null)");
-        out.line(result + " = " + newMapExpression(conversion.targetType()) + ";");
+        // Unlike an unsized LinkedHashMap, this avoids repeated table growth for large maps.
+        // Keep user-supplied concrete Map implementations on their existing constructor path.
+        out.line(result + " = " + newMapExpression(conversion.targetType(), source) + ";");
 
         String entry = names.newName("entry");
         if (types.isCompileTimeUnknown(conversion.sourceKeyType()) &&
@@ -1184,6 +1247,20 @@ public final class ConversionEmitter
             default:
                 throw new IllegalStateException("unsupported target container " + kind);
         }
+    }
+
+    private String newMapExpression(TypeMirror type, String source) {
+        if (types.isSameErasure(type, types.mapType()) || isInterfaceOrAbstract(type)) {
+            // ceil(size / 0.75) == (4 * size + 2) / 3, without floats or a
+            // redundant +1 on exact thresholds (12, 24, 48, ... entries).
+            // Use long arithmetic to avoid overflow; HashMap caps table capacity
+            // at 1 << 30. Zero and small maps can use fewer than 16 buckets.
+            // A custom concrete Map retains its original no-arg construction.
+            return "new java.util.LinkedHashMap<>((int) " +
+                    "java.lang.Math.min(1073741824L, (((long) " + source +
+                    ".size() * 4L + 2L) / 3L)))";
+        }
+        return newMapExpression(type);
     }
 
     private String newMapExpression(TypeMirror type) {

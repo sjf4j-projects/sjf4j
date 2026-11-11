@@ -20,6 +20,7 @@ import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingOptions;
 import org.sjf4j.annotation.mapping.NullValuePolicy;
+import org.sjf4j.annotation.mapping.RawPolicy;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
- * MapStruct versus SJF4J CompiledMapper on eight comparable mapping workloads.
+ * MapStruct versus SJF4J CompiledMapper on isolated and composite mapping workloads.
  * The classic order is deliberately separate from the extended order.
  * All fixtures, mapper lookups and equivalence checks are outside the measured methods.
  * This class does not reuse the exploratory mapper benchmark states.
@@ -83,6 +84,30 @@ public class MappingFullBenchmark {
     }
 
     @State(Scope.Thread)
+    public static class HeaderState {
+        public ExtendedOrder source;
+        public MapStructMapper mapstruct;
+        public Sjf4jMapper compiled;
+        @Setup(Level.Trial)
+        public void setup() {
+            JsonObject metadata = new JsonObject();
+            metadata.put("salesChannel", "web");
+            source = new ExtendedOrder(
+                    new ClassicCustomer("Ada Lovelace",
+                            new ClassicAddress("12 Analytical Way", "London"),
+                            new ClassicAddress("7 Byron Street", "Oxford")),
+                    List.of(), Map.of("priority", "gold"), metadata);
+            mapstruct = Mappers.getMapper(MapStructMapper.class);
+            compiled = CompiledInstances.create(Sjf4jMapper.class);
+            OrderHeaderTarget expected = mapstruct.header(source);
+            check(Objects.equals(expected, compiled.header(source)), "order header");
+            check("Ada Lovelace".equals(expected.customerName())
+                    && "gold".equals(expected.priority())
+                    && "web".equals(expected.salesChannel()), "order header fields");
+        }
+    }
+
+    @State(Scope.Thread)
     public static class PojoState {
         public FlatSource flat = new FlatSource("Ada", "Lovelace", "ignored");
         public Profile profile = new Profile("Grace", new Contact("Arlington", "US"));
@@ -98,6 +123,8 @@ public class MappingFullBenchmark {
             mapstruct = Mappers.getMapper(MapStructMapper.class);
             compiled = CompiledInstances.create(Sjf4jMapper.class);
             checkFlat(mapstruct.flat(flat), compiled.flat(flat));
+            check(Objects.equals(mapstruct.flatDirect(flat), compiled.flatDirect(flat)), "direct POJO");
+            check(Objects.equals(mapstruct.profile(profile), compiled.profile(profile)), "single-source nested POJO");
             check(Objects.equals(mapstruct.nested(profile, account), compiled.nested(profile, account)), "nested record");
             mapstructTarget = new UpdateTarget("preserve", "old", 1);
             compiledTarget = new UpdateTarget("preserve", "old", 1);
@@ -152,8 +179,25 @@ public class MappingFullBenchmark {
     }
 
     @State(Scope.Thread)
+    public static class ItemState {
+        public Item source;
+        public MapStructMapper mapstruct;
+        public Sjf4jMapper compiled;
+        @Setup(Level.Trial)
+        public void setup() {
+            source = items(1).get(0);
+            mapstruct = Mappers.getMapper(MapStructMapper.class);
+            compiled = CompiledInstances.create(Sjf4jMapper.class);
+            check(Objects.equals(mapstruct.item(source), compiled.item(source)), "item leaf");
+        }
+    }
+
+    @State(Scope.Thread)
     public static class CollectionState extends SizedState {
         public List<Item> list;
+        public List<Item> sequentialList;
+        public Map<String, Item> itemMap;
+        public Map<String, List<Item>> mapOne;
         public Map<String, List<Item>> map;
         public MapStructMapper mapstruct;
         public Sjf4jMapper compiled;
@@ -161,8 +205,14 @@ public class MappingFullBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             list = items(Math.max(1, sizeKb * 1024 / 105));
+            sequentialList = new java.util.LinkedList<>(list);
+            itemMap = new LinkedHashMap<>();
+            mapOne = new LinkedHashMap<>();
+            mapOne.put("all", list);
             map = new LinkedHashMap<>();
             for (int i = 0; i < list.size(); i++) {
+                itemMap.put("sku-" + i, list.get(i));
+                // Eight smaller Lists force multiple nested conversion calls.
                 map.computeIfAbsent("group-" + (i % 8), ignored -> new ArrayList<>()).add(list.get(i));
             }
             mapstruct = Mappers.getMapper(MapStructMapper.class);
@@ -170,6 +220,14 @@ public class MappingFullBenchmark {
             List<ItemDto> mappedList = compiled.list(list);
             check(Objects.equals(mapstruct.list(list), mappedList), "list mapping");
             check(mappedList != (Object) list, "list must be copied");
+            check(Objects.equals(mapstruct.list(sequentialList), compiled.list(sequentialList)),
+                    "sequential List mapping");
+            check(Objects.equals(mappedList, compiled.list(sequentialList)),
+                    "random versus sequential parity");
+            check(Objects.equals(mapstruct.mapItems(itemMap), compiled.mapItems(itemMap)),
+                    "Map of individual items");
+            check(Objects.equals(mapstruct.map(mapOne), compiled.map(mapOne)),
+                    "Map containing one large List");
             Map<String, List<ItemDto>> mappedMap = compiled.map(map);
             check(Objects.equals(mapstruct.map(map), mappedMap), "map value mapping");
             check(mappedMap != (Object) map, "map must be copied");
@@ -209,9 +267,14 @@ public class MappingFullBenchmark {
             check("sku-123".equals(expectedMap.sku())
                     && "widget".equals(expectedMap.name())
                     && Objects.equals(7, expectedMap.count()), "Map projected fields");
-            check(Objects.equals(expectedMap, compiled.jsonMap(map)), "Map to POJO");
+            // All three methods must produce the same target from native
+            // String/Integer input; no coercion is needed for this comparison.
+            check(Objects.equals(expectedMap, compiled.jsonMap(map)), "Map STRICT to POJO");
+            check(Objects.equals(expectedMap, compiled.jsonMapCast(map)), "Map CAST to POJO");
             check(Objects.equals(expectedObject, compiled.jsonObject(jsonObject)),
-                    "JsonObject to POJO");
+                    "JsonObject STRICT to POJO");
+            check(Objects.equals(expectedObject, compiled.jsonObjectCast(jsonObject)),
+                    "JsonObject CAST to POJO");
         }
     }
 
@@ -219,6 +282,13 @@ public class MappingFullBenchmark {
     @Benchmark public ClassicTarget order_classic_compiled(ClassicState s) { return s.compiled.classic(s.source); }
     @Benchmark public ExtendedTarget order_extended_mapstruct(OrderState s) { return s.mapstruct.extended(s.source); }
     @Benchmark public ExtendedTarget order_extended_compiled(OrderState s) { return s.compiled.extended(s.source); }
+    @Benchmark public OrderHeaderTarget order_header_mapstruct(HeaderState s) { return s.mapstruct.header(s.source); }
+    @Benchmark public OrderHeaderTarget order_header_compiled(HeaderState s) { return s.compiled.header(s.source); }
+
+    @Benchmark public FlatDirectTarget pojo_direct_mapstruct(PojoState s) { return s.mapstruct.flatDirect(s.flat); }
+    @Benchmark public FlatDirectTarget pojo_direct_compiled(PojoState s) { return s.compiled.flatDirect(s.flat); }
+    @Benchmark public ProfileDto pojo_profile_mapstruct(PojoState s) { return s.mapstruct.profile(s.profile); }
+    @Benchmark public ProfileDto pojo_profile_compiled(PojoState s) { return s.compiled.profile(s.profile); }
 
     @Benchmark public FlatTarget pojo_flat_mapstruct(PojoState s) { return s.mapstruct.flat(s.flat); }
     @Benchmark public FlatTarget pojo_flat_compiled(PojoState s) { return s.compiled.flat(s.flat); }
@@ -233,15 +303,25 @@ public class MappingFullBenchmark {
         return s.compiledTarget;
     }
 
+    @Benchmark public ItemDto collection_item_mapstruct(ItemState s) { return s.mapstruct.item(s.source); }
+    @Benchmark public ItemDto collection_item_compiled(ItemState s) { return s.compiled.item(s.source); }
     @Benchmark public List<ItemDto> collection_list_mapstruct(CollectionState s) { return s.mapstruct.list(s.list); }
     @Benchmark public List<ItemDto> collection_list_compiled(CollectionState s) { return s.compiled.list(s.list); }
+    @Benchmark public List<ItemDto> collection_sequential_mapstruct(CollectionState s) { return s.mapstruct.list(s.sequentialList); }
+    @Benchmark public List<ItemDto> collection_sequential_compiled(CollectionState s) { return s.compiled.list(s.sequentialList); }
+    @Benchmark public Map<String, ItemDto> collection_mapitems_mapstruct(CollectionState s) { return s.mapstruct.mapItems(s.itemMap); }
+    @Benchmark public Map<String, ItemDto> collection_mapitems_compiled(CollectionState s) { return s.compiled.mapItems(s.itemMap); }
+    @Benchmark public Map<String, List<ItemDto>> collection_mapone_mapstruct(CollectionState s) { return s.mapstruct.map(s.mapOne); }
+    @Benchmark public Map<String, List<ItemDto>> collection_mapone_compiled(CollectionState s) { return s.compiled.map(s.mapOne); }
     @Benchmark public Map<String, List<ItemDto>> collection_map_mapstruct(CollectionState s) { return s.mapstruct.map(s.map); }
     @Benchmark public Map<String, List<ItemDto>> collection_map_compiled(CollectionState s) { return s.compiled.map(s.map); }
 
     @Benchmark public JsonTarget json_map_mapstruct(JsonState s) { return s.mapstruct.jsonMap(s.map); }
-    @Benchmark public JsonTarget json_map_compiled(JsonState s) { return s.compiled.jsonMap(s.map); }
+    @Benchmark public JsonTarget json_map_cast(JsonState s) { return s.compiled.jsonMapCast(s.map); }
+    @Benchmark public JsonTarget json_map_strict(JsonState s) { return s.compiled.jsonMap(s.map); }
     @Benchmark public JsonTarget json_object_mapstruct(JsonState s) { return s.mapstruct.jsonObject(s.jsonObject); }
-    @Benchmark public JsonTarget json_object_compiled(JsonState s) { return s.compiled.jsonObject(s.jsonObject); }
+    @Benchmark public JsonTarget json_object_cast(JsonState s) { return s.compiled.jsonObjectCast(s.jsonObject); }
+    @Benchmark public JsonTarget json_object_strict(JsonState s) { return s.compiled.jsonObject(s.jsonObject); }
 
     @CompiledMapper
     public interface Sjf4jMapper {
@@ -263,6 +343,16 @@ public class MappingFullBenchmark {
 
         ItemDto item(Item source);
 
+        @Mapping(target = "customerName", source = "$.customer.name")
+        @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")
+        @Mapping(target = "shippingCity", source = "$.customer.shippingAddress.city")
+        @Mapping(target = "priority", source = "$.attributes.priority")
+        @Mapping(target = "salesChannel", source = "$.metadata.salesChannel")
+        OrderHeaderTarget header(ExtendedOrder source);
+
+        FlatDirectTarget flatDirect(FlatSource source);
+        ProfileDto profile(Profile source);
+
         @Mapping(target = "surname", source = "last")
         @Mapping(target = "fullName", sources = {"first", "last"},
                 compute = "(first, last) -> first + \" \" + last")
@@ -281,10 +371,20 @@ public class MappingFullBenchmark {
         void update(UpdateTarget target, UpdateSource source);
 
         List<ItemDto> list(List<Item> source);
+        Map<String, ItemDto> mapItems(Map<String, Item> source);
         Map<String, List<ItemDto>> map(Map<String, List<Item>> source);
 
+        @MappingOptions(raws = RawPolicy.STRICT)
         JsonTarget jsonMap(Map<String, Object> source);
+
+        @MappingOptions(raws = RawPolicy.CAST)
+        JsonTarget jsonMapCast(Map<String, Object> source);
+
+        @MappingOptions(raws = RawPolicy.STRICT)
         JsonTarget jsonObject(JsonObject source);
+
+        @MappingOptions(raws = RawPolicy.CAST)
+        JsonTarget jsonObjectCast(JsonObject source);
     }
 
     @org.mapstruct.Mapper
@@ -309,6 +409,18 @@ public class MappingFullBenchmark {
 
         ItemDto item(Item source);
 
+        @org.mapstruct.Mapping(target = "customerName", source = "customer.name")
+        @org.mapstruct.Mapping(target = "billingCity", source = "customer.billingAddress.city")
+        @org.mapstruct.Mapping(target = "shippingCity", source = "customer.shippingAddress.city")
+        @org.mapstruct.Mapping(target = "priority",
+                expression = "java(source.attributes() == null ? null : source.attributes().get(\"priority\"))")
+        @org.mapstruct.Mapping(target = "salesChannel",
+                expression = "java(source.metadata() == null ? null : (String) source.metadata().getNode(\"salesChannel\"))")
+        OrderHeaderTarget header(ExtendedOrder source);
+
+        FlatDirectTarget flatDirect(FlatSource source);
+        ProfileDto profile(Profile source);
+
         @org.mapstruct.Mapping(target = "surname", source = "last")
         @org.mapstruct.Mapping(target = "fullName",
                 expression = "java(source.first() + \" \" + source.last())")
@@ -328,6 +440,7 @@ public class MappingFullBenchmark {
         void update(UpdateSource source, @org.mapstruct.MappingTarget UpdateTarget target);
 
         List<ItemDto> list(List<Item> source);
+        Map<String, ItemDto> mapItems(Map<String, Item> source);
         Map<String, List<ItemDto>> map(Map<String, List<Item>> source);
 
         @org.mapstruct.Mapping(target = "sku", expression = "java((String) source.get(\"sku\"))")
@@ -342,6 +455,7 @@ public class MappingFullBenchmark {
     }
 
     public record FlatSource(String first, String last, String ignored) {}
+    public record FlatDirectTarget(String first, String last) {}
     public static final class FlatTarget {
         public String first;
         public String surname;
@@ -351,6 +465,7 @@ public class MappingFullBenchmark {
     public record Contact(String city, String country) {}
     public record ContactDto(String city, String country) {}
     public record Profile(String name, Contact contact) {}
+    public record ProfileDto(String name, ContactDto contact) {}
     public record Account(String tier, boolean active) {}
     public record CompositeTarget(String name, String tier, boolean active, ContactDto contact) {}
     public record UpdateSource(String name, String city, int level) {}
@@ -371,6 +486,8 @@ public class MappingFullBenchmark {
                                 Map<String, String> attributes, JsonObject metadata) {}
     public record ExtendedTarget(String customerName, String billingCity, String shippingCity,
                                  String priority, String salesChannel, List<ItemDto> products) {}
+    public record OrderHeaderTarget(String customerName, String billingCity, String shippingCity,
+                                    String priority, String salesChannel) {}
     public record JsonTarget(String sku, String name, Object count) {}
 
     // The classic model is intentionally conventional JavaBeans, matching the
