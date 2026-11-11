@@ -121,12 +121,12 @@ Install **GraalVM Community 25.5.5.0.3** (JDK 25) including `native-image`.
 The script deliberately checks the GraalVM version. It builds the JMH Native
 Image with `-O2` and no PGO; the existing Gradle `jmhAgent` task uses a
 representative Fabien training matrix to collect reachability metadata for
-the selected backends, implementations, models and shapes. The Native
-Image build explicitly permits Fastjson2's `JSONFactory$CacheItem` and
-`ObjectWriterBaseModule` to be initialized at build time; these two types were
-observed in compiler image-heap traces via the generated enum-name encoder.
-The workaround intentionally avoids build-time initializing all of Fastjson2.
-Native Image build and smoke success remain prerequisites for a performance baseline.
+the selected backends, implementations, models and shapes. The Native Image build defers Fastjson2's `JSONFactory` and the
+benchmark's generated `FabienBindings$Fastjson2_Impl` to executable runtime,
+preventing default reader/writer providers and their mutable caches from being
+frozen into the image heap. This replaces earlier per-type build-time
+initialization workarounds. Native Image build and Smoke success remain
+prerequisites for a performance baseline.
 
 ```bash
 GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh smoke
