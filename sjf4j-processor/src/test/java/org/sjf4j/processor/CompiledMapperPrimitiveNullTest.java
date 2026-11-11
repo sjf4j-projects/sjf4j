@@ -125,6 +125,42 @@ class CompiledMapperPrimitiveNullTest {
         }
     }
 
+    @Test
+    void primitiveConverterResultIsEvaluatedExactlyOnce() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Counter.java",
+                "package fixture; public final class Counter { public static int calls; }");
+        sources.put("fixture/Source.java",
+                "package fixture; public record Source(String age) {}");
+        sources.put("fixture/Target.java",
+                "package fixture; public record Target(int age) {}");
+        sources.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.*; "
+                + "@CompiledMapper public interface Mapper { "
+                + "@MappingOptions(methods={\"this::parseAge\"}) Target map(Source source); "
+                + "default int parseAge(String value) { "
+                + "Counter.calls++; return Integer.parseInt(value); } }");
+        NavigatorTestCompiler.Result compilation =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class,
+                        "-Xlint:cast", "-Xlint:unchecked", "-Werror");
+        assertTrue(compilation.success, compilation.diagnostics());
+        String generated = compilation.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(generated.contains("constructorValue"), generated);
+
+        try (URLClassLoader loader = compilation.classLoader(getClass().getClassLoader())) {
+            Class<?> mapperClass = loader.loadClass("fixture.Mapper_Impl");
+            Class<?> sourceClass = loader.loadClass("fixture.Source");
+            Class<?> targetClass = loader.loadClass("fixture.Target");
+            Class<?> counterClass = loader.loadClass("fixture.Counter");
+            Object mapper = mapperClass.getConstructor().newInstance();
+            Object source = sourceClass.getConstructor(String.class).newInstance("17");
+            Object result = mapperClass.getMethod("map", sourceClass).invoke(mapper, source);
+            assertEquals(targetClass.getConstructor(int.class).newInstance(17), result);
+            assertEquals(1, counterClass.getField("calls").getInt(null),
+                    "a primitive converter must not execute twice");
+        }
+    }
+
     private static NavigatorTestCompiler.Result compileFixture() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Profile.java",
