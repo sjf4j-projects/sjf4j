@@ -165,7 +165,7 @@ public class MapperExternalNodeTest {
 
         JacksonAddressBook jacksonAddressBook(JsonNode source);
 
-        @MappingOptions(prefer = {"this::mapJacksonAddress"})
+        @MappingOptions(methods = {"this::mapJacksonAddress"})
         @Mapping(target = "address", source = "address")
         JacksonExplicitAddressDto jacksonExplicitAddress(JsonNode source);
 

@@ -325,7 +325,7 @@ public class MapperArrayTest {
 
     @CompiledMapper
     public interface NamedArrayMapper {
-        @MappingOptions(prefer = {"this::upper"})
+        @MappingOptions(methods = {"this::upper"})
         UserDto[] userDtoArray(User[] source);
 
         default UserDto upper(User user) {
@@ -346,7 +346,7 @@ public class MapperArrayTest {
 
     @CompiledMapper(importing = {ImportedArrayLeafMapper.class})
     public interface ImportedArrayMapper {
-        @MappingOptions(prefer = {"ImportedArrayLeafMapper::toDto"})
+        @MappingOptions(methods = {"ImportedArrayLeafMapper::toDto"})
         UserDto[] userDtoArray(User[] source);
     }
 }

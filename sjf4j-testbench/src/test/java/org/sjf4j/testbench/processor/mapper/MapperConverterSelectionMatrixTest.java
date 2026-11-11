@@ -156,7 +156,7 @@ public class MapperConverterSelectionMatrixTest {
 
     @CompiledMapper
     public interface PreferredMapper {
-        @MappingOptions(prefer = {"this::second", "this::first"})
+        @MappingOptions(methods = {"this::second", "this::first"})
         TargetEnvelope convert(SpecialEnvelope source);
         default LeafTarget first(SpecialLeaf value) {
             return new LeafTarget("first:" + value.name);
@@ -168,7 +168,7 @@ public class MapperConverterSelectionMatrixTest {
 
     @CompiledMapper
     public interface SkipIncompatibleMapper {
-        @MappingOptions(prefer = {"this::wrong", "this::correct"})
+        @MappingOptions(methods = {"this::wrong", "this::correct"})
         TargetEnvelope convert(SpecialEnvelope source);
         default LeafTarget wrong(Integer value) {
             return new LeafTarget("wrong:" + value);
@@ -180,7 +180,7 @@ public class MapperConverterSelectionMatrixTest {
 
     @CompiledMapper
     public interface DirectPriorityMapper {
-        @MappingOptions(prefer = {"this::decorate"})
+        @MappingOptions(methods = {"this::decorate"})
         NameTarget convert(NameSource source);
         default String decorate(String value) {
             return "changed:" + value;

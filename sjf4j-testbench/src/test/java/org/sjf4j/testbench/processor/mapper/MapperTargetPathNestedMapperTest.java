@@ -107,7 +107,7 @@ public class MapperTargetPathNestedMapperTest {
 
     @CompiledMapper
     public interface NestedPathMapper {
-        @MappingOptions(prefer = {"this::toDto"})
+        @MappingOptions(methods = {"this::toDto"})
         @Mapping(target = "$.child", source = "child")
         @Mapping(target = "$.items[0]", source = "child")
         @Mapping(target = "$.map.one", source = "child")
