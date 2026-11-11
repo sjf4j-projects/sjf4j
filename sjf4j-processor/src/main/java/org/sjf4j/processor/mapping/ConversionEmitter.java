@@ -814,7 +814,8 @@ public final class ConversionEmitter
         }
 
         for (ConversionCompiler.StructuralProperty property : conversion.properties()) {
-            String raw = emitAccessRead(out, names, source, property.name(), property.source());
+            String raw = emitAccessRead(out, names, source, property.name(),
+                        property.source(), property.conversion());
             String value = emit(out, names, property.conversion(), raw);
             emitAccessWrite(out, result, property.name(), property.target(), value);
         }
@@ -839,7 +840,8 @@ public final class ConversionEmitter
         List<String> values = new ArrayList<>(arguments.size());
 
         for (ConversionCompiler.StructuralArgument argument : arguments) {
-            String raw = emitAccessRead(out, names, source, argument.name(), argument.source());
+            String raw = emitAccessRead(out, names, source, argument.name(),
+                    argument.source(), argument.conversion());
             values.add(emit(out, names, argument.conversion(), raw));
         }
 
@@ -876,7 +878,8 @@ public final class ConversionEmitter
 
         if (dynamic.kind() == ConversionCompiler.DynamicObjectPlan.Kind.STATIC_PROPERTIES) {
             for (ConversionCompiler.DynamicProperty property : dynamic.properties()) {
-                String raw = emitAccessRead(out, names, source, property.name(), property.source());
+                String raw = emitAccessRead(out, names, source, property.name(),
+                        property.source(), property.conversion());
                 String value = emit(out, names, property.conversion(), raw);
                 out.line(result + ".put(" + JavaWriter.stringLiteral(property.name()) + ", " + value + ");");
             }
@@ -1039,12 +1042,17 @@ public final class ConversionEmitter
      */
 
     private String emitAccessRead(JavaWriter out, NameAllocator names, String owner,
-                                  String name, NodeAccess access) {
+                                  String name, NodeAccess access,
+                                  ConversionCompiler.CompiledConversion conversion) {
         String result = names.newName(name);
-        // Typed structural conversions guard the owner before reading fields.
-        // Preserve primitive locals (e.g. int -> int) instead of boxing/unboxing.
-        out.line(types.concrete(access.readType()) + " " + result + " = " +
-                accessReadExpression(owner, name, access) + ";");
+        // Primitive direct assignments cannot be null and need no intermediate box.
+        // Scalar conversion code may test for null, so retain boxing in that case.
+        boolean primitiveDirect = access.readType().getKind().isPrimitive()
+                && conversion.kind() == ConversionCompiler.CompiledConversion.Kind.DIRECT
+                && conversion.targetType().getKind().isPrimitive();
+        String type = primitiveDirect ? types.concrete(access.readType()).toString()
+                : localType(access.readType());
+        out.line(type + " " + result + " = " + accessReadExpression(owner, name, access) + ";");
 
         return result;
     }
