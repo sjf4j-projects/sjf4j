@@ -1,6 +1,7 @@
 package org.sjf4j.processor.mapping;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.mapping.RawPolicy;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
@@ -226,6 +227,19 @@ public final class ConverterResolver {
         if (importedMethod == INVALID_METHOD) return null;
 
         if (importedMethod != null) return Conversion.method(sourceType, targetType, importedMethod.method, importedMethod.owner);
+
+        /*
+         * CAST is a Java operation on the raw runtime value, not an OBNT
+         * conversion. Resolve it only after explicit mapper methods, but
+         * before codec, scalar and structural conversion strategies.
+         * Container keys and values are independently resolved, so a
+         * statically known Map<String,Object> is still traversed normally.
+         */
+        if (types.nodeKind(sourceType) == NodeKind.COMPILE_TIME_UNKNOWN
+                && !types.isObject(targetType)
+                && plan.rawPolicy(context) == RawPolicy.CAST) {
+            return Conversion.rawCast(sourceType, targetType);
+        }
 
         /*
          * Logical values are codec leaves, even when their raw representation
@@ -986,6 +1000,7 @@ public final class ConverterResolver {
             DIRECT,
             METHOD,
             ONE_OF,
+            RAW_CAST,
             SCALAR,
             VALUE_CODEC,
             CODEC_ENCODE,
@@ -1031,6 +1046,10 @@ public final class ConverterResolver {
 
         static Conversion oneOf(TypeMirror sourceType, TypeMirror targetType) {
             return new Conversion(Kind.ONE_OF, sourceType, targetType, null, null);
+        }
+
+        static Conversion rawCast(TypeMirror sourceType, TypeMirror targetType) {
+            return new Conversion(Kind.RAW_CAST, sourceType, targetType, null, null);
         }
 
         static Conversion scalar(TypeMirror sourceType, TypeMirror targetType) {
