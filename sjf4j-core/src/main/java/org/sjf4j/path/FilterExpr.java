@@ -3,6 +3,7 @@ package org.sjf4j.path;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.Nodes;
+import org.sjf4j.node.NodeWalker;
 import org.sjf4j.util.Numbers;
 import org.sjf4j.util.Asserts;
 
@@ -26,11 +27,24 @@ public interface FilterExpr {
     Object eval(Object rootNode, Object currentNode);
 
     /**
+     * Evaluates with query-local node-access scratch storage. Implementations
+     * outside SJF4J can continue to implement only the two-argument API.
+     */
+    default Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
+        return eval(rootNode, currentNode);
+    }
+
+    /**
      * Evaluates this expression and converts the result to boolean.
      */
     default boolean evalTruth(Object rootNode, Object currentNode) {
         Object v = eval(rootNode, currentNode);
         return truth(v);
+    }
+
+    /** Evaluates truthiness with query-local node-access scratch storage. */
+    default boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
+        return truth(eval(rootNode, currentNode, access));
     }
 
     /*
@@ -101,6 +115,14 @@ public interface FilterExpr {
             return value == JsonPath.MISSING ? NOTHING : value;
         }
 
+        @Override
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            if (access == null || !path.singleGet) return eval(rootNode, currentNode);
+            Object container = path.rooted() ? rootNode : currentNode;
+            Object value = path._findOne(container, 1, path.length(), access);
+            return value == JsonPath.MISSING ? NOTHING : value;
+        }
+
         /**
          * A query in a logical context tests whether it selects any node,
          * regardless of that node's JSON value (including false, zero, and null).
@@ -118,6 +140,13 @@ public interface FilterExpr {
                 return truth(path._eval(container));
             }
             return !((List<?>) path._eval(container)).isEmpty();
+        }
+
+        @Override
+        public boolean evalTruth(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            if (access == null || !path.singleGet) return evalTruth(rootNode, currentNode);
+            Object container = path.rooted() ? rootNode : currentNode;
+            return path._findOne(container, 1, path.length(), access) != JsonPath.MISSING;
         }
 
         /**
@@ -149,7 +178,12 @@ public interface FilterExpr {
          */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
-            return truth == unary.evalTruth(rootNode, currentNode);
+            return eval(rootNode, currentNode, null);
+        }
+
+        @Override
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
+            return truth == unary.evalTruth(rootNode, currentNode, access);
         }
 
         /**
@@ -189,17 +223,22 @@ public interface FilterExpr {
          */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
+            return eval(rootNode, currentNode, null);
+        }
+
+        @Override
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             if (op == Op.AND) {
-                return left.evalTruth(rootNode, currentNode)
-                        && right.evalTruth(rootNode, currentNode);
+                return left.evalTruth(rootNode, currentNode, access)
+                        && right.evalTruth(rootNode, currentNode, access);
             }
             if (op == Op.OR) {
-                return left.evalTruth(rootNode, currentNode)
-                        || right.evalTruth(rootNode, currentNode);
+                return left.evalTruth(rootNode, currentNode, access)
+                        || right.evalTruth(rootNode, currentNode, access);
             }
 
-            Object a = left.eval(rootNode, currentNode);
-            Object b = right.eval(rootNode, currentNode);
+            Object a = left.eval(rootNode, currentNode, access);
+            Object b = right.eval(rootNode, currentNode, access);
             _requireScalarFunctionResult(left, a);
             _requireScalarFunctionResult(right, b);
             if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) {
@@ -275,12 +314,17 @@ public interface FilterExpr {
          */
         @Override
         public Object eval(Object rootNode, Object currentNode) {
+            return eval(rootNode, currentNode, null);
+        }
+
+        @Override
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             int size = args.size();
             if (size == 0) throw new NodeException("function '" + name + "' requires a target argument");
-            Object target = args.get(0).eval(rootNode, currentNode);
+            Object target = args.get(0).eval(rootNode, currentNode, access);
             Object[] values = size <= 1 ? NO_ARGS : new Object[size - 1];
             for (int i = 1; i < size; i++) {
-                values[i - 1] = args.get(i).eval(rootNode, currentNode);
+                values[i - 1] = args.get(i).eval(rootNode, currentNode, access);
             }
             return FunctionRegistry.invoke(name, target, values);
         }
@@ -309,11 +353,16 @@ public interface FilterExpr {
 
         @Override
         public Object eval(Object rootNode, Object currentNode) {
+            return eval(rootNode, currentNode, null);
+        }
+
+        @Override
+        public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             if (literalValues != null) return literalValues;
             int size = elements.size();
             ArrayList<Object> values = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
-                values.add(elements.get(i).eval(rootNode, currentNode));
+                values.add(elements.get(i).eval(rootNode, currentNode, access));
             }
             return values;
         }
