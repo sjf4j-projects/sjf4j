@@ -554,6 +554,11 @@ val jmhAgentOutput =
 val nativeBenchmark = providers.gradleProperty("nativeBenchmark")
     .orElse(".*(HandWriteBenchmark|HandReadBenchmark).*")
 
+// Opt-in Binding Native Image training: visit every supported backend/implementation
+// and both model shapes so the tracing agent records the required reachability metadata.
+val bindingNativeImage = providers.gradleProperty("bindingNativeImage")
+    .map { it.toBoolean() }.orElse(false)
+
 val jmhAgent = tasks.register<Exec>("jmhAgent") {
     group = "benchmark"
     description = "Runs JMH with the GraalVM Native Image tracing agent"
@@ -582,6 +587,17 @@ val jmhAgent = tasks.register<Exec>("jmhAgent") {
             "-i", "1",
             "-r", "100ms"
         )
+
+        if (bindingNativeImage.get()) {
+            args(
+                "-p", "backend=jackson2,jackson3,fastjson2",
+                "-p", "implementation=native,runtime,compiled",
+                "-p", "model=users,clients",
+                "-p", "shape=pojo,map",
+                "-p", "sizeKb=1",
+                "-p", "seed=12345"
+            )
+        }
     }
 }
 
