@@ -83,8 +83,8 @@ public final class ConverterResolver {
     private boolean validateReferences(MappingPlan plan, GeneratedClass generated) {
         boolean valid = true;
 
-        for (String reference : prefer(plan)) {
-            if (!validateReference(plan, reference, "prefer", generated)) valid = false;
+        for (String reference : optionMethods(plan)) {
+            if (!validateReference(plan, reference, "methods", generated)) valid = false;
         }
 
         for (MappingPlan.Rule rule : plan.rules()) {
@@ -182,7 +182,7 @@ public final class ConverterResolver {
         /*
          * Method-level converter preferences.
          */
-        List<String> preferredReferences = prefer(plan);
+        List<String> preferredReferences = optionMethods(plan);
         Conversion preferred = resolvePreferred(preferredReferences, sourceType, targetType, plan, generated);
 
         if (!generated.isValid()) return null;
@@ -310,7 +310,7 @@ public final class ConverterResolver {
     private Conversion resolvePreferred(List<String> references, TypeMirror sourceType, TypeMirror targetType,
                                         MappingPlan plan, GeneratedClass generated) {
         for (String reference : references) {
-            String[] names = qualifiedReference(plan, reference, "prefer", generated);
+            String[] names = qualifiedReference(plan, reference, "methods", generated);
 
             if (names == null) return null;
 
@@ -421,12 +421,12 @@ public final class ConverterResolver {
         return true;
     }
 
-    private List<String> prefer(MappingPlan plan) {
+    private List<String> optionMethods(MappingPlan plan) {
         AnnotationMirror options = plan.options();
 
         if (options == null) return Collections.emptyList();
 
-        return stringArrayValue(options, "prefer");
+        return stringArrayValue(options, "methods");
     }
 
     /*

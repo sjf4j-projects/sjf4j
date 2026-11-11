@@ -47,8 +47,8 @@ public class CompiledMapperBatch2DiagnosticsTest {
                 invalid("unresolved preferred method reference",
                         "@CompiledMapper public interface Mapper { "
                         + "record Source(String name) {} record Target(String name) {} "
-                        + "@MappingOptions(prefer={\"this::missing\"}) Target map(Source source); }",
-                        "prefer reference 'this::missing' cannot be resolved"),
+                        + "@MappingOptions(methods={\"this::missing\"}) Target map(Source source); }",
+                        "methods reference 'this::missing' cannot be resolved"),
                 invalid("duplicate MappingCreator rules",
                         "@CompiledMapper @MappingCreator(targetType=Mapper.Target.class,implementation=Mapper.Target.class) "
                         + "@MappingCreator(targetType=Mapper.Target.class,implementation=Mapper.Target.class) "

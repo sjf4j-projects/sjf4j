@@ -18,19 +18,19 @@ import java.lang.annotation.Target;
 public @interface MappingOptions {
 
     /**
-     * Preferred converter methods for automatic conversion points in this method.
+     * An ordered list of candidate converter methods for this mapper method.
      *
      * <p>References use the form {@code "Mapper::method"}. Use
      * {@code "this::method"} for a method declared by the current mapper, or
      * the simple or qualified name of an imported mapper.
-     * These are preferences, not forced conversions. If a source value is already
+     * The methods are preferred candidates, not a whitelist or forced conversions. If a source value is already
      * assignable to the target type, it is assigned directly. Otherwise the
      * processor tries these references in array order before normal automatic
      * local/imported mapper lookup and built-in strict conversions. References
      * that exist but are incompatible with a given conversion point are skipped;
      * references that cannot be resolved are errors.</p>
      */
-    String[] prefer() default {};
+    String[] methods() default {};
 
     /**
      * Policy for reusing already-assignable source values. This is an

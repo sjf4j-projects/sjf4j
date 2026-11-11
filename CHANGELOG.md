@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Renamed `@MappingOptions.using` to `prefer` (source-incompatible), clarifying that listed mapper methods are preferences rather than forced conversions.
+- Renamed `@MappingOptions.using` to `methods` (source-incompatible), clarifying that listed mapper methods are preferences rather than forced conversions.
 - **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
 
 ### Fixed

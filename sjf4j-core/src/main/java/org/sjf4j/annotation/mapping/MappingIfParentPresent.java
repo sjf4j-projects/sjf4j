@@ -38,7 +38,7 @@ public @interface MappingIfParentPresent {
      * Explicit mapper method for the path value.
      *
      * <p>This path-specific hook is kept separate from method-level
-     * {@link MappingOptions#prefer()} preferences. References use
+     * {@link MappingOptions#methods()} preferences. References use
      * {@code "this::method"} for the current mapper or
      * {@code "ImportedMapper::method"} for an imported mapper. It cannot be
      * combined with {@link #compute()}.</p>
