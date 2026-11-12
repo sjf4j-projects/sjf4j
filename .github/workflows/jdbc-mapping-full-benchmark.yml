@@ -1,0 +1,146 @@
+name: JDBC Mapping Full Benchmark (JDK 25)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/jdbc-mapping-full-benchmark.yml"
+      - "scripts/benchmark-jdbc-mapping.sh"
+      - "scripts/analyze-jdbc-mapping-benchmark.py"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/JdbcFullBenchmark.java"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/CompiledJdbcMapperBenchmark.java"
+      - "sjf4j-testbench/build.gradle.kts"
+  workflow_dispatch:
+    inputs:
+      runner_label:
+        description: "Runner label; self-hosted for controlled hardware"
+        type: choice
+        required: true
+        default: ubuntu-24.04
+        options:
+          - ubuntu-24.04
+          - self-hosted
+      cpu_model:
+        description: "Optional exact CPU model guard"
+        type: string
+        required: false
+      cpu_set:
+        description: "Optional Linux taskset core list"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jdbc-mapping-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Validate script syntax and executable bit
+        run: |
+          test -x scripts/benchmark-jdbc-mapping.sh
+          bash -n scripts/benchmark-jdbc-mapping.sh
+          python3 -m py_compile scripts/analyze-jdbc-mapping-benchmark.py
+      - name: Compile generated mappers, testbench and JMH
+        run: ./gradlew :sjf4j-testbench:test :sjf4j-testbench:jmhJar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jdbc-mapping-jmh
+          path: sjf4j-testbench/build/libs/*-jmh.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  smoke:
+    if: github.event_name == 'pull_request'
+    needs: build
+    name: Smoke / ${{ matrix.group }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [pojo, record, map]
+    env:
+      JDBC_SKIP_BUILD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v4
+        with:
+          name: jdbc-mapping-jmh
+          path: sjf4j-testbench/build/libs
+      - name: Verify full case matrix and mapping equivalence
+        run: ./scripts/benchmark-jdbc-mapping.sh smoke "${{ matrix.group }}"
+      - name: Upload diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jdbc-smoke-${{ matrix.group }}-${{ github.run_id }}
+          path: build/performance/jdbc-mapping/${{ matrix.group }}/
+          if-no-files-found: warn
+          retention-days: 7
+
+  full:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ${{ inputs.runner_label || 'ubuntu-24.04' }}
+    timeout-minutes: 300
+    env:
+      JDBC_SKIP_BUILD: '1'
+      JDBC_EXPECT_CPU_MODEL: ${{ inputs.cpu_model || '' }}
+      JDBC_CPU_SET: ${{ inputs.cpu_set || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v4
+        with:
+          name: jdbc-mapping-jmh
+          path: sjf4j-testbench/build/libs
+      - name: Capture runner details
+        run: |
+          OUT=build/performance/jdbc-mapping
+          mkdir -p "$OUT"
+          {
+            echo "Run: $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT"
+            echo "Commit: $GITHUB_SHA"
+            echo "CPU guard: ${JDBC_EXPECT_CPU_MODEL:-none}"
+            echo "Affinity: ${JDBC_CPU_SET:-unrestricted}"
+            lscpu
+            grep Cpus_allowed_list /proc/self/status || true
+            free -h
+            java -version 2>&1
+          } > "$OUT/runner.txt"
+      - name: Run all three groups sequentially
+        run: ./scripts/benchmark-jdbc-mapping.sh full
+      - name: Generate Best 2 Mean report
+        run: |
+          python3 scripts/analyze-jdbc-mapping-benchmark.py \
+            build/performance/jdbc-mapping/pojo/jdbc-pojo.json \
+            build/performance/jdbc-mapping/record/jdbc-record.json \
+            build/performance/jdbc-mapping/map/jdbc-map.json \
+            --output build/performance/jdbc-mapping/report.md
+          cat build/performance/jdbc-mapping/report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload raw results, metadata, logs and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jdbc-mapping-full-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/performance/jdbc-mapping/
+          if-no-files-found: warn
+          retention-days: 30
