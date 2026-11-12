@@ -96,6 +96,7 @@ class CompiledMapperPrimitiveNullTest {
         String updateBody = generated.substring(start, end);
         assertTrue(updateBody.contains("source.level()"), updateBody);
         assertTrue(updateBody.contains("source.active()"), updateBody);
+        assertFalse(updateBody.contains("Asserts.notNull(target"), updateBody);
         assertFalse(updateBody.contains("Integer.valueOf("), updateBody);
         assertFalse(updateBody.contains("Boolean.valueOf("), updateBody);
         // String null-ignore still needs a guard; only primitive fields
