@@ -64,16 +64,26 @@ final class SchemaFallbackEmitter {
                 out.line("org.sjf4j.schema.SchemaLoader loader = new org.sjf4j.schema.SchemaLoader.Local("
                         + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
                         + plan.name + ".class.getClassLoader());");
+                // Rebuild the annotation's scoped external resources before any
+                // local directory, so explicit mappings win collisions.
+                if (!plan.annotation.externalSchemas().isEmpty()
+                        || !plan.annotation.externalSchemasRef().isEmpty()) {
+                    out.beginBlock("for (java.util.Map.Entry<java.net.URI, org.sjf4j.schema.JsonSchema> entry : "
+                            + "org.sjf4j.schema.ExternalSchemas.load("
+                            + plan.annotationExpression + ".externalSchemas(), "
+                            + plan.annotationExpression + ".externalSchemasRef(), "
+                            + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
+                            + plan.name + ".class.getClassLoader()).entrySet())");
+                    out.line(registry + ".index(entry.getKey(), entry.getValue());");
+                    out.endBlock();
+                }
                 for (int i = 0; i < plan.snapshot.uris.length; i++) {
                     // Registry-backed documents are loaded by indexDir below;
                     // the default SchemaLoader must never fetch their logical HTTP URIs.
-                    if (plan.snapshot.fromRegistry[i]) continue;
+                    if (plan.snapshot.fromRegistry[i]
+                            || plan.snapshot.externalUris.contains(plan.snapshot.uris[i])) continue;
                     String uri = "java.net.URI.create(" + SchemaEmitter.javaLiteral(plan.snapshot.uris[i]) + ")";
-                    String externalSource = plan.snapshot.externalSources.get(plan.snapshot.uris[i]);
-                    if (externalSource != null) {
-                        out.line(registry + ".index(" + uri + ", loader.load(java.net.URI.create("
-                                + SchemaEmitter.javaLiteral(externalSource) + ")));");
-                    } else if (i == 0 && !plan.annotation.value().isEmpty()) {
+                    if (i == 0 && !plan.annotation.value().isEmpty()) {
                         out.line(registry + ".index(" + uri
                                 + ", org.sjf4j.schema.JsonSchema.fromJson("
                                 + plan.annotationExpression + ".value()));");
@@ -168,8 +178,6 @@ final class SchemaFallbackEmitter {
         for (int i = 0; i < snapshot.uris.length; i++) {
             key.append(snapshot.uris[i]).append('\u0000')
                     .append(snapshot.documents[i]).append('\u0000');
-            String external = snapshot.externalSources.get(snapshot.uris[i]);
-            if (external != null) key.append(external).append('\u0000');
         }
         return key.toString();
     }
