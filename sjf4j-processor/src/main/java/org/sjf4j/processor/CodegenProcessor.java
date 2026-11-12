@@ -19,7 +19,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
-import java.util.Collections;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -39,15 +38,6 @@ public final class CodegenProcessor extends AbstractProcessor {
     private JdbcMapperGenerator jdbcMapperGenerator;
     private BindingGenerator bindingGenerator;
     private SchemaGenerator schemaGenerator;
-
-    /**
-     * Internal javac transport for test-fixture resources, not a public
-     * @CompiledValidator option. Normal builds do not supply this option.
-     */
-    @Override
-    public Set<String> getSupportedOptions() {
-        return Collections.singleton("sjf4j.internal.schemaExternalIndex");
-    }
 
     /**
      * Lists both root and method-level annotations so invalid element kinds
