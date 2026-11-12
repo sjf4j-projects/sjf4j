@@ -45,19 +45,100 @@ public final class JdbcEmitter {
      */
 
     public void emit(JdbcCompiler.CompiledMethod method, GeneratedClass generated) {
-        String field = null;
-        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT && method.plan().currentRow()) {
-            field = generated.names().field("jdbcColumns_" + method.plan().method().getSimpleName());
-            final String cacheName = field;
-            generated.addField(out -> out.line(
-                    "private final java.lang.ThreadLocal<org.sjf4j.mapping.CompiledSupport.Cache> "
-                            + cacheName + " = new java.lang.ThreadLocal<>();"));
-        }
-        final String cacheField = field;
-        generated.addMethod(out -> emitMethod(out, method, cacheField));
+        generated.addMethod(out -> emitMethod(out, method));
     }
 
-    private void emitMethod(JavaWriter out, JdbcCompiler.CompiledMethod method, String cacheField) {
+    /*
+     * Prepare resolves the JDBC column layout exactly once and returns a
+     * stateless, reusable row mapper. It never retains the metadata or ResultSet.
+     */
+    private void emitPreparedMethod(JavaWriter out, JdbcCompiler.CompiledMethod method) {
+        JdbcPlan plan = method.plan();
+        NameAllocator names = new NameAllocator();
+        for (VariableElement parameter : plan.method().getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
+        }
+
+        String metadata = plan.inputParameter().getSimpleName().toString();
+        String rowSet = names.newName("rowSet");
+        out.blank();
+        out.line("@Override");
+        out.line(methodHeader(plan) + " {");
+        out.indent();
+        out.line("org.sjf4j.util.Asserts.notNull(" + metadata + ", "
+                + stringLiteral(metadata) + ");");
+        out.line("try {");
+        out.indent();
+
+        String columnCount = null;
+        String labels = null;
+        String consumed = null;
+        Map<String, String> indexes = Collections.emptyMap();
+
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP || method.jojo()) {
+            columnCount = names.newName("columnCount");
+            labels = names.newName("labels");
+            String index = names.newName("column");
+            out.line("int " + columnCount + " = " + metadata + ".getColumnCount();");
+            out.line("String[] " + labels + " = new String[" + columnCount + " + 1];");
+            out.line("for (int " + index + " = 1; " + index + " <= " + columnCount
+                    + "; " + index + "++) {");
+            out.indent();
+            out.line(labels + "[" + index + "] = " + metadata + ".getColumnLabel(" + index + ");");
+            out.dedent();
+            out.line("}");
+        }
+
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT) {
+            indexes = emitColumnIndexes(out, names, metadata,
+                    method.jojo() ? method.consumedColumns() : method.readColumns(),
+                    method.columnNaming(), method.presentOnly());
+        }
+
+        if (method.jojo()) {
+            consumed = emitConsumedColumns(out, names, columnCount, indexes, method.consumedColumns());
+        }
+
+        out.line("return " + rowSet + " -> {");
+        out.indent();
+        out.line("org.sjf4j.util.Asserts.notNull(" + rowSet + ", "
+                + stringLiteral(rowSet) + ");");
+        out.line("try {");
+        out.indent();
+
+        String row = emitRow(out, names, method, rowSet, metadata, columnCount, null,
+                indexes, columnCount, labels, consumed);
+        out.line("return " + row + ";");
+
+        out.dedent();
+        out.line("} catch (java.sql.SQLException e) {");
+        out.indent();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + stringLiteral("failed to map JDBC row in " + plan.method().getSimpleName())
+                + ", e);");
+        out.dedent();
+        out.line("}");
+        out.dedent();
+        out.line("};");
+
+        out.dedent();
+        out.line("} catch (java.sql.SQLException e) {");
+        out.indent();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + stringLiteral("failed to prepare JDBC mapper in " + plan.method().getSimpleName())
+                + ", e);");
+        out.dedent();
+        out.line("}");
+
+        out.dedent();
+        out.line("}");
+    }
+
+    private void emitMethod(JavaWriter out, JdbcCompiler.CompiledMethod method) {
+        if (method.plan().prepared()) {
+            emitPreparedMethod(out, method);
+            return;
+        }
         JdbcPlan plan = method.plan();
         NameAllocator names = new NameAllocator();
 
@@ -65,7 +146,7 @@ public final class JdbcEmitter {
             names.reserve(parameter.getSimpleName().toString());
         }
 
-        String resultSet = plan.resultSetParameter().getSimpleName().toString();
+        String resultSet = plan.inputParameter().getSimpleName().toString();
 
         out.line("");
         out.line("@Override");
@@ -83,9 +164,8 @@ public final class JdbcEmitter {
         out.line("try {");
         out.indent();
 
-        // Only cursor-consuming single-target methods advance the ResultSet.
-        // Current-row mappers are already positioned and must not call next().
-        if (plan.single() && !plan.currentRow()) {
+        // Cursor-consuming single-target methods return null before inspecting columns.
+        if (plan.single()) {
             out.line("if (!" + resultSet + ".next()) {");
             out.indent();
             out.line("return null;");
@@ -108,8 +188,8 @@ public final class JdbcEmitter {
          * PRESENT_ONLY and JOJO remainder mapping also need metadata once per
          * mapper invocation.
          */
-        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP || method.jojo()
-                || (method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT && !plan.currentRow())) {
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP
+                || method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT) {
             metadata = names.newName("metadata");
 
             out.line(
@@ -168,37 +248,16 @@ public final class JdbcEmitter {
         }
 
         if (method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT) {
-            indexes = emitColumnIndexes(out, names, resultSet, metadata,
+            indexes = emitColumnIndexes(out, names, metadata,
                     method.jojo() ? method.consumedColumns() : method.readColumns(),
-                    method.columnNaming(), method.presentOnly(), cacheField);
+                    method.columnNaming(), method.presentOnly());
         }
 
         if (method.jojo()) {
             consumed = emitConsumedColumns(out, names, columnCount, indexes, method.consumedColumns());
         }
 
-        if (plan.currentRow()) {
-
-            String row =
-                    emitRow(
-                            out,
-                            names,
-                             method,
-                             resultSet,
-                             metadata,
-                            columnCount,
-                            columns,
-                            indexes,
-                            columnCount,
-                            labels,
-                            consumed);
-
-            out.line(
-                    "return " +
-                            row +
-                            ";");
-
-        } else if (plan.list()) {
+        if (plan.list()) {
 
             emitList(
                     out,
@@ -824,9 +883,9 @@ public final class JdbcEmitter {
     }
 
     private Map<String, String> emitColumnIndexes(
-            JavaWriter out, NameAllocator names, String resultSet, String metadata,
+            JavaWriter out, NameAllocator names, String metadata,
             List<String> sourceColumns, org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy policy,
-            boolean presentOnly, String cacheField) {
+            boolean presentOnly) {
 
         if (sourceColumns.isEmpty()) return Collections.emptyMap();
 
@@ -837,34 +896,16 @@ public final class JdbcEmitter {
         }
         namesLiteral.append('}');
 
-        String policyExpr = "org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy." + policy.name();
         String resolved = names.newName("columnIndexes");
-        String access;
-
-        if (cacheField == null) {
-            out.line("int[] " + resolved + " = org.sjf4j.mapping.CompiledSupport.resolve("
-                    + metadata + ", " + namesLiteral + ", " + policyExpr + ", " + !presentOnly + ");");
-            access = resolved;
-        } else {
-            String cache = names.newName("cachedColumns");
-            String cacheType = "org.sjf4j.mapping.CompiledSupport.Cache";
-            out.line(cacheType + " " + cache + " = this." + cacheField + ".get();");
-            out.line("if (" + cache + " == null || !" + cache + ".matches(" + resultSet + ")) {");
-            out.indent();
-            out.line(cache + " = new " + cacheType + "(" + resultSet + ", "
-                    + namesLiteral + ", " + policyExpr + ", " + !presentOnly + ");");
-            out.line("this." + cacheField + ".set(" + cache + ");");
-            out.dedent();
-            out.line("}");
-            access = cache;
-        }
+        String policyExpr = "org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy." + policy.name();
+        out.line("int[] " + resolved + " = org.sjf4j.mapping.CompiledSupport.resolve("
+                + metadata + ", " + namesLiteral + ", " + policyExpr + ", " + !presentOnly + ");");
 
         Map<String, String> result = new LinkedHashMap<>();
         for (int i = 0; i < sourceColumns.size(); i++) {
             String name = sourceColumns.get(i);
             String index = names.newName("idx_" + name);
-            out.line("int " + index + " = " + (cacheField == null
-                    ? access + "[" + i + "]" : access + ".index(" + i + ")") + ";");
+            out.line("int " + index + " = " + resolved + "[" + i + "];");
             result.put(name, index);
         }
         return result;
