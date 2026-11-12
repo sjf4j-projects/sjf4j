@@ -114,8 +114,8 @@ class JdbcColumnNamingTest {
                 nextCalls, "Ada", 3);
         JdbcRowMapper<Bean> mapped = mapper.prepareRow(JdbcTestSupport.metadata(
                 new String[]{"user_name", "login_count"}));
-        assertEquals("Ada", mapped.mapRow(row).userName);
-        assertEquals(3, mapped.mapRow(row).loginCount);
+        assertEquals("Ada", mapped.map(row).userName);
+        assertEquals(3, mapped.map(row).loginCount);
         assertEquals(0, nextCalls[0]);
     }
 
@@ -171,8 +171,8 @@ class JdbcColumnNamingTest {
                 });
         JdbcRowMapper<Bean> prepared = mapper.prepareRow(JdbcTestSupport.metadata(
                 new String[]{"user_name", "login_count"}));
-        assertEquals("Ada", prepared.mapRow(rs).userName);
-        assertEquals("Ada", prepared.mapRow(rs).userName);
+        assertEquals("Ada", prepared.map(rs).userName);
+        assertEquals("Ada", prepared.map(rs).userName);
         assertEquals(0, metadataCalls[0]); // No implicit lookup or ResultSet ownership.
     }
 
