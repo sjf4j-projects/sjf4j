@@ -27,6 +27,7 @@ import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenRe
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.cachedMetadataResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.currentRowResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.indexedResult;
+import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.labelCountingResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 
 class JdbcResultMappingTest {
@@ -77,6 +78,29 @@ class JdbcResultMappingTest {
         assertEquals(1, metadataCalls[0]);
         assertEquals(List.of("b", "a"), new ArrayList<>(mapper.row(result(new String[]{"b", "a"},
                 new Object[]{2, 1})).keySet()));
+    }
+
+    @Test
+    void listOfMapsReadsColumnLabelsOnceForAllRows() {
+        Mapper mapper = CompiledInstances.create(Mapper.class);
+        int[] labelCalls = {0};
+
+        List<Map<String, Object>> rows = mapper.rows(
+                labelCountingResult(new String[]{"a", "a", "B"}, labelCalls,
+                        new Object[]{1, 2, 3},
+                        new Object[]{4, 5, 6},
+                        new Object[]{7, 8, 9}));
+
+        assertEquals(3, rows.size());
+        assertEquals(Map.of("a", 2, "B", 3), rows.get(0));
+        assertEquals(Map.of("a", 5, "B", 6), rows.get(1));
+        assertEquals(Map.of("a", 8, "B", 9), rows.get(2));
+        assertEquals(3, labelCalls[0]); // Once per column, not once per row.
+
+        int[] emptyLabelCalls = {0};
+        assertEquals(List.of(), mapper.rows(
+                labelCountingResult(new String[]{"a", "B"}, emptyLabelCalls)));
+        assertEquals(0, emptyLabelCalls[0]);
     }
 
     @Test
