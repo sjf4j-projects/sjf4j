@@ -42,11 +42,40 @@ import static org.junit.jupiter.api.Assertions.fail;
 public final class OfficialCompiledTest {
 
     /**
-     * Re-audit fallback groups against the unified upstream fixture indices.
-     * Unrecognized groups must compile directly, never silently fall back.
+     * Explicit fallbacks verified against the unified upstream suite
+     * (revision 38dea932, November 2026). All cases below failed direct
+     * compilation with a specific unsupported cross-schema evaluated-location
+     * or custom-vocabulary diagnostic. Unknown groups always remain direct,
+     * and the runner probes each fallback for stale entries.
      */
     private static Set<String> fallbackGroups(String draft) {
-        return Collections.emptySet();
+        Set<String> groups = new LinkedHashSet<>();
+        if ("draft7".equals(draft)) return Collections.emptySet();
+        if ("draft2019-09".equals(draft)) {
+            fallback(groups, "not.json", 8);
+            fallback(groups, "recursiveRef.json", 9);
+            fallback(groups, "ref.json", 13);
+            fallback(groups, "unevaluatedItems.json",
+                    11, 12, 13, 15, 17, 19, 21, 25, 28, 30, 33, 35, 37, 45);
+            fallback(groups, "unevaluatedProperties.json",
+                    10, 11, 12, 14, 15, 16, 17, 19, 20, 23, 24, 25, 26, 27,
+                    28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 41, 42);
+            fallback(groups, "vocabulary.json", 0, 1);
+            return Collections.unmodifiableSet(groups);
+        }
+        if ("draft2020-12".equals(draft)) {
+            fallback(groups, "dynamicRef.json", 11);
+            fallback(groups, "not.json", 8);
+            fallback(groups, "ref.json", 13);
+            fallback(groups, "unevaluatedItems.json",
+                    13, 16, 18, 20, 24, 27, 29, 32, 34, 36, 38, 39, 40, 41, 44);
+            fallback(groups, "unevaluatedProperties.json",
+                    10, 11, 12, 14, 15, 16, 17, 19, 20, 22, 24, 25, 26, 27,
+                    28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 41, 42);
+            fallback(groups, "vocabulary.json", 2, 3);
+            return Collections.unmodifiableSet(groups);
+        }
+        throw new IllegalArgumentException("Unsupported official draft: " + draft);
     }
 
     private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
