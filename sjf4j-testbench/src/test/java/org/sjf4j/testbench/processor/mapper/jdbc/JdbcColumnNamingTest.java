@@ -9,7 +9,7 @@ import org.sjf4j.annotation.mapping.jdbc.ColumnProjectionPolicy;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions;
 import org.sjf4j.exception.BindingException;
-import org.sjf4j.internal.jdbc.JdbcColumnResolver;
+import org.sjf4j.mapping.CompiledSupport;
 
 import java.sql.ResultSet;
 import java.util.List;
@@ -137,7 +137,7 @@ class JdbcColumnNamingTest {
     @Test
     void snakePreservesWordBoundariesAndAcronyms() {
         try {
-            assertEquals(1, JdbcColumnResolver.resolve(
+            assertEquals(1, CompiledSupport.resolve(
                     JdbcTestSupport.metadata(new String[]{"url_value"}),
                     new String[]{"URLValue"}, ColumnNamingPolicy.INSENSITIVE_SNAKE, true)[0]);
         } catch (java.sql.SQLException e) {
