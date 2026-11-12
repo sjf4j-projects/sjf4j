@@ -303,40 +303,48 @@ public class SchemaRegistry {
     }
 
     /**
-     * Imports all schema mappings from another registry.
-     * <p>
-     * The returned registry has independent lookup maps but shares the indexed
-     * schema models and compiled plans with {@code other}. A null source creates
-     * a registry with the default dialect.
+     * Adds source resources not shadowed by local aliases. Import only raw
+     * ObjectSchema models and boolean plans, never ref-bound compiled plans.
+     * All aliases of an object resource are imported together or skipped together.
      */
-    /**
-     * Creates an isolated registry with explicit external resources taking
-     * priority over existing registry entries, including directory mappings.
-     */
-    public static SchemaRegistry copyOf(SchemaRegistry other, Map<URI, JsonSchema> external) {
-        if (external == null || external.isEmpty()) return copyOf(other);
-        SchemaRegistry scoped = new SchemaRegistry(other == null
-                ? SchemaDialect.DRAFT_2020_12 : other.defaultDialect);
-        for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
-            scoped.index(entry.getKey(), entry.getValue());
+    void indexMissingRawResources(SchemaRegistry source) {
+        if (source == null || source == this) return;
+        java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
+                new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
+        for (Map.Entry<String, ObjectSchema> entry : source.byIdSchemas.entrySet()) {
+            Set<String> aliases = groups.get(entry.getValue());
+            if (aliases == null) {
+                aliases = new HashSet<String>();
+                groups.put(entry.getValue(), aliases);
+            }
+            aliases.add(entry.getKey());
         }
-        if (other != null) {
-            for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
-                if (!scoped.byIdSchemas.containsKey(entry.getKey())
-                        && !scoped.byIdPlans.containsKey(entry.getKey())) {
-                    scoped.byIdSchemas.put(entry.getKey(), entry.getValue());
+        for (Map.Entry<ObjectSchema, Set<String>> group : groups.entrySet()) {
+            boolean conflicting = false;
+            for (String key : group.getValue()) {
+                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key)) {
+                    conflicting = true;
+                    break;
                 }
             }
-            for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
-                if (!scoped.byIdSchemas.containsKey(entry.getKey())
-                        && !scoped.byIdPlans.containsKey(entry.getKey())) {
-                    scoped.byIdPlans.put(entry.getKey(), entry.getValue());
-                }
+            if (conflicting) continue;
+            for (String key : group.getValue()) {
+                byIdSchemas.putIfAbsent(key, group.getKey());
             }
         }
-        return scoped;
+        for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
+            if (entry.getValue().booleanSchema
+                    && !byIdSchemas.containsKey(entry.getKey())) {
+                byIdPlans.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
+    /**
+     * Imports all schema mappings from another registry.
+     * The returned registry has independent maps but shares indexed schema
+     * models and compiled plans. Null creates a default registry.
+     */
     public static SchemaRegistry copyOf(SchemaRegistry other) {
         if (other == null) return new SchemaRegistry();
 
