@@ -25,6 +25,7 @@ import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
+import org.sjf4j.mapping.JdbcRowMapper;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.ColumnMapRowMapper;
 import org.springframework.jdbc.core.DataClassRowMapper;
@@ -35,6 +36,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
@@ -352,8 +354,8 @@ public class JdbcFullBenchmark {
     @Benchmark
     public List<AccountBean> pojo_row_compiled(Data s) throws SQLException {
         List<AccountBean> out = new ArrayList<>();
-        int rowNum = 0;
-        while (s.resultSet.next()) out.add(s.compiled.beanRow(s.resultSet, rowNum++));
+        JdbcRowMapper<AccountBean> mapping = s.compiled.prepareBean(s.resultSet.getMetaData());
+        while (s.resultSet.next()) out.add(mapping.mapRow(s.resultSet));
         return out;
     }
 
@@ -378,8 +380,8 @@ public class JdbcFullBenchmark {
     @Benchmark
     public List<AccountRecord> record_row_compiled(Data s) throws SQLException {
         List<AccountRecord> out = new ArrayList<>();
-        int rowNum = 0;
-        while (s.resultSet.next()) out.add(s.compiled.recordRow(s.resultSet, rowNum++));
+        JdbcRowMapper<AccountRecord> mapping = s.compiled.prepareRecord(s.resultSet.getMetaData());
+        while (s.resultSet.next()) out.add(mapping.mapRow(s.resultSet));
         return out;
     }
 
@@ -421,8 +423,8 @@ public class JdbcFullBenchmark {
     @Benchmark
     public List<Map<String, Object>> map_row_compiled(Data s) throws SQLException {
         List<Map<String, Object>> out = new ArrayList<>();
-        int rowNum = 0;
-        while (s.resultSet.next()) out.add(s.compiled.mapRow(s.resultSet, rowNum++));
+        JdbcRowMapper<Map<String, Object>> mapping = s.compiled.prepareMap(s.resultSet.getMetaData());
+        while (s.resultSet.next()) out.add(mapping.mapRow(s.resultSet));
         return out;
     }
 
@@ -438,15 +440,15 @@ public class JdbcFullBenchmark {
     public interface AccountMapper {
         List<AccountBean> beans(ResultSet rs);
 
-        AccountBean beanRow(ResultSet rs, int rowNum);
+        JdbcRowMapper<AccountBean> prepareBean(ResultSetMetaData metadata);
 
         List<AccountRecord> records(ResultSet rs);
 
-        AccountRecord recordRow(ResultSet rs, int rowNum);
+        JdbcRowMapper<AccountRecord> prepareRecord(ResultSetMetaData metadata);
 
         List<Map<String, Object>> maps(ResultSet rs);
 
-        Map<String, Object> mapRow(ResultSet rs, int rowNum);
+        JdbcRowMapper<Map<String, Object>> prepareMap(ResultSetMetaData metadata);
     }
 
     public static final class AccountBean {
