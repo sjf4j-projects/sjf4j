@@ -6,6 +6,14 @@ SJF4J JSON Schema validation and roundtrip performance, using the Creek model an
 
 **JDK 25 · JMH · 3 forks · 5 × 400ms warmup/measurement · original JMH mean · µs/op (lower is better)**
 
+**Comparison dependencies** (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f)):
+
+| Component | Version | Role |
+| --- | --- | --- |
+| NetworkNT JSON Schema Validator | `2.0.5` | External JSON Schema validation comparison |
+| Jackson2 Databind | `2.22.3` | JsonNode validation input and roundtrip comparison |
+| JMH | `1.37` | Benchmark harness |
+
 ### Validation
 
 | Input | NetworkNT | Runtime | NetworkNT / Runtime | Compiled | Runtime / Compiled |
