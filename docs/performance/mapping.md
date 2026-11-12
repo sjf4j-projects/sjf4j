@@ -16,23 +16,144 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 ## JVM — Temurin JDK 25
 
-### Results — pending (suite 3)
+### Results — v1.5.1-SNAPSHOT (2026-11-12)
 
-**No complete suite-3 Full results have been published in this report yet.** Do not treat Smoke or Quick timings as a Full baseline.
+**Full JMH on Temurin 25.0.5 · 3 independent forks · Best 2 Mean · one runner · 1/10/100KB.**
+[GitHub Actions run #43163182761](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761) completed all **70 original suite-3 measurements**. The **68 retained measurements** from that run are reported below; the removed workload is omitted. The current benchmark suite is **version 4** (68 measurements), so this historical run should not be described as a newly executed suite-4 run. Raw JSON, execution metadata and fork-level results remain in the Actions artifacts.
 
-Previous **v1** experiments measured eight composite cases rather than the current isolated workload matrix: [2026-11-11 run #42955426116](https://github.com/sjf4j-projects/sjf4j/actions/runs/42955426116) and [run #42965730562](https://github.com/sjf4j-projects/sjf4j/actions/runs/42965730562). They used independent group runners with differing CPU models, so they are diagnostics, not a controlled baseline and not directly comparable to suite 3.
+**Environment:** Ubuntu 24.04 GitHub-hosted shared runner, AMD EPYC 9V74, 4 logical CPUs, no requested CPU affinity, Temurin 25.0.5, JMH 1.37, one measurement thread, 5 × 1s warmup and 5 × 1s measurement per fork. These results are **exploratory**, not a controlled hardware release baseline.
+
+**Comparison:** MapStruct 1.6.3 versus SJF4J CompiledMapper. Both implementations map preconstructed and equivalent inputs; serialization, fixture preparation and mapper instantiation are outside the timed methods. A ratio above **1×** means SJF4J is faster; below **1×** means MapStruct is faster.
+
+#### Order
+
+**Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
+
+| Case | Size | MapStruct | Compiled | MapStruct / Compiled |
+| --- | --- | ---: | ---: | ---: |
+| Classic Order (Arey-style) | — | 14.40 | 13.69 | 1.05× |
+| Extended Order (including products) | 1KB | 76.09 | 71.91 | 1.06× |
+| Extended Order (including products) | 10KB | 681.33 | 603.12 | 1.13× |
+| Extended Order (including products) | 100KB | 9,273.08 | 7,051.78 | 1.31× |
+
+**Allocation (B/op, lower is better).** Untrimmed JMH `gc.alloc.rate.norm`; ratios in this table compare **B/op**, not time.
+
+| Case | Size | MapStruct | Compiled | MapStruct / Compiled |
+| --- | --- | ---: | ---: | ---: |
+| Classic Order (Arey-style) | — | 120 | 120 | 1.00× |
+| Extended Order (including products) | 1KB | 408 | 408 | 1.00× |
+| Extended Order (including products) | 10KB | 3,576 | 3,576 | 1.00× |
+| Extended Order (including products) | 100KB | 35,184 | 35,184 | 1.00× |
+
+#### POJO
+
+**Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
+
+| Case | Size | MapStruct | Compiled | MapStruct / Compiled |
+| --- | --- | ---: | ---: | ---: |
+| Direct properties → record | — | 2.00 | 1.99 | 1.01× |
+| Flat / rename / compute | — | 13.99 | 14.30 | 0.98× |
+| Nested single-source → record | — | 3.96 | 3.55 | 1.12× |
+| Nested / multi-source / record | — | 4.04 | 4.04 | 1.00× |
+| Update / null ignore | — | 1.51 | 1.50 | 1.00× |
+
+**Allocation (B/op, lower is better).** Untrimmed JMH `gc.alloc.rate.norm`; ratios in this table compare **B/op**, not time.
+
+| Case | Size | MapStruct | Compiled | MapStruct / Compiled |
+| --- | --- | ---: | ---: | ---: |
+| Direct properties → record | — | 24 | 24 | 1.00× |
+| Flat / rename / compute | — | 88 | 88 | 1.00× |
+| Nested single-source → record | — | 48 | 48 | 1.00× |
+| Nested / multi-source / record | — | 56 | 56 | 1.00× |
+| Update / null ignore | — | 0 | 0 | — |
+
+#### Collection
+
+**Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
+
+| Case | Size | MapStruct | Compiled | MapStruct / Compiled |
+| --- | --- | ---: | ---: | ---: |
+| Item → ItemDto | — | 2.53 | 2.52 | 1.00× |
+| ArrayList → List<ItemDto> | 1KB | 69.88 | 55.85 | 1.25× |
+| ArrayList → List<ItemDto> | 10KB | 592.57 | 345.38 | 1.72× |
+| ArrayList → List<ItemDto> | 100KB | 7,121.19 | 4,927.68 | 1.45× |
+| LinkedList → List<ItemDto> | 1KB | 74.12 | 81.64 | 0.91× |
+| LinkedList → List<ItemDto> | 10KB | 723.11 | 762.59 | 0.95× |
+| LinkedList → List<ItemDto> | 100KB | 7,187.78 | 7,718.77 | 0.93× |
+| Map<String,Item> → Map<String,ItemDto> | 1KB | 136.06 | 135.88 | 1.00× |
+| Map<String,Item> → Map<String,ItemDto> | 10KB | 1,482.11 | 1,443.90 | 1.03× |
+| Map<String,Item> → Map<String,ItemDto> | 100KB | 13,697.11 | 13,900.34 | 0.99× |
+| Map with 1 large List | 1KB | 99.25 | 90.31 | 1.10× |
+| Map with 1 large List | 10KB | 889.66 | 629.20 | 1.41× |
+| Map with 1 large List | 100KB | 8,308.74 | 5,852.63 | 1.42× |
+| Map with 8 short Lists | 1KB | 171.04 | 164.76 | 1.04× |
+| Map with 8 short Lists | 10KB | 873.39 | 786.86 | 1.11× |
+| Map with 8 short Lists | 100KB | 8,517.35 | 7,347.35 | 1.16× |
+
+**Allocation (B/op, lower is better).** Untrimmed JMH `gc.alloc.rate.norm`; ratios in this table compare **B/op**, not time.
+
+| Case | Size | MapStruct | Compiled | MapStruct / Compiled |
+| --- | --- | ---: | ---: | ---: |
+| Item → ItemDto | — | 32 | 32 | 1.00× |
+| ArrayList → List<ItemDto> | 1KB | 368 | 368 | 1.00× |
+| ArrayList → List<ItemDto> | 10KB | 3,536 | 3,536 | 1.00× |
+| ArrayList → List<ItemDto> | 100KB | 35,144 | 35,144 | 1.00× |
+| LinkedList → List<ItemDto> | 1KB | 368 | 368 | 1.00× |
+| LinkedList → List<ItemDto> | 10KB | 3,536 | 3,536 | 1.00× |
+| LinkedList → List<ItemDto> | 100KB | 35,144 | 35,144 | 1.00× |
+| Map<String,Item> → Map<String,ItemDto> | 1KB | 792 | 792 | 1.00× |
+| Map<String,Item> → Map<String,ItemDto> | 10KB | 8,088 | 8,088 | 1.00× |
+| Map<String,Item> → Map<String,ItemDto> | 100KB | 78,472 | 78,472 | 1.00× |
+| Map with 1 large List | 1KB | 552 | 496 | 1.11× |
+| Map with 1 large List | 10KB | 3,720 | 3,664 | 1.02× |
+| Map with 1 large List | 100KB | 35,328 | 35,272 | 1.00× |
+| Map with 8 short Lists | 1KB | 1,136 | 1,136 | 1.00× |
+| Map with 8 short Lists | 10KB | 4,280 | 4,280 | 1.00× |
+| Map with 8 short Lists | 100KB | 35,888 | 35,888 | 1.00× |
+
+#### JSON
+
+**Latency (ns/op, lower is better).** MapStruct is compared separately with CAST and STRICT. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
+
+| Case | Size | MapStruct | CAST | STRICT | MapStruct / CAST | MapStruct / STRICT |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Map → POJO | 1KB | 5.83 | 5.84 | 6.07 | 1.00× | 0.96× |
+| Map → POJO | 10KB | 5.82 | 5.81 | 6.06 | 1.00× | 0.96× |
+| Map → POJO | 100KB | 5.82 | 5.84 | 6.07 | 1.00× | 0.96× |
+| JsonObject → POJO | 1KB | 6.91 | 6.91 | 8.95 | 1.00× | 0.77× |
+| JsonObject → POJO | 10KB | 6.88 | 6.89 | 8.95 | 1.00× | 0.77× |
+| JsonObject → POJO | 100KB | 6.92 | 6.90 | 8.95 | 1.00× | 0.77× |
+
+**Allocation (B/op, lower is better).** Untrimmed JMH `gc.alloc.rate.norm`; ratios in this table compare **B/op**, not time.
+
+| Case | Size | MapStruct | CAST | STRICT | MapStruct / CAST | MapStruct / STRICT |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Map → POJO | 1KB | 24 | 24 | 24 | 1.00× | 1.00× |
+| Map → POJO | 10KB | 24 | 24 | 24 | 1.00× | 1.00× |
+| Map → POJO | 100KB | 24 | 24 | 24 | 1.00× | 1.00× |
+| JsonObject → POJO | 1KB | 24 | 24 | 24 | 1.00× | 1.00× |
+| JsonObject → POJO | 10KB | 24 | 24 | 24 | 1.00× | 1.00× |
+| JsonObject → POJO | 100KB | 24 | 24 | 24 | 1.00× | 1.00× |
+
+#### Key findings
+
+- **POJO:** Direct, flat, nested and in-place update workloads are generally close to MapStruct. The single-source nested case reaches 1.12×; the update case is effectively equal. The update input uses an existing, non-null target.
+- **Collection:** Compiled is faster for ArrayList inputs (1.72× at 10KB, 1.45× at 100KB) and Map values containing Lists (up to 1.42× at 100KB). LinkedList inputs are slower (0.91–0.95×). The generated random-access indexed loop is one relevant implementation difference; these measurements do not isolate its contribution.
+- **JSON projection:** CAST is near parity with MapStruct's explicit Java casts. STRICT performs additional OBNT conversion and is not an equivalent-cost comparison (approximately 0.96× on Map and 0.77× on JsonObject). All sizes project only three fixed keys; extra unmapped fields do not imply full-document traversal.
+- **Allocation:** Most paired workloads allocate the same amount. Map containing one large List saves 56 B/op with Compiled. The 1KB eight-short-Lists MapStruct result has a fork spread above 15%; inspect raw fork data before drawing a fine-grained conclusion.
+
+**[Complete historical snapshot, fork-stability details and provenance](mapping/mapstruct-v151snapshot-2026-11-12.md)** · **[Original GitHub Actions run and artifacts](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761)**
 
 ### Workload matrix
 
-**16 independently observable cases**, across the same four groups, expanded to
-**70 exact JMH measurements**. The JSON group compares MapStruct with both
+**15 independently observable cases**, across the same four groups, expanded to
+**68 exact JMH measurements**. The JSON group compares MapStruct with both
 SJF4J `RawPolicy.CAST` and `RawPolicy.STRICT`. This supersedes the eight composite cases in
 the original v1 suite without dropping the classic and extended baselines.
 
 | Group | Case | What is measured | Size | JMH entries |
 | --- | --- | --- | --- | ---: |
 | Order | Classic | Arey-style nested address flattening, two products | Fixed | 2 |
-| Order | Header | Nested Bean + Map/JsonObject reads, without product conversion | Fixed | 2 |
 | Order | Extended | Header plus product list conversion | 1/10/100KB | 6 |
 | POJO | Direct | Two same-name POJO properties → record | Fixed | 2 |
 | POJO | Flat | Rename + ignore + compute, retained as composite comparison | Fixed | 2 |
@@ -53,8 +174,8 @@ List, while Map<String,List<Item>> processes **eight shorter Lists**, invoking
 conversion multiple times. A direct comparison cannot isolate map traversal
 overhead from list sizes and JIT inlining behavior. The new item, sequential
 list, Map-of-item and **one-value versus eight-value** Map cases isolate those
-costs. An Order header-only case
-separates property extraction from product collection conversion.
+costs.
+
 
 The isolated cases are **not additive**: Item + List ≠ Extended Order.
 JIT inlining, allocation and call-site profiles depend on context.
@@ -75,7 +196,7 @@ each benchmark method name.
 
 ## Baseline policy
 
-- **Suite version: 3** (isolated workloads plus JSON RawPolicy comparison). Changing the workload, fixture, semantics or case matrix requires a new suite version. Do not treat original v1 composite cases as equivalent to the current suite-3 cases.
+- **Current suite version: 4** (68 measurements; removed one two-implementation workload after suite 3). Changing the workload, fixture, semantics or case matrix requires a new suite version. The published 2026-11-12 run is a suite-3 historical run with the removed case excluded from its displayed tables; it is not a suite-4 rerun.
 
 - Only **MapStruct 1.6.3** and **SJF4J CompiledMapper** are measured. Each pair
   has its own JMH method, with the same prebuilt source and equivalent output.
@@ -125,7 +246,7 @@ MAPPING_CPU_SET='1-2' ./scripts/benchmark-mapping.sh quick collection
 | Measurement | 1 x 50ms | 2 x 200ms | 5 x 1s |
 | Threads | 1 | 1 | 1 |
 | Allocation profiler | No | Yes | Yes |
-| Measurements | All 70 | All 70 | All 70 |
+| Measurements | All 68 | All 68 | All 68 |
 
 The script validates **method and parameter completeness**, positive finite
 latency values, and for Quick/Full the full raw fork/iteration grid.
@@ -163,14 +284,14 @@ Pull requests run Smoke only.
 
 1. Publish a new complete Full run as a dated, versioned report under `docs/performance/mapping/`; do not overwrite an older report.
 2. Keep source SHA, suite version, precise JDK patch, exact CPU model, runner/affinity metadata and all original JMH JSON with the report or archived artifacts.
-3. Update the release index only after confirming all four groups and **70 exact entries** completed and setup equivalence checks passed. If any group failed, clearly identify the report as partial, not a complete baseline.
+3. Update the release index only after confirming all four groups and **68 exact entries** completed and setup equivalence checks passed. If any group failed, clearly identify the report as partial, not a complete baseline.
 4. Compare release candidates on the same controlled hardware and profile. Reject comparisons spanning different CPU models and do not infer regressions from unrepeatable virtualized noise.
 
 ## Release index
 
 | Release | Suite | Commit | Environment | Full report |
 | --- | --- | --- | --- | --- |
-| Pending | 3 (isolated + RawPolicy) | — | JDK 25, one runner per Full | — |
+| 1.5.1-SNAPSHOT (2026-11-12) | 3 (68 retained of 70) | [`160bb56`](https://github.com/sjf4j-projects/sjf4j/commit/160bb56ba40344315a7a639b4a606a3012ddf660) | Temurin 25.0.5 / EPYC 9V74 / shared runner | [Historical snapshot](mapping/mapstruct-v151snapshot-2026-11-12.md) |
 
 ## Reporting and ranking results
 
