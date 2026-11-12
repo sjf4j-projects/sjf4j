@@ -105,7 +105,7 @@ class JdbcMappingIntegrationTest {
                         + "import org.sjf4j.mapping.JdbcRowMapper;\n"
                         + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\n"
                         + "@CompiledJdbcMapper public interface Mapper {\n"
-                        + "  JdbcRowMapper<User> prepare(ResultSetMetaData metadata);\n"
+                        + "  JdbcRowMapper<User> userRows(ResultSetMetaData metadata);\n"
                         + "}\n",
                 "fixture/User.java",
                 "package fixture; public class User { public String userName; }"
@@ -114,6 +114,7 @@ class JdbcMappingIntegrationTest {
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Mapper_Impl.java");
         assertTrue(source.contains("CompiledSupport.resolve("), source);
+        assertTrue(source.contains("userRows("), source); // Detection is by signature, not name.
         assertTrue(source.contains("return rowSet -> {"), source);
         assertTrue(source.contains("getString(idx_userName)"), source);
         assertFalse(source.contains("ThreadLocal"), source);
