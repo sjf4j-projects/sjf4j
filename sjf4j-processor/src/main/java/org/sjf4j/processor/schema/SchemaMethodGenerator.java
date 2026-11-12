@@ -19,7 +19,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,10 +38,10 @@ final class SchemaMethodGenerator {
 
     SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated,
                           String registryDir, String registryBaseUri,
-                          Map<String, SchemaRegistry> registryCache, Map<URI, URI> externalSchemas) {
+                          Map<String, SchemaRegistry> registryCache) {
         this.context = context;
         this.resources = new SchemaResourceResolver(context, registryDir, registryBaseUri,
-                registryCache, externalSchemas);
+                registryCache);
         this.fallbacks = new SchemaFallbackEmitter(generated.names(), registryDir, registryBaseUri);
     }
 
