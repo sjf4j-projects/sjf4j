@@ -248,6 +248,14 @@ An Actions benchmark reuses that executable only when its SHA-256 checksum,
 Git SHA and GraalVM compiler stamp agree. A cached local build likewise
 requires matching Git SHA and GraalVM version.
 
+GitHub Actions artifacts are named by **workflow run ID**, not run attempt.
+This allows **Re-run failed jobs** to reuse the successful Native Image build
+and previously completed backend results. If a producer job itself reruns, its
+artifact is replaced with `upload-artifact@v4`'s `overwrite: true`; the final
+combined artifact has a separate prefix so it cannot be mistaken for a backend
+result. All required artifacts are retained for 30 days to match the Actions
+partial re-run window.
+
 **Runner comparison:** Native / Runtime / Compiled measurements within a
 backend share a runner in both modes. Serial also keeps all four backends
 on one runner; parallel may use different host CPU models or contention
