@@ -2,6 +2,7 @@ package org.sjf4j.mapping;
 
 import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Strings;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -32,10 +33,10 @@ public final class CompiledSupport {
                 index = _match(labels, name, 1);
             }
             if (index == 0 && policy == ColumnNamingPolicy.INSENSITIVE_SNAKE) {
-                index = _match(labels, _snakeCase(name), 1);
+                index = _match(labels, Strings.toSnakeCase(name), 1);
             }
             if (index == 0 && required) {
-                throw new BindingException("Missing JDBC column for property: " + name);
+                throw new BindingException("missing JDBC column for property: " + name);
             }
             indexes[i] = index;
         }
@@ -50,7 +51,7 @@ public final class CompiledSupport {
             boolean matches = mode == 0 ? label.equals(candidate) : label.equalsIgnoreCase(candidate);
             if (!matches) continue;
             if (found != 0) {
-                throw new BindingException("Ambiguous JDBC column label for '" + candidate
+                throw new BindingException("ambiguous JDBC column label for '" + candidate
                         + "' at positions " + found + " and " + (i + 1));
             }
             found = i + 1;
@@ -58,23 +59,5 @@ public final class CompiledSupport {
         return found;
     }
 
-    private static String _snakeCase(String name) {
-        StringBuilder out = new StringBuilder(name.length() + 4);
-        for (int i = 0; i < name.length(); i++) {
-            char current = name.charAt(i);
-            if (Character.isUpperCase(current)) {
-                boolean precededByWord = i > 0 && (Character.isLowerCase(name.charAt(i - 1))
-                        || Character.isDigit(name.charAt(i - 1)));
-                boolean endOfAcronym = i > 0 && i + 1 < name.length()
-                        && Character.isUpperCase(name.charAt(i - 1))
-                        && Character.isLowerCase(name.charAt(i + 1));
-                if (precededByWord || endOfAcronym) out.append('_');
-                out.append(Character.toLowerCase(current));
-            } else {
-                out.append(current);
-            }
-        }
-        return out.toString();
-    }
 
 }
