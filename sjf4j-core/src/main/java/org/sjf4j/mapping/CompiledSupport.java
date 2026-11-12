@@ -2,6 +2,7 @@ package org.sjf4j.mapping;
 
 import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.util.Strings;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -32,7 +33,7 @@ public final class CompiledSupport {
                 index = match(labels, name, 1);
             }
             if (index == 0 && policy == ColumnNamingPolicy.INSENSITIVE_SNAKE) {
-                index = match(labels, snakeCase(name), 1);
+                index = match(labels, Strings.toSnakeCase(name), 1);
             }
             if (index == 0 && required) {
                 throw new BindingException("Missing JDBC column for property: " + name);
@@ -58,23 +59,5 @@ public final class CompiledSupport {
         return found;
     }
 
-    private static String snakeCase(String name) {
-        StringBuilder out = new StringBuilder(name.length() + 4);
-        for (int i = 0; i < name.length(); i++) {
-            char current = name.charAt(i);
-            if (Character.isUpperCase(current)) {
-                boolean precededByWord = i > 0 && (Character.isLowerCase(name.charAt(i - 1))
-                        || Character.isDigit(name.charAt(i - 1)));
-                boolean endOfAcronym = i > 0 && i + 1 < name.length()
-                        && Character.isUpperCase(name.charAt(i - 1))
-                        && Character.isLowerCase(name.charAt(i + 1));
-                if (precededByWord || endOfAcronym) out.append('_');
-                out.append(Character.toLowerCase(current));
-            } else {
-                out.append(current);
-            }
-        }
-        return out.toString();
-    }
 
 }
