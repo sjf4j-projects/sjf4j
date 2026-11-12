@@ -19,6 +19,10 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
 import java.lang.annotation.Annotation;
+import java.net.URI;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -38,6 +42,27 @@ public final class CodegenProcessor extends AbstractProcessor {
     private JdbcMapperGenerator jdbcMapperGenerator;
     private BindingGenerator bindingGenerator;
     private SchemaGenerator schemaGenerator;
+
+    private final Map<String, Map<URI, URI>> externalSchemas;
+
+    /** Default entry point used by service-loaded annotation processing. */
+    public CodegenProcessor() {
+        this(Collections.emptyMap());
+    }
+
+    /**
+     * Programmatic javac entry point for explicitly located external schema resources.
+     * The outer key is the fully qualified @CompiledValidator interface name;
+     * each nested entry maps the logical retrieval URI to a classpath/file source URI.
+     * No resources are shared between interfaces or serialized into generated Java.
+     */
+    public CodegenProcessor(Map<String, Map<URI, URI>> externalSchemas) {
+        this.externalSchemas = new LinkedHashMap<String, Map<URI, URI>>();
+        for (Map.Entry<String, Map<URI, URI>> entry : externalSchemas.entrySet()) {
+            this.externalSchemas.put(entry.getKey(), Collections.unmodifiableMap(
+                    new LinkedHashMap<URI, URI>(entry.getValue())));
+        }
+    }
 
     /**
      * Lists both root and method-level annotations so invalid element kinds
@@ -62,7 +87,7 @@ public final class CodegenProcessor extends AbstractProcessor {
         this.mapperGenerator = new MapperGenerator(context);
         this.jdbcMapperGenerator = new JdbcMapperGenerator(context);
         this.bindingGenerator = new BindingGenerator(context);
-        this.schemaGenerator = new SchemaGenerator(context);
+        this.schemaGenerator = new SchemaGenerator(context, externalSchemas);
     }
 
     /** Processes each discovered interface; other processors may see the same annotations. */
