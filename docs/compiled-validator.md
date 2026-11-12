@@ -28,6 +28,38 @@ public interface ExternalValidator {
 }
 ```
 
+To mock or preload specific retrieval URIs, configure the binding itself using
+`@ValidJsonSchema.externalSchemas` (an inline JSON object) or
+`@ValidJsonSchema.externalSchemasRef` (a local JSON mapping file):
+
+```java
+@CompiledValidator
+interface MockedValidator {
+    @ValidJsonSchema(
+        ref = "classpath:/schemas/user.json",
+        externalSchemasRef = "classpath:/schemas/external.json")
+    boolean isValid(Object value);
+}
+```
+
+`external.json` follows the official JSON Schema Test Suite format:
+
+```json
+{
+  "https://example.org/common": {"type": "string"},
+  "https://example.org/always": true
+}
+```
+
+Each key must be an absolute retrieval URI without a fragment. Each value must
+be an object or boolean JSON Schema. Inline `externalSchemas` takes precedence
+over `externalSchemasRef`. Both are scoped to the individual schema binding, so
+different methods may use different documents under the same URI. These mappings
+are compiled without HTTP requests, override the directory registry on URI
+collisions, and can be reconstructed from the annotation for runtime fallback.
+The mapping file must remain available at runtime if fallback is enabled.
+Changes to external mapping files must be tracked as build inputs.
+
 The processor calls `SchemaRegistry.indexDir()` once per directory and retrieval-base combination in an annotation-processing run. The registry recursively indexes all `.json` files using `SchemaLoader.Local.load()`, preserving retrieval URIs and canonical `$id` aliases before resolving references. An indexed schema is not compiled into a `SchemaPlan` until needed. When local files represent remotely retrieved schemas **without `$id`**, set `registryBaseUri` to their logical retrieval directory, for example `registryBaseUri = "http://localhost:1234/"`. Files are still read from `registryDir`, but `draft2020-12/integer.json` is indexed as `http://localhost:1234/draft2020-12/integer.json`. No HTTP requests are made. The default `registryDir = ""` and `registryBaseUri = ""` preserve existing behavior. File-system directories are supported (absolute `file:` URI or working-directory-relative path ending in `/`); classpath directory enumeration and automatic HTTP fetching are deliberately unsupported. Runtime fallback must be able to read the **same directory** after deployment; fully direct validators do not need it at runtime. Gradle incremental builds must track this directory as an input.
 
 The method's **return type** determines its behavior:
@@ -42,7 +74,7 @@ Methods take one value argument and optionally a primitive `boolean strictFormat
 
 **Null semantics:** a Java `null` root value represents the JSON `null` instance and is validated against the schema, just like `SchemaPlan`: `false` and `{"type":"object"}` reject it, while `true` and `{"type":"null"}` accept it. Object-only keywords such as `required` do not apply to a null instance unless an enclosing schema requires the object type. An object property explicitly set to `null` is **present**, so it satisfies `required` even when its value schema rejects null.
 
-`@ValidJsonSchema` may appear on the method, value parameter, or value type (and ancestors); that is also the lookup precedence. Inline `value` takes precedence over `ref`. Resources support `classpath:/`, `file:/`, and resolvable JSON Pointer fragments. With neither `value` nor `ref`, conventional schema-file lookup applies.
+`@ValidJsonSchema` may appear on the method, value parameter, or value type (and ancestors); that is also the lookup precedence. Inline `value` takes precedence over `ref`; similarly, inline `externalSchemas` takes precedence over `externalSchemasRef`. Resources support `classpath:/`, `file:/`, and resolvable JSON Pointer fragments. With neither `value` nor `ref`, conventional schema-file lookup applies.
 
 ## Compilation and fallback
 
@@ -94,7 +126,7 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 
 ```
 
-`officialCompiledTest` runs the required validation cases for **Draft-07, Draft 2019-09 and Draft 2020-12** against the upstream unified `validation/tests/` directory. The test runner applies each group's `compatibility` and `tags` without modifying the official fixtures. Each compatible group produces an independent generated validator and classpath resources; the official test runner passes an **internal javac-only resource index** (`-Asjf4j.internal.schemaExternalIndex=...`) to the default `CodegenProcessor`. That index binds each interface's logical retrieval URIs to local file/classpath resources without introducing a public constructor or annotation property. Generated runtime fallbacks load the same resources. The generated test copies add an explicit `$schema` only for older drafts when missing from the original Schema. No public `@CompiledValidator` annotation attributes are added.
+`officialCompiledTest` runs the required validation cases for **Draft-07, Draft 2019-09 and Draft 2020-12** against the upstream unified `validation/tests/` directory. The test runner applies each group's `compatibility` and `tags` without modifying the official fixtures. Each compatible group produces an independent generated validator and classpath resources; the official test runner passes an **internal javac-only resource index** (`-Asjf4j.internal.schemaExternalIndex=...`) to the default `CodegenProcessor`. Generated fixtures use `@ValidJsonSchema.externalSchemasRef` with a per-group JSON mapping resource. No internal javac option is required. Runtime fallbacks load the same mapping resources. The generated test copies add an explicit `$schema` only for older drafts when missing from the original Schema. No public `@CompiledValidator` annotation attributes are added.
 
 Gradle/JUnit always run all required drafts and groups; use `OfficialCompiledMain` positional arguments for a filtered run. The generated validators default to `fallback=false`; only the **explicit, per-draft fallback groups** in `OfficialCompiledTest.fallbackGroups()` use `fallback=true`. These groups are audited against the unified suite, including cross-schema `unevaluated*` coverage, dynamic/recursive references and custom vocabularies. Each fallback group is also probed with `fallback=false`; a stale allowance fails the suite. Unexpected compile errors or assertion mismatches are never silently skipped. Every assertion, including JSON null, is recorded in `sjf4j-testbench/build/reports/officialCompiled/<draft>/all/`:
 
