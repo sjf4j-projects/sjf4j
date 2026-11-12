@@ -36,62 +36,119 @@ value, followed by **SJF4J Compiled** and the time ratio.
 
 #### Spring JDBC
 
-| Shape | Mode | Rows | Spring (µs/op) | Spring (B/op) | SJF4J Compiled (µs/op) | SJF4J (B/op) | Spring / SJF4J |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| POJO | List | 1 | 1.171 | 5,827 | 0.270 | 3,573 | 4.34× |
-| POJO | List | 10 | 10.756 | 28,019 | 1.013 | 5,528 | 10.61× |
-| POJO | List | 1,000 | 1,010.230 | 2,515,243 | 83.414 | 234,393 | 12.11× |
-| POJO | List | 100,000 | 115,613.982 | 260,871,878 | 11,996.656 | 22,883,538 | 9.64× |
-| POJO | Row | 1 | 1.190 | 5,827 | 0.198 | 3,579 | 6.00× |
-| POJO | Row | 10 | 10.386 | 28,019 | 1.373 | 5,523 | 7.56× |
-| POJO | Row | 1,000 | 1,003.745 | 2,515,244 | 131.289 | 234,393 | 7.65× |
-| POJO | Row | 100,000 | 119,922.245 | 251,271,871 | 16,146.615 | 22,883,677 | 7.43× |
-| Record | List | 1 | 9.114 | 15,131 | 0.283 | 3,573 | 32.23× |
-| Record | List | 10 | 85.306 | 121,033 | 1.040 | 5,528 | 82.00× |
-| Record | List | 1,000 | 8,764.423 | 11,819,755 | 84.267 | 234,393 | 104.01× |
-| Record | List | 100,000 | 956,047.100 | 1,181,675,806 | 13,465.234 | 22,883,596 | 71.00× |
-| Record | Row | 1 | 8.823 | 15,125 | 0.208 | 3,579 | 42.49× |
-| Record | Row | 10 | 85.382 | 121,033 | 1.405 | 5,528 | 60.78× |
-| Record | Row | 1,000 | 8,836.454 | 11,819,765 | 132.487 | 234,399 | 66.70× |
-| Record | Row | 100,000 | 917,069.365 | 1,181,675,282 | 18,223.220 | 22,883,720 | 50.32× |
-| Map | List | 1 | 0.401 | 4,669 | 0.243 | 4,123 | 1.65× |
-| Map | List | 10 | 3.397 | 16,045 | 1.861 | 10,536 | 1.83× |
-| Map | List | 1,000 | 308.258 | 1,315,275 | 182.553 | 763,274 | 1.69× |
-| Map | List | 100,000 | 43,028.466 | 131,272,620 | 26,281.873 | 76,072,467 | 1.64× |
-| Map | Row | 1 | 0.416 | 4,675 | 0.244 | 4,128 | 1.71× |
-| Map | Row | 10 | 3.592 | 16,045 | 1.835 | 10,525 | 1.96× |
-| Map | Row | 1,000 | 318.130 | 1,315,280 | 183.451 | 763,274 | 1.73× |
-| Map | Row | 100,000 | 46,735.088 | 131,272,643 | 27,383.922 | 76,072,473 | 1.71× |
+**Latency (µs/op, lower is better).** Best 2 Mean across 3 forks; ratio compares execution time.
+
+| Case | Rows | Spring | Compiled | Spring / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / List | 1 | 1.171 | 0.270 | 4.34× |
+| POJO / List | 10 | 10.756 | 1.013 | 10.61× |
+| POJO / List | 1,000 | 1,010.230 | 83.414 | 12.11× |
+| POJO / List | 100,000 | 115,613.982 | 11,996.656 | 9.64× |
+| POJO / Row | 1 | 1.190 | 0.198 | 6.00× |
+| POJO / Row | 10 | 10.386 | 1.373 | 7.56× |
+| POJO / Row | 1,000 | 1,003.745 | 131.289 | 7.65× |
+| POJO / Row | 100,000 | 119,922.245 | 16,146.615 | 7.43× |
+| Record / List | 1 | 9.114 | 0.283 | 32.23× |
+| Record / List | 10 | 85.306 | 1.040 | 82.00× |
+| Record / List | 1,000 | 8,764.423 | 84.267 | 104.01× |
+| Record / List | 100,000 | 956,047.100 | 13,465.234 | 71.00× |
+| Record / Row | 1 | 8.823 | 0.208 | 42.49× |
+| Record / Row | 10 | 85.382 | 1.405 | 60.78× |
+| Record / Row | 1,000 | 8,836.454 | 132.487 | 66.70× |
+| Record / Row | 100,000 | 917,069.365 | 18,223.220 | 50.32× |
+| Map / List | 1 | 0.401 | 0.243 | 1.65× |
+| Map / List | 10 | 3.397 | 1.861 | 1.83× |
+| Map / List | 1,000 | 308.258 | 182.553 | 1.69× |
+| Map / List | 100,000 | 43,028.466 | 26,281.873 | 1.64× |
+| Map / Row | 1 | 0.416 | 0.244 | 1.71× |
+| Map / Row | 10 | 3.592 | 1.835 | 1.96× |
+| Map / Row | 1,000 | 318.130 | 183.451 | 1.73× |
+| Map / Row | 100,000 | 46,735.088 | 27,383.922 | 1.71× |
+
+**Allocation (B/op, lower is better).** Untrimmed JMH allocation; ratio compares B/op, not speed.
+
+| Case | Rows | Spring | Compiled | Spring / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / List | 1 | 5,827 | 3,573 | 1.63× |
+| POJO / List | 10 | 28,019 | 5,528 | 5.07× |
+| POJO / List | 1,000 | 2,515,243 | 234,393 | 10.73× |
+| POJO / List | 100,000 | 260,871,878 | 22,883,538 | 11.40× |
+| POJO / Row | 1 | 5,827 | 3,579 | 1.63× |
+| POJO / Row | 10 | 28,019 | 5,523 | 5.07× |
+| POJO / Row | 1,000 | 2,515,244 | 234,393 | 10.73× |
+| POJO / Row | 100,000 | 251,271,871 | 22,883,677 | 10.98× |
+| Record / List | 1 | 15,131 | 3,573 | 4.23× |
+| Record / List | 10 | 121,033 | 5,528 | 21.89× |
+| Record / List | 1,000 | 11,819,755 | 234,393 | 50.43× |
+| Record / List | 100,000 | 1,181,675,806 | 22,883,596 | 51.64× |
+| Record / Row | 1 | 15,125 | 3,579 | 4.23× |
+| Record / Row | 10 | 121,033 | 5,528 | 21.89× |
+| Record / Row | 1,000 | 11,819,765 | 234,399 | 50.43× |
+| Record / Row | 100,000 | 1,181,675,282 | 22,883,720 | 51.64× |
+| Map / List | 1 | 4,669 | 4,123 | 1.13× |
+| Map / List | 10 | 16,045 | 10,536 | 1.52× |
+| Map / List | 1,000 | 1,315,275 | 763,274 | 1.72× |
+| Map / List | 100,000 | 131,272,620 | 76,072,467 | 1.73× |
+| Map / Row | 1 | 4,675 | 4,128 | 1.13× |
+| Map / Row | 10 | 16,045 | 10,525 | 1.52× |
+| Map / Row | 1,000 | 1,315,280 | 763,274 | 1.72× |
+| Map / Row | 100,000 | 131,272,643 | 76,072,473 | 1.73× |
 
 #### MyBatis
 
-| Shape | Mapping | Rows | MyBatis (µs/op) | MyBatis (B/op) | SJF4J Compiled (µs/op) | SJF4J (B/op) | MyBatis / SJF4J |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| POJO | Auto / List | 1 | 2.978 | 11,317 | 0.270 | 3,573 | 11.03× |
-| POJO | Explicit / List | 1 | 1.776 | 7,565 | 0.270 | 3,573 | 6.58× |
-| POJO | Cursor / List | 1 | 3.102 | 11,213 | 0.270 | 3,573 | 11.49× |
-| POJO | Auto / List | 10 | 7.490 | 20,232 | 1.013 | 5,528 | 7.39× |
-| POJO | Explicit / List | 10 | 8.573 | 22,080 | 1.013 | 5,528 | 8.46× |
-| POJO | Cursor / List | 10 | 7.624 | 19,965 | 1.013 | 5,528 | 7.52× |
-| POJO | Auto / List | 1,000 | 497.950 | 1,042,178 | 83.414 | 234,393 | 5.97× |
-| POJO | Explicit / List | 1,000 | 721.718 | 1,661,914 | 83.414 | 234,393 | 8.65× |
-| POJO | Cursor / List | 1,000 | 498.337 | 1,042,148 | 83.414 | 234,393 | 5.97× |
-| POJO | Auto / List | 100,000 | 57,970.295 | 108,081,576 | 11,996.656 | 22,883,538 | 4.83× |
-| POJO | Explicit / List | 100,000 | 83,196.607 | 170,474,949 | 11,996.656 | 22,883,538 | 6.93× |
-| POJO | Cursor / List | 100,000 | 56,766.796 | 108,081,007 | 11,996.656 | 22,883,538 | 4.73× |
-| Map | Explicit / List | 1 | 1.613 | 7,488 | 0.243 | 4,123 | 6.64× |
-| Map | Cursor / List | 1 | 1.606 | 7,443 | 0.243 | 4,123 | 6.62× |
-| Map | Explicit / List | 10 | 7.220 | 24,779 | 1.861 | 10,536 | 3.88× |
-| Map | Cursor / List | 10 | 7.409 | 24,675 | 1.861 | 10,536 | 3.98× |
-| Map | Explicit / List | 1,000 | 609.343 | 1,997,958 | 182.553 | 763,274 | 3.34× |
-| Map | Cursor / List | 1,000 | 641.080 | 1,997,854 | 182.553 | 763,274 | 3.51× |
-| Map | Explicit / List | 100,000 | 70,233.496 | 204,076,241 | 26,281.873 | 76,072,467 | 2.67× |
-| Map | Cursor / List | 100,000 | 76,776.908 | 204,075,753 | 26,281.873 | 76,072,467 | 2.92× |
+**Latency (µs/op, lower is better).** Best 2 Mean across 3 forks; ratio compares execution time.
+
+| Case | Rows | MyBatis | Compiled | MyBatis / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / Auto / List | 1 | 2.978 | 0.270 | 11.03× |
+| POJO / Explicit / List | 1 | 1.776 | 0.270 | 6.58× |
+| POJO / Cursor / List | 1 | 3.102 | 0.270 | 11.49× |
+| POJO / Auto / List | 10 | 7.490 | 1.013 | 7.39× |
+| POJO / Explicit / List | 10 | 8.573 | 1.013 | 8.46× |
+| POJO / Cursor / List | 10 | 7.624 | 1.013 | 7.52× |
+| POJO / Auto / List | 1,000 | 497.950 | 83.414 | 5.97× |
+| POJO / Explicit / List | 1,000 | 721.718 | 83.414 | 8.65× |
+| POJO / Cursor / List | 1,000 | 498.337 | 83.414 | 5.97× |
+| POJO / Auto / List | 100,000 | 57,970.295 | 11,996.656 | 4.83× |
+| POJO / Explicit / List | 100,000 | 83,196.607 | 11,996.656 | 6.93× |
+| POJO / Cursor / List | 100,000 | 56,766.796 | 11,996.656 | 4.73× |
+| Map / Explicit / List | 1 | 1.613 | 0.243 | 6.64× |
+| Map / Cursor / List | 1 | 1.606 | 0.243 | 6.62× |
+| Map / Explicit / List | 10 | 7.220 | 1.861 | 3.88× |
+| Map / Cursor / List | 10 | 7.409 | 1.861 | 3.98× |
+| Map / Explicit / List | 1,000 | 609.343 | 182.553 | 3.34× |
+| Map / Cursor / List | 1,000 | 641.080 | 182.553 | 3.51× |
+| Map / Explicit / List | 100,000 | 70,233.496 | 26,281.873 | 2.67× |
+| Map / Cursor / List | 100,000 | 76,776.908 | 26,281.873 | 2.92× |
+
+**Allocation (B/op, lower is better).** Untrimmed JMH allocation; ratio compares B/op, not speed.
+
+| Case | Rows | MyBatis | Compiled | MyBatis / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / Auto / List | 1 | 11,317 | 3,573 | 3.17× |
+| POJO / Explicit / List | 1 | 7,565 | 3,573 | 2.12× |
+| POJO / Cursor / List | 1 | 11,213 | 3,573 | 3.14× |
+| POJO / Auto / List | 10 | 20,232 | 5,528 | 3.66× |
+| POJO / Explicit / List | 10 | 22,080 | 5,528 | 3.99× |
+| POJO / Cursor / List | 10 | 19,965 | 5,528 | 3.61× |
+| POJO / Auto / List | 1,000 | 1,042,178 | 234,393 | 4.45× |
+| POJO / Explicit / List | 1,000 | 1,661,914 | 234,393 | 7.09× |
+| POJO / Cursor / List | 1,000 | 1,042,148 | 234,393 | 4.45× |
+| POJO / Auto / List | 100,000 | 108,081,576 | 22,883,538 | 4.72× |
+| POJO / Explicit / List | 100,000 | 170,474,949 | 22,883,538 | 7.45× |
+| POJO / Cursor / List | 100,000 | 108,081,007 | 22,883,538 | 4.72× |
+| Map / Explicit / List | 1 | 7,488 | 4,123 | 1.82× |
+| Map / Cursor / List | 1 | 7,443 | 4,123 | 1.81× |
+| Map / Explicit / List | 10 | 24,779 | 10,536 | 2.35× |
+| Map / Cursor / List | 10 | 24,675 | 10,536 | 2.34× |
+| Map / Explicit / List | 1,000 | 1,997,958 | 763,274 | 2.62× |
+| Map / Cursor / List | 1,000 | 1,997,854 | 763,274 | 2.62× |
+| Map / Explicit / List | 100,000 | 204,076,241 | 76,072,467 | 2.68× |
+| Map / Cursor / List | 100,000 | 204,075,753 | 76,072,467 | 2.68× |
 
 MyBatis has no equivalent direct `mapRow(ResultSet, int)` API in this suite.
-Its Auto and Explicit paths map Lists; Cursor materializes a streaming cursor
-into a List. Therefore, only POJO and Map List cases appear in this table.
-The Spring table includes List and Row for POJO, Record and Map.
+Auto and Explicit map Lists; Cursor maps a streaming cursor into a List.
+Only POJO and Map List results appear in this comparison.
 
 #### Key findings
 
@@ -261,9 +318,10 @@ Spring / Compiled or MyBatis / Compiled on unrounded scores; above 1x means
 Compiled has lower latency/allocation. Do not compute a MyBatis / Compiled
 Row ratio: there is no equivalent direct MyBatis RowMapper.
 
-The reporter creates a Spring comparison table and a MyBatis comparison
-table, each including absolute latency, allocation and time ratios for the
-relevant shapes and modes, followed by fork-spread diagnostics. Flag cases
+The reporter groups Spring and MyBatis separately, with **Latency** and
+**Allocation** tables for each competitor. Each table follows the same
+Case / Rows / competitor / Compiled / competitor / Compiled convention as
+binding.md and mapping.md, followed by fork-spread diagnostics. Flag cases
 where slowest/fastest fork means exceed 1.15x and investigate instability.
 
 ## Interpreting changes
