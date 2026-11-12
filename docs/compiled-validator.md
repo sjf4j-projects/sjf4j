@@ -121,10 +121,13 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 
 # Use the cached fixtures without downloading:
 ./gradlew :sjf4j-testbench:officialRuntimeTest
+./gradlew :sjf4j-testbench:officialRuntimeOptionalTest
 ./gradlew :sjf4j-testbench:officialCompiledTest
 ./gradlew :sjf4j-testbench:officialAnnotationTest
 
 ```
+
+`officialRuntimeOptionalTest` is a **non-blocking diagnostic suite** for all three drafts. It runs the `format-assertion`-tagged groups from `validation/tests/*.json` with strict format checking, plus every compatible group in `validation/tests/optional/**/*.json` (including bignum, regex, content, cross-draft and other optional cases). Optional files retain their own `tags` semantics. Mismatches and evaluation errors are counted and printed but do not fail `check` or the Java CI build. The per-draft counts and full per-file failure details are saved to `sjf4j-testbench/build/reports/officialRuntimeOptional/summary.md`; CI also publishes the totals in its run summary and uploads the complete report as an artifact. Required Runtime, Compiled and Annotation suites remain strict.
 
 `officialCompiledTest` runs the required validation cases for **Draft-07, Draft 2019-09 and Draft 2020-12** against the upstream unified `validation/tests/` directory. The test runner applies each group's `compatibility` and `tags` without modifying the official fixtures. Each compatible group produces an independent generated validator and classpath resources. Generated fixtures use `@ValidJsonSchema.externalSchemasRef` with a per-group JSON mapping resource, without an internal javac option. Runtime fallbacks load the same mapping resources. The generated test copies add an explicit `$schema` only for older drafts when missing from the original Schema. No public `@CompiledValidator` annotation attributes are added.
 
