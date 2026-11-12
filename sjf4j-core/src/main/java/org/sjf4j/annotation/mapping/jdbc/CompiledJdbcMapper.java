@@ -32,6 +32,9 @@ import java.lang.annotation.Target;
  * {@code PRESENT_ONLY} leaves absent mutable properties at their initialized value. For map results, duplicate result
  * columns overwrite the earlier value with the last value.</p>
  *
+ * <p>Column names are matched using {@link JdbcMappingOptions#columnNaming()}, which defaults to
+ * case-insensitive matching with camelCase-to-snake_case support. Explicit mappings have precedence.</p>
+ *
  * <p>POJO properties use matching result columns by default; {@link Mapping#source()} supplies a flat
  * result column alias and target paths must declare one explicitly. JSONPath/JSON Pointer property-name
  * target paths such as {@code $.profile.name} and {@code /profile/name} are also supported for mutable
