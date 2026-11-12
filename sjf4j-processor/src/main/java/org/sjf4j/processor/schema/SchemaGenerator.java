@@ -57,7 +57,7 @@ public final class SchemaGenerator {
         } catch (IOException e) {
             throw new IllegalArgumentException("Cannot read schema resource index: " + index, e);
         }
-        if (lines.isEmpty() || !"class\\turi\\tsource".equals(lines.get(0))) {
+        if (lines.isEmpty() || !"class\turi\tsource".equals(lines.get(0))) {
             throw new IllegalArgumentException("Invalid schema resource index: " + index);
         }
 
