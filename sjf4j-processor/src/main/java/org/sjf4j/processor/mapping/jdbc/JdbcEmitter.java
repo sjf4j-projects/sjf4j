@@ -83,6 +83,15 @@ public final class JdbcEmitter {
         out.line("try {");
         out.indent();
 
+        // Empty single-target results must return without resolving columns.
+        if (plan.single()) {
+            out.line("if (!" + resultSet + ".next()) {");
+            out.indent();
+            out.line("return null;");
+            out.dedent();
+            out.line("}");
+        }
+
         String metadata = null;
         String columns = null;
         String columnCount = null;
@@ -311,17 +320,6 @@ public final class JdbcEmitter {
             String columnCount,
             String labels,
             String consumed) {
-
-        out.line(
-                "if (!" +
-                        resultSet +
-                        ".next()) {");
-
-        out.indent();
-        out.line("return null;");
-        out.dedent();
-
-        out.line("}");
 
         String row =
                 emitRow(
