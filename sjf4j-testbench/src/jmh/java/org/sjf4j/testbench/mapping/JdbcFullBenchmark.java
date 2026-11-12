@@ -91,7 +91,7 @@ public class JdbcFullBenchmark {
 
         @Setup(Level.Trial)
         public void setup() throws SQLException {
-            connection = DriverManager.getConnection("jdbc:h2:mem:jdbcBenchmark");
+            connection = DriverManager.getConnection("jdbc:h2:mem:jdbcBenchmark_" + java.util.UUID.randomUUID());
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute("create table accounts (id bigint primary key, user_name varchar(80), "
                         + "email varchar(120), phone varchar(32), age integer, active boolean, "
@@ -143,7 +143,8 @@ public class JdbcFullBenchmark {
                     "balance", "loginCount", "score", "city", "createdAt", "updatedAt"};
             Class<?>[] types = {long.class, String.class, String.class, String.class,
                     int.class, boolean.class, BigDecimal.class, int.class, double.class,
-                    String.class, LocalDateTime.class, LocalDateTime.class};
+                    String.class, camelNames ? LocalDateTime.class : java.sql.Timestamp.class,
+                    camelNames ? LocalDateTime.class : java.sql.Timestamp.class};
             List<ResultMapping> mappings = new ArrayList<>();
             for (int i = 0; i < columns.length; i++) {
                 mappings.add(new ResultMapping.Builder(mybatisConfig,
@@ -296,10 +297,16 @@ public class JdbcFullBenchmark {
                     || ((Number) m.get("login_count")).intValue() != i % 500
                     || ((Number) m.get("score")).doubleValue() != i * 0.25
                     || !("city-" + i % 50).equals(m.get("city"))
-                    || !EPOCH.plusSeconds(i).equals(m.get("created_at"))
-                    || !EPOCH.plusSeconds(i + 3600L).equals(m.get("updated_at"))) {
+                    || !EPOCH.plusSeconds(i).equals(asLocalDateTime(m.get("created_at")))
+                    || !EPOCH.plusSeconds(i + 3600L).equals(asLocalDateTime(m.get("updated_at")))) {
                 throw new AssertionError("Map mismatch at row " + i + ": " + m);
             }
+        }
+
+        private LocalDateTime asLocalDateTime(Object value) {
+            if (value instanceof java.sql.Timestamp) return ((java.sql.Timestamp) value).toLocalDateTime();
+            if (value instanceof LocalDateTime) return (LocalDateTime) value;
+            throw new AssertionError("Unexpected JDBC timestamp type: " + value);
         }
 
         private void requireSize(List<?> result) {
