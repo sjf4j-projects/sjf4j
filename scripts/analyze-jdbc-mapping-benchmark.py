@@ -124,7 +124,9 @@ def render(found):
         "a List, not a direct RowMapper. No MyBatis Record or Row case.", "",
     ))
     mybatis_cases = [
-        (group.upper() + " / " + LABELS[impl].replace("MyBatis ", "")
+        (group.upper() + " / " + {"mybatisAuto": "Auto",
+                                  "mybatisExplicit": "Explicit",
+                                  "mybatisCursor": "Cursor"}[impl]
          + " / List", group, "list", impl, rows)
         for group in ("pojo", "map")
         for rows in SIZES
