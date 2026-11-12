@@ -65,14 +65,14 @@ class ExternalSchemasAnnotationTest {
 
     @Test
     void validatesMappingShapeAndUris() {
-        assertThrows(IllegalArgumentException.class, () -> ExternalSchemas.parse("[]"));
+        assertThrows(IllegalArgumentException.class, () -> SchemaLoader.parseExternalSchemas("[]"));
         assertThrows(IllegalArgumentException.class,
-                () -> ExternalSchemas.parse("{\"relative/path\":true}"));
+                () -> SchemaLoader.parseExternalSchemas("{\"relative/path\":true}"));
         assertThrows(IllegalArgumentException.class,
-                () -> ExternalSchemas.parse("{\"https://example.test/resource#/$defs/a\":true}"));
+                () -> SchemaLoader.parseExternalSchemas("{\"https://example.test/resource#/$defs/a\":true}"));
         assertThrows(IllegalArgumentException.class,
-                () -> ExternalSchemas.parse("{\"https://example.test/resource\":null}"));
-        assertEquals(2, ExternalSchemas.parse(
+                () -> SchemaLoader.parseExternalSchemas("{\"https://example.test/resource\":null}"));
+        assertEquals(2, SchemaLoader.parseExternalSchemas(
                 "{\"https://example.test/a\":true,\"https://example.test/b\":false}").size());
     }
 }
