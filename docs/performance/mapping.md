@@ -143,7 +143,7 @@ python3 scripts/analyze-mapping-benchmark.py \
 
 ## GitHub Actions Full (exploratory)
 
-[Mapping Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)(../../.github/workflows/mapping-full-benchmark.yml)
+The manual [Mapping Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)
 workflow builds one JMH jar, then runs all groups on **one runner** and uploads
 one raw artifact. A separate non-benchmark job aggregates the four JSON files.
 The Full workflow accepts `runner_label` (default: `ubuntu-24.04`), an
