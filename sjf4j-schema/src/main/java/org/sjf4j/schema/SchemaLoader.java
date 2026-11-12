@@ -45,9 +45,8 @@ public interface SchemaLoader {
     /** Discards the document fragment without changing the retrieval URI's base. */
     static URI documentUri(URI uri) {
         Asserts.notNull(uri, "uri");
-        String text = uri.toString();
-        int fragment = text.indexOf('#');
-        return fragment < 0 ? uri : URI.create(text.substring(0, fragment));
+        return uri.getRawFragment() == null ? uri
+                : URI.create(SchemaUtil.stripFragment(uri.toString()));
     }
 
     /** Parses an already opened schema document and records its retrieval URI. */
