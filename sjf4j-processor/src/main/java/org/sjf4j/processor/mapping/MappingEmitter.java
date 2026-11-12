@@ -217,13 +217,13 @@ public final class MappingEmitter {
                 continue;
             }
 
-            String value =
-                    emitValue(
-                            out,
-                            names,
-                            plan,
-                            assignment.value(),
-                            generated);
+            // Direct, single-use property reads can be passed straight to
+            // their destination without generating a redundant sourceValue local.
+            // Keep locals when a nullable value is tested and written (IGNORE).
+            String value = inlineDirectPropertyRead(plan, assignment);
+            if (value == null) {
+                value = emitValue(out, names, plan, assignment.value(), generated);
+            }
 
             emitAssignment(
                     out,
@@ -1024,6 +1024,53 @@ public final class MappingEmitter {
                     readExpression(source, step.segment(), step.access()) + ";");
         }
         out.endBlock();
+    }
+
+    /**
+     * Avoid an intermediate local for a direct, one-step POJO property read
+     * that is used exactly once in a property assignment. Unlike null-ignore
+     * reference updates, these writes do not need to test the value first.
+     *
+     * Only single-source roots qualify: emitNullRootGuard has already proved
+     * their root non-null. Constructor arguments and nested paths retain the
+     * existing evaluation order and null propagation.
+     */
+    private String inlineDirectPropertyRead(MappingPlan plan, MappingCompiler.Assignment assignment) {
+        if (assignment.target().kind() != MappingCompiler.Target.Kind.PROPERTY ||
+                !rootKnownNonNull(plan)) {
+            return null;
+        }
+
+        MappingCompiler.Value value = assignment.value();
+        if (value.kind() != MappingCompiler.Value.Kind.READ ||
+                value.conversion() == null ||
+                value.conversion().kind() != ConverterResolver.Conversion.Kind.DIRECT) {
+            return null;
+        }
+
+        boolean primitiveDirect = isDirectPrimitiveRead(plan, value, false);
+        if (plan.update()) {
+            // Primitive reads cannot be null and need no IGNORE guard.
+            if (!primitiveDirect) return null;
+        } else {
+            // Create mappings may explicitly request null-ignore behavior.
+            if ("IGNORE".equals(option(plan, "nulls", "SET_TO_NULL"))) return null;
+            if (assignment.target().type().getKind().isPrimitive() && !primitiveDirect) {
+                return null;
+            }
+        }
+
+        MappingCompiler.Read read = value.read();
+        if (read.rootValue() || read.steps().size() != 1) return null;
+
+        MappingCompiler.ReadStep step = read.steps().get(0);
+        if (!(step.segment() instanceof PathSegment.Name) ||
+                step.access().kind() != NodeAccess.Kind.PROPERTY) {
+            return null;
+        }
+
+        return readExpression(read.root().getSimpleName().toString(),
+                step.segment(), step.access());
     }
 
     private String emitValue(
