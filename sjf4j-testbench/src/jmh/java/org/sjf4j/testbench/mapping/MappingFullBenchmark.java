@@ -126,6 +126,12 @@ public class MappingFullBenchmark {
             check(Objects.equals(mapstruct.flatDirect(flat), compiled.flatDirect(flat)), "direct POJO");
             check(Objects.equals(mapstruct.profile(profile), compiled.profile(profile)), "single-source nested POJO");
             check(Objects.equals(mapstruct.nested(profile, account), compiled.nested(profile, account)), "nested record");
+            check(Objects.equals(mapstruct.nested(profile, null), compiled.nested(profile, null)),
+                    "nested record with absent account");
+            check(Objects.equals(mapstruct.nested(null, account), compiled.nested(null, account)),
+                    "nested record with absent profile");
+            check(Objects.equals(mapstruct.nested(null, null), compiled.nested(null, null)),
+                    "nested record with both sources absent");
             mapstructTarget = new UpdateTarget("preserve", "old", 1);
             compiledTarget = new UpdateTarget("preserve", "old", 1);
             mapstruct.update(update, mapstructTarget);
