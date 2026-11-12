@@ -12,80 +12,7 @@
 ![Stars](https://img.shields.io/github/stars/sjf4j-projects/sjf4j?style=social)
 
 
-SJF4J is foremost **a simple JSON facade for Java**,
-evolving into **a unified structural processing layer built on JSON semantics**.
-
-It operates directly on native Java objects, with multiple serialization backends and high-performance compile-time code generation.
-
-## Quickstart
-
-**Add SJF4J to your project (JDK 8+):**
-```gradle
-implementation("org.sjf4j:sjf4j:{version}")     // All-in-one
-```
-
-**Define your Java objects:**
-```java
-public class User {
-    public String name;
-    public int age;
-    public Address address;
-}
-
-public class Address {
-    public String city;
-}
-```
-
-**Work directly with Java objects through flexible, ready-to-use APIs:**
-```java
-Sjf4j sjf4j = new Sjf4j();
-
-// Bind JSON to a POJO
-User user = sjf4j.fromJson(json, User.class);
-
-// Navigate and modify using JSONPath
-JsonPath.parse("$.address.city").put(user, "Shanghai");
-
-// Validate with JSON Schema
-JsonSchema.fromJson(schemaJson).createPlan().validate(user);
-
-// Apply JSON Patch
-JsonPatch.fromJson(patchJson).apply(user);
-
-// Transform to another POJO
-AnotherUser another = sjf4j.convert(user, AnotherUser.class);
-
-// Serialize to JSON
-String output = sjf4j.toJsonString(another);
-```
-
-**Accelerate with compile-time code generation, minimizing reflection, dynamic dispatch, and runtime interpretation:**
-```java
-@CompiledBinder
-interface UserBinder {
-    @Read User read(String json);
-    @Write String write(User user);
-}
-
-UserBinder binder = CompiledInstances.create(UserBinder.class);
-User user = binder.read(json);
-```
-
-**Core capabilities:**
-
-| Capability | Runtime | Compile-time |
-| --- | --- | --- |
-| Structural Operations | `Nodes` | — |
-| Data Binding | `Sjf4j.from/toXxx()` | `@CompiledBinder` |
-| JSONPath Navigation | `JsonPath` | `@CompiledNavigator` |
-| JSON Schema Validation | `JsonSchema` | `@CompiledValidator` |
-| Object Mapping | `Sjf4j.convert()` | `@CompiledMapper` |
-| JDBC Mapping | — | `@CompiledJdbcMapper` |
-| JSON Patch & Merge Patch | `JsonPatch` | — |
-
-
-## Why SJF4J?
+SJF4J is a **JSON-oriented programming toolkit for Java**, bringing binding, navigation, validation, mapping, and patching together.
 
 - **JSON Semantics, Native Java Objects**   
   Apply [JSONPath](https://www.rfc-editor.org/info/rfc9535/), [JSON Pointer](https://www.rfc-editor.org/info/rfc6901/),
@@ -101,6 +28,61 @@ User user = binder.read(json);
 
 - **Runtime Flexibility, Compiled Speed**  
   Enjoy flexible runtime APIs and highly optimized compile-time code generation.
+
+
+## Quickstart
+
+**Add SJF4J to your project (JDK 8+):**
+
+```gradle
+implementation("org.sjf4j:sjf4j:{version}")     // All-in-one
+```
+
+**Start with ordinary Java classes:**
+
+```java
+public class User {
+    public String name;
+    public int age;
+    public Address address;
+}
+
+public class Address {
+    public String city;
+}
+```
+
+**Work directly with these objects using JSON-powered APIs:**
+
+```java
+Sjf4j sjf4j = new Sjf4j();
+String json = "{\"name\":\"Alice\",\"age\":18,\"address\":{\"city\":\"Beijing\"}}";
+
+// JSON → POJO
+User user = sjf4j.fromJson(json, User.class);
+
+// Modify the POJO directly using JSONPath
+JsonPath.parse("$.address.city").put(user, "Shanghai");
+
+// POJO → JSON
+String output = sjf4j.toJsonString(user);
+```
+
+No special base classes, annotations, or intermediate JSON trees are required.
+
+## Core Capabilities
+
+| Capability | Runtime | Compile-time |
+| --- | --- | --- |
+| Structural Operations | `Nodes` | — |
+| Data Binding | `Sjf4j.from/toXxx()` | `@CompiledBinder` |
+| JSONPath Navigation | `JsonPath` | `@CompiledNavigator` |
+| JSON Schema Validation | `JsonSchema` | `@CompiledValidator` |
+| Object Mapping | `Sjf4j.convert()` | `@CompiledMapper` |
+| JDBC Mapping | — | `@CompiledJdbcMapper` |
+| JSON Patch & Merge Patch | `JsonPatch` | — |
+
+Learn more about [runtime features](#explore-features) and [compiled APIs](#enjoy-compiled-apis).
 
 
 ## Explore Features
