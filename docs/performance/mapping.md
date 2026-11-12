@@ -154,7 +154,7 @@ the original v1 suite without dropping the classic and extended baselines.
 | Group | Case | What is measured | Size | JMH entries |
 | --- | --- | --- | --- | ---: |
 | Order | Classic | Arey-style nested address flattening, two products | Fixed | 2 |
-| Order | Extended | Header plus product list conversion | 1/10/100KB | 6 |
+| Order | Extended | Nested Bean/Map/JsonObject property extraction plus product list conversion | 1/10/100KB | 6 |
 | POJO | Direct | Two same-name POJO properties → record | Fixed | 2 |
 | POJO | Flat | Rename + ignore + compute, retained as composite comparison | Fixed | 2 |
 | POJO | Nested Profile | Single-source POJO with nested record conversion | Fixed | 2 |
