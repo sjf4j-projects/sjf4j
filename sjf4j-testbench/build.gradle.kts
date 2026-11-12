@@ -253,6 +253,35 @@ val officialRuntimeTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.test)
 }
 
+// Optional validation is diagnostic only: it covers format-assertion-tagged
+// root groups and every file in validation/tests/optional/, but cannot
+// make an otherwise successful required build fail.
+val officialRuntimeOptionalTest by tasks.registering(Test::class) {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Reports optional JSON Schema validation results without gating the build."
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    include("**/OfficialRuntimeOptionalTest.class")
+    systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
+    val reportDir = layout.buildDirectory.dir("reports/officialRuntimeOptional")
+    systemProperty("sjf4j.schema.officialOptionalReportDir", reportDir.get().asFile.absolutePath)
+    testLogging {
+        showStandardStreams = true
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    ignoreFailures = true
+    inputs.dir(officialSchemaSuiteDir)
+    outputs.upToDateWhen { false }
+    onlyIf("official optional JSON Schema suite is cached") {
+        cachedOfficialSuiteExists() &&
+            officialSchemaSuiteDir.get().asFile.resolve("validation/tests/optional").isDirectory
+    }
+    shouldRunAfter(tasks.test)
+}
+officialRuntimeOptionalTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
+
 val cachedOfficialAnnotationsExist = {
     cachedOfficialSuiteExists() &&
         officialSchemaSuiteDir.get().asFile.resolve("annotations/tests/meta-data.json").isFile
@@ -491,7 +520,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
 // First checkout with no cached suite simply SKIPs these tasks. The release gate
 // below always refreshes, so no publication can silently omit the official suite.
 tasks.named("check") {
-    dependsOn(officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
+    dependsOn(officialRuntimeTest, officialRuntimeOptionalTest, officialCompiledTest, officialAnnotationTest)
 }
 
 // Release gate covers runtime and the full mandatory compiled suites of all three drafts.
