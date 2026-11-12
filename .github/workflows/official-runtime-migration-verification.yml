@@ -1,4 +1,4 @@
-name: Official Runtime Migration Verification
+name: Official Validation Migration Verification
 
 on:
   pull_request:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -32,3 +32,5 @@ jobs:
         run: ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests
       - name: Verify Runtime official validation suite
         run: ./gradlew :sjf4j-testbench:officialRuntimeTest
+      - name: Verify Compiled official validation suite
+        run: ./gradlew :sjf4j-testbench:officialCompiledTest --stacktrace
