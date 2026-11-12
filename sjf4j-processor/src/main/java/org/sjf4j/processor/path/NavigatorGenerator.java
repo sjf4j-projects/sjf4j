@@ -13,8 +13,9 @@ import java.util.List;
 /**
  * Generates implementations for @CompiledNavigator interfaces.
  *
- * <p>Interface-level orchestration only. Method semantics and path generation
- * are delegated to {@link NavigatorMethodGenerator}.</p>
+ * <p>Interface-level orchestration only. Method analysis, path compilation,
+ * and source emission are delegated to {@link NavigatorMethodAnalyzer},
+ * {@link NavigatorCompiler}, and {@link NavigatorEmitter}, respectively.</p>
  */
 public final class NavigatorGenerator {
 
