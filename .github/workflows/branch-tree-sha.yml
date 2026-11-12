@@ -1,0 +1,20 @@
+name: Branch Tree SHA (temporary sync helper)
+on:
+  push:
+    branches:
+      - feat/jdbc-column-naming-policy-20261112
+    paths:
+      - .github/workflows/branch-tree-sha.yml
+permissions:
+  contents: read
+jobs:
+  tree:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Print Git tree
+        run: |
+          echo "SJF4J_PR_TREE_SHA=$(git rev-parse 'HEAD^{tree}')"
+          echo "SJF4J_PR_COMMIT_SHA=$(git rev-parse HEAD)"
