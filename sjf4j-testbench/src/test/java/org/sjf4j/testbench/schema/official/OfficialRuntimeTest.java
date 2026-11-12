@@ -29,6 +29,9 @@ public final class OfficialRuntimeTest {
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
     private static final String VALIDATION_TESTS = "validation/tests";
 
+    private enum Selection { REQUIRED, OPTIONAL_TAGGED, OPTIONAL_DIRECTORY }
+
+
     /**
      * Program arguments: [dialect [file.json [groupIndex [testIndex]]]].
      * Group indices refer to the original upstream file, before filtering.
@@ -128,13 +131,13 @@ public final class OfficialRuntimeTest {
             if (!Files.isRegularFile(file)) {
                 throw new IllegalArgumentException("Official test file not found: " + file);
             }
-            runTestFile(dialect, file, strict, suite, groupIndex, testIndex);
+            runTestFile(dialect, file, strict, suite, groupIndex, testIndex, Selection.REQUIRED);
         } else {
             try (Stream<Path> paths = Files.list(dir)) {
                 for (Path file : paths.filter(Files::isRegularFile)
                         .filter(p -> p.getFileName().toString().endsWith(".json"))
                         .sorted().toList()) {
-                    runTestFile(dialect, file, strict, suite, groupIndex, testIndex);
+                    runTestFile(dialect, file, strict, suite, groupIndex, testIndex, Selection.REQUIRED);
                 }
             }
         }
@@ -147,9 +150,42 @@ public final class OfficialRuntimeTest {
         return suite;
     }
 
+    /**
+     * Diagnostic-only optional suite: include root-level format-assertion cases
+     * and every test file in the official validation/tests/optional directory.
+     * The return value records mismatches and execution errors without throwing
+     * for them. Missing input fixtures remain a test-harness error.
+     */
+    static TestSuiteReport runOptionalTestDir(SchemaDialect dialect, Path dir) throws Exception {
+        Path optional = dir.resolve("optional");
+        if (!Files.isDirectory(optional)) {
+            throw new IllegalStateException("Official optional suite missing: " + optional);
+        }
+        TestSuiteReport suite = new TestSuiteReport(dialect, dir);
+        try (Stream<Path> paths = Files.list(dir)) {
+            for (Path file : paths.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
+                    .sorted().toList()) {
+                runTestFile(dialect, file, false, suite, null, null, Selection.OPTIONAL_TAGGED);
+            }
+        }
+        try (Stream<Path> paths = Files.walk(optional)) {
+            for (Path file : paths.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".json"))
+                    .sorted().toList()) {
+                runTestFile(dialect, file, false, suite, null, null, Selection.OPTIONAL_DIRECTORY);
+            }
+        }
+        printSuiteReport(suite);
+        if (suite.total == 0) {
+            throw new IllegalStateException("Official optional suite matched no cases for " + dialect);
+        }
+        return suite;
+    }
+
     private static void runTestFile(SchemaDialect dialect, Path file, boolean strict,
-                                    TestSuiteReport suite, Integer groupFilter, Integer testFilter) {
-        String fileName = file.getFileName().toString();
+                                    TestSuiteReport suite, Integer groupFilter, Integer testFilter, Selection selection) {
+        String fileName = suite.directory.relativize(file).toString().replace('\\', '/');
         TestFileReport report = suite.file(fileName);
         try {
             JsonObject source = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
@@ -165,7 +201,8 @@ public final class OfficialRuntimeTest {
                     suite.incompatibleGroups++;
                     continue;
                 }
-                if (!runWithTags(group.getJsonArray("tags"))) {
+                JsonArray tags = group.getJsonArray("tags");
+                if (!runWithTags(tags, selection)) {
                     suite.taggedGroups++;
                     continue;
                 }
@@ -207,7 +244,10 @@ public final class OfficialRuntimeTest {
                     try {
                         Object data = example.get("data"); // JSON null is a real instance.
                         boolean expected = example.getBoolean("valid");
-                        ValidationResult result = plan.validate(data, true, strict);
+                        boolean strictFormat = strict || (selection != Selection.REQUIRED
+                                && (hasFormatAssertion(tags)
+                                    || fileName.equals("optional/format-assertion.json")));
+                        ValidationResult result = plan.validate(data, true, strictFormat);
                         if (result.isValid() == expected) {
                             report.passed++;
                             suite.passed++;
@@ -233,27 +273,37 @@ public final class OfficialRuntimeTest {
             report.addFailure(fileName + " invalid test file", e);
         }
 
-        String line = report.failed == 0 && report.error == 0
-                ? String.format("✓ %-35s [ %4d / %4d ]", fileName, report.passed, report.total)
-                : String.format("✗ %-35s [ %4d / %4d ] Failed: %d Error: %d",
-                    fileName, report.passed, report.total, report.failed, report.error);
-        System.out.println(line);
-        for (String failure : report.failures) System.out.println("   - " + failure);
+        if (selection == Selection.REQUIRED || report.total > 0) {
+            String line = report.failed == 0 && report.error == 0
+                    ? String.format("✓ %-35s [ %4d / %4d ]", fileName, report.passed, report.total)
+                    : String.format("✗ %-35s [ %4d / %4d ] Failed: %d Error: %d",
+                        fileName, report.passed, report.total, report.failed, report.error);
+            System.out.println(line);
+            for (String failure : report.failures) System.out.println("   - " + failure);
+        }
     }
 
-    private static boolean runWithTags(JsonArray tags) {
-        if (tags == null) return true;
-        boolean eligible = true;
+    private static boolean hasFormatAssertion(JsonArray tags) {
+        if (tags == null) return false;
+        boolean assertion = false;
         for (int i = 0; i < tags.size(); i++) {
-            Object value = tags.get(i);
-            if ("format-assertion".equals(value)) {
-                // Required mode is non-strict format; format assertion is optional.
-                eligible = false;
-            } else if (!"format-annotation".equals(value)) {
-                throw new IllegalArgumentException("Unknown official validation tag: " + value);
+            Object tag = tags.get(i);
+            if ("format-assertion".equals(tag)) assertion = true;
+            else if (!"format-annotation".equals(tag)) {
+                throw new IllegalArgumentException("Unknown official validation tag: " + tag);
             }
         }
-        return eligible;
+        return assertion;
+    }
+
+    private static boolean runWithTags(JsonArray tags, Selection selection) {
+        boolean assertion = hasFormatAssertion(tags);
+        switch (selection) {
+            case REQUIRED: return !assertion;
+            case OPTIONAL_TAGGED: return assertion;
+            case OPTIONAL_DIRECTORY: return true;
+            default: throw new IllegalStateException("Unexpected official selection: " + selection);
+        }
     }
 
     static final class TestSuiteReport {
