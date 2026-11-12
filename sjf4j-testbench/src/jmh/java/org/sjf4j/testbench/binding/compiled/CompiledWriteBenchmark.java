@@ -500,7 +500,7 @@ public class CompiledWriteBenchmark {
             {
             Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
             try {
-            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeGenerator(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
                 generator.close();
@@ -519,7 +519,7 @@ public class CompiledWriteBenchmark {
             {
             Jackson2Generator generator = JACKSON2_RUNTIME.createGenerator(output);
             try {
-            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            Jackson2HandPojoSerializedWriter.writeUser(generator.nativeGenerator(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
                 generator.close();
@@ -655,7 +655,7 @@ public class CompiledWriteBenchmark {
             {
             Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
             try {
-            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeGenerator(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
                 generator.close();
@@ -674,7 +674,7 @@ public class CompiledWriteBenchmark {
             {
             Jackson3Generator generator = JACKSON3_RUNTIME.createGenerator(output);
             try {
-            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeWriter(), USER, DIRECT_CONTEXT);
+            Jackson3HandPojoSerializedWriter.writeUser(generator.nativeGenerator(), USER, DIRECT_CONTEXT);
             generator.end();
             } finally {
                 generator.close();

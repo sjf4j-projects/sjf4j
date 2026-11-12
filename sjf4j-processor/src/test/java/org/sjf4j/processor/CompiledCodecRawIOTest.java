@@ -60,11 +60,11 @@ class CompiledCodecRawIOTest {
             assertTrue(generated.contains(".streamGenerator.write("),
                     backend + ": compiled streaming codec write path missing");
             if (backend.equals("FASTJSON2")) {
-                assertTrue(generated.contains("w.writeName"),
+                assertTrue(generated.contains("nativeGenerator.writeName"),
                         backend + ": native POJO writer was lost");
             }
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
-                assertTrue(generated.contains(" g = generator.nativeWriter();"),
+                assertTrue(generated.contains(" g = generator.nativeGenerator();"),
                         backend + ": mixed native POJO path missing");
                 assertTrue(generated.contains("_writeString(g, (String) rawValue);"),
                         backend + ": shared Jackson codec string helper missing");

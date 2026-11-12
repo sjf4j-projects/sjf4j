@@ -71,7 +71,7 @@ public final class Fastjson2Generator extends StreamingGenerator {
      * Exposes the native Fastjson2 writer for generated scalar and raw-name fast paths.
      * @return the native writer
      */
-    public JSONWriter nativeWriter() {
+    public JSONWriter nativeGenerator() {
         return writer;
     }
 

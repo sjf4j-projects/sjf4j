@@ -25,7 +25,7 @@ public final class GsonGenerator extends StreamingGenerator {
      * Native Gson writer for compiled binding hot paths.
      * @return the native writer
      */
-    public JsonWriter nativeWriter() { return writer; }
+    public JsonWriter nativeGenerator() { return writer; }
 
     @Override
     public void writeObjectStart() throws IOException {

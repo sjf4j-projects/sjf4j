@@ -33,7 +33,7 @@ public final class Jackson3Generator extends StreamingGenerator {
      * Access to the native generator for compiled property writers.
      * @return the native generator
      */
-    public JsonGenerator nativeWriter() {
+    public JsonGenerator nativeGenerator() {
         return generator;
     }
 

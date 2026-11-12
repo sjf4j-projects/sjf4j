@@ -90,19 +90,19 @@ final class Fastjson2WriteEmitter {
                 || output == BindingPlan.WriteOutput.OUTPUT_STREAM;
         FastjsonMode mode = utf8 ? FastjsonMode.UTF8 : FastjsonMode.UTF16;
         String generator = names.newName("generator");
-        String raw = names.newName("raw");
+        String nativeGenerator = names.newName("nativeGenerator");
         // Never attach the caller-owned destination before serialization succeeds.
         // close() flushes attached writers even if a compiled helper throws.
         String create = utf8 ? "createGeneratorUtf8()" : "createGenerator()";
 
         out.beginBlock("try (org.sjf4j.backend.fastjson2.binding.Fastjson2Generator "
                 + generator + " = this.binder." + create + ")");
-        out.line("com.alibaba.fastjson2.JSONWriter " + raw + " = " + generator + ".nativeWriter();");
+        out.line("com.alibaba.fastjson2.JSONWriter " + nativeGenerator + " = " + generator + ".nativeGenerator();");
 
         // Raw field-name optimizations require compatible Fastjson2 features.
         out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
                 + (utf8 ? "supportsRawUtf8Names(" : "supportsRawUtf16Names(")
-                + raw + "))");
+                + nativeGenerator + "))");
         switch (output) {
             case STRING:
                 out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -125,14 +125,14 @@ final class Fastjson2WriteEmitter {
 
         if (value.helperRequired()) {
             out.beginBlock("if (" + source + " == null)");
-            out.line(raw + ".writeNull();");
+            out.line(nativeGenerator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
             out.line(fastjsonHelperName(value, mode) + "("
                     + generator + ", " + source + ");");
             out.endBlock();
         } else {
-            emitNativeValue(out, value, source, mode, raw, generator, names.newName("item"));
+            emitNativeValue(out, value, source, mode, nativeGenerator, generator, names.newName("item"));
         }
 
         switch (output) {
@@ -145,7 +145,7 @@ final class Fastjson2WriteEmitter {
             case WRITER:
             case OUTPUT_STREAM:
                 // Commit only after the entire JSON value was written successfully.
-                out.line(raw + ".flushTo(" + target + ");");
+                out.line(nativeGenerator + ".flushTo(" + target + ");");
                 break;
             default:
                 throw new AssertionError(output);
@@ -167,7 +167,7 @@ final class Fastjson2WriteEmitter {
     }
 
     private void emitFastjsonName(JavaWriter out, String name) {
-        out.line("w.writeNameRaw(" + name + ");");
+        out.line("nativeGenerator.writeNameRaw(" + name + ");");
     }
 
     /** Structural code is shared; a mode-specific APT adapter emits native tokens. */
@@ -179,19 +179,19 @@ final class Fastjson2WriteEmitter {
         }
 
         @Override
-        public void startObject(JavaWriter out) { out.line("w.startObject();"); }
+        public void startObject(JavaWriter out) { out.line("nativeGenerator.startObject();"); }
 
         @Override
-        public void endObject(JavaWriter out) { out.line("w.endObject();"); }
+        public void endObject(JavaWriter out) { out.line("nativeGenerator.endObject();"); }
 
         @Override
-        public void startArray(JavaWriter out) { out.line("w.startArray();"); }
+        public void startArray(JavaWriter out) { out.line("nativeGenerator.startArray();"); }
 
         @Override
-        public void endArray(JavaWriter out) { out.line("w.endArray();"); }
+        public void endArray(JavaWriter out) { out.line("nativeGenerator.endArray();"); }
 
         @Override
-        public void writeNull(JavaWriter out) { out.line("w.writeNull();"); }
+        public void writeNull(JavaWriter out) { out.line("nativeGenerator.writeNull();"); }
 
         // writeNameRaw/writeNameXRaw and writeName(String) insert object-member
         // separators themselves. Adding writeComma() here would corrupt JSON.
@@ -204,7 +204,7 @@ final class Fastjson2WriteEmitter {
                 String args = field + ".rawName0";
                 if (length == 9) args += ", (int) " + field + ".rawName1";
                 else if (length > 9) args += ", " + field + ".rawName1";
-                out.line("w.writeName" + length + "Raw(" + args + ");");
+                out.line("nativeGenerator.writeName" + length + "Raw(" + args + ");");
             } else {
                 emitFastjsonName(out, fastjsonNameExpr(field, mode));
             }
@@ -212,8 +212,8 @@ final class Fastjson2WriteEmitter {
 
         @Override
         public void writeDynamicName(JavaWriter out, String expression) {
-            out.line("w.writeName(" + expression + ");");
-            out.line("w.writeColon();");
+            out.line("nativeGenerator.writeName(" + expression + ");");
+            out.line("nativeGenerator.writeColon();");
         }
 
         @Override
@@ -234,18 +234,18 @@ final class Fastjson2WriteEmitter {
             }
             switch (value.kind()) {
                 case STRING:
-                    out.line("w.writeString(" + expression + ");");
+                    out.line("nativeGenerator.writeString(" + expression + ");");
                     return;
                 case CHARACTER:
-                    out.line("w.writeString(" + expression + ".toString());");
+                    out.line("nativeGenerator.writeString(" + expression + ".toString());");
                     return;
                 case ENUM:
                     String field = writes.enumField(value, mode.suffix);
                     if (mode == FastjsonMode.UTF8) {
-                        out.line("w.writeRaw(" + field + "[" + expression + ".ordinal()]);");
+                        out.line("nativeGenerator.writeRaw(" + field + "[" + expression + ".ordinal()]);");
                     } else {
                         out.line("char[] encoded = " + field + "[" + expression + ".ordinal()];");
-                        out.line("w.writeRaw(encoded, 0, encoded.length);");
+                        out.line("nativeGenerator.writeRaw(encoded, 0, encoded.length);");
                     }
                     return;
                 case BOOLEAN:
@@ -259,7 +259,7 @@ final class Fastjson2WriteEmitter {
                 case BIG_DECIMAL:
                     String arg = fastjsonUnboxArgument(value.type().toString())
                             .replace("value", expression);
-                    out.line("w." + fastjsonWriteMethod(value.kind()) + "(" + arg + ");");
+                    out.line("nativeGenerator." + fastjsonWriteMethod(value.kind()) + "(" + arg + ");");
                     return;
                 default:
                     throw new AssertionError(value.kind());
@@ -278,7 +278,7 @@ final class Fastjson2WriteEmitter {
         @Override
         public void beforeArrayElement(JavaWriter out, String ordinal) {
             out.beginBlock("if (" + ordinal + " != 0)");
-            out.line("w.writeComma();");
+            out.line("nativeGenerator.writeComma();");
             out.endBlock();
         }
     }
@@ -288,7 +288,7 @@ final class Fastjson2WriteEmitter {
         out.beginBlock("private void " + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator generator, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter w = generator.nativeWriter();");
+        out.line("com.alibaba.fastjson2.JSONWriter nativeGenerator = generator.nativeGenerator();");
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
@@ -353,14 +353,14 @@ final class Fastjson2WriteEmitter {
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode) {
-        emitNativeValue(out, value, expression, mode, "w", "generator", "item");
+        emitNativeValue(out, value, expression, mode, "nativeGenerator", "generator", "item");
     }
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
-            String expression, FastjsonMode mode, String raw, String generator, String item) {
+            String expression, FastjsonMode mode, String nativeGenerator, String generator, String item) {
         if (value.helperRequired()) {
             out.beginBlock("if (" + expression + " == null)");
-            out.line(raw + ".writeNull();");
+            out.line(nativeGenerator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
             out.line(fastjsonHelperName(value, mode) + "(" + generator + ", " + expression + ");");
@@ -370,7 +370,7 @@ final class Fastjson2WriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, generator, raw, Backend.FASTJSON2, writes.naming());
+                CodecWriteEmitter.emit(out, value, expression, generator, nativeGenerator, Backend.FASTJSON2, writes.naming());
                 return;
             case RUNTIME:
             case JSON_OBJECT:
@@ -382,19 +382,19 @@ final class Fastjson2WriteEmitter {
                 out.line(generator + ".writeNumber(" + expression + ");");
                 return;
             case STRING:
-                out.line(writes.stringHelper() + "(" + raw + ", " + expression + ");");
+                out.line(writes.stringHelper() + "(" + nativeGenerator + ", " + expression + ");");
                 return;
             case CHARACTER:
                 if (value.primitive()) {
-                    out.line(raw + ".writeString(Character.toString(" + expression + "));");
+                    out.line(nativeGenerator + ".writeString(Character.toString(" + expression + "));");
                 } else {
                     out.beginBlock("");
                     out.line("Character " + item + " = " + expression + ";");
                     out.beginBlock("if (" + item + " == null)");
-                    out.line(raw + ".writeNull();");
+                    out.line(nativeGenerator + ".writeNull();");
                     out.endBlock(" else {");
                     out.indent();
-                    out.line(raw + ".writeString(" + item + ".toString());");
+                    out.line(nativeGenerator + ".writeString(" + item + ".toString());");
                     out.endBlock();
                     out.endBlock();
                 }
@@ -403,15 +403,15 @@ final class Fastjson2WriteEmitter {
                 out.beginBlock("");
                 out.line(value.type() + " " + item + " = " + expression + ";");
                 out.beginBlock("if (" + item + " == null)");
-                out.line(raw + ".writeNull();");
+                out.line(nativeGenerator + ".writeNull();");
                 out.endBlock(" else {");
                 out.indent();
                 String field = writes.enumField(value, mode.suffix);
                 if (mode == FastjsonMode.UTF8) {
-                    out.line(raw + ".writeRaw(" + field + "[" + item + ".ordinal()]);");
+                    out.line(nativeGenerator + ".writeRaw(" + field + "[" + item + ".ordinal()]);");
                 } else {
                     out.line("char[] encoded = " + field + "[" + item + ".ordinal()];");
-                    out.line(raw + ".writeRaw(encoded, 0, encoded.length);");
+                    out.line(nativeGenerator + ".writeRaw(encoded, 0, encoded.length);");
                 }
                 out.endBlock();
                 out.endBlock();
@@ -422,16 +422,16 @@ final class Fastjson2WriteEmitter {
 
         String method = fastjsonWriteMethod(value.kind());
         if (value.primitive()) {
-            out.line(raw + "." + method + "(" + expression + ");");
+            out.line(nativeGenerator + "." + method + "(" + expression + ");");
         } else {
             out.beginBlock("");
             out.line(value.type() + " " + item + " = " + expression + ";");
             out.beginBlock("if (" + item + " == null)");
-            out.line(raw + ".writeNull();");
+            out.line(nativeGenerator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
             String arg = fastjsonUnboxArgument(value.type().toString()).replace("value", item);
-            out.line(raw + "." + method + "(" + arg + ");");
+            out.line(nativeGenerator + "." + method + "(" + arg + ");");
             out.endBlock();
             out.endBlock();
         }
