@@ -266,8 +266,6 @@ val officialRuntimeOptionalTest by tasks.registering(Test::class) {
     classpath = sourceSets.test.get().runtimeClasspath
     include("**/OfficialRuntimeOptionalTest.class")
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
-    val reportDir = layout.buildDirectory.dir("reports/officialRuntimeOptional")
-    systemProperty("sjf4j.schema.officialOptionalReportDir", reportDir.get().asFile.absolutePath)
     testLogging {
         showStandardStreams = true
         events("failed")
