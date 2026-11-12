@@ -253,13 +253,6 @@ val officialRuntimeTest by tasks.registering(Test::class) {
     shouldRunAfter(tasks.test)
 }
 
-// The compiled harness still reads the retired draft-scoped layout. Until it is
-// migrated, never mistake missing compiled cases for a successful conformance run.
-val legacyOfficialCompiledSuiteExists = {
-    officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12").isDirectory &&
-        officialSchemaSuiteDir.get().asFile.resolve("remotes").isDirectory
-}
-
 val cachedOfficialAnnotationsExist = {
     cachedOfficialSuiteExists() &&
         officialSchemaSuiteDir.get().asFile.resolve("annotations/tests/meta-data.json").isFile
@@ -291,106 +284,144 @@ officialRuntimeTest.configure { mustRunAfter(downloadOfficialSchemaTests) }
 
 
 /**
- * Generate one independent annotated interface per official schema group.
- * Sources are compiled by OfficialCompiledTest with javac in isolated batches:
- * an unsupported schema must not prevent other official cases from running.
+ * Official unified Validation Suite compatibility. Tests use ordered draft
+ * intervals; this matches the upstream validation/README.md algorithm.
+ */
+fun officialValidationCompatible(rule: String?, selectedDraft: Int): Boolean {
+    if (rule == null) return true
+    require(Regex("^(<=|=)?[0-9]+(,(<=|=)?[0-9]+)*$").matches(rule)) {
+        "Invalid official compatibility: $rule"
+    }
+    var eligible = false
+    for (constraint in rule.split(",")) {
+        val upper = constraint.startsWith("<=")
+        val exact = constraint.startsWith("=")
+        val version = constraint.substring(if (upper) 2 else if (exact) 1 else 0).toInt()
+        eligible = when {
+            upper -> selectedDraft <= version
+            exact -> selectedDraft == version
+            else -> selectedDraft >= version
+        }
+        if (selectedDraft <= version) break
+    }
+    return eligible
+}
+
+/**
+ * Generate one independent @CompiledValidator per compatible official schema
+ * group. External schemas are copied as distinct classpath resources and passed
+ * to programmatic javac as retrieval URI -> source URI bindings.
  */
 val officialCompiledDrafts = listOf("draft7", "draft2019-09", "draft2020-12")
 val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/officialCompiled")
 val generateOfficialCompiledCases by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Generates official compiled bindings for all supported JSON Schema drafts."
-    onlyIf("legacy compiled suite layout is available") { legacyOfficialCompiledSuiteExists() }
+    description = "Generates compiled validator fixtures for the unified official Validation Suite."
+    onlyIf("unified official suite exists locally") { cachedOfficialSuiteExists() }
     inputs.dir(officialSchemaSuiteDir)
     outputs.dir(officialCompiledGeneratedDir)
 
     doLast {
         val outputRoot = officialCompiledGeneratedDir.get().asFile
         delete(outputRoot)
+        val input = officialSchemaSuiteDir.get().asFile.resolve("validation/tests")
+        val files = requireNotNull(input.listFiles())
+            .filter { it.isFile && it.extension == "json" }
+            .sortedBy { it.name }
+        require(files.isNotEmpty()) { "No official Validation files at $input" }
+
         for (draft in officialCompiledDrafts) {
+            val dialectVersion = when (draft) {
+                "draft7" -> 7
+                "draft2019-09" -> 2019
+                else -> 2020
+            }
             val dialectUri = when (draft) {
                 "draft7" -> "http://json-schema.org/draft-07/schema#"
                 "draft2019-09" -> "https://json-schema.org/draft/2019-09/schema"
                 else -> "https://json-schema.org/draft/2020-12/schema"
             }
-            val input = officialSchemaSuiteDir.get().asFile.resolve("tests/$draft")
             val output = outputRoot.resolve(draft)
-
             val packageName = "org.sjf4j.testbench.schema.official.generated"
             val javaDir = output.resolve("java/" + packageName.replace('.', '/'))
             val resourceDir = output.resolve("resources/official/$draft")
-            // Official remotes may also omit $schema. The runtime suite assigns
-            // the selected draft via SchemaRegistry; javac defaults to 2020-12.
-            // Copy only for legacy drafts, retaining the relative URI layout.
-            val upstreamRemotes = officialSchemaSuiteDir.get().asFile.resolve("remotes")
-            val registryRemotes = if (draft == "draft2020-12") upstreamRemotes
-                                  else output.resolve("remotes")
-            if (draft != "draft2020-12") {
-                upstreamRemotes.walkTopDown().filter { it.isFile && it.extension == "json" }
-                    .forEach { file ->
-                        val relative = upstreamRemotes.toPath().relativize(file.toPath())
-                        val target = registryRemotes.toPath().resolve(relative).toFile()
-                        target.parentFile.mkdirs()
-                        val original = JsonSlurper().parse(file)
-                        val schema = if (original is Map<*, *> && !original.containsKey("\$schema")) {
-                            linkedMapOf<String, Any?>("\$schema" to dialectUri).apply {
-                                for ((key, value) in original) {
-                                    require(key is String) { "Expected string remote schema key: $key" }
-                                    put(key, value)
-                                }
-                            }
-                        } else original
-                        target.writeText(JsonOutput.toJson(schema), Charsets.UTF_8)
-                    }
-            }
-            val registryDir = JsonOutput.toJson(registryRemotes.toURI().toString())
-            val registryBaseUri = JsonOutput.toJson("http://localhost:1234/")
             javaDir.mkdirs()
             resourceDir.mkdirs()
 
-            val files = requireNotNull(input.listFiles())
-                .filter { it.isFile && it.extension == "json" }
-                .sortedBy { it.name }
-            require(files.isNotEmpty()) { "No official $draft JSON files at $input" }
-
             val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
+            val externalIndex = StringBuilder("class\turi\tsource\n")
+            var fileCount = 0
             var groupCount = 0
             var testCount = 0
             for (file in files) {
-                val groups = JsonSlurper().parse(file) as? List<*>
-                    ?: throw GradleException("Invalid official test file: $file")
+                val suite = JsonSlurper().parse(file) as? Map<*, *>
+                    ?: throw GradleException("Invalid official Validation file: $file")
+                val groups = suite["tests"] as? List<*>
+                    ?: throw GradleException("Missing official tests array: $file")
                 val stem = file.nameWithoutExtension
                 val classStem = stem.split(Regex("[^a-zA-Z0-9]+"))
                     .filter { it.isNotEmpty() }
                     .joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
+                var selectedInFile = 0
                 for ((groupIndex, raw) in groups.withIndex()) {
-                    val group = raw as? Map<*, *>
+                    val item = raw as? Map<*, *>
                         ?: throw GradleException("Invalid official group: $file #$groupIndex")
-                    require(group.containsKey("schema")) { "Missing schema in $file #$groupIndex" }
-                    val tests = group["tests"] as? List<*>
-                        ?: throw GradleException("Missing tests in $file #$groupIndex")
+                    val compatible = officialValidationCompatible(
+                        item["compatibility"] as? String, dialectVersion)
+                    if (!compatible) continue
+                    val tags = item["tags"] as? List<*>
+                    if (tags != null) {
+                        require(tags.all { it == "format-assertion" || it == "format-annotation" }) {
+                            "Unknown official tags: $file #$groupIndex"
+                        }
+                        if (tags.contains("format-assertion")) continue
+                    }
+                    require(item.containsKey("schema")) { "Missing schema: $file #$groupIndex" }
+                    val tests = item["tests"] as? List<*>
+                        ?: throw GradleException("Missing tests: $file #$groupIndex")
+                    require(tests.isNotEmpty()) { "Empty official tests: $file #$groupIndex" }
                     val index = groupIndex.toString().padStart(3, '0')
                     val className = "Official" + classStem + "G" + index
-                    val schemaPath = stem + "/" + index + ".json"
+                    val schemaPath = "$stem/$index.json"
                     val schemaFile = resourceDir.resolve(schemaPath)
                     schemaFile.parentFile.mkdirs()
-                    val originalSchema = group["schema"]
-                    // Official test directories imply a dialect when $schema is omitted.
-                    // Make that implicit selection explicit in the generated fixture.
+                    val originalSchema = item["schema"]
                     val compiledSchema = if (draft != "draft2020-12"
-                            && originalSchema is Map<*, *>
-                            && !originalSchema.containsKey("\$schema")) {
-                        linkedMapOf<String, Any?>("\$schema" to dialectUri).apply {
+                        && originalSchema is Map<*, *>
+                        && !originalSchema.containsKey("$" + "schema")) {
+                        linkedMapOf<String, Any?>("$" + "schema" to dialectUri).apply {
                             for ((key, value) in originalSchema) {
-                                require(key is String) { "Expected string schema key: $key" }
+                                require(key is String) { "Non-string schema key: $file #$groupIndex" }
                                 put(key, value)
                             }
                         }
                     } else originalSchema
                     schemaFile.writeText(JsonOutput.toJson(compiledSchema), Charsets.UTF_8)
 
-                    // Generate both variants without selecting fallback here. The test
-                    // class decides which groups may use the fallback variant.
+                    val sources = linkedMapOf<String, String>()
+                    val external = item["externalSchemas"] as? Map<*, *>
+                    if (external != null) {
+                        for ((sourceIndex, entry) in external.entries.withIndex()) {
+                            val retrieval = entry.key as? String
+                                ?: throw GradleException("Non-string external URI: $file #$groupIndex")
+                            val sourcePath = "external/$stem/$index/" +
+                                sourceIndex.toString().padStart(3, '0') + ".json"
+                            val source = resourceDir.resolve(sourcePath)
+                            source.parentFile.mkdirs()
+                            val rawSchema = entry.value
+                            val schema = if (draft != "draft2020-12" && rawSchema is Map<*, *>
+                                && !rawSchema.containsKey("$" + "schema")) {
+                                linkedMapOf<String, Any?>("$" + "schema" to dialectUri).apply {
+                                    for ((key, value) in rawSchema) {
+                                        require(key is String) { "Non-string external schema key" }
+                                        put(key, value)
+                                    }
+                                }
+                            } else rawSchema
+                            source.writeText(JsonOutput.toJson(schema), Charsets.UTF_8)
+                            sources[retrieval] = "classpath:/official/$draft/$sourcePath"
+                        }
+                    }
                     for (allowFallback in listOf(false, true)) {
                         val variant = if (allowFallback) className + "Fallback" else className
                         val source = listOf(
@@ -399,30 +430,33 @@ val generateOfficialCompiledCases by tasks.registering {
                             "import org.sjf4j.annotation.schema.CompiledValidator;",
                             "import org.sjf4j.annotation.schema.ValidJsonSchema;",
                             "",
-                            "@CompiledValidator(fallback = $allowFallback, registryDir = $registryDir, registryBaseUri = $registryBaseUri)",
+                            "@CompiledValidator(fallback = $allowFallback)",
                             "public interface $variant {",
                             "    @ValidJsonSchema(ref = \"classpath:/official/$draft/$schemaPath\")",
                             "    boolean valid(Object value);",
                             "}"
                         ).joinToString("\n", postfix = "\n")
                         javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
+                        for ((retrieval, resource) in sources) {
+                            externalIndex.append(variant).append('\t')
+                                .append(retrieval).append('\t').append(resource).append('\n')
+                        }
                     }
                     manifest.append(file.name).append('\t').append(groupIndex)
                         .append('\t').append(className).append('\t').append(tests.size).append('\n')
+                    selectedInFile++
                     groupCount++
                     testCount += tests.size
                 }
+                if (selectedInFile > 0) fileCount++
             }
+            require(groupCount > 0) { "No compatible official cases for $draft" }
             output.resolve("index.tsv").writeText(manifest.toString(), Charsets.UTF_8)
+            output.resolve("external-index.tsv").writeText(externalIndex.toString(), Charsets.UTF_8)
             output.resolve("counts.properties").writeText(
-                "files=" + files.size + "\ngroups=" + groupCount + "\ntests=" + testCount + "\n",
-                Charsets.UTF_8
+                "files=$fileCount\ngroups=$groupCount\ntests=$testCount\n", Charsets.UTF_8
             )
-            logger.lifecycle(
-                "Generated official $draft bindings: " +
-                    files.size + " files, " + groupCount + " schema groups, " + testCount +
-                    " assertions"
-            )
+            logger.lifecycle("Generated $draft: $fileCount files, $groupCount groups, $testCount assertions")
         }
     }
 }
@@ -452,7 +486,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
     dependsOn(generateOfficialCompiledCases)
-    onlyIf("legacy compiled suite layout is available") { legacyOfficialCompiledSuiteExists() }
+    onlyIf("unified official suite exists locally") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
 }
 
@@ -471,9 +505,6 @@ val officialPublishGate by tasks.registering {
     dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
     doLast {
         check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
-        check(legacyOfficialCompiledSuiteExists()) {
-            "Official CompiledValidator suite is not migrated to the unified validation layout; publication is blocked"
-        }
         // A pinned local SHA may be used for debugging, never for a publication.
         check(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get() == "main") {
             "Publication requires latest upstream main; remove -PjsonSchemaSuiteRef"
