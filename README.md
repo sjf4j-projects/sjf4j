@@ -1,4 +1,3 @@
-# SJF4J — Simple JSON Facade for Java
 
 ![License](https://img.shields.io/github/license/sjf4j-projects/sjf4j)
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
