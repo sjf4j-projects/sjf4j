@@ -76,8 +76,9 @@ JavaBean and Record target shapes.
 
 All rows have non-null scalar values. Date/time uses SQL TIMESTAMP mapped to
 LocalDateTime; this deliberately excludes timezone conversion. The SQL result
-columns retain snake_case names, and SJF4J uses explicit Mapping annotations
-for different Java property names. Spring uses JavaBean/constructor matching;
+columns retain snake_case names, and SJF4J uses the default
+`ColumnNamingPolicy.INSENSITIVE_SNAKE` for automatic property matching.
+Spring uses JavaBean/constructor matching;
 MyBatis Auto uses mapUnderscoreToCamelCase. No custom value codecs, JOJO dynamic
 properties or complex nested object graphs are included.
 
