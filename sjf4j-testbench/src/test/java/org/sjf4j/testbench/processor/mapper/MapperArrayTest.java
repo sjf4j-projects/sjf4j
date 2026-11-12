@@ -81,6 +81,7 @@ public class MapperArrayTest {
         ArrayMapper mapper = CompiledInstances.create(ArrayMapper.class);
 
         mapper.updateLongs(null, null);
+        mapper.updateLongs(null, new int[0]);
         assertThrows(NullPointerException.class,
                 () -> mapper.updateLongs(null, new int[] {1}));
     }
