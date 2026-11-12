@@ -2,6 +2,8 @@ package org.sjf4j.schema;
 
 import org.junit.jupiter.api.Test;
 
+import java.net.URI;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -49,6 +51,45 @@ class FormatValidatorOptimizationTest {
         assertFalse(FormatValidator._validateIpv4("1.2.3.4.5"));
         assertFalse(FormatValidator._validateIpv4("01.2.3.4"));
         assertFalse(FormatValidator._validateIpv4("1.02.3.4"));
+    }
+
+    @Test
+    void validatesRfc3986UriAuthorityAndReferences() {
+        // RFC 3986 allows an empty relative reference and empty authority.
+        assertTrue(FormatUtil.validateUriReference(""));
+        assertTrue(FormatUtil.validateUriReference("//"));
+        assertTrue(FormatUtil.validateUriReference("//?query"));
+        assertTrue(FormatUtil.validateUriReference("///path"));
+        assertTrue(FormatUtil.validateUriReference("#fragment"));
+        assertTrue(FormatUtil.validateUriReference("relative/path"));
+        assertTrue(FormatUtil.validateUriReference("http://"));
+        assertTrue(FormatUtil.validateUriReference("http://example.com:"));
+        assertTrue(FormatUtil.validateUriReference("//user%40name@host:443/path"));
+        assertTrue(FormatUtil.validateUriReference("//[::ffff:192.168.0.1]:8080/path"));
+
+        assertFalse(FormatUtil.validateUriReference("//a@b@example.com/"));
+        assertFalse(FormatUtil.validateUriReference("http://host:abc/"));
+        assertFalse(FormatUtil.validateUriReference("//host:abc/path"));
+        assertFalse(FormatUtil.validateUriReference("http://[::ffff:192.168.0.01]/path"));
+        assertFalse(FormatUtil.validateUriReference("//[::ffff:01.2.3.4]/path"));
+        assertFalse(FormatUtil.validateUriReference("http://::1/path"));
+        assertFalse(FormatUtil.validateUriReference("http://a@b@host/path"));
+        assertFalse(FormatUtil.validateUriReference("http://example.com/%GG"));
+
+        // Absolute URI rules differ from URI-reference rules.
+        assertTrue(FormatUtil.validateUri("mailto:someone@example.com"));
+        assertTrue(FormatUtil.validateUri("http://[::ffff:192.168.0.1]"));
+        assertTrue(FormatUtil.validateUri("http://user%40name@host:"));
+        assertFalse(FormatUtil.validateUri(""));
+        assertFalse(FormatUtil.validateUri("//host"));
+        assertFalse(FormatUtil.validateUri("http://a@b@host"));
+        assertFalse(FormatUtil.validateUri("http://[::ffff:192.168.0.01]"));
+
+        // Typed URI validation must agree with string validation.
+        assertTrue(FormatValidator.validateUri(URI.create(""), false));
+        assertFalse(FormatValidator.validateUri(URI.create(""), true));
+        assertTrue(FormatValidator.validateUri(URI.create("http://[::ffff:192.168.0.1]"), true));
+        assertFalse(FormatValidator.validateUri(URI.create("http://[::ffff:192.168.0.01]"), true));
     }
 
     @Test
