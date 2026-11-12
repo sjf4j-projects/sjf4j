@@ -112,8 +112,8 @@ tasks.named<JavaCompile>("compileJmhJava") {
 
 tasks.test {
     useJUnitPlatform()
-    exclude("**/OfficialRuntimeTest.class", "**/OfficialCompiledTest.class",
-            "**/OfficialAnnotationTest.class")
+    exclude("**/OfficialRuntimeTest.class", "**/OfficialRuntimeOptionalTest.class",
+            "**/OfficialCompiledTest.class", "**/OfficialAnnotationTest.class")
     jvmArgs(
         "-Xshare:off"
     )
