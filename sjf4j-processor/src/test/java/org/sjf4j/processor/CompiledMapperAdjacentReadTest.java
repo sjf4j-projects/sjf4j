@@ -13,8 +13,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Adjacent multi-source constructor reads can share a null check without
- * moving getters or changing custom converter null semantics.
+ * Adjacent multi-source reads retain accessor order. A missing source
+ * parent skips the mapping converter, while a null leaf still reaches it.
  */
 class CompiledMapperAdjacentReadTest {
 
@@ -69,14 +69,60 @@ class CompiledMapperAdjacentReadTest {
 
             events.clear();
             Object absentProfile = nested.invoke(mapper, null, account);
-            assertEquals(targetCtor.newInstance(null, "gold", true,
-                    dtoCtor.newInstance("NULL")), absentProfile);
-            assertEquals(Arrays.asList("account.tier", "account.active",
-                    "contact.convert"), events);
+            assertEquals(targetCtor.newInstance(null, "gold", true, null), absentProfile);
+            assertEquals(Arrays.asList("account.tier", "account.active"), events);
+
+            events.clear();
+            Object profileWithNullContact = profileType.getConstructor(String.class, contactType)
+                    .newInstance("Grace", null);
+            Object nullLeaf = nested.invoke(mapper, profileWithNullContact, account);
+            assertEquals(targetCtor.newInstance("Grace", "gold", true,
+                    dtoCtor.newInstance("NULL")), nullLeaf);
+            assertEquals(Arrays.asList("profile.name", "account.tier",
+                    "account.active", "profile.contact", "contact.convert"), events);
 
             events.clear();
             assertNull(nested.invoke(mapper, new Object[]{null, null}));
             assertTrue(events.isEmpty());
+        }
+    }
+
+
+    @Test
+    void nestedPathCallsConverterForNullLeafButNotMissingIntermediateParent() throws Exception {
+        NavigatorTestCompiler.Result compiled = compileFixture();
+        assertTrue(compiled.success, compiled.diagnostics());
+
+        String body = methodBody(compiled.generatedSource("fixture/Mapper_Impl.java"),
+                "NestedTarget fromEnvelope(");
+        assertTrue(body.contains("sourcePresent"), body);
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> profileType = loader.loadClass("fixture.Profile");
+            Class<?> contactType = loader.loadClass("fixture.Contact");
+            Class<?> envelopeType = loader.loadClass("fixture.Envelope");
+            Class<?> mapperType = loader.loadClass("fixture.Mapper_Impl");
+            Class<?> traceType = loader.loadClass("fixture.Trace");
+            @SuppressWarnings("unchecked")
+            List<String> events = (List<String>) traceType.getField("EVENTS").get(null);
+            Object mapper = mapperType.getConstructor().newInstance();
+            Method method = mapperType.getMethod("fromEnvelope", envelopeType);
+
+            events.clear();
+            Object noProfile = envelopeType.getConstructor(profileType)
+                    .newInstance(new Object[]{null});
+            Object missing = method.invoke(mapper, noProfile);
+            assertNull(missing.getClass().getMethod("contact").invoke(missing));
+            assertTrue(events.isEmpty(), events.toString());
+
+            events.clear();
+            Object nullContact = profileType.getConstructor(String.class, contactType)
+                    .newInstance("Grace", null);
+            Object envelope = envelopeType.getConstructor(profileType).newInstance(nullContact);
+            Object mapped = method.invoke(mapper, envelope);
+            Object dto = mapped.getClass().getMethod("contact").invoke(mapped);
+            assertEquals("NULL", dto.getClass().getMethod("city").invoke(dto));
+            assertEquals(Arrays.asList("profile.contact", "contact.convert"), events);
         }
     }
 
@@ -148,6 +194,10 @@ class CompiledMapperAdjacentReadTest {
         sources.put("fixture/CompositeTarget.java",
                 "package fixture; public record CompositeTarget(String name, String tier, "
                 + "boolean active, ContactDto contact) {}");
+        sources.put("fixture/Envelope.java",
+                "package fixture; public record Envelope(Profile profile) {}");
+        sources.put("fixture/NestedTarget.java",
+                "package fixture; public record NestedTarget(ContactDto contact) {}");
         sources.put("fixture/BoxedTarget.java",
                 "package fixture; public record BoxedTarget(String name, String tier, Boolean active) {}");
         sources.put("fixture/Mapper.java",
@@ -163,6 +213,8 @@ class CompiledMapperAdjacentReadTest {
                 + "@Mapping(target=\"tier\",source=\"account:tier\") "
                 + "@Mapping(target=\"active\",source=\"account:active\") "
                 + "BoxedTarget boxed(Profile profile,Account account); "
+                + "@Mapping(target=\"contact\",source=\"$.profile.contact\") "
+                + "NestedTarget fromEnvelope(Envelope source); "
                 + "default ContactDto contact(Contact source) { "
                 + "Trace.EVENTS.add(\"contact.convert\"); "
                 + "return new ContactDto(source == null ? \"NULL\" : source.city()); } "
