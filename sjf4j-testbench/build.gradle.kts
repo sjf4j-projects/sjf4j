@@ -61,6 +61,8 @@ dependencies {
     testImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.3")
     testImplementation("com.h2database:h2:2.3.232")
     testImplementation("org.springframework:spring-jdbc:6.2.19")
+    // Exercise ICU-backed IDNA/hostname validation in official test suites.
+    testRuntimeOnly("com.ibm.icu:icu4j:77.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // jmh
