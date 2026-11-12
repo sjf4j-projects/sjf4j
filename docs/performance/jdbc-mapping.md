@@ -98,9 +98,12 @@ Four row counts are independent exact workloads: **1 / 10 / 1,000 / 100,000**.
 Spring uses RowMapperResultSetExtractor; MyBatis uses its internal
 DefaultResultSetHandler (not a full SqlSession query).
 
-**Row**: the benchmark owns the same ResultSet.next loop, appends each mapped
-row to a List, and invokes CompiledJdbcMapper.mapRow(ResultSet, int) or Spring
-RowMapper.mapRow(ResultSet, int). The returned List ensures identical work.
+**Row**: the benchmark owns the ResultSet.next loop and appends mapped rows
+to a List. SJF4J calls `CompiledJdbcMapper.prepare(ResultSetMetaData)` once
+per invocation to obtain `JdbcRowMapper<T>`, then calls `mapRow(ResultSet)`
+per row. Spring uses `RowMapper.mapRow(ResultSet, int)`.
+The SJF4J preparation cost is included in the measured operation; no
+implicit per-ResultSet cache is used. The returned List ensures identical work.
 
 **MyBatis Cursor**: call handleCursorResultSets, iterate the Cursor and
 materialize it into an ArrayList. This is a streaming MyBatis pipeline, not
@@ -108,7 +111,8 @@ a direct RowMapper API; it is shown separately, never under Row mode.
 
 ## Baseline policy
 
-- **Suite version: 1**, exactly 68 measurements. Fixture, column type, method,
+- **Suite version: 2**, exactly 68 measurements. The previous suite used
+  implicit current-row lookup; this suite uses explicit prepared row mapping. Fixture, column type, method,
   return semantics, row-count matrix or implementation changes require a new
   suite version, and a separate historical report.
 - Populate H2 before JMH measurements. Open a fresh ResultSet during
