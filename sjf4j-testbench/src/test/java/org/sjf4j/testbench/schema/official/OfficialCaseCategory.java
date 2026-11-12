@@ -4,9 +4,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Explicit coverage inventory of the official Draft 2020-12 root test files.
+ * Coarse categories for the unified official Validation Suite root files.
  * Future upstream files are included as OTHER without requiring code changes.
- * The optional/ directory is intentionally excluded by the caller.
+ * Optional and proposal subdirectories are excluded by the callers.
  */
 final class OfficialCaseCategory {
     enum Category {
