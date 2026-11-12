@@ -16,6 +16,17 @@ import static org.junit.jupiter.api.Assertions.*;
 class SchemaLoaderTest {
 
     @Test
+    void documentUriPreservesEncodedPathAndQueryWhileRemovingFragments() {
+        URI reference = URI.create("https://example.test/schema/a%20b.json?version=2#/$defs/word");
+        assertEquals(URI.create("https://example.test/schema/a%20b.json?version=2"),
+                SchemaUtil.documentUri(reference));
+        assertEquals(URI.create("memory:/schemas/value.json"),
+                SchemaUtil.documentUri(URI.create("memory:/schemas/value.json#")));
+        URI noFragment = URI.create("classpath:/schemas/value.json");
+        assertSame(noFragment, SchemaUtil.documentUri(noFragment));
+    }
+
+    @Test
     void resolvesRelativeLocationsAndFragmentsWithoutParsingTheFragmentAsAFile() {
         URI base = URI.create("memory:/schemas/");
         String json = "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}";
