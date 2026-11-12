@@ -93,7 +93,7 @@ so regular tests can reuse them.
 This is a **separate execution environment** for the **same Fabien Binding workloads**,
 not a GraalVM JVM/JIT benchmark. The JVM results above remain the historical reference.
 
-### Results — Unreleased (2026-11-11)
+### Results — v1.5.1-SNAPSHOT (2026-11-11)
 
 **Primary Native Image Full:** [serial run #43035710364](https://github.com/sjf4j-projects/sjf4j/actions/runs/43035710364)
 at commit `1e1d90d3a01cc46072c4a188e1ed1b9760755f0d`. All **288 exact cases**
@@ -143,10 +143,18 @@ The GitHub-hosted results remain **exploratory**, not controlled release
 baselines. The Native Image JMH VM-support warning is also a methodological
 limitation; this benchmark does not claim native allocation measurements.
 
+**Complete historical results:** [serial Full details](binding/fabien-native-v151snapshot-2026-11-11-serial.md)
+(**primary**) and [parallel Full details](binding/fabien-native-v151snapshot-2026-11-11-parallel.md)
+(**confirmation**). Each contains all **96 aggregated workload combinations**
+(Read/Write × Users/Clients × POJO/Map × 1/10/100KB × four backends), including
+Native, Runtime, Compiled and Native / Compiled, using the same table layout
+as the JVM report.
+
 **Original artifacts:** [serial Full JMH results](https://github.com/sjf4j-projects/sjf4j/actions/runs/43035710364/artifacts/13873357604)
 and [parallel Full combined results](https://github.com/sjf4j-projects/sjf4j/actions/runs/43045839302/artifacts/13868789457).
 Both contain three independent process measurements per case; GitHub-hosted
-artifacts are retention-limited.
+artifacts are retention-limited. The linked Markdown snapshots retain the
+aggregated results after artifacts expire.
 
 The Native Image JMH matrix uses a single executable for all four backends:
 
