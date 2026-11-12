@@ -20,4 +20,6 @@ public @interface JdbcMappingOptions {
     /** Column requirement policy for JDBC POJO methods. */
     ColumnProjectionPolicy columnProjection() default ColumnProjectionPolicy.REQUIRE_ALL;
 
+    /** Match Java property names to JDBC column labels (default: case-insensitive snake_case). */
+    ColumnNamingPolicy columnNaming() default ColumnNamingPolicy.INSENSITIVE_SNAKE;
 }

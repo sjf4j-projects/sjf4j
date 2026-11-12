@@ -9,6 +9,8 @@ import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.mapping.JdbcRowMapper;
+import java.sql.ResultSetMetaData;
 
 import java.net.URL;
 import java.sql.ResultSet;
@@ -22,11 +24,12 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenFindColumnResult;
+import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenMetadataResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.cachedMetadataResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.currentRowResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.indexedResult;
+import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.labelCountingResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
 
 class JdbcResultMappingTest {
@@ -63,13 +66,15 @@ class JdbcResultMappingTest {
         assertEquals(List.of("a", "b"), new ArrayList<>(duplicateColumnMap.keySet()));
         assertEquals(Map.of("a", 2), mapper.rows(result(new String[]{"a", "a"},
                 new Object[]{1, 2})).get(0));
-        assertEquals(Map.of("a", 2, "b", 3), mapper.currentRow(currentRowResult(
-                new String[]{"a", "a", "b"}, new int[]{0}, 1, 2, 3), 0));
+        assertEquals(Map.of("a", 2, "b", 3),
+                mapper.prepareMapRow(JdbcTestSupport.metadata(new String[]{"a", "a", "b"}))
+                        .map(currentRowResult(
+                                new String[]{"a", "a", "b"}, new int[]{0}, 1, 2, 3)));
 
         int[] findColumns = {0};
         assertEquals(2, mapper.users(indexedResult(new String[]{"name", "age", "created"}, findColumns,
                 new Object[]{"Ada", 36, null}, new Object[]{"Grace", 40, null})).size());
-        assertEquals(3, findColumns[0]);
+        assertEquals(0, findColumns[0]); // Column indexes come from metadata.
 
         int[] metadataCalls = {0};
         assertEquals(2, mapper.rows(cachedMetadataResult(new String[]{"b", "a"}, metadataCalls,
@@ -77,6 +82,29 @@ class JdbcResultMappingTest {
         assertEquals(1, metadataCalls[0]);
         assertEquals(List.of("b", "a"), new ArrayList<>(mapper.row(result(new String[]{"b", "a"},
                 new Object[]{2, 1})).keySet()));
+    }
+
+    @Test
+    void listOfMapsReadsColumnLabelsOnceForAllRows() {
+        Mapper mapper = CompiledInstances.create(Mapper.class);
+        int[] labelCalls = {0};
+
+        List<Map<String, Object>> rows = mapper.rows(
+                labelCountingResult(new String[]{"a", "a", "B"}, labelCalls,
+                        new Object[]{1, 2, 3},
+                        new Object[]{4, 5, 6},
+                        new Object[]{7, 8, 9}));
+
+        assertEquals(3, rows.size());
+        assertEquals(Map.of("a", 2, "B", 3), rows.get(0));
+        assertEquals(Map.of("a", 5, "B", 6), rows.get(1));
+        assertEquals(Map.of("a", 8, "B", 9), rows.get(2));
+        assertEquals(3, labelCalls[0]); // Once per column, not once per row.
+
+        int[] emptyLabelCalls = {0};
+        assertEquals(List.of(), mapper.rows(
+                labelCountingResult(new String[]{"a", "B"}, emptyLabelCalls)));
+        assertEquals(0, emptyLabelCalls[0]);
     }
 
     @Test
@@ -93,7 +121,7 @@ class JdbcResultMappingTest {
         assertInstanceOf(SQLException.class,
                 assertThrows(BindingException.class, () -> mapper.row(brokenResult())).getCause());
         assertInstanceOf(SQLException.class,
-                assertThrows(BindingException.class, () -> mapper.users(brokenFindColumnResult())).getCause());
+                assertThrows(BindingException.class, () -> mapper.users(brokenMetadataResult())).getCause());
     }
 
     @Test
@@ -113,8 +141,10 @@ class JdbcResultMappingTest {
         assertEquals("two", list.get(1).getNode("extra"));
 
         int[] nextCalls = {0};
-        Jojo current = mapper.currentJojo(currentRowResult(new String[]{"full_name", "age", "extra"}, nextCalls,
-                "Katherine", 41, "current"), 7);
+        Jojo current = mapper.prepareJojo(JdbcTestSupport.metadata(
+                new String[]{"full_name", "age", "extra"})).map(
+                        currentRowResult(new String[]{"full_name", "age", "extra"}, nextCalls,
+                                "Katherine", 41, "current"));
         assertEquals("Katherine", current.name);
         assertEquals("current", current.getNode("extra"));
         assertEquals(0, nextCalls[0]);
@@ -127,11 +157,11 @@ class JdbcResultMappingTest {
         Jojo jojo = mapper.presentJojo(result(new String[]{"FULL_NAME", "extra", "full_name"},
                 new Object[]{"Ada", "first", "Grace"}));
 
-        assertEquals("Ada", jojo.name);
+        assertEquals("Grace", jojo.name); // Exact label wins over case-insensitive label.
         assertEquals(7, jojo.age);
         assertEquals("first", jojo.getNode("extra"));
-        assertEquals(null, jojo.getNode("FULL_NAME"));
-        assertEquals("Grace", jojo.getNode("full_name"));
+        assertEquals("Ada", jojo.getNode("FULL_NAME"));
+        assertEquals(null, jojo.getNode("full_name"));
     }
 
     @Test
@@ -175,7 +205,7 @@ class JdbcResultMappingTest {
 
         Map<String, Object> row(ResultSet rs);
 
-        Map<String, Object> currentRow(ResultSet rs, int rowNum);
+        JdbcRowMapper<Map<String, Object>> prepareMapRow(ResultSetMetaData metadata);
 
         @JdbcMappingOptions(singleResult = SingleResultPolicy.FIRST)
         User first(ResultSet rs);
@@ -187,7 +217,7 @@ class JdbcResultMappingTest {
         List<Jojo> jojos(ResultSet rs);
 
         @Mapping(target = "name", source = "full_name")
-        Jojo currentJojo(ResultSet rs, int rowNum);
+        JdbcRowMapper<Jojo> prepareJojo(ResultSetMetaData metadata);
 
         @Mapping(target = "name", source = "full_name")
         @JdbcMappingOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)

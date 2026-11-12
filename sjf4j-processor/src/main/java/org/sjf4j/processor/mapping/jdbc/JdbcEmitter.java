@@ -48,7 +48,97 @@ public final class JdbcEmitter {
         generated.addMethod(out -> emitMethod(out, method));
     }
 
+    /*
+     * Prepare resolves the JDBC column layout exactly once and returns a
+     * stateless, reusable row mapper. It never retains the metadata or ResultSet.
+     */
+    private void emitPreparedMethod(JavaWriter out, JdbcCompiler.CompiledMethod method) {
+        JdbcPlan plan = method.plan();
+        NameAllocator names = new NameAllocator();
+        for (VariableElement parameter : plan.method().getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
+        }
+
+        String metadata = plan.inputParameter().getSimpleName().toString();
+        String rowSet = names.newName("rowSet");
+        out.blank();
+        out.line("@Override");
+        out.line(methodHeader(plan) + " {");
+        out.indent();
+        out.line("org.sjf4j.util.Asserts.notNull(" + metadata + ", "
+                + stringLiteral(metadata) + ");");
+        out.line("try {");
+        out.indent();
+
+        String columnCount = null;
+        String labels = null;
+        String consumed = null;
+        Map<String, String> indexes = Collections.emptyMap();
+
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP || method.jojo()) {
+            columnCount = names.newName("columnCount");
+            labels = names.newName("labels");
+            String index = names.newName("column");
+            out.line("int " + columnCount + " = " + metadata + ".getColumnCount();");
+            out.line("String[] " + labels + " = new String[" + columnCount + " + 1];");
+            out.line("for (int " + index + " = 1; " + index + " <= " + columnCount
+                    + "; " + index + "++) {");
+            out.indent();
+            out.line(labels + "[" + index + "] = " + metadata + ".getColumnLabel(" + index + ");");
+            out.dedent();
+            out.line("}");
+        }
+
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT) {
+            indexes = emitColumnIndexes(out, names, metadata,
+                    method.jojo() ? method.consumedColumns() : method.readColumns(),
+                    method.columnNaming(), method.presentOnly());
+        }
+
+        if (method.jojo()) {
+            consumed = emitConsumedColumns(out, names, columnCount, indexes, method.consumedColumns());
+        }
+
+        out.line("return " + rowSet + " -> {");
+        out.indent();
+        out.line("org.sjf4j.util.Asserts.notNull(" + rowSet + ", "
+                + stringLiteral(rowSet) + ");");
+        out.line("try {");
+        out.indent();
+
+        String row = emitRow(out, names, method, rowSet, metadata, columnCount, null,
+                indexes, columnCount, labels, consumed);
+        out.line("return " + row + ";");
+
+        out.dedent();
+        out.line("} catch (java.sql.SQLException e) {");
+        out.indent();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + stringLiteral("failed to map JDBC row in " + plan.method().getSimpleName())
+                + ", e);");
+        out.dedent();
+        out.line("}");
+        out.dedent();
+        out.line("};");
+
+        out.dedent();
+        out.line("} catch (java.sql.SQLException e) {");
+        out.indent();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + stringLiteral("failed to prepare JDBC mapper in " + plan.method().getSimpleName())
+                + ", e);");
+        out.dedent();
+        out.line("}");
+
+        out.dedent();
+        out.line("}");
+    }
+
     private void emitMethod(JavaWriter out, JdbcCompiler.CompiledMethod method) {
+        if (method.plan().prepared()) {
+            emitPreparedMethod(out, method);
+            return;
+        }
         JdbcPlan plan = method.plan();
         NameAllocator names = new NameAllocator();
 
@@ -56,7 +146,7 @@ public final class JdbcEmitter {
             names.reserve(parameter.getSimpleName().toString());
         }
 
-        String resultSet = plan.resultSetParameter().getSimpleName().toString();
+        String resultSet = plan.inputParameter().getSimpleName().toString();
 
         out.line("");
         out.line("@Override");
@@ -74,6 +164,15 @@ public final class JdbcEmitter {
         out.line("try {");
         out.indent();
 
+        // Cursor-consuming single-target methods return null before inspecting columns.
+        if (plan.single()) {
+            out.line("if (!" + resultSet + ".next()) {");
+            out.indent();
+            out.line("return null;");
+            out.dedent();
+            out.line("}");
+        }
+
         String metadata = null;
         String columns = null;
         String columnCount = null;
@@ -89,8 +188,8 @@ public final class JdbcEmitter {
          * PRESENT_ONLY and JOJO remainder mapping also need metadata once per
          * mapper invocation.
          */
-        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP ||
-                method.presentOnly() || method.jojo()) {
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP
+                || method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT) {
             metadata = names.newName("metadata");
 
             out.line(
@@ -99,11 +198,6 @@ public final class JdbcEmitter {
                             " = " +
                             resultSet +
                             ".getMetaData();");
-        }
-
-        if (method.presentOnly()) {
-
-            columns = emitColumnSet(out, names, metadata);
         }
 
         if (method.jojo()) {
@@ -153,37 +247,17 @@ public final class JdbcEmitter {
             out.line("}");
         }
 
-        if (plan.list() || method.jojo()) {
-            indexes = emitColumnIndexes(out, names, resultSet, columns, columnCount, labels,
-                    method.jojo() ? method.consumedColumns() : method.readColumns());
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.OBJECT) {
+            indexes = emitColumnIndexes(out, names, metadata,
+                    method.jojo() ? method.consumedColumns() : method.readColumns(),
+                    method.columnNaming(), method.presentOnly());
         }
 
         if (method.jojo()) {
             consumed = emitConsumedColumns(out, names, columnCount, indexes, method.consumedColumns());
         }
 
-        if (plan.currentRow()) {
-
-            String row =
-                    emitRow(
-                            out,
-                            names,
-                             method,
-                             resultSet,
-                             metadata,
-                            columnCount,
-                            columns,
-                            indexes,
-                            columnCount,
-                            labels,
-                            consumed);
-
-            out.line(
-                    "return " +
-                            row +
-                            ";");
-
-        } else if (plan.list()) {
+        if (plan.list()) {
 
             emitList(
                     out,
@@ -307,17 +381,6 @@ public final class JdbcEmitter {
             String labels,
             String consumed) {
 
-        out.line(
-                "if (!" +
-                        resultSet +
-                        ".next()) {");
-
-        out.indent();
-        out.line("return null;");
-        out.dedent();
-
-        out.line("}");
-
         String row =
                 emitRow(
                         out,
@@ -411,6 +474,19 @@ public final class JdbcEmitter {
                             metadata +
                             ".getColumnCount();");
 
+            // Column labels are invariant across ResultSet rows.
+            // Resolve them once rather than calling metadata for every Map entry.
+            String mapLabels = names.newName("labels");
+            String labelIndex = names.newName("labelIndex");
+            out.line("String[] " + mapLabels + " = new String[" + count + " + 1];");
+            out.line("for (int " + labelIndex + " = 1; " + labelIndex + " <= " + count
+                    + "; " + labelIndex + "++) {");
+            out.indent();
+            out.line(mapLabels + "[" + labelIndex + "] = "
+                    + metadata + ".getColumnLabel(" + labelIndex + ");");
+            out.dedent();
+            out.line("}");
+
             out.line("do {");
             out.indent();
 
@@ -425,7 +501,7 @@ public final class JdbcEmitter {
                             columns,
                             indexes,
                             columnCount,
-                            labels,
+                            mapLabels,
                             consumed);
 
             out.line(
@@ -511,7 +587,8 @@ public final class JdbcEmitter {
                      names,
                      resultSet,
                     metadata,
-                    mapColumnCount);
+                    mapColumnCount,
+                    labels);
         }
 
         return emitObjectRow(
@@ -537,7 +614,8 @@ public final class JdbcEmitter {
             NameAllocator names,
             String resultSet,
             String metadata,
-            String columnCount) {
+            String columnCount,
+            String labels) {
 
         if (columnCount == null) {
             columnCount =
@@ -588,10 +666,10 @@ public final class JdbcEmitter {
                 "String " +
                         label +
                         " = " +
-                        metadata +
-                        ".getColumnLabel(" +
-                        index +
-                        ");");
+                        (labels == null
+                                ? metadata + ".getColumnLabel(" + index + ")"
+                                : labels + "[" + index + "]") +
+                        ";");
 
         out.line(
                 result +
@@ -805,135 +883,31 @@ public final class JdbcEmitter {
     }
 
     private Map<String, String> emitColumnIndexes(
-            JavaWriter out,
-            NameAllocator names,
-            String resultSet,
-            String columns,
-            String columnCount,
-            String labels,
-            List<String> sourceColumns) {
+            JavaWriter out, NameAllocator names, String metadata,
+            List<String> sourceColumns, org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy policy,
+            boolean presentOnly) {
 
-        Map<String, String> result =
-                new LinkedHashMap<>();
+        if (sourceColumns.isEmpty()) return Collections.emptyMap();
 
-        if (labels != null) {
-            for (String source :
-                    sourceColumns) {
-                String index =
-                        names.newName(
-                                "index_" +
-                                        source);
-
-                out.line(
-                        "int " +
-                                index +
-                                " = 0;");
-
-                result.put(
-                        source,
-                        index);
-            }
-
-            String column =
-                    names.newName(
-                            "column");
-
-            out.line(
-                    "for (int " +
-                            column +
-                            " = 1; " +
-                            column +
-                            " <= " +
-                            columnCount +
-                            "; " +
-                            column +
-                            "++) {");
-
-            out.indent();
-
-            for (String source :
-                    sourceColumns) {
-                String index =
-                        result.get(source);
-
-                out.line(
-                        "if (" +
-                                index +
-                                " == 0 && " +
-                                stringLiteral(source) +
-                                ".equalsIgnoreCase(" +
-                                labels +
-                                "[" +
-                                column +
-                                "])) { " +
-                                index +
-                                " = " +
-                                column +
-                                "; }");
-            }
-
-            out.dedent();
-            out.line("}");
-
-            if (columns == null) {
-                for (String source :
-                        sourceColumns) {
-                    String index =
-                            result.get(source);
-
-                    out.line(
-                            "if (" +
-                                    index +
-                                    " == 0) { " +
-                                    index +
-                                    " = " +
-                                    resultSet +
-                                    ".findColumn(" +
-                                    stringLiteral(source) +
-                                    "); }");
-                }
-            }
-
-            return result;
+        StringBuilder namesLiteral = new StringBuilder("new String[]{");
+        for (int i = 0; i < sourceColumns.size(); i++) {
+            if (i != 0) namesLiteral.append(", ");
+            namesLiteral.append(stringLiteral(sourceColumns.get(i)));
         }
+        namesLiteral.append('}');
 
-        for (String source :
-                sourceColumns) {
+        String resolved = names.newName("columnIndexes");
+        String policyExpr = "org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy." + policy.name();
+        out.line("int[] " + resolved + " = org.sjf4j.mapping.CompiledSupport.resolve("
+                + metadata + ", " + namesLiteral + ", " + policyExpr + ", " + !presentOnly + ");");
 
-            String index =
-                    names.newName(
-                            "index_" +
-                                    source);
-
-            if (columns == null) {
-                out.line(
-                        "int " +
-                                index +
-                                " = " +
-                                resultSet +
-                                ".findColumn(" +
-                                stringLiteral(source) +
-                                ");");
-            } else {
-                out.line(
-                        "int " +
-                                index +
-                                " = " +
-                                columns +
-                                ".contains(" +
-                                stringLiteral(source) +
-                                ") ? " +
-                                resultSet +
-                                ".findColumn(" +
-                                stringLiteral(source) +
-                                ") : 0;");
-            }
-
-            result.put(
-                    source,
-                    index);
+        Map<String, String> result = new LinkedHashMap<>();
+        for (int i = 0; i < sourceColumns.size(); i++) {
+            String name = sourceColumns.get(i);
+            String index = names.newName("idx_" + name);
+            out.line("int " + index + " = " + resolved + "[" + i + "];");
+            result.put(name, index);
         }
-
         return result;
     }
 

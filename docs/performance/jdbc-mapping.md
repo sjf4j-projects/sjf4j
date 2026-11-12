@@ -21,7 +21,19 @@ dependency versions retroactively to old results.
 
 ## JVM — Temurin JDK 25
 
-### Results — 1.5.1-SNAPSHOT (2026-11-12)
+### Suite 2 — prepared RowMapper baseline pending
+
+PR #291 changes the SJF4J JDBC mapping implementation: the default
+`ColumnNamingPolicy.INSENSITIVE_SNAKE` resolves SQL column aliases automatically,
+and Row mode explicitly prepares `JdbcRowMapper<T>` once from
+`ResultSetMetaData` before calling `map(ResultSet)` for each row.
+The preparation cost is included in the Row benchmark operation.
+
+A new complete Full run is required before publishing suite 2 performance
+results. **The published measurements below are historical suite 1 results**
+and must not be presented as measurements of the prepared RowMapper API.
+
+### Historical results — suite 1 (1.5.1-SNAPSHOT, 2026-11-12)
 
 **[First complete Full report](jdbc-mapping/spring-mybatis-v151snapshot-2026-11-12.md)** ·
 [GitHub Actions run and raw artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43186767777)
@@ -185,8 +197,9 @@ JavaBean and Record target shapes.
 
 All rows have non-null scalar values. Date/time uses SQL TIMESTAMP mapped to
 LocalDateTime; this deliberately excludes timezone conversion. The SQL result
-columns retain snake_case names, and SJF4J uses explicit Mapping annotations
-for different Java property names. Spring uses JavaBean/constructor matching;
+columns retain snake_case names. In suite 2, SJF4J uses
+`ColumnNamingPolicy.INSENSITIVE_SNAKE` for automatic property matching;
+suite 1 used explicit `@Mapping` aliases. Spring uses JavaBean/constructor matching;
 MyBatis Auto uses mapUnderscoreToCamelCase. No custom value codecs, JOJO dynamic
 properties or complex nested object graphs are included.
 
@@ -206,9 +219,13 @@ Four row counts are independent exact workloads: **1 / 10 / 1,000 / 100,000**.
 Spring uses RowMapperResultSetExtractor; MyBatis uses its internal
 DefaultResultSetHandler (not a full SqlSession query).
 
-**Row**: the benchmark owns the same ResultSet.next loop, appends each mapped
-row to a List, and invokes CompiledJdbcMapper.mapRow(ResultSet, int) or Spring
-RowMapper.mapRow(ResultSet, int). The returned List ensures identical work.
+**Row**: the benchmark owns the same ResultSet.next loop and appends each mapped
+row to a List. In suite 2, SJF4J calls the generated prepare method with
+`ResultSetMetaData` once per invocation to obtain `JdbcRowMapper<T>`, then
+calls `map(ResultSet)` for each current row. The preparation cost is included,
+and no ResultSet is retained by the mapping object. Spring calls
+`RowMapper.mapRow(ResultSet, int)`. Suite 1 used the old SJF4J
+`(ResultSet, int)` API. All paths return an equivalent List.
 
 **MyBatis Cursor**: call handleCursorResultSets, iterate the Cursor and
 materialize it into an ArrayList. This is a streaming MyBatis pipeline, not
@@ -225,14 +242,18 @@ mapper initialization and SQL execution are outside JMH timing.
 ~~~java
 @CompiledJdbcMapper
 interface AccountMapper {
-    @Mapping(target = "userName", source = "user_name")
-    @Mapping(target = "loginCount", source = "login_count")
-    @Mapping(target = "createdAt", source = "created_at")
-    @Mapping(target = "updatedAt", source = "updated_at")
     List<AccountBean> beans(ResultSet rs);
+    JdbcRowMapper<AccountBean> prepareBean(ResultSetMetaData metadata);
 }
 
 List<AccountBean> result = compiled.beans(rs);
+
+// Suite 2 streaming/Row mapping:
+JdbcRowMapper<AccountBean> prepared = compiled.prepareBean(rs.getMetaData());
+while (rs.next()) {
+    AccountBean account = prepared.map(rs);
+    // process account
+}
 ~~~
 
 #### Spring JDBC
@@ -261,9 +282,13 @@ MyBatis uses `DefaultResultSetHandler` directly, not a full `SqlSession` query.
 
 ## Baseline policy
 
-- **Suite version: 1**, exactly 68 measurements. Fixture, column type, method,
-  return semantics, row-count matrix or implementation changes require a new
-  suite version, and a separate historical report.
+- **Suite version: 2** for new runs, exactly 68 measurements. Suite 1
+  remains preserved in its dated historical report, using the original
+  `(ResultSet, int)` Row API. Suite 2 uses explicitly prepared
+  `JdbcRowMapper<T>` and automatic snake-case naming; its results must be
+  recorded separately. Fixture, column type, method, return semantics,
+  row-count matrix or implementation changes require a new suite version
+  and a separate historical report.
 - Populate H2 before JMH measurements. Open a fresh ResultSet during
   Invocation setup and close it in teardown. All timed methods traverse and
   materialize the same number of rows. The query execution is excluded.

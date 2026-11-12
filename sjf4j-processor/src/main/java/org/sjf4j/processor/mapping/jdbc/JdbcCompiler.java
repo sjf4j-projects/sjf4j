@@ -1,6 +1,7 @@
 package org.sjf4j.processor.mapping.jdbc;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 import org.sjf4j.processor.ProcessorContext;
@@ -318,7 +319,7 @@ public final class JdbcCompiler {
 
         return CompiledMethod.object(plan, creation, targetType, constructorArguments, assignments,
                 jojo, readColumns, jojo ? consumedColumns(plan, readColumns) : Collections.<String>emptyList(),
-                presentOnly, firstResult(plan.method()));
+                presentOnly, firstResult(plan.method()), columnNaming(plan.method()));
     }
 
     /*
@@ -886,6 +887,13 @@ public final class JdbcCompiler {
         return optionEquals(method, "singleResult", "FIRST");
     }
 
+    private ColumnNamingPolicy columnNaming(ExecutableElement method) {
+        for (ColumnNamingPolicy policy : ColumnNamingPolicy.values()) {
+            if (optionEquals(method, "columnNaming", policy.name())) return policy;
+        }
+        return ColumnNamingPolicy.INSENSITIVE_SNAKE;
+    }
+
     /*
      * Read through AnnotationMirror so this compiler only depends on the
      * JdbcMappingOptions member names, not on nested enum implementation types.
@@ -971,11 +979,13 @@ public final class JdbcCompiler {
 
         private final boolean presentOnly;
         private final boolean firstResult;
+        private final ColumnNamingPolicy columnNaming;
 
         private CompiledMethod(JdbcPlan plan, Kind kind, CreatorResolver.Creation creation,
                                TypeMirror targetType, List<ConstructorArgument> constructorArguments,
                                List<Assignment> assignments, boolean jojo, List<String> readColumns,
-                               List<String> consumedColumns, boolean presentOnly, boolean firstResult) {
+                               List<String> consumedColumns, boolean presentOnly, boolean firstResult,
+                               ColumnNamingPolicy columnNaming) {
             this.plan = plan;
             this.kind = kind;
             this.creation = creation;
@@ -991,6 +1001,7 @@ public final class JdbcCompiler {
 
             this.presentOnly = presentOnly;
             this.firstResult = firstResult;
+            this.columnNaming = columnNaming;
         }
 
         static CompiledMethod map(JdbcPlan plan, boolean firstResult) {
@@ -1005,15 +1016,16 @@ public final class JdbcCompiler {
                     Collections.<String>emptyList(),
                     Collections.<String>emptyList(),
                     false,
-                    firstResult);
+                    firstResult,
+                    ColumnNamingPolicy.INSENSITIVE_SNAKE);
         }
 
         static CompiledMethod object(JdbcPlan plan, CreatorResolver.Creation creation, TypeMirror targetType,
                                      List<ConstructorArgument> constructorArguments, List<Assignment> assignments,
                                      boolean jojo, List<String> readColumns, List<String> consumedColumns,
-                                     boolean presentOnly, boolean firstResult) {
+                                     boolean presentOnly, boolean firstResult, ColumnNamingPolicy columnNaming) {
             return new CompiledMethod(plan, Kind.OBJECT, creation, targetType, constructorArguments,
-                    assignments, jojo, readColumns, consumedColumns, presentOnly, firstResult);
+                    assignments, jojo, readColumns, consumedColumns, presentOnly, firstResult, columnNaming);
         }
 
         public JdbcPlan plan() {
@@ -1058,6 +1070,10 @@ public final class JdbcCompiler {
 
         public boolean firstResult() {
             return firstResult;
+        }
+
+        public ColumnNamingPolicy columnNaming() {
+            return columnNaming;
         }
     }
 

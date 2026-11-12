@@ -3,6 +3,7 @@ package org.sjf4j.processor.mapping.jdbc;
 import org.sjf4j.annotation.mapping.EnsureMapping;
 import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.MappingIfParentPresent;
+import org.sjf4j.mapping.JdbcRowMapper;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -14,9 +15,11 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ExecutableType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +34,8 @@ public final class JdbcMethodGenerator {
     private final TypeSystem types;
 
     private final TypeMirror resultSetType;
+    private final TypeMirror metadataType;
+    private final TypeMirror rowMapperType;
 
     public JdbcMethodGenerator(ProcessorContext context) {
         this.context = context;
@@ -40,6 +45,8 @@ public final class JdbcMethodGenerator {
 
         if (resultSet == null) throw new IllegalStateException("java.sql.ResultSet is not available");
         this.resultSetType = resultSet.asType();
+        this.metadataType = context.elements.getTypeElement(ResultSetMetaData.class.getName()).asType();
+        this.rowMapperType = context.elements.getTypeElement(JdbcRowMapper.class.getName()).asType();
     }
 
     /**
@@ -96,8 +103,9 @@ public final class JdbcMethodGenerator {
 
         if (rowType == null) return null;
 
-        if (cursorMode == JdbcPlan.CursorMode.CURRENT_ROW && resultKind == JdbcPlan.ResultKind.LIST) {
-            error(method, generated, "Current-row JDBC mapper method cannot return List");
+        if ((cursorMode == JdbcPlan.CursorMode.PREPARE) != (resultKind == JdbcPlan.ResultKind.PREPARED)) {
+            error(method, generated, "JDBC metadata methods must return JdbcRowMapper<T>, "
+                    + "and JDBC ResultSet methods cannot return a prepared mapper");
             return null;
         }
 
@@ -112,12 +120,9 @@ public final class JdbcMethodGenerator {
 
         if (rules == null) return null;
 
-        VariableElement resultSetParameter = parameters.get(0);
-        VariableElement rowNumberParameter = cursorMode == JdbcPlan.CursorMode.CURRENT_ROW
-                ? parameters.get(1) : null;
-
-        return new JdbcPlan(method, methodType, cursorMode, resultKind, resultSetParameter,
-                rowNumberParameter, returnType, rowType, rules);
+        VariableElement inputParameter = parameters.get(0);
+        return new JdbcPlan(method, methodType, cursorMode, resultKind, inputParameter,
+                returnType, rowType, rules);
     }
 
     /*
@@ -144,36 +149,18 @@ public final class JdbcMethodGenerator {
 
     private JdbcPlan.CursorMode resolveCursorMode(ExecutableElement method,
                                                   List<? extends VariableElement> parameters,
-                                                  List<? extends TypeMirror> parameterTypes,
-                                                  GeneratedClass generated) {
+                                                  List<? extends TypeMirror> parameterTypes, GeneratedClass generated) {
         if (parameters.size() == 1) {
-            if (!isResultSet(parameterTypes.get(0))) {
-                error(parameters.get(0), generated, "JDBC mapper first parameter must be java.sql.ResultSet");
-                return null;
-            }
-            return JdbcPlan.CursorMode.CURSOR;
+            if (types.isSameErasure(parameterTypes.get(0), resultSetType))
+                return JdbcPlan.CursorMode.CURSOR;
+            if (types.isSameErasure(parameterTypes.get(0), metadataType))
+                return JdbcPlan.CursorMode.PREPARE;
         }
 
-        if (parameters.size() == 2) {
-            if (!isResultSet(parameterTypes.get(0))) {
-                error(parameters.get(0), generated, "JDBC mapper first parameter must be java.sql.ResultSet");
-                return null;
-            }
-
-            if (parameterTypes.get(1).getKind() != TypeKind.INT) {
-                error(parameters.get(1), generated, "JDBC current-row mapper second parameter must be int");
-                return null;
-            }
-            return JdbcPlan.CursorMode.CURRENT_ROW;
-        }
-
-        error(method, generated, "JDBC mapper method must have either " +
-                "(ResultSet) or (ResultSet, int) parameters");
+        error(method, generated, "JDBC mapper methods must accept ResultSet or "
+                + "ResultSetMetaData; use JdbcRowMapper<T> prepare(ResultSetMetaData) "
+                + "for current-row mapping");
         return null;
-    }
-
-    private boolean isResultSet(TypeMirror type) {
-        return types.isSameErasure(type, resultSetType);
     }
 
     /*
@@ -190,12 +177,25 @@ public final class JdbcMethodGenerator {
          * result containers here.
          */
         if (types.isSameErasure(returnType, types.listType())) return JdbcPlan.ResultKind.LIST;
+        if (types.isSameErasure(returnType, rowMapperType)) return JdbcPlan.ResultKind.PREPARED;
         return JdbcPlan.ResultKind.SINGLE;
     }
 
     private TypeMirror resolveRowType(ExecutableElement method, TypeMirror returnType,
                                       JdbcPlan.ResultKind resultKind, GeneratedClass generated) {
         if (resultKind == JdbcPlan.ResultKind.SINGLE) return returnType;
+        if (resultKind == JdbcPlan.ResultKind.PREPARED) {
+            if (!(returnType instanceof DeclaredType)) {
+                error(method, generated, "JDBC prepared mapper must declare JdbcRowMapper<T>");
+                return null;
+            }
+            List<? extends TypeMirror> arguments = ((DeclaredType) returnType).getTypeArguments();
+            if (arguments.size() != 1 || !types.isFullyConcrete(arguments.get(0))) {
+                error(method, generated, "JDBC prepared mapper must declare a concrete JdbcRowMapper<T>");
+                return null;
+            }
+            return arguments.get(0);
+        }
 
         TypeMirror elementType = types.listWriteElementType(returnType);
 

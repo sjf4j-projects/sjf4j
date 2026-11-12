@@ -71,6 +71,9 @@ final class JdbcTestSupport {
                         throw new AssertionError("current-row mapper must not advance the ResultSet");
                     }
                     if (method.getName().equals(brokenMethod)) throw new SQLException("broken");
+                    if (method.getName().equals("getMetaData")) {
+                        return metadata(new String[]{"name", "age"});
+                    }
                     return null;
                 });
     }
@@ -86,6 +89,7 @@ final class JdbcTestSupport {
                         findColumns[0]++;
                         return List.of(columns).indexOf(arguments[0]) + 1;
                     }
+                    if (method.getName().equals("getMetaData")) return metadata(columns);
                     if (method.getName().equals("getObject") || method.getName().equals("getString")) {
                         int column = indexedColumn(arguments[0]);
                         return rows[row[0]][column - 1];
@@ -96,6 +100,19 @@ final class JdbcTestSupport {
                     }
                     if (method.getName().equals("wasNull")) {
                         return false;
+                    }
+                    return null;
+                });
+    }
+
+    static ResultSet labelCountingResult(String[] columns, int[] labelCalls, Object[]... rows) {
+        int[] row = {-1};
+        return (ResultSet) Proxy.newProxyInstance(JdbcTestSupport.class.getClassLoader(),
+                new Class[]{ResultSet.class}, (proxy, method, arguments) -> {
+                    if (method.getName().equals("next")) return ++row[0] < rows.length;
+                    if (method.getName().equals("getMetaData")) return metadata(columns, labelCalls);
+                    if (method.getName().equals("getObject")) {
+                        return rows[row[0]][indexedColumn(arguments[0]) - 1];
                     }
                     return null;
                 });
@@ -134,8 +151,8 @@ final class JdbcTestSupport {
         return broken("next");
     }
 
-    static ResultSet brokenFindColumnResult() {
-        return broken("findColumn");
+    static ResultSet brokenMetadataResult() {
+        return broken("getMetaData");
     }
 
     private static int column(String[] columns, Object argument) {
@@ -158,6 +175,9 @@ final class JdbcTestSupport {
                     if (method.getName().equals("next")) {
                         return true;
                     }
+                    if (method.getName().equals("getMetaData") && brokenMethod.equals("getMetaData")) {
+                        throw new SQLException("broken");
+                    }
                     if (method.getName().equals("findColumn") && brokenMethod.equals("findColumn")) {
                         throw new SQLException("broken");
                     }
@@ -168,13 +188,18 @@ final class JdbcTestSupport {
                 });
     }
 
-    private static ResultSetMetaData metadata(String[] columns) {
+    static ResultSetMetaData metadata(String[] columns) {
+        return metadata(columns, null);
+    }
+
+    private static ResultSetMetaData metadata(String[] columns, int[] labelCalls) {
         return (ResultSetMetaData) Proxy.newProxyInstance(JdbcTestSupport.class.getClassLoader(),
                 new Class[]{ResultSetMetaData.class}, (proxy, method, arguments) -> {
                     if (method.getName().equals("getColumnCount")) {
                         return columns.length;
                     }
                     if (method.getName().equals("getColumnLabel")) {
+                        if (labelCalls != null) labelCalls[0]++;
                         return columns[(Integer) arguments[0] - 1];
                     }
                     return null;

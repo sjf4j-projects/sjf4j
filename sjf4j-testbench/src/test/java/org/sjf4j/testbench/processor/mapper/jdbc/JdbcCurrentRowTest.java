@@ -6,8 +6,10 @@ import org.sjf4j.annotation.mapping.jdbc.ColumnProjectionPolicy;
 import org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.mapping.JdbcRowMapper;
 
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenCurrentRowResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.currentRowResult;
+import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.metadata;
 
 class JdbcCurrentRowTest {
     @Test
@@ -22,24 +25,31 @@ class JdbcCurrentRowTest {
         Mapper mapper = CompiledInstances.create(Mapper.class);
         int[] nextCalls = {0};
 
-        User user = mapper.anyName(currentRowResult(new String[]{"name", "age"}, nextCalls, "Ada", 36), 42);
+        JdbcRowMapper<User> users = mapper.prepareUser(metadata(new String[]{"name", "age"}));
+        User user = users.map(currentRowResult(new String[]{"name", "age"}, nextCalls, "Ada", 36));
         assertEquals("Ada", user.name);
         assertEquals(36, user.age);
         assertEquals(0, nextCalls[0]);
 
-        Map<String, Object> row = mapper.row(currentRowResult(new String[]{"name"}, nextCalls, "Grace"), 0);
+        JdbcRowMapper<Map<String, Object>> maps = mapper.prepareMap(metadata(new String[]{"name"}));
+        Map<String, Object> row = maps.map(currentRowResult(new String[]{"name"}, nextCalls, "Grace"));
         assertEquals(Map.of("name", "Grace"), row);
         assertEquals(0, nextCalls[0]);
     }
 
     @Test
-    void wrapsCurrentRowSqlExceptions() {
+    void wrapsRowSqlExceptionsWithoutHoldingResultSet() {
         Mapper mapper = CompiledInstances.create(Mapper.class);
 
+        JdbcRowMapper<User> users = mapper.prepareUser(metadata(new String[]{"name", "age"}));
         assertInstanceOf(java.sql.SQLException.class,
-                assertThrows(BindingException.class, () -> mapper.anyName(brokenCurrentRowResult("getString"), 0)).getCause());
+                assertThrows(BindingException.class,
+                        () -> users.map(brokenCurrentRowResult("getString"))).getCause());
+
+        JdbcRowMapper<Map<String, Object>> maps = mapper.prepareMap(metadata(new String[]{"name"}));
         assertInstanceOf(java.sql.SQLException.class,
-                assertThrows(BindingException.class, () -> mapper.row(brokenCurrentRowResult("getMetaData"), 0)).getCause());
+                assertThrows(BindingException.class,
+                        () -> maps.map(brokenCurrentRowResult("getObject"))).getCause());
     }
 
     @Test
@@ -47,7 +57,8 @@ class JdbcCurrentRowTest {
         Mapper mapper = CompiledInstances.create(Mapper.class);
         int[] nextCalls = {0};
 
-        Present present = mapper.present(currentRowResult(new String[]{"name"}, nextCalls, "Ada"), 0);
+        JdbcRowMapper<Present> rows = mapper.preparePresent(metadata(new String[]{"name"}));
+        Present present = rows.map(currentRowResult(new String[]{"name"}, nextCalls, "Ada"));
         assertEquals("Ada", present.name);
         assertEquals(7, present.age);
         assertEquals(0, nextCalls[0]);
@@ -55,12 +66,12 @@ class JdbcCurrentRowTest {
 
     @CompiledJdbcMapper
     interface Mapper {
-        User anyName(ResultSet rs, int rowNum);
+        JdbcRowMapper<User> prepareUser(ResultSetMetaData metadata);
 
-        Map<String, Object> row(ResultSet rs, int rowNum);
+        JdbcRowMapper<Map<String, Object>> prepareMap(ResultSetMetaData metadata);
 
         @JdbcMappingOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
-        Present present(ResultSet rs, int rowNum);
+        JdbcRowMapper<Present> preparePresent(ResultSetMetaData metadata);
     }
 
     static class User {

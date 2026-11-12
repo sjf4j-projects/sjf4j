@@ -10,27 +10,36 @@ import java.lang.annotation.Target;
 
 /**
  * Marks an interface for compile-time generation of direct JDBC {@link java.sql.ResultSet} mappers.
- * This is separate from {@link org.sjf4j.annotation.mapping.CompiledMapper}: JDBC mappers read columns from a result set directly
- * rather than mapping a source node or object graph. Abstract methods accept either {@code ResultSet}
- * or {@code ResultSet, int}. They return a supported declared target, {@code Map<String, Object>}, or,
- * for the one-argument form only, a {@code List} of either. {@link MappingCreator} may select a concrete implementation
- * or a default/static mapper factory for interface and abstract declared results.
- * Rules may be placed on the mapper interface or an individual method; a
- * matching method-level rule takes precedence.
+ * This is separate from {@link org.sjf4j.annotation.mapping.CompiledMapper}: JDBC mappers read
+ * columns from a result set directly rather than mapping a Java object graph.
+ * Abstract methods accept either a {@code ResultSet} for cursor-consuming mappings,
+ * or a {@link java.sql.ResultSetMetaData} to prepare a reusable
+ * {@link org.sjf4j.mapping.JdbcRowMapper JdbcRowMapper&lt;T&gt;}.
+ * {@link MappingCreator} can select the concrete target implementation; mapping
+ * rules may be placed on the interface or an individual method, with method rules taking precedence.
  *
- * <p>One-argument methods require a result set positioned before its first row. Generated methods
- * advance its cursor but never close it; the caller retains ownership of the result set, statement,
- * and connection. A single-target method returns {@code null} when there is no row. By default it
- * throws {@link org.sjf4j.exception.BindingException} after reading a second row; use
- * {@link JdbcMappingOptions}{@code (singleResult = SingleResultPolicy.FIRST)} to return the first row
- * without checking for another. A {@code List<T>} method consumes all remaining rows and returns an
- * empty list when there are none. Two-argument methods map the current row: the caller must already
- * position the result set on a row, and generated code neither advances the cursor nor checks another row.
- * The {@code int} row number is ignored during mapping and current-row methods do not support {@code List} results.</p>
+ * <p>Cursor-consuming methods expect a ResultSet positioned before the first row. They
+ * advance but never close it. A single-target method returns {@code null} for no rows;
+ * by default it throws {@link org.sjf4j.exception.BindingException} on multiple rows.
+ * {@link JdbcMappingOptions}{@code (singleResult = SingleResultPolicy.FIRST)}
+ * returns only the first row. List methods consume the remaining rows.</p>
+ *
+ * <p>Prepared methods have signature
+ * {@code JdbcRowMapper<T> prepare(ResultSetMetaData metadata)}. They resolve
+ * column names once and return a stateless row mapper that captures only the
+ * resulting column layout (indexes and labels). The caller manages ResultSet
+ * cursor movement and invokes {@code map(ResultSet)} for each current row.
+ * The prepare method name is arbitrary; only its signature determines its role.
+ * Prepared mappers never hold the ResultSet or advance/close it, and are
+ * reusable for results with the same column layout. The legacy
+ * {@code (ResultSet, int)} signature is not supported.</p>
  *
  * <p>{@link JdbcMappingOptions#columnProjection()} defaults to requiring every POJO or JOJO declared property;
  * {@code PRESENT_ONLY} leaves absent mutable properties at their initialized value. For map results, duplicate result
  * columns overwrite the earlier value with the last value.</p>
+ *
+ * <p>Column names are matched using {@link JdbcMappingOptions#columnNaming()}, which defaults to
+ * case-insensitive matching with camelCase-to-snake_case support. Explicit mappings have precedence.</p>
  *
  * <p>POJO properties use matching result columns by default; {@link Mapping#source()} supplies a flat
  * result column alias and target paths must declare one explicitly. JSONPath/JSON Pointer property-name

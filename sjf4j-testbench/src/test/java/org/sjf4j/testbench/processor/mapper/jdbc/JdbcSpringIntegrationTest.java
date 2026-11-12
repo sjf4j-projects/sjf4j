@@ -4,9 +4,11 @@ import org.h2.jdbcx.JdbcDataSource;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.mapping.JdbcRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,14 +24,19 @@ class JdbcSpringIntegrationTest {
         jdbcTemplate.update("insert into users (name, age) values (?, ?)", "Grace", 40);
 
         Mapper mapper = CompiledInstances.create(Mapper.class);
-        List<User> users = jdbcTemplate.query("select name, age from users order by age", mapper::mapRow);
+        List<User> users = jdbcTemplate.query("select name, age from users order by age", rs -> {
+            JdbcRowMapper<User> prepared = mapper.prepare(rs.getMetaData());
+            List<User> out = new ArrayList<>();
+            while (rs.next()) out.add(prepared.map(rs));
+            return out;
+        });
 
         assertEquals(List.of(new User("Ada", 36), new User("Grace", 40)), users);
     }
 
     @CompiledJdbcMapper
     interface Mapper {
-        User mapRow(ResultSet resultSet, int rowNum);
+        JdbcRowMapper<User> prepare(ResultSetMetaData metadata);
     }
 
     public record User(String name, int age) {

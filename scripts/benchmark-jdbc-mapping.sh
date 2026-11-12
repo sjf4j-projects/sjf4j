@@ -64,7 +64,7 @@ cat > "$META" <<EOF
 # JDBC Mapping Benchmark
 
 - Source: org.sjf4j.testbench.mapping.JdbcFullBenchmark
-- Suite version: 1
+- Suite version: 2 (explicit prepared JDBC row mapping)
 - Git SHA: $(git rev-parse HEAD)
 - UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')
 - Java: $VERSION
