@@ -264,7 +264,9 @@ val officialAnnotationTest by tasks.registering(Test::class) {
     useJUnitPlatform()
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
-    include("**/OfficialAnnotationTest.class")
+    include("**/OfficialAnnotationTest.class",
+        "**/OfficialAnnotationCompatibilityTest.class",
+        "**/OfficialAnnotationSuiteCoverageTest.class")
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
