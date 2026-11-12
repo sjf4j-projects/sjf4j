@@ -128,6 +128,9 @@ public class MappingFullBenchmark {
             check(Objects.equals(mapstruct.nested(profile, account), compiled.nested(profile, account)), "nested record");
             check(Objects.equals(mapstruct.nested(profile, null), compiled.nested(profile, null)),
                     "nested record with absent account");
+            check(Objects.equals(mapstruct.nested(new Profile("Grace", null), account),
+                    compiled.nested(new Profile("Grace", null), account)),
+                    "nested record with null contact leaf");
             check(Objects.equals(mapstruct.nested(null, account), compiled.nested(null, account)),
                     "nested record with absent profile");
             check(Objects.equals(mapstruct.nested(null, null), compiled.nested(null, null)),
