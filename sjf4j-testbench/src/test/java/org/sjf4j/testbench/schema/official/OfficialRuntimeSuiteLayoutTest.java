@@ -14,6 +14,74 @@ final class OfficialRuntimeSuiteLayoutTest {
     Path suiteDir;
 
     @Test
+    void optionalSuiteIncludesTaggedAndDirectoryCasesAndReportsFailures() throws Exception {
+        Files.writeString(suiteDir.resolve("format.json"), """
+                {
+                  "description": "root validation groups",
+                  "tests": [
+                    {
+                      "description": "required case is not optional",
+                      "schema": false,
+                      "tests": [{"description": "wrong expectation", "data": 3, "valid": true}]
+                    },
+                    {
+                      "description": "optional format assertion",
+                      "tags": ["format-assertion"],
+                      "schema": {"format": "ipv4"},
+                      "tests": [{"description": "invalid IPv4", "data": "not-ipv4", "valid": false}]
+                    }
+                  ]
+                }
+                """);
+
+        Path optional = Files.createDirectories(suiteDir.resolve("optional"));
+        Files.writeString(optional.resolve("content.json"), """
+                {
+                  "description": "optional standalone cases",
+                  "tests": [
+                    {
+                      "description": "expected optional mismatch",
+                      "schema": {"type": "integer"},
+                      "tests": [
+                        {"description": "intentionally fails", "data": 4, "valid": false},
+                        {"description": "correct invalid", "data": "text", "valid": false}
+                      ]
+                    },
+                    {
+                      "description": "optional format annotation should remain non-strict",
+                      "tags": ["format-annotation"],
+                      "schema": {"format": "ipv4"},
+                      "tests": [{"description": "annotation", "data": "not-ipv4", "valid": true}]
+                    },
+                    {
+                      "description": "incompatible future",
+                      "compatibility": "9999",
+                      "schema": false,
+                      "tests": [{"description": "future", "data": 4, "valid": false}]
+                    }
+                  ]
+                }
+                """);
+
+        OfficialRuntimeTest.TestSuiteReport result = OfficialRuntimeTest.runOptionalTestDir(
+                SchemaDialect.DRAFT_2020_12, suiteDir);
+
+        assertEquals(3, result.selectedGroups);
+        assertEquals(4, result.total);
+        assertEquals(3, result.passed);
+        assertEquals(1, result.failed); // Diagnostic only: did not throw.
+        assertEquals(0, result.error);
+        assertEquals(1, result.incompatibleGroups);
+        assertEquals(1, result.file("optional/content.json").failed);
+    }
+
+    @Test
+    void optionalSuiteMustExist() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,
+                () -> OfficialRuntimeTest.runOptionalTestDir(SchemaDialect.DRAFT_07, suiteDir));
+    }
+
+    @Test
     void readsUnifiedGroupsAndIsolatesExternalSchemasPerGroup() throws Exception {
         Files.writeString(suiteDir.resolve("ref.json"), """
                 {
