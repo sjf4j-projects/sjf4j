@@ -230,7 +230,7 @@ public final class SchemaValidator {
             SchemaPlan existing = scoped.resolve(selectedUri);
             if (existing != null) return existing;
         }
-        SchemaPlan compiled = scoped.register(SchemaLoader.documentUri(selectedUri), schema);
+        SchemaPlan compiled = scoped.register(SchemaUtil.documentUri(selectedUri), schema);
         SchemaPlan selected = selectedUri.isAbsolute() ? scoped.resolve(selectedUri) : null;
         // Boolean documents are not URI-indexed by SchemaRegistry.
         return selected == null ? compiled : selected;
