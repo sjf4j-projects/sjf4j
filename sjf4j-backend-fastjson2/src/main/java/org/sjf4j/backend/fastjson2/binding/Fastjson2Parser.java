@@ -45,7 +45,7 @@ public final class Fastjson2Parser extends StreamingParser {
      * native reads cannot leave a stale peek.
      * @return the underlying Fastjson2 reader
      */
-    public JSONReader rawReader() {
+    public JSONReader nativeParser() {
         // Generated native paths bypass wrapper reads, so invalidate a cached peek.
         peeked = null;
         return reader;

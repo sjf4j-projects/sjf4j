@@ -22,6 +22,7 @@ final class ReadEmitter {
     private final BindingNames names;
     private final Jackson2ReadEmitter jackson2;
     private final Fastjson2ReadEmitter fastjson2;
+    private final NativeReadEmitter nativeRead;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
@@ -31,6 +32,7 @@ final class ReadEmitter {
                 ? new Jackson2ReadEmitter() : null;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
+        this.nativeRead = jackson2 != null ? jackson2 : fastjson2;
     }
 
     void registerEnums(BindingValue value) {
@@ -313,9 +315,9 @@ final class ReadEmitter {
             return;
         }
 
-        boolean nativeObject = jackson2 != null && !value.properties().isEmpty();
+        boolean nativeObject = nativeRead != null && !value.properties().isEmpty();
         if (nativeObject) {
-            jackson2.emitObjectStart(out, insideObject);
+            nativeRead.emitObjectStart(out, insideObject);
         } else if (!insideObject) {
             emitObjectStart(out);
         }
@@ -354,9 +356,9 @@ final class ReadEmitter {
     /** Compiled creator binding: typed arguments and deferred writable fields. */
     private void emitCreator(JavaWriter out, BindingValue value, boolean insideObject,
                              String consumedDiscriminator) {
-        boolean nativeObject = jackson2 != null && !value.properties().isEmpty();
+        boolean nativeObject = nativeRead != null && !value.properties().isEmpty();
         if (nativeObject) {
-            jackson2.emitObjectStart(out, insideObject);
+            nativeRead.emitObjectStart(out, insideObject);
         } else if (!insideObject) {
             emitObjectStart(out);
         }
@@ -608,7 +610,7 @@ final class ReadEmitter {
     }
 
     private void emitArray(JavaWriter out, BindingValue value) {
-        if (jackson2 != null) jackson2.emitArrayStart(out);
+        if (nativeRead != null) nativeRead.emitArrayStart(out);
         else emitArrayStart(out);
 
         String allocation = value.type().toString().replaceFirst("\\[\\]", "[8]");
@@ -626,7 +628,7 @@ final class ReadEmitter {
     }
 
     private void emitList(JavaWriter out, BindingValue value) {
-        if (jackson2 != null) jackson2.emitArrayStart(out);
+        if (nativeRead != null) nativeRead.emitArrayStart(out);
         else emitArrayStart(out);
 
         out.line(value.type() + " value = new java.util.ArrayList<>();");
@@ -638,7 +640,7 @@ final class ReadEmitter {
     }
 
     private void emitSet(JavaWriter out, BindingValue value) {
-        if (jackson2 != null) jackson2.emitArrayStart(out);
+        if (nativeRead != null) nativeRead.emitArrayStart(out);
         else emitArrayStart(out);
 
         out.line(value.type() + " value = new java.util.LinkedHashSet<>();");
@@ -663,8 +665,8 @@ final class ReadEmitter {
     }
 
     private void emitArrayLoopStart(JavaWriter out, BindingValue element) {
-        if (jackson2 != null) {
-            jackson2.emitArrayLoopStart(out, element);
+        if (nativeRead != null) {
+            nativeRead.emitArrayLoopStart(out, element);
         } else {
             out.beginBlock("while (!parser.nextIfArrayEnd())");
         }
@@ -672,8 +674,8 @@ final class ReadEmitter {
 
     private String arrayElementReadExpression(BindingValue element) {
         String normalRead = readExpression(element, "parser");
-        return jackson2 != null
-                ? jackson2.arrayElementReadExpression(element, normalRead)
+        return nativeRead != null
+                ? nativeRead.arrayElementReadExpression(element, normalRead)
                 : normalRead;
     }
 

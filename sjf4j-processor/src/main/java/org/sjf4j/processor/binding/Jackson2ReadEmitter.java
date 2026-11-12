@@ -9,9 +9,10 @@ import org.sjf4j.processor.code.JavaWriter;
  * remain in {@link ReadEmitter}. This helper owns only Jackson-specific cursor
  * movement and the native array-element handoff.</p>
  */
-final class Jackson2ReadEmitter {
+final class Jackson2ReadEmitter implements NativeReadEmitter {
 
-    void emitObjectStart(JavaWriter out, boolean insideObject) {
+    @Override
+    public void emitObjectStart(JavaWriter out, boolean insideObject) {
         if (insideObject) {
             out.line("com.fasterxml.jackson.core.JsonParser nativeParser = parser.nativeParser();");
         } else {
@@ -19,7 +20,8 @@ final class Jackson2ReadEmitter {
         }
     }
 
-    void emitArrayStart(JavaWriter out) {
+    @Override
+    public void emitArrayStart(JavaWriter out) {
         emitNativeStart(out, "START_ARRAY");
     }
 
@@ -45,7 +47,8 @@ final class Jackson2ReadEmitter {
     }
 
     /** Native array loops advance once. Wrapped scalar/runtime reads adopt that token. */
-    void emitArrayLoopStart(JavaWriter out, BindingValue element) {
+    @Override
+    public void emitArrayLoopStart(JavaWriter out, BindingValue element) {
         out.beginBlock("while (nativeParser.nextToken() != com.fasterxml.jackson.core.JsonToken.END_ARRAY)");
         boolean nativeElement = element.helperRequired()
                 && (((element.kind() == BindingValue.Kind.POJO
@@ -60,7 +63,8 @@ final class Jackson2ReadEmitter {
     }
 
     /** String elements can be read from the native cursor without prefetched handoff. */
-    String arrayElementReadExpression(BindingValue element, String normalRead) {
+    @Override
+    public String arrayElementReadExpression(BindingValue element, String normalRead) {
         return element.kind() == BindingValue.Kind.STRING
                 ? "parser.readCurrentString()" : normalRead;
     }
