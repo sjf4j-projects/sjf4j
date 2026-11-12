@@ -114,7 +114,7 @@ class SchemaRegistryTest {
     }
 
     @Test
-    void indexIfAbsentFromRegistryRecompilesReferencedPlans() {
+    void indexRegistryRecompilesReferencedPlans() {
         URI ref = URI.create("https://example.test/common");
         URI root = URI.create("https://example.test/root");
 
@@ -125,7 +125,7 @@ class SchemaRegistryTest {
 
         SchemaRegistry scoped = new SchemaRegistry();
         scoped.index(ref, JsonSchema.fromJson("{\"type\":\"string\"}"));
-        scoped.indexIfAbsent(catalog);
+        scoped.indexRegistry(catalog);
 
         assertTrue(scoped.resolve(root).isValid("mocked"));
         assertFalse(scoped.resolve(root).isValid(5));
@@ -133,7 +133,7 @@ class SchemaRegistryTest {
     }
 
     @Test
-    void indexIfAbsentFromRegistryDoesNotLeakCanonicalAliases() {
+    void indexRegistryDoesNotLeakCanonicalAliases() {
         URI retrieval = URI.create("https://example.test/catalog/entry.json");
         URI canonical = URI.create("https://example.test/canonical");
 
@@ -143,20 +143,20 @@ class SchemaRegistryTest {
 
         SchemaRegistry scoped = new SchemaRegistry();
         scoped.index(canonical, JsonSchema.fromJson("{\"type\":\"string\"}"));
-        scoped.indexIfAbsent(catalog);
+        scoped.indexRegistry(catalog);
 
         assertTrue(scoped.resolve(canonical).isValid("mocked"));
         assertFalse(scoped.contains(retrieval));
     }
 
     @Test
-    void indexIfAbsentFromRegistryPreservesBooleanResources() {
+    void indexRegistryPreservesBooleanResources() {
         URI resource = URI.create("https://example.test/always");
         SchemaRegistry catalog = new SchemaRegistry();
         catalog.index(resource, BooleanSchema.TRUE);
 
         SchemaRegistry scoped = new SchemaRegistry();
-        scoped.indexIfAbsent(catalog);
+        scoped.indexRegistry(catalog);
 
         assertTrue(scoped.resolve(resource).isValid(null));
     }
