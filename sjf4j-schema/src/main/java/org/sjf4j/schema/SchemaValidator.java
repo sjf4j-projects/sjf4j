@@ -166,7 +166,7 @@ public final class SchemaValidator {
             }
             // Preserve explicit caller-provided catalog resources, but recompile
             // their object plans in this binding's own reference context.
-            scoped.indexIfAbsent(registry);
+            scoped.indexRegistry(registry);
         }
 
         // From value
