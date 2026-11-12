@@ -437,28 +437,12 @@ public class JdbcFullBenchmark {
 
     @CompiledJdbcMapper
     public interface AccountMapper {
-        @Mapping(target = "userName", source = "user_name")
-        @Mapping(target = "loginCount", source = "login_count")
-        @Mapping(target = "createdAt", source = "created_at")
-        @Mapping(target = "updatedAt", source = "updated_at")
         List<AccountBean> beans(ResultSet rs);
 
-        @Mapping(target = "userName", source = "user_name")
-        @Mapping(target = "loginCount", source = "login_count")
-        @Mapping(target = "createdAt", source = "created_at")
-        @Mapping(target = "updatedAt", source = "updated_at")
         AccountBean beanRow(ResultSet rs, int rowNum);
 
-        @Mapping(target = "userName", source = "user_name")
-        @Mapping(target = "loginCount", source = "login_count")
-        @Mapping(target = "createdAt", source = "created_at")
-        @Mapping(target = "updatedAt", source = "updated_at")
         List<AccountRecord> records(ResultSet rs);
 
-        @Mapping(target = "userName", source = "user_name")
-        @Mapping(target = "loginCount", source = "login_count")
-        @Mapping(target = "createdAt", source = "created_at")
-        @Mapping(target = "updatedAt", source = "updated_at")
         AccountRecord recordRow(ResultSet rs, int rowNum);
 
         List<Map<String, Object>> maps(ResultSet rs);
