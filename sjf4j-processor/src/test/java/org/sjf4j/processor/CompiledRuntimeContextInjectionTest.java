@@ -220,6 +220,16 @@ class CompiledRuntimeContextInjectionTest {
             assertNotSame(jdbcMapper, CompiledInstances.create(rowsType));
             java.util.concurrent.atomic.AtomicBoolean advanced =
                     new java.util.concurrent.atomic.AtomicBoolean();
+            // Compiled JDBC mapping resolves column indexes through ResultSetMetaData.
+            java.sql.ResultSetMetaData metadata = (java.sql.ResultSetMetaData)
+                    java.lang.reflect.Proxy.newProxyInstance(
+                            getClass().getClassLoader(),
+                            new Class<?>[]{java.sql.ResultSetMetaData.class},
+                            (proxy, method, args) -> {
+                                if ("getColumnCount".equals(method.getName())) return 1;
+                                if ("getColumnLabel".equals(method.getName())) return "name";
+                                throw new UnsupportedOperationException(method.getName());
+                            });
             java.sql.ResultSet resultSet = (java.sql.ResultSet)
                     java.lang.reflect.Proxy.newProxyInstance(
                             getClass().getClassLoader(),
@@ -231,6 +241,7 @@ class CompiledRuntimeContextInjectionTest {
                                 if ("getString".equals(method.getName())
                                         || "getObject".equals(method.getName())) return "Alice";
                                 if ("wasNull".equals(method.getName())) return false;
+                                if ("getMetaData".equals(method.getName())) return metadata;
                                 throw new UnsupportedOperationException(method.getName());
                             });
             Object row = rowsType.getMethod("read", java.sql.ResultSet.class)
