@@ -9,17 +9,17 @@ PREFIX = "org.sjf4j.testbench.mapping.JdbcFullBenchmark."
 SIZES = ("1", "10", "1000", "100000")
 GROUPS = {
     "pojo": {
-        "list": ("compiled", "spring", "mybatisAuto", "mybatisExplicit", "mybatisCursor"),
-        "row": ("compiled", "spring"),
+        "list": ("spring", "mybatisAuto", "mybatisExplicit", "mybatisCursor", "compiled"),
+        "row": ("spring", "compiled"),
     },
-    "record": {"list": ("compiled", "spring"), "row": ("compiled", "spring")},
+    "record": {"list": ("spring", "compiled"), "row": ("spring", "compiled")},
     "map": {
-        "list": ("compiled", "spring", "mybatisExplicit", "mybatisCursor"),
-        "row": ("compiled", "spring"),
+        "list": ("spring", "mybatisExplicit", "mybatisCursor", "compiled"),
+        "row": ("spring", "compiled"),
     },
 }
 LABELS = {
-    "compiled": "Compiled",
+    "compiled": "SJF4J Compiled",
     "spring": "Spring",
     "mybatisAuto": "MyBatis Auto",
     "mybatisExplicit": "MyBatis Explicit",
