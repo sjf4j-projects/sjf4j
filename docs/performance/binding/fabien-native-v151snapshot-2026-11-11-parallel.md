@@ -5,6 +5,7 @@
 **288 exact JMH cases × 3 independent native processes = 864 process-level results.** Four backends; Read/Write; Users/Clients; POJO/Map; 1/10/100KB; seed 12345.
 
 - Environment: GraalVM Community 25.5.5.0.3 / Native Image, `-O2`, no PGO; Ubuntu 24.04 Linux x86_64, AMD EPYC 7763 / EPYC 9V45 across backend runners.
+- **Comparison dependency versions (at the source commit):** Jackson2 Databind `2.22.3`; Jackson3 Databind `3.2.3`; Fastjson2 `2.0.66`; Gson `2.13.1`.
 - Mode: parallel; Native, Runtime and Compiled for each backend run on the same runner.
 - JMH 1.37: one thread; five 1s warmup and five 1s measurement iterations, `-f 0`; three independent processes per exact case.
 - Metric: µs/op (lower is better); Native / Compiled = direct third-party Binding latency / generated Binding latency.
