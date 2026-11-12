@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JdbcComputeIntegrationTest {
+
     @Test
     void emitsWhitelistedComputeParameterGetter() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
@@ -33,7 +34,7 @@ class JdbcComputeIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(source.contains("rs.getTimestamp(\"created\")"), source);
+        assertTrue(source.contains("rs.getTimestamp(idx_created)"), source);
         assertTrue(source.contains("this.toInstant("), source);
     }
 
