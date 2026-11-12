@@ -106,12 +106,12 @@ Four row counts are independent exact workloads: **1 / 10 / 1,000 / 100,000**.
 
 | Group | Mode | Implementations | Rows | JMH entries |
 | --- | --- | --- | --- | ---: |
-| POJO | List | Compiled / Spring / MyBatis Auto / MyBatis Explicit / MyBatis Cursor | All four | 20 |
-| POJO | Row | Compiled / Spring | All four | 8 |
-| Record | List | Compiled / Spring | All four | 8 |
-| Record | Row | Compiled / Spring | All four | 8 |
-| Map | List | Compiled / Spring / MyBatis Explicit / MyBatis Cursor | All four | 16 |
-| Map | Row | Compiled / Spring | All four | 8 |
+| POJO | List | Spring / MyBatis Auto / MyBatis Explicit / MyBatis Cursor / SJF4J Compiled | All four | 20 |
+| POJO | Row | Spring / SJF4J Compiled | All four | 8 |
+| Record | List | Spring / SJF4J Compiled | All four | 8 |
+| Record | Row | Spring / SJF4J Compiled | All four | 8 |
+| Map | List | Spring / MyBatis Explicit / MyBatis Cursor / SJF4J Compiled | All four | 16 |
+| Map | Row | Spring / SJF4J Compiled | All four | 8 |
 | **Total** | | | | **68** |
 
 **List**: the implementation consumes the full ResultSet and returns a List.
