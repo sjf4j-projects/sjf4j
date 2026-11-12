@@ -40,21 +40,21 @@ final class FormatUtil {
 
     static boolean validateUri(String value) {
         if (value == null || value.isEmpty() || !_isAsciiOnly(value)) return false;
+        if (_isEmptyAuthorityAndPath(value, true)) return true;
         try {
-            if (hasUnbracketedIpv6Authority(value)) return false;
-            URI uri = new URI(value);
-            return uri.isAbsolute() && _hasValidUriPort(uri.getRawAuthority());
+            return validateUri(new URI(value), true);
         } catch (Exception e) {
             return false;
         }
     }
 
     static boolean validateUriReference(String value) {
-        if (value == null || value.isEmpty() || !_isAsciiOnly(value)) return false;
+        if (value == null || !_isAsciiOnly(value)) return false;
+        // java.net.URI rejects an empty authority without a following path,
+        // query or fragment even though RFC 3986 permits it.
+        if (_isEmptyAuthorityAndPath(value, false)) return true;
         try {
-            if (hasUnbracketedIpv6Authority(value)) return false;
-            URI uri = new URI(value);
-            return _hasValidUriPort(uri.getRawAuthority());
+            return validateUri(new URI(value), false);
         } catch (Exception e) {
             return false;
         }
@@ -62,15 +62,13 @@ final class FormatUtil {
 
     /**
      * Validates an already parsed URI without reparsing its serialized value.
-     * Keep the ASCII, authority and port rules identical to the string validator.
+     * Keep the ASCII and authority rules identical to the string validator.
      */
     static boolean validateUri(URI uri, boolean requireAbsolute) {
         if (uri == null) return false;
         String raw = uri.toString();
-        return !raw.isEmpty() && _isAsciiOnly(raw)
-                && !hasUnbracketedIpv6Authority(raw)
-                && (!requireAbsolute || uri.isAbsolute())
-                && _hasValidUriPort(uri.getRawAuthority());
+        return _isAsciiOnly(raw) && (!requireAbsolute || uri.isAbsolute())
+                && _hasValidUriAuthority(_rawUriAuthority(raw, uri));
     }
 
     static boolean validateHostname(String value, boolean allowUnicode) {
@@ -224,27 +222,65 @@ final class FormatUtil {
         return true;
     }
 
-    private static boolean _hasValidUriPort(String authority) {
+    private static boolean _isEmptyAuthorityAndPath(String value, boolean requireAbsolute) {
+        if (!value.endsWith("//")) return false;
+        if (value.length() == 2) return !requireAbsolute;
+        int schemeEnd = value.length() - 3;
+        return schemeEnd > 0 && value.charAt(schemeEnd) == ':'
+                && hasIriScheme(value);
+    }
+
+    /**
+     * java.net.URI can treat an invalid server authority as a registry name,
+     * and reports an empty authority as null. Extract the original authority
+     * to validate the RFC 3986 subcomponent syntax independently.
+     */
+    private static String _rawUriAuthority(String value, URI uri) {
+        if (uri.isOpaque()) return null;
+        int start;
+        if (value.startsWith("//")) {
+            start = 2;
+        } else {
+            int schemeEnd = value.indexOf(':');
+            if (!uri.isAbsolute() || schemeEnd < 0 || !value.startsWith("//", schemeEnd + 1)) {
+                return null;
+            }
+            start = schemeEnd + 3;
+        }
+        int end = _authorityEnd(value, start);
+        return end < 0 ? value.substring(start) : value.substring(start, end);
+    }
+
+    private static boolean _hasValidUriAuthority(String authority) {
         if (authority == null || authority.isEmpty()) return true;
         int at = authority.indexOf('@');
-        String hostPort = at >= 0 ? authority.substring(at + 1) : authority;
+        // RFC 3986 authority = [ userinfo "@" ] host [ ":" port ].
+        // A literal second @ is not permitted in either userinfo or host.
+        if (at >= 0 && authority.indexOf('@', at + 1) >= 0) return false;
+        String hostPort = authority.substring(at + 1);
         if (hostPort.isEmpty()) return true;
+
         if (hostPort.charAt(0) == '[') {
             int end = hostPort.indexOf(']');
             if (end < 0) return false;
+            String literal = hostPort.substring(1, end);
+            // IPv4-embedded IPv6 addresses use the dec-octet grammar. The
+            // JDK URI parser accepts leading zeroes which RFC 3986 forbids.
+            int lastColon = literal.lastIndexOf(':');
+            if (lastColon >= 0 && literal.indexOf('.', lastColon + 1) >= 0
+                    && !FormatValidator._validateIpv4(literal.substring(lastColon + 1))) return false;
             if (end == hostPort.length() - 1) return true;
-            if (hostPort.charAt(end + 1) != ':') return false;
-            return _isDigits(hostPort, end + 2);
+            return hostPort.charAt(end + 1) == ':' && _isUriPort(hostPort, end + 2);
         }
+
         int colon = hostPort.lastIndexOf(':');
         if (colon < 0) return true;
         if (hostPort.indexOf(':') != colon) return false;
-        if (colon == 0 || colon == hostPort.length() - 1) return false;
-        return _isDigits(hostPort, colon + 1);
+        return _isUriPort(hostPort, colon + 1);
     }
 
-    private static boolean _isDigits(String value, int offset) {
-        if (offset >= value.length()) return false;
+    private static boolean _isUriPort(String value, int offset) {
+        // RFC 3986: port = *DIGIT (zero or more digits).
         for (int i = offset; i < value.length(); i++) {
             char ch = value.charAt(i);
             if (ch < '0' || ch > '9') return false;
