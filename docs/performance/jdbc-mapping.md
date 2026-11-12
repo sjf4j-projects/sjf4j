@@ -214,6 +214,130 @@ RowMapper.mapRow(ResultSet, int). The returned List ensures identical work.
 materialize it into an ArrayList. This is a streaming MyBatis pipeline, not
 a direct RowMapper API; it is shown separately, never under Row mode.
 
+### Mapping code examples
+
+These are abbreviated from the actual
+[JdbcFullBenchmark.java](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/JdbcFullBenchmark.java),
+rather than separate end-to-end database examples. All implementations map the
+same twelve columns into the same AccountBean, AccountRecord or
+Map<String, Object> target. Each List/Row invocation receives a **fresh**
+ResultSet. Query execution, mapper creation and configuration are outside the
+measured method; the methods themselves traverse and materialize the rows.
+
+#### SJF4J CompiledJdbcMapper
+
+The annotation processor generates the mapper. The snake_case-to-camelCase
+column overrides are declared on each corresponding POJO/Record method:
+
+~~~java
+@CompiledJdbcMapper
+interface AccountMapper {
+    @Mapping(target = "userName", source = "user_name")
+    @Mapping(target = "loginCount", source = "login_count")
+    @Mapping(target = "createdAt", source = "created_at")
+    @Mapping(target = "updatedAt", source = "updated_at")
+    List<AccountBean> beans(ResultSet rs);
+
+    @Mapping(target = "userName", source = "user_name")
+    @Mapping(target = "loginCount", source = "login_count")
+    @Mapping(target = "createdAt", source = "created_at")
+    @Mapping(target = "updatedAt", source = "updated_at")
+    AccountBean beanRow(ResultSet rs, int rowNum);
+
+    // Record methods use the same four @Mapping overrides.
+    List<Map<String, Object>> maps(ResultSet rs);
+    Map<String, Object> mapRow(ResultSet rs, int rowNum);
+}
+
+// Trial setup, outside the timed path:
+AccountMapper mapper = CompiledInstances.create(AccountMapper.class);
+
+// Timed List path, with a new ResultSet:
+List<AccountBean> list = mapper.beans(rs);
+
+// Timed Row path, with a separate new ResultSet:
+List<AccountBean> rows = new ArrayList<>();
+int rowNum = 0;
+while (rs.next()) rows.add(mapper.beanRow(rs, rowNum++));
+~~~
+
+Record uses \`records(ResultSet)\` and \`recordRow(ResultSet, int)\` with the
+same four \`@Mapping\` overrides. Map methods use runtime JDBC column labels
+and require no column annotations. The ResultSet is not closed by the mapper.
+
+#### Spring JDBC
+
+\`RowMapper\` instances and the \`RowMapperResultSetExtractor\` are created
+once in trial setup. The benchmark measures either extracting a complete
+List or repeatedly invoking \`mapRow\`, **not** \`JdbcTemplate.query()\`:
+
+~~~java
+// Trial setup, outside the timed path:
+BeanPropertyRowMapper<AccountBean> bean =
+        BeanPropertyRowMapper.newInstance(AccountBean.class);
+DataClassRowMapper<AccountRecord> record =
+        DataClassRowMapper.newInstance(AccountRecord.class);
+ColumnMapRowMapper map = new ColumnMapRowMapper();
+
+RowMapperResultSetExtractor<AccountBean> extractor =
+        new RowMapperResultSetExtractor<>(bean);
+
+// Timed List path, with a new ResultSet:
+List<AccountBean> list = extractor.extractData(rs);
+
+// Timed Row path, with a separate new ResultSet:
+List<AccountBean> rows = new ArrayList<>();
+int rowNum = 0;
+while (rs.next()) rows.add(bean.mapRow(rs, rowNum++));
+~~~
+
+Record and Map use the same extractor/loop patterns with \`record\` and
+\`map\`. This includes Spring's reflection/constructor and column conversion
+costs but excludes Spring's SQL execution and connection management.
+
+#### MyBatis
+
+The benchmark uses MyBatis's \`DefaultResultSetHandler\` directly,
+**not a full \`SqlSession.selectList()\` call**. Configuration, all twelve
+explicit \`ResultMapping\` entries (when applicable), and the
+\`MappedStatement\` are built outside the timed path:
+
+~~~java
+// Trial setup:
+Configuration config = new Configuration();
+config.setMapUnderscoreToCamelCase(true);
+
+ResultMap autoMap = new ResultMap.Builder(
+        config, "beanAutoMap", AccountBean.class, List.of()).build();
+// For Explicit, the benchmark builds twelve ResultMapping entries instead.
+MappedStatement statement = new MappedStatement.Builder(
+        config, "beanAuto", new StaticSqlSource(config, QUERY),
+        SqlCommandType.SELECT).resultMaps(List.of(autoMap)).build();
+
+// Invocation setup (outside timing); select is a prepared statement
+// whose executeQuery() has already opened its ResultSet:
+DefaultResultSetHandler handler = new DefaultResultSetHandler(
+        null, statement, null, null,
+        statement.getBoundSql(null), RowBounds.DEFAULT);
+
+// Timed Auto/Explicit List path:
+@SuppressWarnings("unchecked")
+List<AccountBean> list =
+        (List<AccountBean>) (List<?>) handler.handleResultSets(select);
+
+// Timed Cursor path (on a separate ResultSet):
+List<AccountBean> rows = new ArrayList<>();
+try (Cursor<AccountBean> cursor = handler.handleCursorResultSets(select)) {
+    for (AccountBean account : cursor) rows.add(account);
+}
+~~~
+
+The Explicit POJO and Map paths substitute a \`MappedStatement\` with
+the twelve explicit \`ResultMapping\` entries; Map keys retain JDBC column
+labels. The Cursor path streams through MyBatis and then creates a List,
+so it is **not equivalent** to the direct Spring/SJF4J Row API. Full
+setup code and all per-shape variants are in the linked JMH source.
+
 ## Baseline policy
 
 - **Suite version: 1**, exactly 68 measurements. Fixture, column type, method,
