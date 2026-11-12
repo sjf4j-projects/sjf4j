@@ -125,12 +125,24 @@ final class SchemaResourceResolver {
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName,
                      Element sourceElement) {
         Path resourceDirectory = findResourceDirectory(sourceElement);
+        String externalJson = annotation.externalSchemas();
+        if (externalJson.isEmpty() && !annotation.externalSchemasRef().trim().isEmpty()) {
+            URI externalRef = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR.resolve(
+                    annotation.externalSchemasRef().trim());
+            externalJson = read(externalRef, resourceDirectory);
+            if (externalJson == null) {
+                throw new IllegalArgumentException("externalSchemasRef not found: " + externalRef);
+            }
+        }
+        Map<URI, JsonSchema> external = externalJson.isEmpty()
+                ? Collections.emptyMap() : SchemaLoader.parseExternalSchemas(externalJson);
         String inline = annotation.value();
         String ref = annotation.ref().trim();
         URI documentUri;
         URI selectedUri;
         String rootDocument;
         boolean rootFromRegistry = false;
+        boolean rootFromExternal = false;
 
         if (!inline.isEmpty()) {
             documentUri = URI.create("sjf4j:/" + originName + "/");
@@ -147,11 +159,17 @@ final class SchemaResourceResolver {
                 if ("classpath".equals(documentUri.getScheme()) || "file".equals(documentUri.getScheme())) {
                     rootDocument = read(documentUri, resourceDirectory);
                 } else {
-                    IndexedSource indexed = indexedSource(documentUri);
-                    rootDocument = indexed == null ? null : indexed.document;
-                    if (indexed != null) {
-                        documentUri = indexed.retrieval;
-                        rootFromRegistry = true;
+                    JsonSchema mapped = external.get(documentUri);
+                    if (mapped != null) {
+                        rootDocument = Sjf4j.global().toJsonString(mapped);
+                        rootFromExternal = true;
+                    } else {
+                        IndexedSource indexed = indexedSource(documentUri);
+                        rootDocument = indexed == null ? null : indexed.document;
+                        if (indexed != null) {
+                            documentUri = indexed.retrieval;
+                            rootFromRegistry = true;
+                        }
                     }
                 }
             } else {
@@ -176,23 +194,20 @@ final class SchemaResourceResolver {
         resources.put(documentUri, rootDocument);
         if (rootFromRegistry) registryResources.add(documentUri);
 
-        // Every @ValidJsonSchema binding owns its retrieval URI -> JSON Schema
-        // mappings, matching the official suite's externalSchemas format.
-        String externalJson = annotation.externalSchemas();
-        if (externalJson.isEmpty() && !annotation.externalSchemasRef().trim().isEmpty()) {
-            URI externalRef = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR.resolve(
-                    annotation.externalSchemasRef().trim());
-            externalJson = read(externalRef, resourceDirectory);
-            if (externalJson == null) {
-                throw new IllegalArgumentException("externalSchemasRef not found: " + externalRef);
-            }
-        }
-        Map<URI, JsonSchema> external = externalJson.isEmpty()
-                ? java.util.Collections.emptyMap() : ExternalSchemas.parse(externalJson);
+        // externalSchemas is an input representation; the registry only sees
+        // ordinary (retrieval URI, JsonSchema) pairs.
         for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
-            if (resources.putIfAbsent(entry.getKey(),
-                    Sjf4j.global().toJsonString(entry.getValue())) != null) {
-                throw new IllegalArgumentException("duplicate external schema URI: " + entry.getKey());
+            String document = Sjf4j.global().toJsonString(entry.getValue());
+            String present = resources.get(entry.getKey());
+            if (present != null) {
+                if (entry.getKey().equals(documentUri) && rootFromRegistry) {
+                    resources.put(entry.getKey(), document);
+                    registryResources.remove(entry.getKey());
+                } else if (!(entry.getKey().equals(documentUri) && rootFromExternal)) {
+                    throw new IllegalArgumentException("duplicate external schema URI: " + entry.getKey());
+                }
+            } else {
+                resources.put(entry.getKey(), document);
             }
         }
 
@@ -224,14 +239,21 @@ final class SchemaResourceResolver {
         }
 
         Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources, external.keySet());
-        // Directory resources are indexed once, prior to root resolution.
-        // Each method gets a registry copy so roots cannot leak between methods.
-        SchemaRegistry registry = SchemaRegistry.copyOf(registry(), external);
+        // Every binding owns a fresh registry. Index its root and directly loaded
+        // references first, followed by explicit external resources. Fill missing
+        // directory resources afterward; never copy precompiled plans.
+        SchemaRegistry registry = new SchemaRegistry();
         for (int i = 0; i < snapshot.uris.length; i++) {
-            // Directory and explicit external resources are already indexed
-            // in this method's isolated registry context.
             if (snapshot.fromRegistry[i] || snapshot.externalUris.contains(snapshot.uris[i])) continue;
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
+        }
+        for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
+            registry.index(entry.getKey(), entry.getValue());
+        }
+        java.util.Set<IndexedSource> visited =
+                Collections.newSetFromMap(new IdentityHashMap<IndexedSource, Boolean>());
+        for (IndexedSource source : directorySources().values()) {
+            if (visited.add(source)) registry.indexIfAbsent(source.retrieval, source.schema);
         }
         // Boolean resources are now indexed alongside object resources, so the
         // selected URI must always resolve during annotation processing.
