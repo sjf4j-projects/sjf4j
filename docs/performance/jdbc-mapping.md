@@ -100,7 +100,7 @@ DefaultResultSetHandler (not a full SqlSession query).
 
 **Row**: the benchmark owns the ResultSet.next loop and appends mapped rows
 to a List. SJF4J calls `CompiledJdbcMapper.prepare(ResultSetMetaData)` once
-per invocation to obtain `JdbcRowMapper<T>`, then calls `mapRow(ResultSet)`
+per invocation to obtain `JdbcRowMapper<T>`, then calls `map(ResultSet)`
 per row. Spring uses `RowMapper.mapRow(ResultSet, int)`.
 The SJF4J preparation cost is included in the measured operation; no
 implicit per-ResultSet cache is used. The returned List ensures identical work.
