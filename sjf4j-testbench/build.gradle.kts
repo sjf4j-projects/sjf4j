@@ -351,7 +351,6 @@ val generateOfficialCompiledCases by tasks.registering {
             resourceDir.mkdirs()
 
             val manifest = StringBuilder("file\tgroup\tclass\ttests\n")
-            val externalIndex = StringBuilder("class\turi\tsource\n")
             var fileCount = 0
             var groupCount = 0
             var testCount = 0
@@ -400,19 +399,16 @@ val generateOfficialCompiledCases by tasks.registering {
                     } else originalSchema
                     schemaFile.writeText(JsonOutput.toJson(compiledSchema), Charsets.UTF_8)
 
-                    val sources = linkedMapOf<String, String>()
+                    var externalAttribute = ""
                     val external = item["externalSchemas"] as? Map<*, *>
                     if (external != null) {
-                        for ((sourceIndex, entry) in external.entries.withIndex()) {
-                            val retrieval = entry.key as? String
-                                ?: throw GradleException("Non-string external URI: $file #$groupIndex")
-                            val sourcePath = "external/$stem/$index/" +
-                                sourceIndex.toString().padStart(3, '0') + ".json"
-                            val source = resourceDir.resolve(sourcePath)
-                            source.parentFile.mkdirs()
-                            val rawSchema = entry.value
-                            val schema = if (draft != "draft2020-12" && rawSchema is Map<*, *>
-                                && !rawSchema.containsKey("$" + "schema")) {
+                        val documents = linkedMapOf<String, Any?>()
+                        for ((retrievalUri, rawSchema) in external) {
+                            require(retrievalUri is String) {
+                                "Non-string external URI: $file #$groupIndex"
+                            }
+                            val mappedSchema = if (draft != "draft2020-12"
+                                && rawSchema is Map<*, *> && !rawSchema.containsKey("$" + "schema")) {
                                 linkedMapOf<String, Any?>("$" + "schema" to dialectUri).apply {
                                     for ((key, value) in rawSchema) {
                                         require(key is String) { "Non-string external schema key" }
@@ -420,9 +416,13 @@ val generateOfficialCompiledCases by tasks.registering {
                                     }
                                 }
                             } else rawSchema
-                            source.writeText(JsonOutput.toJson(schema), Charsets.UTF_8)
-                            sources[retrieval] = "classpath:/official/$draft/$sourcePath"
+                            documents[retrievalUri] = mappedSchema
                         }
+                        val externalPath = "external/$stem/$index.json"
+                        val externalFile = resourceDir.resolve(externalPath)
+                        externalFile.parentFile.mkdirs()
+                        externalFile.writeText(JsonOutput.toJson(documents), Charsets.UTF_8)
+                        externalAttribute = ", externalSchemasRef = \"classpath:/official/$draft/$externalPath\""
                     }
                     for (allowFallback in listOf(false, true)) {
                         val variant = if (allowFallback) className + "Fallback" else className
@@ -434,15 +434,11 @@ val generateOfficialCompiledCases by tasks.registering {
                             "",
                             "@CompiledValidator(fallback = $allowFallback)",
                             "public interface $variant {",
-                            "    @ValidJsonSchema(ref = \"classpath:/official/$draft/$schemaPath\")",
+                            "    @ValidJsonSchema(ref = \"classpath:/official/$draft/$schemaPath\"$externalAttribute)",
                             "    boolean valid(Object value);",
                             "}"
                         ).joinToString("\n", postfix = "\n")
                         javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
-                        for ((retrieval, resource) in sources) {
-                            externalIndex.append(packageName).append('.').append(variant).append('\t')
-                                .append(retrieval).append('\t').append(resource).append('\n')
-                        }
                     }
                     manifest.append(file.name).append('\t').append(groupIndex)
                         .append('\t').append(className).append('\t').append(tests.size).append('\n')
@@ -454,7 +450,6 @@ val generateOfficialCompiledCases by tasks.registering {
             }
             require(groupCount > 0) { "No compatible official cases for $draft" }
             output.resolve("index.tsv").writeText(manifest.toString(), Charsets.UTF_8)
-            output.resolve("external-index.tsv").writeText(externalIndex.toString(), Charsets.UTF_8)
             output.resolve("counts.properties").writeText(
                 "files=$fileCount\ngroups=$groupCount\ntests=$testCount\n", Charsets.UTF_8
             )
