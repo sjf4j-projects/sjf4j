@@ -111,7 +111,8 @@ public final class OfficialAnnotationTest {
             for (Path file : files) {
                 tests.add(DynamicTest.dynamicTest(file.getFileName().toString(), () -> {
                     Report result = runFile(file, dialect, null, null);
-                    if (result.total + result.skipped == 0) {
+                    result.requireComplete(dialect + " / " + file.getFileName());
+                    if (result.sourceTests == 0) {
                         throw new AssertionError("Empty official annotation file: " + file);
                     }
                     if (result.failed != 0 || result.errors != 0 || result.passed != result.total) {
@@ -177,8 +178,11 @@ public final class OfficialAnnotationTest {
                 total.add(fileReport);
             }
         }
+        total.requireComplete("Official Annotation Suite (" + dialect + ")");
         System.out.println("========================================");
         System.out.println("Official Annotation Suite Summary (" + dialect + ")");
+        System.out.println("Groups: " + total.eligibleGroups + " compatible, "
+                + total.skippedGroups + " incompatible, " + total.sourceGroups + " selected");
         System.out.println("Total: " + total.total + "  Passed: " + total.passed
                 + "  Failed: " + total.failed + "  Error: " + total.errors
                 + "  Skipped: " + total.skipped);
@@ -186,7 +190,7 @@ public final class OfficialAnnotationTest {
         return total;
     }
 
-    private static Report runFile(Path file, SchemaDialect dialect, Integer groupFilter,
+    static Report runFile(Path file, SchemaDialect dialect, Integer groupFilter,
                                   Integer testFilter) throws Exception {
         JsonObject suite = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
         JsonArray groups = suite.getJsonArray("suite");
@@ -198,6 +202,14 @@ public final class OfficialAnnotationTest {
             if (groupFilter != null && groupFilter != groupIndex) continue;
 
             JsonArray tests = group.getJsonArray("tests");
+            if (tests == null || tests.size() == 0) {
+                throw new IllegalArgumentException("Missing or empty tests in "
+                        + file.getFileName() + " group#" + groupIndex);
+            }
+            report.sourceGroups++;
+            int selectedTests = testFilter == null ? tests.size()
+                    : (testFilter >= 0 && testFilter < tests.size() ? 1 : 0);
+            report.sourceTests += selectedTests;
             String compatibility = group.getString("compatibility");
             boolean compatible;
             try {
@@ -207,17 +219,15 @@ public final class OfficialAnnotationTest {
                         + ": " + e.getMessage(), e);
             }
             if (!compatible) {
-                int skipped = 0;
-                for (int testIndex = 0; testIndex < tests.size(); testIndex++) {
-                    if (testFilter == null || testFilter == testIndex) skipped++;
-                }
-                report.skipped += skipped;
-                if (skipped > 0) {
+                report.skippedGroups++;
+                report.skipped += selectedTests;
+                if (selectedTests > 0) {
                     System.out.println("SKIP " + file.getFileName() + " group#" + groupIndex
-                            + " (compatibility=" + compatibility + ", tests=" + skipped + ")");
+                            + " (compatibility=" + compatibility + ", tests=" + selectedTests + ")");
                 }
                 continue;
             }
+            report.eligibleGroups++;
 
             SchemaPlan plan = null;
             Exception compileError = null;
@@ -265,9 +275,11 @@ public final class OfficialAnnotationTest {
                 }
             }
         }
+        report.requireComplete(file.getFileName() + " / " + dialect);
         System.out.println(file.getFileName() + " [ " + report.passed + " / " + report.total
                 + " ] Failed: " + report.failed + " Error: " + report.errors
-                + " Skipped: " + report.skipped);
+                + " Skipped: " + report.skipped
+                + " Groups: " + report.eligibleGroups + "/" + report.sourceGroups);
         return report;
     }
 
@@ -371,7 +383,11 @@ public final class OfficialAnnotationTest {
         }
     }
 
-    private static final class Report {
+    static final class Report {
+        int sourceGroups;
+        int eligibleGroups;
+        int skippedGroups;
+        int sourceTests;
         int total;
         int passed;
         int failed;
@@ -379,7 +395,23 @@ public final class OfficialAnnotationTest {
         int skipped;
         final java.util.List<String> failures = new java.util.ArrayList<>();
 
+        void requireComplete(String scope) {
+            if (sourceGroups != eligibleGroups + skippedGroups
+                    || sourceTests != total + skipped
+                    || total != passed + failed + errors) {
+                throw new AssertionError(scope + ": incomplete annotation coverage: "
+                        + "groups=" + sourceGroups + " (eligible=" + eligibleGroups
+                        + ", skipped=" + skippedGroups + "), tests=" + sourceTests
+                        + " (executed=" + total + ", skipped=" + skipped + "), results="
+                        + passed + " passed/" + failed + " failed/" + errors + " errors");
+            }
+        }
+
         void add(Report other) {
+            sourceGroups += other.sourceGroups;
+            eligibleGroups += other.eligibleGroups;
+            skippedGroups += other.skippedGroups;
+            sourceTests += other.sourceTests;
             total += other.total;
             passed += other.passed;
             failed += other.failed;
