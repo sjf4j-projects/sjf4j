@@ -50,10 +50,10 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
             case VALUE_CODEC:
             case NUMBER:
             case RUNTIME:
-                // These paths do not need a native nativeGenerator local.
+                // These paths do not need a native generator local.
                 break;
             default:
-                out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeWriter();");
+                out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeGenerator();");
         }
         emitValue(out, value, expression, nativeGenerator, names);
     }
@@ -63,7 +63,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         out.beginBlock("private void " + value.helperName() + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = generator.nativeWriter();");
+        out.line(generatorType() + " g = generator.nativeGenerator();");
 
         switch (value.kind()) {
             case JSON_OBJECT:
