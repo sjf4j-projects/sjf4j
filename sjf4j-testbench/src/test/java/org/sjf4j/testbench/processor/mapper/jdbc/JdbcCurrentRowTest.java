@@ -26,13 +26,13 @@ class JdbcCurrentRowTest {
         int[] nextCalls = {0};
 
         JdbcRowMapper<User> users = mapper.prepareUser(metadata(new String[]{"name", "age"}));
-        User user = users.mapRow(currentRowResult(new String[]{"name", "age"}, nextCalls, "Ada", 36));
+        User user = users.map(currentRowResult(new String[]{"name", "age"}, nextCalls, "Ada", 36));
         assertEquals("Ada", user.name);
         assertEquals(36, user.age);
         assertEquals(0, nextCalls[0]);
 
         JdbcRowMapper<Map<String, Object>> maps = mapper.prepareMap(metadata(new String[]{"name"}));
-        Map<String, Object> row = maps.mapRow(currentRowResult(new String[]{"name"}, nextCalls, "Grace"));
+        Map<String, Object> row = maps.map(currentRowResult(new String[]{"name"}, nextCalls, "Grace"));
         assertEquals(Map.of("name", "Grace"), row);
         assertEquals(0, nextCalls[0]);
     }
@@ -44,12 +44,12 @@ class JdbcCurrentRowTest {
         JdbcRowMapper<User> users = mapper.prepareUser(metadata(new String[]{"name", "age"}));
         assertInstanceOf(java.sql.SQLException.class,
                 assertThrows(BindingException.class,
-                        () -> users.mapRow(brokenCurrentRowResult("getString"))).getCause());
+                        () -> users.map(brokenCurrentRowResult("getString"))).getCause());
 
         JdbcRowMapper<Map<String, Object>> maps = mapper.prepareMap(metadata(new String[]{"name"}));
         assertInstanceOf(java.sql.SQLException.class,
                 assertThrows(BindingException.class,
-                        () -> maps.mapRow(brokenCurrentRowResult("getObject"))).getCause());
+                        () -> maps.map(brokenCurrentRowResult("getObject"))).getCause());
     }
 
     @Test
@@ -58,7 +58,7 @@ class JdbcCurrentRowTest {
         int[] nextCalls = {0};
 
         JdbcRowMapper<Present> rows = mapper.preparePresent(metadata(new String[]{"name"}));
-        Present present = rows.mapRow(currentRowResult(new String[]{"name"}, nextCalls, "Ada"));
+        Present present = rows.map(currentRowResult(new String[]{"name"}, nextCalls, "Ada"));
         assertEquals("Ada", present.name);
         assertEquals(7, present.age);
         assertEquals(0, nextCalls[0]);
