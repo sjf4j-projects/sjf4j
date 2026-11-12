@@ -172,7 +172,7 @@ final class OfficialCaseReport {
         }
 
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("suite", "JSON Schema Draft 2020-12 (excluding optional)");
+        summary.put("suite", "Official Validation Suite (excluding optional)");
         summary.put("selection", selection);
         summary.put("revision", revision);
         summary.put("expectedFiles", expectedFiles);
