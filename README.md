@@ -260,11 +260,13 @@ For JDBC results, `@CompiledJdbcMapper` generates direct mappings from `ResultSe
 @CompiledJdbcMapper
 interface UserJdbcMapper {
     List<User> users(ResultSet resultSet);
-    User userRow(ResultSet resultSet, int rowNum);
+    JdbcRowMapper<User> prepare(ResultSetMetaData metadata);
 }
 ```
 
-JDBC column labels automatically match Java property names without regard to case,
+Use `mapper.prepare(resultSet.getMetaData())` once before iterating rows, then
+call `prepared.mapRow(resultSet)` for each row. The prepared mapper retains only
+column indexes, not the ResultSet. JDBC column labels automatically match Java property names without regard to case,
 including `user_name` → `userName`. For strict matching, use
 `@JdbcMappingOptions(columnNaming = ColumnNamingPolicy.EXACT)`
 (or `INSENSITIVE` for case-insensitive matching without snake_case conversion).
