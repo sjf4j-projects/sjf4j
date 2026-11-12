@@ -307,10 +307,10 @@ public final class OfficialCompiledTest {
                         && JsonType.of(generatedSchema) == JsonType.OBJECT) {
                     JsonObject original = Nodes.toJsonObject(officialSchema);
                     JsonObject compiled = Nodes.toJsonObject(generatedSchema);
-                    String dialect = "draft7".equals(draft)
+                    String dialectUri = "draft7".equals(draft)
                             ? "http://json-schema.org/draft-07/schema#"
                             : "https://json-schema.org/draft/2019-09/schema";
-                    assertEquals(dialect, compiled.getString("$schema"), spec.key());
+                    assertEquals(dialectUri, compiled.getString("$schema"), spec.key());
                     assertEquals(original.size() + 1, compiled.size(), spec.key());
                     for (String key : original.keySet()) {
                         assertTrue(compiled.containsKey(key)
