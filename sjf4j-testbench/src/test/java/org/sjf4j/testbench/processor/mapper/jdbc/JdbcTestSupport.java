@@ -71,6 +71,9 @@ final class JdbcTestSupport {
                         throw new AssertionError("current-row mapper must not advance the ResultSet");
                     }
                     if (method.getName().equals(brokenMethod)) throw new SQLException("broken");
+                    if (method.getName().equals("getMetaData")) {
+                        return metadata(new String[]{"name", "age"});
+                    }
                     return null;
                 });
     }
@@ -172,7 +175,7 @@ final class JdbcTestSupport {
                 });
     }
 
-    private static ResultSetMetaData metadata(String[] columns) {
+    static ResultSetMetaData metadata(String[] columns) {
         return (ResultSetMetaData) Proxy.newProxyInstance(JdbcTestSupport.class.getClassLoader(),
                 new Class[]{ResultSetMetaData.class}, (proxy, method, arguments) -> {
                     if (method.getName().equals("getColumnCount")) {
