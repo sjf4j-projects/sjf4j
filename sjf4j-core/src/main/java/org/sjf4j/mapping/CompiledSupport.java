@@ -3,17 +3,14 @@ package org.sjf4j.mapping;
 import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
 import org.sjf4j.exception.BindingException;
 
-import java.lang.ref.WeakReference;
-import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 /**
  * Runtime support for generated JDBC mapping implementations.
  *
- * <p>Resolves JDBC column labels to mapped property indexes. Cursor-consuming
- * methods resolve once per invocation; current-row methods may reuse the same
- * resolution across calls through {@link Cache}.</p>
+ * <p>Resolves JDBC column labels to mapped property indexes. Prepared row
+ * mappers capture the resolved indexes explicitly and retain no JDBC resources.</p>
  */
 public final class CompiledSupport {
     private CompiledSupport() {
@@ -80,26 +77,4 @@ public final class CompiledSupport {
         return out.toString();
     }
 
-    /**
-     * A per-method, per-thread binding for current-row mappers.
-     * The ResultSet is weakly referenced so the cache cannot keep it open.
-     */
-    public static final class Cache {
-        private final WeakReference<ResultSet> resultSet;
-        private final int[] indexes;
-
-        public Cache(ResultSet resultSet, String[] names,
-                     ColumnNamingPolicy policy, boolean required) throws SQLException {
-            this.indexes = resolve(resultSet.getMetaData(), names, policy, required);
-            this.resultSet = new WeakReference<ResultSet>(resultSet);
-        }
-
-        public boolean matches(ResultSet candidate) {
-            return resultSet.get() == candidate;
-        }
-
-        public int index(int position) {
-            return indexes[position];
-        }
-    }
 }
