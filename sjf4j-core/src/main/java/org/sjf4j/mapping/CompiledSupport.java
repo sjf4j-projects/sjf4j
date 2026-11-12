@@ -27,12 +27,12 @@ public final class CompiledSupport {
         int[] indexes = new int[names.length];
         for (int i = 0; i < names.length; i++) {
             String name = names[i];
-            int index = match(labels, name, 0);
+            int index = _match(labels, name, 0);
             if (index == 0 && policy != ColumnNamingPolicy.EXACT) {
-                index = match(labels, name, 1);
+                index = _match(labels, name, 1);
             }
             if (index == 0 && policy == ColumnNamingPolicy.INSENSITIVE_SNAKE) {
-                index = match(labels, snakeCase(name), 1);
+                index = _match(labels, _snakeCase(name), 1);
             }
             if (index == 0 && required) {
                 throw new BindingException("Missing JDBC column for property: " + name);
@@ -42,7 +42,7 @@ public final class CompiledSupport {
         return indexes;
     }
 
-    private static int match(String[] labels, String candidate, int mode) {
+    private static int _match(String[] labels, String candidate, int mode) {
         int found = 0;
         for (int i = 0; i < labels.length; i++) {
             String label = labels[i];
@@ -58,7 +58,7 @@ public final class CompiledSupport {
         return found;
     }
 
-    private static String snakeCase(String name) {
+    private static String _snakeCase(String name) {
         StringBuilder out = new StringBuilder(name.length() + 4);
         for (int i = 0; i < name.length(); i++) {
             char current = name.charAt(i);
