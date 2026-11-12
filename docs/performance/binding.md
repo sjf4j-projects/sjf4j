@@ -5,6 +5,22 @@ Benchmark sources are in `sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/bindi
 The models and data generator are in `sjf4j-testbench/src/main/java`
 so regular tests can reuse them.
 
+## Comparison dependency versions
+
+The published JVM v1.5.0 and Native Image v1.5.1-SNAPSHOT results use the following declared benchmark dependencies (for the backends included in each run):
+
+| Backend | Benchmark dependency versions |
+| --- | --- |
+| Jackson2 | Jackson Databind `2.22.3`; Blackbird `2.22.3` |
+| Jackson3 | Jackson Databind `3.2.3`; Blackbird `3.2.3` |
+| Fastjson2 | `2.0.66` |
+| Gson | `2.13.1` |
+| JSON-P | Jakarta JSON-P API `2.1.3`; Eclipse Parsson `1.1.7` |
+| SnakeYAML | `2.5` |
+| Simple | SJF4J built-in backend; no external comparison library |
+
+JMH is `1.37`. Versions above are from `sjf4j-testbench/build.gradle.kts` at the [JVM baseline commit](https://github.com/sjf4j-projects/sjf4j/commit/c17ac35593e7294078bd38f449b06a7295776f05) and [primary Native Image baseline commit](https://github.com/sjf4j-projects/sjf4j/commit/1e1d90d3a01cc46072c4a188e1ed1b9760755f0d); the [parallel Native Image confirmation commit](https://github.com/sjf4j-projects/sjf4j/commit/05fc26b5f3e4500973caf95eb7af6a7a2ab50fb3) declares the same versions.
+
 ## JVM — Temurin JDK 25
 
 ### Results — v1.5.0 (2026-11-09)
