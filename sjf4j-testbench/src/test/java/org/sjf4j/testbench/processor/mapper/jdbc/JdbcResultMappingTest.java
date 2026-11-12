@@ -22,7 +22,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenFindColumnResult;
+import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenMetadataResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.brokenResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.cachedMetadataResult;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.currentRowResult;
@@ -69,7 +69,7 @@ class JdbcResultMappingTest {
         int[] findColumns = {0};
         assertEquals(2, mapper.users(indexedResult(new String[]{"name", "age", "created"}, findColumns,
                 new Object[]{"Ada", 36, null}, new Object[]{"Grace", 40, null})).size());
-        assertEquals(3, findColumns[0]);
+        assertEquals(0, findColumns[0]); // Column indexes come from metadata.
 
         int[] metadataCalls = {0};
         assertEquals(2, mapper.rows(cachedMetadataResult(new String[]{"b", "a"}, metadataCalls,
@@ -93,7 +93,7 @@ class JdbcResultMappingTest {
         assertInstanceOf(SQLException.class,
                 assertThrows(BindingException.class, () -> mapper.row(brokenResult())).getCause());
         assertInstanceOf(SQLException.class,
-                assertThrows(BindingException.class, () -> mapper.users(brokenFindColumnResult())).getCause());
+                assertThrows(BindingException.class, () -> mapper.users(brokenMetadataResult())).getCause());
     }
 
     @Test
@@ -127,11 +127,11 @@ class JdbcResultMappingTest {
         Jojo jojo = mapper.presentJojo(result(new String[]{"FULL_NAME", "extra", "full_name"},
                 new Object[]{"Ada", "first", "Grace"}));
 
-        assertEquals("Ada", jojo.name);
+        assertEquals("Grace", jojo.name); // Exact label wins over case-insensitive label.
         assertEquals(7, jojo.age);
         assertEquals("first", jojo.getNode("extra"));
-        assertEquals(null, jojo.getNode("FULL_NAME"));
-        assertEquals("Grace", jojo.getNode("full_name"));
+        assertEquals("Ada", jojo.getNode("FULL_NAME"));
+        assertEquals(null, jojo.getNode("full_name"));
     }
 
     @Test
