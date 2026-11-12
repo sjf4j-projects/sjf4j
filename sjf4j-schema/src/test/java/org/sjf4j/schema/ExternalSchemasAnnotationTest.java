@@ -43,6 +43,49 @@ class ExternalSchemasAnnotationTest {
         PriorityBean(Object value) { this.value = value; }
     }
 
+    @ValidJsonSchema(
+            value = "{\"$ref\":\"https://example.test/base\"}",
+            externalSchemas = "{\"https://example.test/shared\":{\"type\":\"string\"}}")
+    public static class PrecompiledBaseBean {
+        public Object value;
+        PrecompiledBaseBean(Object value) { this.value = value; }
+    }
+
+    @Test
+    void customRegistryPlansAreRecompiledWithBindingSpecificReferences() {
+        SchemaRegistry catalog = new SchemaRegistry();
+        URI shared = URI.create("https://example.test/shared");
+        URI base = URI.create("https://example.test/base");
+        catalog.index(shared, JsonSchema.fromJson("{\"type\":\"integer\"}"));
+        catalog.index(base, JsonSchema.fromJson(
+                "{\"properties\":{\"value\":{\"$ref\":\"https://example.test/shared\"}}}"));
+
+        // Compile the original plan before the annotated binding is resolved.
+        SchemaPlan oldPlan = catalog.resolve(base);
+        assertTrue(oldPlan.isValid(new PrecompiledBaseBean(123)));
+        assertFalse(oldPlan.isValid(new PrecompiledBaseBean("ok")));
+
+        SchemaValidator validator = new SchemaValidator(
+                new SchemaLoader.Local(SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR), catalog, true);
+        assertTrue(validator.validate(new PrecompiledBaseBean("ok")).isValid());
+        assertFalse(validator.validate(new PrecompiledBaseBean(123)).isValid());
+
+        // The original catalog's cached plan remains valid and unchanged.
+        assertTrue(oldPlan.isValid(new PrecompiledBaseBean(123)));
+    }
+
+    @Test
+    void registryIndexStillRejectsConflicts() {
+        URI key = URI.create("https://example.test/only");
+        SchemaRegistry registry = new SchemaRegistry();
+        registry.index(key, JsonSchema.fromJson("{\"type\":\"integer\"}"));
+        assertThrows(SchemaException.class, () -> registry.index(
+                key, JsonSchema.fromJson("{\"type\":\"string\"}")));
+        registry.indexIfAbsent(key, JsonSchema.fromJson("{\"type\":\"string\"}"));
+        assertTrue(registry.resolve(key).isValid(3));
+        assertFalse(registry.resolve(key).isValid("three"));
+    }
+
     @Test
     void sameRetrievalUriIsScopedPerAnnotatedBinding() {
         SchemaValidator validator = new SchemaValidator();
