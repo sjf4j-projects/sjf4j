@@ -69,60 +69,101 @@ def load_results(paths):
 
 
 def render(found):
+    """Group results by competitor; always show absolute metrics before ratios."""
     lines = [
         "# JDBC Mapping — Full JMH report",
         "",
         "**JDK 25 · 3 independent forks · Best 2 Mean · 1/10/1,000/100,000 rows · 12 columns.**",
-        "Timing is µs/op (entire result), lower is better. B/op is untrimmed JMH allocation.",
-        "SQL execution is outside timed methods; shared runner results are exploratory.",
+        "Time is µs/op (entire ResultSet), lower is better; allocations are B/op",
+        "from the untrimmed JMH profiler. SQL execution is outside timed methods.",
+        "Ratios are competitor / SJF4J Compiled (greater than 1× favors SJF4J).",
         "",
     ]
-    unstable = []
-    for group, modes in GROUPS.items():
-        lines.extend((f"## {group.upper()}", ""))
-        for mode, implementations in modes.items():
-            lines.extend((f"### {mode.capitalize()}", ""))
-            for allocation in (False, True):
-                lines.append(f"**{'Allocation (B/op)' if allocation else 'Latency (µs/op)'}**")
-                lines.append("")
-                header = ["Rows"] + [LABELS[i] for i in implementations]
-                ratios = [i for i in implementations if i != "compiled"]
-                header.extend(f"{LABELS[i]} / Compiled" for i in ratios)
-                lines.append("| " + " | ".join(header) + " |")
-                lines.append("| " + " | ".join(["---:"] * len(header)) + " |")
-                for rows in SIZES:
-                    base = found[(group, mode, "compiled", rows)][1 if allocation else 0]
-                    values = [int(rows)]
-                    for implementation in implementations:
-                        value, alloc, forks = found[(group, mode, implementation, rows)]
-                        values.append(f"{alloc:,.0f}" if allocation else f"{value:,.3f}")
-                        if not allocation and max(forks) / min(forks) > 1.15:
-                            unstable.append((group, mode, implementation, rows, forks))
-                    for implementation in ratios:
-                        other = found[(group, mode, implementation, rows)][1 if allocation else 0]
-                        values.append(f"{other / base:.2f}×" if base > 0 else "—")
-                    lines.append("| " + " | ".join(map(str, values)) + " |")
-                lines.append("")
-            if "mybatisCursor" in implementations:
-                lines.append("MyBatis Cursor is fully consumed into a List, not a direct RowMapper API.")
-                lines.append("")
-    lines.extend(("## Fork stability", ""))
+
+    def table_row(values):
+        return "| " + " | ".join(str(value) for value in values) + " |"
+
+    def timing(value):
+        return f"{value:,.3f}"
+
+    def allocated(value):
+        return f"{value:,.0f}"
+
+    def ratio(competitor, compiled):
+        return f"{competitor / compiled:.2f}×"
+
+    lines.extend([
+        "## Spring JDBC",
+        "",
+        "List and Row modes for POJO, Record and Map.",
+        "",
+        table_row(("Shape", "Mode", "Rows", "Spring (µs/op)", "Spring (B/op)",
+                   "SJF4J Compiled (µs/op)", "SJF4J (B/op)", "Spring / SJF4J")),
+        table_row(("---", "---", "---:", "---:", "---:", "---:", "---:", "---:")),
+    ])
+    for group in ("pojo", "record", "map"):
+        for mode in ("list", "row"):
+            for rows in SIZES:
+                spring_time, spring_bytes, _ = found[(group, mode, "spring", rows)]
+                compiled_time, compiled_bytes, _ = found[(group, mode, "compiled", rows)]
+                lines.append(table_row((
+                    group.upper(), mode.capitalize(), f"{int(rows):,}",
+                    timing(spring_time), allocated(spring_bytes),
+                    timing(compiled_time), allocated(compiled_bytes),
+                    ratio(spring_time, compiled_time),
+                )))
+
+    lines.extend([
+        "",
+        "## MyBatis",
+        "",
+        "All MyBatis cases materialize Lists. Cursor is not a direct RowMapper API;",
+        "MyBatis Record and direct Row paths are not covered in suite 1.",
+        "",
+        table_row(("Shape", "Mapping", "Rows", "MyBatis (µs/op)", "MyBatis (B/op)",
+                   "SJF4J Compiled (µs/op)", "SJF4J (B/op)", "MyBatis / SJF4J")),
+        table_row(("---", "---", "---:", "---:", "---:", "---:", "---:", "---:")),
+    ])
+    for group in ("pojo", "map"):
+        for rows in SIZES:
+            compiled_time, compiled_bytes, _ = found[(group, "list", "compiled", rows)]
+            for implementation in GROUPS[group]["list"]:
+                if not implementation.startswith("mybatis"):
+                    continue
+                other_time, other_bytes, _ = found[(group, "list", implementation, rows)]
+                implementation_name = LABELS[implementation].replace("MyBatis ", "")
+                lines.append(table_row((
+                    group.upper(), implementation_name + " / List", f"{int(rows):,}",
+                    timing(other_time), allocated(other_bytes),
+                    timing(compiled_time), allocated(compiled_bytes),
+                    ratio(other_time, compiled_time),
+                )))
+
+    lines.extend(["", "## Fork stability", ""])
+    unstable = [
+        (group, mode, implementation, rows, fork_means)
+        for (group, mode, implementation, rows), (_, _, fork_means) in found.items()
+        if max(fork_means) / min(fork_means) > 1.15
+    ]
     if unstable:
         lines.append("Latency cases with slowest/fastest fork divergence above 15%:")
         lines.append("")
-        for group, mode, implementation, rows, forks in unstable:
-            lines.append(f"- {group}/{mode}/{implementation}/{rows}: "
-                         f"{max(forks) / min(forks):.2f}×; fork means "
-                         + ", ".join(f"{value:.3f}" for value in forks) + " µs")
+        for group, mode, implementation, rows, fork_means in sorted(unstable):
+            lines.append(
+                f"- {group}/{mode}/{implementation}/{rows}: "
+                f"{max(fork_means) / min(fork_means):.2f}×; fork means "
+                + ", ".join(timing(value) for value in fork_means) + " µs"
+            )
     else:
         lines.append("No latency case exceeded the 15% slowest/fastest fork-spread threshold.")
+
     lines.extend((
         "",
         "## Methodology",
         "",
         "- Each case independently discards the slowest of three fork means, then averages the other two.",
         "- Allocation uses the untrimmed JMH mean, not the latency-selected forks.",
-        "- All methods produce an equivalent full List, including Row mode's explicit cursor loop.",
+        "- All methods produce equivalent full Lists, including Row mode's explicit cursor loop.",
         "- Spring Map uses a case-insensitive Map; MyBatis and SJF4J use different Map implementations.",
         "- Invocation setup/teardown may reduce precision for very short (1-row) measurements.",
         "- This measures ResultSet processing, not database SQL/driver/network throughput.",
