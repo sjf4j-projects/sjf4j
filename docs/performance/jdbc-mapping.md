@@ -23,7 +23,7 @@ dependency versions retroactively to old results.
 
 ### Results — pending first complete Full run
 
-There is no published Full baseline for the **suite-1** 12-column workload.
+There is no published Full baseline for the **suite-2** 12-column workload.
 Do not reuse the original 3-column / 1,000-row benchmark's numbers: it had a
 different fixture and measurement configuration. After a complete Full
 execution, publish a dated report under docs/performance/jdbc-mapping/ and
@@ -38,7 +38,7 @@ in Row mode. MyBatis Cursor is separately labelled as streaming-to-List.
 #### Record
 
 Compare SJF4J Compiled against Spring DataClassRowMapper in List and Row modes.
-MyBatis record constructor mapping is not included in suite 1: an equivalent,
+MyBatis record constructor mapping is not included in suite 2: an equivalent,
 verified comparison is required before adding it.
 
 #### Map
