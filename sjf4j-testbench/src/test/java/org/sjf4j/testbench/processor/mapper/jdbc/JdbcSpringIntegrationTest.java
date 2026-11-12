@@ -27,7 +27,7 @@ class JdbcSpringIntegrationTest {
         List<User> users = jdbcTemplate.query("select name, age from users order by age", rs -> {
             JdbcRowMapper<User> prepared = mapper.prepare(rs.getMetaData());
             List<User> out = new ArrayList<>();
-            while (rs.next()) out.add(prepared.mapRow(rs));
+            while (rs.next()) out.add(prepared.map(rs));
             return out;
         });
 
