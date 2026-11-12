@@ -86,6 +86,7 @@ final class JdbcTestSupport {
                         findColumns[0]++;
                         return List.of(columns).indexOf(arguments[0]) + 1;
                     }
+                    if (method.getName().equals("getMetaData")) return metadata(columns);
                     if (method.getName().equals("getObject") || method.getName().equals("getString")) {
                         int column = indexedColumn(arguments[0]);
                         return rows[row[0]][column - 1];
@@ -134,8 +135,8 @@ final class JdbcTestSupport {
         return broken("next");
     }
 
-    static ResultSet brokenFindColumnResult() {
-        return broken("findColumn");
+    static ResultSet brokenMetadataResult() {
+        return broken("getMetaData");
     }
 
     private static int column(String[] columns, Object argument) {
@@ -157,6 +158,9 @@ final class JdbcTestSupport {
                     }
                     if (method.getName().equals("next")) {
                         return true;
+                    }
+                    if (method.getName().equals("getMetaData") && brokenMethod.equals("getMetaData")) {
+                        throw new SQLException("broken");
                     }
                     if (method.getName().equals("findColumn") && brokenMethod.equals("findColumn")) {
                         throw new SQLException("broken");
