@@ -10,7 +10,7 @@ import java.util.Map;
  * Jackson 2/3 compiled write generation.
  *
  * Every structural helper accepts the Jackson StreamingGenerator and its value.
- * Each helper obtains the native nativeGenerator locally. A codec, OneOf or dynamic
+ * Each helper obtains the native generator locally. A codec, OneOf or dynamic
  * child changes only that child's emission; it never changes the parent's
  * POJO/List/Set/Map implementation or the helper signature.
  */
@@ -75,7 +75,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             return;
         }
         String nativeGenerator = names.newName("g");
-        out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeWriter();");
+        out.line(generatorType() + " " + nativeGenerator + " = " + generator + ".nativeGenerator();");
         emitValue(out, value, expression, generator, nativeGenerator, names.newName("item"));
     }
 
@@ -87,7 +87,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
         out.beginBlock("private void " + value.helperName() + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = generator.nativeWriter();");
+        out.line(generatorType() + " g = generator.nativeGenerator();");
 
         if (value.kind() == BindingValue.Kind.ONE_OF) {
             structures.emitOneOf(out, value);
@@ -223,7 +223,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     /**
      * Emits a value into the current nativeGenerator, delegating only the leaf that
      * needs Codec/Runtime handling. Structural helpers always accept
-     * (generator, value), never a separately passed native nativeGenerator.
+     * (generator, value), never a separately passed native generator.
      */
     private void emitValue(JavaWriter out, BindingValue child, String expression,
                            String generator, String nativeGenerator, String item) {
