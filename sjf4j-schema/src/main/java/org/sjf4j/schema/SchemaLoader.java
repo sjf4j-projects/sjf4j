@@ -42,16 +42,9 @@ public interface SchemaLoader {
         return Asserts.notNull(uri, "uri");
     }
 
-    /** Discards the document fragment without changing the retrieval URI's base. */
-    static URI documentUri(URI uri) {
-        Asserts.notNull(uri, "uri");
-        return uri.getRawFragment() == null ? uri
-                : URI.create(SchemaUtil.stripFragment(uri.toString()));
-    }
-
     /** Parses an already opened schema document and records its retrieval URI. */
     static JsonSchema parse(URI uri, Reader reader) throws IOException {
-        URI document = documentUri(uri);
+        URI document = SchemaUtil.documentUri(uri);
         char[] chars = new char[4096];
         StringBuilder json = new StringBuilder();
         for (int n; (n = reader.read(chars)) != -1;) json.append(chars, 0, n);
@@ -152,7 +145,7 @@ public interface SchemaLoader {
          * Unlike load(), the content need not represent a single JsonSchema.
          */
         public String readText(URI uri) {
-            URI document = documentUri(resolve(uri));
+            URI document = SchemaUtil.documentUri(resolve(uri));
             try (Reader reader = open(document, document.getScheme())) {
                 if (reader == null) return null;
                 StringBuilder text = new StringBuilder();
@@ -177,7 +170,7 @@ public interface SchemaLoader {
 
         @Override
         public JsonSchema load(URI uri) {
-            URI document = documentUri(resolve(uri));
+            URI document = SchemaUtil.documentUri(resolve(uri));
             String scheme = document.getScheme();
             try (Reader reader = open(document, scheme)) {
                 return reader == null ? null : SchemaLoader.parse(document, reader);
