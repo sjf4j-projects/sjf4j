@@ -41,48 +41,13 @@ import static org.junit.jupiter.api.Assertions.fail;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public final class OfficialCompiledTest {
 
+    /**
+     * Re-audit fallback groups against the unified upstream fixture indices.
+     * Unrecognized groups must compile directly, never silently fall back.
+     */
     private static Set<String> fallbackGroups(String draft) {
-        Set<String> groups = new LinkedHashSet<>();
-        // Explicit exceptions are per dialect; no old-draft group inherits
-        // the Draft 2020-12 fallback list or silently changes its mode.
-        if ("draft7".equals(draft)) return Collections.unmodifiableSet(groups);
-        if ("draft2019-09".equals(draft)) {
-            // Standard metaschema/vocabulary interpretation, not a root-level
-            // predicate that can be reduced to a direct Java check.
-            fallback(groups, "defs.json", 0);
-            fallback(groups, "ref.json", 6);
-            fallback(groups, "vocabulary.json", 0, 1);
-
-            // Cross-subschema evaluated-location propagation (including
-            // recursiveRef scope in the unevaluatedItems/Properties suites).
-            fallback(groups, "not.json", 8);
-            fallback(groups, "ref.json", 13, 36);
-            fallback(groups, "unevaluatedItems.json",
-                    7, 8, 9, 10, 11, 12, 13, 15, 17, 18, 19, 20, 21, 24);
-            fallback(groups, "unevaluatedProperties.json",
-                    10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24,
-                    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 39, 40);
-            return Collections.unmodifiableSet(groups);
-        }
-        if (!"draft2020-12".equals(draft)) {
-            throw new IllegalArgumentException("Unsupported official compiled draft: " + draft);
-        }
-        fallback(groups, "defs.json", 0);
-        // The remaining dynamicRef case combines cross-resource dynamic scope with unevaluatedProperties.
-        fallback(groups, "dynamicRef.json", 13);
-        fallback(groups, "not.json", 8);
-        fallback(groups, "ref.json", 6, 13);
-        // Only groups that require cross-subschema evaluated-location tracking
-        // remain fallback. Isolated root-local groups compile directly.
-        fallback(groups, "unevaluatedItems.json", 8, 10, 11, 12, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 27);
-        fallback(groups, "unevaluatedProperties.json", 10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 39, 40);
-        // Custom metaschemas need vocabulary-aware interpretation, even when
-        // the schema uses a familiar validation keyword such as type.
-        fallback(groups, "vocabulary.json", 0, 1);
-        return Collections.unmodifiableSet(groups);
+        return Collections.emptySet();
     }
-
-
 
     private static final String TEST_ROOT = "sjf4j.schema.officialTestRoot";
     private static final String GENERATED_ROOT = "sjf4j.schema.officialGeneratedRoot";
@@ -204,6 +169,18 @@ public final class OfficialCompiledTest {
         }
     }
 
+    private static boolean requiredTags(JsonArray tags) {
+        if (tags == null) return true;
+        for (int i = 0; i < tags.size(); i++) {
+            Object tag = tags.get(i);
+            if ("format-assertion".equals(tag)) return false;
+            if (!"format-annotation".equals(tag)) {
+                throw new IllegalArgumentException("Unknown official validation tag: " + tag);
+            }
+        }
+        return true;
+    }
+
     private static Path localBuildPath(String suffix) {
         Path module = Paths.get("build").resolve(suffix);
         if (Files.exists(module)) return module;
@@ -232,12 +209,12 @@ public final class OfficialCompiledTest {
                 localBuildPath("official-json-schema-tests/suite").toString()));
         Path generated = Paths.get(System.getProperty(GENERATED_ROOT,
                 localBuildPath("generated/officialCompiled").toString())).resolve(draft);
-        Path officialDir = suiteRoot.resolve("tests").resolve(draft);
+        Path officialDir = suiteRoot.resolve("validation/tests");
         if (!Files.isDirectory(officialDir)) {
             throw new IllegalStateException("Official suite missing: " + officialDir);
         }
 
-        selection = "all";
+        selection = draft;
         List<OfficialCaseRunner.Spec> allSpecs = OfficialCaseRunner.readIndex(generated, fallbackGroups(draft));
         List<OfficialCaseRunner.Spec> specs = new ArrayList<>();
         Map<String, List<OfficialCaseRunner.Spec>> byFile = new LinkedHashMap<>();
@@ -256,13 +233,34 @@ public final class OfficialCompiledTest {
                     .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                     .toList());
         }
-        // Compare the full upstream suite with the generated manifest before
-        // selection, including new mandatory files introduced upstream.
-        java.util.Set<String> upstreamFiles = new java.util.LinkedHashSet<>();
-        for (Path file : jsonFiles) upstreamFiles.add(file.getFileName().toString());
-        java.util.Set<String> indexedFiles = new java.util.LinkedHashSet<>();
-        for (OfficialCaseRunner.Spec spec : allSpecs) indexedFiles.add(spec.file);
-        assertEquals(upstreamFiles, indexedFiles, "Official compiled manifest does not cover every file");
+        // Independent accounting of the upstream compatible groups: never accept
+        // a stale or truncated generated manifest when the official suite changes.
+        org.sjf4j.schema.SchemaDialect dialect = "draft7".equals(draft)
+                ? org.sjf4j.schema.SchemaDialect.DRAFT_07
+                : "draft2019-09".equals(draft)
+                    ? org.sjf4j.schema.SchemaDialect.DRAFT_2019_09
+                    : org.sjf4j.schema.SchemaDialect.DRAFT_2020_12;
+        Set<String> expectedKeys = new LinkedHashSet<>();
+        Set<String> expectedFiles = new LinkedHashSet<>();
+        int expectedAssertions = 0;
+        for (Path file : jsonFiles) {
+            String fileName = file.getFileName().toString();
+            JsonArray groups = Sjf4j.global()
+                    .fromJson(Files.readAllBytes(file), JsonObject.class).getJsonArray("tests");
+            for (int i = 0; i < groups.size(); i++) {
+                JsonObject group = groups.getJsonObject(i);
+                if (!OfficialCompatibility.matches(group.getString("compatibility"), dialect)
+                        || !requiredTags(group.getJsonArray("tags"))) continue;
+                String key = fileName + "#" + i;
+                expectedKeys.add(key);
+                expectedFiles.add(fileName);
+                expectedAssertions += group.getJsonArray("tests").size();
+            }
+        }
+        Set<String> indexedKeys = new LinkedHashSet<>();
+        for (OfficialCaseRunner.Spec spec : allSpecs) indexedKeys.add(spec.key());
+        assertEquals(expectedKeys, indexedKeys,
+                "Official compiled manifest must include exactly every compatible required group");
         jsonFiles.removeIf(p -> !byFile.containsKey(p.getFileName().toString()));
         if (specs.isEmpty()) {
             throw new IllegalArgumentException("No official cases matched: draft="
@@ -275,18 +273,22 @@ public final class OfficialCompiledTest {
                 generated.resolve("counts.properties"), StandardCharsets.UTF_8)) {
             totals.load(reader);
         }
-        assertEquals(upstreamFiles.size(), Integer.parseInt(totals.getProperty("files")));
+        assertEquals(expectedFiles.size(), Integer.parseInt(totals.getProperty("files")));
         assertEquals(allSpecs.size(), Integer.parseInt(totals.getProperty("groups")));
+        assertEquals(expectedAssertions, Integer.parseInt(totals.getProperty("tests")));
 
         List<DynamicNode> fileNodes = new ArrayList<>();
         Map<String, Integer> selectedCounts = new LinkedHashMap<>();
         int assertions = 0;
         for (Path file : jsonFiles) {
             String fileName = file.getFileName().toString();
-            JsonArray groups = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonArray.class);
+            JsonArray groups = Sjf4j.global()
+                    .fromJson(Files.readAllBytes(file), JsonObject.class).getJsonArray("tests");
             List<OfficialCaseRunner.Spec> fileSpecs = byFile.get(fileName);
             if (mainGroup < 0) {
-                assertEquals(groups.size(), fileSpecs.size(), fileName + ": group coverage mismatch");
+                assertEquals(fileSpecs.size(), expectedKeys.stream()
+                        .filter(key -> key.startsWith(fileName + "#")).count(),
+                        fileName + ": compatible group coverage mismatch");
             }
             List<DynamicNode> groupNodes = new ArrayList<>();
             for (OfficialCaseRunner.Spec spec : fileSpecs) {
@@ -392,10 +394,8 @@ public final class OfficialCompiledTest {
         Path moduleBuild = generated.getParent().getParent().getParent();
         Path reportBase = moduleBuild.resolve("reports/officialCompiled");
         Path compileBase = moduleBuild.resolve("officialCompiled/compile");
-        if (!"draft2020-12".equals(draft)) {
-            reportBase = reportBase.resolve(draft);
-            compileBase = compileBase.resolve(draft);
-        }
+        reportBase = reportBase.resolve(draft);
+        compileBase = compileBase.resolve(draft);
         reportDir = reportBase.resolve(selection);
         report = new OfficialCaseReport(selection, specs, assertions, selectedCounts);
         runner = new OfficialCaseRunner(generated, compileBase.resolve(selection));
