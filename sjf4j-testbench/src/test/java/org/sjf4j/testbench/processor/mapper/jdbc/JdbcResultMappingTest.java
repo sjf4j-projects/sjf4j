@@ -9,6 +9,8 @@ import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.JsonObject;
+import org.sjf4j.mapping.JdbcRowMapper;
+import java.sql.ResultSetMetaData;
 
 import java.net.URL;
 import java.sql.ResultSet;
@@ -64,8 +66,10 @@ class JdbcResultMappingTest {
         assertEquals(List.of("a", "b"), new ArrayList<>(duplicateColumnMap.keySet()));
         assertEquals(Map.of("a", 2), mapper.rows(result(new String[]{"a", "a"},
                 new Object[]{1, 2})).get(0));
-        assertEquals(Map.of("a", 2, "b", 3), mapper.currentRow(currentRowResult(
-                new String[]{"a", "a", "b"}, new int[]{0}, 1, 2, 3), 0));
+        assertEquals(Map.of("a", 2, "b", 3),
+                mapper.prepareMapRow(JdbcTestSupport.metadata(new String[]{"a", "a", "b"}))
+                        .mapRow(currentRowResult(
+                                new String[]{"a", "a", "b"}, new int[]{0}, 1, 2, 3)));
 
         int[] findColumns = {0};
         assertEquals(2, mapper.users(indexedResult(new String[]{"name", "age", "created"}, findColumns,
@@ -137,8 +141,10 @@ class JdbcResultMappingTest {
         assertEquals("two", list.get(1).getNode("extra"));
 
         int[] nextCalls = {0};
-        Jojo current = mapper.currentJojo(currentRowResult(new String[]{"full_name", "age", "extra"}, nextCalls,
-                "Katherine", 41, "current"), 7);
+        Jojo current = mapper.prepareJojo(JdbcTestSupport.metadata(
+                new String[]{"full_name", "age", "extra"})).mapRow(
+                        currentRowResult(new String[]{"full_name", "age", "extra"}, nextCalls,
+                                "Katherine", 41, "current"));
         assertEquals("Katherine", current.name);
         assertEquals("current", current.getNode("extra"));
         assertEquals(0, nextCalls[0]);
@@ -199,7 +205,7 @@ class JdbcResultMappingTest {
 
         Map<String, Object> row(ResultSet rs);
 
-        Map<String, Object> currentRow(ResultSet rs, int rowNum);
+        JdbcRowMapper<Map<String, Object>> prepareMapRow(ResultSetMetaData metadata);
 
         @JdbcMappingOptions(singleResult = SingleResultPolicy.FIRST)
         User first(ResultSet rs);
@@ -211,7 +217,7 @@ class JdbcResultMappingTest {
         List<Jojo> jojos(ResultSet rs);
 
         @Mapping(target = "name", source = "full_name")
-        Jojo currentJojo(ResultSet rs, int rowNum);
+        JdbcRowMapper<Jojo> prepareJojo(ResultSetMetaData metadata);
 
         @Mapping(target = "name", source = "full_name")
         @JdbcMappingOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
