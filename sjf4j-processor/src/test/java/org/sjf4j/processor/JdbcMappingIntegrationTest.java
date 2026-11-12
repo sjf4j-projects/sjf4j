@@ -97,6 +97,49 @@ class JdbcMappingIntegrationTest {
     }
 
     @Test
+    void generatesPreparedMapperWithoutImplicitCache() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Mapper.java",
+                "package fixture;\n"
+                        + "import java.sql.ResultSetMetaData;\n"
+                        + "import org.sjf4j.mapping.JdbcRowMapper;\n"
+                        + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\n"
+                        + "@CompiledJdbcMapper public interface Mapper {\n"
+                        + "  JdbcRowMapper<User> prepare(ResultSetMetaData metadata);\n"
+                        + "}\n",
+                "fixture/User.java",
+                "package fixture; public class User { public String userName; }"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(source.contains("CompiledSupport.resolve("), source);
+        assertTrue(source.contains("return rowSet -> {"), source);
+        assertTrue(source.contains("getString(idx_userName)"), source);
+        assertFalse(source.contains("ThreadLocal"), source);
+        assertFalse(source.contains("Cache"), source);
+    }
+
+    @Test
+    void rejectsLegacyCurrentRowSignature() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Mapper.java",
+                "package fixture;\n"
+                        + "import java.sql.ResultSet;\n"
+                        + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\n"
+                        + "@CompiledJdbcMapper public interface Mapper {\n"
+                        + "  User mapRow(ResultSet rs, int rowNum);\n"
+                        + "}\n",
+                "fixture/User.java",
+                "package fixture; public class User { public String name; }"
+        ), CodegenProcessor.class);
+
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("use JdbcRowMapper<T> prepare(ResultSetMetaData)"),
+                result.diagnostics());
+    }
+
+    @Test
     void rejectsSourcePaths() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Mapper.java",
