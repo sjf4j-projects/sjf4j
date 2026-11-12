@@ -142,10 +142,21 @@ public final class SchemaValidator {
     private SchemaPlan _resolvePlanFromAnno(Class<?> clazz, ValidJsonSchema anno) {
         // Each annotation owns its external resource mappings. Never mutate the
         // shared registry: different POJO bindings may reuse the same URI.
-        Map<URI, JsonSchema> external = ExternalSchemas.load(
-                anno.externalSchemas(), anno.externalSchemasRef(),
-                loader.resolve(URI.create("")), clazz.getClassLoader());
-        SchemaRegistry scoped = external.isEmpty() ? registry : SchemaRegistry.copyOf(registry, external);
+        Map<URI, JsonSchema> external = new SchemaLoader.Local(
+                loader.resolve(URI.create("")), clazz.getClassLoader())
+                .loadExternalSchemas(anno.externalSchemas(), anno.externalSchemasRef());
+        SchemaRegistry scoped = registry;
+        if (!external.isEmpty()) {
+            // A binding with external resources owns its registry; neither the
+            // caller's registry nor sibling POJO plans are modified.
+            scoped = new SchemaRegistry(registry.getDefaultDialect());
+            for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
+                scoped.index(entry.getKey(), entry.getValue());
+            }
+            // Preserve explicit caller-provided catalog resources, but recompile
+            // their object plans in this binding's own reference context.
+            scoped.indexMissingRawResources(registry);
+        }
 
         // From value
         String inline = anno.value();
