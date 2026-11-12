@@ -21,38 +21,59 @@ dependency versions retroactively to old results.
 
 ## JVM — Temurin JDK 25
 
-### Results — pending first complete Full run
+### Results — 1.5.1-SNAPSHOT (2026-11-12)
 
-There is no published Full baseline for the **suite-1** 12-column workload.
-Do not reuse the original 3-column / 1,000-row benchmark's numbers: it had a
-different fixture and measurement configuration. After a complete Full
-execution, publish a dated report under docs/performance/jdbc-mapping/ and
-link it here. Shared GitHub-hosted runners produce exploratory measurements.
+**[First complete Full report](jdbc-mapping/spring-mybatis-v151snapshot-2026-11-12.md)** ·
+[GitHub Actions run and raw artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43186767777)
+
+**68/68 exact cases**, from source commit
+[`c66d95c`](https://github.com/sjf4j-projects/sjf4j/commit/c66d95c8f75e5c37f6aff936aecd96c493122c8c).
+Temurin **25.0.5**, AMD **EPYC 9V45**, shared GitHub-hosted runner.
+Latency uses the independently computed **Best 2 Mean** of three forks.
+The following ratios are from the **List** mode, baseline / Compiled,
+and all are greater than 1× (SJF4J faster):
+
+| Rows | POJO Spring / Compiled | POJO MyBatis Auto / Compiled | Record Spring / Compiled | Map Spring / Compiled |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 4.34× | 11.03× | 32.23× | 1.65× |
+| 10 | 10.61× | 7.39× | 82.00× | 1.83× |
+| 1,000 | 12.11× | 5.97× | 104.01× | 1.69× |
+| 100,000 | 9.64× | 4.83× | 71.00× | 1.64× |
 
 #### POJO
 
-Compare SJF4J Compiled, Spring BeanPropertyRowMapper and MyBatis
-automatic/explicit result maps in List mode. Compare only Compiled and Spring
-in Row mode. MyBatis Cursor is separately labelled as streaming-to-List.
+At 1,000 rows, SJF4J Compiled List completes in **83.414 µs/op** versus
+**1,010.230 µs/op** for Spring and **497.950 µs/op** for MyBatis Auto.
+Compiled List is also faster than Compiled Row on large multirow results,
+consistent with its one-time column resolution.
 
 #### Record
 
-Compare SJF4J Compiled against Spring DataClassRowMapper in List and Row modes.
-MyBatis record constructor mapping is not included in suite 1: an equivalent,
-verified comparison is required before adding it.
+At 1,000 rows, SJF4J Compiled List completes in **84.267 µs/op** versus
+**8,764.423 µs/op** for Spring DataClassRowMapper (**104.01×**).
+The difference is specific to this 12-column record and tested Spring API.
+Profiling is needed before attributing the gap to particular reflective or
+conversion operations. MyBatis Record is not included in suite 1.
 
 #### Map
 
-Compare SJF4J Compiled, Spring ColumnMapRowMapper and MyBatis explicit
-ResultMap in List mode, as well as Compiled and Spring in Row mode.
-Map implementations differ: Spring uses case-insensitive column names,
-while SJF4J and MyBatis have different Map implementation/lookup overhead.
-All outputs must agree on the twelve exact column labels and values.
+Spring ColumnMapRowMapper / Compiled List ranges from **1.64× to 1.83×**.
+MyBatis Explicit / Compiled List ranges from **2.67× to 6.64×**.
+The Map implementations differ (including Spring's case-insensitive keys),
+so the ratio is for these defined implementations, not interchangeable maps.
 
 #### Key findings
 
-Populate this section only after a verified Full run, using the raw fork
-measurements and allocation scores. Report regressions as well as speedups.
+- At 100,000 rows, SJF4J POJO List allocates **22.9 million B/op** versus
+  **260.9 million B/op** for Spring (11.40× allocation ratio).
+  Record List allocates **22.9 million** versus **1,181.7 million B/op**
+  for Spring (51.64×).
+- **Two out of 68** exact cases exceed the 15% fork-spread warning:
+  Map/List/Spring/100,000 (1.32×) and Map/Row/Compiled/1,000 (1.28×).
+  Inspect the raw forks and avoid treating these as stable regressions.
+- The run was on shared hardware and remains **exploratory**.
+  Results do not measure SQL execution, network I/O or full ORM queries.
+  Allocation reporting can include Invocation-level setup/teardown work.
 
 ### Workload matrix
 
@@ -191,7 +212,7 @@ For a release-grade comparison use the same dedicated, controlled machine.
 
 | Release | Suite | Commit | Environment | Full report |
 | --- | --- | --- | --- | --- |
-| Pending | 1 | — | — | — |
+| 1.5.1-SNAPSHOT (2026-11-12) | 1 | [`c66d95c`](https://github.com/sjf4j-projects/sjf4j/commit/c66d95c8f75e5c37f6aff936aecd96c493122c8c) | Temurin 25.0.5 / EPYC 9V45 / shared runner | [Full snapshot](jdbc-mapping/spring-mybatis-v151snapshot-2026-11-12.md) |
 
 ## Reporting and ranking results
 
@@ -201,7 +222,9 @@ the five JMH iterations in each fork, discard the single slowest fork of
 **each exact method and row count**, then average the remaining two
 (**Best 2 Mean**). Preserve the untrimmed three-fork JMH mean.
 
-**Allocation**: report JMH gc.alloc.rate.norm in B/op, untrimmed; do **not**
+**Allocation**: report JMH gc.alloc.rate.norm in B/op, untrimmed; it may include
+work in Invocation setup/teardown and should not be claimed as pure mapper-only
+allocation, especially for a single row. Do **not**
 select allocation forks according to latency. Ratios are
 Spring / Compiled or MyBatis / Compiled on unrounded scores; above 1x means
 Compiled has lower latency/allocation. Do not compute a MyBatis / Compiled
