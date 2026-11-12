@@ -29,6 +29,10 @@ on:
 permissions:
   contents: read
 
+# Artifacts use run_id (not run_attempt): partial job reruns reuse artifacts
+# from successful producers. Re-executed jobs overwrite their own artifacts.
+# The combined artifact has a separate prefix to avoid matching result downloads.
+
 concurrency:
   group: binding-native-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}-${{ github.event_name == 'pull_request' && 'pr' || inputs.mode }}
   cancel-in-progress: true
@@ -96,24 +100,26 @@ jobs:
       - name: Upload shared executable, checksum and build stamp
         uses: actions/upload-artifact@v4
         with:
-          name: binding-native-image-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-native-image-${{ github.run_id }}
           path: |
             sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native
             sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native.build-info
             sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native.sha256
           if-no-files-found: error
+          overwrite: true
           compression-level: 0
-          retention-days: 7
+          retention-days: 30
 
       - name: Upload compiler diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: binding-native-build-log-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-native-build-log-${{ github.run_id }}
           path: |
             build/performance/binding/native/build-console.log
             sjf4j-testbench/build/native/nativeCompile/svm_err_*.md
           if-no-files-found: warn
+          overwrite: true
           retention-days: 30
 
   benchmark:
@@ -143,7 +149,7 @@ jobs:
       - name: Download the shared image
         uses: actions/download-artifact@v4
         with:
-          name: binding-native-image-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-native-image-${{ github.run_id }}
           path: sjf4j-testbench/build/native/nativeCompile/
 
       - name: Restore permissions and verify downloaded image
@@ -187,9 +193,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: binding-native-${{ env.PROFILE }}-${{ matrix.backend }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-native-${{ env.PROFILE }}-${{ matrix.backend }}-${{ github.run_id }}
           path: build/performance/binding/native/${{ matrix.backend }}/
           if-no-files-found: warn
+          overwrite: true
           retention-days: 30
 
   aggregate:
@@ -204,7 +211,7 @@ jobs:
       - name: Download results from serial or parallel backend jobs
         uses: actions/download-artifact@v4
         with:
-          pattern: binding-native-${{ env.PROFILE }}-*-${{ github.run_id }}-${{ github.run_attempt }}
+          pattern: binding-native-${{ env.PROFILE }}-*-${{ github.run_id }}
           path: build/performance/binding/native/matrix/
           merge-multiple: false
 
@@ -238,7 +245,7 @@ jobs:
           for backend in backends:
               artifact_backend = "all" if mode == "serial" else backend
               name = (f"binding-native-{profile}-{artifact_backend}-"
-                      f"{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}")
+                      f"{os.environ['GITHUB_RUN_ID']}")
               source = root / name
               if source.exists():
                   # Preserve the serial job as a single, unchanged provenance set.
@@ -313,7 +320,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: binding-native-${{ env.PROFILE }}-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          name: binding-native-combined-${{ env.PROFILE }}-${{ github.run_id }}
           path: build/performance/binding/native/combined/
           if-no-files-found: warn
+          overwrite: true
           retention-days: 30
