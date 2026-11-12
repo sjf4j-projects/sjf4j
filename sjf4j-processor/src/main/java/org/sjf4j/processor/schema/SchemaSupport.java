@@ -38,7 +38,7 @@ final class SchemaSupport {
 
         Object id = Nodes.getInObject(node, "$id");
         URI scopedUri = id instanceof String
-                ? SchemaUtil.resolveUri(baseUri, URI.create(SchemaUtil.stripFragment((String) id)))
+                ? SchemaUtil.resolveUri(baseUri, SchemaUtil.documentUri(URI.create((String) id)))
                 : baseUri;
 
         Object declaredDialect = Nodes.getInObject(node, "$schema");
@@ -56,7 +56,7 @@ final class SchemaSupport {
             if ("$dynamicRef".equals(keyword) || "$recursiveRef".equals(keyword))
                 result.hasDynamicRef = true;
             URI target = SchemaUtil.resolveUri(scopedUri, URI.create((String) ref));
-            result.referencedDocuments.add(URI.create(SchemaUtil.stripFragment(target.toString())));
+            result.referencedDocuments.add(SchemaUtil.documentUri(target));
         }
 
         // Definitions remain addressable by a Draft-07 $ref, even though
