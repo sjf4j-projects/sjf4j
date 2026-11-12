@@ -1055,23 +1055,56 @@ public final class MappingEmitter {
                 boolean primitiveDirect =
                         isDirectPrimitiveRead(plan, value, constructorArgument);
 
-                String source =
-                        emitRead(
-                                out,
-                                names,
-                                read,
-                                rootKnownNonNull(plan),
-                                primitiveDirect);
+                // MapStruct-style parent presence: do not invoke a mapping
+                // method when its source parent is absent. A present parent
+                // still invokes the method even when the leaf value is null.
+                // VALUE_CODEC conversions intentionally retain their existing
+                // null contract.
+                boolean method = value.conversion() != null &&
+                        value.conversion().kind() == ConverterResolver.Conversion.Kind.METHOD;
+                boolean nullableParent = method &&
+                        !read.rootType().getKind().isPrimitive() &&
+                        (!rootKnownNonNull(plan) || read.steps().size() > 1);
 
-                return conversions.emit(
-                        out,
-                        names,
-                        plan,
-                        value.conversion(),
-                        source,
-                        read.type(),
-                        value.type(),
-                        generated);
+                if (nullableParent && read.steps().size() <= 1) {
+                    // A qualified multi-source root/property read needs only
+                    // one guard. Read the leaf and convert in that same block.
+                    String converted = names.newName("converted");
+                    out.line(localType(value.type()) + " " + converted + " = null;");
+                    out.beginBlock("if (" + read.root().getSimpleName() + " != null)");
+                    String source = emitRead(out, names, read, true, primitiveDirect);
+                    String expression = conversions.emit(out, names, plan,
+                            value.conversion(), source, read.type(), value.type(), generated);
+                    out.line(converted + " = " + expression + ";");
+                    out.endBlock();
+                    return converted;
+                }
+
+                String reached = null;
+                if (nullableParent) {
+                    // For multi-step reads, a null leaf is different from a
+                    // missing intermediate parent. Record whether the final
+                    // accessor ran rather than checking its returned value.
+                    reached = names.newName("sourcePresent");
+                    out.line("boolean " + reached + " = false;");
+                }
+
+                String source = emitRead(out, names, read, rootKnownNonNull(plan),
+                        primitiveDirect, null, reached);
+
+                if (reached != null) {
+                    String converted = names.newName("converted");
+                    out.line(localType(value.type()) + " " + converted + " = null;");
+                    out.beginBlock("if (" + reached + ")");
+                    String expression = conversions.emit(out, names, plan,
+                            value.conversion(), source, read.type(), value.type(), generated);
+                    out.line(converted + " = " + expression + ";");
+                    out.endBlock();
+                    return converted;
+                }
+
+                return conversions.emit(out, names, plan, value.conversion(),
+                        source, read.type(), value.type(), generated);
             }
 
             case COMPUTE:
@@ -1318,7 +1351,7 @@ public final class MappingEmitter {
             MappingCompiler.Read read,
             boolean rootKnownNonNull,
             boolean primitiveDirect) {
-        return emitRead(out, names, read, rootKnownNonNull, primitiveDirect, null);
+        return emitRead(out, names, read, rootKnownNonNull, primitiveDirect, null, null);
     }
 
     private String emitRead(
@@ -1328,6 +1361,17 @@ public final class MappingEmitter {
             boolean rootKnownNonNull,
             boolean primitiveDirect,
             String finalName) {
+        return emitRead(out, names, read, rootKnownNonNull, primitiveDirect, finalName, null);
+    }
+
+    private String emitRead(
+            JavaWriter out,
+            NameAllocator names,
+            MappingCompiler.Read read,
+            boolean rootKnownNonNull,
+            boolean primitiveDirect,
+            String finalName,
+            String finalReadFlag) {
 
         String current =
                 read.root()
@@ -1428,6 +1472,10 @@ public final class MappingEmitter {
                                     expression +
                                     ";");
                 }
+            }
+
+            if (last && finalReadFlag != null) {
+                out.line(finalReadFlag + " = true;");
             }
 
             if (guardParent) {
