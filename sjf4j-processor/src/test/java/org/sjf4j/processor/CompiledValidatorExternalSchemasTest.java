@@ -83,6 +83,34 @@ class CompiledValidatorExternalSchemasTest {
     }
 
     @Test
+    void mappingsAreIsolatedBetweenMethodsOfTheSameValidator() throws Exception {
+        String root = quote("{\"$ref\":\"" + LOGICAL + "\"}");
+        String strings = quote("{\"" + LOGICAL + "\":{\"type\":\"string\"}}");
+        String integers = quote("{\"" + LOGICAL + "\":{\"type\":\"integer\"}}");
+        String source = "package fixture; "
+                + "import org.sjf4j.annotation.schema.*; "
+                + "import org.sjf4j.schema.ValidationResult; "
+                + "@CompiledValidator(fallback=true) public interface Multi { "
+                + "@ValidJsonSchema(value=" + root + ",externalSchemas=" + strings + ") "
+                + "ValidationResult text(Object value); "
+                + "@ValidJsonSchema(value=" + root + ",externalSchemas=" + integers + ") "
+                + "ValidationResult number(Object value); }";
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
+                Map.of("fixture/Multi.java", source), CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            Class<?> type = loader.loadClass("fixture.Multi");
+            Object validator = CompiledInstances.create(type);
+            Method text = type.getMethod("text", Object.class);
+            Method number = type.getMethod("number", Object.class);
+            assertTrue(((ValidationResult) text.invoke(validator, "ok")).isValid());
+            assertFalse(((ValidationResult) text.invoke(validator, 4)).isValid());
+            assertTrue(((ValidationResult) number.invoke(validator, 4)).isValid());
+            assertFalse(((ValidationResult) number.invoke(validator, "ok")).isValid());
+        }
+    }
+
+    @Test
     void invalidExternalSchemaMappingFailsCompilation() {
         Map<String, String> sources = Map.of(
                 "fixture/Invalid.java", source("Invalid", "[]", null, false, true));
