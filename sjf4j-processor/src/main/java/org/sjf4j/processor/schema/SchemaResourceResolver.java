@@ -13,6 +13,7 @@ import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaUtil;
 import org.sjf4j.schema.SchemaLoader;
 import org.sjf4j.schema.JsonSchema;
+import org.sjf4j.schema.ExternalSchemas;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
@@ -47,7 +48,7 @@ final class SchemaResourceResolver {
         final String[] uris;
         final String[] documents;
         final boolean[] fromRegistry;
-        final Map<String, String> externalSources;
+        final Set<String> externalUris;
         final String selectedUri;
 
         SchemaRegistry registry;
@@ -91,12 +92,10 @@ final class SchemaResourceResolver {
         }
 
         Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources,
-                 Map<URI, URI> externalSchemas) {
+                 Set<URI> externalSchemas) {
             this.selectedUri = selectedUri.toString();
-            this.externalSources = new LinkedHashMap<String, String>();
-            for (Map.Entry<URI, URI> entry : externalSchemas.entrySet()) {
-                externalSources.put(entry.getKey().toString(), entry.getValue().toString());
-            }
+            this.externalUris = new HashSet<String>();
+            for (URI uri : externalSchemas) externalUris.add(uri.toString());
             uris = new String[resources.size()];
             documents = new String[resources.size()];
             fromRegistry = new boolean[resources.size()];
@@ -113,16 +112,14 @@ final class SchemaResourceResolver {
     private final String registryDir;
     private final String registryBaseUri;
     private final Map<String, SchemaRegistry> registryCache;
-    private final Map<URI, URI> externalSchemas;
     private Map<String, IndexedSource> indexedSources;
 
     SchemaResourceResolver(ProcessorContext context, String registryDir, String registryBaseUri,
-                           Map<String, SchemaRegistry> registryCache, Map<URI, URI> externalSchemas) {
+                           Map<String, SchemaRegistry> registryCache) {
         this.context = context;
         this.registryDir = registryDir.trim();
         this.registryBaseUri = registryBaseUri.trim();
         this.registryCache = registryCache;
-        this.externalSchemas = externalSchemas;
     }
 
     /** Pre-register each directory/base combination once per processing run. */
@@ -196,15 +193,22 @@ final class SchemaResourceResolver {
         resources.put(documentUri, rootDocument);
         if (rootFromRegistry) registryResources.add(documentUri);
 
-        // Programmatic javac callers may supply retrieval URI -> source URI pairs.
-        // Resolve and register them alongside the selected root, but only within
-        // this @CompiledValidator interface. No other processor invocation sees them.
-        for (Map.Entry<URI, URI> entry : externalSchemas.entrySet()) {
-            String document = read(entry.getValue(), resourceDirectory);
-            if (document == null) {
-                throw new IllegalArgumentException("external schema source not found: " + entry.getValue());
+        // Every @ValidJsonSchema binding owns its retrieval URI -> JSON Schema
+        // mappings, matching the official suite's externalSchemas format.
+        String externalJson = annotation.externalSchemas();
+        if (externalJson.isEmpty() && !annotation.externalSchemasRef().trim().isEmpty()) {
+            URI externalRef = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR.resolve(
+                    annotation.externalSchemasRef().trim());
+            externalJson = read(externalRef, resourceDirectory);
+            if (externalJson == null) {
+                throw new IllegalArgumentException("externalSchemasRef not found: " + externalRef);
             }
-            if (resources.putIfAbsent(entry.getKey(), document) != null) {
+        }
+        Map<URI, JsonSchema> external = externalJson.isEmpty()
+                ? java.util.Collections.emptyMap() : ExternalSchemas.parse(externalJson);
+        for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
+            if (resources.putIfAbsent(entry.getKey(),
+                    Sjf4j.global().toJsonString(entry.getValue())) != null) {
                 throw new IllegalArgumentException("duplicate external schema URI: " + entry.getKey());
             }
         }
@@ -236,14 +240,14 @@ final class SchemaResourceResolver {
             }
         }
 
-        Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources, externalSchemas);
+        Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources, external.keySet());
         // Directory resources are indexed once, prior to root resolution.
         // Each method gets a registry copy so roots cannot leak between methods.
-        SchemaRegistry registry = registry();
+        SchemaRegistry registry = SchemaRegistry.copyOf(registry(), external);
         for (int i = 0; i < snapshot.uris.length; i++) {
-            // indexDir already owns the registry-backed source object.
-            // Reindexing a separately parsed copy would be a duplicate URI.
-            if (snapshot.fromRegistry[i]) continue;
+            // Directory and explicit external resources are already indexed
+            // in this method's isolated registry context.
+            if (snapshot.fromRegistry[i] || snapshot.externalUris.contains(snapshot.uris[i])) continue;
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
         // Boolean resources are now indexed alongside object resources, so the
