@@ -440,7 +440,7 @@ val generateOfficialCompiledCases by tasks.registering {
                         ).joinToString("\n", postfix = "\n")
                         javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
                         for ((retrieval, resource) in sources) {
-                            externalIndex.append(variant).append('\t')
+                            externalIndex.append(packageName).append('.').append(variant).append('\t')
                                 .append(retrieval).append('\t').append(resource).append('\n')
                         }
                     }
