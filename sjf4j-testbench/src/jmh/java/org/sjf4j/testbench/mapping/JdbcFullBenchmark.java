@@ -24,7 +24,6 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.annotation.mapping.Mapping;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.ColumnMapRowMapper;
