@@ -129,6 +129,32 @@ Compiled is slower. `Native` here denotes direct third-party library Binding.
 | Write / Clients | Fastjson2 | 271.970 | 1,273.153 | 138.999 | 1.96× |
 | Write / Clients | Gson | 1,432.923 | 2,311.289 | 1,091.939 | 1.31× |
 
+#### 100KB Map measurements
+
+The same serial Full benchmark also measured generic Map binding (UTF-8 byte[] input/output).
+Figures are **µs/op (lower is better)**, with the same per-case **Best 2 Run Mean** and
+`Native / Compiled` ratio as the POJO table above. All 1/10/100KB Map results are
+in the [complete serial report](binding/fabien-native-v151snapshot-2026-11-11-serial.md).
+
+| Operation / Model | Backend | Native | Runtime | Compiled | Native / Compiled |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Read / Users | Jackson2 | 564.459 | 566.532 | 564.847 | 1.00× |
+| Read / Users | Jackson3 | 564.772 | 551.281 | 549.925 | 1.03× |
+| Read / Users | Fastjson2 | 277.030 | 252.515 | 250.341 | 1.11× |
+| Read / Users | Gson | 616.906 | 593.915 | 592.958 | 1.04× |
+| Read / Clients | Jackson2 | 568.381 | 572.199 | 568.475 | 1.00× |
+| Read / Clients | Jackson3 | 539.941 | 525.578 | 527.394 | 1.02× |
+| Read / Clients | Fastjson2 | 323.243 | 303.357 | 303.096 | 1.07× |
+| Read / Clients | Gson | 856.038 | 748.508 | 743.959 | 1.15× |
+| Write / Users | Jackson2 | 618.955 | 584.580 | 590.460 | 1.05× |
+| Write / Users | Jackson3 | 614.174 | 588.996 | 584.239 | 1.05× |
+| Write / Users | Fastjson2 | 344.150 | 347.369 | 345.895 | 0.99× |
+| Write / Users | Gson | 1,453.316 | 1,065.418 | 1,067.398 | 1.36× |
+| Write / Clients | Jackson2 | 588.997 | 555.384 | 556.309 | 1.06× |
+| Write / Clients | Jackson3 | 587.194 | 557.641 | 558.606 | 1.05× |
+| Write / Clients | Fastjson2 | 300.834 | 305.948 | 307.961 | 0.98× |
+| Write / Clients | Gson | 1,365.903 | 1,004.108 | 996.970 | 1.37× |
+
 #### Full runs and reproducibility
 
 | Run | Mode | Results | Runner CPU | End-to-end |
