@@ -131,7 +131,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
         assertTrue(source.contains("Fastjson2Generator generator,"), source);
         assertTrue(source.contains("Utf16("), source);
         assertTrue(source.contains("Utf8("), source);
-        assertTrue(source.contains("generator.nativeWriter()"), source);
+        assertTrue(source.contains("generator.nativeGenerator()"), source);
         assertTrue(source.contains("generator.writeRaw("), source);
         assertTrue(source.contains("writeName"), source);
         assertFalse(source.contains("FastStringWriter"), source);
