@@ -155,7 +155,7 @@ final class SchemaResourceResolver {
                 if (!selectedUri.isAbsolute()) throw new IllegalArgumentException("non-absolute schema URI: " + ref);
                 // Fragments select a schema within the resource; they are not
                 // part of the document retrieval URI.
-                documentUri = URI.create(selectedUri.toString().split("#", 2)[0]);
+                documentUri = SchemaLoader.documentUri(selectedUri);
                 if ("classpath".equals(documentUri.getScheme()) || "file".equals(documentUri.getScheme())) {
                     rootDocument = read(documentUri, resourceDirectory);
                 } else {
