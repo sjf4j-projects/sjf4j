@@ -65,7 +65,8 @@ class JdbcMappingIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(source.contains("rs.getString(\"name\")"), source);
+        assertTrue(source.contains("JdbcColumnResolver.resolve("), source);
+        assertTrue(source.contains("rs.getString(index_name)"), source);
     }
 
     @Test
