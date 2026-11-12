@@ -312,7 +312,7 @@ public class SchemaRegistry {
      * {@link #indexIfAbsent(URI, JsonSchema)}. Neither method overwrites a
      * locally registered resource.
      */
-    void indexIfAbsent(SchemaRegistry source) {
+    void indexRegistry(SchemaRegistry source) {
         if (source == null || source == this) return;
         java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
                 new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
@@ -387,7 +387,7 @@ public class SchemaRegistry {
         Asserts.notNull(uri, "uri");
         String id = uri.toString();
         String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.stripFragment(id);
+        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
         SchemaPlan plan = _resolveResource(id, true);
         return _resolveFragmentOrThrow(plan, fragment);
     }
@@ -431,7 +431,7 @@ public class SchemaRegistry {
         Asserts.notNull(uri, "uri");
         String id = uri.toString();
         String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.stripFragment(id);
+        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
         SchemaPlan plan = _resolveResource(id, false);
         return _resolveFragmentOrThrow(plan, fragment);
     }
@@ -446,7 +446,7 @@ public class SchemaRegistry {
      */
     SchemaPlan resolveResource(URI uri) {
         Asserts.notNull(uri, "uri");
-        String id = uri.getFragment() == null ? uri.toString() : SchemaUtil.stripFragment(uri.toString());
+        String id = SchemaUtil.documentUri(uri).toString();
         return _resolveResource(id, true);
     }
 
