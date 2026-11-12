@@ -1,9 +1,11 @@
 package org.sjf4j.testbench.schema.official;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DynamicContainer;
 import org.junit.jupiter.api.DynamicNode;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.TestInstance;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.sjf4j.JsonArray;
@@ -37,7 +39,12 @@ import java.util.stream.Stream;
  * with one dynamic test per file. The standalone entrypoint supports dialect,
  * file, group and test filters; both entrypoints fail on mismatched annotations.
  */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public final class OfficialAnnotationTest {
+    private final Map<SchemaDialect, Report> perDraft = new LinkedHashMap<>();
+    private final Map<SchemaDialect, Integer> completedFiles = new LinkedHashMap<>();
+    private int sourceFileCount;
+
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
     private static final ValidationOptions OPTIONS = ValidationOptions.builder()
@@ -105,13 +112,19 @@ public final class OfficialAnnotationTest {
         Path directory = annotationDirectory(locateTestRoot());
         List<Path> files = listAnnotationFiles(directory);
         if (files.isEmpty()) throw new IllegalStateException("Official annotation suite is empty: " + directory);
+        sourceFileCount = files.size();
         List<DynamicNode> drafts = new ArrayList<>();
         for (SchemaDialect dialect : standaloneDialects(null)) {
+            perDraft.put(dialect, new Report());
             List<DynamicNode> tests = new ArrayList<>();
             for (Path file : files) {
                 tests.add(DynamicTest.dynamicTest(file.getFileName().toString(), () -> {
                     Report result = runFile(file, dialect, null, null);
                     result.requireComplete(dialect + " / " + file.getFileName());
+                    synchronized (perDraft) {
+                        perDraft.get(dialect).add(result);
+                        completedFiles.merge(dialect, 1, Integer::sum);
+                    }
                     if (result.sourceTests == 0) {
                         throw new AssertionError("Empty official annotation file: " + file);
                     }
@@ -128,6 +141,30 @@ public final class OfficialAnnotationTest {
             drafts.add(DynamicContainer.dynamicContainer(dialect.name(), tests.stream()));
         }
         return drafts.stream();
+    }
+
+    /** One accounting summary per draft after all official JUnit file tests. */
+    @AfterAll
+    void printDraftCoverage() {
+        if (sourceFileCount == 0) return;
+        for (SchemaDialect dialect : standaloneDialects(null)) {
+            Report report = perDraft.get(dialect);
+            if (report == null || completedFiles.getOrDefault(dialect, 0) != sourceFileCount) {
+                throw new AssertionError(dialect + ": annotation file coverage incomplete: "
+                        + completedFiles.getOrDefault(dialect, 0) + "/" + sourceFileCount);
+            }
+            report.requireComplete(dialect.toString());
+            System.out.println("Official Annotation " + dialect
+                    + ": files=" + sourceFileCount
+                    + ", groups=" + report.eligibleGroups + " compatible/"
+                    + report.skippedGroups + " skipped/"
+                    + report.sourceGroups + " total"
+                    + ", tests=" + report.total + " executed/"
+                    + report.skipped + " skipped/"
+                    + report.sourceTests + " source"
+                    + ", passed=" + report.passed + ", failed=" + report.failed
+                    + ", errors=" + report.errors);
+        }
     }
 
     private static Path annotationDirectory(Path root) {
