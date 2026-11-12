@@ -8,6 +8,7 @@ import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
 import org.sjf4j.util.Asserts;
+import org.sjf4j.value.FastOffsetDateTime;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -241,7 +242,7 @@ public final class Fastjson2Parser extends StreamingParser {
     @Override
     public OffsetDateTime readOffsetDateTime() {
         peeked = null;
-        return reader.nextIfNull() ? null : reader.readOffsetDateTime();
+        return reader.nextIfNull() ? null : FastOffsetDateTime.parse(reader.readString());
     }
 
     @Override
