@@ -260,17 +260,8 @@ For JDBC results, `@CompiledJdbcMapper` generates direct mappings from `ResultSe
 @CompiledJdbcMapper
 interface UserJdbcMapper {
     List<User> users(ResultSet resultSet);
-    JdbcRowMapper<User> prepare(ResultSetMetaData metadata);
 }
 ```
-
-Use `mapper.prepare(resultSet.getMetaData())` once before iterating rows, then
-call `prepared.map(resultSet)` for each row. The prepared mapper retains only
-column indexes, not the ResultSet. JDBC column labels automatically match Java property names without regard to case,
-including `user_name` → `userName`. For strict matching, use
-`@JdbcMappingOptions(columnNaming = ColumnNamingPolicy.EXACT)`
-(or `INSENSITIVE` for case-insensitive matching without snake_case conversion).
-Explicit `@Mapping` still handles other column aliases.
 
 Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
 

@@ -92,7 +92,7 @@ class JdbcColumnNamingTest {
         BindingException error = assertThrows(BindingException.class, () -> mapper.auto(
                 result(new String[]{"USERNAME", "UserName", "login_count"},
                         new Object[]{"first", "second", 3})));
-        assertTrue(error.getMessage().contains("Ambiguous JDBC column"), error.getMessage());
+        assertTrue(error.getMessage().contains("ambiguous JDBC column"), error.getMessage());
 
         assertThrows(BindingException.class, () -> mapper.auto(
                 result(new String[]{"USER_NAME", "user_name", "login_count"},
