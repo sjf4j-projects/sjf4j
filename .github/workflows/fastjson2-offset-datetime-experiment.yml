@@ -1,0 +1,184 @@
+name: Fastjson2 OffsetDateTime Experiment
+
+# The benchmark intentionally runs for this experimental PR only.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/fastjson2-offset-datetime-experiment.yml'
+      - 'sjf4j-backend-fastjson2/src/main/java/org/sjf4j/backend/fastjson2/binding/Fastjson2Parser.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/runtime/Fastjson2OffsetDateTimePathBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    if: github.event.pull_request.head.ref == 'experiment/fastjson2-offset-datetime-20261112'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout base commit (native Fastjson2 date reader)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline
+
+      - name: Checkout PR commit (shared SJF4J fast date reader)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Record environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          {
+            echo "Base: ${{ github.event.pull_request.base.sha }}"
+            echo "Candidate: ${{ github.event.pull_request.head.sha }}"
+            echo "Runner: $RUNNER_NAME"
+            lscpu
+            java -version 2>&1
+          } > results/environment.txt
+
+      - name: Build baseline JMH jar
+        working-directory: baseline
+        run: ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+
+      - name: Verify candidate Fastjson2 semantics
+        working-directory: candidate
+        run: ./gradlew --no-daemon :sjf4j-backend-fastjson2:test --tests '*Fastjson2OffsetDateTimeFastPathTest'
+
+      - name: Build candidate JMH jar
+        working-directory: candidate
+        run: ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+
+      # Identical Fabien Clients/POJO fixtures, seed and JMH options for both commits.
+      # Both implementations are measured in each commit. Only read benchmarks
+      # are relevant; Map shape does not materialize OffsetDateTime values.
+      - name: Measure baseline Native and Compiled
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar="$(find baseline/sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)"
+          test -n "$jar"
+          java -jar "$jar" '.*FabienReadBenchmark.read' \
+            -p backend=fastjson2 -p implementation=native,compiled \
+            -p model=clients -p shape=pojo -p sizeKb=1,10,100 \
+            -p seed=12345,324,43201 \
+            -f 3 -wi 3 -i 4 -w 500ms -r 1s -t 1 -prof gc \
+            -rf json -rff results/fabien-baseline.json \
+            2>&1 | tee results/fabien-baseline.log
+
+      - name: Measure candidate Native and Compiled
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar="$(find candidate/sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)"
+          test -n "$jar"
+          java -jar "$jar" '.*FabienReadBenchmark.read' \
+            -p backend=fastjson2 -p implementation=native,compiled \
+            -p model=clients -p shape=pojo -p sizeKb=1,10,100 \
+            -p seed=12345,324,43201 \
+            -f 3 -wi 3 -i 4 -w 500ms -r 1s -t 1 -prof gc \
+            -rf json -rff results/fabien-candidate.json \
+            2>&1 | tee results/fabien-candidate.log
+
+      - name: Isolate native vs shared fast parsing (String and UTF-8)
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar="$(find candidate/sjf4j-testbench/build/libs -name '*-jmh.jar' -print -quit)"
+          test -n "$jar"
+          java -jar "$jar" '.*Fastjson2OffsetDateTimePathBenchmark.*' \
+            -p encoding=string,utf8 \
+            -p shape=secondsZ,secondsOffset,millisOffset,nanosOffset \
+            -f 3 -wi 2 -i 3 -w 500ms -r 500ms -t 1 -prof gc \
+            -rf json -rff results/offset-datetime-paths.json \
+            2>&1 | tee results/offset-datetime-paths.log
+
+      - name: Summarize fork-trimmed results
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          from statistics import mean
+
+          def best_two(row):
+              forks = row["primaryMetric"]["rawData"]
+              if len(forks) != 3 or any(not fork for fork in forks):
+                  raise ValueError("Expected exactly three nonempty JMH forks")
+              return mean(sorted(mean(fork) for fork in forks)[:2])
+
+          def load(name):
+              return json.loads(Path("results", name).read_text())
+
+          def key(row):
+              p = row["params"]
+              return (p["sizeKb"], p["seed"], p["implementation"])
+
+          before = {key(row): best_two(row) for row in load("fabien-baseline.json")}
+          after = {key(row): best_two(row) for row in load("fabien-candidate.json")}
+          if set(before) != set(after) or len(before) != 18:
+              raise ValueError(f"Expected matching 18 cases, got {len(before)} and {len(after)}")
+
+          print("## Fastjson2 OffsetDateTime — Clients POJO Read")
+          print("JDK 25, same GitHub runner, base vs candidate; µs/op (lower is faster).")
+          print("Each case: 3 JMH forks, drop the slowest fork, average the other two.")
+          print()
+          print("| Size | Seed | Baseline Native | Baseline Compiled | Candidate Native | Candidate Compiled | Native / Compiled (candidate) | Compiled uplift |")
+          print("| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |")
+          for size in ("1", "10", "100"):
+              for seed in ("12345", "324", "43201"):
+                  bn = before[size, seed, "native"]
+                  bc = before[size, seed, "compiled"]
+                  cn = after[size, seed, "native"]
+                  cc = after[size, seed, "compiled"]
+                  print(f"| {size} KB | {seed} | {bn:.3f} | {bc:.3f} | {cn:.3f} | {cc:.3f} | {cn / cc:.3f}× | {bc / cc:.3f}× |")
+
+          micro = load("offset-datetime-paths.json")
+          rows = {}
+          for row in micro:
+              p = row["params"]
+              method = row["benchmark"].rsplit(".", 1)[-1]
+              rows[p["encoding"], p["shape"], method] = best_two(row)
+          if len(rows) != 24:
+              raise ValueError(f"Expected 24 microbenchmark cases, got {len(rows)}")
+          print()
+          print("## Scalar parsing, entire JSONReader lifecycle")
+          print("ns/op (lower is faster), using the same input and JSONReader.Context.")
+          print()
+          print("| Encoding | Shape | Fastjson2 Native | SJF4J Fast | Fastjson2Parser adapter | Native / SJF4J Fast |")
+          print("| --- | --- | ---: | ---: | ---: | ---: |")
+          for encoding in ("string", "utf8"):
+              for shape in ("secondsZ", "secondsOffset", "millisOffset", "nanosOffset"):
+                  n = rows[encoding, shape, "nativeFastjson2"]
+                  f = rows[encoding, shape, "sharedFast"]
+                  a = rows[encoding, shape, "adapter"]
+                  print(f"| {encoding} | {shape} | {n:.1f} | {f:.1f} | {a:.1f} | {n / f:.3f}× |")
+          print()
+          print("Allocation (gc.alloc.rate.norm) and untrimmed JMH scores are in the JSON artifacts.")
+          print("Cross-commit results can drift on hosted runners; use the paired Native baseline as a control.")
+          PY
+
+      - name: Upload full results and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-offset-datetime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
