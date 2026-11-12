@@ -51,6 +51,9 @@ jobs:
           bash -n scripts/benchmark-mapping.sh
           python3 -m py_compile scripts/analyze-mapping-benchmark.py
           test -x scripts/benchmark-mapping.sh
+      - name: Run Mapper processor regression tests
+        if: github.event_name == 'pull_request'
+        run: ./gradlew :sjf4j-processor:test
       - name: Compile JMH jar and both generated mapper implementations
         run: ./gradlew :sjf4j-testbench:jmhJar
       - name: Upload JMH jar
