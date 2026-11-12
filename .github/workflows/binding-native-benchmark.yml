@@ -1,7 +1,7 @@
 name: Binding Native Image Benchmark (GraalVM 25)
 
-# Build the shared image once; measure each backend on one independent runner.
-# Native/Runtime/Compiled comparisons for a backend remain on the same runner.
+# Build the shared image once, then benchmark on either one serial runner
+# or four parallel runners; all implementations of a backend share a runner.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -19,12 +19,18 @@ on:
         type: choice
         default: smoke
         options: [smoke, quick, full]
+      mode:
+        description: Backend execution mode (single runner or four parallel runners)
+        required: true
+        type: choice
+        default: parallel
+        options: [parallel, serial]
 
 permissions:
   contents: read
 
 concurrency:
-  group: binding-native-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
+  group: binding-native-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}-${{ github.event_name == 'pull_request' && 'pr' || inputs.mode }}
   cancel-in-progress: true
 
 jobs:
@@ -55,7 +61,8 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
        github.event.pull_request.head.repo.full_name == github.repository &&
-       contains(github.event.pull_request.body, '[run-native-smoke]'))
+       (contains(github.event.pull_request.body, '[run-native-smoke]') ||
+        contains(github.event.pull_request.body, '[run-native-serial-smoke]')))
     needs: script-check
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -112,14 +119,16 @@ jobs:
   benchmark:
     needs: build-image
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
+    # Serial Full requires around 150 minutes for all four backends.
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       max-parallel: 4
       matrix:
-        backend: [jackson2, jackson3, fastjson2, gson]
+        backend: ${{ fromJSON(((github.event_name == 'workflow_dispatch' && inputs.mode == 'serial') || (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]'))) && '["all"]' || '["jackson2","jackson3","fastjson2","gson"]') }}
     env:
       PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
+      MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
       BACKEND: ${{ matrix.backend }}
     steps:
       - uses: actions/checkout@v4
@@ -161,6 +170,7 @@ jobs:
             echo "Git SHA: $(git rev-parse HEAD)"
             echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
             echo "Backend: $BACKEND"
+            echo "Mode: $MODE"
             echo "Runner: $RUNNER_NAME / $RUNNER_OS / $RUNNER_ARCH"
             lscpu
             free -h
@@ -170,8 +180,8 @@ jobs:
           bash scripts/benchmark-binding-native.sh "$PROFILE" "$OUT" \
             2>&1 | tee "$OUT/console.log"
           # Only a fully successful backend gets this marker.
-          printf 'backend=%s\nprofile=%s\nsha=%s\n' \
-            "$BACKEND" "$PROFILE" "$(git rev-parse HEAD)" > "$OUT/completed.txt"
+          printf 'backend=%s\nmode=%s\nprofile=%s\nsha=%s\n' \
+            "$BACKEND" "$MODE" "$PROFILE" "$(git rev-parse HEAD)" > "$OUT/completed.txt"
 
       - name: Upload per-backend results and partial logs
         if: always()
@@ -189,8 +199,9 @@ jobs:
     env:
       PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
       BENCHMARK_RESULT: ${{ needs.benchmark.result }}
+      MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
     steps:
-      - name: Download the four backend result artifacts
+      - name: Download results from serial or parallel backend jobs
         uses: actions/download-artifact@v4
         with:
           pattern: binding-native-${{ env.PROFILE }}-*-${{ github.run_id }}-${{ github.run_attempt }}
@@ -207,6 +218,9 @@ jobs:
           from pathlib import Path
 
           profile = os.environ["PROFILE"]
+          mode = os.environ["MODE"]
+          if mode not in ("serial", "parallel"):
+              raise SystemExit(f"unsupported mode {mode!r}")
           root = Path("build/performance/binding/native/matrix")
           output = Path("build/performance/binding/native/combined")
           output.mkdir(parents=True, exist_ok=True)
@@ -215,16 +229,23 @@ jobs:
           errors, manifest = [], []
           total = 0
           rows = ["## GraalVM Native Image Binding — " + profile,
-                  "", "One shared image, four independent backend runners.",
+                  "", ("One shared image, one serial runner for all backends."
+                       if mode == "serial" else
+                       "One shared image, four parallel backend runners."),
                   "", "| Backend | JSON files | Verified cases | Status |",
                   "| --- | ---: | ---: | --- |"]
 
           for backend in backends:
-              name = (f"binding-native-{profile}-{backend}-"
+              artifact_backend = "all" if mode == "serial" else backend
+              name = (f"binding-native-{profile}-{artifact_backend}-"
                       f"{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}")
               source = root / name
               if source.exists():
-                  shutil.copytree(source, output / backend, dirs_exist_ok=True)
+                  # Preserve the serial job as a single, unchanged provenance set.
+                  if mode == "serial" and backend == backends[0]:
+                      shutil.copytree(source, output / "serial", dirs_exist_ok=True)
+                  elif mode == "parallel":
+                      shutil.copytree(source, output / backend, dirs_exist_ok=True)
               problems = []
               marker = source / "completed.txt"
               if not marker.is_file():
@@ -232,8 +253,8 @@ jobs:
               else:
                   values = dict(line.strip().split("=", 1)
                                 for line in marker.read_text().splitlines() if "=" in line)
-                  if values != {"backend": backend, "profile": profile,
-                                "sha": os.environ["GITHUB_SHA"]}:
+                  if values != {"backend": artifact_backend, "mode": mode,
+                                "profile": profile, "sha": os.environ["GITHUB_SHA"]}:
                       problems.append("invalid build SHA or profile")
               files = sorted(source.glob(
                   f"binding-*-{profile}-graalvm25-{backend}-run*.json"))
@@ -256,7 +277,7 @@ jobs:
                           unique.add(key)
                       count += len(results)
                       manifest.append({"backend": backend,
-                                       "file": f"{backend}/{path.name}",
+                                       "file": f"{'serial' if mode == 'serial' else backend}/{path.name}",
                                        "cases": len(results)})
                   except (OSError, ValueError, KeyError, TypeError) as exc:
                       problems.append(f"{path.name}: {exc}")
@@ -270,7 +291,7 @@ jobs:
               errors.append(f"expected {expected} cases, got {total}")
           if os.environ["BENCHMARK_RESULT"] != "success":
               errors.append("one or more benchmark jobs failed")
-          rows += ["", f"**Total: {total}/{expected}**",
+          rows += ["", f"**Mode: {mode}** · **Total: {total}/{expected}**",
                    "", "Shared runners: exploratory results, not release baselines."]
           if profile == "full":
               rows.append("Full: three native processes per backend; Best 2 Run Mean.")
@@ -279,8 +300,8 @@ jobs:
           summary = "\n".join(rows) + "\n"
           (output / "summary.md").write_text(summary, encoding="utf-8")
           (output / "manifest.json").write_text(
-              json.dumps({"profile": profile, "cases": total, "files": manifest,
-                          "errors": errors}, indent=2) + "\n", encoding="utf-8")
+              json.dumps({"profile": profile, "mode": mode, "cases": total,
+                          "files": manifest, "errors": errors}, indent=2) + "\n", encoding="utf-8")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
               f.write(summary)
           print(summary)
