@@ -145,6 +145,23 @@ class CompiledValidatorExternalSchemasTest {
     }
 
     @Test
+    void logicalRootRefMayBeProvidedDirectlyByExternalMapping() throws Exception {
+        String uri = "https://example.test/root";
+        String source = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator public interface MockRoot { "
+                + "@ValidJsonSchema(ref=" + quote(uri) + ",externalSchemas="
+                + quote("{\"" + uri + "\":true}") + ") "
+                + "boolean valid(Object value); }";
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
+                Map.of("fixture/MockRoot.java", source), CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            assertValidation(loader, "fixture.MockRoot", 123, true);
+            assertValidation(loader, "fixture.MockRoot", "anything", true);
+        }
+    }
+
+    @Test
     void invalidExternalSchemaMappingFailsCompilation() throws Exception {
         Map<String, String> sources = Map.of(
                 "fixture/Invalid.java", source("Invalid", "[]", null, false, true));
