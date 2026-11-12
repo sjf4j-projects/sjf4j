@@ -127,7 +127,7 @@ final class OfficialCaseRunner implements AutoCloseable {
         if (externalResources != null) return externalResources;
         Path index = generatedRoot.resolve("external-index.tsv");
         List<String> lines = Files.readAllLines(index, StandardCharsets.UTF_8);
-        if (lines.isEmpty() || !"class\\turi\\tsource".equals(lines.get(0))) {
+        if (lines.isEmpty() || !"class\turi\tsource".equals(lines.get(0))) {
             throw new IllegalStateException("Invalid official external resource index: " + index);
         }
         Map<String, Map<URI, URI>> bindings = new LinkedHashMap<>();
