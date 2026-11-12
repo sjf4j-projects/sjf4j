@@ -9,7 +9,6 @@ import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.method.ResolvedMethod;
-import org.sjf4j.schema.SchemaRegistry;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -39,7 +38,7 @@ final class SchemaMethodGenerator {
 
     SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated,
                           String registryDir, String registryBaseUri,
-                          Map<String, SchemaRegistry> registryCache) {
+                          Map<String, Map<String, SchemaResourceResolver.IndexedSource>> registryCache) {
         this.context = context;
         this.resources = new SchemaResourceResolver(context, registryDir, registryBaseUri,
                 registryCache);
