@@ -123,6 +123,37 @@ class JdbcColumnNamingTest {
     }
 
     @Test
+    void snakePreservesWordBoundariesAndAcronyms() {
+        assertEquals("Ada", mapper.acronym(
+                result(new String[]{"url_value"}, new Object[]{"Ada"})).URLValue);
+        assertThrows(BindingException.class, () -> mapper.lowercase(
+                result(new String[]{"user_name"}, new Object[]{"Ada"})));
+    }
+
+    @Test
+    void currentRowCacheBindsEachResultSetOnlyOnce() {
+        int[] metadataCalls = {0};
+        ResultSet rs = (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class[]{ResultSet.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getMetaData")) {
+                        metadataCalls[0]++;
+                        return JdbcTestSupport.metadata(new String[]{"user_name", "login_count"});
+                    }
+                    if (method.getName().equals("getString")) return "Ada";
+                    if (method.getName().equals("getInt")) return 3;
+                    if (method.getName().equals("wasNull")) return false;
+                    if (method.getName().equals("next")) {
+                        throw new AssertionError("current-row mapper must not move the cursor");
+                    }
+                    return null;
+                });
+        assertEquals("Ada", mapper.row(rs, 0).userName);
+        assertEquals("Ada", mapper.row(rs, 1).userName);
+        assertEquals(1, metadataCalls[0]);
+    }
+
+    @Test
     void mapKeysRemainUntouched() {
         assertEquals(Map.of("USER_NAME", "Ada"), mapper.map(
                 result(new String[]{"USER_NAME"}, new Object[]{"Ada"})));
@@ -152,6 +183,10 @@ class JdbcColumnNamingTest {
 
         Dynamic dynamic(ResultSet rs);
 
+        Acronym acronym(ResultSet rs);
+
+        Lowercase lowercase(ResultSet rs);
+
         Map<String, Object> map(ResultSet rs);
     }
 
@@ -165,5 +200,13 @@ class JdbcColumnNamingTest {
 
     public static class Dynamic extends JsonObject {
         public String userName;
+    }
+
+    public static class Acronym {
+        public String URLValue;
+    }
+
+    public static class Lowercase {
+        public String username;
     }
 }
