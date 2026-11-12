@@ -83,8 +83,9 @@ public final class JdbcEmitter {
         out.line("try {");
         out.indent();
 
-        // Empty single-target results must return without resolving columns.
-        if (plan.single()) {
+        // Only cursor-consuming single-target methods advance the ResultSet.
+        // Current-row mappers are already positioned and must not call next().
+        if (plan.single() && !plan.currentRow()) {
             out.line("if (!" + resultSet + ".next()) {");
             out.indent();
             out.line("return null;");
