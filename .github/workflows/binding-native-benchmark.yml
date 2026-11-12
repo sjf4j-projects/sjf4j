@@ -1,7 +1,7 @@
 name: Binding Native Image Benchmark (GraalVM 25)
 
-# PRs validate scripts; same-repository PRs can opt into a Native Smoke via
-# the [run-native-smoke] marker in the PR body. Full remains manual-only.
+# Build the shared image once, then benchmark on either one serial runner
+# or four parallel runners; all implementations of a backend share a runner.
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -18,13 +18,24 @@ on:
         required: true
         type: choice
         default: smoke
-        options:
-          - smoke
-          - quick
-          - full
+        options: [smoke, quick, full]
+      mode:
+        description: Backend execution mode (single runner or four parallel runners)
+        required: true
+        type: choice
+        default: parallel
+        options: [parallel, serial]
 
 permissions:
   contents: read
+
+# Artifacts use run_id (not run_attempt): partial job reruns reuse artifacts
+# from successful producers. Re-executed jobs overwrite their own artifacts.
+# The combined artifact has a separate prefix to avoid matching result downloads.
+
+concurrency:
+  group: binding-native-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}-${{ github.event_name == 'pull_request' && 'pr' || inputs.mode }}
+  cancel-in-progress: true
 
 jobs:
   script-check:
@@ -49,85 +60,268 @@ jobs:
             exit 1
           fi
 
-  native:
+  build-image:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
        github.event.pull_request.head.repo.full_name == github.repository &&
-       contains(github.event.pull_request.body, '[run-native-smoke]'))
+       (contains(github.event.pull_request.body, '[run-native-smoke]') ||
+        contains(github.event.pull_request.body, '[run-native-serial-smoke]')))
     needs: script-check
     runs-on: ubuntu-24.04
-    timeout-minutes: 330
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up GraalVM Community 25.5
         uses: graalvm/setup-graalvm@v1
         with:
           version: '25.5'
-          distribution: 'graalvm-community'
+          distribution: graalvm-community
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: gradle
 
-      - name: Record runner hardware and toolchain
+      - name: Build one Native Image containing all four backends
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p build/performance/binding/native
+          ./gradlew :sjf4j-testbench:nativeCompile \
+            -PbindingNativeImage=true \
+            '-PnativeBenchmark=org.sjf4j.testbench.binding.fabien.Fabien(ReadBenchmark.read|WriteBenchmark.write)' \
+            2>&1 | tee build/performance/binding/native/build-console.log
+          IMAGE=sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native
+          test -x "$IMAGE"
+          # Match the existing runner's SHA/compiler stamp verification.
+          printf 'Git SHA: %s\nNative Image: %s\n' \
+            "$(git rev-parse HEAD)" "$(native-image --version)" > "$IMAGE.build-info"
+          sha256sum "$IMAGE" > "$IMAGE.sha256"
+          echo "One JMH image built for four backends." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload shared executable, checksum and build stamp
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-native-image-${{ github.run_id }}
+          path: |
+            sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native
+            sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native.build-info
+            sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native.sha256
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload compiler diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-native-build-log-${{ github.run_id }}
+          path: |
+            build/performance/binding/native/build-console.log
+            sjf4j-testbench/build/native/nativeCompile/svm_err_*.md
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 30
+
+  benchmark:
+    needs: build-image
+    runs-on: ubuntu-24.04
+    # Serial Full requires around 150 minutes for all four backends.
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        backend: ${{ fromJSON(((github.event_name == 'workflow_dispatch' && inputs.mode == 'serial') || (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]'))) && '["all"]' || '["jackson2","jackson3","fastjson2","gson"]') }}
+    env:
+      PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
+      MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
+      BACKEND: ${{ matrix.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up GraalVM for compiler-stamp validation
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.5'
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: gradle
+
+      - name: Download the shared image
+        uses: actions/download-artifact@v4
+        with:
+          name: binding-native-image-${{ github.run_id }}
+          path: sjf4j-testbench/build/native/nativeCompile/
+
+      - name: Restore permissions and verify downloaded image
+        shell: bash
+        run: |
+          set -euo pipefail
+          IMAGE=sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native
+          sha256sum -c "$IMAGE.sha256"
+          chmod +x "$IMAGE"
+          test -x "$IMAGE"
+          grep -Fxq "Git SHA: $(git rev-parse HEAD)" "$IMAGE.build-info"
+          grep -Fxq "Native Image: $(native-image --version)" "$IMAGE.build-info"
+
+      - name: Benchmark Native / Runtime / Compiled on this runner
+        shell: bash
+        env:
+          BINDING_NATIVE_SKIP_BUILD: '1'
+          BINDING_NATIVE_BACKEND: ${{ matrix.backend }}
+        run: |
+          set -euo pipefail
+          OUT="build/performance/binding/native/$BACKEND"
+          mkdir -p "$OUT"
           {
-            echo "Git SHA: $GITHUB_SHA"
+            echo "Git SHA: $(git rev-parse HEAD)"
             echo "Run: $GITHUB_RUN_ID (attempt $GITHUB_RUN_ATTEMPT)"
+            echo "Backend: $BACKEND"
+            echo "Mode: $MODE"
             echo "Runner: $RUNNER_NAME / $RUNNER_OS / $RUNNER_ARCH"
             lscpu
             free -h
             java -version 2>&1
             native-image --version
-          } > build/performance/binding/native/runner.txt
+          } > "$OUT/runner.txt"
+          bash scripts/benchmark-binding-native.sh "$PROFILE" "$OUT" \
+            2>&1 | tee "$OUT/console.log"
+          # Only a fully successful backend gets this marker.
+          printf 'backend=%s\nmode=%s\nprofile=%s\nsha=%s\n' \
+            "$BACKEND" "$MODE" "$PROFILE" "$(git rev-parse HEAD)" > "$OUT/completed.txt"
 
-      - name: Build and run Native Image Binding
-        shell: bash
-        env:
-          PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
-        run: |
-          set -euo pipefail
-          bash scripts/benchmark-binding-native.sh "$PROFILE" \
-            build/performance/binding/native 2>&1 | tee build/performance/binding/native/console.log
-
-      - name: Summarize completed results
-        if: success()
-        shell: bash
-        env:
-          PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
-        run: |
-          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          import os
-          from pathlib import Path
-
-          profile = os.environ["PROFILE"]
-          print(f"## GraalVM Native Image Binding — {profile}")
-          if profile == "smoke":
-              print("**192/192** correctness cases passed (4 backends, both seeds at 100KB).")
-          else:
-              paths = sorted(Path("build/performance/binding/native").glob(
-                  f"binding-*-{profile}-graalvm25-*-run*.json"))
-              expected_files = 12 if profile == "full" else 4
-              expected_cases = 288 * (3 if profile == "full" else 1)
-              count = sum(len(json.loads(p.read_text(encoding="utf-8"))) for p in paths)
-              if len(paths) != expected_files or count != expected_cases:
-                  raise SystemExit(
-                      f"Expected {expected_files} JSON files and {expected_cases} results; "
-                      f"got {len(paths)} files and {count} results.")
-              print(f"Completed **288 unique cases** in {len(paths)} files.")
-              if profile == "full":
-                  print("Three independent native processes per case; aggregate with Best 2 Run Mean.")
-          print("Shared-runner timings are exploratory, not release baselines.")
-          PY
-
-      - name: Upload Native Image results
+      - name: Upload per-backend results and partial logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: binding-native-${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/performance/binding/native/
+          name: binding-native-${{ env.PROFILE }}-${{ matrix.backend }}-${{ github.run_id }}
+          path: build/performance/binding/native/${{ matrix.backend }}/
           if-no-files-found: warn
+          overwrite: true
+          retention-days: 30
+
+  aggregate:
+    needs: [build-image, benchmark]
+    if: ${{ always() && needs.build-image.result == 'success' }}
+    runs-on: ubuntu-24.04
+    env:
+      PROFILE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.profile }}
+      BENCHMARK_RESULT: ${{ needs.benchmark.result }}
+      MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
+    steps:
+      - name: Download results from serial or parallel backend jobs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binding-native-${{ env.PROFILE }}-*-${{ github.run_id }}
+          path: build/performance/binding/native/matrix/
+          merge-multiple: false
+
+      - name: Validate all backends and prepare combined results
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import shutil
+          from pathlib import Path
+
+          profile = os.environ["PROFILE"]
+          mode = os.environ["MODE"]
+          if mode not in ("serial", "parallel"):
+              raise SystemExit(f"unsupported mode {mode!r}")
+          root = Path("build/performance/binding/native/matrix")
+          output = Path("build/performance/binding/native/combined")
+          output.mkdir(parents=True, exist_ok=True)
+          backends = ("jackson2", "jackson3", "fastjson2", "gson")
+          runs = 0 if profile == "smoke" else (3 if profile == "full" else 1)
+          errors, manifest = [], []
+          total = 0
+          rows = ["## GraalVM Native Image Binding — " + profile,
+                  "", ("One shared image, one serial runner for all backends."
+                       if mode == "serial" else
+                       "One shared image, four parallel backend runners."),
+                  "", "| Backend | JSON files | Verified cases | Status |",
+                  "| --- | ---: | ---: | --- |"]
+
+          for backend in backends:
+              artifact_backend = "all" if mode == "serial" else backend
+              name = (f"binding-native-{profile}-{artifact_backend}-"
+                      f"{os.environ['GITHUB_RUN_ID']}")
+              source = root / name
+              if source.exists():
+                  # Preserve the serial job as a single, unchanged provenance set.
+                  if mode == "serial" and backend == backends[0]:
+                      shutil.copytree(source, output / "serial", dirs_exist_ok=True)
+                  elif mode == "parallel":
+                      shutil.copytree(source, output / backend, dirs_exist_ok=True)
+              problems = []
+              marker = source / "completed.txt"
+              if not marker.is_file():
+                  problems.append("missing success marker")
+              else:
+                  values = dict(line.strip().split("=", 1)
+                                for line in marker.read_text().splitlines() if "=" in line)
+                  if values != {"backend": artifact_backend, "mode": mode,
+                                "profile": profile, "sha": os.environ["GITHUB_SHA"]}:
+                      problems.append("invalid build SHA or profile")
+              files = sorted(source.glob(
+                  f"binding-*-{profile}-graalvm25-{backend}-run*.json"))
+              if len(files) != runs:
+                  problems.append(f"expected {runs} JMH files, got {len(files)}")
+              count = 48 if profile == "smoke" and not problems else 0
+              for path in files:
+                  try:
+                      results = json.loads(path.read_text(encoding="utf-8"))
+                      if len(results) != 72:
+                          problems.append(f"{path.name}: {len(results)}/72 cases")
+                      unique = set()
+                      for result in results:
+                          params = result["params"]
+                          if params["backend"] != backend:
+                              problems.append(f"{path.name}: backend mismatch")
+                          key = (result["benchmark"], tuple(sorted(params.items())))
+                          if key in unique:
+                              problems.append(f"{path.name}: duplicate case")
+                          unique.add(key)
+                      count += len(results)
+                      manifest.append({"backend": backend,
+                                       "file": f"{'serial' if mode == 'serial' else backend}/{path.name}",
+                                       "cases": len(results)})
+                  except (OSError, ValueError, KeyError, TypeError) as exc:
+                      problems.append(f"{path.name}: {exc}")
+              total += count
+              errors.extend(f"{backend}: {message}" for message in problems)
+              rows.append(f"| {backend} | {len(files)} | {count} | "
+                          + ("FAIL" if problems else "PASS") + " |")
+
+          expected = 192 if profile == "smoke" else 288 * runs
+          if total != expected:
+              errors.append(f"expected {expected} cases, got {total}")
+          if os.environ["BENCHMARK_RESULT"] != "success":
+              errors.append("one or more benchmark jobs failed")
+          rows += ["", f"**Mode: {mode}** · **Total: {total}/{expected}**",
+                   "", "Shared runners: exploratory results, not release baselines."]
+          if profile == "full":
+              rows.append("Full: three native processes per backend; Best 2 Run Mean.")
+          if errors:
+              rows += ["", "**Errors:**"] + [f"- {error}" for error in errors]
+          summary = "\n".join(rows) + "\n"
+          (output / "summary.md").write_text(summary, encoding="utf-8")
+          (output / "manifest.json").write_text(
+              json.dumps({"profile": profile, "mode": mode, "cases": total,
+                          "files": manifest, "errors": errors}, indent=2) + "\n", encoding="utf-8")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write(summary)
+          print(summary)
+          if errors:
+              raise SystemExit(1)
+          PY
+
+      - name: Upload combined results and manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binding-native-combined-${{ env.PROFILE }}-${{ github.run_id }}
+          path: build/performance/binding/native/combined/
+          if-no-files-found: warn
+          overwrite: true
           retention-days: 30

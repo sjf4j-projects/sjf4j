@@ -92,8 +92,69 @@ so regular tests can reuse them.
 
 This is a **separate execution environment** for the **same Fabien Binding workloads**,
 not a GraalVM JVM/JIT benchmark. The JVM results above remain the historical reference.
-**Native Image performance results are pending** until the native executable passes
-correctness checks and Full is measured; no extrapolated numbers are reported.
+
+### Results — v1.5.1-SNAPSHOT (2026-11-11)
+
+**Primary Native Image Full:** [serial run #43035710364](https://github.com/sjf4j-projects/sjf4j/actions/runs/43035710364)
+at commit `1e1d90d3a01cc46072c4a188e1ed1b9760755f0d`. All **288 exact cases**
+completed in **three independent native processes each (864 measurements)**,
+on a single GitHub Actions runner with **AMD EPYC 7763**. Profile: GraalVM
+Community 25.5.5.0.3, Native Image `-O2` without PGO, one thread,
+5 × 1s warmup and 5 × 1s measurement. Values are in **µs/op (lower is better)**.
+
+For each exact backend / implementation / operation / model / shape / size,
+select the **two lowest process scores** of the three JMH JSON files and take
+their arithmetic mean (**Best 2 Run Mean**). The speedup `Native / Compiled`
+is calculated from **unrounded** mean latencies; values below 1× mean
+Compiled is slower. `Native` here denotes direct third-party library Binding.
+
+#### 100KB POJO measurements
+
+| Operation / Model | Backend | Native | Runtime | Compiled | Native / Compiled |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Read / Users | Jackson2 | 649.338 | 2,652.008 | 481.058 | 1.35× |
+| Read / Users | Jackson3 | 2,793.639 | 2,589.966 | 438.529 | 6.37× |
+| Read / Users | Fastjson2 | 822.225 | 2,214.061 | 149.591 | 5.50× |
+| Read / Users | Gson | 618.298 | 2,691.207 | 537.766 | 1.15× |
+| Read / Clients | Jackson2 | 1,944.627 | 2,289.963 | 572.212 | 3.40× |
+| Read / Clients | Jackson3 | 4,280.246 | 2,246.084 | 524.021 | 8.17× |
+| Read / Clients | Fastjson2 | 711.462 | 1,832.880 | 210.829 | 3.37× |
+| Read / Clients | Gson | 1,837.837 | 2,506.728 | 718.641 | 2.56× |
+| Write / Users | Jackson2 | 574.911 | 1,731.837 | 458.815 | 1.25× |
+| Write / Users | Jackson3 | 1,715.943 | 1,750.203 | 470.719 | 3.65× |
+| Write / Users | Fastjson2 | 309.519 | 1,464.494 | 152.915 | 2.02× |
+| Write / Users | Gson | 1,299.802 | 2,300.490 | 965.934 | 1.35× |
+| Write / Clients | Jackson2 | 839.368 | 1,757.619 | 602.469 | 1.39× |
+| Write / Clients | Jackson3 | 1,989.092 | 1,771.007 | 610.242 | 3.26× |
+| Write / Clients | Fastjson2 | 271.970 | 1,273.153 | 138.999 | 1.96× |
+| Write / Clients | Gson | 1,432.923 | 2,311.289 | 1,091.939 | 1.31× |
+
+#### Full runs and reproducibility
+
+| Run | Mode | Results | Runner CPU | End-to-end |
+| --- | --- | --- | --- | ---: |
+| [#43035710364](https://github.com/sjf4j-projects/sjf4j/actions/runs/43035710364) | **Serial (primary)** | 288 cases × 3 | AMD EPYC 7763 for all backends | ~151 min |
+| [#43045839302](https://github.com/sjf4j-projects/sjf4j/actions/runs/43045839302) | Parallel (confirmation) | 288 cases × 3 | EPYC 7763 / EPYC 9V45 across backend jobs | ~42 min |
+
+Both runs completed all cases. They support the consistency of **within-backend**
+Native / Compiled comparisons, but **do not** establish an apples-to-apples
+cross-run comparison of absolute latencies on different CPU models.
+The GitHub-hosted results remain **exploratory**, not controlled release
+baselines. The Native Image JMH VM-support warning is also a methodological
+limitation; this benchmark does not claim native allocation measurements.
+
+**Complete historical results:** [serial Full details](binding/fabien-native-v151snapshot-2026-11-11-serial.md)
+(**primary**) and [parallel Full details](binding/fabien-native-v151snapshot-2026-11-11-parallel.md)
+(**confirmation**). Each contains all **96 aggregated workload combinations**
+(Read/Write × Users/Clients × POJO/Map × 1/10/100KB × four backends), including
+Native, Runtime, Compiled and Native / Compiled, using the same table layout
+as the JVM report.
+
+**Original artifacts:** [serial Full JMH results](https://github.com/sjf4j-projects/sjf4j/actions/runs/43035710364/artifacts/13873357604)
+and [parallel Full combined results](https://github.com/sjf4j-projects/sjf4j/actions/runs/43045839302/artifacts/13868789457).
+Both contain three independent process measurements per case; GitHub-hosted
+artifacts are retention-limited. The linked Markdown snapshots retain the
+aggregated results after artifacts expire.
 
 The Native Image JMH matrix uses a single executable for all four backends:
 
@@ -144,9 +205,8 @@ benchmark models. The measured native executable does not set that JVM
 property.
 
 [Native Image Smoke #43030244927](https://github.com/sjf4j-projects/sjf4j/actions/runs/43030244927)
-completed **192/192** cases for all four backends. Smoke is a correctness
-check, **not** a performance baseline; Quick and Full performance results
-remain pending.
+completed **192/192** correctness cases for all four backends; both subsequent
+Full runs above also completed successfully.
 
 ```bash
 GRAALVM_HOME=/path/to/graalvm ./scripts/benchmark-binding-native.sh smoke
@@ -158,18 +218,50 @@ GRAALVM_HOME=/path/to/graalvm BINDING_NATIVE_SKIP_BUILD=1 \
   BINDING_NATIVE_BACKEND=jackson3 ./scripts/benchmark-binding-native.sh quick
 ```
 
-The **Binding Native Image Benchmark (GraalVM 25)** Actions workflow supports
-manual Smoke/Quick/Full runs. To verify a same-repository PR before merging,
-include `[run-native-smoke]` in the PR description to request its Native
-Image Smoke job; remove the marker afterward. Fork PRs cannot trigger that
-expensive job.
+The **Binding Native Image Benchmark (GraalVM 25)** Actions workflow has
+two manual dropdown inputs: **Profile** (`smoke`, `quick`, `full`) and
+**Mode** (`parallel` by default, or `serial`). Both modes build **one
+shared Native Image** with Git SHA, compiler stamp and SHA-256 verification:
 
-This produces `build/performance/binding/native/` JMH JSON and metadata
-for Quick/Full. Smoke emits no persisted results. The compiled executable is
+- `serial` runs **all four backends sequentially on one runner**, suitable
+  for comparing absolute latency across backends in the same host environment.
+- `parallel` runs **one backend per runner**, up to four concurrently; all
+  three implementations of a backend still share the same runner.
+- Both modes use the same JMH implementation, parameters and full case matrix.
+  The aggregate job checks result completeness and publishes the combined
+  JSON, metadata, runner information and a manifest. Failed backend artifacts
+  are preserved when available.
+
+To test a same-repository PR, add `[run-native-smoke]` for parallel Smoke,
+or `[run-native-serial-smoke]` for serial Smoke, then remove the marker.
+Fork PRs cannot start the expensive jobs. **Smoke** checks 48 cases per backend
+(**192 total**). **Quick/Full** each cover 72 unique cases per backend
+(**288 total**). Full writes **12 JSON files**, three per backend,
+totaling **864 process-level case measurements**.
+
+The local script remains unchanged and still works on a single machine.
+It writes Quick/Full JMH JSON and metadata under
+`build/performance/binding/native/`; local Smoke does not persist JMH results.
+The compiled binary is
 `sjf4j-testbench/build/native/nativeCompile/sjf4j-benchmark-native`.
-The script checks that all expected JMH case entries completed, failing early
-instead of treating a partial result as success. A skipped build is accepted only
-when the cached native binary has a matching Git SHA and GraalVM compiler stamp.
+An Actions benchmark reuses that executable only when its SHA-256 checksum,
+Git SHA and GraalVM compiler stamp agree. A cached local build likewise
+requires matching Git SHA and GraalVM version.
+
+GitHub Actions artifacts are named by **workflow run ID**, not run attempt.
+This allows **Re-run failed jobs** to reuse the successful Native Image build
+and previously completed backend results. If a producer job itself reruns, its
+artifact is replaced with `upload-artifact@v4`'s `overwrite: true`; the final
+combined artifact has a separate prefix so it cannot be mistaken for a backend
+result. All required artifacts are retained for 30 days to match the Actions
+partial re-run window.
+
+**Runner comparison:** Native / Runtime / Compiled measurements within a
+backend share a runner in both modes. Serial also keeps all four backends
+on one runner; parallel may use different host CPU models or contention
+across backends. Do not present parallel cross-backend absolute times as
+a same-machine ranking.
+
 
 JMH uses **`-f 0`** inside the Native Image. Full launches **three independent
 native executable processes**, each with 5 × 1s warmup and 5 × 1s measurement.
