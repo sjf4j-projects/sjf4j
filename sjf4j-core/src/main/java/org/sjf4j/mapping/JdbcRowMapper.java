@@ -19,5 +19,5 @@ public interface JdbcRowMapper<T> {
      * Maps the current row without advancing or closing the ResultSet.
      * SQLExceptions are wrapped in {@link org.sjf4j.exception.BindingException}.
      */
-    T mapRow(ResultSet rs);
+    T map(ResultSet rs);
 }
