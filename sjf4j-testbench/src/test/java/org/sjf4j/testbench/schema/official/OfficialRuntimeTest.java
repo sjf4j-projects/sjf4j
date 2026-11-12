@@ -156,6 +156,10 @@ public final class OfficialRuntimeTest {
      * The return value records mismatches and execution errors without throwing
      * for them. Missing input fixtures remain a test-harness error.
      */
+    static TestSuiteReport runOptional(SchemaDialect dialect) throws Exception {
+        return runOptionalTestDir(dialect, locatePath(locateTestRoot(), VALIDATION_TESTS));
+    }
+
     static TestSuiteReport runOptionalTestDir(SchemaDialect dialect, Path dir) throws Exception {
         Path optional = dir.resolve("optional");
         if (!Files.isDirectory(optional)) {
