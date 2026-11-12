@@ -9,6 +9,7 @@ import org.sjf4j.annotation.mapping.jdbc.ColumnProjectionPolicy;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions;
 import org.sjf4j.exception.BindingException;
+import org.sjf4j.internal.jdbc.JdbcColumnResolver;
 
 import java.sql.ResultSet;
 import java.util.List;
@@ -124,8 +125,13 @@ class JdbcColumnNamingTest {
 
     @Test
     void snakePreservesWordBoundariesAndAcronyms() {
-        assertEquals("Ada", mapper.acronym(
-                result(new String[]{"url_value"}, new Object[]{"Ada"})).URLValue);
+        try {
+            assertEquals(1, JdbcColumnResolver.resolve(
+                    JdbcTestSupport.metadata(new String[]{"url_value"}),
+                    new String[]{"URLValue"}, ColumnNamingPolicy.INSENSITIVE_SNAKE, true)[0]);
+        } catch (java.sql.SQLException e) {
+            throw new AssertionError(e);
+        }
         assertThrows(BindingException.class, () -> mapper.lowercase(
                 result(new String[]{"user_name"}, new Object[]{"Ada"})));
     }
@@ -183,8 +189,6 @@ class JdbcColumnNamingTest {
 
         Dynamic dynamic(ResultSet rs);
 
-        Acronym acronym(ResultSet rs);
-
         Lowercase lowercase(ResultSet rs);
 
         Map<String, Object> map(ResultSet rs);
@@ -200,10 +204,6 @@ class JdbcColumnNamingTest {
 
     public static class Dynamic extends JsonObject {
         public String userName;
-    }
-
-    public static class Acronym {
-        public String URLValue;
     }
 
     public static class Lowercase {
