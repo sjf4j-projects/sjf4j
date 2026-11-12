@@ -39,9 +39,10 @@ final class SchemaMethodGenerator {
 
     SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated,
                           String registryDir, String registryBaseUri,
-                          Map<String, SchemaRegistry> registryCache) {
+                          Map<String, SchemaRegistry> registryCache, Map<URI, URI> externalSchemas) {
         this.context = context;
-        this.resources = new SchemaResourceResolver(context, registryDir, registryBaseUri, registryCache);
+        this.resources = new SchemaResourceResolver(context, registryDir, registryBaseUri,
+                registryCache, externalSchemas);
         this.fallbacks = new SchemaFallbackEmitter(generated.names(), registryDir, registryBaseUri);
     }
 
