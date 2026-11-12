@@ -21,38 +21,147 @@ dependency versions retroactively to old results.
 
 ## JVM — Temurin JDK 25
 
-### Results — pending first complete Full run
+### Results — 1.5.1-SNAPSHOT (2026-11-12)
 
-There is no published Full baseline for the **suite-1** 12-column workload.
-Do not reuse the original 3-column / 1,000-row benchmark's numbers: it had a
-different fixture and measurement configuration. After a complete Full
-execution, publish a dated report under docs/performance/jdbc-mapping/ and
-link it here. Shared GitHub-hosted runners produce exploratory measurements.
+**[First complete Full report](jdbc-mapping/spring-mybatis-v151snapshot-2026-11-12.md)** ·
+[GitHub Actions run and raw artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43186767777)
 
-#### POJO
+**68/68 exact cases**, from source commit
+[`c66d95c`](https://github.com/sjf4j-projects/sjf4j/commit/c66d95c8f75e5c37f6aff936aecd96c493122c8c).
+Temurin **25.0.5**, AMD **EPYC 9V45**, shared GitHub-hosted runner.
+Latency uses the independently computed **Best 2 Mean** of three forks.
+All durations are **µs/op** (mapping the entire ResultSet), and allocations
+are untrimmed **B/op**. Each comparison is shown as the competitor's measured
+value, followed by **SJF4J Compiled** and the time ratio.
 
-Compare SJF4J Compiled, Spring BeanPropertyRowMapper and MyBatis
-automatic/explicit result maps in List mode. Compare only Compiled and Spring
-in Row mode. MyBatis Cursor is separately labelled as streaming-to-List.
+#### Spring JDBC
 
-#### Record
+**Latency (µs/op, lower is better).** Best 2 Mean across 3 forks; ratio compares execution time.
 
-Compare SJF4J Compiled against Spring DataClassRowMapper in List and Row modes.
-MyBatis record constructor mapping is not included in suite 1: an equivalent,
-verified comparison is required before adding it.
+| Case | Rows | Spring | Compiled | Spring / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / List | 1 | 1.171 | 0.270 | 4.34× |
+| POJO / List | 10 | 10.756 | 1.013 | 10.61× |
+| POJO / List | 1,000 | 1,010.230 | 83.414 | 12.11× |
+| POJO / List | 100,000 | 115,613.982 | 11,996.656 | 9.64× |
+| POJO / Row | 1 | 1.190 | 0.198 | 6.00× |
+| POJO / Row | 10 | 10.386 | 1.373 | 7.56× |
+| POJO / Row | 1,000 | 1,003.745 | 131.289 | 7.65× |
+| POJO / Row | 100,000 | 119,922.245 | 16,146.615 | 7.43× |
+| Record / List | 1 | 9.114 | 0.283 | 32.23× |
+| Record / List | 10 | 85.306 | 1.040 | 82.00× |
+| Record / List | 1,000 | 8,764.423 | 84.267 | 104.01× |
+| Record / List | 100,000 | 956,047.100 | 13,465.234 | 71.00× |
+| Record / Row | 1 | 8.823 | 0.208 | 42.49× |
+| Record / Row | 10 | 85.382 | 1.405 | 60.78× |
+| Record / Row | 1,000 | 8,836.454 | 132.487 | 66.70× |
+| Record / Row | 100,000 | 917,069.365 | 18,223.220 | 50.32× |
+| Map / List | 1 | 0.401 | 0.243 | 1.65× |
+| Map / List | 10 | 3.397 | 1.861 | 1.83× |
+| Map / List | 1,000 | 308.258 | 182.553 | 1.69× |
+| Map / List | 100,000 | 43,028.466 | 26,281.873 | 1.64× |
+| Map / Row | 1 | 0.416 | 0.244 | 1.71× |
+| Map / Row | 10 | 3.592 | 1.835 | 1.96× |
+| Map / Row | 1,000 | 318.130 | 183.451 | 1.73× |
+| Map / Row | 100,000 | 46,735.088 | 27,383.922 | 1.71× |
 
-#### Map
+**Allocation (B/op, lower is better).** Untrimmed JMH allocation; ratio compares B/op, not speed.
 
-Compare SJF4J Compiled, Spring ColumnMapRowMapper and MyBatis explicit
-ResultMap in List mode, as well as Compiled and Spring in Row mode.
-Map implementations differ: Spring uses case-insensitive column names,
-while SJF4J and MyBatis have different Map implementation/lookup overhead.
-All outputs must agree on the twelve exact column labels and values.
+| Case | Rows | Spring | Compiled | Spring / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / List | 1 | 5,827 | 3,573 | 1.63× |
+| POJO / List | 10 | 28,019 | 5,528 | 5.07× |
+| POJO / List | 1,000 | 2,515,243 | 234,393 | 10.73× |
+| POJO / List | 100,000 | 260,871,878 | 22,883,538 | 11.40× |
+| POJO / Row | 1 | 5,827 | 3,579 | 1.63× |
+| POJO / Row | 10 | 28,019 | 5,523 | 5.07× |
+| POJO / Row | 1,000 | 2,515,244 | 234,393 | 10.73× |
+| POJO / Row | 100,000 | 251,271,871 | 22,883,677 | 10.98× |
+| Record / List | 1 | 15,131 | 3,573 | 4.23× |
+| Record / List | 10 | 121,033 | 5,528 | 21.89× |
+| Record / List | 1,000 | 11,819,755 | 234,393 | 50.43× |
+| Record / List | 100,000 | 1,181,675,806 | 22,883,596 | 51.64× |
+| Record / Row | 1 | 15,125 | 3,579 | 4.23× |
+| Record / Row | 10 | 121,033 | 5,528 | 21.89× |
+| Record / Row | 1,000 | 11,819,765 | 234,399 | 50.43× |
+| Record / Row | 100,000 | 1,181,675,282 | 22,883,720 | 51.64× |
+| Map / List | 1 | 4,669 | 4,123 | 1.13× |
+| Map / List | 10 | 16,045 | 10,536 | 1.52× |
+| Map / List | 1,000 | 1,315,275 | 763,274 | 1.72× |
+| Map / List | 100,000 | 131,272,620 | 76,072,467 | 1.73× |
+| Map / Row | 1 | 4,675 | 4,128 | 1.13× |
+| Map / Row | 10 | 16,045 | 10,525 | 1.52× |
+| Map / Row | 1,000 | 1,315,280 | 763,274 | 1.72× |
+| Map / Row | 100,000 | 131,272,643 | 76,072,473 | 1.73× |
+
+#### MyBatis
+
+**Latency (µs/op, lower is better).** Best 2 Mean across 3 forks; ratio compares execution time.
+
+| Case | Rows | MyBatis | Compiled | MyBatis / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / Auto / List | 1 | 2.978 | 0.270 | 11.03× |
+| POJO / Explicit / List | 1 | 1.776 | 0.270 | 6.58× |
+| POJO / Cursor / List | 1 | 3.102 | 0.270 | 11.49× |
+| POJO / Auto / List | 10 | 7.490 | 1.013 | 7.39× |
+| POJO / Explicit / List | 10 | 8.573 | 1.013 | 8.46× |
+| POJO / Cursor / List | 10 | 7.624 | 1.013 | 7.52× |
+| POJO / Auto / List | 1,000 | 497.950 | 83.414 | 5.97× |
+| POJO / Explicit / List | 1,000 | 721.718 | 83.414 | 8.65× |
+| POJO / Cursor / List | 1,000 | 498.337 | 83.414 | 5.97× |
+| POJO / Auto / List | 100,000 | 57,970.295 | 11,996.656 | 4.83× |
+| POJO / Explicit / List | 100,000 | 83,196.607 | 11,996.656 | 6.93× |
+| POJO / Cursor / List | 100,000 | 56,766.796 | 11,996.656 | 4.73× |
+| Map / Explicit / List | 1 | 1.613 | 0.243 | 6.64× |
+| Map / Cursor / List | 1 | 1.606 | 0.243 | 6.62× |
+| Map / Explicit / List | 10 | 7.220 | 1.861 | 3.88× |
+| Map / Cursor / List | 10 | 7.409 | 1.861 | 3.98× |
+| Map / Explicit / List | 1,000 | 609.343 | 182.553 | 3.34× |
+| Map / Cursor / List | 1,000 | 641.080 | 182.553 | 3.51× |
+| Map / Explicit / List | 100,000 | 70,233.496 | 26,281.873 | 2.67× |
+| Map / Cursor / List | 100,000 | 76,776.908 | 26,281.873 | 2.92× |
+
+**Allocation (B/op, lower is better).** Untrimmed JMH allocation; ratio compares B/op, not speed.
+
+| Case | Rows | MyBatis | Compiled | MyBatis / Compiled |
+| --- | ---: | ---: | ---: | ---: |
+| POJO / Auto / List | 1 | 11,317 | 3,573 | 3.17× |
+| POJO / Explicit / List | 1 | 7,565 | 3,573 | 2.12× |
+| POJO / Cursor / List | 1 | 11,213 | 3,573 | 3.14× |
+| POJO / Auto / List | 10 | 20,232 | 5,528 | 3.66× |
+| POJO / Explicit / List | 10 | 22,080 | 5,528 | 3.99× |
+| POJO / Cursor / List | 10 | 19,965 | 5,528 | 3.61× |
+| POJO / Auto / List | 1,000 | 1,042,178 | 234,393 | 4.45× |
+| POJO / Explicit / List | 1,000 | 1,661,914 | 234,393 | 7.09× |
+| POJO / Cursor / List | 1,000 | 1,042,148 | 234,393 | 4.45× |
+| POJO / Auto / List | 100,000 | 108,081,576 | 22,883,538 | 4.72× |
+| POJO / Explicit / List | 100,000 | 170,474,949 | 22,883,538 | 7.45× |
+| POJO / Cursor / List | 100,000 | 108,081,007 | 22,883,538 | 4.72× |
+| Map / Explicit / List | 1 | 7,488 | 4,123 | 1.82× |
+| Map / Cursor / List | 1 | 7,443 | 4,123 | 1.81× |
+| Map / Explicit / List | 10 | 24,779 | 10,536 | 2.35× |
+| Map / Cursor / List | 10 | 24,675 | 10,536 | 2.34× |
+| Map / Explicit / List | 1,000 | 1,997,958 | 763,274 | 2.62× |
+| Map / Cursor / List | 1,000 | 1,997,854 | 763,274 | 2.62× |
+| Map / Explicit / List | 100,000 | 204,076,241 | 76,072,467 | 2.68× |
+| Map / Cursor / List | 100,000 | 204,075,753 | 76,072,467 | 2.68× |
+
+MyBatis has no equivalent direct `mapRow(ResultSet, int)` API in this suite.
+Auto and Explicit map Lists; Cursor maps a streaming cursor into a List.
+Only POJO and Map List results appear in this comparison.
 
 #### Key findings
 
-Populate this section only after a verified Full run, using the raw fork
-measurements and allocation scores. Report regressions as well as speedups.
+- At 100,000 rows, SJF4J POJO List allocates **22.9 million B/op** versus
+  **260.9 million B/op** for Spring (11.40× allocation ratio).
+  Record List allocates **22.9 million** versus **1,181.7 million B/op**
+  for Spring (51.64×).
+- **Two out of 68** exact cases exceed the 15% fork-spread warning:
+  Map/List/Spring/100,000 (1.32×) and Map/Row/Compiled/1,000 (1.28×).
+  Inspect the raw forks and avoid treating these as stable regressions.
+- The run was on shared hardware and remains **exploratory**.
+  Results do not measure SQL execution, network I/O or full ORM queries.
+  Allocation reporting can include Invocation-level setup/teardown work.
 
 ### Workload matrix
 
@@ -85,12 +194,12 @@ Four row counts are independent exact workloads: **1 / 10 / 1,000 / 100,000**.
 
 | Group | Mode | Implementations | Rows | JMH entries |
 | --- | --- | --- | --- | ---: |
-| POJO | List | Compiled / Spring / MyBatis Auto / MyBatis Explicit / MyBatis Cursor | All four | 20 |
-| POJO | Row | Compiled / Spring | All four | 8 |
-| Record | List | Compiled / Spring | All four | 8 |
-| Record | Row | Compiled / Spring | All four | 8 |
-| Map | List | Compiled / Spring / MyBatis Explicit / MyBatis Cursor | All four | 16 |
-| Map | Row | Compiled / Spring | All four | 8 |
+| POJO | List | Spring / MyBatis Auto / MyBatis Explicit / MyBatis Cursor / SJF4J Compiled | All four | 20 |
+| POJO | Row | Spring / SJF4J Compiled | All four | 8 |
+| Record | List | Spring / SJF4J Compiled | All four | 8 |
+| Record | Row | Spring / SJF4J Compiled | All four | 8 |
+| Map | List | Spring / MyBatis Explicit / MyBatis Cursor / SJF4J Compiled | All four | 16 |
+| Map | Row | Spring / SJF4J Compiled | All four | 8 |
 | **Total** | | | | **68** |
 
 **List**: the implementation consumes the full ResultSet and returns a List.
@@ -104,6 +213,51 @@ RowMapper.mapRow(ResultSet, int). The returned List ensures identical work.
 **MyBatis Cursor**: call handleCursorResultSets, iterate the Cursor and
 materialize it into an ArrayList. This is a streaming MyBatis pipeline, not
 a direct RowMapper API; it is shown separately, never under Row mode.
+
+### Mapping code examples
+
+Core calls from [JdbcFullBenchmark.java](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/JdbcFullBenchmark.java).
+All examples map the same 12-column ResultSet to `AccountBean`;
+mapper initialization and SQL execution are outside JMH timing.
+
+#### SJF4J Compiled
+
+~~~java
+@CompiledJdbcMapper
+interface AccountMapper {
+    @Mapping(target = "userName", source = "user_name")
+    @Mapping(target = "loginCount", source = "login_count")
+    @Mapping(target = "createdAt", source = "created_at")
+    @Mapping(target = "updatedAt", source = "updated_at")
+    List<AccountBean> beans(ResultSet rs);
+}
+
+List<AccountBean> result = compiled.beans(rs);
+~~~
+
+#### Spring JDBC
+
+~~~java
+BeanPropertyRowMapper<AccountBean> mapper =
+        BeanPropertyRowMapper.newInstance(AccountBean.class);
+RowMapperResultSetExtractor<AccountBean> extractor =
+        new RowMapperResultSetExtractor<>(mapper);
+
+List<AccountBean> result = extractor.extractData(rs);
+~~~
+
+#### MyBatis
+
+~~~java
+// The preconfigured handler uses Auto or Explicit ResultMap.
+List<AccountBean> result =
+        (List<AccountBean>) (List<?>) handler.handleResultSets(select);
+~~~
+
+Spring's mapper/extractor and MyBatis's `DefaultResultSetHandler` are created
+outside the timed path. The benchmark also covers Record, Map, per-row mapping,
+and MyBatis Cursor-to-List; see the linked source for those variants.
+MyBatis uses `DefaultResultSetHandler` directly, not a full `SqlSession` query.
 
 ## Baseline policy
 
@@ -191,7 +345,7 @@ For a release-grade comparison use the same dedicated, controlled machine.
 
 | Release | Suite | Commit | Environment | Full report |
 | --- | --- | --- | --- | --- |
-| Pending | 1 | — | — | — |
+| 1.5.1-SNAPSHOT (2026-11-12) | 1 | [`c66d95c`](https://github.com/sjf4j-projects/sjf4j/commit/c66d95c8f75e5c37f6aff936aecd96c493122c8c) | Temurin 25.0.5 / EPYC 9V45 / shared runner | [Full snapshot](jdbc-mapping/spring-mybatis-v151snapshot-2026-11-12.md) |
 
 ## Reporting and ranking results
 
@@ -201,14 +355,18 @@ the five JMH iterations in each fork, discard the single slowest fork of
 **each exact method and row count**, then average the remaining two
 (**Best 2 Mean**). Preserve the untrimmed three-fork JMH mean.
 
-**Allocation**: report JMH gc.alloc.rate.norm in B/op, untrimmed; do **not**
+**Allocation**: report JMH gc.alloc.rate.norm in B/op, untrimmed; it may include
+work in Invocation setup/teardown and should not be claimed as pure mapper-only
+allocation, especially for a single row. Do **not**
 select allocation forks according to latency. Ratios are
 Spring / Compiled or MyBatis / Compiled on unrounded scores; above 1x means
 Compiled has lower latency/allocation. Do not compute a MyBatis / Compiled
 Row ratio: there is no equivalent direct MyBatis RowMapper.
 
-The reporter creates separate latency and allocation tables for List and
-Row within each group, as well as fork-spread diagnostics. Flag cases
+The reporter groups Spring and MyBatis separately, with **Latency** and
+**Allocation** tables for each competitor. Each table follows the same
+Case / Rows / competitor / Compiled / competitor / Compiled convention as
+binding.md and mapping.md, followed by fork-spread diagnostics. Flag cases
 where slowest/fastest fork means exceed 1.15x and investigate instability.
 
 ## Interpreting changes
