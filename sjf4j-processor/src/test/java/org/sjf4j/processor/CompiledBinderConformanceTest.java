@@ -306,9 +306,10 @@ class CompiledBinderConformanceTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("value.id = raw.readInt64Value();"), generated);
-        assertTrue(generated.contains("value.name = raw.readString();"), generated);
-        assertTrue(generated.contains("value.count = raw.readInt32Value();"), generated);
+        assertTrue(generated.contains("value.id = nativeParser.readInt64Value();"), generated);
+        assertTrue(generated.contains("value.name = nativeParser.readString();"), generated);
+        assertTrue(generated.contains("value.count = nativeParser.readInt32Value();"), generated);
+        assertFalse(generated.contains("parser.rawReader()"), generated);
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
             Class<?> type = Class.forName("fixture.Bean", true, loader);
@@ -353,6 +354,35 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void fastjson2NativeContainerGeneration() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture; public class Bean {"
+                        + " public String name; public java.util.List<String> tags;"
+                        + " public String[] emails; public java.util.List<Child> children;"
+                        + " public static class Child { public int id; }"
+                        + "}");
+        sources.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*;"
+                        + "@CompiledBinder(backend=Backend.FASTJSON2) public interface Binder {"
+                        + " @Read java.util.List<String> list(byte[] json);"
+                        + " @Read java.util.List<Bean> beans(byte[] json);"
+                        + " @Read Bean bean(byte[] json);"
+                        + " @Read String[] array(byte[] json);"
+                        + "}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("JSONReader nativeParser = parser.nativeParser();"), generated);
+        assertTrue(generated.contains("while (!nativeParser.nextIfArrayEnd())"), generated);
+        assertTrue(generated.contains("value.add(nativeParser.readString());"), generated);
+        assertTrue(generated.contains("nativeParser.nextIfObjectEnd()"), generated);
+        assertFalse(generated.contains("parser.rawReader()"), generated);
+        assertFalse(generated.contains("while (!parser.nextIfArrayEnd())"), generated);
+    }
+
+    @Test
     void fastjson2FusedRawNameSupportsLengths2Through43() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         StringBuilder bean = new StringBuilder("package fixture;\npublic class Bean {\n");
@@ -381,10 +411,10 @@ class CompiledBinderConformanceTest {
 
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
         for (int length = 2; length <= 43; length++) {
-            assertTrue(generated.contains("raw.nextIfName4Match" + length + "("),
+            assertTrue(generated.contains("nativeParser.nextIfName4Match" + length + "("),
                     "Generated raw matcher missing for length " + length);
         }
-        assertFalse(generated.contains("raw.nextIfName4Match44("));
+        assertFalse(generated.contains("nativeParser.nextIfName4Match44("));
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class<?> impl = Class.forName("fixture.Binder_Impl", true, loader);
