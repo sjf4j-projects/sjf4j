@@ -50,7 +50,7 @@ public final class JdbcEmitter {
             field = generated.names().field("jdbcColumns_" + method.plan().method().getSimpleName());
             final String cacheName = field;
             generated.addField(out -> out.line(
-                    "private final java.lang.ThreadLocal<org.sjf4j.internal.jdbc.JdbcColumnResolver.Cache> "
+                    "private final java.lang.ThreadLocal<org.sjf4j.mapping.CompiledSupport.Cache> "
                             + cacheName + " = new java.lang.ThreadLocal<>();"));
         }
         final String cacheField = field;
@@ -842,12 +842,12 @@ public final class JdbcEmitter {
         String access;
 
         if (cacheField == null) {
-            out.line("int[] " + resolved + " = org.sjf4j.internal.jdbc.JdbcColumnResolver.resolve("
+            out.line("int[] " + resolved + " = org.sjf4j.mapping.CompiledSupport.resolve("
                     + metadata + ", " + namesLiteral + ", " + policyExpr + ", " + !presentOnly + ");");
             access = resolved;
         } else {
             String cache = names.newName("cachedColumns");
-            String cacheType = "org.sjf4j.internal.jdbc.JdbcColumnResolver.Cache";
+            String cacheType = "org.sjf4j.mapping.CompiledSupport.Cache";
             out.line(cacheType + " " + cache + " = this." + cacheField + ".get();");
             out.line("if (" + cache + " == null || !" + cache + ".matches(" + resultSet + ")) {");
             out.indent();
