@@ -68,7 +68,7 @@ class JdbcResultMappingTest {
                 new Object[]{1, 2})).get(0));
         assertEquals(Map.of("a", 2, "b", 3),
                 mapper.prepareMapRow(JdbcTestSupport.metadata(new String[]{"a", "a", "b"}))
-                        .mapRow(currentRowResult(
+                        .map(currentRowResult(
                                 new String[]{"a", "a", "b"}, new int[]{0}, 1, 2, 3)));
 
         int[] findColumns = {0};
@@ -142,7 +142,7 @@ class JdbcResultMappingTest {
 
         int[] nextCalls = {0};
         Jojo current = mapper.prepareJojo(JdbcTestSupport.metadata(
-                new String[]{"full_name", "age", "extra"})).mapRow(
+                new String[]{"full_name", "age", "extra"})).map(
                         currentRowResult(new String[]{"full_name", "age", "extra"}, nextCalls,
                                 "Katherine", 41, "current"));
         assertEquals("Katherine", current.name);
