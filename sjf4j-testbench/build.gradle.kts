@@ -157,9 +157,10 @@ fun updateOfficialSuite(ref: String) {
     val revisionFile = outDir.resolve("OFFICIAL_TEST_SUITE_REV")
     val validCache = revisionFile.isFile
         && revisionFile.readText().lineSequence().any { it.trim() == "revision: $sha" }
-        && outDir.resolve("tests/draft2020-12").isDirectory
-        && outDir.resolve("remotes").isDirectory
-        && outDir.resolve("annotations/tests").isDirectory
+        && outDir.resolve("validation/tests").isDirectory
+        && outDir.resolve("validation/validation-test-schema.json").isFile
+        && outDir.resolve("annotations/tests/meta-data.json").isFile
+        && revisionFile.readText().lineSequence().any { it.trim() == "layout: unified-validation-v1" }
     if (validCache) {
         logger.lifecycle("Official JSON Schema suite already at $sha; reusing local cache")
         return
@@ -179,8 +180,7 @@ fun updateOfficialSuite(ref: String) {
                 val rootEnd = name.indexOf('/')
                 if (rootEnd < 0) continue
                 val relative = name.substring(rootEnd + 1)
-                if (!relative.startsWith("tests/") && !relative.startsWith("remotes/")
-                    && !relative.startsWith("annotations/")) continue
+                if (!relative.startsWith("validation/") && !relative.startsWith("annotations/")) continue
 
                 val target = staging.resolve(relative)
                 val targetPath = target.canonicalFile.toPath()
@@ -197,15 +197,17 @@ fun updateOfficialSuite(ref: String) {
                 zip.closeEntry()
             }
         }
-        require(staging.resolve("tests/draft2020-12").isDirectory
-                && staging.resolve("remotes").isDirectory
-                && staging.resolve("annotations/tests").isDirectory) {
-            "Downloaded suite $sha is missing required tests, remotes, or annotations"
+        require(staging.resolve("validation/tests").isDirectory
+                && staging.resolve("validation/tests").listFiles()?.any { it.isFile && it.extension == "json" } == true
+                && staging.resolve("validation/validation-test-schema.json").isFile
+                && staging.resolve("annotations/tests/meta-data.json").isFile) {
+            "Downloaded suite $sha is missing required validation or annotation fixtures"
         }
         staging.resolve("OFFICIAL_TEST_SUITE_REV").writeText(
             "repo: https://github.com/json-schema-org/JSON-Schema-Test-Suite\n" +
                 "ref: $ref\n" +
-                "revision: $sha\n"
+                "revision: $sha\n" +
+                "layout: unified-validation-v1\n"
         )
         // A failed network download leaves the previous complete suite untouched.
         delete(outDir)
@@ -232,7 +234,7 @@ val downloadOfficialSchemaTests by tasks.registering {
 }
 
 val cachedOfficialSuiteExists = {
-    officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12").isDirectory &&
+    officialSchemaSuiteDir.get().asFile.resolve("validation/tests").isDirectory &&
         officialSchemaSuiteDir.get().asFile.resolve("OFFICIAL_TEST_SUITE_REV").isFile
 }
 
@@ -249,6 +251,13 @@ val officialRuntimeTest by tasks.registering(Test::class) {
     outputs.upToDateWhen { false }
     onlyIf("local official JSON Schema suite has been downloaded") { cachedOfficialSuiteExists() }
     shouldRunAfter(tasks.test)
+}
+
+// The compiled harness still reads the retired draft-scoped layout. Until it is
+// migrated, never mistake missing compiled cases for a successful conformance run.
+val legacyOfficialCompiledSuiteExists = {
+    officialSchemaSuiteDir.get().asFile.resolve("tests/draft2020-12").isDirectory &&
+        officialSchemaSuiteDir.get().asFile.resolve("remotes").isDirectory
 }
 
 val cachedOfficialAnnotationsExist = {
@@ -291,7 +300,7 @@ val officialCompiledGeneratedDir = layout.buildDirectory.dir("generated/official
 val generateOfficialCompiledCases by tasks.registering {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     description = "Generates official compiled bindings for all supported JSON Schema drafts."
-    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
+    onlyIf("legacy compiled suite layout is available") { legacyOfficialCompiledSuiteExists() }
     inputs.dir(officialSchemaSuiteDir)
     outputs.dir(officialCompiledGeneratedDir)
 
@@ -443,7 +452,7 @@ val officialCompiledTest by tasks.registering(Test::class) {
     inputs.dir(officialSchemaSuiteDir)
     outputs.upToDateWhen { false }
     dependsOn(generateOfficialCompiledCases)
-    onlyIf("official suite exists locally") { cachedOfficialSuiteExists() }
+    onlyIf("legacy compiled suite layout is available") { legacyOfficialCompiledSuiteExists() }
     shouldRunAfter(tasks.test)
 }
 
@@ -462,6 +471,9 @@ val officialPublishGate by tasks.registering {
     dependsOn(downloadOfficialSchemaTests, officialRuntimeTest, officialCompiledTest, officialAnnotationTest)
     doLast {
         check(cachedOfficialSuiteExists()) { "Official suite missing before publish" }
+        check(legacyOfficialCompiledSuiteExists()) {
+            "Official CompiledValidator suite is not migrated to the unified validation layout; publication is blocked"
+        }
         // A pinned local SHA may be used for debugging, never for a publication.
         check(providers.gradleProperty("jsonSchemaSuiteRef").orElse("main").get() == "main") {
             "Publication requires latest upstream main; remove -PjsonSchemaSuiteRef"
