@@ -30,37 +30,68 @@ dependency versions retroactively to old results.
 [`c66d95c`](https://github.com/sjf4j-projects/sjf4j/commit/c66d95c8f75e5c37f6aff936aecd96c493122c8c).
 Temurin **25.0.5**, AMD **EPYC 9V45**, shared GitHub-hosted runner.
 Latency uses the independently computed **Best 2 Mean** of three forks.
-The following ratios are from the **List** mode, baseline / Compiled,
-and all are greater than 1× (SJF4J faster):
+All durations are **µs/op** (mapping the entire ResultSet), and allocations
+are untrimmed **B/op**. Each comparison is shown as the competitor's measured
+value, followed by **SJF4J Compiled** and the time ratio.
 
-| Rows | POJO Spring / Compiled | POJO MyBatis Auto / Compiled | Record Spring / Compiled | Map Spring / Compiled |
-| ---: | ---: | ---: | ---: | ---: |
-| 1 | 4.34× | 11.03× | 32.23× | 1.65× |
-| 10 | 10.61× | 7.39× | 82.00× | 1.83× |
-| 1,000 | 12.11× | 5.97× | 104.01× | 1.69× |
-| 100,000 | 9.64× | 4.83× | 71.00× | 1.64× |
+#### Spring JDBC
 
-#### POJO
+| Shape | Mode | Rows | Spring (µs/op) | Spring (B/op) | SJF4J Compiled (µs/op) | SJF4J (B/op) | Spring / SJF4J |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| POJO | List | 1 | 1.171 | 5,827 | 0.270 | 3,573 | 4.34× |
+| POJO | List | 10 | 10.756 | 28,019 | 1.013 | 5,528 | 10.61× |
+| POJO | List | 1,000 | 1,010.230 | 2,515,243 | 83.414 | 234,393 | 12.11× |
+| POJO | List | 100,000 | 115,613.982 | 260,871,878 | 11,996.656 | 22,883,538 | 9.64× |
+| POJO | Row | 1 | 1.190 | 5,827 | 0.198 | 3,579 | 6.00× |
+| POJO | Row | 10 | 10.386 | 28,019 | 1.373 | 5,523 | 7.56× |
+| POJO | Row | 1,000 | 1,003.745 | 2,515,244 | 131.289 | 234,393 | 7.65× |
+| POJO | Row | 100,000 | 119,922.245 | 251,271,871 | 16,146.615 | 22,883,677 | 7.43× |
+| Record | List | 1 | 9.114 | 15,131 | 0.283 | 3,573 | 32.23× |
+| Record | List | 10 | 85.306 | 121,033 | 1.040 | 5,528 | 82.00× |
+| Record | List | 1,000 | 8,764.423 | 11,819,755 | 84.267 | 234,393 | 104.01× |
+| Record | List | 100,000 | 956,047.100 | 1,181,675,806 | 13,465.234 | 22,883,596 | 71.00× |
+| Record | Row | 1 | 8.823 | 15,125 | 0.208 | 3,579 | 42.49× |
+| Record | Row | 10 | 85.382 | 121,033 | 1.405 | 5,528 | 60.78× |
+| Record | Row | 1,000 | 8,836.454 | 11,819,765 | 132.487 | 234,399 | 66.70× |
+| Record | Row | 100,000 | 917,069.365 | 1,181,675,282 | 18,223.220 | 22,883,720 | 50.32× |
+| Map | List | 1 | 0.401 | 4,669 | 0.243 | 4,123 | 1.65× |
+| Map | List | 10 | 3.397 | 16,045 | 1.861 | 10,536 | 1.83× |
+| Map | List | 1,000 | 308.258 | 1,315,275 | 182.553 | 763,274 | 1.69× |
+| Map | List | 100,000 | 43,028.466 | 131,272,620 | 26,281.873 | 76,072,467 | 1.64× |
+| Map | Row | 1 | 0.416 | 4,675 | 0.244 | 4,128 | 1.71× |
+| Map | Row | 10 | 3.592 | 16,045 | 1.835 | 10,525 | 1.96× |
+| Map | Row | 1,000 | 318.130 | 1,315,280 | 183.451 | 763,274 | 1.73× |
+| Map | Row | 100,000 | 46,735.088 | 131,272,643 | 27,383.922 | 76,072,473 | 1.71× |
 
-At 1,000 rows, SJF4J Compiled List completes in **83.414 µs/op** versus
-**1,010.230 µs/op** for Spring and **497.950 µs/op** for MyBatis Auto.
-Compiled List is also faster than Compiled Row on large multirow results,
-consistent with its one-time column resolution.
+#### MyBatis
 
-#### Record
+| Shape | Mapping | Rows | MyBatis (µs/op) | MyBatis (B/op) | SJF4J Compiled (µs/op) | SJF4J (B/op) | MyBatis / SJF4J |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| POJO | Auto / List | 1 | 2.978 | 11,317 | 0.270 | 3,573 | 11.03× |
+| POJO | Explicit / List | 1 | 1.776 | 7,565 | 0.270 | 3,573 | 6.58× |
+| POJO | Cursor / List | 1 | 3.102 | 11,213 | 0.270 | 3,573 | 11.49× |
+| POJO | Auto / List | 10 | 7.490 | 20,232 | 1.013 | 5,528 | 7.39× |
+| POJO | Explicit / List | 10 | 8.573 | 22,080 | 1.013 | 5,528 | 8.46× |
+| POJO | Cursor / List | 10 | 7.624 | 19,965 | 1.013 | 5,528 | 7.52× |
+| POJO | Auto / List | 1,000 | 497.950 | 1,042,178 | 83.414 | 234,393 | 5.97× |
+| POJO | Explicit / List | 1,000 | 721.718 | 1,661,914 | 83.414 | 234,393 | 8.65× |
+| POJO | Cursor / List | 1,000 | 498.337 | 1,042,148 | 83.414 | 234,393 | 5.97× |
+| POJO | Auto / List | 100,000 | 57,970.295 | 108,081,576 | 11,996.656 | 22,883,538 | 4.83× |
+| POJO | Explicit / List | 100,000 | 83,196.607 | 170,474,949 | 11,996.656 | 22,883,538 | 6.93× |
+| POJO | Cursor / List | 100,000 | 56,766.796 | 108,081,007 | 11,996.656 | 22,883,538 | 4.73× |
+| Map | Explicit / List | 1 | 1.613 | 7,488 | 0.243 | 4,123 | 6.64× |
+| Map | Cursor / List | 1 | 1.606 | 7,443 | 0.243 | 4,123 | 6.62× |
+| Map | Explicit / List | 10 | 7.220 | 24,779 | 1.861 | 10,536 | 3.88× |
+| Map | Cursor / List | 10 | 7.409 | 24,675 | 1.861 | 10,536 | 3.98× |
+| Map | Explicit / List | 1,000 | 609.343 | 1,997,958 | 182.553 | 763,274 | 3.34× |
+| Map | Cursor / List | 1,000 | 641.080 | 1,997,854 | 182.553 | 763,274 | 3.51× |
+| Map | Explicit / List | 100,000 | 70,233.496 | 204,076,241 | 26,281.873 | 76,072,467 | 2.67× |
+| Map | Cursor / List | 100,000 | 76,776.908 | 204,075,753 | 26,281.873 | 76,072,467 | 2.92× |
 
-At 1,000 rows, SJF4J Compiled List completes in **84.267 µs/op** versus
-**8,764.423 µs/op** for Spring DataClassRowMapper (**104.01×**).
-The difference is specific to this 12-column record and tested Spring API.
-Profiling is needed before attributing the gap to particular reflective or
-conversion operations. MyBatis Record is not included in suite 1.
-
-#### Map
-
-Spring ColumnMapRowMapper / Compiled List ranges from **1.64× to 1.83×**.
-MyBatis Explicit / Compiled List ranges from **2.67× to 6.64×**.
-The Map implementations differ (including Spring's case-insensitive keys),
-so the ratio is for these defined implementations, not interchangeable maps.
+MyBatis has no equivalent direct `mapRow(ResultSet, int)` API in this suite.
+Its Auto and Explicit paths map Lists; Cursor materializes a streaming cursor
+into a List. Therefore, only POJO and Map List cases appear in this table.
+The Spring table includes List and Row for POJO, Record and Map.
 
 #### Key findings
 
@@ -230,8 +261,9 @@ Spring / Compiled or MyBatis / Compiled on unrounded scores; above 1x means
 Compiled has lower latency/allocation. Do not compute a MyBatis / Compiled
 Row ratio: there is no equivalent direct MyBatis RowMapper.
 
-The reporter creates separate latency and allocation tables for List and
-Row within each group, as well as fork-spread diagnostics. Flag cases
+The reporter creates a Spring comparison table and a MyBatis comparison
+table, each including absolute latency, allocation and time ratios for the
+relevant shapes and modes, followed by fork-spread diagnostics. Flag cases
 where slowest/fastest fork means exceed 1.15x and investigate instability.
 
 ## Interpreting changes
