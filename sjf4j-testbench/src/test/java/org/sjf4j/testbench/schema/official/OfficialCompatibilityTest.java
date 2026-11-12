@@ -26,7 +26,7 @@ final class OfficialCompatibilityTest {
         assertFalse(OfficialCompatibility.matches("6,<=2019", d20));
         assertTrue(OfficialCompatibility.matches("=3,7,<=2020", d7));
         assertTrue(OfficialCompatibility.matches("=3,7,<=2020", d20));
-        assertFalse(OfficialCompatibility.matches("<=3,7", d7) == false);
+        assertTrue(OfficialCompatibility.matches("<=3,7", d7));
         assertFalse(OfficialCompatibility.matches("9999", d20));
         assertFalse(OfficialCompatibility.matches("=9999", d20));
         assertThrows(IllegalArgumentException.class,
