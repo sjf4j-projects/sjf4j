@@ -645,7 +645,7 @@ public final class SchemaPlanner {
                                 + refEvaluator.schemaUri + "', ref='" + refEvaluator.ref + "'",
                         refEvaluator.keywordPs, refEvaluator.schemaUri), e);
             }
-            String resource = SchemaUtil.stripFragment(refUri.toString());
+            String resource = SchemaUtil.documentUri(refUri).toString();
 
             // Resolve resource and fragment separately so diagnostics can tell
             // callers whether they forgot to preload a remote schema or simply
@@ -677,7 +677,7 @@ public final class SchemaPlanner {
                                 + dynamicRefEvaluator.schemaUri + "', ref='" + dynamicRefEvaluator.ref + "'",
                         dynamicRefEvaluator.keywordPs, dynamicRefEvaluator.schemaUri), e);
             }
-            String resource = SchemaUtil.stripFragment(refUri.toString());
+            String resource = SchemaUtil.documentUri(refUri).toString();
 
             // Dynamic references use the same static target resolution first;
             // runtime rebinding only happens after this initial plan is known.
