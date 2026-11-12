@@ -1,10 +1,28 @@
-# Mapping Benchmark
+# Mapping performance baseline
 
 SJF4J **CompiledMapper** versus **MapStruct** for Java object mapping.
 This suite deliberately compares only two compile-time generated implementations;
 it does not rank unrelated runtime mappers, JSON binding, or JDBC mapping.
+The primary workload is `MappingFullBenchmark`.
 
-## Workloads
+## Comparison dependency versions
+
+| Component | Version | Role |
+| --- | --- | --- |
+| MapStruct API and annotation processor | `1.6.3` | External compile-time Java mapping comparison |
+| JMH | `1.37` | Benchmark harness |
+
+Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j-testbench/build.gradle.kts). Record the exact source commit for every new performance snapshot; later dependency changes do not retroactively change historical results.
+
+## JVM — Temurin JDK 25
+
+### Results — pending (suite 3)
+
+**No complete suite-3 Full results have been published in this report yet.** Do not treat Smoke or Quick timings as a Full baseline.
+
+Previous **v1** experiments measured eight composite cases rather than the current isolated workload matrix: [2026-11-11 run #42955426116](https://github.com/sjf4j-projects/sjf4j/actions/runs/42955426116) and [run #42965730562](https://github.com/sjf4j-projects/sjf4j/actions/runs/42965730562). They used independent group runners with differing CPU models, so they are diagnostics, not a controlled baseline and not directly comparable to suite 3.
+
+### Workload matrix
 
 **16 independently observable cases**, across the same four groups, expanded to
 **70 exact JMH measurements**. The JSON group compares MapStruct with both
@@ -55,7 +73,9 @@ In the JSON group the additional keys grow input width but are intentionally
 not whole-document conversion. The input shape (Map or JsonObject) is part of
 each benchmark method name.
 
-## Comparison boundary
+## Baseline policy
+
+- **Suite version: 3** (isolated workloads plus JSON RawPolicy comparison). Changing the workload, fixture, semantics or case matrix requires a new suite version. Do not treat original v1 composite cases as equivalent to the current suite-3 cases.
 
 - Only **MapStruct 1.6.3** and **SJF4J CompiledMapper** are measured. Each pair
   has its own JMH method, with the same prebuilt source and equivalent output.
@@ -80,7 +100,7 @@ each benchmark method name.
   operating system, git SHA and suite version. A GitHub shared runner is
   **exploratory**, not a controlled release baseline.
 
-## Run
+## Execute
 
 The script builds the existing JMH testbench jar once, then runs all four
 groups by default. Supply a group for focused diagnostics. A manual Full
@@ -121,7 +141,9 @@ python3 scripts/analyze-mapping-benchmark.py \
   --output build/performance/mapping/report.md
 ~~~
 
-The manual [Mapping Full Benchmark (JDK 25)](../../.github/workflows/mapping-full-benchmark.yml)
+## GitHub Actions Full (exploratory)
+
+The manual [Mapping Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)
 workflow builds one JMH jar, then runs all groups on **one runner** and uploads
 one raw artifact. A separate non-benchmark job aggregates the four JSON files.
 The Full workflow accepts `runner_label` (default: `ubuntu-24.04`), an
@@ -137,7 +159,20 @@ and its forks; it cannot isolate JIT/GC/compiler threads or virtualized
 neighbor load. Do not set it by default without validating the effect.
 Pull requests run Smoke only.
 
-## Reporting
+## Maintaining history in the repository
+
+1. Publish a new complete Full run as a dated, versioned report under `docs/performance/mapping/`; do not overwrite an older report.
+2. Keep source SHA, suite version, precise JDK patch, exact CPU model, runner/affinity metadata and all original JMH JSON with the report or archived artifacts.
+3. Update the release index only after confirming all four groups and **70 exact entries** completed and setup equivalence checks passed. If any group failed, clearly identify the report as partial, not a complete baseline.
+4. Compare release candidates on the same controlled hardware and profile. Reject comparisons spanning different CPU models and do not infer regressions from unrepeatable virtualized noise.
+
+## Release index
+
+| Release | Suite | Commit | Environment | Full report |
+| --- | --- | --- | --- | --- |
+| Pending | 3 (isolated + RawPolicy) | — | JDK 25, one runner per Full | — |
+
+## Reporting and ranking results
 
 **Latency:** AverageTime, ns/op, lower is better. For Full, independently
 compute the average of the five iterations within **each fork**, discard the
@@ -158,26 +193,9 @@ excluded fork. In each report row:
 - If the slowest fork differs from the fastest by more than 15%, inspect all
   three forks and flag the result as potentially unstable.
 
-Do not silently average 1/10/100KB into a single headline number.
-If a group cannot complete, the workflow must not present a partial
-report as a complete benchmark.
+## Interpreting changes
 
-## Results
-
-**Previous v1 runs (eight composite cases; not the new v2 matrix):**
-[2026-11-11 #42955426116](https://github.com/sjf4j-projects/sjf4j/actions/runs/42955426116)
-and [2026-11-11 #42965730562](https://github.com/sjf4j-projects/sjf4j/actions/runs/42965730562).
-Each used independent group runners with differing CPU models; they are
-diagnostic historical measurements, not a stable cross-run regression baseline.
-
-No v2 Full run has been recorded yet. Add a dated, versioned report under
-`docs/performance/mapping/` after the first complete Full. Preserve raw JMH
-JSON, JDK patch, exact CPU model and process affinity metadata. Reject
-comparisons spanning different CPU models, and do not infer a regression from
-uncontrolled virtualized noise alone.
-
-## Release history
-
-| Release | Suite | Commit | Environment | Full report |
-| --- | --- | --- | --- | --- |
-| Pending | 3 (isolated + RawPolicy) | — | JDK 25, one runner per Full | — |
+- Do not silently average 1/10/100KB into one headline number; these are separate workloads. A JSON fixed-key projection is not equivalent to a full-object conversion.
+- Treat a slowest-to-fastest fork divergence above **15%** as a reason to inspect all three raw forks and report instability, not as evidence of regression.
+- **Best 2 Mean** is biased toward lower observed latency; preserve the original three-fork JMH mean and allocation for context. JMH scoreError does not describe Best 2.
+- GitHub-hosted runs are exploratory, even when a single job runs the groups sequentially. A CPU guard detects mismatches but cannot guarantee isolation or a consistent load.

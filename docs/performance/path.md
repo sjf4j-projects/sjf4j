@@ -1,12 +1,11 @@
-# Path Benchmark
+# Path performance baseline
 
 SJF4J JSONPath performance compared with Jayway JsonPath 3.0.0.
+The primary suite is `PathFullBenchmark`; `JsonPathBenchmark` remains a separate exploratory benchmark with independent fixtures and methods.
 
-## Results — v1.5.0 (2026-11-11)
+## Comparison dependency versions
 
-**JDK 25.0.5 · JMH · 3 forks · Best 2 Mean · ns/op (lower is better)**
-
-**Comparison dependencies** (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
+Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
 
 | Component | Version | Role |
 | --- | --- | --- |
@@ -14,9 +13,14 @@ SJF4J JSONPath performance compared with Jayway JsonPath 3.0.0.
 | Jackson2 Databind | `2.22.3` | JsonNode input for the Jackson2 JsonNode group |
 | JMH | `1.37` | Benchmark harness |
 
+## JVM — Temurin JDK 25
+
+### Results — v1.5.0 (2026-11-11)
+**JDK 25.0.5 · JMH · 3 forks · Best 2 Mean · ns/op (lower is better)**
+
 The figures below are measured query latency on pre-parsed data and precompiled paths. Each latency cell reports one absolute value. Speedup columns are ratios of the indicated baseline to the candidate (>1× is faster).
 
-### Map / List
+#### Map / List
 
 | Query | JSONPath | Size | Jayway | Runtime | Compiled | Jayway / Runtime | Runtime / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -36,7 +40,7 @@ The figures below are measured query latency on pre-parsed data and precompiled 
 | Slice | `$.store.book[1:4].title` | 10KB | 782.04 | 140.86 | 74.21 | 5.55× | 1.90× |
 | Slice | `$.store.book[1:4].title` | 100KB | 841.49 | 146.56 | 70.72 | 5.74× | 2.07× |
 
-### Jackson2 JsonNode
+#### Jackson2 JsonNode
 
 | Query | JSONPath | Size | Jayway | Runtime | Compiled | Jayway / Runtime | Runtime / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -56,7 +60,7 @@ The figures below are measured query latency on pre-parsed data and precompiled 
 | Slice | `$.store.book[1:4].title` | 10KB | 785.61 | 301.40 | 232.74 | 2.61× | 1.30× |
 | Slice | `$.store.book[1:4].title` | 100KB | 833.20 | 303.61 | 221.58 | 2.74× | 1.37× |
 
-### POJO
+#### POJO
 
 | Query | JSONPath | Size | Runtime | Compiled | Runtime / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -76,7 +80,7 @@ The figures below are measured query latency on pre-parsed data and precompiled 
 | Slice | `$.store.book[1:4].title` | 10KB | 324.24 | 24.32 | 13.33× |
 | Slice | `$.store.book[1:4].title` | 100KB | 290.09 | 22.71 | 12.77× |
 
-### JSONPath Parsing
+#### JSONPath Parsing
 
 Measures parsing JSONPath expressions into reusable query objects: `JsonPath.parse()` for SJF4J and `JsonPath.compile()` for Jayway. This excludes document parsing and query execution.
 
@@ -90,7 +94,7 @@ Measures parsing JSONPath expressions into reusable query objects: `JsonPath.par
 | `$.store.book[0,2].title` | 418.11 | 143.26 | 2.92× |
 | `$.store.book[1:4].title` | 306.70 | 122.24 | 2.51× |
 
-### Allocation — selected 100KB queries
+#### Allocation — selected 100KB queries
 
 **B/op**, from the original, untrimmed JMH `gc.alloc.rate.norm` metric (lower is better). Each ratio is baseline allocation divided by candidate allocation (>1× means less allocation for the candidate).
 
@@ -106,7 +110,7 @@ Measures parsing JSONPath expressions into reusable query objects: `JsonPath.par
 | POJO | Filter | — | 6,859 | 6,785 | — | 1.01× |
 | POJO | Descendant | — | 64,401 | 44,617 | — | 1.44× |
 
-## Summary
+#### Summary
 
 At the tested 1/10/100KB sizes, SJF4J Runtime was faster than Jayway in **30 of 30** comparable Map and JsonNode query cases. CompiledNavigator was faster than Runtime in **45 of 45** comparable Map, JsonNode, and POJO query cases.
 
@@ -116,26 +120,76 @@ These results are workload-specific; compare implementations within the same inp
 
 **[Full versioned report and methodology](path/bookstore-v150-2026-11-11.md)** · **[GitHub Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260)**
 
-## Methodology
+## Baseline policy
 
 - Deterministic Bookstore fixture; actual JSON sizes: **1,021 / 10,267 / 102,395 bytes** (12 / 123 / 1,229 books), nominal 1/10/100KB; approximately 30% of records satisfy the Filter predicate.
 - All data instances and query expressions are created outside timed query operations, with result-equivalence validation before measurement.
-- AverageTime, 1 thread, 3 independent forks, 5 × 1s warmup and 5 × 1s measurement, JMH allocation profiler.
-- **Best 2 Mean**: average five iterations within each fork; discard each case's slowest fork independently and average the remaining two. The original JMH score/error and B/op are untrimmed; JMH error is not a Best 2 Mean confidence interval.
 - GitHub-hosted Ubuntu 24.04 x86-64 runners with Temurin OpenJDK 25.0.5+8: Map/POJO/Parse used AMD EPYC 7763, JsonNode used AMD EPYC 9V74. Shared runners are exploratory, not a hardware-independent performance guarantee.
 - Source commit: [`148b26e881d6`](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf).
 
-## Run
+- **Measured boundary:** query execution uses pre-parsed data and precompiled paths; the Parse group measures expression compilation only.
+- **Comparable inputs:** Jayway comparisons cover Map / List and Jackson2 JsonNode, not POJO. Runtime / Compiled comparisons also cover POJO.
+- Smoke validates setup and equivalence, Quick is diagnostic, and Full is the benchmark profile. Neither Smoke nor GitHub-hosted timings constitute a controlled release baseline.
+
+## Execute
+
+JDK 25 is required. Without a group argument, the script runs all four groups (Map, JsonNode, POJO and Parse) and builds the JMH jar once.
+
+```bash
+./scripts/benchmark-path.sh smoke
+./scripts/benchmark-path.sh quick
+./scripts/benchmark-path.sh full
+# Optional focused groups:
+./scripts/benchmark-path.sh full map
+./scripts/benchmark-path.sh full jsonnode
+./scripts/benchmark-path.sh full pojo
+./scripts/benchmark-path.sh full parse
+```
+
+| JMH setting | Smoke | Quick | Full |
+| --- | --- | --- | --- |
+| Forks | 0 | 1 | 3 |
+| Warmup | 0 | 2 × 200ms | 5 × 1s |
+| Measurement | 1 × 50ms | 2 × 200ms | 5 × 1s |
+| Input groups | All by default | All by default | All by default |
+| GC profiler | No | Yes | Yes |
+
+Quick/Full outputs are under `build/performance/path/<group>/`, with a JMH JSON file and metadata for each group. Set `PATH_SKIP_BUILD=1` to reuse the built JMH jar for a focused run. A complete run covers 45 Map + 45 JsonNode + 30 POJO + 14 Parse = **134 cases**.
+
+## GitHub Actions Full (exploratory)
 
 [Path Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/path-full-benchmark.yml) → **Run workflow**.
 
-```bash
-bash scripts/benchmark-path.sh full
-# Or one group:
-bash scripts/benchmark-path.sh full map
-bash scripts/benchmark-path.sh full jsonnode
-bash scripts/benchmark-path.sh full pojo
-bash scripts/benchmark-path.sh full parse
-```
+The workflow builds the JMH jar once, runs Map / JsonNode / POJO / Parse in separate GitHub-hosted Ubuntu 24.04 jobs, and uploads raw per-group artifacts plus a combined report. Pull requests run Smoke checks, not Full JMH measurements.
 
-`JsonPathBenchmark` is a separate exploratory benchmark. Neither class reuses the other's fixture, State, or test methods.
+Historical Map/POJO/Parse results used AMD EPYC 7763, while JsonNode used AMD EPYC 9V74. Compare values only within the same group and execution environment; shared runner scheduling is not controlled.
+
+## Maintaining history in the repository
+
+1. Run the complete Full suite with a fixed source commit and record the precise JDK, OS and CPU models.
+2. Save a dated, versioned report under `docs/performance/path/`, including source SHA, workflow link, JMH settings and input sizes. Preserve the original raw JMH JSON and environment metadata with the run artifacts.
+3. Update the release index below. Never replace the previous performance snapshot with newer measurements.
+4. For a regression investigation, compare matching queries and input shapes on equivalent hardware, and inspect all fork means and allocation alongside Best 2 Mean.
+
+## Release index
+
+| Release | Commit | JDK | Results |
+| --- | --- | --- | --- |
+| v1.5.0 (GitHub Actions; exploratory) | [`148b26e881d6`](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf) | 25.0.5+8 | [Full 1/10/100KB report](path/bookstore-v150-2026-11-11.md) · [Actions run](https://github.com/sjf4j-projects/sjf4j/actions/runs/42960489260) |
+
+## Reporting and ranking results
+
+**Full uses 3 independent forks.** Use per-case **Best 2 Mean**, calculated independently for each benchmark method, query, data representation and size:
+
+- AverageTime, 1 thread, 3 independent forks, 5 × 1s warmup and 5 × 1s measurement, JMH allocation profiler.
+- **Best 2 Mean**: average five iterations within each fork; discard each case's slowest fork independently and average the remaining two. The original JMH score/error and B/op are untrimmed; JMH error is not a Best 2 Mean confidence interval.
+
+- Report latency in **ns/op** (lower is better); each table cell contains an absolute score. Compute speedup from unrounded baseline / candidate latency, so **above 1×** means the candidate is faster.
+- Present Jayway, Runtime and Compiled as distinct values when supported; never fill an unsupported POJO/Jayway combination with a made-up score.
+- Preserve the original three-fork JMH score, error and B/op; do not attach the original JMH error to Best 2 Mean.
+
+## Interpreting changes
+
+- Best 2 Mean is a selected lower-latency estimate, not a random-fork mean or confidence interval. Inspect all three forks when interpreting small differences.
+- Avoid treating different CPU models, JDK builds, input shapes or benchmark profiles as controlled A/B tests.
+- Track both latency and **B/op**; a faster score with substantially higher allocation warrants investigation.
