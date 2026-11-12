@@ -145,7 +145,7 @@ public final class SchemaValidator {
         Map<URI, JsonSchema> external = ExternalSchemas.load(
                 anno.externalSchemas(), anno.externalSchemasRef(),
                 loader.resolve(URI.create("")), clazz.getClassLoader());
-        SchemaRegistry scoped = SchemaRegistry.copyOf(registry, external);
+        SchemaRegistry scoped = external.isEmpty() ? registry : SchemaRegistry.copyOf(registry, external);
 
         // From value
         String inline = anno.value();
