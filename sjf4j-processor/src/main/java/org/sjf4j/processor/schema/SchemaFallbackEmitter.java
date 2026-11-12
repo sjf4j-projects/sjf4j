@@ -69,7 +69,11 @@ final class SchemaFallbackEmitter {
                     // the default SchemaLoader must never fetch their logical HTTP URIs.
                     if (plan.snapshot.fromRegistry[i]) continue;
                     String uri = "java.net.URI.create(" + SchemaEmitter.javaLiteral(plan.snapshot.uris[i]) + ")";
-                    if (i == 0 && !plan.annotation.value().isEmpty()) {
+                    String externalSource = plan.snapshot.externalSources.get(plan.snapshot.uris[i]);
+                    if (externalSource != null) {
+                        out.line(registry + ".index(" + uri + ", loader.load(java.net.URI.create("
+                                + SchemaEmitter.javaLiteral(externalSource) + ")));");
+                    } else if (i == 0 && !plan.annotation.value().isEmpty()) {
                         out.line(registry + ".index(" + uri
                                 + ", org.sjf4j.schema.JsonSchema.fromJson("
                                 + plan.annotationExpression + ".value()));");
@@ -164,6 +168,8 @@ final class SchemaFallbackEmitter {
         for (int i = 0; i < snapshot.uris.length; i++) {
             key.append(snapshot.uris[i]).append('\u0000')
                     .append(snapshot.documents[i]).append('\u0000');
+            String external = snapshot.externalSources.get(snapshot.uris[i]);
+            if (external != null) key.append(external).append('\u0000');
         }
         return key.toString();
     }
