@@ -309,6 +309,34 @@ public class SchemaRegistry {
      * schema models and compiled plans with {@code other}. A null source creates
      * a registry with the default dialect.
      */
+    /**
+     * Creates an isolated registry with explicit external resources taking
+     * priority over existing registry entries, including directory mappings.
+     */
+    public static SchemaRegistry copyOf(SchemaRegistry other, Map<URI, JsonSchema> external) {
+        if (external == null || external.isEmpty()) return copyOf(other);
+        SchemaRegistry scoped = new SchemaRegistry(other == null
+                ? SchemaDialect.DRAFT_2020_12 : other.defaultDialect);
+        for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
+            scoped.index(entry.getKey(), entry.getValue());
+        }
+        if (other != null) {
+            for (Map.Entry<String, ObjectSchema> entry : other.byIdSchemas.entrySet()) {
+                if (!scoped.byIdSchemas.containsKey(entry.getKey())
+                        && !scoped.byIdPlans.containsKey(entry.getKey())) {
+                    scoped.byIdSchemas.put(entry.getKey(), entry.getValue());
+                }
+            }
+            for (Map.Entry<String, SchemaPlan> entry : other.byIdPlans.entrySet()) {
+                if (!scoped.byIdSchemas.containsKey(entry.getKey())
+                        && !scoped.byIdPlans.containsKey(entry.getKey())) {
+                    scoped.byIdPlans.put(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        return scoped;
+    }
+
     public static SchemaRegistry copyOf(SchemaRegistry other) {
         if (other == null) return new SchemaRegistry();
 
