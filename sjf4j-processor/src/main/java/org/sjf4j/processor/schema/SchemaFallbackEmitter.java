@@ -61,7 +61,7 @@ final class SchemaFallbackEmitter {
                 }
                 out.beginBlock("private static org.sjf4j.schema.SchemaPlan _load()");
                 out.beginBlock("try");
-                out.line("org.sjf4j.schema.SchemaLoader loader = new org.sjf4j.schema.SchemaLoader.Local("
+                out.line("org.sjf4j.schema.SchemaLoader.Local loader = new org.sjf4j.schema.SchemaLoader.Local("
                         + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
                         + plan.name + ".class.getClassLoader());");
                 // Rebuild the annotation's scoped external resources before any
@@ -69,11 +69,9 @@ final class SchemaFallbackEmitter {
                 if (!plan.annotation.externalSchemas().isEmpty()
                         || !plan.annotation.externalSchemasRef().isEmpty()) {
                     out.beginBlock("for (java.util.Map.Entry<java.net.URI, org.sjf4j.schema.JsonSchema> entry : "
-                            + "org.sjf4j.schema.ExternalSchemas.load("
+                            + "loader.loadExternalSchemas("
                             + plan.annotationExpression + ".externalSchemas(), "
-                            + plan.annotationExpression + ".externalSchemasRef(), "
-                            + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
-                            + plan.name + ".class.getClassLoader()).entrySet())");
+                            + plan.annotationExpression + ".externalSchemasRef()).entrySet())");
                     out.line(registry + ".index(entry.getKey(), entry.getValue());");
                     out.endBlock();
                 }
