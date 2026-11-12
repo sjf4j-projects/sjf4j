@@ -91,8 +91,6 @@ public final class MappingEmitter {
 
         } else {
             String target = compiled.plan().targetParameter().getSimpleName().toString();
-            out.line("org.sjf4j.util.Asserts.notNull(" + target + ", " +
-                    JavaWriter.stringLiteral(target) + ");");
 
             NodeKind targetKind = types.nodeKind(compiled.plan().targetType());
 
@@ -184,13 +182,6 @@ public final class MappingEmitter {
                             .getSimpleName()
                             .toString();
 
-            out.line(
-                    "org.sjf4j.util.Asserts.notNull(" +
-                            target +
-                            ", " +
-                            JavaWriter.stringLiteral(
-                                    target) +
-                            ");");
         }
 
         for (MappingCompiler.Assignment assignment :
