@@ -26,6 +26,17 @@ class JdbcColumnNamingTest {
     private final Mapper mapper = CompiledInstances.create(Mapper.class);
 
     @Test
+    void emptySingleResultDoesNotResolveMissingOrAmbiguousColumns() {
+        // Empty single-target methods return null without reading column metadata.
+        assertNull(mapper.auto(result(new String[]{"unrelated"})));
+        assertNull(mapper.auto(result(new String[]{"USERNAME", "UserName", "login_count"})));
+        assertNull(mapper.exact(result(new String[]{"user_name"})));
+        assertNull(mapper.record(result(new String[]{"unrelated"})));
+        assertNull(mapper.dynamic(result(new String[]{"unrelated"})));
+        assertNull(mapper.map(result(new String[]{"unrelated"})));
+    }
+
+    @Test
     void exactIsCaseSensitive() {
         Bean bean = mapper.exact(result(new String[]{"userName", "loginCount"}, new Object[]{"Ada", 3}));
         assertEquals("Ada", bean.userName);
