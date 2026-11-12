@@ -265,7 +265,7 @@ interface UserJdbcMapper {
 ```
 
 Use `mapper.prepare(resultSet.getMetaData())` once before iterating rows, then
-call `prepared.mapRow(resultSet)` for each row. The prepared mapper retains only
+call `prepared.map(resultSet)` for each row. The prepared mapper retains only
 column indexes, not the ResultSet. JDBC column labels automatically match Java property names without regard to case,
 including `user_name` → `userName`. For strict matching, use
 `@JdbcMappingOptions(columnNaming = ColumnNamingPolicy.EXACT)`
