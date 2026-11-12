@@ -225,9 +225,7 @@ final class OfficialCaseRunner implements AutoCloseable {
                     "-classpath", classpath,
                     "-d", classes.toString(),
                     "-s", generatedSources.toString(),
-                    "-encoding", "UTF-8",
-                    "-Asjf4j.internal.schemaExternalIndex="
-                            + generatedRoot.resolve("external-index.tsv").toAbsolutePath().normalize());
+                    "-encoding", "UTF-8");
             JavaCompiler.CompilationTask task = compiler.getTask(null, files, diagnostics,
                     options, null, files.getJavaFileObjectsFromFiles(sources));
             task.setProcessors(Collections.singletonList(new CodegenProcessor()));
