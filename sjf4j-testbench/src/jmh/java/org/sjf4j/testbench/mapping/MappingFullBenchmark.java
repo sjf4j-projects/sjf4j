@@ -84,30 +84,6 @@ public class MappingFullBenchmark {
     }
 
     @State(Scope.Thread)
-    public static class HeaderState {
-        public ExtendedOrder source;
-        public MapStructMapper mapstruct;
-        public Sjf4jMapper compiled;
-        @Setup(Level.Trial)
-        public void setup() {
-            JsonObject metadata = new JsonObject();
-            metadata.put("salesChannel", "web");
-            source = new ExtendedOrder(
-                    new ClassicCustomer("Ada Lovelace",
-                            new ClassicAddress("12 Analytical Way", "London"),
-                            new ClassicAddress("7 Byron Street", "Oxford")),
-                    List.of(), Map.of("priority", "gold"), metadata);
-            mapstruct = Mappers.getMapper(MapStructMapper.class);
-            compiled = CompiledInstances.create(Sjf4jMapper.class);
-            OrderHeaderTarget expected = mapstruct.header(source);
-            check(Objects.equals(expected, compiled.header(source)), "order header");
-            check("Ada Lovelace".equals(expected.customerName())
-                    && "gold".equals(expected.priority())
-                    && "web".equals(expected.salesChannel()), "order header fields");
-        }
-    }
-
-    @State(Scope.Thread)
     public static class PojoState {
         public FlatSource flat = new FlatSource("Ada", "Lovelace", "ignored");
         public Profile profile = new Profile("Grace", new Contact("Arlington", "US"));
@@ -291,8 +267,6 @@ public class MappingFullBenchmark {
     @Benchmark public ClassicTarget order_classic_compiled(ClassicState s) { return s.compiled.classic(s.source); }
     @Benchmark public ExtendedTarget order_extended_mapstruct(OrderState s) { return s.mapstruct.extended(s.source); }
     @Benchmark public ExtendedTarget order_extended_compiled(OrderState s) { return s.compiled.extended(s.source); }
-    @Benchmark public OrderHeaderTarget order_header_mapstruct(HeaderState s) { return s.mapstruct.header(s.source); }
-    @Benchmark public OrderHeaderTarget order_header_compiled(HeaderState s) { return s.compiled.header(s.source); }
 
     @Benchmark public FlatDirectTarget pojo_direct_mapstruct(PojoState s) { return s.mapstruct.flatDirect(s.flat); }
     @Benchmark public FlatDirectTarget pojo_direct_compiled(PojoState s) { return s.compiled.flatDirect(s.flat); }
@@ -352,13 +326,6 @@ public class MappingFullBenchmark {
 
         ItemDto item(Item source);
 
-        @Mapping(target = "customerName", source = "$.customer.name")
-        @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")
-        @Mapping(target = "shippingCity", source = "$.customer.shippingAddress.city")
-        @Mapping(target = "priority", source = "$.attributes.priority")
-        @Mapping(target = "salesChannel", source = "$.metadata.salesChannel")
-        OrderHeaderTarget header(ExtendedOrder source);
-
         FlatDirectTarget flatDirect(FlatSource source);
         ProfileDto profile(Profile source);
 
@@ -417,15 +384,6 @@ public class MappingFullBenchmark {
         ExtendedTarget extended(ExtendedOrder source);
 
         ItemDto item(Item source);
-
-        @org.mapstruct.Mapping(target = "customerName", source = "customer.name")
-        @org.mapstruct.Mapping(target = "billingCity", source = "customer.billingAddress.city")
-        @org.mapstruct.Mapping(target = "shippingCity", source = "customer.shippingAddress.city")
-        @org.mapstruct.Mapping(target = "priority",
-                expression = "java(source.attributes() == null ? null : source.attributes().get(\"priority\"))")
-        @org.mapstruct.Mapping(target = "salesChannel",
-                expression = "java(source.metadata() == null ? null : (String) source.metadata().getNode(\"salesChannel\"))")
-        OrderHeaderTarget header(ExtendedOrder source);
 
         FlatDirectTarget flatDirect(FlatSource source);
         ProfileDto profile(Profile source);
@@ -495,8 +453,6 @@ public class MappingFullBenchmark {
                                 Map<String, String> attributes, JsonObject metadata) {}
     public record ExtendedTarget(String customerName, String billingCity, String shippingCity,
                                  String priority, String salesChannel, List<ItemDto> products) {}
-    public record OrderHeaderTarget(String customerName, String billingCity, String shippingCity,
-                                    String priority, String salesChannel) {}
     public record JsonTarget(String sku, String name, Object count) {}
 
     // The classic model is intentionally conventional JavaBeans, matching the
