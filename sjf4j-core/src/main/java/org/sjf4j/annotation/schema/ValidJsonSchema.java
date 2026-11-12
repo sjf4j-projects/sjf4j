@@ -27,4 +27,16 @@ public @interface ValidJsonSchema {
      * may not trigger incremental Java recompilation.
      */
     String ref() default "";
+
+    /**
+     * JSON object mapping absolute retrieval URIs to JSON Schema documents,
+     * as in the official JSON Schema Test Suite. Overrides externalSchemasRef.
+     */
+    String externalSchemas() default "";
+
+    /**
+     * Local file: or classpath: URI of a JSON object with the same format as
+     * externalSchemas(). Relative references use the default schema directory.
+     */
+    String externalSchemasRef() default "";
 }
