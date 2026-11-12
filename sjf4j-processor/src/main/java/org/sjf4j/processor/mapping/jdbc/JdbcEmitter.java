@@ -415,6 +415,19 @@ public final class JdbcEmitter {
                             metadata +
                             ".getColumnCount();");
 
+            // Column labels are invariant across ResultSet rows.
+            // Resolve them once rather than calling metadata for every Map entry.
+            String mapLabels = names.newName("labels");
+            String labelIndex = names.newName("labelIndex");
+            out.line("String[] " + mapLabels + " = new String[" + count + " + 1];");
+            out.line("for (int " + labelIndex + " = 1; " + labelIndex + " <= " + count
+                    + "; " + labelIndex + "++) {");
+            out.indent();
+            out.line(mapLabels + "[" + labelIndex + "] = "
+                    + metadata + ".getColumnLabel(" + labelIndex + ");");
+            out.dedent();
+            out.line("}");
+
             out.line("do {");
             out.indent();
 
@@ -429,7 +442,7 @@ public final class JdbcEmitter {
                             columns,
                             indexes,
                             columnCount,
-                            labels,
+                            mapLabels,
                             consumed);
 
             out.line(
@@ -515,7 +528,8 @@ public final class JdbcEmitter {
                      names,
                      resultSet,
                     metadata,
-                    mapColumnCount);
+                    mapColumnCount,
+                    labels);
         }
 
         return emitObjectRow(
@@ -541,7 +555,8 @@ public final class JdbcEmitter {
             NameAllocator names,
             String resultSet,
             String metadata,
-            String columnCount) {
+            String columnCount,
+            String labels) {
 
         if (columnCount == null) {
             columnCount =
@@ -592,10 +607,10 @@ public final class JdbcEmitter {
                 "String " +
                         label +
                         " = " +
-                        metadata +
-                        ".getColumnLabel(" +
-                        index +
-                        ");");
+                        (labels == null
+                                ? metadata + ".getColumnLabel(" + index + ")"
+                                : labels + "[" + index + "]") +
+                        ";");
 
         out.line(
                 result +
@@ -847,7 +862,7 @@ public final class JdbcEmitter {
         Map<String, String> result = new LinkedHashMap<>();
         for (int i = 0; i < sourceColumns.size(); i++) {
             String name = sourceColumns.get(i);
-            String index = names.newName("index_" + name);
+            String index = names.newName("idx_" + name);
             out.line("int " + index + " = " + (cacheField == null
                     ? access + "[" + i + "]" : access + ".index(" + i + ")") + ";");
             result.put(name, index);
