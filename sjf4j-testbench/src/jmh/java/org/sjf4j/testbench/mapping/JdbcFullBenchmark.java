@@ -355,7 +355,7 @@ public class JdbcFullBenchmark {
     public List<AccountBean> pojo_row_compiled(Data s) throws SQLException {
         List<AccountBean> out = new ArrayList<>();
         JdbcRowMapper<AccountBean> mapping = s.compiled.prepareBean(s.resultSet.getMetaData());
-        while (s.resultSet.next()) out.add(mapping.mapRow(s.resultSet));
+        while (s.resultSet.next()) out.add(mapping.map(s.resultSet));
         return out;
     }
 
@@ -381,7 +381,7 @@ public class JdbcFullBenchmark {
     public List<AccountRecord> record_row_compiled(Data s) throws SQLException {
         List<AccountRecord> out = new ArrayList<>();
         JdbcRowMapper<AccountRecord> mapping = s.compiled.prepareRecord(s.resultSet.getMetaData());
-        while (s.resultSet.next()) out.add(mapping.mapRow(s.resultSet));
+        while (s.resultSet.next()) out.add(mapping.map(s.resultSet));
         return out;
     }
 
@@ -424,7 +424,7 @@ public class JdbcFullBenchmark {
     public List<Map<String, Object>> map_row_compiled(Data s) throws SQLException {
         List<Map<String, Object>> out = new ArrayList<>();
         JdbcRowMapper<Map<String, Object>> mapping = s.compiled.prepareMap(s.resultSet.getMetaData());
-        while (s.resultSet.next()) out.add(mapping.mapRow(s.resultSet));
+        while (s.resultSet.next()) out.add(mapping.map(s.resultSet));
         return out;
     }
 
