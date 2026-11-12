@@ -10,8 +10,10 @@ import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.mapping.jdbc.JdbcMappingOptions;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.mapping.CompiledSupport;
+import org.sjf4j.mapping.JdbcRowMapper;
 
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.util.List;
 import java.util.Map;
 
@@ -110,8 +112,10 @@ class JdbcColumnNamingTest {
         int[] nextCalls = {0};
         ResultSet row = currentRowResult(new String[]{"user_name", "login_count"},
                 nextCalls, "Ada", 3);
-        assertEquals("Ada", mapper.row(row, 0).userName);
-        assertEquals(3, mapper.row(row, 1).loginCount);
+        JdbcRowMapper<Bean> mapped = mapper.prepareRow(JdbcTestSupport.metadata(
+                new String[]{"user_name", "login_count"}));
+        assertEquals("Ada", mapped.mapRow(row).userName);
+        assertEquals(3, mapped.mapRow(row).loginCount);
         assertEquals(0, nextCalls[0]);
     }
 
@@ -148,7 +152,7 @@ class JdbcColumnNamingTest {
     }
 
     @Test
-    void currentRowCacheBindsEachResultSetOnlyOnce() {
+    void preparedMapperUsesProvidedMetadataWithoutInspectingResultSet() {
         int[] metadataCalls = {0};
         ResultSet rs = (ResultSet) java.lang.reflect.Proxy.newProxyInstance(
                 getClass().getClassLoader(), new Class[]{ResultSet.class},
@@ -165,9 +169,11 @@ class JdbcColumnNamingTest {
                     }
                     return null;
                 });
-        assertEquals("Ada", mapper.row(rs, 0).userName);
-        assertEquals("Ada", mapper.row(rs, 1).userName);
-        assertEquals(1, metadataCalls[0]);
+        JdbcRowMapper<Bean> prepared = mapper.prepareRow(JdbcTestSupport.metadata(
+                new String[]{"user_name", "login_count"}));
+        assertEquals("Ada", prepared.mapRow(rs).userName);
+        assertEquals("Ada", prepared.mapRow(rs).userName);
+        assertEquals(0, metadataCalls[0]); // No implicit lookup or ResultSet ownership.
     }
 
     @Test
@@ -193,7 +199,7 @@ class JdbcColumnNamingTest {
         @Mapping(target = "userName", source = "account_name")
         Bean renamed(ResultSet rs);
 
-        Bean row(ResultSet rs, int rowNum);
+        JdbcRowMapper<Bean> prepareRow(ResultSetMetaData metadata);
 
         @JdbcMappingOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
         Bean partial(ResultSet rs);
