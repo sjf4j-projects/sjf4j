@@ -40,6 +40,7 @@ final class FormatUtil {
 
     static boolean validateUri(String value) {
         if (value == null || value.isEmpty() || !_isAsciiOnly(value)) return false;
+        if (_isEmptyAuthorityAndPath(value, true)) return true;
         try {
             return validateUri(new URI(value), true);
         } catch (Exception e) {
@@ -49,9 +50,9 @@ final class FormatUtil {
 
     static boolean validateUriReference(String value) {
         if (value == null || !_isAsciiOnly(value)) return false;
-        // RFC 3986 allows an empty authority with an empty path. java.net.URI
-        // accepts other empty-authority forms (e.g. //?q) but rejects // itself.
-        if (value.length() == 2 && value.charAt(0) == '/' && value.charAt(1) == '/') return true;
+        // java.net.URI rejects an empty authority without a following path,
+        // query or fragment even though RFC 3986 permits it.
+        if (_isEmptyAuthorityAndPath(value, false)) return true;
         try {
             return validateUri(new URI(value), false);
         } catch (Exception e) {
@@ -219,6 +220,14 @@ final class FormatUtil {
             if (value.charAt(i) > 127) return false;
         }
         return true;
+    }
+
+    private static boolean _isEmptyAuthorityAndPath(String value, boolean requireAbsolute) {
+        if (!value.endsWith("//")) return false;
+        if (value.length() == 2) return !requireAbsolute;
+        int schemeEnd = value.length() - 3;
+        return schemeEnd > 0 && value.charAt(schemeEnd) == ':'
+                && hasIriScheme(value);
     }
 
     /**
