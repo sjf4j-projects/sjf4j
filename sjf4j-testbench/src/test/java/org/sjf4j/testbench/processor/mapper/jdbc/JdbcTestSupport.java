@@ -105,6 +105,19 @@ final class JdbcTestSupport {
                 });
     }
 
+    static ResultSet labelCountingResult(String[] columns, int[] labelCalls, Object[]... rows) {
+        int[] row = {-1};
+        return (ResultSet) Proxy.newProxyInstance(JdbcTestSupport.class.getClassLoader(),
+                new Class[]{ResultSet.class}, (proxy, method, arguments) -> {
+                    if (method.getName().equals("next")) return ++row[0] < rows.length;
+                    if (method.getName().equals("getMetaData")) return metadata(columns, labelCalls);
+                    if (method.getName().equals("getObject")) {
+                        return rows[row[0]][indexedColumn(arguments[0]) - 1];
+                    }
+                    return null;
+                });
+    }
+
     static ResultSet cachedMetadataResult(String[] columns, int[] metadataCalls, Object[]... rows) {
         int[] row = {-1};
         return (ResultSet) Proxy.newProxyInstance(JdbcTestSupport.class.getClassLoader(),
@@ -176,12 +189,17 @@ final class JdbcTestSupport {
     }
 
     static ResultSetMetaData metadata(String[] columns) {
+        return metadata(columns, null);
+    }
+
+    private static ResultSetMetaData metadata(String[] columns, int[] labelCalls) {
         return (ResultSetMetaData) Proxy.newProxyInstance(JdbcTestSupport.class.getClassLoader(),
                 new Class[]{ResultSetMetaData.class}, (proxy, method, arguments) -> {
                     if (method.getName().equals("getColumnCount")) {
                         return columns.length;
                     }
                     if (method.getName().equals("getColumnLabel")) {
+                        if (labelCalls != null) labelCalls[0]++;
                         return columns[(Integer) arguments[0] - 1];
                     }
                     return null;
