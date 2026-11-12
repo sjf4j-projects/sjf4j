@@ -6,6 +6,14 @@ SJF4J JSONPath performance compared with Jayway JsonPath 3.0.0.
 
 **JDK 25.0.5 · JMH · 3 forks · Best 2 Mean · ns/op (lower is better)**
 
+**Comparison dependencies** (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
+
+| Component | Version | Role |
+| --- | --- | --- |
+| Jayway JsonPath | `3.0.0` | External JSONPath comparison |
+| Jackson2 Databind | `2.22.3` | JsonNode input for the Jackson2 JsonNode group |
+| JMH | `1.37` | Benchmark harness |
+
 The figures below are measured query latency on pre-parsed data and precompiled paths. Each latency cell reports one absolute value. Speedup columns are ratios of the indicated baseline to the candidate (>1× is faster).
 
 ### Map / List
