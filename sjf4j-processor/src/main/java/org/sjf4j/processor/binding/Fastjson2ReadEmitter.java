@@ -19,7 +19,7 @@ import java.util.Map;
  * specialized. The slower generic matcher path is a separate generated helper
  * so it does not inflate the inlineable field-read loop.</p>
  */
-final class Fastjson2ReadEmitter {
+final class Fastjson2ReadEmitter implements NativeReadEmitter {
 
     private final BindingNames names;
 
@@ -27,9 +27,44 @@ final class Fastjson2ReadEmitter {
         this.names = names;
     }
 
+    @Override
+    public void emitObjectStart(JavaWriter out, boolean insideObject) {
+        if (insideObject) {
+            out.line("com.alibaba.fastjson2.JSONReader nativeParser = parser.nativeParser();");
+        } else {
+            emitNativeStart(out, "OBJECT_START", "nextIfObjectStart");
+        }
+    }
+
+    @Override
+    public void emitArrayStart(JavaWriter out) {
+        emitNativeStart(out, "ARRAY_START", "nextIfArrayStart");
+    }
+
+    private void emitNativeStart(JavaWriter out, String kind, String startMethod) {
+        out.line("com.alibaba.fastjson2.JSONReader nativeParser = parser.nativeParser();");
+        out.beginBlock("if (!nativeParser." + startMethod + "())");
+        out.beginBlock("if (nativeParser.nextIfNull())");
+        out.line("return null;");
+        out.endBlock();
+        out.line("throw new org.sjf4j.exception.BindingException(\"expected token '"
+                + kind + "', but got \" + nativeParser.current());");
+        out.endBlock();
+    }
+
+    @Override
+    public void emitArrayLoopStart(JavaWriter out, BindingValue element) {
+        out.beginBlock("while (!nativeParser.nextIfArrayEnd())");
+    }
+
+    @Override
+    public String arrayElementReadExpression(BindingValue element, String normalRead) {
+        String nativeRead = nativeScalarRead(element);
+        return nativeRead != null ? nativeRead : normalRead;
+    }
+
     void emitProperties(JavaWriter out, BindingValue value, ReadEmitter reads, boolean creator) {
-        out.line("com.alibaba.fastjson2.JSONReader raw = parser.rawReader();");
-        out.beginBlock("while (!raw.nextIfObjectEnd())");
+        out.beginBlock("while (!nativeParser.nextIfObjectEnd())");
 
         Map<Integer, List<BindingProperty>> rawNames =
                 new LinkedHashMap<Integer, List<BindingProperty>>();
@@ -49,7 +84,7 @@ final class Fastjson2ReadEmitter {
             // Fastjson2's getRawInt is native-endian. On a big-endian JVM,
             // canonical and aliased property names use the normal hash path.
             out.beginBlock("if (" + names.sharedField("FASTJSON2_LITTLE_ENDIAN") + ")");
-            out.beginBlock("switch (raw.getRawInt())");
+            out.beginBlock("switch (nativeParser.getRawInt())");
             for (Map.Entry<Integer, List<BindingProperty>> entry : rawNames.entrySet()) {
                 out.line("case 0x" + Integer.toHexString(entry.getKey()) + ":");
                 out.indent();
@@ -115,26 +150,26 @@ final class Fastjson2ReadEmitter {
      */
     private static String nativeScalarRead(BindingValue value) {
         if (value.kind() == BindingValue.Kind.STRING) {
-            return "raw.readString()";
+            return "nativeParser.readString()";
         }
         if (!value.primitive()) {
             return null;
         }
         switch (value.kind()) {
             case BOOLEAN:
-                return "raw.readBoolValue()";
+                return "nativeParser.readBoolValue()";
             case BYTE:
-                return "raw.readInt8Value()";
+                return "nativeParser.readInt8Value()";
             case SHORT:
-                return "raw.readInt16Value()";
+                return "nativeParser.readInt16Value()";
             case INT:
-                return "raw.readInt32Value()";
+                return "nativeParser.readInt32Value()";
             case LONG:
-                return "raw.readInt64Value()";
+                return "nativeParser.readInt64Value()";
             case FLOAT:
-                return "raw.readFloatValue()";
+                return "nativeParser.readFloatValue()";
             case DOUBLE:
-                return "raw.readDoubleValue()";
+                return "nativeParser.readDoubleValue()";
             default:
                 return null;
         }
@@ -172,7 +207,7 @@ final class Fastjson2ReadEmitter {
     private static String rawMatchCall(String name) {
         int length = name.length();
         String literal = "\"" + name + "\":";
-        StringBuilder call = new StringBuilder("raw.nextIfName4Match")
+        StringBuilder call = new StringBuilder("nativeParser.nextIfName4Match")
                 .append(length).append('(');
 
         int remaining = length - 3;
@@ -296,22 +331,22 @@ final class Fastjson2ReadEmitter {
             out.beginBlock("private static " + type + " " + method
                     + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Parser parser)"
                     + " throws java.io.IOException");
-            out.line("com.alibaba.fastjson2.JSONReader raw = parser.rawReader();");
-            out.beginBlock("if (parser.nextIfNull())");
+            out.line("com.alibaba.fastjson2.JSONReader nativeParser = parser.nativeParser();");
+            out.beginBlock("if (nativeParser.nextIfNull())");
             out.line("return null;");
             out.endBlock();
-            out.beginBlock("if (raw.isString())");
-            out.line("long hash = raw.readValueHashCode();");
+            out.beginBlock("if (nativeParser.isString())");
+            out.line("long hash = nativeParser.readValueHashCode();");
             out.line("int index = java.util.Arrays.binarySearch(" + hashes + ", hash);");
             out.beginBlock("if (index >= 0)");
             out.line("return " + byHash + "[index];");
             out.endBlock();
             out.line("throw new IllegalArgumentException("
                     + "\"No enum constant \" + " + type + ".class.getName()"
-                    + " + \".\" + raw.getString());");
+                    + " + \".\" + nativeParser.getString());");
             out.endBlock();
-            out.beginBlock("if (raw.isNumber())");
-            out.line("int ordinal = parser.readIntValue();");
+            out.beginBlock("if (nativeParser.isNumber())");
+            out.line("int ordinal = nativeParser.readInt32Value();");
             out.beginBlock("if (ordinal >= 0 && ordinal < " + ordinals + ".length)");
             out.line("return " + ordinals + "[ordinal];");
             out.endBlock();
