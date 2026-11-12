@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Restored the official Runtime Optional validation suite as a non-blocking diagnostic Gradle task, with per-draft results and a downloadable CI report.
 - Added stateless prepared JDBC row mapping via `JdbcRowMapper<T>` and `@CompiledJdbcMapper` methods accepting `ResultSetMetaData`; removed `(ResultSet, int)` mapping and implicit `ThreadLocal` column caches.
 
 - Added JDBC `ColumnNamingPolicy` (`EXACT`, `INSENSITIVE`, `INSENSITIVE_SNAKE`) via `@JdbcMappingOptions.columnNaming`, with cached column-index resolution for current-row mappers.
