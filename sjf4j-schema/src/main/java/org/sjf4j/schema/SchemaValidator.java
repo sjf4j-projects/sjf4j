@@ -142,9 +142,20 @@ public final class SchemaValidator {
     private SchemaPlan _resolvePlanFromAnno(Class<?> clazz, ValidJsonSchema anno) {
         // Each annotation owns its external resource mappings. Never mutate the
         // shared registry: different POJO bindings may reuse the same URI.
-        Map<URI, JsonSchema> external = new SchemaLoader.Local(
-                loader.resolve(URI.create("")), clazz.getClassLoader())
-                .loadExternalSchemas(anno.externalSchemas(), anno.externalSchemasRef());
+        // The ordinary annotation path must not construct a local loader:
+        // caller-supplied SchemaLoader implementations may use memory: or other
+        // custom URI schemes with no directory base.
+        Map<URI, JsonSchema> external = java.util.Collections.emptyMap();
+        if (!anno.externalSchemas().isEmpty()) {
+            external = SchemaLoader.parseExternalSchemas(anno.externalSchemas());
+        } else if (!anno.externalSchemasRef().trim().isEmpty()) {
+            URI base = loader.resolve(URI.create(""));
+            if (!base.isAbsolute() || !base.toString().endsWith("/")) {
+                base = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
+            }
+            external = new SchemaLoader.Local(base, clazz.getClassLoader())
+                    .loadExternalSchemas("", anno.externalSchemasRef());
+        }
         SchemaRegistry scoped = registry;
         if (!external.isEmpty()) {
             // A binding with external resources owns its registry; neither the
