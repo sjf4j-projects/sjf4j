@@ -259,10 +259,16 @@ For JDBC results, `@CompiledJdbcMapper` generates direct mappings from `ResultSe
 ```java
 @CompiledJdbcMapper
 interface UserJdbcMapper {
-    @Mapping(target = "name", source = "full_name")
-    User read(ResultSet resultSet);
+    List<User> users(ResultSet resultSet);
+    User userRow(ResultSet resultSet, int rowNum);
 }
 ```
+
+JDBC column labels automatically match Java property names without regard to case,
+including `user_name` → `userName`. For strict matching, use
+`@JdbcMappingOptions(columnNaming = ColumnNamingPolicy.EXACT)`
+(or `INSENSITIVE` for case-insensitive matching without snake_case conversion).
+Explicit `@Mapping` still handles other column aliases.
 
 Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
 
