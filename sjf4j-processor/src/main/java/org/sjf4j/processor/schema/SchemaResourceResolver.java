@@ -47,6 +47,7 @@ final class SchemaResourceResolver {
         final String[] uris;
         final String[] documents;
         final boolean[] fromRegistry;
+        final Map<String, String> externalSources;
         final String selectedUri;
 
         SchemaRegistry registry;
@@ -89,8 +90,13 @@ final class SchemaResourceResolver {
             }
         }
 
-        Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources) {
+        Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources,
+                 Map<URI, URI> externalSchemas) {
             this.selectedUri = selectedUri.toString();
+            this.externalSources = new LinkedHashMap<String, String>();
+            for (Map.Entry<URI, URI> entry : externalSchemas.entrySet()) {
+                externalSources.put(entry.getKey().toString(), entry.getValue().toString());
+            }
             uris = new String[resources.size()];
             documents = new String[resources.size()];
             fromRegistry = new boolean[resources.size()];
@@ -107,14 +113,16 @@ final class SchemaResourceResolver {
     private final String registryDir;
     private final String registryBaseUri;
     private final Map<String, SchemaRegistry> registryCache;
+    private final Map<URI, URI> externalSchemas;
     private Map<String, IndexedSource> indexedSources;
 
     SchemaResourceResolver(ProcessorContext context, String registryDir, String registryBaseUri,
-                           Map<String, SchemaRegistry> registryCache) {
+                           Map<String, SchemaRegistry> registryCache, Map<URI, URI> externalSchemas) {
         this.context = context;
         this.registryDir = registryDir.trim();
         this.registryBaseUri = registryBaseUri.trim();
         this.registryCache = registryCache;
+        this.externalSchemas = externalSchemas;
     }
 
     /** Pre-register each directory/base combination once per processing run. */
@@ -188,6 +196,19 @@ final class SchemaResourceResolver {
         resources.put(documentUri, rootDocument);
         if (rootFromRegistry) registryResources.add(documentUri);
 
+        // Programmatic javac callers may supply retrieval URI -> source URI pairs.
+        // Resolve and register them alongside the selected root, but only within
+        // this @CompiledValidator interface. No other processor invocation sees them.
+        for (Map.Entry<URI, URI> entry : externalSchemas.entrySet()) {
+            String document = read(entry.getValue(), resourceDirectory);
+            if (document == null) {
+                throw new IllegalArgumentException("external schema source not found: " + entry.getValue());
+            }
+            if (resources.putIfAbsent(entry.getKey(), document) != null) {
+                throw new IllegalArgumentException("duplicate external schema URI: " + entry.getKey());
+            }
+        }
+
         boolean customDialect = false;
         boolean hasDynamicRef = false;
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
@@ -215,7 +236,7 @@ final class SchemaResourceResolver {
             }
         }
 
-        Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources);
+        Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources, externalSchemas);
         // Directory resources are indexed once, prior to root resolution.
         // Each method gets a registry copy so roots cannot leak between methods.
         SchemaRegistry registry = registry();
