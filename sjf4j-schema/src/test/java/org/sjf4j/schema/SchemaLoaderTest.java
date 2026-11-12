@@ -19,11 +19,11 @@ class SchemaLoaderTest {
     void resolvesRelativeLocationsAndFragmentsWithoutParsingTheFragmentAsAFile() {
         URI base = URI.create("memory:/schemas/");
         String json = "{\"$defs\":{\"name\":{\"type\":\"string\",\"minLength\":2}}}";
-        SchemaLoader loader = uri -> SchemaLoader.documentUri(uri).equals(base.resolve("user.json"))
+        SchemaLoader loader = uri -> SchemaUtil.documentUri(uri).equals(base.resolve("user.json"))
                 ? parseUnchecked(uri, json) : null;
 
         assertEquals(base.resolve("user.json"),
-                SchemaLoader.documentUri(base.resolve("user.json#/$defs/name")));
+                SchemaUtil.documentUri(base.resolve("user.json#/$defs/name")));
         JsonSchema parsed = loader.load(base.resolve("user.json#/$defs/name"));
         assertTrue(parsed instanceof ObjectSchema);
         assertEquals(base.resolve("user.json"), ((ObjectSchema) parsed).retrievalUri());
@@ -46,7 +46,7 @@ class SchemaLoaderTest {
         URI reference = base.resolve("user.json#/$defs/name");
 
         assertNull(registry.resolve(reference));
-        JsonSchema schema = loader.load(SchemaLoader.documentUri(reference));
+        JsonSchema schema = loader.load(SchemaUtil.documentUri(reference));
         registry.register(base.resolve("user.json"), schema);
         SchemaPlan plan = registry.resolve(reference);
         assertNotNull(plan);
