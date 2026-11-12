@@ -55,7 +55,7 @@ if [[ "$GROUP" == "all" ]]; then
     echo "=== Mapping $PROFILE / $group ==="
     MAPPING_SKIP_BUILD=1 bash "$0" "$PROFILE" "$group" "$ROOT/$group"
   done
-  echo "Mapping $PROFILE / all: all 70 JMH entries passed."
+  echo "Mapping $PROFILE / all: all 68 JMH entries passed."
   exit 0
 fi
 
@@ -70,8 +70,8 @@ fi
 
 case "$GROUP" in
   order)
-    METHODS='order_(classic|extended|header)'
-    EXPECTED=10
+    METHODS='order_(classic|extended)'
+    EXPECTED=8
     ;;
   pojo)
     METHODS='pojo_(direct|flat|profile|nested|update)'
@@ -103,7 +103,7 @@ cat > "$META" <<EOF
 # Mapping Full Benchmark
 
 - Source: org.sjf4j.testbench.mapping.MappingFullBenchmark
-- Suite version: 3
+- Suite version: 4
 - Git SHA: $(git rev-parse HEAD)
 - UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')
 - Java: $VERSION
@@ -164,7 +164,7 @@ path, group, profile, expected = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.
 prefix = "org.sjf4j.testbench.mapping.MappingFullBenchmark."
 sizes = ("1", "10", "100")
 groups = {
-    "order": (("order_classic", False), ("order_header", False), ("order_extended", True)),
+    "order": (("order_classic", False), ("order_extended", True)),
     "pojo": (("pojo_direct", False), ("pojo_flat", False),
              ("pojo_profile", False), ("pojo_nested", False), ("pojo_update", False)),
     "collection": (("collection_item", False), ("collection_list", True),
