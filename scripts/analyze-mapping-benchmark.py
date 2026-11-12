@@ -8,7 +8,7 @@ from statistics import mean
 
 PREFIX = "org.sjf4j.testbench.mapping.MappingFullBenchmark."
 GROUPS = {
-    "order": (("order_classic", False), ("order_header", False), ("order_extended", True)),
+    "order": (("order_classic", False), ("order_extended", True)),
     "pojo": (("pojo_direct", False), ("pojo_flat", False),
              ("pojo_profile", False), ("pojo_nested", False), ("pojo_update", False)),
     "collection": (("collection_item", False), ("collection_list", True),
@@ -18,7 +18,6 @@ GROUPS = {
 }
 LABELS = {
     "order_classic": "Classic Order (Arey-style)",
-    "order_header": "Order header (no products)",
     "order_extended": "Extended Order (including products)",
     "pojo_direct": "Direct properties → record",
     "pojo_flat": "Flat / rename / compute",
