@@ -9,6 +9,7 @@ import org.sjf4j.CompiledInstances;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class MapperUpdateTest {
 
@@ -47,6 +48,22 @@ public class MapperUpdateTest {
 
         assertEquals("old", target.name);
         assertEquals(42, target.age);
+    }
+
+    @Test
+    public void nullTargetOnlyFailsWhenActuallyAccessed() {
+        UpdateMapper mapper = CompiledInstances.create(UpdateMapper.class);
+
+        // All-null sources return before accessing the target.
+        mapper.update(null, null);
+        // Null-ignore with no applicable property writes is also a no-op.
+        mapper.ignoreNulls(null, new BoxedSource(null, null));
+
+        // A non-null source causes Java's ordinary NPE at the first target write.
+        assertThrows(NullPointerException.class,
+                () -> mapper.update(null, new Source("Ada", "Lovelace", 36)));
+        assertThrows(NullPointerException.class,
+                () -> mapper.setNulls(null, new BoxedSource(null, 1)));
     }
 
     @Test

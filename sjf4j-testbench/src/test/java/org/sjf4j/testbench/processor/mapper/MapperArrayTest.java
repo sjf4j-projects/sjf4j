@@ -77,6 +77,16 @@ public class MapperArrayTest {
     }
 
     @Test
+    public void rootListUpdateDoesNotEagerlyValidateNullTarget() {
+        ArrayMapper mapper = CompiledInstances.create(ArrayMapper.class);
+
+        mapper.updateLongs(null, null);
+        mapper.updateLongs(null, new int[0]);
+        assertThrows(NullPointerException.class,
+                () -> mapper.updateLongs(null, new int[] {1}));
+    }
+
+    @Test
     public void updatesJavaArraysByIndexWithoutReplacingThem() {
         FixedArrayMapper mapper = CompiledInstances.create(FixedArrayMapper.class);
         FixedArrayTarget target = new FixedArrayTarget();
