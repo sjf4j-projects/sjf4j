@@ -46,27 +46,6 @@ jobs:
     - name: Build and verify coverage
       run: ./gradlew build
 
-    # Optional conformance mismatches are diagnostics, not merge gates.
-    # Keep the complete per-file report as an artifact and show totals in CI.
-    - name: Summarize optional JSON Schema results
-      if: ${{ always() }}
-      run: |
-        report="sjf4j-testbench/build/reports/officialRuntimeOptional/summary.md"
-        if [ -f "$report" ]; then
-          echo "## Official Runtime Optional Validation" >> "$GITHUB_STEP_SUMMARY"
-          awk '/^## / { exit } { print }' "$report" >> "$GITHUB_STEP_SUMMARY"
-        else
-          echo "Optional validation report unavailable" >> "$GITHUB_STEP_SUMMARY"
-        fi
-
-    - name: Upload optional JSON Schema results
-      if: ${{ always() }}
-      uses: actions/upload-artifact@v4
-      with:
-        name: official-runtime-optional
-        path: sjf4j-testbench/build/reports/officialRuntimeOptional/summary.md
-        if-no-files-found: warn
-        retention-days: 14
     # Standard Gradle 'build' does not compile src/jmh/java.
     # Compile the benchmark jar to catch JMH and compiled binder generation errors.
     - name: Compile JMH benchmarks
