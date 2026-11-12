@@ -18,6 +18,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.result;
+import static org.sjf4j.testbench.processor.mapper.jdbc.JdbcTestSupport.metadata;
 
 class JdbcTypedGetterTest {
     @Test
@@ -47,8 +48,8 @@ class JdbcTypedGetterTest {
         assertEquals(1.5d, values.doubleValue);
         assertEquals(2.5f, values.floatValue);
         assertEquals(true, values.booleanValue);
-        assertEquals(Arrays.asList("getString", "getLong", "getShort", "getByte", "getDouble",
-                "getFloat", "getBoolean"), getters);
+        assertEquals(Arrays.asList("getString#", "getLong#", "getShort#", "getByte#", "getDouble#",
+                "getFloat#", "getBoolean#"), getters);
 
         BindingException nullValue = assertThrows(BindingException.class,
                 () -> mapper.primitives(typedPrimitiveResult(new ArrayList<>(), "longValue", false)));
@@ -132,15 +133,18 @@ class JdbcTypedGetterTest {
                     if (method.getName().equals("next")) {
                         return ++row[0] == 0;
                     }
+                    if (method.getName().equals("getMetaData")) {
+                        return metadata(new String[]{"full_name", "age"});
+                    }
                     if (method.getName().equals("getString")) {
-                        assertEquals("full_name", arguments[0]);
+                        assertEquals(1, arguments[0]);
                         return "Ada";
                     }
                     if (method.getName().equals("getObject")) {
                         return null;
                     }
                     if (method.getName().equals("getInt")) {
-                        assertEquals("age", arguments[0]);
+                        assertEquals(2, arguments[0]);
                         getInts[0]++;
                         return nullAge ? 0 : 36;
                     }
@@ -164,6 +168,7 @@ class JdbcTypedGetterTest {
                     if (method.getName().equals("findColumn")) {
                         return List.of(columns).indexOf(arguments[0]) + 1;
                     }
+                    if (method.getName().equals("getMetaData")) return metadata(columns);
                     if (method.getName().equals("getObject")) {
                         throw new AssertionError("typed value read through getObject");
                     }
