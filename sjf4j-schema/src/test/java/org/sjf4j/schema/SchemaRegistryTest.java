@@ -114,6 +114,54 @@ class SchemaRegistryTest {
     }
 
     @Test
+    void indexRegistryRecompilesReferencedPlans() {
+        URI ref = URI.create("https://example.test/common");
+        URI root = URI.create("https://example.test/root");
+
+        SchemaRegistry catalog = new SchemaRegistry();
+        catalog.index(ref, JsonSchema.fromJson("{\"type\":\"integer\"}"));
+        catalog.index(root, JsonSchema.fromJson("{\"$ref\":\"https://example.test/common\"}"));
+        assertTrue(catalog.resolve(root).isValid(5));
+
+        SchemaRegistry scoped = new SchemaRegistry();
+        scoped.index(ref, JsonSchema.fromJson("{\"type\":\"string\"}"));
+        scoped.indexRegistry(catalog);
+
+        assertTrue(scoped.resolve(root).isValid("mocked"));
+        assertFalse(scoped.resolve(root).isValid(5));
+        assertTrue(catalog.resolve(root).isValid(5));
+    }
+
+    @Test
+    void indexRegistryDoesNotLeakCanonicalAliases() {
+        URI retrieval = URI.create("https://example.test/catalog/entry.json");
+        URI canonical = URI.create("https://example.test/canonical");
+
+        SchemaRegistry catalog = new SchemaRegistry();
+        catalog.index(retrieval, JsonSchema.fromJson(
+                "{\"$id\":\"https://example.test/canonical\",\"type\":\"integer\"}"));
+
+        SchemaRegistry scoped = new SchemaRegistry();
+        scoped.index(canonical, JsonSchema.fromJson("{\"type\":\"string\"}"));
+        scoped.indexRegistry(catalog);
+
+        assertTrue(scoped.resolve(canonical).isValid("mocked"));
+        assertFalse(scoped.contains(retrieval));
+    }
+
+    @Test
+    void indexRegistryPreservesBooleanResources() {
+        URI resource = URI.create("https://example.test/always");
+        SchemaRegistry catalog = new SchemaRegistry();
+        catalog.index(resource, BooleanSchema.TRUE);
+
+        SchemaRegistry scoped = new SchemaRegistry();
+        scoped.indexRegistry(catalog);
+
+        assertTrue(scoped.resolve(resource).isValid(null));
+    }
+
+    @Test
     void resolve_fallsBackToGlobalIndexedSchemas() {
         SchemaPlan plan = new SchemaRegistry().resolve(URI.create("https://json-schema.org/draft/2020-12/schema"));
 

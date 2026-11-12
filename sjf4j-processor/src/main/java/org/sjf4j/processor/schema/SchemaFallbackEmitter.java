@@ -61,13 +61,25 @@ final class SchemaFallbackEmitter {
                 }
                 out.beginBlock("private static org.sjf4j.schema.SchemaPlan _load()");
                 out.beginBlock("try");
-                out.line("org.sjf4j.schema.SchemaLoader loader = new org.sjf4j.schema.SchemaLoader.Local("
+                out.line("org.sjf4j.schema.SchemaLoader.Local loader = new org.sjf4j.schema.SchemaLoader.Local("
                         + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
                         + plan.name + ".class.getClassLoader());");
+                // Rebuild the annotation's scoped external resources before any
+                // local directory, so explicit mappings win collisions.
+                if (!plan.annotation.externalSchemas().isEmpty()
+                        || !plan.annotation.externalSchemasRef().isEmpty()) {
+                    out.beginBlock("for (java.util.Map.Entry<java.net.URI, org.sjf4j.schema.JsonSchema> entry : "
+                            + "loader.loadExternalSchemas("
+                            + plan.annotationExpression + ".externalSchemas(), "
+                            + plan.annotationExpression + ".externalSchemasRef()).entrySet())");
+                    out.line(registry + ".index(entry.getKey(), entry.getValue());");
+                    out.endBlock();
+                }
                 for (int i = 0; i < plan.snapshot.uris.length; i++) {
                     // Registry-backed documents are loaded by indexDir below;
                     // the default SchemaLoader must never fetch their logical HTTP URIs.
-                    if (plan.snapshot.fromRegistry[i]) continue;
+                    if (plan.snapshot.fromRegistry[i]
+                            || plan.snapshot.externalUris.contains(plan.snapshot.uris[i])) continue;
                     String uri = "java.net.URI.create(" + SchemaEmitter.javaLiteral(plan.snapshot.uris[i]) + ")";
                     if (i == 0 && !plan.annotation.value().isEmpty()) {
                         out.line(registry + ".index(" + uri

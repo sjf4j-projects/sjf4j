@@ -140,6 +140,35 @@ public final class SchemaValidator {
      * values still resolve consistently.
      */
     private SchemaPlan _resolvePlanFromAnno(Class<?> clazz, ValidJsonSchema anno) {
+        // Each annotation owns its external resource mappings. Never mutate the
+        // shared registry: different POJO bindings may reuse the same URI.
+        // The ordinary annotation path must not construct a local loader:
+        // caller-supplied SchemaLoader implementations may use memory: or other
+        // custom URI schemes with no directory base.
+        Map<URI, JsonSchema> external = java.util.Collections.emptyMap();
+        if (!anno.externalSchemas().isEmpty()) {
+            external = SchemaLoader.parseExternalSchemas(anno.externalSchemas());
+        } else if (!anno.externalSchemasRef().trim().isEmpty()) {
+            URI base = loader.resolve(URI.create(""));
+            if (!base.isAbsolute() || !base.toString().endsWith("/")) {
+                base = SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR;
+            }
+            external = new SchemaLoader.Local(base, clazz.getClassLoader())
+                    .loadExternalSchemas("", anno.externalSchemasRef());
+        }
+        SchemaRegistry scoped = registry;
+        if (!external.isEmpty()) {
+            // A binding with external resources owns its registry; neither the
+            // caller's registry nor sibling POJO plans are modified.
+            scoped = new SchemaRegistry(registry.getDefaultDialect());
+            for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
+                scoped.index(entry.getKey(), entry.getValue());
+            }
+            // Preserve explicit caller-provided catalog resources, but recompile
+            // their object plans in this binding's own reference context.
+            scoped.indexRegistry(registry);
+        }
+
         // From value
         String inline = anno.value();
         if (!inline.isEmpty()) {
@@ -147,14 +176,14 @@ public final class SchemaValidator {
             if (schema instanceof ObjectSchema) {
                 ((ObjectSchema) schema).retrievalUri(URI.create("sjf4j:/" + clazz.getName() + "/"));
             }
-            return registry.register(schema);
+            return scoped.register(schema);
         }
 
         // From ref
         String ref = anno.ref().trim();
         if (!ref.isEmpty()) {
             URI refUri = loader.resolve(URI.create(ref));
-            SchemaPlan plan = _registerByRef(refUri);
+            SchemaPlan plan = _registerByRef(refUri, scoped);
             if (plan == null) throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
                     "schema referenced by @ValidJsonSchema.ref on '" + clazz.getName() + "' was not found",
                     PathSegment.Root.INSTANCE, refUri));
@@ -163,12 +192,12 @@ public final class SchemaValidator {
 
         // From convention
         URI simpleNameUri = loader.resolve(URI.create(clazz.getSimpleName() + SCHEMA_FILE_SUFFIX_2));
-        SchemaPlan plan = _registerByRef(simpleNameUri);
+        SchemaPlan plan = _registerByRef(simpleNameUri, scoped);
         if (plan != null) return plan;
 
         String snakeName = Strings.toSnakeCase(clazz.getSimpleName());
         URI snakeNameUri = loader.resolve(URI.create(snakeName + SCHEMA_FILE_SUFFIX_2));
-        plan = _registerByRef(snakeNameUri);
+        plan = _registerByRef(snakeNameUri, scoped);
         if (plan != null) return plan;
 
         throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
@@ -180,7 +209,11 @@ public final class SchemaValidator {
 
 
     private SchemaPlan _registerByRef(URI uri) {
-        SchemaPlan plan = uri.isAbsolute() ? registry.resolve(uri) : null;
+        return _registerByRef(uri, registry);
+    }
+
+    private SchemaPlan _registerByRef(URI uri, SchemaRegistry scoped) {
+        SchemaPlan plan = uri.isAbsolute() ? scoped.resolve(uri) : null;
         if (plan != null) return plan;
 
         JsonSchema schema = loader.load(uri);
@@ -194,11 +227,11 @@ public final class SchemaValidator {
             }
         }
         if (selectedUri.isAbsolute()) {
-            SchemaPlan existing = registry.resolve(selectedUri);
+            SchemaPlan existing = scoped.resolve(selectedUri);
             if (existing != null) return existing;
         }
-        SchemaPlan compiled = registry.register(SchemaLoader.documentUri(selectedUri), schema);
-        SchemaPlan selected = selectedUri.isAbsolute() ? registry.resolve(selectedUri) : null;
+        SchemaPlan compiled = scoped.register(SchemaUtil.documentUri(selectedUri), schema);
+        SchemaPlan selected = selectedUri.isAbsolute() ? scoped.resolve(selectedUri) : null;
         // Boolean documents are not URI-indexed by SchemaRegistry.
         return selected == null ? compiled : selected;
     }

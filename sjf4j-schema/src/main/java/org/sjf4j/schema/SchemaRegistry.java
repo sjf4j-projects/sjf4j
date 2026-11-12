@@ -303,11 +303,52 @@ public class SchemaRegistry {
     }
 
     /**
+     * Indexes missing resources from another registry, retaining all aliases
+     * of an object resource as a group. Referenced object plans must be
+     * recompiled in this registry so existing bindings cannot leak across
+     * different resource contexts. Boolean plans are reference-independent.
+     *
+     * <p>This is the registry-to-registry counterpart of
+     * {@link #indexIfAbsent(URI, JsonSchema)}. Neither method overwrites a
+     * locally registered resource.
+     */
+    void indexRegistry(SchemaRegistry source) {
+        if (source == null || source == this) return;
+        java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
+                new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
+        for (Map.Entry<String, ObjectSchema> entry : source.byIdSchemas.entrySet()) {
+            Set<String> aliases = groups.get(entry.getValue());
+            if (aliases == null) {
+                aliases = new HashSet<String>();
+                groups.put(entry.getValue(), aliases);
+            }
+            aliases.add(entry.getKey());
+        }
+        for (Map.Entry<ObjectSchema, Set<String>> group : groups.entrySet()) {
+            boolean conflicting = false;
+            for (String key : group.getValue()) {
+                if (byIdSchemas.containsKey(key) || byIdPlans.containsKey(key)) {
+                    conflicting = true;
+                    break;
+                }
+            }
+            if (conflicting) continue;
+            for (String key : group.getValue()) {
+                byIdSchemas.putIfAbsent(key, group.getKey());
+            }
+        }
+        for (Map.Entry<String, SchemaPlan> entry : source.byIdPlans.entrySet()) {
+            if (entry.getValue().booleanSchema
+                    && !byIdSchemas.containsKey(entry.getKey())) {
+                byIdPlans.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    /**
      * Imports all schema mappings from another registry.
-     * <p>
-     * The returned registry has independent lookup maps but shares the indexed
-     * schema models and compiled plans with {@code other}. A null source creates
-     * a registry with the default dialect.
+     * The returned registry has independent maps but shares indexed schema
+     * models and compiled plans. Null creates a default registry.
      */
     public static SchemaRegistry copyOf(SchemaRegistry other) {
         if (other == null) return new SchemaRegistry();
@@ -346,7 +387,7 @@ public class SchemaRegistry {
         Asserts.notNull(uri, "uri");
         String id = uri.toString();
         String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.stripFragment(id);
+        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
         SchemaPlan plan = _resolveResource(id, true);
         return _resolveFragmentOrThrow(plan, fragment);
     }
@@ -390,7 +431,7 @@ public class SchemaRegistry {
         Asserts.notNull(uri, "uri");
         String id = uri.toString();
         String fragment = uri.getFragment();
-        if (fragment != null) id = SchemaUtil.stripFragment(id);
+        if (fragment != null) id = SchemaUtil.documentUri(uri).toString();
         SchemaPlan plan = _resolveResource(id, false);
         return _resolveFragmentOrThrow(plan, fragment);
     }
@@ -405,7 +446,7 @@ public class SchemaRegistry {
      */
     SchemaPlan resolveResource(URI uri) {
         Asserts.notNull(uri, "uri");
-        String id = uri.getFragment() == null ? uri.toString() : SchemaUtil.stripFragment(uri.toString());
+        String id = SchemaUtil.documentUri(uri).toString();
         return _resolveResource(id, true);
     }
 

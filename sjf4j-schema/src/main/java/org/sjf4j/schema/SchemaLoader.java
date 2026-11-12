@@ -1,5 +1,9 @@
 package org.sjf4j.schema;
 
+import org.sjf4j.JsonObject;
+import org.sjf4j.JsonType;
+import org.sjf4j.Nodes;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.util.Asserts;
 
@@ -12,6 +16,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Loads a complete JSON Schema document from a retrieval URI.
@@ -35,23 +42,47 @@ public interface SchemaLoader {
         return Asserts.notNull(uri, "uri");
     }
 
-    /** Discards the document fragment without changing the retrieval URI's base. */
-    static URI documentUri(URI uri) {
-        Asserts.notNull(uri, "uri");
-        String text = uri.toString();
-        int fragment = text.indexOf('#');
-        return fragment < 0 ? uri : URI.create(text.substring(0, fragment));
-    }
-
     /** Parses an already opened schema document and records its retrieval URI. */
     static JsonSchema parse(URI uri, Reader reader) throws IOException {
-        URI document = documentUri(uri);
+        URI document = SchemaUtil.documentUri(uri);
         char[] chars = new char[4096];
         StringBuilder json = new StringBuilder();
         for (int n; (n = reader.read(chars)) != -1;) json.append(chars, 0, n);
         JsonSchema schema = JsonSchema.fromJson(json.toString());
         if (schema instanceof ObjectSchema) ((ObjectSchema) schema).retrievalUri(document);
         return schema;
+    }
+
+    /**
+     * Parses a JSON object mapping absolute retrieval URIs to JSON Schema
+     * documents, using the official JSON Schema Test Suite representation.
+     */
+    static Map<URI, JsonSchema> parseExternalSchemas(String json) {
+        Object root = Sjf4j.global().fromJson(Asserts.notNull(json, "json"));
+        if (JsonType.of(root) != JsonType.OBJECT) {
+            throw new IllegalArgumentException("externalSchemas must be a JSON object");
+        }
+        Map<URI, JsonSchema> result = new LinkedHashMap<URI, JsonSchema>();
+        JsonObject object = Nodes.toJsonObject(root);
+        for (Map.Entry<String, Object> entry : object.entrySet()) {
+            URI uri;
+            try {
+                uri = URI.create(entry.getKey());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("invalid external schema URI: " + entry.getKey(), e);
+            }
+            if (!uri.isAbsolute() || uri.getRawFragment() != null) {
+                throw new IllegalArgumentException(
+                        "external schema retrieval URI must be absolute without a fragment: " + uri);
+            }
+            JsonType type = JsonType.of(entry.getValue());
+            if (type != JsonType.OBJECT && type != JsonType.BOOLEAN) {
+                throw new IllegalArgumentException(
+                        "external schema must be an object or boolean: " + uri);
+            }
+            result.put(uri, JsonSchema.fromNode(entry.getValue()));
+        }
+        return result;
     }
 
     /**
@@ -109,9 +140,37 @@ public interface SchemaLoader {
             return baseUri.resolve(Asserts.notNull(uri, "uri"));
         }
 
+        /**
+         * Reads UTF-8 JSON text through the existing local file/classpath lookup.
+         * Unlike load(), the content need not represent a single JsonSchema.
+         */
+        public String readText(URI uri) {
+            URI document = SchemaUtil.documentUri(resolve(uri));
+            try (Reader reader = open(document, document.getScheme())) {
+                if (reader == null) return null;
+                StringBuilder text = new StringBuilder();
+                char[] buf = new char[4096];
+                for (int n; (n = reader.read(buf)) != -1;) text.append(buf, 0, n);
+                return text.toString();
+            } catch (IOException e) {
+                throw new SchemaException(SchemaUtil.formatSchemaLine(SchemaUtil.Code.SCHEMA_LOAD,
+                        "failed to read schema resource", PathSegment.Root.INSTANCE, document), e);
+            }
+        }
+
+        /** Loads the annotation's inline or local JSON resource map. */
+        public Map<URI, JsonSchema> loadExternalSchemas(String inline, String ref) {
+            if (inline != null && !inline.isEmpty()) return SchemaLoader.parseExternalSchemas(inline);
+            if (ref == null || ref.trim().isEmpty()) return Collections.emptyMap();
+            URI uri = resolve(URI.create(ref.trim()));
+            String json = readText(uri);
+            if (json == null) throw new IllegalArgumentException("externalSchemasRef not found: " + uri);
+            return SchemaLoader.parseExternalSchemas(json);
+        }
+
         @Override
         public JsonSchema load(URI uri) {
-            URI document = documentUri(resolve(uri));
+            URI document = SchemaUtil.documentUri(resolve(uri));
             String scheme = document.getScheme();
             try (Reader reader = open(document, scheme)) {
                 return reader == null ? null : SchemaLoader.parse(document, reader);

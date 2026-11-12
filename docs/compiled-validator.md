@@ -28,7 +28,39 @@ public interface ExternalValidator {
 }
 ```
 
-The processor calls `SchemaRegistry.indexDir()` once per directory and retrieval-base combination in an annotation-processing run. The registry recursively indexes all `.json` files using `SchemaLoader.Local.load()`, preserving retrieval URIs and canonical `$id` aliases before resolving references. An indexed schema is not compiled into a `SchemaPlan` until needed. When local files represent remotely retrieved schemas **without `$id`**, set `registryBaseUri` to their logical retrieval directory, for example `registryBaseUri = "http://localhost:1234/"`. Files are still read from `registryDir`, but `draft2020-12/integer.json` is indexed as `http://localhost:1234/draft2020-12/integer.json`. No HTTP requests are made. The default `registryDir = ""` and `registryBaseUri = ""` preserve existing behavior. File-system directories are supported (absolute `file:` URI or working-directory-relative path ending in `/`); classpath directory enumeration and automatic HTTP fetching are deliberately unsupported. Runtime fallback must be able to read the **same directory** after deployment; fully direct validators do not need it at runtime. Gradle incremental builds must track this directory as an input.
+To mock or preload specific retrieval URIs, configure the binding itself using
+`@ValidJsonSchema.externalSchemas` (an inline JSON object) or
+`@ValidJsonSchema.externalSchemasRef` (a local JSON mapping file):
+
+```java
+@CompiledValidator
+interface MockedValidator {
+    @ValidJsonSchema(
+        ref = "classpath:/schemas/user.json",
+        externalSchemasRef = "classpath:/schemas/external.json")
+    boolean isValid(Object value);
+}
+```
+
+`external.json` follows the official JSON Schema Test Suite format:
+
+```json
+{
+  "https://example.org/common": {"type": "string"},
+  "https://example.org/always": true
+}
+```
+
+Each key must be an absolute retrieval URI without a fragment. Each value must
+be an object or boolean JSON Schema. Inline `externalSchemas` takes precedence
+over `externalSchemasRef`. Both are scoped to the individual schema binding, so
+different methods may use different documents under the same URI. These mappings
+are compiled without HTTP requests, override the directory registry on URI
+collisions, and can be reconstructed from the annotation for runtime fallback.
+The mapping file must remain available at runtime if fallback is enabled.
+Changes to external mapping files must be tracked as build inputs.
+
+The processor reads and caches directory Schema source documents once per directory and retrieval-base combination in an annotation-processing run. Each `@ValidJsonSchema` binding then creates its own `SchemaRegistry`, indexes its explicit resources with `index()`, and fills missing directory resources with `indexIfAbsent()`. The registry's existing conflict rules remain unchanged, and no precompiled `SchemaPlan` is shared between these bindings. When local files represent remotely retrieved schemas **without `$id`**, set `registryBaseUri` to their logical retrieval directory, for example `registryBaseUri = "http://localhost:1234/"`. Files are still read from `registryDir`, but `draft2020-12/integer.json` is indexed as `http://localhost:1234/draft2020-12/integer.json`. No HTTP requests are made. The default `registryDir = ""` and `registryBaseUri = ""` preserve existing behavior. File-system directories are supported (absolute `file:` URI or working-directory-relative path ending in `/`); classpath directory enumeration and automatic HTTP fetching are deliberately unsupported. Runtime fallback must be able to read the **same directory** after deployment; fully direct validators do not need it at runtime. Gradle incremental builds must track this directory as an input.
 
 The method's **return type** determines its behavior:
 
@@ -42,7 +74,7 @@ Methods take one value argument and optionally a primitive `boolean strictFormat
 
 **Null semantics:** a Java `null` root value represents the JSON `null` instance and is validated against the schema, just like `SchemaPlan`: `false` and `{"type":"object"}` reject it, while `true` and `{"type":"null"}` accept it. Object-only keywords such as `required` do not apply to a null instance unless an enclosing schema requires the object type. An object property explicitly set to `null` is **present**, so it satisfies `required` even when its value schema rejects null.
 
-`@ValidJsonSchema` may appear on the method, value parameter, or value type (and ancestors); that is also the lookup precedence. Inline `value` takes precedence over `ref`. Resources support `classpath:/`, `file:/`, and resolvable JSON Pointer fragments. With neither `value` nor `ref`, conventional schema-file lookup applies.
+`@ValidJsonSchema` may appear on the method, value parameter, or value type (and ancestors); that is also the lookup precedence. Inline `value` takes precedence over `ref`; similarly, inline `externalSchemas` takes precedence over `externalSchemasRef`. Resources support `classpath:/`, `file:/`, and resolvable JSON Pointer fragments. With neither `value` nor `ref`, conventional schema-file lookup applies.
 
 ## Compilation and fallback
 
@@ -94,7 +126,9 @@ Official fixtures live in `sjf4j-testbench/build/official-json-schema-tests/suit
 
 ```
 
-`officialCompiledTest` always includes **all non-optional Draft-07, Draft 2019-09, and Draft 2020-12 cases** in a single Gradle test task and JUnit test factory. Gradle test tasks do not expose draft or category filters; use a standalone Main with positional arguments for targeted runs. Old-draft official schemas and preloaded remotes that omit `$schema` are given the corresponding draft declaration only in generated test copies, never in the upstream files. Draft-07 currently has no explicit fallback groups; Draft 2019-09 has a manually reviewed list of 47 groups involving vocabulary/metaschema interpretation or cross-schema `unevaluated*` coverage. CI invokes only `./gradlew build`. `check` already includes `officialRuntimeTest`, `officialCompiledTest` (all three drafts), `officialAnnotationTest`, and JaCoCo report/coverage verification. The direct-compilation probe is always enabled and rejects stale fallback entries. The generated validators default to `fallback = false`; only groups manually allowlisted in `OfficialCompiledTest.fallbackGroups()` run with `fallback = true`. Each group's fallback selection is owned by that Java test class, not a separate config file. New or unsupported groups fail compilation rather than silently switching to runtime validation. Each group is compiled independently on failure, and every assertion (including JSON null) is recorded in `sjf4j-testbench/build/reports/officialCompiled/all/` (Draft 2020-12) or `officialCompiled/<draft>/all/` (legacy drafts):
+`officialCompiledTest` runs the required validation cases for **Draft-07, Draft 2019-09 and Draft 2020-12** against the upstream unified `validation/tests/` directory. The test runner applies each group's `compatibility` and `tags` without modifying the official fixtures. Each compatible group produces an independent generated validator and classpath resources. Generated fixtures use `@ValidJsonSchema.externalSchemasRef` with a per-group JSON mapping resource, without an internal javac option. Runtime fallbacks load the same mapping resources. The generated test copies add an explicit `$schema` only for older drafts when missing from the original Schema. No public `@CompiledValidator` annotation attributes are added.
+
+Gradle/JUnit always run all required drafts and groups; use `OfficialCompiledMain` positional arguments for a filtered run. The generated validators default to `fallback=false`; only the **explicit, per-draft fallback groups** in `OfficialCompiledTest.fallbackGroups()` use `fallback=true`. These groups are audited against the unified suite, including cross-schema `unevaluated*` coverage, dynamic/recursive references and custom vocabularies. Each fallback group is also probed with `fallback=false`; a stale allowance fails the suite. Unexpected compile errors or assertion mismatches are never silently skipped. Every assertion, including JSON null, is recorded in `sjf4j-testbench/build/reports/officialCompiled/<draft>/all/`:
 
 - `summary.json`: overall and category counts
 - `groups.json`, `gaps.json`: compilation mode and unresolved groups
@@ -114,7 +148,7 @@ To run a filtered subset as an Application, use `OfficialCompiledMain.main(Strin
 
 For example: `draft2019-09 unevaluatedItems.json 0 1`, or `draft2020-12 ref.json`. The first argument is the dialect (`all`, `draft7`, `draft2019-09`, or `draft2020-12`; default: `all`). The standalone Main selects the dialect from program arguments only; it does not read `sjf4j.schema.officialDraft` or the JUnit category property. Before first use, run `downloadOfficialSchemaTests` and `generateOfficialCompiledCases` once. Run `OfficialRuntimeMain.main(String[])` as an Application; it uses the same `[dialect [file.json [groupIndex [testIndex]]]]` positional arguments. All three official Main entrypoints accept the same four positions and do not use JVM or Gradle properties to select tests.
 
-Run `OfficialAnnotationTest` as a **JUnit test**. By default it checks every compatible case across **Draft-07, Draft 2019-09 and Draft 2020-12**, grouped by dialect and file in the JUnit tree. A failing compatible case fails the build; there is no draft-specific failure allowlist. The official `compatibility` metadata is evaluated against each draft: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, for future features) are counted as `Skipped`, not failures. The Gradle annotation task always runs all three drafts; select a dialect via the standalone Main arguments.
+Run `OfficialAnnotationTest` as a **JUnit test**. By default it checks every compatible case across **Draft-07, Draft 2019-09 and Draft 2020-12**, grouped by dialect and file in the JUnit tree. A failing compatible case fails the build; there is no draft-specific failure allowlist. The official `compatibility` metadata is evaluated against each draft: an omitted value applies to every draft, a bare version sets a minimum, `<=` sets a maximum, `=` requires an exact version, and comma-separated constraints all apply. Incompatible cases (including `9999`, for future features) are counted as `Skipped`, not failures. The Gradle annotation task always runs all three drafts; select a dialect via the standalone Main arguments. The JUnit runner also verifies accounting by draft: every source Group is either compatible or skipped, and every source assertion is either executed or skipped. After all file tests, it prints per-draft file, Group, test, passed, failed, error and skipped counts. A separate local regression test covers the same external retrieval URI resolving to different annotation schemas in different Groups (the current official Annotation fixtures do not exercise externalSchemas).
 
 For standalone strict execution of compatible annotation cases or a filtered file/group/test, run `OfficialAnnotationMain.main(String[])` as an Application with optional arguments `[dialect [file.json [groupIndex [testIndex]]]]`. The dialect is `all` (default), `draft7`, `draft2019-09`, or `draft2020-12`. For example: `draft2019-09 applicators.json 5 0`. Group/test indices are zero-based integers; compatibility constraints are interpreted against the selected draft. The JUnit annotation suite gates all three drafts; only the standalone Main's positional arguments select its dialect.
 

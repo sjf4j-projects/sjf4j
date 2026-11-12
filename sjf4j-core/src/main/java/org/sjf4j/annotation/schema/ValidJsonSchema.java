@@ -27,4 +27,35 @@ public @interface ValidJsonSchema {
      * may not trigger incremental Java recompilation.
      */
     String ref() default "";
+
+    /**
+     * JSON object mapping absolute retrieval URIs to JSON Schema documents
+     * (object or boolean), as in the official JSON Schema Test Suite.
+     * <p>
+     * For example, a JSON Schema referring to an externally mocked resource:
+     * <pre>{@code
+     * @ValidJsonSchema(
+     *     value = "{\"$ref\":\"https://example.test/common\"}",
+     *     externalSchemas = "{\"https://example.test/common\":{\"type\":\"string\"}}"
+     * )
+     * }</pre>
+     * This mapping is scoped to the annotated schema, not shared globally.
+     * Inline mappings take precedence over {@link #externalSchemasRef()}.
+     */
+    String externalSchemas() default "";
+
+    /**
+     * A local {@code file:} or {@code classpath:} URI containing the same
+     * JSON object format as {@link #externalSchemas()}, for example:
+     * <pre>{@code
+     * @ValidJsonSchema(
+     *     ref = "classpath:/schemas/user.json",
+     *     externalSchemasRef = "classpath:/schemas/external.json"
+     * )
+     * }</pre>
+     * The external.json file contains a JSON object whose keys are absolute
+     * retrieval URIs and whose values are JSON Schema objects or booleans.
+     * Relative resource references use the default schema directory.
+     */
+    String externalSchemasRef() default "";
 }

@@ -4,7 +4,6 @@ import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
-import org.sjf4j.schema.SchemaRegistry;
 
 import javax.lang.model.element.TypeElement;
 import java.util.LinkedHashMap;
@@ -20,8 +19,8 @@ import java.util.Map;
 public final class SchemaGenerator {
 
     private final ProcessorContext context;
-    // One directory load per annotation-processing run, shared by interfaces.
-    private final Map<String, SchemaRegistry> registryCache = new LinkedHashMap<>();
+    // Cache source documents per directory and logical base, never compiled plans.
+    private final Map<String, Map<String, SchemaResourceResolver.IndexedSource>> registryCache = new LinkedHashMap<>();
 
     public SchemaGenerator(ProcessorContext context) {
         this.context = context;

@@ -3,9 +3,9 @@ package org.sjf4j.testbench.schema.official;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
+import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.schema.JsonSchema;
-import org.sjf4j.schema.ObjectSchema;
 import org.sjf4j.schema.SchemaDialect;
 import org.sjf4j.schema.SchemaPlan;
 import org.sjf4j.schema.SchemaRegistry;
@@ -20,16 +20,18 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
+/** Required validation cases in the unified official JSON Schema Test Suite. */
 public final class OfficialRuntimeTest {
 
     private static final String TEST_ROOT_PROPERTY = "sjf4j.schema.officialTestRoot";
     private static final String SUITE_DIRECTORY = "official-json-schema-tests/suite";
-
+    private static final String VALIDATION_TESTS = "validation/tests";
 
     /**
      * Program arguments: [dialect [file.json [groupIndex [testIndex]]]].
-     * Gradle/JUnit always run all non-optional cases for every dialect.
+     * Group indices refer to the original upstream file, before filtering.
      */
     static void runStandalone(String[] args) throws Exception {
         if (args.length > 4) {
@@ -49,12 +51,14 @@ public final class OfficialRuntimeTest {
         if (test != null && (test < 0 || group == null)) {
             throw new IllegalArgumentException("Specify group index and a nonnegative test index");
         }
-        Path root = locateTestRoot();
+        Path dir = locatePath(locateTestRoot(), VALIDATION_TESTS);
+        int matched = 0;
         for (SchemaDialect dialect : dialects) {
-            SchemaRegistry registry = new SchemaRegistry(dialect);
-            loadRemotes(registry, locatePath(root, "remotes"));
-            String dir = "tests/" + draftName(dialect);
-            runTestDir(registry, locatePath(root, dir), false, true, file, group, test);
+            TestSuiteReport report = runTestDir(dialect, dir, false, file, group, test);
+            matched += report.total;
+        }
+        if (matched == 0) {
+            throw new IllegalArgumentException("No compatible official validation tests matched the selection");
         }
     }
 
@@ -71,45 +75,32 @@ public final class OfficialRuntimeTest {
         }
     }
 
-    private static String draftName(SchemaDialect dialect) {
-        switch (dialect) {
-            case DRAFT_07: return "draft7";
-            case DRAFT_2019_09: return "draft2019-09";
-            case DRAFT_2020_12: return "draft2020-12";
-            default: throw new IllegalArgumentException("Unsupported dialect: " + dialect);
-        }
-    }
-
-    // Publication and everyday-build conformance: all required cases, no optional/ subtree.
     @Test
     public void testDraft7() throws Exception {
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_07);
-        loadRemotes(registry, locatePath("remotes"));
-        runTestDir(registry, locatePath("tests/draft7"), false, true);
+        runRequired(SchemaDialect.DRAFT_07);
     }
 
     @Test
     public void testDraft2019_09() throws Exception {
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2019_09);
-        loadRemotes(registry, locatePath("remotes"));
-        runTestDir(registry, locatePath("tests/draft2019-09"), false, true);
+        runRequired(SchemaDialect.DRAFT_2019_09);
     }
 
     @Test
     public void testDraft2020_12() throws Exception {
-        SchemaRegistry registry = new SchemaRegistry(SchemaDialect.DRAFT_2020_12);
-        loadRemotes(registry, locatePath("remotes"));
-        runTestDir(registry, locatePath("tests/draft2020-12"), false,true);
+        runRequired(SchemaDialect.DRAFT_2020_12);
     }
 
-
-    private static Path locatePath(String dir) {
-        return locatePath(locateTestRoot(), dir);
+    private static void runRequired(SchemaDialect dialect) throws Exception {
+        TestSuiteReport report = runTestDir(dialect,
+                locatePath(locateTestRoot(), VALIDATION_TESTS), false, null, null, null);
+        if (report.total == 0) {
+            throw new IllegalStateException("Official validation suite matched no required tests for " + dialect);
+        }
     }
 
     private static Path locatePath(Path root, String dir) {
         Path path = root.resolve(dir);
-        if (!Files.exists(path)) {
+        if (!Files.isDirectory(path)) {
             throw new IllegalStateException("Not found " + dir + " under " + root);
         }
         return path;
@@ -117,172 +108,160 @@ public final class OfficialRuntimeTest {
 
     private static Path locateTestRoot() {
         String root = System.getProperty(TEST_ROOT_PROPERTY);
-        if (root != null && !root.isEmpty()) {
-            return Paths.get(root);
-        }
+        if (root != null && !root.isEmpty()) return Paths.get(root);
         Path moduleRoot = Paths.get("build", SUITE_DIRECTORY);
-        if (Files.isDirectory(moduleRoot)) {
-            return moduleRoot;
-        }
+        if (Files.isDirectory(moduleRoot)) return moduleRoot;
         Path repositoryRoot = Paths.get("sjf4j-testbench", "build", SUITE_DIRECTORY);
-        if (Files.isDirectory(repositoryRoot)) {
-            return repositoryRoot;
-        }
-        throw new IllegalStateException("Official JSON Schema test suite not found. Run ./gradlew :sjf4j-testbench:downloadOfficialSchemaTests, " +
-                "or supply -D" + TEST_ROOT_PROPERTY + "=<suite-root>.");
+        if (Files.isDirectory(repositoryRoot)) return repositoryRoot;
+        throw new IllegalStateException("Official JSON Schema test suite not found. Run "
+                + "./gradlew :sjf4j-testbench:downloadOfficialSchemaTests, or supply -D"
+                + TEST_ROOT_PROPERTY + "=<suite-root>.");
     }
 
-    private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow) throws Exception {
-        runTestDir(registry, dir, strict, canThrow, null, null, null);
-    }
-
-    private static void runTestDir(SchemaRegistry registry, Path dir, boolean strict, boolean canThrow,
-                                   String fileName, Integer groupIndex, Integer testIndex) throws Exception {
-        TestSuiteReport suite = new TestSuiteReport(registry.getDefaultDialect(), dir);
+    /** Package-private to exercise the runner with local miniature suites. */
+    static TestSuiteReport runTestDir(SchemaDialect dialect, Path dir, boolean strict,
+                                      String fileName, Integer groupIndex, Integer testIndex)
+            throws Exception {
+        TestSuiteReport suite = new TestSuiteReport(dialect, dir);
         if (fileName != null) {
-            Path path = dir.resolve(fileName);
-            if (!Files.isRegularFile(path)) {
-                throw new IllegalArgumentException("Official test file not found: " + path);
+            Path file = dir.resolve(fileName);
+            if (!Files.isRegularFile(file)) {
+                throw new IllegalArgumentException("Official test file not found: " + file);
             }
-            runTestFile(registry, path, strict, suite, true, groupIndex, testIndex);
+            runTestFile(dialect, file, strict, suite, groupIndex, testIndex);
         } else {
-            try (java.util.stream.Stream<Path> paths = Files.list(dir)) {
-                paths.filter(p -> p.getFileName().toString().endsWith(".json"))
-                        .filter(Files::isRegularFile)
-                        .sorted()
-                        .forEach(p -> runTestFile(registry, p, strict, suite, true, null, null));
+            try (Stream<Path> paths = Files.list(dir)) {
+                for (Path file : paths.filter(Files::isRegularFile)
+                        .filter(p -> p.getFileName().toString().endsWith(".json"))
+                        .sorted().toList()) {
+                    runTestFile(dialect, file, strict, suite, groupIndex, testIndex);
+                }
             }
         }
         printSuiteReport(suite);
-        if (suite.total == 0 || (canThrow && (suite.error > 0 || suite.failed > 0))) {
-            throw new IllegalStateException("JSON Schema Official tests " +
-                    (suite.total == 0 ? "matched no examples" : "failed") + " for " + suite.dialect
+        if (suite.error > 0 || suite.failed > 0 || suite.total != suite.passed + suite.failed + suite.error) {
+            throw new IllegalStateException("JSON Schema Official validation failed for " + suite.dialect
                     + " in " + suite.directory + ": " + suite.failed + " failed and "
-                    + suite.error + " errors");
+                    + suite.error + " errors, " + suite.total + " selected");
         }
+        return suite;
     }
 
-
-    private static void runTestFile(SchemaRegistry registry, Path file, boolean strict, TestSuiteReport suite,
-                                    boolean showDetails, Integer groupFilter, Integer testFilter) {
+    private static void runTestFile(SchemaDialect dialect, Path file, boolean strict,
+                                    TestSuiteReport suite, Integer groupFilter, Integer testFilter) {
         String fileName = file.getFileName().toString();
         TestFileReport report = suite.file(fileName);
-        String groupDesc;
-
         try {
-            JsonArray cases = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonArray.class);
-
-            for (int i = 0; i < cases.size(); i++) {
-                JsonObject caseObj = cases.getJsonObject(i);
-                JsonSchema schema = JsonSchema.fromNode(caseObj.getNode("schema"));
-                groupDesc = caseObj.getString("description", "no group desc");
+            JsonObject source = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
+            JsonArray groups = source.getJsonArray("tests");
+            if (groups == null) throw new IllegalArgumentException("Missing root tests array: " + file);
+            for (int i = 0; i < groups.size(); i++) {
                 if (groupFilter != null && groupFilter != i) continue;
-
-                JsonArray tests = caseObj.getJsonArray("tests");
+                suite.sourceGroups++;
+                JsonObject group = groups.getJsonObject(i);
+                String groupDesc = group.getString("description", "no group desc");
+                String compatibility = group.getString("compatibility");
+                if (!OfficialCompatibility.matches(compatibility, dialect)) {
+                    suite.incompatibleGroups++;
+                    continue;
+                }
+                if (!runWithTags(group.getJsonArray("tags"))) {
+                    suite.taggedGroups++;
+                    continue;
+                }
+                JsonArray tests = group.getJsonArray("tests");
+                if (tests == null || tests.size() == 0) {
+                    throw new IllegalArgumentException("Missing tests in " + fileName + " group#" + i);
+                }
                 if (testFilter != null && testFilter >= tests.size()) {
                     throw new IllegalArgumentException(fileName + " group#" + i
                             + ": test index out of range: " + testFilter);
                 }
+                suite.selectedGroups++;
+                int count = testFilter == null ? tests.size() : 1;
+                report.total += count;
+                suite.total += count;
+
                 SchemaPlan plan;
                 try {
-                    plan = schema.createPlan(registry);
+                    // External resources are scoped to a single test group, not an entire
+                    // file or dialect: the same URI may have different definitions.
+                    SchemaRegistry registry = new SchemaRegistry(dialect);
+                    Object external = group.getNode("externalSchemas");
+                    if (external != null) {
+                        Nodes.forEachObject(external, (uri, schema) ->
+                                registry.index(URI.create(uri), JsonSchema.fromNode(schema)));
+                    }
+                    plan = JsonSchema.fromNode(group.getNode("schema")).createPlan(registry);
                 } catch (Exception e) {
-                    int size = testFilter == null ? tests.size() : 1;
-                    report.total += size;
-                    report.error += size;
-                    suite.total += size;
-                    suite.error += size;
-                    report.addFailure(String.format("%s \n     -> Compile error", groupDesc), e);
+                    report.error += count;
+                    suite.error += count;
+                    report.addFailure(fileName + " group#" + i + " (" + groupDesc + ") compile error", e);
                     continue;
                 }
 
                 for (int j = 0; j < tests.size(); j++) {
-                    JsonObject test = tests.getJsonObject(j);
                     if (testFilter != null && testFilter != j) continue;
-                    report.total++;
-                    suite.total++;
-                    String testDesc = test.getString("description", "no test desc");
-
+                    JsonObject example = tests.getJsonObject(j);
+                    String desc = example.getString("description", "no test desc");
                     try {
-                        Object data = test.get("data");
-                        boolean expected = test.getBoolean("valid");
-
+                        Object data = example.get("data"); // JSON null is a real instance.
+                        boolean expected = example.getBoolean("valid");
                         ValidationResult result = plan.validate(data, true, strict);
-                        boolean actual = result.isValid();
-
-                        if (actual == expected) {
+                        if (result.isValid() == expected) {
                             report.passed++;
                             suite.passed++;
                         } else {
                             report.failed++;
                             suite.failed++;
-                            report.addFailure(String.format("%s \n     -> %s", groupDesc, testDesc),
-                                    "expected=" + expected + ", actual=" + actual + ", " + result);
+                            report.addFailure(fileName + " group#" + i + " (" + groupDesc
+                                    + ") test#" + j + " (" + desc + ")",
+                                    "expected=" + expected + ", actual=" + result.isValid() + ", " + result);
                         }
-
                     } catch (Exception e) {
                         report.error++;
                         suite.error++;
-                        report.addFailure(String.format("%s \n     -> %s", groupDesc, testDesc), e);
-                        e.printStackTrace();
+                        report.addFailure(fileName + " group#" + i + " test#" + j + " (" + desc + ")", e);
                     }
                 }
             }
-
         } catch (Exception e) {
             report.error++;
             suite.error++;
-            report.addFailure("file parse error", e);
+            report.total++;
+            suite.total++;
+            report.addFailure(fileName + " invalid test file", e);
         }
 
-        String line;
-        if (report.failed == 0 && report.error == 0) {
-            line = String.format("✓ %-35s [ %4d / %4d ]", report.fileName, report.passed, report.total);
-        } else {
-            line = String.format("✗ %-35s [ %4d / %4d ]  Failed: %d  Error: %d",
-                    report.fileName, report.passed, report.total, report.failed, report.error);
-        }
+        String line = report.failed == 0 && report.error == 0
+                ? String.format("✓ %-35s [ %4d / %4d ]", fileName, report.passed, report.total)
+                : String.format("✗ %-35s [ %4d / %4d ] Failed: %d Error: %d",
+                    fileName, report.passed, report.total, report.failed, report.error);
         System.out.println(line);
+        for (String failure : report.failures) System.out.println("   - " + failure);
+    }
 
-        if (showDetails && !report.failures.isEmpty()) {
-            System.out.println("  Failures / Errors:");
-            for (String msg : report.failures) {
-                System.out.println("   - " + msg);
+    private static boolean runWithTags(JsonArray tags) {
+        if (tags == null) return true;
+        boolean eligible = true;
+        for (int i = 0; i < tags.size(); i++) {
+            Object value = tags.get(i);
+            if ("format-assertion".equals(value)) {
+                // Required mode is non-strict format; format assertion is optional.
+                eligible = false;
+            } else if (!"format-annotation".equals(value)) {
+                throw new IllegalArgumentException("Unknown official validation tag: " + value);
             }
-            System.out.println();
         }
+        return eligible;
     }
 
-
-    private static final URI TEST_BASE_URI = URI.create("http://localhost:1234/");
-
-    private static void loadRemotes(SchemaRegistry registry, Path remotesDir) throws Exception {
-        Files.walk(remotesDir)
-                .filter(p -> p.toString().endsWith(".json"))
-                .forEach(p -> {
-                    try {
-                        ObjectSchema schema = Sjf4j.global().fromJson(Files.readAllBytes(p), ObjectSchema.class);
-                        URI uri = resolveSchemaUri(schema, remotesDir, p);
-//                        System.out.println("uri: " + uri);
-                        registry.index(uri, schema);
-                    } catch (Exception e) {
-                        throw new AssertionError("Failed to load remote schema: " + p, e);
-                    }
-                });
-    }
-
-    private static URI resolveSchemaUri(ObjectSchema schema, Path remotesDir, Path file) {
-        Path relative = remotesDir.relativize(file);
-        String path = relative.toString().replace('\\', '/');
-        return TEST_BASE_URI.resolve(path);
-    }
-
-
-    static class TestSuiteReport {
+    static final class TestSuiteReport {
         final SchemaDialect dialect;
         final Path directory;
+        int sourceGroups, selectedGroups, incompatibleGroups, taggedGroups;
         int total, passed, failed, error;
-        Map<String, TestFileReport> fileMap = new LinkedHashMap<>();
+        final Map<String, TestFileReport> fileMap = new LinkedHashMap<>();
 
         TestSuiteReport(SchemaDialect dialect, Path directory) {
             this.dialect = dialect;
@@ -298,52 +277,32 @@ public final class OfficialRuntimeTest {
         }
     }
 
-    static class TestFileReport {
+    static final class TestFileReport {
         final String fileName;
         int total, passed, failed, error;
-        List<String> failures = new ArrayList<>();
+        final List<String> failures = new ArrayList<>();
 
         TestFileReport(String name) {
             this.fileName = name;
         }
 
-        void addFailure(String desc, Object e) {
-            if (e instanceof Exception) {
-                failures.add(desc + " : " + ((Exception) e).toString());
-            } else {
-                failures.add(desc + " : " + e);
-            }
+        void addFailure(String desc, Object error) {
+            failures.add(desc + " : " + error);
         }
     }
 
-    private static void printSuiteReport(TestSuiteReport s) {
+    private static void printSuiteReport(TestSuiteReport suite) {
         System.out.println("================================");
-        System.out.println(" JSON Schema Test Summary [" + s.dialect + "]");
+        System.out.println(" JSON Schema Test Summary [" + suite.dialect + "]");
         System.out.println("================================");
-        System.out.println("Directory: " + s.directory);
-        System.out.println("Total : " + s.total);
-        System.out.println("Passed: " + s.passed);
-        System.out.println("Failed: " + s.failed);
-        System.out.println("Error : " + s.error);
+        System.out.println("Directory: " + suite.directory);
+        System.out.println("Groups   : " + suite.sourceGroups + " source, " + suite.selectedGroups
+                + " selected, " + suite.incompatibleGroups + " incompatible, "
+                + suite.taggedGroups + " tagged");
+        System.out.println("Total    : " + suite.total);
+        System.out.println("Passed   : " + suite.passed);
+        System.out.println("Failed   : " + suite.failed);
+        System.out.println("Error    : " + suite.error);
         System.out.println("================================\n");
     }
-    private static void printFileBreakdown(TestSuiteReport suite) {
-        System.out.println("\n--------------------------------");
-        System.out.println("File Summary");
-        System.out.println("--------------------------------");
-
-        for (TestFileReport f : suite.files()) {
-            String line;
-            if (f.failed == 0 && f.error == 0) {
-                line = String.format("✓ %-35s [ %4d / %4d ]", f.fileName, f.passed, f.total);
-            } else {
-                line = String.format("✗ %-35s [ %4d / %4d ]  Failed: %d  Error: %d",
-                        f.fileName, f.passed, f.total, f.failed, f.error);
-            }
-            System.out.println(line);
-        }
-    }
-
-
-
 }

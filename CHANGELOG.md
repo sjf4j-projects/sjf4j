@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Generated null-safe enum-to-enum switch mappings with compile-time same-name constant validation, including nested collection elements and Map keys/values.
 - Added `@MappingOptions.reuse` with `ReusePolicy.ASSIGNABLE`, preserving assignable-value reuse for root containers and nested mapper values.
+- **JSON Schema external mocks** — `@ValidJsonSchema.externalSchemas` and `externalSchemasRef` accept official-suite-style URI-to-Schema JSON mappings for isolated runtime and compiled validation, without changing `SchemaRegistry.index()` conflict semantics.
 
 ### Changed
 

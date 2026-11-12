@@ -363,7 +363,7 @@ public final class SchemaUtil {
             String r = ref.toString();
             // "" resolves to base
             if (r.isEmpty()) return base;
-            if (r.startsWith("#")) return URI.create(stripFragment(base.toString()) + r);
+            if (r.startsWith("#")) return URI.create(documentUri(base).toString() + r);
             throw new SchemaException(formatSchemaLine(Code.SCHEMA_RESOLVE,
                     "cannot resolve relative uri against opaque base uri: base='" + base + "', ref='" + ref + "'",
                     PathSegment.Root.INSTANCE, base));
@@ -373,7 +373,17 @@ public final class SchemaUtil {
     }
 
     /**
+     * Returns a schema document's retrieval URI without its fragment.
+     * This retains the URI's original encoding, query and base.
+     */
+    public static URI documentUri(URI uri) {
+        Asserts.notNull(uri, "uri");
+        return uri.getRawFragment() == null ? uri : URI.create(stripFragment(uri.toString()));
+    }
+
+    /**
      * Removes URI fragment text without further normalization.
+     * For URI values, prefer {@link #documentUri(URI)}.
      */
     public static String stripFragment(String s) {
         if (s == null) return s;
@@ -397,9 +407,7 @@ public final class SchemaUtil {
      */
     public static String normalizeUriKey(URI uri) {
         Asserts.notNull(uri, "uri");
-        if (uri.getFragment() != null) {
-            uri = URI.create(stripFragment(uri.toString()));
-        }
+        uri = documentUri(uri);
         if ("file".equalsIgnoreCase(uri.getScheme())) {
             try {
                 return new URI(uri.getScheme(), uri.getAuthority(), uri.getPath(), uri.getQuery(), null).toString();
