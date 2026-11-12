@@ -22,7 +22,9 @@ import java.lang.annotation.Target;
  * property, ignore a target property, compute a value from one or more source
  * properties, or write to an SJF4J target path. Use {@link MappingOptions} for
  * null handling, method-level converter preferences, and collection/map update
- * policies. Use repeatable {@link MappingCreator} annotations to customize
+ * policies. For mapped properties, a missing source parent skips a selected
+ * mapper method, while a present parent invokes it even if its property value
+ * is {@code null}. ValueCodec null handling remains independent. Use repeatable {@link MappingCreator} annotations to customize
  * target instantiation, especially for interface or abstract targets.
  * Interface-level rules apply to all generated methods and are inherited
  * from compiled parent mappers; matching method-level rules take precedence.</p>
