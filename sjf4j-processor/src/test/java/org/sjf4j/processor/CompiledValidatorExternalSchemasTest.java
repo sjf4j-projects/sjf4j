@@ -111,7 +111,7 @@ class CompiledValidatorExternalSchemasTest {
     }
 
     @Test
-    void invalidExternalSchemaMappingFailsCompilation() {
+    void invalidExternalSchemaMappingFailsCompilation() throws Exception {
         Map<String, String> sources = Map.of(
                 "fixture/Invalid.java", source("Invalid", "[]", null, false, true));
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
