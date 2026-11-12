@@ -303,11 +303,16 @@ public class SchemaRegistry {
     }
 
     /**
-     * Adds source resources not shadowed by local aliases. Import only raw
-     * ObjectSchema models and boolean plans, never ref-bound compiled plans.
-     * All aliases of an object resource are imported together or skipped together.
+     * Indexes missing resources from another registry, retaining all aliases
+     * of an object resource as a group. Referenced object plans must be
+     * recompiled in this registry so existing bindings cannot leak across
+     * different resource contexts. Boolean plans are reference-independent.
+     *
+     * <p>This is the registry-to-registry counterpart of
+     * {@link #indexIfAbsent(URI, JsonSchema)}. Neither method overwrites a
+     * locally registered resource.
      */
-    void indexMissingRawResources(SchemaRegistry source) {
+    void indexIfAbsent(SchemaRegistry source) {
         if (source == null || source == this) return;
         java.util.IdentityHashMap<ObjectSchema, Set<String>> groups =
                 new java.util.IdentityHashMap<ObjectSchema, Set<String>>();
