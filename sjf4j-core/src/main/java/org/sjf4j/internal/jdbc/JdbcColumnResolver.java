@@ -1,0 +1,103 @@
+package org.sjf4j.internal.jdbc;
+
+import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
+import org.sjf4j.exception.BindingException;
+
+import java.lang.ref.WeakReference;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+
+/**
+ * Resolves generated JDBC property mappings to actual ResultSet column indexes.
+ * A single resolution is shared by all rows in a cursor; current-row mappers
+ * can retain a thread-local cache for the lifetime of a ResultSet.
+ */
+public final class JdbcColumnResolver {
+    private JdbcColumnResolver() {
+    }
+
+    public static int[] resolve(ResultSetMetaData metadata, String[] names,
+                                ColumnNamingPolicy policy, boolean required) throws SQLException {
+        int count = metadata.getColumnCount();
+        String[] labels = new String[count];
+        for (int i = 0; i < count; i++) {
+            labels[i] = metadata.getColumnLabel(i + 1);
+        }
+
+        int[] indexes = new int[names.length];
+        for (int i = 0; i < names.length; i++) {
+            String name = names[i];
+            int index = match(labels, name, 0);
+            if (index == 0 && policy != ColumnNamingPolicy.EXACT) {
+                index = match(labels, name, 1);
+            }
+            if (index == 0 && policy == ColumnNamingPolicy.INSENSITIVE_SNAKE) {
+                index = match(labels, snakeCase(name), 1);
+            }
+            if (index == 0 && required) {
+                throw new BindingException("Missing JDBC column for property: " + name);
+            }
+            indexes[i] = index;
+        }
+        return indexes;
+    }
+
+    private static int match(String[] labels, String candidate, int mode) {
+        int found = 0;
+        for (int i = 0; i < labels.length; i++) {
+            String label = labels[i];
+            if (label == null) continue;
+            boolean matches = mode == 0 ? label.equals(candidate) : label.equalsIgnoreCase(candidate);
+            if (!matches) continue;
+            if (found != 0) {
+                throw new BindingException("Ambiguous JDBC column label for '" + candidate
+                        + "' at positions " + found + " and " + (i + 1));
+            }
+            found = i + 1;
+        }
+        return found;
+    }
+
+    private static String snakeCase(String name) {
+        StringBuilder out = new StringBuilder(name.length() + 4);
+        for (int i = 0; i < name.length(); i++) {
+            char current = name.charAt(i);
+            if (Character.isUpperCase(current)) {
+                boolean precededByWord = i > 0 && (Character.isLowerCase(name.charAt(i - 1))
+                        || Character.isDigit(name.charAt(i - 1)));
+                boolean endOfAcronym = i > 0 && i + 1 < name.length()
+                        && Character.isUpperCase(name.charAt(i - 1))
+                        && Character.isLowerCase(name.charAt(i + 1));
+                if (precededByWord || endOfAcronym) out.append('_');
+                out.append(Character.toLowerCase(current));
+            } else {
+                out.append(current);
+            }
+        }
+        return out.toString();
+    }
+
+    /**
+     * A per-method, per-thread binding for current-row mappers.
+     * The ResultSet is weakly referenced so the cache cannot keep it open.
+     */
+    public static final class Cache {
+        private final WeakReference<ResultSet> resultSet;
+        private final int[] indexes;
+
+        public Cache(ResultSet resultSet, String[] names,
+                     ColumnNamingPolicy policy, boolean required) throws SQLException {
+            this.indexes = resolve(resultSet.getMetaData(), names, policy, required);
+            this.resultSet = new WeakReference<ResultSet>(resultSet);
+        }
+
+        public boolean matches(ResultSet candidate) {
+            return resultSet.get() == candidate;
+        }
+
+        public int index(int position) {
+            return indexes[position];
+        }
+    }
+}
