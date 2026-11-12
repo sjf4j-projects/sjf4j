@@ -28,7 +28,8 @@ import java.lang.annotation.Target;
  * {@code JdbcRowMapper<T> prepare(ResultSetMetaData metadata)}. They resolve
  * column names once and return a stateless row mapper that captures only the
  * resulting column layout (indexes and labels). The caller manages ResultSet
- * cursor movement and invokes {@code mapRow(ResultSet)} for each current row.
+ * cursor movement and invokes {@code map(ResultSet)} for each current row.
+ * The prepare method name is arbitrary; only its signature determines its role.
  * Prepared mappers never hold the ResultSet or advance/close it, and are
  * reusable for results with the same column layout. The legacy
  * {@code (ResultSet, int)} signature is not supported.</p>
