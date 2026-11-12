@@ -111,6 +111,40 @@ class CompiledValidatorExternalSchemasTest {
     }
 
     @Test
+    void directorySourceCacheDoesNotOverridePerBindingExternalSchemas() throws Exception {
+        Files.writeString(directory.resolve("word.json"), "{\"type\":\"boolean\"}");
+        String target = "https://example.test/word.json";
+        String root = quote("{\"$ref\":\"" + target + "\"}");
+        String options = "registryDir=" + quote(directory.toUri().toString())
+                + ",registryBaseUri=\"https://example.test/\",";
+        String textMap = quote("{\"" + target + "\":{\"type\":\"string\"}}");
+        String numberMap = quote("{\"" + target + "\":{\"type\":\"integer\"}}");
+        String direct = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "@CompiledValidator(" + options + "fallback=false) public interface Direct { "
+                + "@ValidJsonSchema(value=" + root + ",externalSchemas=" + textMap + ") "
+                + "boolean valid(Object value); }";
+        String fallback = "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "import org.sjf4j.schema.ValidationResult; "
+                + "@CompiledValidator(" + options + "fallback=true) public interface Fallback { "
+                + "@ValidJsonSchema(value=" + root + ",externalSchemas=" + numberMap + ") "
+                + "ValidationResult valid(Object value); }";
+        NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
+                Map.of("fixture/Direct.java", direct, "fixture/Fallback.java", fallback),
+                CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            assertValidation(loader, "fixture.Direct", "hello", true);
+            assertValidation(loader, "fixture.Direct", 10, false);
+
+            Class<?> type = loader.loadClass("fixture.Fallback");
+            Object validator = CompiledInstances.create(type);
+            Method valid = type.getMethod("valid", Object.class);
+            assertTrue(((ValidationResult) valid.invoke(validator, 10)).isValid());
+            assertFalse(((ValidationResult) valid.invoke(validator, "hello")).isValid());
+        }
+    }
+
+    @Test
     void invalidExternalSchemaMappingFailsCompilation() throws Exception {
         Map<String, String> sources = Map.of(
                 "fixture/Invalid.java", source("Invalid", "[]", null, false, true));
