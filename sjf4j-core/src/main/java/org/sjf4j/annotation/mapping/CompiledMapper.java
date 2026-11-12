@@ -15,7 +15,9 @@ import java.lang.annotation.Target;
  * single-source POJO create mapping without explicit property rules reuses
  * its source by reference, like an assignable nested value. Explicit property
  * rules still apply. Void methods update the first argument in place from
- * the remaining source arguments.</p>
+ * the remaining source arguments. Update methods return when all sources are
+ * {@code null}. They do not eagerly reject a {@code null} target; Java may
+ * throw {@link NullPointerException} if the generated code accesses it.</p>
  *
  * <p>By default, source and target properties with the same name are mapped
  * automatically. Use repeatable {@link Mapping} annotations to rename a source
