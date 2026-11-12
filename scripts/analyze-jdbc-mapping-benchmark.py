@@ -69,77 +69,71 @@ def load_results(paths):
 
 
 def render(found):
-    """Group results by competitor; always show absolute metrics before ratios."""
+    """Use the same latency/allocation table format as mapping.md."""
     lines = [
         "# JDBC Mapping — Full JMH report",
         "",
         "**JDK 25 · 3 independent forks · Best 2 Mean · 1/10/1,000/100,000 rows · 12 columns.**",
-        "Time is µs/op (entire ResultSet), lower is better; allocations are B/op",
-        "from the untrimmed JMH profiler. SQL execution is outside timed methods.",
-        "Ratios are competitor / SJF4J Compiled (greater than 1× favors SJF4J).",
+        "All durations are µs/op, allocations are untrimmed JMH B/op.",
+        "SQL execution is outside timed methods; shared runner results are exploratory.",
         "",
     ]
 
     def table_row(values):
         return "| " + " | ".join(str(value) for value in values) + " |"
 
-    def timing(value):
-        return f"{value:,.3f}"
-
-    def allocated(value):
-        return f"{value:,.0f}"
-
-    def ratio(competitor, compiled):
-        return f"{competitor / compiled:.2f}×"
-
-    lines.extend([
-        "## Spring JDBC",
-        "",
-        "List and Row modes for POJO, Record and Map.",
-        "",
-        table_row(("Shape", "Mode", "Rows", "Spring (µs/op)", "Spring (B/op)",
-                   "SJF4J Compiled (µs/op)", "SJF4J (B/op)", "Spring / SJF4J")),
-        table_row(("---", "---", "---:", "---:", "---:", "---:", "---:", "---:")),
-    ])
-    for group in ("pojo", "record", "map"):
-        for mode in ("list", "row"):
-            for rows in SIZES:
-                spring_time, spring_bytes, _ = found[(group, mode, "spring", rows)]
+    def render_comparison(vendor, cases):
+        heading = vendor + " / Compiled"
+        for allocation in (False, True):
+            lines.append("**" + ("Allocation (B/op, lower is better)" if allocation
+                                  else "Latency (µs/op, lower is better)") + ".** "
+                         + ("Untrimmed JMH allocation; ratios compare B/op, not time."
+                            if allocation else
+                            "Best 2 Mean across 3 forks; ratios compare execution time."))
+            lines.append("")
+            lines.append(table_row(("Case", "Rows", vendor, "Compiled", heading)))
+            lines.append(table_row(("---", "---:", "---:", "---:", "---:")))
+            for case_name, group, mode, impl, rows in cases:
+                competitor_time, competitor_bytes, _ = found[(group, mode, impl, rows)]
                 compiled_time, compiled_bytes, _ = found[(group, mode, "compiled", rows)]
-                lines.append(table_row((
-                    group.upper(), mode.capitalize(), f"{int(rows):,}",
-                    timing(spring_time), allocated(spring_bytes),
-                    timing(compiled_time), allocated(compiled_bytes),
-                    ratio(spring_time, compiled_time),
-                )))
+                baseline = competitor_bytes if allocation else competitor_time
+                sjf4j = compiled_bytes if allocation else compiled_time
+                shown = f"{baseline:,.0f}" if allocation else f"{baseline:,.3f}"
+                compiled_shown = f"{sjf4j:,.0f}" if allocation else f"{sjf4j:,.3f}"
+                lines.append(table_row((case_name, f"{int(rows):,}", shown,
+                                        compiled_shown, f"{baseline / sjf4j:.2f}×"
+                                        if sjf4j > 0 else "—")))
+            lines.append("")
 
-    lines.extend([
-        "",
-        "## MyBatis",
-        "",
-        "All MyBatis cases materialize Lists. Cursor is not a direct RowMapper API;",
-        "MyBatis Record and direct Row paths are not covered in suite 1.",
-        "",
-        table_row(("Shape", "Mapping", "Rows", "MyBatis (µs/op)", "MyBatis (B/op)",
-                   "SJF4J Compiled (µs/op)", "SJF4J (B/op)", "MyBatis / SJF4J")),
-        table_row(("---", "---", "---:", "---:", "---:", "---:", "---:", "---:")),
-    ])
-    for group in ("pojo", "map"):
-        for rows in SIZES:
-            compiled_time, compiled_bytes, _ = found[(group, "list", "compiled", rows)]
-            for implementation in GROUPS[group]["list"]:
-                if not implementation.startswith("mybatis"):
-                    continue
-                other_time, other_bytes, _ = found[(group, "list", implementation, rows)]
-                implementation_name = LABELS[implementation].replace("MyBatis ", "")
-                lines.append(table_row((
-                    group.upper(), implementation_name + " / List", f"{int(rows):,}",
-                    timing(other_time), allocated(other_bytes),
-                    timing(compiled_time), allocated(compiled_bytes),
-                    ratio(other_time, compiled_time),
-                )))
+    lines.extend((
+        "## Spring JDBC", "",
+        "POJO uses BeanPropertyRowMapper; Record uses DataClassRowMapper; "
+        "Map uses ColumnMapRowMapper. List and Row modes are included.", "",
+    ))
+    spring_cases = [
+        (group.upper() + " / " + mode.capitalize(), group, mode, "spring", rows)
+        for group in ("pojo", "record", "map")
+        for mode in ("list", "row")
+        for rows in SIZES
+    ]
+    render_comparison("Spring", spring_cases)
 
-    lines.extend(["", "## Fork stability", ""])
+    lines.extend((
+        "## MyBatis", "",
+        "Auto and Explicit use DefaultResultSetHandler; Cursor is consumed into "
+        "a List, not a direct RowMapper. No MyBatis Record or Row case.", "",
+    ))
+    mybatis_cases = [
+        (group.upper() + " / " + LABELS[impl].replace("MyBatis ", "")
+         + " / List", group, "list", impl, rows)
+        for group in ("pojo", "map")
+        for rows in SIZES
+        for impl in GROUPS[group]["list"]
+        if impl.startswith("mybatis")
+    ]
+    render_comparison("MyBatis", mybatis_cases)
+
+    lines.extend(("## Fork stability", ""))
     unstable = [
         (group, mode, implementation, rows, fork_means)
         for (group, mode, implementation, rows), (_, _, fork_means) in found.items()
@@ -149,11 +143,9 @@ def render(found):
         lines.append("Latency cases with slowest/fastest fork divergence above 15%:")
         lines.append("")
         for group, mode, implementation, rows, fork_means in sorted(unstable):
-            lines.append(
-                f"- {group}/{mode}/{implementation}/{rows}: "
-                f"{max(fork_means) / min(fork_means):.2f}×; fork means "
-                + ", ".join(timing(value) for value in fork_means) + " µs"
-            )
+            lines.append(f"- {group}/{mode}/{implementation}/{rows}: "
+                         f"{max(fork_means) / min(fork_means):.2f}×; fork means "
+                         + ", ".join(f"{value:.3f}" for value in fork_means) + " µs")
     else:
         lines.append("No latency case exceeded the 15% slowest/fastest fork-spread threshold.")
 
