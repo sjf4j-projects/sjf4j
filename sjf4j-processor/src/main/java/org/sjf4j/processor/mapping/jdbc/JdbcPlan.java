@@ -29,9 +29,9 @@ public final class JdbcPlan {
         CURSOR,
 
         /**
-         * The ResultSet is already positioned on the row to map.
+         * The generated method prepares a row mapper from ResultSetMetaData.
          */
-        CURRENT_ROW
+        PREPARE
     }
 
     /**
@@ -39,7 +39,8 @@ public final class JdbcPlan {
      */
     public enum ResultKind {
         SINGLE,
-        LIST
+        LIST,
+        PREPARED
     }
 
     private final ExecutableElement method;
@@ -48,8 +49,7 @@ public final class JdbcPlan {
     private final CursorMode cursorMode;
     private final ResultKind resultKind;
 
-    private final VariableElement resultSetParameter;
-    private final VariableElement rowNumberParameter;
+    private final VariableElement inputParameter;
 
     private final TypeMirror returnType;
     private final TypeMirror rowType;
@@ -57,15 +57,14 @@ public final class JdbcPlan {
     private final List<Rule> rules;
 
     JdbcPlan(ExecutableElement method, ExecutableType methodType, CursorMode cursorMode,
-             ResultKind resultKind, VariableElement resultSetParameter,
-             VariableElement rowNumberParameter, TypeMirror returnType, TypeMirror rowType,
+             ResultKind resultKind, VariableElement inputParameter,
+             TypeMirror returnType, TypeMirror rowType,
              List<Rule> rules) {
         this.method = Asserts.notNull(method, "method");
         this.methodType = Asserts.notNull(methodType, "methodType");
         this.cursorMode = Asserts.notNull(cursorMode, "cursorMode");
         this.resultKind = Asserts.notNull(resultKind, "resultKind");
-        this.resultSetParameter = Asserts.notNull(resultSetParameter, "resultSetParameter");
-        this.rowNumberParameter = rowNumberParameter;
+        this.inputParameter = Asserts.notNull(inputParameter, "inputParameter");
         this.returnType = Asserts.notNull(returnType, "returnType");
         this.rowType = Asserts.notNull(rowType, "rowType");
         this.rules = Collections.unmodifiableList(rules);
@@ -93,8 +92,8 @@ public final class JdbcPlan {
         return cursorMode == CursorMode.CURSOR;
     }
 
-    public boolean currentRow() {
-        return cursorMode == CursorMode.CURRENT_ROW;
+    public boolean prepared() {
+        return cursorMode == CursorMode.PREPARE;
     }
 
     public ResultKind resultKind() {
@@ -109,12 +108,8 @@ public final class JdbcPlan {
         return resultKind == ResultKind.LIST;
     }
 
-    public VariableElement resultSetParameter() {
-        return resultSetParameter;
-    }
-
-    public VariableElement rowNumberParameter() {
-        return rowNumberParameter;
+    public VariableElement inputParameter() {
+        return inputParameter;
     }
 
     public TypeMirror returnType() {
@@ -124,7 +119,7 @@ public final class JdbcPlan {
     /**
      * Target type for one ResultSet row.
      *
-     * <p>For {@code List<T>} mapper methods this is {@code T}; otherwise it is
+     * <p>For {@code List<T>} and {@code JdbcRowMapper<T>} methods this is {@code T}; otherwise it is
      * the method return type.</p>
      */
     public TypeMirror rowType() {
