@@ -9,7 +9,7 @@ JVM and AOT timings are reported separately and are not controlled cross-environ
 
 ## Comparison dependency versions
 
-The v1.5.1-SNAPSHOT Native Image results include these backends:
+**SJF4J version:** `v1.5.1-SNAPSHOT`. Native Image benchmark dependencies:
 
 | Backend | Benchmark dependency versions |
 | --- | --- |
