@@ -138,7 +138,7 @@ public class MapperEnumMappingTest {
 
     @CompiledMapper
     public interface PreferredMapper {
-        @MappingOptions(methods = {"this::second"})
+        @MappingOptions(converters = {"this::second"})
         NewRecord map(LegacyRecord source);
 
         default NewStatus first(LegacyStatus source) {
