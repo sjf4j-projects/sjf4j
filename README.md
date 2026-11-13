@@ -365,21 +365,24 @@ String city = UserNavigator.INSTANCE.getCity(user);
 
 SJF4J's performance and standards compliance are evaluated through independent comparisons and [JMH](https://github.com/openjdk/jmh) benchmarks.
 
-**Independent Comparisons**
+**JSON Binding**
+- [Binding Full Benchmarks](docs/performance/binding.md) — Native JSON backends vs. Runtime and Compiled.
+
+**JSONPath Navigation**
 - [JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/) — Cross-implementation specification compatibility.
+- [JSONPath Full Benchmarks](docs/performance/path.md) — Jayway JsonPath vs. Runtime and Compiled.
+
+**JSON Schema Validation**
 - [Creek Service](https://www.creekservice.org/json-schema-validation-comparison/) — Independent JVM validation benchmarks.
 - [Bowtie](https://bowtie.report/) — Cross-language JSON Schema compliance.
-- [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) — Independent comparison with Java mapping frameworks.
+- [JSON Schema Full Benchmarks](docs/performance/schema.md) — NetworkNT vs. Runtime and Compiled, including roundtrip performance.
 
-**SJF4J Full Benchmarks**
-- [Binding Full Benchmarks](docs/performance/binding.md) — Runtime and Compiled vs. native JSON backends.
-- [JSONPath Full Benchmarks](docs/performance/path.md) — Runtime and Compiled vs. Jayway JsonPath.
-- [JSON Schema Full Benchmarks](docs/performance/schema.md) — Runtime and Compiled vs. NetworkNT, including roundtrip performance.
-- [Object Mapping Full Benchmarks](docs/performance/mapping.md) — CompiledMapper vs. MapStruct.
-- [JDBC Mapping Full Benchmarks](docs/performance/jdbc-mapping.md) — CompiledJdbcMapper vs. Spring JDBC and MyBatis.
+**Object Mapping**
+- [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) — Independent comparison with Java mapping frameworks.
+- [Object Mapping Full Benchmarks](docs/performance/mapping.md) — MapStruct vs. CompiledMapper.
+- [JDBC Mapping Full Benchmarks](docs/performance/jdbc-mapping.md) — Spring JDBC and MyBatis vs. CompiledJdbcMapper.
 
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
-
 
 ## Contributing
 SJF4J is an evolving open-source project, and community feedback and contributions
