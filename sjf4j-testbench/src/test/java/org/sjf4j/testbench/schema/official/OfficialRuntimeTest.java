@@ -356,7 +356,7 @@ public final class OfficialRuntimeTest {
         System.out.println("Total    : " + suite.total);
         System.out.println("Passed   : " + suite.passed);
         System.out.println("Failed   : " + suite.failed);
-        System.out.println("Error    : " + suite.error);
+        if (suite.error > 0) System.out.println("Error    : " + suite.error);
         System.out.println("================================\n");
     }
 }
