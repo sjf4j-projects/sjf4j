@@ -50,6 +50,21 @@ equivalent fully materialized `List`:
 
 Core calls for the POJO workload (initialization/configuration omitted):
 
+**Spring JDBC**
+
+```java
+RowMapper<AccountBean> mapper = BeanPropertyRowMapper.newInstance(AccountBean.class);
+List<AccountBean> result = new RowMapperResultSetExtractor<>(mapper).extractData(rs);
+```
+
+**MyBatis**
+
+```java
+// A configured DefaultResultSetHandler with an Auto or Explicit ResultMap.
+List<AccountBean> result =
+        (List<AccountBean>) (List<?>) handler.handleResultSets(select);
+```
+
 **SJF4J Compiled**
 
 ```java
@@ -65,21 +80,6 @@ List<AccountBean> result = compiled.beans(rs);
 JdbcRowMapper<AccountBean> mapper = compiled.prepareBean(rs.getMetaData());
 List<AccountBean> rows = new ArrayList<>();
 while (rs.next()) rows.add(mapper.map(rs));
-```
-
-**Spring JDBC**
-
-```java
-RowMapper<AccountBean> mapper = BeanPropertyRowMapper.newInstance(AccountBean.class);
-List<AccountBean> result = new RowMapperResultSetExtractor<>(mapper).extractData(rs);
-```
-
-**MyBatis**
-
-```java
-// A configured DefaultResultSetHandler with an Auto or Explicit ResultMap.
-List<AccountBean> result =
-        (List<AccountBean>) (List<?>) handler.handleResultSets(select);
 ```
 
 Spring mappers/extractors and MyBatis handlers are constructed outside timed
