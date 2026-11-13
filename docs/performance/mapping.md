@@ -26,12 +26,12 @@ prepared outside timed methods.
 **MapStruct**
 
 ```java
-@org.mapstruct.Mapper
+@Mapper
 interface MapStructMapper {
-    @org.mapstruct.Mapping(target = "surname", source = "last")
-    @org.mapstruct.Mapping(target = "fullName",
+    @Mapping(target = "surname", source = "last")
+    @Mapping(target = "fullName",
             expression = "java(source.first() + \" \" + source.last())")
-    @org.mapstruct.Mapping(target = "ignored", ignore = true)
+    @Mapping(target = "ignored", ignore = true)
     FlatTarget flat(FlatSource source);
 }
 

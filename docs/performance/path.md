@@ -27,29 +27,27 @@ input Map are prepared outside query measurements.
 **Jayway JsonPath**
 
 ```java
-com.jayway.jsonpath.JsonPath path =
-        com.jayway.jsonpath.JsonPath.compile("$.store.book[1].price");
+JsonPath path = JsonPath.compile("$.store.book[1].price");
 Object price = path.read(map, Configuration.defaultConfiguration());
 ```
 
 **SJF4J Runtime**
-
 ```java
 JsonPath path = JsonPath.parse("$.store.book[1].price");
 Object price = path.getNode(map);
 ```
 
 **SJF4J Compiled**
-
 ```java
 @CompiledNavigator(fallback = true)
 interface MapPaths {
+    MapPaths INSTANCE = CompiledInstances.create(MapPaths.class);
+    
     @GetByPath("$.store.book[1].price")
     Object direct(Map<String, Object> root);
 }
 
-MapPaths paths = CompiledInstances.create(MapPaths.class);
-Object price = paths.direct(map);
+Object price = MapPaths.INSTANCE.direct(map);
 ```
 
 JSONPath expression parsing is measured separately; the query latency

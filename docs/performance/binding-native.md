@@ -31,24 +31,41 @@ a prebuilt `Users` object. **Read and Write are separate measured operations**,
 not a timed roundtrip. All mappers, binders and compiled instances are
 initialized outside timed methods.
 
-These calls run in the GraalVM **Native Image AOT executable**; the Java
-APIs are the same as on the JVM. **Native** means direct third-party library
-binding, not an additional AOT compilation mode.
-
-### Jackson2
-
-**Native (direct library)**
+**Jackson Native**
 
 ```java
 Users parsed = JACKSON2.readValue(input, Users.class);
 byte[] encoded = JACKSON2.writeValueAsBytes(value);
 ```
 
+**Jackson Blackbird**
+
+```java
+Users parsed = JACKSON2_BLACKBIRD.readValue(input, Users.class);
+byte[] encoded = JACKSON2_BLACKBIRD.writeValueAsBytes(value);
+```
+
+**Fastjson2 Native**
+
+```java
+Users parsed = JSON.parseObject(input, Users.class);
+byte[] encoded = JSON.toJSONBytes(value, JSONWriter.Feature.WriteNulls);
+```
+
+**Gson Native**
+
+```java
+Users parsed = GSON.fromJson(
+        new InputStreamReader(new ByteArrayInputStream(input), StandardCharsets.UTF_8),
+        Users.class);
+byte[] encoded = GSON.toJson(value).getBytes(StandardCharsets.UTF_8);
+```
+
 **SJF4J Runtime**
 
 ```java
 Jackson2Binder binder = new Jackson2Binder();
-Users parsed = (Users) binder.readNode(input, Users.class);
+Users parsed = binder.readNode(input, Users.class);
 byte[] encoded = binder.writeNodeAsBytes(value);
 ```
 
@@ -66,100 +83,6 @@ Users parsed = binder.readUsers(input);
 byte[] encoded = binder.writeUsers(value);
 ```
 
-### Jackson3
-
-**Native (direct library)**
-
-```java
-Users parsed = JACKSON3.readValue(input, Users.class);
-byte[] encoded = JACKSON3.writeValueAsBytes(value);
-```
-
-**SJF4J Runtime**
-
-```java
-Jackson3Binder binder = new Jackson3Binder();
-Users parsed = (Users) binder.readNode(input, Users.class);
-byte[] encoded = binder.writeNodeAsBytes(value);
-```
-
-**SJF4J Compiled**
-
-```java
-@CompiledBinder(backend = Backend.JACKSON3)
-interface Jackson3Binding {
-    @Read Users readUsers(byte[] input);
-    @Write byte[] writeUsers(Users value);
-}
-
-Jackson3Binding binder = CompiledInstances.create(Jackson3Binding.class);
-Users parsed = binder.readUsers(input);
-byte[] encoded = binder.writeUsers(value);
-```
-
-### Fastjson2
-
-**Native (direct library)**
-
-```java
-Users parsed = JSON.parseObject(input, Users.class);
-byte[] encoded = JSON.toJSONBytes(value, JSONWriter.Feature.WriteNulls);
-```
-
-**SJF4J Runtime**
-
-```java
-Fastjson2Binder binder = new Fastjson2Binder();
-Users parsed = (Users) binder.readNode(input, Users.class);
-byte[] encoded = binder.writeNodeAsBytes(value);
-```
-
-**SJF4J Compiled**
-
-```java
-@CompiledBinder(backend = Backend.FASTJSON2)
-interface Fastjson2Binding {
-    @Read Users readUsers(byte[] input);
-    @Write byte[] writeUsers(Users value);
-}
-
-Fastjson2Binding binder = CompiledInstances.create(Fastjson2Binding.class);
-Users parsed = binder.readUsers(input);
-byte[] encoded = binder.writeUsers(value);
-```
-
-### Gson
-
-**Native (direct library)**
-
-```java
-Users parsed = GSON.fromJson(
-        new InputStreamReader(new ByteArrayInputStream(input), StandardCharsets.UTF_8),
-        Users.class);
-byte[] encoded = GSON.toJson(value).getBytes(StandardCharsets.UTF_8);
-```
-
-**SJF4J Runtime**
-
-```java
-GsonBinder binder = new GsonBinder();
-Users parsed = (Users) binder.readNode(input, Users.class);
-byte[] encoded = binder.writeNodeAsBytes(value);
-```
-
-**SJF4J Compiled**
-
-```java
-@CompiledBinder(backend = Backend.GSON)
-interface GsonBinding {
-    @Read Users readUsers(byte[] input);
-    @Write byte[] writeUsers(Users value);
-}
-
-GsonBinding binder = CompiledInstances.create(GsonBinding.class);
-Users parsed = binder.readUsers(input);
-byte[] encoded = binder.writeUsers(value);
-```
 
 The snippets show the POJO shape; the benchmark also includes Clients and
 Map workloads. See

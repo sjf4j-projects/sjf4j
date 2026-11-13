@@ -23,17 +23,17 @@ Declared versions for the published benchmark (from the [benchmark source commit
 Core validation calls from the Creek benchmark (imports and fixture setup
 omitted). Schemas, validators, and inputs are prepared outside timed methods.
 
-**NetworkNT** (Jackson2 `JsonNode`)
+**NetworkNT**
 
 ```java
-com.networknt.schema.Schema validator = com.networknt.schema.SchemaRegistry
+Schema validator = SchemaRegistry
         .withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
         .getSchema(schema);
 validator.initializeValidators();
 boolean valid = validator.validate(jsonNode, OutputFormat.BOOLEAN);
 ```
 
-**SJF4J Runtime** (same Jackson2 `JsonNode`)
+**SJF4J Runtime**
 
 ```java
 SchemaPlan plan = JsonSchema.fromJson(schema)
@@ -41,17 +41,17 @@ SchemaPlan plan = JsonSchema.fromJson(schema)
 boolean valid = plan.isValid(jsonNode, false);
 ```
 
-**SJF4J Compiled** (POJO)
-
+**SJF4J Compiled**
 ```java
 @CompiledValidator(fallback = true)
 interface CreekValidator {
+    CreekValidator INSTANCE = CompiledInstances.create(CreekValidator.class);
+    
     @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
     boolean isValid(TestModel value);
 }
 
-CreekValidator validator = CompiledInstances.create(CreekValidator.class);
-boolean valid = validator.isValid(model);
+boolean valid = CreekValidator.INSTANCE.isValid(model);
 ```
 
 The compiled POJO example uses a different input representation from the

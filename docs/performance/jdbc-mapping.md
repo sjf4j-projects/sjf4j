@@ -77,8 +77,7 @@ List<AccountBean> result = new RowMapperResultSetExtractor<>(mapper).extractData
 
 ```java
 // A configured DefaultResultSetHandler with an Auto or Explicit ResultMap.
-List<AccountBean> result =
-        (List<AccountBean>) (List<?>) handler.handleResultSets(select);
+List<AccountBean> result = (List<AccountBean>) handler.handleResultSets(select);
 ```
 
 **SJF4J Compiled**
@@ -86,16 +85,14 @@ List<AccountBean> result =
 ```java
 @CompiledJdbcMapper
 interface AccountMapper {
+    AccountMapper INSTANCE = CompiledInstances.create(AccountMapper.class);
+
+    JdbcRowMapper<AccountBean> prepare(ResultSetMetaData metadata);
     List<AccountBean> beans(ResultSet rs);
-    JdbcRowMapper<AccountBean> prepareBean(ResultSetMetaData metadata);
 }
 
-List<AccountBean> result = compiled.beans(rs);
-
-// Row mode (with a fresh ResultSet):
-JdbcRowMapper<AccountBean> mapper = compiled.prepareBean(rs.getMetaData());
-List<AccountBean> rows = new ArrayList<>();
-while (rs.next()) rows.add(mapper.map(rs));
+JdbcRowMapper<AccountBean> mapper = AccountMapper.INSTANCE.prepare(rs.getMetaData());
+List<AccountBean> result = AccountMapper.INSTANCE.beans(rs);
 ```
 
 Spring mappers/extractors and MyBatis handlers are constructed outside timed
