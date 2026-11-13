@@ -101,15 +101,24 @@ final class FormatUtil {
     }
 
     static String convertIriToAscii(String iri) {
-        int schemeEnd = iri.indexOf(':') + 1;
-        String rest = iri.substring(schemeEnd);
-        if (rest.startsWith("//")) {
-            int pathStart = _authorityEnd(rest, 2);
-            String authority = pathStart >= 0 ? rest.substring(2, pathStart) : rest.substring(2);
-            String pathAndQuery = pathStart >= 0 ? rest.substring(pathStart) : "";
-            return iri.substring(0, schemeEnd) + "//" + _authorityToAscii(authority) + pathAndQuery;
+        // An authority exists only after leading "//" or a valid scheme followed
+        // immediately by "//". A later "://" in a relative path, query, or
+        // fragment is ordinary content, never a hostname.
+        final int authorityStart;
+        if (iri.startsWith("//")) {
+            authorityStart = 2;
+        } else if (hasIriScheme(iri)) {
+            int schemeEnd = iri.indexOf(':') + 1;
+            if (!iri.startsWith("//", schemeEnd)) return iri;
+            authorityStart = schemeEnd + 2;
+        } else {
+            return iri;
         }
-        return iri;
+
+        int end = _authorityEnd(iri, authorityStart);
+        String authority = end < 0 ? iri.substring(authorityStart) : iri.substring(authorityStart, end);
+        return iri.substring(0, authorityStart) + _authorityToAscii(authority)
+                + (end < 0 ? "" : iri.substring(end));
     }
 
     static String normalizeIdnHostnameSeparators(String value) {
