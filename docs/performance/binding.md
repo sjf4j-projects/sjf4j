@@ -10,7 +10,7 @@ GraalVM AOT results are documented separately in [Binding Native Image](binding-
 
 ## Comparison dependency versions
 
-The JVM v1.5.1-SNAPSHOT results use the following declared benchmark dependencies:
+**SJF4J version:** `v1.5.1-SNAPSHOT`. Other declared benchmark dependencies:
 
 | Backend | Benchmark dependency versions |
 | --- | --- |
