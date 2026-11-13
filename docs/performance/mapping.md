@@ -1,9 +1,21 @@
 # Mapping performance baseline
 
 SJF4J **CompiledMapper** versus **MapStruct** for Java object mapping.
-This suite deliberately compares only two compile-time generated implementations;
-it does not rank unrelated runtime mappers, JSON binding, or JDBC mapping.
-The primary workload is `MappingFullBenchmark`.
+The suite measures compile-time generated mappings of preconstructed objects,
+excluding JSON binding and JDBC mapping; it does not compare runtime mappers.
+The primary workload is
+[`MappingFullBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/MappingFullBenchmark.java).
+
+## Comparison dependency versions
+
+**SJF4J version:** `v1.5.1-SNAPSHOT`.
+
+| Component | Version | Role |
+| --- | --- | --- |
+| MapStruct API and annotation processor | `1.6.3` | External compile-time Java mapping comparison |
+| JMH | `1.37` | Benchmark harness |
+
+Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j-testbench/build.gradle.kts). Record the exact source commit for every new performance snapshot; later dependency changes do not retroactively change historical results.
 
 ## Code examples
 
@@ -43,15 +55,6 @@ FlatTarget result = CompiledInstances.create(Sjf4jMapper.class).flat(source);
 
 See [`MappingFullBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/MappingFullBenchmark.java)
 for the Order, collection, JSON and other POJO cases.
-
-## Comparison dependency versions
-
-| Component | Version | Role |
-| --- | --- | --- |
-| MapStruct API and annotation processor | `1.6.3` | External compile-time Java mapping comparison |
-| JMH | `1.37` | Benchmark harness |
-
-Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://github.com/sjf4j-projects/sjf4j/blob/main/sjf4j-testbench/build.gradle.kts). Record the exact source commit for every new performance snapshot; later dependency changes do not retroactively change historical results.
 
 ## JVM — Temurin JDK 25
 

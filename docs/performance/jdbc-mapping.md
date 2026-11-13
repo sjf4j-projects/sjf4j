@@ -46,7 +46,23 @@ equivalent fully materialized `List`:
   Cursor iterates a MyBatis cursor into a List. There is no equivalent
   direct MyBatis RowMapper case or Record comparison.
 
-### Mapping code examples
+## Comparison dependency versions
+
+**SJF4J version:** `v1.5.1-SNAPSHOT`.
+
+| Component | Version | Benchmark implementation |
+| --- | --- | --- |
+| Spring JDBC | `6.2.19` | `BeanPropertyRowMapper`, `DataClassRowMapper`, `ColumnMapRowMapper`, `RowMapperResultSetExtractor` |
+| MyBatis | `3.5.19` | `DefaultResultSetHandler`, Auto/Explicit ResultMap and Cursor |
+| H2 | `2.3.232` | In-memory JDBC ResultSet provider |
+| JMH | `1.37` | Benchmark harness |
+
+These are testbench dependencies in
+[`sjf4j-testbench/build.gradle.kts`](../../sjf4j-testbench/build.gradle.kts),
+not SJF4J production dependencies.
+
+
+## Code examples
 
 Core calls for the POJO workload (initialization/configuration omitted):
 
@@ -242,19 +258,6 @@ Cursor results are fully collected. Only POJO and Map List workloads apply.
 fork-spread threshold: SJF4J Map/List **1.18×**, SJF4J Map/Row **1.18×**,
 and Spring Map/Row **1.19×**. Interpret small Map differences cautiously.
 The full per-fork measurements are in the linked artifact.
-
-## Comparison dependency versions
-
-| Component | Version | Benchmark implementation |
-| --- | --- | --- |
-| Spring JDBC | `6.2.19` | `BeanPropertyRowMapper`, `DataClassRowMapper`, `ColumnMapRowMapper`, `RowMapperResultSetExtractor` |
-| MyBatis | `3.5.19` | `DefaultResultSetHandler`, Auto/Explicit ResultMap and Cursor |
-| H2 | `2.3.232` | In-memory JDBC ResultSet provider |
-| JMH | `1.37` | Benchmark harness |
-
-These are testbench dependencies in
-[`sjf4j-testbench/build.gradle.kts`](../../sjf4j-testbench/build.gradle.kts),
-not SJF4J production dependencies.
 
 ## Methodology and limitations
 

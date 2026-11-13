@@ -1,7 +1,22 @@
 # Path performance baseline
 
-SJF4J JSONPath performance compared with Jayway JsonPath 3.0.0.
-The primary suite is `PathFullBenchmark`; `JsonPathBenchmark` remains a separate exploratory benchmark with independent fixtures and methods.
+SJF4J **Runtime** and **CompiledNavigator** versus **Jayway JsonPath** for
+read-only JSONPath queries on prebuilt Bookstore fixtures; path compilation is
+excluded from query latency and benchmarked separately. The primary workload is
+[`PathFullBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/path/PathFullBenchmark.java);
+`JsonPathBenchmark` is a separate exploratory suite.
+
+## Comparison dependency versions
+
+**SJF4J version:** `v1.5.0`.
+
+Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
+
+| Component | Version | Role |
+| --- | --- | --- |
+| Jayway JsonPath | `3.0.0` | External JSONPath comparison |
+| Jackson2 Databind | `2.22.3` | JsonNode input for the Jackson2 JsonNode group |
+| JMH | `1.37` | Benchmark harness |
 
 ## Code examples
 
@@ -41,16 +56,6 @@ JSONPath expression parsing is measured separately; the query latency
 benchmarks reuse pre-parsed paths. See
 [`PathFullBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/path/PathFullBenchmark.java)
 for wildcard, filter, descendant, slice and other input representations.
-
-## Comparison dependency versions
-
-Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
-
-| Component | Version | Role |
-| --- | --- | --- |
-| Jayway JsonPath | `3.0.0` | External JSONPath comparison |
-| Jackson2 Databind | `2.22.3` | JsonNode input for the Jackson2 JsonNode group |
-| JMH | `1.37` | Benchmark harness |
 
 ## JVM — Temurin JDK 25
 
