@@ -5,6 +5,45 @@ This suite deliberately compares only two compile-time generated implementations
 it does not rank unrelated runtime mappers, JSON binding, or JDBC mapping.
 The primary workload is `MappingFullBenchmark`.
 
+## Code examples
+
+Representative **Flat POJO** mapping with rename, computed field and ignored
+property (imports and fixture setup omitted). Mappers and source objects are
+prepared outside timed methods.
+
+**MapStruct**
+
+```java
+@org.mapstruct.Mapper
+interface MapStructMapper {
+    @org.mapstruct.Mapping(target = "surname", source = "last")
+    @org.mapstruct.Mapping(target = "fullName",
+            expression = "java(source.first() + \" \" + source.last())")
+    @org.mapstruct.Mapping(target = "ignored", ignore = true)
+    FlatTarget flat(FlatSource source);
+}
+
+FlatTarget result = Mappers.getMapper(MapStructMapper.class).flat(source);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledMapper
+interface Sjf4jMapper {
+    @Mapping(target = "surname", source = "last")
+    @Mapping(target = "fullName", sources = {"first", "last"},
+            compute = "(first, last) -> first + \" \" + last")
+    @Mapping(target = "ignored", ignore = true)
+    FlatTarget flat(FlatSource source);
+}
+
+FlatTarget result = CompiledInstances.create(Sjf4jMapper.class).flat(source);
+```
+
+See [`MappingFullBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/mapping/MappingFullBenchmark.java)
+for the Order, collection, JSON and other POJO cases.
+
 ## Comparison dependency versions
 
 | Component | Version | Role |
