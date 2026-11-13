@@ -310,7 +310,7 @@ public final class UserNavigator_Impl implements UserNavigator {
 }
 ```
 
-SJF4J generates optimized Java implementations at compile time, producing readable, debuggable source code that the JVM can optimize just like hand-written code.
+This implementation is automatically generated at compile-time, producing readable, debuggable Java source code that the JVM can optimize just like hand-written code.
 
 
 ### Where's the Code
