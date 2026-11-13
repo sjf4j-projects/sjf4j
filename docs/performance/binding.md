@@ -404,8 +404,9 @@ remain exploratory.
   (100KB, both seeds); **Quick** diagnoses performance; **Full** establishes release
   baselines. Quick and Full execute the **same** case matrix, differing only in
   JMH fork, warmup and measurement parameters. Smoke is never a baseline.
-- **Suite version: 3** for new runs: the JVM Quick/Full default has one seed.
-  Historical v1.5.0 results used suite 2 and two seeds. Workload, generator,
+- **Suite version: 3**: JVM Quick/Full now default to two seeds (`12345,324`).
+  Earlier suite 3 runs defaulted to one seed; historical v1.5.0 results used
+  suite 2 and two seeds. Workload, generator,
   target semantics, or measured boundary changes require another version bump.
   Never compare different seed aggregation or suite versions as a controlled A/B test.
 - Compare measurements on the same hardware, OS, JDK build, inputs, and settings.
@@ -443,8 +444,8 @@ command-line arguments override these defaults.
 
 **Quick and Full use identical cases:** all 7 backends; Runtime / Compiled
 for every backend; Native for Jackson2, Jackson3, Fastjson2, Gson and SnakeYAML; Blackbird for Jackson2 and Jackson3; Users / Clients; POJO / Map;
-1/10/100KB; seed 12345 by default (**504 cases**). Set
-`BINDING_SEEDS=12345,324` for an optional extended 1,008-case run.
+1/10/100KB; seeds 12345 and 324 by default (**1,008 cases**). Set
+`BINDING_SEEDS=12345` for an optional 504-case single-seed run.
 Smoke still checks **both** seeds at 100KB and remains 336 cases.
 
 | JMH setting | Smoke | Quick | Full |
@@ -453,7 +454,7 @@ Smoke still checks **both** seeds at 100KB and remains 336 cases.
 | Warmup | 0 | 2 × 0.2s | 5 × 1s |
 | Measurement | 1 × 0.05s | 2 × 0.2s | 5 × 1s |
 | Data size | 100KB | 1/10/100KB | 1/10/100KB |
-| Seeds | 12345/324 | 12345 | 12345 |
+| Seeds | 12345/324 | 12345/324 | 12345/324 |
 | Backend / implementation / model / shape | Same | Same | Same |
 | GC profiler | No | Yes | Yes |
 
@@ -481,8 +482,8 @@ On macOS the script invokes `caffeinate -i` around each backend to inhibit idle
 sleep, but **closing a MacBook lid can still suspend the benchmark**. Keep the
 lid open, use AC power, and discard results from a run interrupted by sleep.
 After a successful Full run there should be **7 per-backend JSON files plus 1
-`.meta.md`**, for **504** JMH benchmark entries (including Read and Write) by default.
-The optional two-seed Full produces **1,008** entries.
+`.meta.md`**, for **1,008** JMH benchmark entries (including Read and Write) by default.
+An optional single-seed Full (`BINDING_SEEDS=12345`) produces **504** entries.
 
 ## GitHub Actions Full (exploratory)
 
@@ -549,10 +550,11 @@ For AverageTime (`us/op`, lower is better):
    **within each fork** (`primaryMetric.rawData`: 3 arrays of 5 values).
 2. Drop the **single slowest fork** (the **highest** fork mean). Average the
    remaining two fork means: `best2(seed, implementation, case)`.
-3. For **suite 3** default results, report `best2` for seed `12345`.
-   For historical **suite 2** results, or optional extended runs with
-   `BINDING_SEEDS=12345,324`, average the two seed-specific `best2` scores
-   with **equal weight**. Retain individual-seed results for drilldown.
+3. For current **suite 3** default results (`BINDING_SEEDS=12345,324`),
+   average the two seed-specific `best2` scores with **equal weight**.
+   Historical **suite 2** two-seed results use the same aggregation.
+   For earlier single-seed suite 3 runs (or `BINDING_SEEDS=12345`),
+   report `best2` for seed `12345`. Retain individual-seed results for drilldown.
 
 **Do not share the excluded fork across implementations or cases.** Native,
 Blackbird, Runtime and Compiled each select their own best two forks, as does
