@@ -122,6 +122,32 @@ class JdbcMappingIntegrationTest {
     }
 
     @Test
+    void listMethodsGenerateIndependentPreparedRowMapperHelpers() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Mapper.java",
+                "package fixture;\\n"
+                        + "import java.sql.ResultSet;\\n"
+                        + "import java.util.List;\\n"
+                        + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\\n"
+                        + "@CompiledJdbcMapper public interface Mapper {\\n"
+                        + "  List<User> users(ResultSet rs);\\n"
+                        + "  List<User> moreUsers(ResultSet rs);\\n"
+                        + "  default int _prepareUsers() { return 0; }\\n"
+                        + "}\\n",
+                "fixture/User.java",
+                "package fixture; public class User { public String userName; }"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(source.contains("private org.sjf4j.mapping.JdbcRowMapper<fixture.User> _prepareUsers2("), source);
+        assertTrue(source.contains("private org.sjf4j.mapping.JdbcRowMapper<fixture.User> _prepareMoreUsers("), source);
+        assertTrue(source.contains("result.add(rowMapper.map(rs));"), source);
+        assertTrue(source.contains("while (rs.next())"), source);
+        assertTrue(source.contains("return rowSet -> {"), source);
+    }
+
+    @Test
     void rejectsLegacyCurrentRowSignature() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Mapper.java",
