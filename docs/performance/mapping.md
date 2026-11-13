@@ -27,7 +27,7 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 #### Order
 
-**Sample:** An order with customer billing/shipping addresses and products, mapped to a flattened DTO. Classic uses two fixed products; Extended also reads `Map`/`JsonObject` fields and scales the product list with input size.
+**Sample:** Classic Order is an independently authored version of the [Arey Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark): customer, billing/shipping addresses and two products mapped to a flattened DTO. Extended Order adds `Map`/`JsonObject` fields and a size-scaled product list.
 
 **Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -188,12 +188,9 @@ costs.
 The isolated cases are **not additive**: Item + List ≠ Extended Order.
 JIT inlining, allocation and call-site profiles depend on context.
 
-**The Classic model** follows the JavaBean shape and fixed two-product fixture
-from [arey/java-object-mapper-benchmark](https://github.com/arey/java-object-mapper-benchmark).
-It is an independently authored implementation of that workload, not a direct copy
-of third-party source code or a claim of score comparability across repositories.
-The classic fixture does not change with payload size. Empty/partial order semantics
-are verification concerns, not separate headline performance cases.
+The Classic Order scores are not directly comparable with results from the
+Arey repository. Empty/partial orders are checked for correctness, not timed
+as separate workloads.
 
 The "KB" sizes control deterministic approximate JSON-equivalent **source graph**
 size, not a serialized input; mapping benchmarks exclude serialization entirely.
