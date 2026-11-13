@@ -12,7 +12,7 @@ Usage: $0 <smoke|quick|full> [output-directory]
 
 Quick/Full results default to build/performance/binding/.
 Optional env: BINDING_BACKEND=<backend> selects one backend for quick/full;
-              BINDING_SEEDS=12345,324 restores the extended two-seed matrix;
+              BINDING_SEEDS=12345 overrides the default two-seed matrix (12345,324);
               BINDING_SKIP_BUILD=1 reuses a prebuilt JMH jar.
 Smoke leaves no result or metadata files.
 EOF
@@ -34,7 +34,7 @@ fi
 PROFILE="$1"
 OUT_DIR="${2:-build/performance/binding}"
 BINDING_BACKEND="${BINDING_BACKEND:-all}"
-BINDING_SEEDS="${BINDING_SEEDS:-12345}"
+BINDING_SEEDS="${BINDING_SEEDS:-12345,324}"
 if ! [[ "$BINDING_SEEDS" =~ ^[0-9]+(,[0-9]+)*$ ]]; then
   echo "BINDING_SEEDS must be a comma-separated list of integer seeds." >&2
   exit 2
