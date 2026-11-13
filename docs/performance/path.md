@@ -8,6 +8,8 @@ excluded from query latency and benchmarked separately. The primary workload is
 
 ## Comparison dependency versions
 
+**SJF4J version:** `v1.5.0`.
+
 Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
 
 | Component | Version | Role |
