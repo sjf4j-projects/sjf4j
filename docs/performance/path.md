@@ -6,7 +6,7 @@ The primary suite is `PathFullBenchmark`; `JsonPathBenchmark` remains a separate
 ## Code examples
 
 Representative **Map / List direct lookup** for `$.store.book[1].price`
-(imports and fixture setup omitted). The parsed paths, compiled mapper and
+(imports and fixture setup omitted). The parsed paths, compiled navigator and
 input Map are prepared outside query measurements.
 
 **Jayway JsonPath**
