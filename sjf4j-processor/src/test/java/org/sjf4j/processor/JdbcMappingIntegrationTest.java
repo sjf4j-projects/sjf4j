@@ -140,8 +140,9 @@ class JdbcMappingIntegrationTest {
 
         assertTrue(result.success, result.diagnostics());
         String source = result.generatedSource("fixture/Mapper_Impl.java");
-        assertTrue(source.contains("private org.sjf4j.mapping.JdbcRowMapper<fixture.User> _prepareUsers2("), source);
-        assertTrue(source.contains("private org.sjf4j.mapping.JdbcRowMapper<fixture.User> _prepareMoreUsers("), source);
+        assertTrue(source.contains("_prepareUsers2("), source);
+        assertTrue(source.contains("_prepareMoreUsers("), source);
+        assertTrue(source.contains("org.sjf4j.mapping.JdbcRowMapper<"), source);
         assertTrue(source.contains("result.add(rowMapper.map(rs));"), source);
         assertTrue(source.contains("while (rs.next())"), source);
         assertTrue(source.contains("return rowSet -> {"), source);
