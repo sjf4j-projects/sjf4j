@@ -3,6 +3,45 @@
 SJF4J JSONPath performance compared with Jayway JsonPath 3.0.0.
 The primary suite is `PathFullBenchmark`; `JsonPathBenchmark` remains a separate exploratory benchmark with independent fixtures and methods.
 
+## Code examples
+
+Representative **Map / List direct lookup** for `$.store.book[1].price`
+(imports and fixture setup omitted). The parsed paths, compiled mapper and
+input Map are prepared outside query measurements.
+
+**Jayway JsonPath**
+
+```java
+com.jayway.jsonpath.JsonPath path =
+        com.jayway.jsonpath.JsonPath.compile("$.store.book[1].price");
+Object price = path.read(map, Configuration.defaultConfiguration());
+```
+
+**SJF4J Runtime**
+
+```java
+JsonPath path = JsonPath.parse("$.store.book[1].price");
+Object price = path.getNode(map);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledNavigator(fallback = true)
+interface MapPaths {
+    @GetByPath("$.store.book[1].price")
+    Object direct(Map<String, Object> root);
+}
+
+MapPaths paths = CompiledInstances.create(MapPaths.class);
+Object price = paths.direct(map);
+```
+
+JSONPath expression parsing is measured separately; the query latency
+benchmarks reuse pre-parsed paths. See
+[`PathFullBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/path/PathFullBenchmark.java)
+for wildcard, filter, descendant, slice and other input representations.
+
 ## Comparison dependency versions
 
 Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/148b26e881d6fad2fcb2a06684a779c0880c6baf)):
