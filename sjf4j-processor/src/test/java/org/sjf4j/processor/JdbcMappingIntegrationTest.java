@@ -128,10 +128,13 @@ class JdbcMappingIntegrationTest {
                 "package fixture;\n"
                         + "import java.sql.ResultSet;\n"
                         + "import java.util.List;\n"
+                        + "import java.util.Map;\n"
                         + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\n"
                         + "@CompiledJdbcMapper public interface Mapper {\n"
-                        + "  List<User> users(ResultSet rs);\n"
-                        + "  List<User> moreUsers(ResultSet rs);\n"
+                        + "  List<User> users(ResultSet result);\n"
+                        + "  List<User> moreUsers(ResultSet rowMapper);\n"
+                        + "  List<User> plainUsers(ResultSet rs);\n"
+                        + "  List<Map<String, Object>> mapRows(ResultSet metadata);\n"
                         + "  default int _prepareUsers() { return 0; }\n"
                         + "}\n",
                 "fixture/User.java",
@@ -142,9 +145,12 @@ class JdbcMappingIntegrationTest {
         String source = result.generatedSource("fixture/Mapper_Impl.java");
         assertTrue(source.contains("_prepareUsers2("), source);
         assertTrue(source.contains("_prepareMoreUsers("), source);
+        assertTrue(source.contains("_prepareMapRows("), source);
         assertTrue(source.contains("org.sjf4j.mapping.JdbcRowMapper<"), source);
+        assertTrue(source.contains("result2.add(rowMapper.map(result));"), source);
+        assertTrue(source.contains("result.add(rowMapper2.map(rowMapper));"), source);
         assertTrue(source.contains("result.add(rowMapper.map(rs));"), source);
-        assertTrue(source.contains("while (rs.next())"), source);
+        assertTrue(source.contains("java.sql.ResultSetMetaData metadata2 = metadata.getMetaData();"), source);
         assertTrue(source.contains("return rowSet -> {"), source);
     }
 
