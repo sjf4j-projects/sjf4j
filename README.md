@@ -365,20 +365,16 @@ String city = UserNavigator.INSTANCE.getCity(user);
 
 SJF4J's performance and standards compliance are evaluated through independent comparisons and [JMH](https://github.com/openjdk/jmh) benchmarks.
 
-**JSON Binding**
-- [Binding Full Benchmarks](docs/performance/binding.md) — Runtime and Compiled vs. native JSON backends.
-
-**JSONPath Navigation**
+**Independent Comparisons**
 - [JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/) — Cross-implementation specification compatibility.
-- [JSONPath Full Benchmarks](docs/performance/path.md) — Runtime and Compiled vs. Jayway JsonPath.
-
-**JSON Schema Validation**
 - [Creek Service](https://www.creekservice.org/json-schema-validation-comparison/) — Independent JVM validation benchmarks.
 - [Bowtie](https://bowtie.report/) — Cross-language JSON Schema compliance.
-- [JSON Schema Full Benchmarks](docs/performance/schema.md) — Runtime and Compiled vs. NetworkNT, including roundtrip performance.
-
-**Object Mapping**
 - [Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) — Independent comparison with Java mapping frameworks.
+
+**SJF4J Full Benchmarks**
+- [Binding Full Benchmarks](docs/performance/binding.md) — Runtime and Compiled vs. native JSON backends.
+- [JSONPath Full Benchmarks](docs/performance/path.md) — Runtime and Compiled vs. Jayway JsonPath.
+- [JSON Schema Full Benchmarks](docs/performance/schema.md) — Runtime and Compiled vs. NetworkNT, including roundtrip performance.
 - [Object Mapping Full Benchmarks](docs/performance/mapping.md) — CompiledMapper vs. MapStruct.
 - [JDBC Mapping Full Benchmarks](docs/performance/jdbc-mapping.md) — CompiledJdbcMapper vs. Spring JDBC and MyBatis.
 
