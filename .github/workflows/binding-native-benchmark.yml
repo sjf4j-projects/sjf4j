@@ -129,7 +129,7 @@ jobs:
     timeout-minutes: 300
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 8
       matrix:
         backend: ${{ fromJSON(((github.event_name == 'workflow_dispatch' && inputs.mode == 'serial') || (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]'))) && '["all"]' || '["jackson2","jackson3","fastjson2","gson"]') }}
     env:
