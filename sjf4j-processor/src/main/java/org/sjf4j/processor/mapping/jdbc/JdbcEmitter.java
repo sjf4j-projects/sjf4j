@@ -66,6 +66,13 @@ public final class JdbcEmitter {
         JdbcPlan plan = method.plan();
         String rs = plan.inputParameter().getSimpleName().toString();
         String type = plan.rowType().toString();
+        NameAllocator names = new NameAllocator();
+        for (VariableElement parameter : plan.method().getParameters()) {
+            names.reserve(parameter.getSimpleName().toString());
+        }
+        String result = names.newName("result");
+        String rowMapper = names.newName("rowMapper");
+        String metadata = names.newName("metadata");
 
         out.blank();
         out.line("@Override");
@@ -74,28 +81,29 @@ public final class JdbcEmitter {
         out.line("org.sjf4j.util.Asserts.notNull(" + rs + ", " + stringLiteral(rs) + ");");
         out.line("try {");
         out.indent();
-        out.line("java.util.List<" + type + "> result = new java.util.ArrayList<" + type + ">();");
+        out.line("java.util.List<" + type + "> " + result
+                + " = new java.util.ArrayList<" + type + ">();");
         if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP) {
             // Preserve empty Map List semantics: no column labels are read.
-            out.line("java.sql.ResultSetMetaData metadata = " + rs + ".getMetaData();");
-            out.line("if (!" + rs + ".next()) return result;");
-            out.line("org.sjf4j.mapping.JdbcRowMapper<" + type + "> rowMapper = "
-                    + helper + "(metadata);");
+            out.line("java.sql.ResultSetMetaData " + metadata + " = " + rs + ".getMetaData();");
+            out.line("if (!" + rs + ".next()) return " + result + ";");
+            out.line("org.sjf4j.mapping.JdbcRowMapper<" + type + "> " + rowMapper + " = "
+                    + helper + "(" + metadata + ");");
             out.line("do {");
             out.indent();
-            out.line("result.add(rowMapper.map(" + rs + "));");
+            out.line(result + ".add(" + rowMapper + ".map(" + rs + "));");
             out.dedent();
             out.line("} while (" + rs + ".next());");
         } else {
-            out.line("org.sjf4j.mapping.JdbcRowMapper<" + type + "> rowMapper = "
+            out.line("org.sjf4j.mapping.JdbcRowMapper<" + type + "> " + rowMapper + " = "
                     + helper + "(" + rs + ".getMetaData());");
             out.line("while (" + rs + ".next()) {");
             out.indent();
-            out.line("result.add(rowMapper.map(" + rs + "));");
+            out.line(result + ".add(" + rowMapper + ".map(" + rs + "));");
             out.dedent();
             out.line("}");
         }
-        out.line("return result;");
+        out.line("return " + result + ";");
         out.dedent();
         out.line("} catch (java.sql.SQLException e) {");
         out.indent();
