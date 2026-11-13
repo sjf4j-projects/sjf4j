@@ -329,18 +329,9 @@ public final class JdbcEmitter {
         }
 
         // List methods are generated separately via a prepared JdbcRowMapper.
-            emitSingle(
-                           out,
-                           names,
-                            method,
-                            resultSet,
-                            metadata,
-                           columnCount,
-                           columns,
-                           indexes,
-                           columnCount,
-                           labels,
-                           consumed);
+        emitSingle(out, names, method, resultSet, metadata, columnCount, columns,
+                indexes, columnCount, labels, consumed);
+
         out.dedent();
         out.line(
                 "} catch (java.sql.SQLException e) {");
