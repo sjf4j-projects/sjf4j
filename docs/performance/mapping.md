@@ -27,6 +27,8 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 #### Order
 
+**Sample:** An order with customer billing/shipping addresses and products, mapped to a flattened DTO. Classic uses two fixed products; Extended also reads `Map`/`JsonObject` fields and scales the product list with input size.
+
 **Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
 | Case | Size | MapStruct | Compiled | MapStruct / Compiled |
@@ -46,6 +48,8 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 | Extended Order (including products) | 100KB | 35,184 | 35,184 | 1.00× |
 
 #### POJO
+
+**Sample:** Small Java objects/records mapped through direct field copy, rename/compute, nested and multi-source mapping, or in-place update that ignores null values. These are fixed-size cases.
 
 **Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -68,6 +72,8 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 | Update / null ignore | — | 0 | 0 | — |
 
 #### Collection
+
+**Sample:** `Item(sku, name, quantity, price)` → `ItemDto`, measured individually and inside `ArrayList`, `LinkedList`, `Map`, or a Map containing one or eight Lists. Collection sizes scale with 1/10/100KB.
 
 **Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -112,6 +118,8 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 | Map with 8 short Lists | 100KB | 35,888 | 35,888 | 1.00× |
 
 #### JSON
+
+**Sample:** `Map<String,Object>` or `JsonObject` → `JsonTarget(sku, name, count)`. Only these three fields are mapped; extra unused fields increase the source size to 1/10/100KB.
 
 **Latency (ns/op, lower is better).** MapStruct is compared separately with CAST and STRICT. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
