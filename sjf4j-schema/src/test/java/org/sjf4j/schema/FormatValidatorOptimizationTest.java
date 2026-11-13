@@ -131,6 +131,30 @@ class FormatValidatorOptimizationTest {
     }
 
     @Test
+    void iriAuthorityNormalizationDoesNotInspectRelativePathQueryOrFragment() {
+        // In a relative reference, a colon outside the first path segment
+        // and any subsequent slashes are path content, not an authority.
+        for (String reference : new String[]{
+                "relative/path://a..é/",
+                "relative/path://a..é/?q=ü",
+                "relative?next://a..é/path",
+                "relative#next://a..é/path",
+                "scheme:relative/path://a..é/"
+        }) {
+            assertTrue(FormatUtil.validateIriReference(reference), reference);
+            assertTrue(FormatUtil.convertIriToAscii(reference).equals(reference), reference);
+        }
+        assertTrue(FormatUtil.validateIri("scheme:relative/path://a..é/"));
+
+        // A genuine authority at the beginning or after scheme:// must
+        // still undergo IDNA validation and normalization.
+        assertTrue(FormatUtil.validateIriReference("//bücher.example/path://a..é/"));
+        assertTrue(FormatUtil.validateIri("scheme://bücher.example/path://a..é/"));
+        assertFalse(FormatUtil.validateIriReference("//a..é/"));
+        assertFalse(FormatUtil.validateIri("scheme://a..é/"));
+    }
+
+    @Test
     void preservesDurationGrammarWithDirectParser() {
         assertTrue(FormatValidator._validateDuration("P1W"));
         assertTrue(FormatValidator._validateDuration("p1y2m3dt4h5m6s"));
