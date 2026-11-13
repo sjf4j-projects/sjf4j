@@ -2,6 +2,61 @@
 
 SJF4J JSON Schema validation and roundtrip performance, using the Creek model and JSON Schema Draft 2020-12. The primary workload is `CreekSchemaBenchmark`.
 
+## Code examples
+
+Core calls for the Creek POJO/Map validation and POJO roundtrip workloads
+(imports, fixture loading, and JMH setup omitted). The schema plan, mappers,
+and generated implementations are prepared outside timed methods.
+
+**SJF4J Runtime**
+
+```java
+SchemaPlan plan = JsonSchema.fromJson(schema)
+        .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
+
+boolean pojoValid = plan.isValid(model, false);
+boolean mapValid = plan.isValid(mapNode, false);
+
+// Roundtrip with validation (Jackson2 binding):
+byte[] bytes = JACKSON.writeValueAsBytes(model);
+TestModel result = JACKSON.readValue(bytes, TestModel.class);
+boolean roundtripValid = plan.isValid(result, false);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledValidator(fallback = true)
+interface CreekValidator {
+    @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
+    boolean isValid(TestModel value);
+
+    @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
+    boolean isValid(Map<String, Object> value);
+}
+
+@CompiledBinder(backend = Backend.JACKSON2)
+interface CreekBinder {
+    @Write byte[] writeTestModel(TestModel value) throws IOException;
+    @Read TestModel readTestModel(byte[] bytes) throws IOException;
+}
+
+CreekValidator validator = CompiledInstances.create(CreekValidator.class);
+CreekBinder binder = CompiledInstances.create(CreekBinder.class);
+
+boolean pojoValid = validator.isValid(model);
+boolean mapValid = validator.isValid(mapNode);
+
+// Roundtrip with validation (compiled binding):
+byte[] bytes = binder.writeTestModel(model);
+TestModel result = binder.readTestModel(bytes);
+boolean roundtripValid = validator.isValid(result);
+```
+
+The compiled validator's default non-strict `format` handling matches
+`plan.isValid(..., false)`. For the exact benchmark methods and setup, see
+[`CreekSchemaBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java).
+
 ## Comparison dependency versions
 
 Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f)):
