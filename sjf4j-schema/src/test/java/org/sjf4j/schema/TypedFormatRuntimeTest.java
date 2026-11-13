@@ -79,7 +79,9 @@ class TypedFormatRuntimeTest {
         assertFalse(uri.isValid(badPort, true));
         assertFalse(ref.isValid(badPort, true));
         assertFalse(uri.isValid(unicode, true));
-        assertFalse(ref.isValid(empty, true));
+        // RFC 3986 permits an empty relative reference (path-empty).
+        assertTrue(ref.isValid(empty, true));
+        assertFalse(uri.isValid(empty, true));
         assertTrue(uri.isValid(relative, false));
         assertTrue(ref.isValid(badPort, false));
     }
