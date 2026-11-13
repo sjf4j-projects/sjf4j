@@ -7,6 +7,56 @@ so regular tests can reuse them.
 
 GraalVM AOT executable results are documented separately in [Binding Native Image](binding-native.md).
 
+## Code examples
+
+Representative **Users POJO** read/write calls using the Jackson2 backend
+(imports and fixture setup omitted). Backend instances are created outside
+timed methods; Read consumes a prebuilt `byte[]`, and Write produces a new
+`byte[]`.
+
+**Jackson2 Native**
+
+```java
+ObjectMapper mapper = new ObjectMapper();
+Users users = mapper.readValue(input, Users.class);
+byte[] output = mapper.writeValueAsBytes(users);
+```
+
+**Jackson2 Blackbird**
+
+```java
+ObjectMapper mapper = new ObjectMapper().registerModule(new BlackbirdModule());
+Users users = mapper.readValue(input, Users.class);
+byte[] output = mapper.writeValueAsBytes(users);
+```
+
+**SJF4J Runtime**
+
+```java
+Jackson2Binder binder = new Jackson2Binder();
+Users users = (Users) binder.readNode(input, Users.class);
+byte[] output = binder.writeNodeAsBytes(users);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledBinder(backend = Backend.JACKSON2)
+interface UsersBinder {
+    @Read Users readUsers(byte[] input);
+    @Write byte[] writeUsers(Users value);
+}
+
+UsersBinder binder = CompiledInstances.create(UsersBinder.class);
+Users users = binder.readUsers(input);
+byte[] output = binder.writeUsers(users);
+```
+
+The benchmark also covers Clients, Map and other backends. See
+[`FabienBindings`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienBindings.java)
+and [`FabienNative`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienNative.java)
+for the actual dispatch and backend configurations.
+
 ## Comparison dependency versions
 
 The JVM v1.5.1-SNAPSHOT results use the following declared benchmark dependencies:
