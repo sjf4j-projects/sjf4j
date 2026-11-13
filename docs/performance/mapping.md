@@ -18,14 +18,11 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 ### Results — v1.5.1-SNAPSHOT (2026-11-12)
 
-**Full JMH on Temurin 25.0.5 · 3 independent forks · Best 2 Mean · one runner · 1/10/100KB.**
-[GitHub Actions run #43163182761](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761) completed all **70 original suite-3 measurements**. The **68 retained measurements** from that run are reported below; the removed workload is omitted. The current benchmark suite is **version 4** (68 measurements), so this historical run should not be described as a newly executed suite-4 run. Raw JSON, execution metadata and fork-level results remain in the Actions artifacts.
+**Full JMH · 3 independent forks · Best 2 Mean.** [GitHub Actions run #43163182761](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761) completed 70 suite-3 measurements; the **68 retained measurements** are reported below (not a new suite-4 run).
 
-**Environment:** Ubuntu 24.04 GitHub-hosted shared runner, AMD EPYC 9V74, 4 logical CPUs, no requested CPU affinity, Temurin 25.0.5, JMH 1.37, one measurement thread, 5 × 1s warmup and 5 × 1s measurement per fork. These results are **exploratory**, not a controlled hardware release baseline.
+**Comparison:** MapStruct 1.6.3 versus SJF4J CompiledMapper. Both map equivalent, preconstructed objects. A **MapStruct / Compiled** ratio above **1×** means SJF4J is faster.
 
-**Comparison:** MapStruct 1.6.3 versus SJF4J CompiledMapper. Both implementations map preconstructed and equivalent inputs; serialization, fixture preparation and mapper instantiation are outside the timed methods. A ratio above **1×** means SJF4J is faster; below **1×** means MapStruct is faster.
-
-The 1/10/100KB labels represent approximate JSON-equivalent **source object graph** sizes, not serialized inputs. Mapping excludes serialization.
+The 1/10/100KB labels indicate approximate JSON-equivalent **source object graph** sizes; serialization and fixture preparation are not timed.
 
 #### Order
 
@@ -250,6 +247,10 @@ python3 scripts/analyze-mapping-benchmark.py \
 ~~~
 
 ## GitHub Actions Full (exploratory)
+
+**Published run environment (2026-11-12):** Ubuntu 24.04 GitHub-hosted shared runner, AMD EPYC 9V74, 4 logical CPUs, no requested CPU affinity, Temurin 25.0.5, JMH 1.37, one measurement thread, 5 × 1s warmup and 5 × 1s measurement per fork. The measurements are **exploratory**, not a controlled-hardware release baseline. Raw JSON, execution metadata and fork-level results remain in the Actions artifacts.
+
+The published run completed 70 original suite-3 measurements; the two measurements for the removed workload are excluded from the displayed tables. The current suite is version 4 (68 measurements); the historical run has not been re-executed as suite 4.
 
 The manual [Mapping Full Benchmark (JDK 25)](https://github.com/sjf4j-projects/sjf4j/actions/workflows/mapping-full-benchmark.yml)
 workflow builds one JMH jar, then runs all groups on **one runner** and uploads
