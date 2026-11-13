@@ -6,6 +6,48 @@ not on the GraalVM JVM. It uses the same `FabienReadBenchmark` /
 [JVM Binding benchmark](binding.md). The two environments are reported separately;
 absolute JVM versus AOT timings are not controlled comparisons.
 
+## Code examples
+
+Representative **Fastjson2 Users POJO** read/write calls in the GraalVM
+Native Image workload (imports and fixture setup omitted). The Java API calls
+are the same as on the JVM; the JMH suite runs inside an AOT executable.
+
+**Fastjson2 Native (direct library)**
+
+```java
+Users users = JSON.parseObject(input, Users.class);
+byte[] output = JSON.toJSONBytes(users, JSONWriter.Feature.WriteNulls);
+```
+
+**SJF4J Runtime**
+
+```java
+Fastjson2Binder binder = new Fastjson2Binder();
+Users users = (Users) binder.readNode(input, Users.class);
+byte[] output = binder.writeNodeAsBytes(users);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledBinder(backend = Backend.FASTJSON2)
+interface UsersBinder {
+    @Read Users readUsers(byte[] input);
+    @Write byte[] writeUsers(Users value);
+}
+
+UsersBinder binder = CompiledInstances.create(UsersBinder.class);
+Users users = binder.readUsers(input);
+byte[] output = binder.writeUsers(users);
+```
+
+Instances and fixtures are prepared before measurement. Here **Native** means
+direct Fastjson2 calls, while **Native Image** describes the AOT execution
+environment. The [JVM Binding examples](binding.md#code-examples) show the same
+workload with Jackson2 and Blackbird. See
+[`FabienBindings`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienBindings.java)
+for the actual backend-specific implementations.
+
 ## Comparison dependency versions
 
 The v1.5.1-SNAPSHOT Native Image results include these backends:
