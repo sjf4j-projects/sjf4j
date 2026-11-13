@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -90,6 +91,67 @@ class FormatValidatorOptimizationTest {
         assertFalse(FormatValidator.validateUri(URI.create(""), true));
         assertTrue(FormatValidator.validateUri(URI.create("http://[::ffff:192.168.0.1]"), true));
         assertFalse(FormatValidator.validateUri(URI.create("http://[::ffff:192.168.0.01]"), true));
+    }
+
+    @Test
+    void iriReusesAuthorityGrammarWithoutRestrictingUnicodeComponents() {
+        // Every ASCII URI is also an IRI, including non-DNS reg-names.
+        for (String value : new String[]{
+                "", "//", "relative/path", "//host:443/path",
+                "http://host:bad/path", "http://a@b@host/path",
+                "http://[::ffff:192.168.0.01]/path", "mailto:user@example.org",
+                "http://reg!name/path", "http://[::1]/"}) {
+            assertEquals(FormatUtil.validateUriReference(value),
+                    FormatUtil.validateIriReference(value), value);
+            assertEquals(FormatUtil.validateUri(value),
+                    FormatUtil.validateIri(value), value);
+        }
+
+        // Unicode is permitted in IRI paths and registered names.
+        assertTrue(FormatUtil.validateIri("https://bücher.example/café?city=Zürich#über"));
+        assertTrue(FormatUtil.validateIriReference("//bücher.example/café"));
+        assertTrue(FormatUtil.validateIriReference("café/über"));
+        assertTrue(FormatUtil.validateIriReference("//user%40name@bücher.example:443/über"));
+        assertTrue(FormatUtil.validateIriReference("//bücher.example:/über"));
+        assertTrue(FormatUtil.validateIri("https://[::ffff:192.168.0.1]/路径"));
+        assertTrue(FormatUtil.validateIriReference("//[::ffff:192.168.0.1]/路径"));
+        assertFalse(FormatUtil.validateUri("https://bücher.example/café"));
+
+        // Authority syntax must not become less strict for internationalized
+        // input than for ASCII URI references.
+        assertFalse(FormatUtil.validateIri("https://bücher.example:abc/über"));
+        assertFalse(FormatUtil.validateIriReference("//bücher.example:abc/über"));
+        assertFalse(FormatUtil.validateIri("https://u@v@bücher.example/über"));
+        assertFalse(FormatUtil.validateIriReference("//u@v@bücher.example/über"));
+        assertFalse(FormatUtil.validateIri("https://[::ffff:192.168.0.01]/über"));
+        assertFalse(FormatUtil.validateIriReference("//[::ffff:01.2.3.4]/über"));
+        assertFalse(FormatUtil.validateIri("https://bücher.example/%ZZ"));
+        assertFalse(FormatUtil.validateIriReference("//bücher.example/%ZZ"));
+        assertFalse(FormatUtil.validateIriReference("http://bücher.example:abc/über"));
+    }
+
+    @Test
+    void iriAuthorityNormalizationDoesNotInspectRelativePathQueryOrFragment() {
+        // In a relative reference, a colon outside the first path segment
+        // and any subsequent slashes are path content, not an authority.
+        for (String reference : new String[]{
+                "relative/path://a..é/",
+                "relative/path://a..é/?q=ü",
+                "relative?next://a..é/path",
+                "relative#next://a..é/path",
+                "scheme:relative/path://a..é/"
+        }) {
+            assertTrue(FormatUtil.validateIriReference(reference), reference);
+            assertTrue(FormatUtil.convertIriToAscii(reference).equals(reference), reference);
+        }
+        assertTrue(FormatUtil.validateIri("scheme:relative/path://a..é/"));
+
+        // A genuine authority at the beginning or after scheme:// must
+        // still undergo IDNA validation and normalization.
+        assertTrue(FormatUtil.validateIriReference("//bücher.example/path://a..é/"));
+        assertTrue(FormatUtil.validateIri("scheme://bücher.example/path://a..é/"));
+        assertFalse(FormatUtil.validateIriReference("//a..é/"));
+        assertFalse(FormatUtil.validateIri("scheme://a..é/"));
     }
 
     @Test
