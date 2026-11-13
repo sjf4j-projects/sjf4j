@@ -367,6 +367,7 @@ SJF4J's performance and standards compliance are evaluated through independent c
 
 **JSON Binding**
 - [Binding Full Benchmarks](docs/performance/binding.md) — Native JSON backends vs. Runtime and Compiled.
+- [Binding Native Image Full Benchmarks](docs/performance/binding-native.md) — GraalVM AOT, direct library Binding vs. Runtime and Compiled.
 
 **JSONPath Navigation**
 - [JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/) — Cross-implementation specification compatibility.
