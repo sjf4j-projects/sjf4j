@@ -8,35 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026.11.13
+
 ### Added
-
-- Restored the official Runtime Optional validation suite as a non-blocking diagnostic Gradle task, with per-draft results and a downloadable CI report.
-- Added stateless prepared JDBC row mapping via `JdbcRowMapper<T>` and `@CompiledJdbcMapper` methods accepting `ResultSetMetaData`; removed `(ResultSet, int)` mapping and implicit `ThreadLocal` column caches.
-
-- Added JDBC `ColumnNamingPolicy` (`EXACT`, `INSENSITIVE`, `INSENSITIVE_SNAKE`) via `@JdbcMappingOptions.columnNaming`, with cached column-index resolution for current-row mappers.
-
-- Generated null-safe enum-to-enum switch mappings with compile-time same-name constant validation, including nested collection elements and Map keys/values.
-- Added `@MappingOptions.reuse` with `ReusePolicy.ASSIGNABLE`, preserving assignable-value reuse for root containers and nested mapper values.
-- **JSON Schema external mocks** — `@ValidJsonSchema.externalSchemas` and `externalSchemasRef` accept official-suite-style URI-to-Schema JSON mappings for isolated runtime and compiled validation, without changing `SchemaRegistry.index()` conflict semantics.
+- Added reusable, stateless JDBC row mapping via `JdbcRowMapper<T>`, with configurable column naming policies.
+- Added `@MappingOptions.raws` and `reuse` for configurable raw-value conversion and reference reuse.
+- Added external JSON Schema support through `@ValidJsonSchema.externalSchemas` and `externalSchemasRef`.
 
 ### Changed
-
-- **CompiledJdbcMapper List** — Reuse a method-specific prepared `JdbcRowMapper<T>` for column resolution and per-row mapping, keeping the public API unchanged and preserving empty Map result behavior.
-
-- **CompiledMapper Update null targets** — Remove eager non-null assertions for object and root-container updates. All-null sources and updates without target access may return normally; actual target access retains Java's natural exceptions.
-- **CompiledMapper** — Inline single-use direct POJO getter assignments in create mappings and primitive updates, retaining local variables for null-ignore single evaluation.
-- **CompiledMapper converter null semantics** — For mapped properties, skip a selected mapping method when its source parent is absent. If the parent exists, invoke the method even when the property value itself is `null`. ValueCodec behavior is unchanged.
-- Renamed `@MappingOptions.using` to `methods` (source-incompatible), clarifying that listed mapper methods are preferences rather than forced conversions.
-- **CompiledNavigator** — Reorganized navigation generation into method analysis, typed compilation plans, and source emission; combined wildcard, slice, and union selectors now generate direct Java traversal, including POJO member unions. Unsupported dynamic and descendant paths require explicit `fallback=true`.
-
-- **Strict Build Validation** — Treat javac warnings as errors across all Java modules, including annotation-processor-generated sources.
+- Optimized compiled JSONPath navigation, object mapping, JDBC mapping, and native binding.
+- Improved enum mapping, null handling, converter selection, and reference reuse in `@CompiledMapper`.
 
 ### Fixed
+- Improved support for POJOs without constructors and aligned `@CompiledBinder` with `@NodeObject.propertyStrategy`.
+- Fixed URI/IRI validation edge cases and improved JSON Schema conformance.
 
-- Aligned assignable POJO root mappings with nested-value reference reuse when no explicit property rules are present.
-- Ensured an explicit `nestedMapper` is called even when the source value is assignable to the target type.
-- Aligned `@CompiledBinder` property discovery with `@NodeObject.propertyStrategy` (`BEAN_ONLY`, `BEAN_FIELD`, `FIELD_ONLY`, `FIELD_BEAN`) and report selected non-public members as compile errors instead of silently omitting them.
-- **Constructor-Optional POJO Operations** — Allow runtime serialization and structural access to existing POJOs without a `CreatorInfo`; report clear errors only when Binding Read, mapping, copying, or path operations need to create an instance. Preserve `null` input handling and strict validation of explicit `@NodeCreator` declarations.
+### Breaking Changes
+- Renamed `@MappingOptions.using` to `converters`.
+- Replaced `@CompiledJdbcMapper` methods accepting `(ResultSet, int)` with prepared `JdbcRowMapper<T>` methods.
 
 
 ## [1.5.0] - 2026.11.07
