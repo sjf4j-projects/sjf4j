@@ -16,23 +16,27 @@ final class FormatUtil {
     }
 
     static boolean validateIri(String value) {
-        if (value == null || value.isEmpty()) return false;
-        try {
-            if (hasUnbracketedIpv6Authority(value)) return false;
-            URI uri = new URI(convertIriToAscii(value));
-            return uri.isAbsolute();
-        } catch (Exception e) {
-            return false;
-        }
+        return _validateIri(value, true);
     }
 
     static boolean validateIriReference(String value) {
-        if (value == null || value.isEmpty()) return false;
+        return _validateIri(value, false);
+    }
+
+    private static boolean _validateIri(String value, boolean requireAbsolute) {
+        if (value == null || (requireAbsolute && value.isEmpty())) return false;
+        // Every URI is also an IRI. Avoid unnecessary IDNA conversion of
+        // valid ASCII reg-names, which need not be DNS hostnames (RFC 3986).
+        if (_isAsciiOnly(value)) {
+            return requireAbsolute ? validateUri(value) : validateUriReference(value);
+        }
         try {
-            if (hasUnbracketedIpv6Authority(value)) return false;
-            String ascii = hasIriScheme(value) ? convertIriToAscii(value) : value;
-            new URI(ascii);
-            return true;
+            // Internationalize only the host; the Java URI parser accepts
+            // Unicode in path/query/fragment. Authority grammar is common to
+            // RFC 3986 and RFC 3987, so reuse the same validation.
+            String normalized = convertIriToAscii(value);
+            if (_isEmptyAuthorityAndPath(normalized, requireAbsolute)) return true;
+            return _validateParsedUri(new URI(normalized), requireAbsolute, false);
         } catch (Exception e) {
             return false;
         }
@@ -65,9 +69,14 @@ final class FormatUtil {
      * Keep the ASCII and authority rules identical to the string validator.
      */
     static boolean validateUri(URI uri, boolean requireAbsolute) {
+        return _validateParsedUri(uri, requireAbsolute, true);
+    }
+
+    private static boolean _validateParsedUri(URI uri, boolean requireAbsolute, boolean asciiOnly) {
         if (uri == null) return false;
         String raw = uri.toString();
-        return _isAsciiOnly(raw) && (!requireAbsolute || uri.isAbsolute())
+        return (!asciiOnly || _isAsciiOnly(raw))
+                && (!requireAbsolute || uri.isAbsolute())
                 && _hasValidUriAuthority(_rawUriAuthority(raw, uri));
     }
 
@@ -159,13 +168,17 @@ final class FormatUtil {
         int at = authority.indexOf('@');
         String userInfo = at >= 0 ? authority.substring(0, at + 1) : "";
         String hostPort = at >= 0 ? authority.substring(at + 1) : authority;
-        if (hostPort.isEmpty()) return authority;
-        if (hostPort.charAt(0) == '[') return authority;
-        int colon = hostPort.lastIndexOf(':');
-        if (colon >= 0 && hostPort.indexOf(':') == colon) {
-            return userInfo + _toAsciiName(hostPort.substring(0, colon)) + hostPort.substring(colon);
+        if (hostPort.isEmpty() || hostPort.charAt(0) == '[' || _isAsciiOnly(hostPort)) {
+            return authority;
         }
-        return userInfo + _toAsciiName(hostPort);
+        int colon = hostPort.lastIndexOf(':');
+        boolean hasPort = colon >= 0 && hostPort.indexOf(':') == colon;
+        String host = hasPort ? hostPort.substring(0, colon) : hostPort;
+        String normalized = _toAsciiName(host);
+        if (normalized == null || normalized.isEmpty()) {
+            throw new IllegalArgumentException("Invalid internationalized host name");
+        }
+        return userInfo + normalized + (hasPort ? hostPort.substring(colon) : "");
     }
 
     private static String _validatedHostnameAsciiLabel(String label, boolean allowUnicode) {
