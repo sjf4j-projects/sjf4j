@@ -1,52 +1,11 @@
 # Binding Native Image performance baseline
 
-This report benchmarks SJF4J Binding in a **GraalVM Native Image AOT executable**,
-not on the GraalVM JVM. It uses the same `FabienReadBenchmark` /
-`FabienWriteBenchmark` models and Read/Write boundaries as the
-[JVM Binding benchmark](binding.md). The two environments are reported separately;
-absolute JVM versus AOT timings are not controlled comparisons.
-
-## Code examples
-
-Representative **Fastjson2 Users POJO** read/write calls in the GraalVM
-Native Image workload (imports and fixture setup omitted). The Java API calls
-are the same as on the JVM; the JMH suite runs inside an AOT executable.
-
-**Fastjson2 Native (direct library)**
-
-```java
-Users users = JSON.parseObject(input, Users.class);
-byte[] output = JSON.toJSONBytes(users, JSONWriter.Feature.WriteNulls);
-```
-
-**SJF4J Runtime**
-
-```java
-Fastjson2Binder binder = new Fastjson2Binder();
-Users users = (Users) binder.readNode(input, Users.class);
-byte[] output = binder.writeNodeAsBytes(users);
-```
-
-**SJF4J Compiled**
-
-```java
-@CompiledBinder(backend = Backend.FASTJSON2)
-interface UsersBinder {
-    @Read Users readUsers(byte[] input);
-    @Write byte[] writeUsers(Users value);
-}
-
-UsersBinder binder = CompiledInstances.create(UsersBinder.class);
-Users users = binder.readUsers(input);
-byte[] output = binder.writeUsers(users);
-```
-
-Instances and fixtures are prepared before measurement. Here **Native** means
-direct Fastjson2 calls, while **Native Image** describes the AOT execution
-environment. The [JVM Binding examples](binding.md#code-examples) show the same
-workload with Jackson2 and Blackbird. See
-[`FabienBindings`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienBindings.java)
-for the actual backend-specific implementations.
+SJF4J Binding versus direct library binding (**Native**) in a GraalVM
+**Native Image AOT executable**, not on the GraalVM JVM. It runs the same
+[`FabienReadBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienReadBenchmark.java)
+and [`FabienWriteBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienWriteBenchmark.java)
+Read/Write workloads as [Binding JVM](binding.md), but without Blackbird.
+JVM and AOT timings are reported separately and are not controlled cross-environment comparisons.
 
 ## Comparison dependency versions
 
@@ -63,6 +22,151 @@ JMH is `1.37`. Versions above come from `sjf4j-testbench/build.gradle.kts` at
 the [primary serial benchmark commit](https://github.com/sjf4j-projects/sjf4j/commit/1e1d90d3a01cc46072c4a188e1ed1b9760755f0d).
 The [parallel confirmation commit](https://github.com/sjf4j-projects/sjf4j/commit/05fc26b5f3e4500973caf95eb7af6a7a2ab50fb3)
 declares the same versions.
+
+## Code examples
+
+Representative **Users POJO** Read and Write calls for each backend (imports
+and fixture setup omitted). `input` is a prebuilt JSON `byte[]`; `value` is
+a prebuilt `Users` object. **Read and Write are separate measured operations**,
+not a timed roundtrip. All mappers, binders and compiled instances are
+initialized outside timed methods.
+
+These calls run in the GraalVM **Native Image AOT executable**; the Java
+APIs are the same as on the JVM. **Native** means direct third-party library
+binding, not an additional AOT compilation mode.
+
+### Jackson2
+
+**Native (direct library)**
+
+```java
+Users parsed = JACKSON2.readValue(input, Users.class);
+byte[] encoded = JACKSON2.writeValueAsBytes(value);
+```
+
+**SJF4J Runtime**
+
+```java
+Jackson2Binder binder = new Jackson2Binder();
+Users parsed = (Users) binder.readNode(input, Users.class);
+byte[] encoded = binder.writeNodeAsBytes(value);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledBinder(backend = Backend.JACKSON2)
+interface Jackson2Binding {
+    @Read Users readUsers(byte[] input);
+    @Write byte[] writeUsers(Users value);
+}
+
+Jackson2Binding binder = CompiledInstances.create(Jackson2Binding.class);
+Users parsed = binder.readUsers(input);
+byte[] encoded = binder.writeUsers(value);
+```
+
+### Jackson3
+
+**Native (direct library)**
+
+```java
+Users parsed = JACKSON3.readValue(input, Users.class);
+byte[] encoded = JACKSON3.writeValueAsBytes(value);
+```
+
+**SJF4J Runtime**
+
+```java
+Jackson3Binder binder = new Jackson3Binder();
+Users parsed = (Users) binder.readNode(input, Users.class);
+byte[] encoded = binder.writeNodeAsBytes(value);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledBinder(backend = Backend.JACKSON3)
+interface Jackson3Binding {
+    @Read Users readUsers(byte[] input);
+    @Write byte[] writeUsers(Users value);
+}
+
+Jackson3Binding binder = CompiledInstances.create(Jackson3Binding.class);
+Users parsed = binder.readUsers(input);
+byte[] encoded = binder.writeUsers(value);
+```
+
+### Fastjson2
+
+**Native (direct library)**
+
+```java
+Users parsed = JSON.parseObject(input, Users.class);
+byte[] encoded = JSON.toJSONBytes(value, JSONWriter.Feature.WriteNulls);
+```
+
+**SJF4J Runtime**
+
+```java
+Fastjson2Binder binder = new Fastjson2Binder();
+Users parsed = (Users) binder.readNode(input, Users.class);
+byte[] encoded = binder.writeNodeAsBytes(value);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledBinder(backend = Backend.FASTJSON2)
+interface Fastjson2Binding {
+    @Read Users readUsers(byte[] input);
+    @Write byte[] writeUsers(Users value);
+}
+
+Fastjson2Binding binder = CompiledInstances.create(Fastjson2Binding.class);
+Users parsed = binder.readUsers(input);
+byte[] encoded = binder.writeUsers(value);
+```
+
+### Gson
+
+**Native (direct library)**
+
+```java
+Users parsed = GSON.fromJson(
+        new InputStreamReader(new ByteArrayInputStream(input), StandardCharsets.UTF_8),
+        Users.class);
+byte[] encoded = GSON.toJson(value).getBytes(StandardCharsets.UTF_8);
+```
+
+**SJF4J Runtime**
+
+```java
+GsonBinder binder = new GsonBinder();
+Users parsed = (Users) binder.readNode(input, Users.class);
+byte[] encoded = binder.writeNodeAsBytes(value);
+```
+
+**SJF4J Compiled**
+
+```java
+@CompiledBinder(backend = Backend.GSON)
+interface GsonBinding {
+    @Read Users readUsers(byte[] input);
+    @Write byte[] writeUsers(Users value);
+}
+
+GsonBinding binder = CompiledInstances.create(GsonBinding.class);
+Users parsed = binder.readUsers(input);
+byte[] encoded = binder.writeUsers(value);
+```
+
+The snippets show the POJO shape; the benchmark also includes Clients and
+Map workloads. See
+[`FabienBindings`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienBindings.java)
+and [`FabienNative`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienNative.java)
+for the exact backend configurations, especially the preconfigured Gson
+adapters used by the benchmark.
 
 ## GraalVM Community 25.5.5.0.3
 
