@@ -25,9 +25,16 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 **Comparison:** MapStruct 1.6.3 versus SJF4J CompiledMapper. Both implementations map preconstructed and equivalent inputs; serialization, fixture preparation and mapper instantiation are outside the timed methods. A ratio above **1×** means SJF4J is faster; below **1×** means MapStruct is faster.
 
+The 1/10/100KB labels represent approximate JSON-equivalent **source object graph** sizes, not serialized inputs. Mapping excludes serialization.
+
 #### Order
 
-**Sample:** Classic Order is an independently authored version of the [Arey Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark): customer, billing/shipping addresses and two products mapped to a flattened DTO. Extended Order adds `Map`/`JsonObject` fields and a size-scaled product list.
+Classic Order independently implements the customer/address/two-product workload from the [Arey Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark); scores are not directly comparable across repositories.
+
+| Case | Sample / Mapping | Size |
+| --- | --- | --- |
+| Classic | Order → flattened DTO; billing/shipping addresses and two products | Fixed |
+| Extended | Order → DTO; nested Bean/`Map`/`JsonObject` fields and product list conversion | 1/10/100KB |
 
 **Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -49,7 +56,13 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 #### POJO
 
-**Sample:** Small Java objects/records mapped through direct field copy, rename/compute, nested and multi-source mapping, or in-place update that ignores null values. These are fixed-size cases.
+| Case | Sample / Mapping | Size |
+| --- | --- | --- |
+| Direct | Two same-name properties → record | Fixed |
+| Flat | Rename, ignore and compute properties | Fixed |
+| Nested Profile | `Profile` → `ProfileDto` with nested contact conversion | Fixed |
+| Multi-source | `Profile` + `Account` → record | Fixed |
+| Update | Update an existing object, ignoring null values | Fixed |
 
 **Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -73,7 +86,18 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 #### Collection
 
-**Sample:** `Item(sku, name, quantity, price)` → `ItemDto`, measured individually and inside `ArrayList`, `LinkedList`, `Map`, or a Map containing one or eight Lists. Collection sizes scale with 1/10/100KB.
+The element mapping is `Item(sku, name, quantity, price)` → `ItemDto`.
+
+| Case | Sample / Mapping | Size |
+| --- | --- | --- |
+| Item | Single `Item` → `ItemDto` | Fixed |
+| ArrayList | `ArrayList<Item>` → `List<ItemDto>` | 1/10/100KB |
+| LinkedList | `LinkedList<Item>` → `List<ItemDto>` | 1/10/100KB |
+| Map items | `Map<String,Item>` → `Map<String,ItemDto>` | 1/10/100KB |
+| Map with 1 List | Map containing one full-size List | 1/10/100KB |
+| Map with 8 Lists | Same total elements distributed among eight Lists | 1/10/100KB |
+
+The one-List and eight-List cases separate list conversion from Map traversal and repeated conversion calls. These cases are not additive to Extended Order.
 
 **Latency (ns/op, lower is better).** Ratio = MapStruct / Compiled. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -119,7 +143,12 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 
 #### JSON
 
-**Sample:** `Map<String,Object>` or `JsonObject` → `JsonTarget(sku, name, count)`. Only these three fields are mapped; extra unused fields increase the source size to 1/10/100KB.
+Only `sku`, `name` and `count` are projected to `JsonTarget`; extra unmapped fields increase input width without changing the mapped output.
+
+| Case | Sample / Mapping | Size |
+| --- | --- | --- |
+| Map projection | `Map<String,Object>` → `JsonTarget` (MapStruct / CAST / STRICT) | 1/10/100KB |
+| JsonObject projection | `JsonObject` → `JsonTarget` (MapStruct / CAST / STRICT) | 1/10/100KB |
 
 **Latency (ns/op, lower is better).** MapStruct is compared separately with CAST and STRICT. Values use independently selected Best 2 Mean forks; ratios use unrounded scores.
 
@@ -151,53 +180,6 @@ Versions above are declared in [`sjf4j-testbench/build.gradle.kts`](https://gith
 - **Allocation:** Most paired workloads allocate the same amount. Map containing one large List saves 56 B/op with Compiled. The 1KB eight-short-Lists MapStruct result has a fork spread above 15%; inspect raw fork data before drawing a fine-grained conclusion.
 
 **[Complete historical snapshot, fork-stability details and provenance](mapping/mapstruct-v151snapshot-2026-11-12.md)** · **[Original GitHub Actions run and artifacts](https://github.com/sjf4j-projects/sjf4j/actions/runs/43163182761)**
-
-### Workload matrix
-
-**15 independently observable cases**, across the same four groups, expanded to
-**68 exact JMH measurements**. The JSON group compares MapStruct with both
-SJF4J `RawPolicy.CAST` and `RawPolicy.STRICT`. This supersedes the eight composite cases in
-the original v1 suite without dropping the classic and extended baselines.
-
-| Group | Case | What is measured | Size | JMH entries |
-| --- | --- | --- | --- | ---: |
-| Order | Classic | Arey-style nested address flattening, two products | Fixed | 2 |
-| Order | Extended | Nested Bean/Map/JsonObject property extraction plus product list conversion | 1/10/100KB | 6 |
-| POJO | Direct | Two same-name POJO properties → record | Fixed | 2 |
-| POJO | Flat | Rename + ignore + compute, retained as composite comparison | Fixed | 2 |
-| POJO | Nested Profile | Single-source POJO with nested record conversion | Fixed | 2 |
-| POJO | Multi-source | Existing Profile + Account → record | Fixed | 2 |
-| POJO | Update | Existing target, ignoring null values | Fixed | 2 |
-| Collection | Item | One Item → ItemDto, including primitive and scalar leaves | Fixed | 2 |
-| Collection | Random-access List | ArrayList<Item> → List<ItemDto> | 1/10/100KB | 6 |
-| Collection | Sequential List | LinkedList<Item> → List<ItemDto> | 1/10/100KB | 6 |
-| Collection | Map item values | Map<String,Item> → Map<String,ItemDto> | 1/10/100KB | 6 |
-| Collection | Map with one List | A single Map value containing the full List | 1/10/100KB | 6 |
-| Collection | Map with eight Lists | Same total elements split into eight short Lists | 1/10/100KB | 6 |
-| JSON | Map projection | Map<String,Object> → POJO: MapStruct / CAST / STRICT | 1/10/100KB | 9 |
-| JSON | JsonObject projection | JsonObject → POJO: MapStruct / CAST / STRICT | 1/10/100KB | 9 |
-
-**Why split the cases?** The original Collection List processes one large
-List, while Map<String,List<Item>> processes **eight shorter Lists**, invoking
-conversion multiple times. A direct comparison cannot isolate map traversal
-overhead from list sizes and JIT inlining behavior. The new item, sequential
-list, Map-of-item and **one-value versus eight-value** Map cases isolate those
-costs.
-
-
-The isolated cases are **not additive**: Item + List ≠ Extended Order.
-JIT inlining, allocation and call-site profiles depend on context.
-
-The Classic Order scores are not directly comparable with results from the
-Arey repository. Empty/partial orders are checked for correctness, not timed
-as separate workloads.
-
-The "KB" sizes control deterministic approximate JSON-equivalent **source graph**
-size, not a serialized input; mapping benchmarks exclude serialization entirely.
-In the JSON group the additional keys grow input width but are intentionally
-*unmapped*: that group measures fixed-key projection from wider source objects,
-not whole-document conversion. The input shape (Map or JsonObject) is part of
-each benchmark method name.
 
 ## Baseline policy
 
