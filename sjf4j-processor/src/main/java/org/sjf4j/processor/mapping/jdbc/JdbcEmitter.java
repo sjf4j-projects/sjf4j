@@ -328,37 +328,19 @@ public final class JdbcEmitter {
             consumed = emitConsumedColumns(out, names, columnCount, indexes, method.consumedColumns());
         }
 
-        if (plan.list()) {
-
-            emitList(
-                    out,
-                    names,
-                     method,
-                     resultSet,
-                     metadata,
-                    columnCount,
-                    columns,
-                    indexes,
-                    columnCount,
-                    labels,
-                    consumed);
-
-        } else {
-
+        // List methods are generated separately via a prepared JdbcRowMapper.
             emitSingle(
-                    out,
-                    names,
-                     method,
-                     resultSet,
-                     metadata,
-                    columnCount,
-                    columns,
-                    indexes,
-                    columnCount,
-                    labels,
-                    consumed);
-        }
-
+                           out,
+                           names,
+                            method,
+                            resultSet,
+                            metadata,
+                           columnCount,
+                           columns,
+                           indexes,
+                           columnCount,
+                           labels,
+                           consumed);
         out.dedent();
         out.line(
                 "} catch (java.sql.SQLException e) {");
@@ -488,146 +470,6 @@ public final class JdbcEmitter {
         out.line(
                 "return " +
                         row +
-                        ";");
-    }
-
-    private void emitList(
-            JavaWriter out,
-            NameAllocator names,
-            JdbcCompiler.CompiledMethod method,
-            String resultSet,
-            String metadata,
-            String mapColumnCount,
-            String columns,
-            Map<String, String> indexes,
-            String columnCount,
-            String labels,
-            String consumed) {
-
-        String result =
-                names.newName(
-                        "result");
-
-        out.line(
-                method.plan()
-                        .returnType() +
-                        " " +
-                        result +
-                        " = new java.util.ArrayList<" +
-                        method.plan()
-                                .rowType() +
-                        ">();");
-
-        if (method.kind() ==
-                JdbcCompiler.CompiledMethod.Kind.MAP) {
-
-            out.line(
-                    "if (!" +
-                            resultSet +
-                            ".next()) {");
-
-            out.indent();
-            out.line(
-                    "return " +
-                            result +
-                            ";");
-            out.dedent();
-            out.line("}");
-
-            String count =
-                    names.newName(
-                            "columnCount");
-
-            out.line(
-                    "int " +
-                            count +
-                            " = " +
-                            metadata +
-                            ".getColumnCount();");
-
-            // Column labels are invariant across ResultSet rows.
-            // Resolve them once rather than calling metadata for every Map entry.
-            String mapLabels = names.newName("labels");
-            String labelIndex = names.newName("labelIndex");
-            out.line("String[] " + mapLabels + " = new String[" + count + " + 1];");
-            out.line("for (int " + labelIndex + " = 1; " + labelIndex + " <= " + count
-                    + "; " + labelIndex + "++) {");
-            out.indent();
-            out.line(mapLabels + "[" + labelIndex + "] = "
-                    + metadata + ".getColumnLabel(" + labelIndex + ");");
-            out.dedent();
-            out.line("}");
-
-            out.line("do {");
-            out.indent();
-
-            String row =
-                    emitRow(
-                            out,
-                            names,
-                            method,
-                            resultSet,
-                            metadata,
-                            count,
-                            columns,
-                            indexes,
-                            columnCount,
-                            mapLabels,
-                            consumed);
-
-            out.line(
-                    result +
-                            ".add(" +
-                            row +
-                            ");");
-
-            out.dedent();
-            out.line(
-                    "} while (" +
-                            resultSet +
-                            ".next());");
-
-            out.line(
-                    "return " +
-                            result +
-                            ";");
-
-            return;
-        }
-
-        out.line(
-                "while (" +
-                        resultSet +
-                        ".next()) {");
-
-        out.indent();
-
-        String row =
-                emitRow(
-                        out,
-                        names,
-                         method,
-                         resultSet,
-                         metadata,
-                        mapColumnCount,
-                        columns,
-                        indexes,
-                        columnCount,
-                        labels,
-                        consumed);
-
-        out.line(
-                result +
-                        ".add(" +
-                        row +
-                        ");");
-
-        out.dedent();
-        out.line("}");
-
-        out.line(
-                "return " +
-                        result +
                         ";");
     }
 
