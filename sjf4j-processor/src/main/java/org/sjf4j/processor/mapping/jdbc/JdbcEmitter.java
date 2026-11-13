@@ -45,25 +45,96 @@ public final class JdbcEmitter {
      */
 
     public void emit(JdbcCompiler.CompiledMethod method, GeneratedClass generated) {
-        generated.addMethod(out -> emitMethod(out, method));
+        if (method.plan().list()) {
+            String name = method.plan().method().getSimpleName().toString();
+            String helper = generated.names().helperMethod(
+                    "prepare" + Character.toUpperCase(name.charAt(0)) + name.substring(1));
+            generated.addMethod(out -> emitListUsingPrepared(out, method, helper));
+            generated.addHelper(out -> emitPreparedMethod(out, method, helper));
+        } else {
+            generated.addMethod(out -> emitMethod(out, method));
+        }
+    }
+
+    /*
+     * List uses the same prepared, per-row execution path as JdbcRowMapper.
+     * The helper is private and method-specific: equal row types may still have
+     * different source names, column policies, creators or mapping rules.
+     */
+    private void emitListUsingPrepared(JavaWriter out, JdbcCompiler.CompiledMethod method,
+                                       String helper) {
+        JdbcPlan plan = method.plan();
+        String rs = plan.inputParameter().getSimpleName().toString();
+        String type = plan.rowType().toString();
+
+        out.blank();
+        out.line("@Override");
+        out.line(methodHeader(plan) + " {");
+        out.indent();
+        out.line("org.sjf4j.util.Asserts.notNull(" + rs + ", " + stringLiteral(rs) + ");");
+        out.line("try {");
+        out.indent();
+        out.line("java.util.List<" + type + "> result = new java.util.ArrayList<" + type + ">();");
+        if (method.kind() == JdbcCompiler.CompiledMethod.Kind.MAP) {
+            // Preserve empty Map List semantics: no column labels are read.
+            out.line("java.sql.ResultSetMetaData metadata = " + rs + ".getMetaData();");
+            out.line("if (!" + rs + ".next()) return result;");
+            out.line("org.sjf4j.mapping.JdbcRowMapper<" + type + "> rowMapper = "
+                    + helper + "(metadata);");
+            out.line("do {");
+            out.indent();
+            out.line("result.add(rowMapper.map(" + rs + "));");
+            out.dedent();
+            out.line("} while (" + rs + ".next());");
+        } else {
+            out.line("org.sjf4j.mapping.JdbcRowMapper<" + type + "> rowMapper = "
+                    + helper + "(" + rs + ".getMetaData());");
+            out.line("while (" + rs + ".next()) {");
+            out.indent();
+            out.line("result.add(rowMapper.map(" + rs + "));");
+            out.dedent();
+            out.line("}");
+        }
+        out.line("return result;");
+        out.dedent();
+        out.line("} catch (java.sql.SQLException e) {");
+        out.indent();
+        out.line("throw new org.sjf4j.exception.BindingException("
+                + stringLiteral("failed to map JDBC ResultSet in " + plan.method().getSimpleName())
+                + ", e);");
+        out.dedent();
+        out.line("}");
+        out.dedent();
+        out.line("}");
     }
 
     /*
      * Prepare resolves the JDBC column layout exactly once and returns a
      * stateless, reusable row mapper. It never retains the metadata or ResultSet.
      */
-    private void emitPreparedMethod(JavaWriter out, JdbcCompiler.CompiledMethod method) {
+    private void emitPreparedMethod(JavaWriter out, JdbcCompiler.CompiledMethod method,
+                                    String helperName) {
         JdbcPlan plan = method.plan();
         NameAllocator names = new NameAllocator();
-        for (VariableElement parameter : plan.method().getParameters()) {
-            names.reserve(parameter.getSimpleName().toString());
+        if (helperName == null) {
+            for (VariableElement parameter : plan.method().getParameters()) {
+                names.reserve(parameter.getSimpleName().toString());
+            }
+        } else {
+            names.reserve("metadata");
         }
 
-        String metadata = plan.inputParameter().getSimpleName().toString();
+        String metadata = helperName == null
+                ? plan.inputParameter().getSimpleName().toString() : "metadata";
         String rowSet = names.newName("rowSet");
         out.blank();
-        out.line("@Override");
-        out.line(methodHeader(plan) + " {");
+        if (helperName == null) {
+            out.line("@Override");
+            out.line(methodHeader(plan) + " {");
+        } else {
+            out.line("private org.sjf4j.mapping.JdbcRowMapper<" + plan.rowType() + "> "
+                    + helperName + "(java.sql.ResultSetMetaData " + metadata + ") {");
+        }
         out.indent();
         out.line("org.sjf4j.util.Asserts.notNull(" + metadata + ", "
                 + stringLiteral(metadata) + ");");
@@ -136,7 +207,7 @@ public final class JdbcEmitter {
 
     private void emitMethod(JavaWriter out, JdbcCompiler.CompiledMethod method) {
         if (method.plan().prepared()) {
-            emitPreparedMethod(out, method);
+            emitPreparedMethod(out, method, null);
             return;
         }
         JdbcPlan plan = method.plan();
