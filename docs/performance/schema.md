@@ -4,58 +4,44 @@ SJF4J JSON Schema validation and roundtrip performance, using the Creek model an
 
 ## Code examples
 
-Core calls for the Creek POJO/Map validation and POJO roundtrip workloads
-(imports, fixture loading, and JMH setup omitted). The schema plan, mappers,
-and generated implementations are prepared outside timed methods.
+Core validation calls from the Creek benchmark (imports and fixture setup
+omitted). Schemas, validators, and inputs are prepared outside timed methods.
 
-**SJF4J Runtime**
+**NetworkNT** (Jackson2 `JsonNode`)
+
+```java
+com.networknt.schema.Schema validator = com.networknt.schema.SchemaRegistry
+        .withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+        .getSchema(schema);
+validator.initializeValidators();
+boolean valid = validator.validate(jsonNode, OutputFormat.BOOLEAN);
+```
+
+**SJF4J Runtime** (same Jackson2 `JsonNode`)
 
 ```java
 SchemaPlan plan = JsonSchema.fromJson(schema)
         .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
-
-boolean pojoValid = plan.isValid(model, false);
-boolean mapValid = plan.isValid(mapNode, false);
-
-// Roundtrip with validation (Jackson2 binding):
-byte[] bytes = JACKSON.writeValueAsBytes(model);
-TestModel result = JACKSON.readValue(bytes, TestModel.class);
-boolean roundtripValid = plan.isValid(result, false);
+boolean valid = plan.isValid(jsonNode, false);
 ```
 
-**SJF4J Compiled**
+**SJF4J Compiled** (POJO)
 
 ```java
 @CompiledValidator(fallback = true)
 interface CreekValidator {
     @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
     boolean isValid(TestModel value);
-
-    @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
-    boolean isValid(Map<String, Object> value);
-}
-
-@CompiledBinder(backend = Backend.JACKSON2)
-interface CreekBinder {
-    @Write byte[] writeTestModel(TestModel value) throws IOException;
-    @Read TestModel readTestModel(byte[] bytes) throws IOException;
 }
 
 CreekValidator validator = CompiledInstances.create(CreekValidator.class);
-CreekBinder binder = CompiledInstances.create(CreekBinder.class);
-
-boolean pojoValid = validator.isValid(model);
-boolean mapValid = validator.isValid(mapNode);
-
-// Roundtrip with validation (compiled binding):
-byte[] bytes = binder.writeTestModel(model);
-TestModel result = binder.readTestModel(bytes);
-boolean roundtripValid = validator.isValid(result);
+boolean valid = validator.isValid(model);
 ```
 
-The compiled validator's default non-strict `format` handling matches
-`plan.isValid(..., false)`. For the exact benchmark methods and setup, see
-[`CreekSchemaBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java).
+The compiled POJO example uses a different input representation from the
+NetworkNT/Runtime `JsonNode` comparison. See
+[`CreekSchemaBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java)
+for the exact benchmark methods and setup.
 
 ## Comparison dependency versions
 
