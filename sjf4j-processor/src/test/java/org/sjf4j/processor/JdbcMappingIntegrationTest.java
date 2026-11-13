@@ -122,6 +122,36 @@ class JdbcMappingIntegrationTest {
     }
 
     @Test
+    void listMethodsGenerateIndependentPreparedRowMapperHelpers() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Mapper.java",
+                "package fixture;\n"
+                        + "import java.sql.ResultSet;\n"
+                        + "import java.util.List;\n"
+                        + "import java.util.Map;\n"
+                        + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\n"
+                        + "@CompiledJdbcMapper public interface Mapper {\n"
+                        + "  List<User> users(ResultSet result);\n"
+                        + "  List<User> moreUsers(ResultSet rowMapper);\n"
+                        + "  List<User> plainUsers(ResultSet rs);\n"
+                        + "  List<Map<String, Object>> mapRows(ResultSet metadata);\n"
+                        + "  default int _prepareUsers() { return 0; }\n"
+                        + "}\n",
+                "fixture/User.java",
+                "package fixture; public class User { public String userName; }"
+        ), CodegenProcessor.class);
+
+        assertTrue(result.success, result.diagnostics());
+        String source = result.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(source.contains("_prepareUsers2("), source);
+        assertTrue(source.contains("_prepareMoreUsers("), source);
+        assertTrue(source.contains("_prepareMapRows("), source);
+        // Successful javac compilation proves the synthetic List locals do not
+        // shadow the ResultSet parameter named result, rowMapper or metadata.
+
+    }
+
+    @Test
     void rejectsLegacyCurrentRowSignature() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Mapper.java",

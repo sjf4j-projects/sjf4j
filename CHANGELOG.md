@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **CompiledJdbcMapper List** — Reuse a method-specific prepared `JdbcRowMapper<T>` for column resolution and per-row mapping, keeping the public API unchanged and preserving empty Map result behavior.
+
 - **CompiledMapper Update null targets** — Remove eager non-null assertions for object and root-container updates. All-null sources and updates without target access may return normally; actual target access retains Java's natural exceptions.
 - **CompiledMapper** — Inline single-use direct POJO getter assignments in create mappings and primitive updates, retaining local variables for null-ignore single evaluation.
 - **CompiledMapper converter null semantics** — For mapped properties, skip a selected mapping method when its source parent is absent. If the parent exists, invoke the method even when the property value itself is `null`. ValueCodec behavior is unchanged.
