@@ -8,6 +8,8 @@ The primary workload is
 
 ## Comparison dependency versions
 
+**SJF4J version:** `v1.5.0`.
+
 Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f)):
 
 | Component | Version | Role |
