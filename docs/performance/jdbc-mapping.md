@@ -92,6 +92,7 @@ methods. MyBatis's internal handler is invoked directly, not via a full
 
 **Full JMH · 68/68 benchmark entries · 3 independent forks · Best 2 Mean.**
 [GitHub Actions run #43359001074](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359001074) ·
+[Detailed Full report](jdbc-mapping/spring-mybatis-v151snapshot-2026-11-13.md) ·
 [Raw JSON, logs and runner metadata](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359001074/artifacts/14009670887) ·
 [Source commit `391e098`](https://github.com/sjf4j-projects/sjf4j/commit/391e098fd3b5033feea3fd5aa8accd98f776acd2).
 
