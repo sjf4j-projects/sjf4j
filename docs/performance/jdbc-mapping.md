@@ -61,9 +61,10 @@ interface AccountMapper {
 
 List<AccountBean> result = compiled.beans(rs);
 
-// Row mode:
+// Row mode (with a fresh ResultSet):
 JdbcRowMapper<AccountBean> mapper = compiled.prepareBean(rs.getMetaData());
-while (rs.next()) result.add(mapper.map(rs));
+List<AccountBean> rows = new ArrayList<>();
+while (rs.next()) rows.add(mapper.map(rs));
 ```
 
 **Spring JDBC**
