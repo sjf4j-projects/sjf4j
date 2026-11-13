@@ -125,15 +125,15 @@ class JdbcMappingIntegrationTest {
     void listMethodsGenerateIndependentPreparedRowMapperHelpers() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Mapper.java",
-                "package fixture;\\n"
-                        + "import java.sql.ResultSet;\\n"
-                        + "import java.util.List;\\n"
-                        + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\\n"
-                        + "@CompiledJdbcMapper public interface Mapper {\\n"
-                        + "  List<User> users(ResultSet rs);\\n"
-                        + "  List<User> moreUsers(ResultSet rs);\\n"
-                        + "  default int _prepareUsers() { return 0; }\\n"
-                        + "}\\n",
+                "package fixture;\n"
+                        + "import java.sql.ResultSet;\n"
+                        + "import java.util.List;\n"
+                        + "import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;\n"
+                        + "@CompiledJdbcMapper public interface Mapper {\n"
+                        + "  List<User> users(ResultSet rs);\n"
+                        + "  List<User> moreUsers(ResultSet rs);\n"
+                        + "  default int _prepareUsers() { return 0; }\n"
+                        + "}\n",
                 "fixture/User.java",
                 "package fixture; public class User { public String userName; }"
         ), CodegenProcessor.class);
