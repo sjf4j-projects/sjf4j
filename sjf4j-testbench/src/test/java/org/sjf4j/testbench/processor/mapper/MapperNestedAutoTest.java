@@ -203,7 +203,7 @@ public class MapperNestedAutoTest {
 
     @CompiledMapper(importing = {ImportedChildMapper.class})
     public interface ImportedMapper {
-        @MappingOptions(methods = {"ImportedChildMapper::toDto"})
+        @MappingOptions(converters = {"ImportedChildMapper::toDto"})
         Target explicit(Source source);
 
         Target auto(Source source);
@@ -211,7 +211,7 @@ public class MapperNestedAutoTest {
 
     @CompiledMapper(importing = {ImportedChildMapper.class})
     public interface LocalPriorityMapper {
-        @MappingOptions(methods = {"this::toDto"})
+        @MappingOptions(converters = {"this::toDto"})
         Target map(Source source);
 
         default ChildTarget toDto(ChildSource source) {
