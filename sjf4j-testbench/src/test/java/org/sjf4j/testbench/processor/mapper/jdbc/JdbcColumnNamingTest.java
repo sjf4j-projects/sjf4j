@@ -77,6 +77,31 @@ class JdbcColumnNamingTest {
     }
 
     @Test
+    void listMethodsRetainIndependentColumnRulesAndProjection() {
+        List<Bean> nicknames = mapper.nicknameBeans(result(
+                new String[]{"nickname", "login_count"},
+                new Object[]{"Ada", 3}, new Object[]{"Grace", 4}));
+        assertEquals(2, nicknames.size());
+        assertEquals("Ada", nicknames.get(0).userName);
+        assertEquals(4, nicknames.get(1).loginCount);
+
+        List<Bean> accounts = mapper.accountBeans(result(
+                new String[]{"account_name", "login_count"},
+                new Object[]{"Katherine", 7}));
+        assertEquals("Katherine", accounts.get(0).userName);
+        assertEquals(7, accounts.get(0).loginCount);
+
+        List<Bean> partial = mapper.partialBeans(result(
+                new String[]{"user_name"}, new Object[]{"Ada"}));
+        assertEquals("Ada", partial.get(0).userName);
+        assertEquals(0, partial.get(0).loginCount);
+
+        assertThrows(BindingException.class, () -> mapper.nicknameBeans(result(
+                new String[]{"account_name", "login_count"},
+                new Object[]{"Ada", 3})));
+    }
+
+    @Test
     void exactThenInsensitiveThenSnakePriority() {
         Bean exact = mapper.auto(result(new String[]{"user_name", "USERNAME", "userName", "login_count"},
                 new Object[]{"snake", "insensitive", "exact", 3}));
@@ -195,6 +220,15 @@ class JdbcColumnNamingTest {
         UserRecord record(ResultSet rs);
 
         List<Bean> beans(ResultSet rs);
+
+        @Mapping(target = "userName", source = "nickname")
+        List<Bean> nicknameBeans(ResultSet rs);
+
+        @Mapping(target = "userName", source = "account_name")
+        List<Bean> accountBeans(ResultSet rs);
+
+        @JdbcMappingOptions(columnProjection = ColumnProjectionPolicy.PRESENT_ONLY)
+        List<Bean> partialBeans(ResultSet rs);
 
         @Mapping(target = "userName", source = "account_name")
         Bean renamed(ResultSet rs);
