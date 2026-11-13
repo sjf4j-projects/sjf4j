@@ -2,6 +2,47 @@
 
 SJF4J JSON Schema validation and roundtrip performance, using the Creek model and JSON Schema Draft 2020-12. The primary workload is `CreekSchemaBenchmark`.
 
+## Code examples
+
+Core validation calls from the Creek benchmark (imports and fixture setup
+omitted). Schemas, validators, and inputs are prepared outside timed methods.
+
+**NetworkNT** (Jackson2 `JsonNode`)
+
+```java
+com.networknt.schema.Schema validator = com.networknt.schema.SchemaRegistry
+        .withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+        .getSchema(schema);
+validator.initializeValidators();
+boolean valid = validator.validate(jsonNode, OutputFormat.BOOLEAN);
+```
+
+**SJF4J Runtime** (same Jackson2 `JsonNode`)
+
+```java
+SchemaPlan plan = JsonSchema.fromJson(schema)
+        .createPlan(new SchemaRegistry(SchemaDialect.DRAFT_2020_12));
+boolean valid = plan.isValid(jsonNode, false);
+```
+
+**SJF4J Compiled** (POJO)
+
+```java
+@CompiledValidator(fallback = true)
+interface CreekValidator {
+    @ValidJsonSchema(ref = "classpath:/schema/creek-2020-12.json")
+    boolean isValid(TestModel value);
+}
+
+CreekValidator validator = CompiledInstances.create(CreekValidator.class);
+boolean valid = validator.isValid(model);
+```
+
+The compiled POJO example uses a different input representation from the
+NetworkNT/Runtime `JsonNode` comparison. See
+[`CreekSchemaBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java)
+for the exact benchmark methods and setup.
+
 ## Comparison dependency versions
 
 Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f)):
