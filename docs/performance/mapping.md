@@ -8,6 +8,8 @@ The primary workload is
 
 ## Comparison dependency versions
 
+**SJF4J version:** `v1.5.1-SNAPSHOT`.
+
 | Component | Version | Role |
 | --- | --- | --- |
 | MapStruct API and annotation processor | `1.6.3` | External compile-time Java mapping comparison |
