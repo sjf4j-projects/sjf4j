@@ -303,27 +303,27 @@ public class MapperCollectionTest {
     public interface CollectionMapper {
         List<String> strings(List<String> in);
 
-        @MappingOptions(methods = {"this::toDto"})
+        @MappingOptions(converters = {"this::toDto"})
         List<UserDto> users(List<User> in);
 
-        @MappingOptions(methods = {"this::special"})
+        @MappingOptions(converters = {"this::special"})
         List<UserDto> usersWith(List<User> in);
 
         Set<String> set(List<String> in);
 
-        @MappingOptions(methods = {"this::toDto"})
+        @MappingOptions(converters = {"this::toDto"})
         Map<String, UserDto> map(Map<String, User> in);
 
-        @MappingOptions(methods = {"this::users", "this::toDto"})
+        @MappingOptions(converters = {"this::users", "this::toDto"})
         List<List<UserDto>> nestedUsers(List<List<User>> in);
 
-        @MappingOptions(methods = {"this::users", "this::toDto"})
+        @MappingOptions(converters = {"this::users", "this::toDto"})
         Map<String, List<UserDto>> groupedUsers(Map<String, List<User>> in);
 
-        @MappingOptions(methods = {"this::users", "this::toDto"})
+        @MappingOptions(converters = {"this::users", "this::toDto"})
         Map<String, Map<String, UserDto>> nestedMapUsers(Map<String, Map<String, User>> in);
 
-        @MappingOptions(methods = {"this::users", "this::toDto"})
+        @MappingOptions(converters = {"this::users", "this::toDto"})
         List<Map<String, UserDto>> userMaps(List<Map<String, User>> in);
 
         UserDto toDto(User u);
@@ -332,59 +332,59 @@ public class MapperCollectionTest {
             return u == null ? null : new UserDto(u.name + "!");
         }
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         DtoBox box(UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "map", ignore = true)
         void updateBox(DtoBox target, UserBox box);
 
-        @MappingOptions(nulls = NullValuePolicy.IGNORE, methods = {"this::users"})
+        @MappingOptions(nulls = NullValuePolicy.IGNORE, converters = {"this::users"})
         @Mapping(target = "map", ignore = true)
         void ignoreNullBox(DtoBox target, UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "map", ignore = true)
         void setNullBox(DtoBox target, UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void setNullMapBox(DtoBox target, UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "users", array = ArrayPolicy.ADD)
         @Mapping(target = "map", ignore = true)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void appendBox(DtoBox target, UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void putBox(DtoBox target, UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "map", object = ObjectPolicy.PUT_IF_PRESENT)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void putIfPresentBox(DtoBox target, UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "users", ignore = true)
         @Mapping(target = "map", object = ObjectPolicy.PUT_IF_ABSENT)
         @Mapping(target = "nestedUsers", ignore = true)
         @Mapping(target = "groupedUsers", ignore = true)
         void putIfAbsentBox(DtoBox target, UserBox box);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "child", sources = {"child"}, compute = "this::toChildDto")
         ObntTarget obnt(ObntSource source);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         @Mapping(target = "child", sources = {"child"}, compute = "this::toChildDto")
         @Mapping(target = "set", array = ArrayPolicy.ADD)
         void updateObnt(ObntTarget target, ObntSource source);
@@ -411,13 +411,13 @@ public class MapperCollectionTest {
 
     @CompiledMapper
     public interface RootMapMapper {
-        @MappingOptions(methods = {"this::toDto"})
+        @MappingOptions(converters = {"this::toDto"})
         void put(Map<String, UserDto> target, Map<String, User> source);
 
-        @MappingOptions(objects = ObjectPolicy.PUT_IF_ABSENT, methods = {"this::toDto"})
+        @MappingOptions(objects = ObjectPolicy.PUT_IF_ABSENT, converters = {"this::toDto"})
         void putIfAbsent(Map<String, UserDto> target, Map<String, User> source);
 
-        @MappingOptions(objects = ObjectPolicy.PUT_IF_PRESENT, methods = {"this::toDto"})
+        @MappingOptions(objects = ObjectPolicy.PUT_IF_PRESENT, converters = {"this::toDto"})
         void putIfPresent(Map<String, UserDto> target, Map<String, User> source);
 
         default UserDto toDto(User user) {
@@ -437,10 +437,10 @@ public class MapperCollectionTest {
     public interface ImportedCollectionMapper {
         List<UserDto> users(List<User> in);
 
-        @MappingOptions(methods = {"ImportedUserMapper::toDto"})
+        @MappingOptions(converters = {"ImportedUserMapper::toDto"})
         List<UserDto> explicitUsers(List<User> in);
 
-        @MappingOptions(methods = {"this::users"})
+        @MappingOptions(converters = {"this::users"})
         DtoBox box(UserBox box);
     }
 

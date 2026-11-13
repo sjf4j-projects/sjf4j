@@ -135,7 +135,7 @@ public class OrderMapperBenchmark {
 
     @CompiledMapper
     public interface Sjf4jIgnoreMapper {
-        @MappingOptions(nulls = NullValuePolicy.IGNORE, methods = {"this::productToProductDTO"})
+        @MappingOptions(nulls = NullValuePolicy.IGNORE, converters = {"this::productToProductDTO"})
         @Mapping(target = "customerName", source = "$.customer.name")
         @Mapping(target = "billingStreetAddress", source = "$.customer.billingAddress.street")
         @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")
@@ -151,7 +151,7 @@ public class OrderMapperBenchmark {
 
     @CompiledMapper
     public interface Sjf4jSetMapper {
-        @MappingOptions(methods = {"this::productToProductDTO"})
+        @MappingOptions(converters = {"this::productToProductDTO"})
         @Mapping(target = "customerName", source = "$.customer.name")
         @Mapping(target = "billingStreetAddress", source = "$.customer.billingAddress.street")
         @Mapping(target = "billingCity", source = "$.customer.billingAddress.city")

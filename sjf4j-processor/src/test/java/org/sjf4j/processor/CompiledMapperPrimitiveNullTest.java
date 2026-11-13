@@ -138,7 +138,7 @@ class CompiledMapperPrimitiveNullTest {
         sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.*; "
                 + "@CompiledMapper public interface Mapper { "
-                + "@MappingOptions(methods={\"this::parseAge\"}) Target map(Source source); "
+                + "@MappingOptions(converters={\"this::parseAge\"}) Target map(Source source); "
                 + "default int parseAge(String value) { "
                 + "Counter.calls++; return Integer.parseInt(value); } }");
         NavigatorTestCompiler.Result compilation =

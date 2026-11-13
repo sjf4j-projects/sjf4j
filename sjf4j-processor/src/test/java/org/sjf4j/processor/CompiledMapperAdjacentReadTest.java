@@ -203,7 +203,7 @@ class CompiledMapperAdjacentReadTest {
         sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.*; "
                 + "@CompiledMapper public interface Mapper { "
-                + "@MappingOptions(methods={\"this::contact\"}) "
+                + "@MappingOptions(converters={\"this::contact\"}) "
                 + "@Mapping(target=\"name\",source=\"profile:name\") "
                 + "@Mapping(target=\"tier\",source=\"account:tier\") "
                 + "@Mapping(target=\"active\",source=\"account:active\") "
