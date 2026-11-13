@@ -48,6 +48,8 @@ equivalent fully materialized `List`:
 
 ## Comparison dependency versions
 
+**SJF4J version:** `v1.5.1-SNAPSHOT`.
+
 | Component | Version | Benchmark implementation |
 | --- | --- | --- |
 | Spring JDBC | `6.2.19` | `BeanPropertyRowMapper`, `DataClassRowMapper`, `ColumnMapRowMapper`, `RowMapperResultSetExtractor` |
