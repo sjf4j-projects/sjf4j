@@ -1,6 +1,20 @@
 # Schema performance baseline
 
-SJF4J JSON Schema validation and roundtrip performance, using the Creek model and JSON Schema Draft 2020-12. The primary workload is `CreekSchemaBenchmark`.
+SJF4J **Runtime** and **CompiledValidator** versus **NetworkNT** for JSON Schema
+validation of the Creek model using Draft 2020-12. The suite also measures
+separate serialization/deserialization roundtrips with optional validation.
+The primary workload is
+[`CreekSchemaBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java).
+
+## Comparison dependency versions
+
+Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f)):
+
+| Component | Version | Role |
+| --- | --- | --- |
+| NetworkNT JSON Schema Validator | `2.0.5` | External JSON Schema validation comparison |
+| Jackson2 Databind | `2.22.3` | JsonNode validation input and roundtrip comparison |
+| JMH | `1.37` | Benchmark harness |
 
 ## Code examples
 
@@ -42,16 +56,6 @@ The compiled POJO example uses a different input representation from the
 NetworkNT/Runtime `JsonNode` comparison. See
 [`CreekSchemaBenchmark`](../../sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/schema/CreekSchemaBenchmark.java)
 for the exact benchmark methods and setup.
-
-## Comparison dependency versions
-
-Declared versions for the published benchmark (from the [benchmark source commit](https://github.com/sjf4j-projects/sjf4j/commit/c1d380c6327a32d8302d16738cb63dbd5fd2be5f)):
-
-| Component | Version | Role |
-| --- | --- | --- |
-| NetworkNT JSON Schema Validator | `2.0.5` | External JSON Schema validation comparison |
-| Jackson2 Databind | `2.22.3` | JsonNode validation input and roundtrip comparison |
-| JMH | `1.37` | Benchmark harness |
 
 ## JVM — Temurin JDK 25
 
