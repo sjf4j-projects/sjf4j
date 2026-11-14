@@ -29,13 +29,34 @@ bringing data binding, navigation, validation, mapping, and patching together.
   Enjoy flexible runtime APIs and highly optimized compile-time code generation.
 
 
+## Installation
+
+SJF4J requires **Java 8+** and supports modular installation. 
+The latest version is: 
+[![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j).
+
+Gradle: 
+```kotlin
+dependencies {
+    // Core structural processing API
+    implementation("org.sjf4j:sjf4j-core:{version}")
+    
+    // Optional: Compile-time APIs
+    annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
+    
+    // Optional: JSON Schema validation
+    implementation("org.sjf4j:sjf4j-schema:{version}")
+
+    // Optional: Jackson 2.x backend and its dependency
+    implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+}
+```
+
+Learn more → [Installation (Modular)](https://sjf4j.org/docs/installation)
+
 
 ## Quickstart
-
-**Add SJF4J to your project (JDK 8+):**
-```gradle
-implementation("org.sjf4j:sjf4j:{version}")     // All-in-one
-```
 
 **Start with an ordinary Java class:**
 ```java
