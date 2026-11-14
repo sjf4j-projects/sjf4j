@@ -33,7 +33,7 @@ bringing data binding, navigation, validation, mapping, and patching together.
 
 SJF4J requires **Java 8+** and supports modular installation. 
 The latest version is: 
-[![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j).
+[![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
 
 Gradle: 
 ```java
@@ -163,11 +163,6 @@ String yaml = sjf4j.toYamlString(user);
 interface UserJsonBinder {
     @Read User read(String json);
 }
-
-@CompiledBinder(format = Format.YAML, backend = Backend.SNAKE)
-interface UserYamlBinder {
-    @Write String write(User user);
-}
 ```
 
 SJF4J's open streaming architecture supports custom data formats and backends.  
@@ -184,11 +179,10 @@ or [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/info/rfc6901/).
 
 **Runtime**
 ```java
-// Query with recursive descent and filtering (JOJO)
-List<String> names = student.findByPath("$..friends[?@.scores.math >= 90].name");
+JsonPath path = JsonPath.parse("$.address.city");
 
-// Modify a POJO via JSON Pointer
-JsonPath.parse("/address/city").put(user, "Shanghai");
+String city = path.getString(user);     // Read a property
+path.put(user, "Shanghai");             // Update a property
 ```
 
 **Compiled**
@@ -254,12 +248,12 @@ Convert between Maps, POJOs, values, nested object structures, and other OBNT no
 
 **Runtime**
 ```java
-Map<String, Object> data = new HashMap<>();
-data.put("name", "Alice");
-data.put("age", 18);
-data.put("address", Map.of("city", "Shanghai"));
+public class AnotherUser {
+  public String fullName;
+  public int age;
+}
 
-User user = sjf4j.convert(data, User.class);
+AnotherUser user = sjf4j.convert(user, AnotherUser.class);
 ```
 
 **Compiled**
@@ -274,7 +268,9 @@ interface UserMapper {
 }
 ```
 
-For JDBC results, `@CompiledJdbcMapper` generates direct mappings from `ResultSet` to Java objects:
+Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
+
+`@CompiledJdbcMapper` generates direct mappings from JDBC `ResultSet` to Java objects:
 ```java
 @CompiledJdbcMapper
 interface UserJdbcMapper {
@@ -282,7 +278,7 @@ interface UserJdbcMapper {
 }
 ```
 
-Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
+Learn more → [JDBC ResultSet Mapping](https://sjf4j.org/docs/jdbc_mapping)
 
 
 ### Patching
@@ -354,9 +350,7 @@ For Maven, typically: `target/generated-sources/annotations/com/example/UserNavi
 
 Add the annotation processor to your project:
 ```java
-dependencies {
-    annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
-}
+annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
 ```
 
 Use `CompiledInstances.create()` to instantiate generated implementations:
@@ -406,12 +400,10 @@ SJF4J's performance and standards compliance are evaluated through independent c
 - [JDBC Mapping Full Benchmarks](docs/performance/jdbc-mapping.md) — Spring JDBC and MyBatis vs. CompiledJdbcMapper.
 
 
-
 Learn more → [Benchmarks](https://sjf4j.org/docs/benchmarks)
 
 ## Contributing
-SJF4J is an evolving open-source project, and community feedback and contributions
-are essential to its continued improvement.
+SJF4J is an open-source project built for the Java community.
 
-All contributions are welcome! Feel free to [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new).
+All contributions are welcome! Feel free to [open an issue](https://github.com/sjf4j-projects/sjf4j/issues/new) or submit a pull request~
 
