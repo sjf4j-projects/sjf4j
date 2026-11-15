@@ -46,7 +46,7 @@ annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
 // Optional: JSON Schema validation
 implementation("org.sjf4j:sjf4j-schema:{version}")
 
-// Optional: Jackson 2.x backend and its dependency
+// Optional: Backend and its dependency (Jackson 2.x example) 
 implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
 implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
 ```
@@ -88,7 +88,7 @@ String output = sjf4j.toJsonString(user);
 No special base classes, annotations, or intermediate JSON trees are required.
 
 
-## Explore Features
+## Capabilities
 
 The following table provides an overview of SJF4J's capabilities
 and their corresponding Runtime and Compile-time APIs.
