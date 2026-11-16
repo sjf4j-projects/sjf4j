@@ -95,54 +95,14 @@ and their corresponding Runtime and Compile-time APIs.
 
 | Feature | Capability | Runtime | Compile-time |
 | --- | --- | --- | --- |
-| Modeling | Structural Operations | `Nodes` | — |
 | Binding | Data Binding | `Sjf4j.from/toXxx()` | `@CompiledBinder` |
 | Navigating | JSONPath Navigation | `JsonPath` | `@CompiledNavigator` |
 | Validating | JSON Schema Validation | `JsonSchema` | `@CompiledValidator` |
 | Mapping | Object Mapping | `Sjf4j.convert()` | `@CompiledMapper` |
 | — | JDBC Mapping | — | `@CompiledJdbcMapper` |
 | Patching | JSON Patch & Merge Patch | `JsonPatch` | — |
+| Modeling | Structural Operations | `Nodes` | — |
 
-
-
-### Modeling
-
-**OBNT (Object Based Node Tree)** provides a unified structural model for native Java objects, without requiring a dedicated JSON tree representation.
-
-OBNT defines three kinds of nodes:
-
-| Node kind| Java representations |
-| --- | --- |
-| **Object node** | `Map`, POJOs, `JsonObject`, JOJOs |
-| **Array node** | `List`, Java arrays, `JsonArray`, JAJOs |
-| **Value node** | Strings, numbers, booleans, and custom value types |
-
-Use `Nodes` to work with these structures through a consistent API.
-```java
-// Access and convert property values
-Object raw = Nodes.getInObject(user, "name");
-String name = Nodes.toString(raw);
-
-// Iterate over object properties
-Nodes.forEachObject(user, (key, value) -> 
-        System.out.println(key + ": " + value));
-
-// Compare objects by JSON semantics
-if (!Nodes.equals(user, userMap)) {
-    // Inspect object structure
-    System.out.println("user: " + Nodes.inspect(user));   
-}
-```
-
-OBNT also supports extensible object models:
-
-- Extend `JsonObject` to create a **JOJO (JSON Object Java Object)**, combining typed properties with dynamic members in a hybrid object model.
-- Extend `JsonArray` to create a **JAJO (JSON Array Java Object)**, a typed, extensible array node.
-- Use `@NodeValue` to model a Java type as a logical value node.
-- Use `@OneOf` to model polymorphic node types.
-- Register an `ExternalNode` to integrate your own structural types into OBNT.
-
-Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 
 ### Binding
@@ -197,7 +157,7 @@ interface UserNavigator {
 }
 ```
 
-SJF4J combines standards-compliant JSONPath querying with powerful structural navigation and mutation, operating directly on OBNT without intermediate JSON trees.
+SJF4J combines standards-compliant JSONPath querying with powerful structural navigation and mutation, operating directly on Java objects without intermediate JSON trees.
 
 Learn more → [Navigating (JSONPath)](https://sjf4j.org/docs/navigating)
 
@@ -244,7 +204,7 @@ Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
 
 ### Mapping
 
-Convert between Maps, POJOs, values, nested object structures, and other OBNT nodes.
+Convert between Maps, POJOs, values, and nested Java object structures.
 
 **Runtime**
 ```java
@@ -294,6 +254,46 @@ patch.apply(user);  // Update in place
 ```
 
 Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
+
+
+### Modeling
+
+**OBNT (Object-Based Node Tree)** is the unified structural model behind SJF4J's APIs. It enables JSON-oriented operations directly on native Java objects without requiring intermediate JSON trees.
+
+OBNT defines three kinds of nodes:
+
+| Node kind| Java representations |
+| --- | --- |
+| **Object node** | `Map`, POJOs, `JsonObject`, JOJOs |
+| **Array node** | `List`, Java arrays, `JsonArray`, JAJOs |
+| **Value node** | Strings, numbers, booleans, and custom value types |
+
+Use `Nodes` to work with these structures through a consistent API.
+```java
+// Access and convert property values
+Object raw = Nodes.getInObject(user, "name");
+String name = Nodes.toString(raw);
+
+// Iterate over object properties
+Nodes.forEachObject(user, (key, value) -> 
+        System.out.println(key + ": " + value));
+
+// Compare objects by JSON semantics
+if (!Nodes.equals(user, userMap)) {
+    // Inspect object structure
+    System.out.println("user: " + Nodes.inspect(user));   
+}
+```
+
+OBNT also supports extensible object models:
+
+- Extend `JsonObject` to create a **JOJO (JSON Object Java Object)**, combining typed properties with dynamic members in a hybrid object model.
+- Extend `JsonArray` to create a **JAJO (JSON Array Java Object)**, a typed, extensible array node.
+- Use `@NodeValue` to model a Java type as a logical value node.
+- Use `@OneOf` to model polymorphic node types.
+- Register an `ExternalNode` to integrate your own structural types into OBNT.
+
+Learn more → [Modeling (OBNT)](https://sjf4j.org/docs/modeling)
 
 
 ## Enjoy Compiled APIs
