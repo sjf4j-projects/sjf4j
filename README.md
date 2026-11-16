@@ -88,9 +88,9 @@ String output = sjf4j.toJsonString(user);
 No special base classes, annotations, or intermediate JSON trees are required.
 
 
-## Capabilities
+## Explore Features
 
-The following table provides an overview of SJF4J's capabilities
+The following table provides an overview of SJF4J's features
 and their corresponding Runtime and Compile-time APIs.
 
 | Feature | Capability | Runtime | Compile-time |
