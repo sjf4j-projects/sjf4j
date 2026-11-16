@@ -99,7 +99,7 @@ and their corresponding Runtime and Compile-time APIs.
 | Navigating | JSONPath Navigation | `JsonPath` | `@CompiledNavigator` |
 | Validating | JSON Schema Validation | `JsonSchema` | `@CompiledValidator` |
 | Mapping | Object Mapping | `Sjf4j.convert()` | `@CompiledMapper` |
-| — | JDBC Mapping | — | `@CompiledJdbcMapper` |
+| — | JDBC Result Mapping | — | `@CompiledJdbcMapper` |
 | Patching | JSON Patch & Merge Patch | `JsonPatch` | — |
 | Modeling | Structural Operations | `Nodes` | — |
 
@@ -142,7 +142,7 @@ or [JSON Pointer (RFC 6901)](https://www.rfc-editor.org/info/rfc6901/).
 JsonPath path = JsonPath.parse("$.address.city");
 
 String city = path.getString(user);     // Read a property
-path.put(user, "Shanghai");             // Update a property
+path.put(user, "Chongqing");            // Update a property
 ```
 
 **Compiled**
