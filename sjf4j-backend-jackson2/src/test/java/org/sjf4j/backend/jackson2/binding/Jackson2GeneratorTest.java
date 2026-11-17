@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -65,4 +66,23 @@ class Jackson2GeneratorTest {
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42,\"decimal\":1.20,\"nullable\":null,\"nullValue\":null}", output.toString());
     }
+    @Test
+    void writesUuidAndNullViaSharedFastUuidPath() throws Exception {
+        StringWriter output = new StringWriter();
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory());
+        try (Jackson2Generator generator = binder.createGenerator(output)) {
+            generator.writeArrayStart();
+            generator.writeUuid(new UUID(0L, 0L));
+            generator.writeUuid(new UUID(-1L, -1L));
+            generator.writeUuid(UUID.fromString("123e4567-e89b-12d3-a456-426614174000"));
+            generator.writeUuid(null);
+            generator.writeArrayEnd();
+        }
+
+        assertEquals("[\"00000000-0000-0000-0000-000000000000\","
+                + "\"ffffffff-ffff-ffff-ffff-ffffffffffff\","
+                + "\"123e4567-e89b-12d3-a456-426614174000\",null]",
+                output.toString());
+    }
+
 }
