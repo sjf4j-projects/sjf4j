@@ -1,8 +1,14 @@
 name: Binding Full Benchmark (JDK 25)
 
-# Expensive and noisy shared-runner measurements: manual invocation only.
+# Full suite remains manual; PR job temporarily compares Jackson3 read A/B.
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sjf4j-backend-jackson3/**'
+      - 'sjf4j-processor/**'
+      - '.github/workflows/binding-full-benchmark.yml'
 
 permissions:
   contents: read
@@ -13,6 +19,7 @@ concurrency:
 
 jobs:
   build-jmh:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -39,6 +46,7 @@ jobs:
           retention-days: 7
 
   benchmark:
+    if: github.event_name == 'workflow_dispatch'
     name: Full / ${{ matrix.backend }}
     needs: build-jmh
     runs-on: ubuntu-24.04
@@ -161,7 +169,7 @@ jobs:
   collect-results:
     name: Bundle all backend artifacts
     needs: [build-jmh, benchmark]
-    if: ${{ always() && needs.build-jmh.result == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && always() && needs.build-jmh.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -177,6 +185,109 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: binding-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 30
+
+  jackson3-read-ab:
+    name: Targeted Binding Full — Jackson3 Read A/B
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout base (before)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: baseline
+
+      - name: Checkout PR head (after)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build baseline and candidate JMH jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd baseline && ./gradlew :sjf4j-testbench:jmhJar)
+          (cd candidate && ./gradlew :sjf4j-testbench:jmhJar)
+
+      - name: Run targeted Binding Full JMH (Jackson3 Read / POJO)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for variant in baseline candidate; do
+            jar=$(find "$variant/sjf4j-testbench/build/libs" -name '*-jmh.jar' -type f | head -n 1)
+            test -n "$jar"
+            echo "Running $variant on $(java -version 2>&1 | head -n 1)"
+            java -jar "$jar" \
+              'org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read' \
+              -p backend=jackson3 \
+              -p implementation=runtime,compiled,native,blackbird \
+              -p model=users,clients -p shape=pojo \
+              -p sizeKb=10,100 -p seed=12345,324 \
+              -rf json -t 1 -f 3 -wi 5 -i 5 -w 1s -r 1s -prof gc \
+              -rff "results/$variant.json" 2>&1 | tee "results/$variant.log"
+          done
+
+      - name: Compare Best 2 Mean across identical cases
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/comparison.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import statistics
+          from pathlib import Path
+
+          def collect(variant):
+              rows = json.loads(Path(f"results/{variant}.json").read_text())
+              if len(rows) != 32:
+                  raise SystemExit(f"{variant}: expected 32 JMH cases, found {len(rows)}")
+              measures = {}
+              for row in rows:
+                  p = row["params"]
+                  key = (p["model"], p["sizeKb"], p["seed"], p["implementation"])
+                  forks = row["primaryMetric"]["rawData"]
+                  if len(forks) != 3 or any(not fork for fork in forks):
+                      raise SystemExit(f"{variant} {key}: expected three complete forks")
+                  measures[key] = statistics.mean(sorted(statistics.mean(f) for f in forks)[:2])
+              return measures
+
+          before, after = collect("baseline"), collect("candidate")
+          if before.keys() != after.keys():
+              raise SystemExit("Baseline/candidate JMH case mismatch")
+          print("## Jackson3 Read / POJO, targeted Binding Full JMH")
+          print("JDK 25, same runner, 3 forks × (5×1s warmup + 5×1s measurement), 2 seeds.")
+          print("Best 2 fork means; lower µs/op is better. Shared-runner results are exploratory.")
+          print()
+          print("| Model | Size | Implementation | Before (µs) | After (µs) | Change |")
+          print("| --- | --- | --- | ---: | ---: | ---: |")
+          for model in ("users", "clients"):
+              for size in ("10", "100"):
+                  for impl in ("native", "blackbird", "runtime", "compiled"):
+                      keys = [(model, size, seed, impl) for seed in ("12345", "324")]
+                      b = statistics.mean(before[k] for k in keys)
+                      a = statistics.mean(after[k] for k in keys)
+                      print(f"| {model} | {size}KB | {impl} | {b:.3f} | {a:.3f} | {(b/a - 1)*100:+.1f}% faster |")
+          PY
+
+      - name: Upload raw JMH and comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-native-read-ab-${{ github.run_id }}
           path: results/
           if-no-files-found: warn
           retention-days: 30
