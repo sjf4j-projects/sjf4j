@@ -2,153 +2,126 @@ package org.sjf4j.path;
 
 import org.sjf4j.exception.NodeException;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
- * Minimal implementation of the JSONPath I-Regexp draft.
- * See: <a href="https://www.rfc-editor.org/rfc/rfc9485.html">RFC 9485</a>
+ * I-Regexp matching (RFC 9485) backed by the JDK regular expression engine.
  *
- * <p>This is a lightweight matcher used by JSONPath functions such as
- * {@code match()} and {@code search()}. It recognizes literals, single-character
- * wildcards, escapes, and character classes/ranges; it is not a general
- * {@link java.util.regex.Pattern} implementation.
+ * <p>RFC-compatible patterns use I-Regexp semantics: an unescaped dot matches
+ * any Unicode code point except CR and LF, while unescaped '^' and '$' are
+ * literal characters. Java regular expression extensions are also accepted;
+ * this is not a strict RFC 9485 syntax checker.</p>
+ *
+ * <p>Compiled patterns are cached in a bounded LRU map. As with other
+ * backtracking engines, untrusted patterns may cause excessive CPU usage.</p>
  */
-public class IRegexpUtil {
+public final class IRegexpUtil {
+    private static final int CACHE_LIMIT = 256;
 
+    private static final Map<String, Pattern> CACHE = Collections.synchronizedMap(
+            new LinkedHashMap<String, Pattern>(CACHE_LIMIT, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Pattern> eldest) {
+                    return size() > CACHE_LIMIT;
+                }
+            });
 
-    /**
-     * Returns true when input fully matches the I-Regexp pattern.
-     */
+    private IRegexpUtil() {
+    }
+
+    /** Returns true when the entire input matches the expression. */
     public static boolean match(String pattern, String input) {
-        if (input == null) return false;
-        if (input.length() != patternLength(pattern)) return false;
-        return matchesAt(pattern, input, 0);
+        return input != null && compile(pattern).matcher(input).matches();
     }
 
-    /**
-     * Returns true when input contains a substring that matches the pattern.
-     */
+    /** Returns true when any substring of the input matches the expression. */
     public static boolean search(String pattern, String input) {
-        if (input == null) return false;
-
-        int plen = patternLength(pattern);
-        if (plen == 0) return true;
-        if (input.length() < plen) return false;
-
-        for (int i = 0; i <= input.length() - plen; i++) {
-            if (matchesAt(pattern, input, i)) {
-                return true;
-            }
-        }
-        return false;
+        return input != null && compile(pattern).matcher(input).find();
     }
 
-    /*
-     * --------------------------------------------------------------
-     * Private Helpers
-     * --------------------------------------------------------------
-     */
+    private static Pattern compile(String pattern) {
+        if (pattern == null) throw new NodeException("I-Regexp pattern must not be null");
+        Pattern compiled = CACHE.get(pattern);
+        if (compiled != null) return compiled;
 
-    /**
-     * Matches pattern against input starting from the given position.
-     */
-    private static boolean matchesAt(String pattern, String input, int si) {
-        int pi = 0;
-        int start = si;
-
-        while (pi < pattern.length()) {
-            if (si >= input.length()) return false;
-
-            char pc = pattern.charAt(pi);
-
-            if (pc == '\\') {
-                pi++;
-                if (pi >= pattern.length()) return false;
-                if (pattern.charAt(pi) != input.charAt(si)) return false;
-                pi++; si++;
-                continue;
-            }
-
-            if (pc == '.') {
-                pi++; si++;
-                continue;
-            }
-
-            if (pc == '[') {
-                int end = findClassEnd(pattern, pi);
-                if (!matchClass(pattern, pi + 1, end, input.charAt(si))) {
-                    return false;
-                }
-                pi = end + 1;
-                si++;
-                continue;
-            }
-
-            if (pc != input.charAt(si)) return false;
-
-            pi++; si++;
+        try {
+            compiled = Pattern.compile(toJavaPattern(pattern));
+        } catch (PatternSyntaxException e) {
+            throw new NodeException("invalid regular expression '" + pattern + "'", e);
         }
 
-        return true;
+        synchronized (CACHE) {
+            Pattern cached = CACHE.get(pattern);
+            if (cached != null) return cached;
+            CACHE.put(pattern, compiled);
+        }
+        return compiled;
     }
 
     /**
-     * Finds the closing bracket for a character class.
+     * Converts only the constructs where I-Regexp and Java Pattern disagree.
+     * Escaped characters, quoted spans, and character classes must retain
+     * their meaning; blind String.replace calls would break those contexts.
      */
-    private static int findClassEnd(String p, int start) {
-        for (int i = start + 1; i < p.length(); i++) {
-            if (p.charAt(i) == ']') return i;
-        }
-        throw new NodeException("unclosed character class '[' at position " + start +
-                " in I-Regexp pattern '" + p + "'");
-    }
-
-    /**
-     * Matches one character against a character class.
-     */
-    private static boolean matchClass(String p, int from, int to, char ch) {
-        for (int i = from; i < to; i++) {
-            char c = p.charAt(i);
-            if (c == '\\') {
-                i++;
-                if (i >= to) throw new NodeException("invalid escape in character class of I-Regexp pattern '" + p + "'");
-                if (p.charAt(i) == ch) return true;
-            } else if (i + 2 < to && p.charAt(i + 1) == '-') {
-                char lo = c;
-                char hi = p.charAt(i + 2);
-                if (ch >= lo && ch <= hi) return true;
-                i += 2;
-            } else if (c == ch) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Returns the logical character length represented by the pattern.
-     */
-    private static int patternLength(String pattern) {
-        int len = 0;
-        int i = 0;
-        while (i < pattern.length()) {
+    private static String toJavaPattern(String pattern) {
+        StringBuilder out = new StringBuilder(pattern.length() + 12);
+        int classDepth = 0;
+        boolean inQuote = false;
+        boolean nestedClass = false;
+        for (int i = 0; i < pattern.length(); i++) {
             char c = pattern.charAt(i);
-            if (c == '\\') {
-                i += 2;
-                len++;
-            } else if (c == '[') {
-                i++;
-                while (i < pattern.length() && pattern.charAt(i) != ']') {
-                    if (pattern.charAt(i) == '\\') i++;
-                    i++;
-                }
-                if (i < pattern.length() && pattern.charAt(i) == ']') i++;
-                len++;
+            if (c == '\\' && i + 1 < pattern.length()) {
+                char next = pattern.charAt(++i);
+                if (next == 'Q' && !inQuote) inQuote = true;
+                else if (next == 'E' && inQuote) inQuote = false;
+                out.append(c).append(next);
+                continue;
+            }
+            if (inQuote) {
+                out.append(c);
+                continue;
+            }
+            if (c == '[') {
+                if (classDepth == 0) nestedClass = hasNestedClass(pattern, i);
+                classDepth++;
+                out.append(c);
+            } else if (c == ']' && classDepth > 0) {
+                classDepth--;
+                out.append(c);
+            } else if (classDepth == 0) {
+                if (c == '.') out.append("[^\\r\\n]");
+                else if (c == '^' || c == '$') out.append('\\').append(c);
+                else out.append(c);
+            } else if (c == '&' && !nestedClass) {
+                // A pair of literal '&' characters is a Java class intersection.
+                // For RFC classes, escape ampersands (including consecutive ones).
+                out.append("\\&");
             } else {
-                i++;
-                len++;
+                out.append(c);
             }
         }
-        return len;
+        return out.toString();
     }
 
+    /** A nested character class is a Java-only extension (typically [a-z&&[^aeiou]]). */
+    private static boolean hasNestedClass(String pattern, int opening) {
+        boolean inQuote = false;
+        for (int i = opening + 1; i < pattern.length(); i++) {
+            char c = pattern.charAt(i);
+            if (c == '\\' && i + 1 < pattern.length()) {
+                char next = pattern.charAt(++i);
+                if (next == 'Q' && !inQuote) inQuote = true;
+                else if (next == 'E' && inQuote) inQuote = false;
+                continue;
+            }
+            if (inQuote) continue;
+            if (c == '[') return true;
+            if (c == ']') return false;
+        }
+        return false;
+    }
 }
