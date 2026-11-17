@@ -150,7 +150,7 @@ public class FunctionRegistry {
         }));
 
         // match
-        // RFC 9485 matching semantics, with additional Java regular-expression syntax.
+        // Java Pattern semantics for JSONPath match().
         FunctionRegistry.register(new FunctionDescriptor("match", (target, args) -> {
             if (args.length != 1)
                 throw new NodeException("match(): expected exactly 1 argument, but got " + args.length);
@@ -172,7 +172,7 @@ public class FunctionRegistry {
                     try {
                         return IRegexpUtil.match(pattern, text);
                     } catch (NodeException invalidPattern) {
-                        // RFC 9535: invalid regexp arguments yield LogicalFalse.
+                        // Invalid regular expressions do not match.
                         return false;
                     }
             }
@@ -201,7 +201,7 @@ public class FunctionRegistry {
                     try {
                         return IRegexpUtil.search(pattern, text);
                     } catch (NodeException invalidPattern) {
-                        // RFC 9535: invalid regexp arguments yield LogicalFalse.
+                        // Invalid regular expressions do not match.
                         return false;
                     }
             }
