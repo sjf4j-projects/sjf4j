@@ -21,6 +21,7 @@ final class ReadEmitter {
     private final BackendSpec backend;
     private final BindingNames names;
     private final Jackson2ReadEmitter jackson2;
+    private final Jackson3ReadEmitter jackson3;
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
 
@@ -30,9 +31,12 @@ final class ReadEmitter {
         this.names = names;
         this.jackson2 = backend.backend() == Backend.JACKSON2
                 ? new Jackson2ReadEmitter() : null;
+        this.jackson3 = backend.backend() == Backend.JACKSON3
+                ? new Jackson3ReadEmitter() : null;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
-        this.nativeRead = jackson2 != null ? jackson2 : fastjson2;
+        this.nativeRead = jackson2 != null ? jackson2
+                : jackson3 != null ? jackson3 : fastjson2;
     }
 
     void registerEnums(BindingValue value) {
@@ -334,7 +338,7 @@ final class ReadEmitter {
             }
 
             out.beginBlock("while ((nameIndex = "
-                    + (nativeObject ? jackson2.nameMatchExpression(matcherFieldName(value))
+                    + (nativeObject && jackson2 != null ? jackson2.nameMatchExpression(matcherFieldName(value))
                     : "parser.nextNameMatch(" + matcherFieldName(value)
                     + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
                     + ") != " + NAME_MATCHER + ".OBJECT_END)");
@@ -412,7 +416,7 @@ final class ReadEmitter {
             out.line("int nameIndex;");
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
             out.beginBlock("while ((nameIndex = "
-                    + (nativeObject ? jackson2.nameMatchExpression(matcherFieldName(value))
+                    + (nativeObject && jackson2 != null ? jackson2.nameMatchExpression(matcherFieldName(value))
                     : "parser.nextNameMatch(" + matcherFieldName(value)
                     + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
                     + ") != " + NAME_MATCHER + ".OBJECT_END)");
