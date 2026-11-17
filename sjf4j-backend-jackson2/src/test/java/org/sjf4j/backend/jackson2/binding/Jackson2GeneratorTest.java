@@ -66,6 +66,7 @@ class Jackson2GeneratorTest {
 
         assertEquals("{\"te\\\"xt\":\"value\",\"number\":42,\"decimal\":1.20,\"nullable\":null,\"nullValue\":null}", output.toString());
     }
+
     @Test
     void writesUuidAndNullViaSharedFastUuidPath() throws Exception {
         StringWriter output = new StringWriter();
@@ -84,5 +85,4 @@ class Jackson2GeneratorTest {
                 + "\"123e4567-e89b-12d3-a456-426614174000\",null]",
                 output.toString());
     }
-
 }
