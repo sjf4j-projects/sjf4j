@@ -354,6 +354,37 @@ class CompiledBinderConformanceTest {
     }
 
     @Test
+    void jackson3NativeContainerGenerationPreservesItsNameMatcher() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Bean.java",
+                "package fixture; public class Bean {"
+                        + " public int id; public String name;"
+                        + " public java.util.List<String> tags;"
+                        + " public java.util.List<Child> children;"
+                        + " public static class Child { public int id; }"
+                        + "}");
+        sources.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*;"
+                        + "@CompiledBinder(backend=Backend.JACKSON3) public interface Binder {"
+                        + " @Read Bean bean(byte[] json);"
+                        + " @Read java.util.List<Bean> beans(byte[] json);"
+                        + " @Read java.util.List<String> strings(byte[] json);"
+                        + " @Read String[] array(byte[] json);"
+                        + " @Read java.util.List<java.util.Map<String, Object>> maps(byte[] json);"
+                        + "}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("tools.jackson.core.JsonParser nativeParser = parser.nativeParser();"), generated);
+        assertTrue(generated.contains("while (nativeParser.nextToken() != tools.jackson.core.JsonToken.END_ARRAY)"), generated);
+        assertTrue(generated.contains("parser.readCurrentString()"), generated);
+        assertTrue(generated.contains("parser.reuseCurrentToken();"), generated);
+        assertTrue(generated.contains("parser.nextNameMatch("), generated);
+        assertFalse(generated.contains("while (!parser.nextIfArrayEnd())"), generated);
+    }
+
+    @Test
     void fastjson2NativeContainerGeneration() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Bean.java",
