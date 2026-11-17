@@ -1,6 +1,7 @@
 package org.sjf4j.testbench.binding.uuid;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.databind.ser.std.UUIDSerializer;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
@@ -11,7 +12,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.sjf4j.backend.jackson2.binding.Jackson2Generator;
-import org.sjf4j.value.FastUuid;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,8 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Jackson 2 UUID output: its UUIDSerializer override versus the inherited
- * StreamingGenerator.writeUuid() equivalent, FastUuid.toString() + writeString().
+ * Compare the former Jackson2 UUIDSerializer override against the current
+ * inherited StreamingGenerator.writeUuid() (FastUuid.toString + writeString).
  *
  * Both paths use the identical Jackson2Generator, JsonFactory, UUID inputs,
  * UTF-8 output sink and JSON array framing. Output bytes are consumed by JMH.
@@ -32,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 public class Jackson2UuidWriteBenchmark {
+
+    private static final UUIDSerializer ORIGINAL_SERIALIZER = new UUIDSerializer();
 
     @Param({"1", "64", "512"})
     public int count;
@@ -77,7 +79,11 @@ public class Jackson2UuidWriteBenchmark {
                      new Jackson2Generator(factory.createGenerator(sink))) {
             writer.writeArrayStart();
             for (UUID uuid : source) {
-                writer.writeUuid(uuid);
+                if (uuid == null) {
+                    writer.writeNull();
+                } else {
+                    ORIGINAL_SERIALIZER.serialize(uuid, writer.nativeGenerator(), null);
+                }
             }
             writer.writeArrayEnd();
         }
@@ -90,7 +96,7 @@ public class Jackson2UuidWriteBenchmark {
                      new Jackson2Generator(factory.createGenerator(sink))) {
             writer.writeArrayStart();
             for (UUID uuid : source) {
-                writer.writeString(uuid == null ? null : FastUuid.toString(uuid));
+                writer.writeUuid(uuid);
             }
             writer.writeArrayEnd();
         }
