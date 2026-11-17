@@ -46,12 +46,6 @@ jobs:
     - name: Build and verify coverage
       run: ./gradlew build
 
-    # Temporary diagnostic for the PR's generated-source assertion failure.
-    - name: Report failed processor test detail
-      if: failure()
-      run: |
-        find sjf4j-processor/build/test-results/test -maxdepth 1 -name 'TEST-*CompiledBinderConformanceTest.xml' -exec sed -n '1,20p' {} \; || true
-
     # Standard Gradle 'build' does not compile src/jmh/java.
     # Compile the benchmark jar to catch JMH and compiled binder generation errors.
     - name: Compile JMH benchmarks
