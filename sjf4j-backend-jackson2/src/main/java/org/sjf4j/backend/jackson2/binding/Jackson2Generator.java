@@ -1,7 +1,6 @@
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.ser.std.UUIDSerializer;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.CompiledName;
 import org.sjf4j.binding.StreamingGenerator;
@@ -10,7 +9,6 @@ import org.sjf4j.util.Asserts;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.UUID;
 
 /**
  * Jackson 2 adapter for the SJF4J streaming writer protocol.
@@ -192,19 +190,6 @@ public final class Jackson2Generator extends StreamingGenerator {
         generator.writeNumber(Asserts.notNull(value, "value"));
     }
 
-
-    private static final class UUIDSerializerHolder {
-        static final UUIDSerializer INSTANCE = new UUIDSerializer();
-    }
-
-    @Override
-    public void writeUuid(UUID value) throws IOException {
-        if (value == null) {
-            generator.writeNull();
-        } else {
-            UUIDSerializerHolder.INSTANCE.serialize(value, generator, null);
-        }
-    }
 
     /*
      * Lifecycle
