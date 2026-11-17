@@ -142,38 +142,38 @@ adapters used by the benchmark.
 | Write / Clients / POJO | Simple | — | — | 488.017 | 460.483 | — |
 | Write / Clients / POJO | SnakeYAML | 6282.278 | — | 3356.756 | 3305.835 | 1.90× |
 
-**Allocation (B/op, lower is better).** Untrimmed JMH allocation scores, averaged equally across both seeds; `Native / Compiled` here is an allocation ratio, not a latency speedup.
+**Allocation (B/op, lower is better).** Untrimmed JMH allocation scores, averaged equally across both seeds; `Native / Compiled` is the B/op ratio (not a latency speedup).
 
 | Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled | Native / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Read / Users / POJO | Jackson2 | 330,793 | 330,057 | 327,809 | 327,809 | — |
-| Read / Users / POJO | Jackson3 | 297,657 | 296,921 | 294,649 | 294,649 | — |
-| Read / Users / POJO | Fastjson2 | 297,328 | — | 297,273 | 297,272 | — |
-| Read / Users / POJO | Gson | 503,938 | — | 501,018 | 501,018 | — |
+| Read / Users / POJO | Jackson2 | 330,793 | 330,057 | 327,809 | 327,809 | 1.01× |
+| Read / Users / POJO | Jackson3 | 297,657 | 296,921 | 294,649 | 294,649 | 1.01× |
+| Read / Users / POJO | Fastjson2 | 297,328 | — | 297,273 | 297,272 | 1.00× |
+| Read / Users / POJO | Gson | 503,938 | — | 501,018 | 501,018 | 1.01× |
 | Read / Users / POJO | JSON-P | — | — | 520,493 | 518,432 | — |
 | Read / Users / POJO | Simple | — | — | 504,235 | 504,234 | — |
-| Read / Users / POJO | SnakeYAML | 9,187,033 | — | 6,757,925 | 6,746,440 | — |
-| Write / Users / POJO | Jackson2 | 199,054 | 198,318 | 112,061 | 112,061 | — |
-| Write / Users / POJO | Jackson3 | 199,070 | 198,334 | 112,085 | 112,085 | — |
-| Write / Users / POJO | Fastjson2 | 105,116 | — | 105,061 | 105,060 | — |
-| Write / Users / POJO | Gson | 522,167 | — | 216,358 | 216,358 | — |
+| Read / Users / POJO | SnakeYAML | 9,187,033 | — | 6,757,925 | 6,746,440 | 1.36× |
+| Write / Users / POJO | Jackson2 | 199,054 | 198,318 | 112,061 | 112,061 | 1.78× |
+| Write / Users / POJO | Jackson3 | 199,070 | 198,334 | 112,085 | 112,085 | 1.78× |
+| Write / Users / POJO | Fastjson2 | 105,116 | — | 105,061 | 105,060 | 1.00× |
+| Write / Users / POJO | Gson | 522,167 | — | 216,358 | 216,358 | 2.41× |
 | Write / Users / POJO | JSON-P | — | — | 317,176 | 317,176 | — |
 | Write / Users / POJO | Simple | — | — | 216,168 | 216,167 | — |
-| Write / Users / POJO | SnakeYAML | 6,836,564 | — | 5,866,142 | 5,853,193 | — |
-| Read / Clients / POJO | Jackson2 | 1,241,416 | 1,225,244 | 282,800 | 282,937 | — |
-| Read / Clients / POJO | Jackson3 | 1,213,236 | 1,197,084 | 254,609 | 254,753 | — |
-| Read / Clients / POJO | Fastjson2 | 255,213 | — | 256,333 | 254,605 | — |
-| Read / Clients / POJO | Gson | 1,399,426 | — | 486,071 | 486,214 | — |
+| Write / Users / POJO | SnakeYAML | 6,836,564 | — | 5,866,142 | 5,853,193 | 1.17× |
+| Read / Clients / POJO | Jackson2 | 1,241,416 | 1,225,244 | 282,800 | 282,937 | 4.39× |
+| Read / Clients / POJO | Jackson3 | 1,213,236 | 1,197,084 | 254,609 | 254,753 | 4.76× |
+| Read / Clients / POJO | Fastjson2 | 255,213 | — | 256,333 | 254,605 | 1.00× |
+| Read / Clients / POJO | Gson | 1,399,426 | — | 486,071 | 486,214 | 2.88× |
 | Read / Clients / POJO | JSON-P | — | — | 591,128 | 590,135 | — |
 | Read / Clients / POJO | Simple | — | — | 437,975 | 438,119 | — |
-| Read / Clients / POJO | SnakeYAML | 9,319,027 | — | 6,298,548 | 6,298,692 | — |
-| Write / Clients / POJO | Jackson2 | 333,147 | 316,993 | 211,482 | 211,482 | — |
-| Write / Clients / POJO | Jackson3 | 333,161 | 317,009 | 211,506 | 211,506 | — |
-| Write / Clients / POJO | Fastjson2 | 110,524 | — | 110,469 | 110,468 | — |
-| Write / Clients / POJO | Gson | 716,743 | — | 352,870 | 352,870 | — |
+| Read / Clients / POJO | SnakeYAML | 9,319,027 | — | 6,298,548 | 6,298,692 | 1.48× |
+| Write / Clients / POJO | Jackson2 | 333,147 | 316,993 | 211,482 | 211,482 | 1.58× |
+| Write / Clients / POJO | Jackson3 | 333,161 | 317,009 | 211,506 | 211,506 | 1.58× |
+| Write / Clients / POJO | Fastjson2 | 110,524 | — | 110,469 | 110,468 | 1.00× |
+| Write / Clients / POJO | Gson | 716,743 | — | 352,870 | 352,870 | 2.03× |
 | Write / Clients / POJO | JSON-P | — | — | 432,582 | 432,584 | — |
 | Write / Clients / POJO | Simple | — | — | 352,679 | 352,679 | — |
-| Write / Clients / POJO | SnakeYAML | 6,539,835 | — | 5,724,599 | 5,724,599 | — |
+| Write / Clients / POJO | SnakeYAML | 6,539,835 | — | 5,724,599 | 5,724,599 | 1.14× |
 
 #### 100KB Map measurements
 
@@ -210,38 +210,38 @@ adapters used by the benchmark.
 | Write / Clients / Map | Simple | — | — | 405.009 | 400.044 | — |
 | Write / Clients / Map | SnakeYAML | 6429.458 | — | 3259.026 | 3277.878 | 1.96× |
 
-**Allocation (B/op, lower is better).** Untrimmed JMH allocation scores across both seeds.
+**Allocation (B/op, lower is better).** Untrimmed JMH allocation scores across both seeds; `Native / Compiled` is the B/op ratio.
 
 | Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled | Native / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Read / Users / Map | Jackson2 | 637,411 | 637,404 | 589,697 | 589,697 | — |
-| Read / Users / Map | Jackson3 | 604,261 | 604,261 | 562,377 | 562,377 | — |
-| Read / Users / Map | Fastjson2 | 557,157 | — | 565,629 | 566,935 | — |
-| Read / Users / Map | Gson | 742,498 | — | 767,686 | 767,686 | — |
+| Read / Users / Map | Jackson2 | 637,411 | 637,404 | 589,697 | 589,697 | 1.08× |
+| Read / Users / Map | Jackson3 | 604,261 | 604,261 | 562,377 | 562,377 | 1.07× |
+| Read / Users / Map | Fastjson2 | 557,157 | — | 565,629 | 566,935 | 0.98× |
+| Read / Users / Map | Gson | 742,498 | — | 767,686 | 767,686 | 0.97× |
 | Read / Users / Map | JSON-P | — | — | 802,939 | 802,939 | — |
 | Read / Users / Map | Simple | — | — | 766,123 | 766,123 | — |
-| Read / Users / Map | SnakeYAML | 9,429,418 | — | 6,984,293 | 7,058,345 | — |
-| Write / Users / Map | Jackson2 | 196,110 | 196,111 | 112,061 | 112,061 | — |
-| Write / Users / Map | Jackson3 | 196,125 | 196,125 | 112,085 | 112,085 | — |
-| Write / Users / Map | Fastjson2 | 105,117 | — | 105,061 | 105,061 | — |
-| Write / Users / Map | Gson | 513,703 | — | 216,358 | 216,358 | — |
+| Read / Users / Map | SnakeYAML | 9,429,418 | — | 6,984,293 | 7,058,345 | 1.34× |
+| Write / Users / Map | Jackson2 | 196,110 | 196,111 | 112,061 | 112,061 | 1.75× |
+| Write / Users / Map | Jackson3 | 196,125 | 196,125 | 112,085 | 112,085 | 1.75× |
+| Write / Users / Map | Fastjson2 | 105,117 | — | 105,061 | 105,061 | 1.00× |
+| Write / Users / Map | Gson | 513,703 | — | 216,358 | 216,358 | 2.37× |
 | Write / Users / Map | JSON-P | — | — | 317,176 | 317,176 | — |
 | Write / Users / Map | Simple | — | — | 218,375 | 218,376 | — |
-| Write / Users / Map | SnakeYAML | 6,805,345 | — | 5,866,143 | 5,866,140 | — |
-| Read / Clients / Map | Jackson2 | 512,285 | 512,299 | 479,905 | 479,905 | — |
-| Read / Clients / Map | Jackson3 | 472,161 | 472,161 | 447,177 | 447,177 | — |
-| Read / Clients / Map | Fastjson2 | 440,401 | — | 454,677 | 453,429 | — |
-| Read / Clients / Map | Gson | 676,139 | — | 684,999 | 684,999 | — |
+| Write / Users / Map | SnakeYAML | 6,805,345 | — | 5,866,143 | 5,866,140 | 1.16× |
+| Read / Clients / Map | Jackson2 | 512,285 | 512,299 | 479,905 | 479,905 | 1.07× |
+| Read / Clients / Map | Jackson3 | 472,161 | 472,161 | 447,177 | 447,177 | 1.06× |
+| Read / Clients / Map | Fastjson2 | 440,401 | — | 454,677 | 453,429 | 0.97× |
+| Read / Clients / Map | Gson | 676,139 | — | 684,999 | 684,999 | 0.99× |
 | Read / Clients / Map | JSON-P | — | — | 703,963 | 703,963 | — |
 | Read / Clients / Map | Simple | — | — | 631,787 | 631,787 | — |
-| Read / Clients / Map | SnakeYAML | 8,426,669 | — | 6,439,040 | 6,439,040 | — |
-| Write / Clients / Map | Jackson2 | 209,233 | 209,233 | 120,425 | 120,425 | — |
-| Write / Clients / Map | Jackson3 | 209,248 | 209,248 | 120,449 | 120,449 | — |
-| Write / Clients / Map | Fastjson2 | 111,701 | — | 111,645 | 111,645 | — |
-| Write / Clients / Map | Gson | 578,647 | — | 261,742 | 261,742 | — |
+| Read / Clients / Map | SnakeYAML | 8,426,669 | — | 6,439,040 | 6,439,040 | 1.31× |
+| Write / Clients / Map | Jackson2 | 209,233 | 209,233 | 120,425 | 120,425 | 1.74× |
+| Write / Clients / Map | Jackson3 | 209,248 | 209,248 | 120,449 | 120,449 | 1.74× |
+| Write / Clients / Map | Fastjson2 | 111,701 | — | 111,645 | 111,645 | 1.00× |
+| Write / Clients / Map | Gson | 578,647 | — | 261,742 | 261,742 | 2.21× |
 | Write / Clients / Map | JSON-P | — | — | 335,697 | 335,698 | — |
 | Write / Clients / Map | Simple | — | — | 279,807 | 272,551 | — |
-| Write / Clients / Map | SnakeYAML | 6,499,447 | — | 5,630,895 | 5,633,511 | — |
+| Write / Clients / Map | SnakeYAML | 6,499,447 | — | 5,630,895 | 5,633,511 | 1.15× |
 
 **[Complete 1/10/100KB report](binding/fabien-v152snapshot-2026-11-17.md)** · **[New JMH artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/44011622909/artifacts/14302041930)** · **[Previous v1.5.1-SNAPSHOT report](binding/fabien-v151snapshot-2026-11-13.md)** · **[Previous artifact](https://github.com/sjf4j-projects/sjf4j/actions/runs/43359529434/artifacts/14012601017)**
 
