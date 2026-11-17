@@ -2,9 +2,6 @@ package org.sjf4j.path;
 
 import org.sjf4j.exception.NodeException;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -16,20 +13,10 @@ import java.util.regex.PatternSyntaxException;
  * literal characters. Java regular expression extensions are also accepted;
  * this is not a strict RFC 9485 syntax checker.</p>
  *
- * <p>Compiled patterns are cached in a bounded LRU map. As with other
- * backtracking engines, untrusted patterns may cause excessive CPU usage.</p>
+ * <p>As with other backtracking engines, untrusted patterns may cause
+ * excessive CPU usage.</p>
  */
 public final class IRegexpUtil {
-    private static final int CACHE_LIMIT = 256;
-
-    private static final Map<String, Pattern> CACHE = Collections.synchronizedMap(
-            new LinkedHashMap<String, Pattern>(CACHE_LIMIT, 0.75f, true) {
-                @Override
-                protected boolean removeEldestEntry(Map.Entry<String, Pattern> eldest) {
-                    return size() > CACHE_LIMIT;
-                }
-            });
-
     private IRegexpUtil() {
     }
 
@@ -45,21 +32,11 @@ public final class IRegexpUtil {
 
     private static Pattern compile(String pattern) {
         if (pattern == null) throw new NodeException("I-Regexp pattern must not be null");
-        Pattern compiled = CACHE.get(pattern);
-        if (compiled != null) return compiled;
-
         try {
-            compiled = Pattern.compile(toJavaPattern(pattern));
+            return Pattern.compile(toJavaPattern(pattern));
         } catch (PatternSyntaxException e) {
             throw new NodeException("invalid regular expression '" + pattern + "'", e);
         }
-
-        synchronized (CACHE) {
-            Pattern cached = CACHE.get(pattern);
-            if (cached != null) return cached;
-            CACHE.put(pattern, compiled);
-        }
-        return compiled;
     }
 
     /**
