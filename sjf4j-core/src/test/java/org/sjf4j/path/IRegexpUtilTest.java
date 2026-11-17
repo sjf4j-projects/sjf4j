@@ -1,12 +1,12 @@
 package org.sjf4j.path;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.exception.NodeException;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -72,8 +72,9 @@ public class IRegexpUtilTest {
 
     @Test
     public void testInvalidRegex() {
-        assertThrows(NodeException.class, () -> IRegexpUtil.match("[abc", "a"));
-        assertThrows(NodeException.class, () -> IRegexpUtil.search("(", "a"));
+        assertThrows(PatternSyntaxException.class, () -> IRegexpUtil.match("[abc", "a"));
+        assertThrows(PatternSyntaxException.class, () -> IRegexpUtil.search("(", "a"));
+        assertThrows(NullPointerException.class, () -> IRegexpUtil.match(null, "a"));
     }
 
     @Test
