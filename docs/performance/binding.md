@@ -109,7 +109,7 @@ adapters used by the benchmark.
 
 #### 100KB POJO measurements
 
-**Latency (µs/op, lower is better; Best 2 Mean).** Columns are Native / Blackbird / Runtime / Compiled, followed by Native / Compiled. The complete report retains all fork data and additional input sizes.
+**Latency (µs/op, lower is better; Best 2 Mean).** Columns are Native / Blackbird / Runtime / Compiled, followed by Native / Compiled. The linked JMH artifact retains the raw fork data; the detailed report covers all input sizes.
 
 | Operation / Model / Shape | Backend | Native | Blackbird | Runtime | Compiled | Native / Compiled |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
