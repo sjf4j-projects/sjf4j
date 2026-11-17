@@ -91,7 +91,9 @@ interface AccountMapper {
     List<AccountBean> beans(ResultSet rs);
 }
 
-JdbcRowMapper<AccountBean> mapper = AccountMapper.INSTANCE.prepare(rs.getMetaData());
+JdbcRowMapper<AccountBean> rowMapper = AccountMapper.INSTANCE.prepare(rs.getMetaData());
+AccountBean account = rowMapper.map(rs);
+
 List<AccountBean> result = AccountMapper.INSTANCE.beans(rs);
 ```
 

@@ -32,7 +32,7 @@ bringing data binding, navigation, validation, mapping, and patching together.
 ## Installation
 
 SJF4J requires **Java 8+** and supports modular installation. 
-The latest version is: 
+The latest version: 
 [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
 
 Gradle: 
