@@ -6,6 +6,7 @@ import org.sjf4j.exception.NodeException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -152,6 +153,29 @@ public class IRegexpUtilTest {
         assertEquals(Arrays.asList("Alice", "Amy"),
                 JsonPath.parse("$.users[?search(@.name, 'A')].name")
                         .find(root, String.class));
+    }
+
+
+    @Test
+    public void testQuotedSpanEndingWithLiteralBackslash() {
+        String quotedBackslash = Pattern.quote("\\");
+        assertTrue(IRegexpUtil.match(quotedBackslash + "$", "\\$"));
+        assertFalse(IRegexpUtil.match(quotedBackslash + "$", "\\x"));
+        assertTrue(IRegexpUtil.search(quotedBackslash + "$", "prefix\\$suffix"));
+        assertTrue(IRegexpUtil.match(quotedBackslash + ".", "\\\u2028"));
+        assertFalse(IRegexpUtil.match(quotedBackslash + ".", "\\\n"));
+
+        // hasNestedClass() must also skip quoted literals correctly.
+        String intersection = "[a" + quotedBackslash + "&&[^a]]";
+        assertTrue(IRegexpUtil.match(intersection, "\\"));
+        assertFalse(IRegexpUtil.match(intersection, "a"));
+    }
+
+    @Test
+    public void testQuotedSpanContainingLiteralTerminator() {
+        String quoted = Pattern.quote("\\E\\");
+        assertTrue(IRegexpUtil.match(quoted + "$", "\\E\\$"));
+        assertTrue(IRegexpUtil.match(quoted + ".", "\\E\\\u2028"));
     }
 
 }
