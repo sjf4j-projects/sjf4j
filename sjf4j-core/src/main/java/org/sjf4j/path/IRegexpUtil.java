@@ -47,19 +47,23 @@ public final class IRegexpUtil {
     private static String toJavaPattern(String pattern) {
         StringBuilder out = new StringBuilder(pattern.length() + 12);
         int classDepth = 0;
-        boolean inQuote = false;
         boolean nestedClass = false;
         for (int i = 0; i < pattern.length(); i++) {
             char c = pattern.charAt(i);
             if (c == '\\' && i + 1 < pattern.length()) {
                 char next = pattern.charAt(++i);
-                if (next == 'Q' && !inQuote) inQuote = true;
-                else if (next == 'E' && inQuote) inQuote = false;
                 out.append(c).append(next);
-                continue;
-            }
-            if (inQuote) {
-                out.append(c);
+                if (next == 'Q') {
+                    // Inside \Q...\E, even a backslash is literal. Skip the
+                    // whole span so a trailing backslash cannot hide \E.
+                    int quoteEnd = pattern.indexOf("\\E", i + 1);
+                    if (quoteEnd < 0) {
+                        out.append(pattern, i + 1, pattern.length());
+                        break;
+                    }
+                    out.append(pattern, i + 1, quoteEnd + 2);
+                    i = quoteEnd + 1;
+                }
                 continue;
             }
             if (c == '[') {
@@ -86,16 +90,17 @@ public final class IRegexpUtil {
 
     /** A nested character class is a Java-only extension (typically [a-z&&[^aeiou]]). */
     private static boolean hasNestedClass(String pattern, int opening) {
-        boolean inQuote = false;
         for (int i = opening + 1; i < pattern.length(); i++) {
             char c = pattern.charAt(i);
             if (c == '\\' && i + 1 < pattern.length()) {
                 char next = pattern.charAt(++i);
-                if (next == 'Q' && !inQuote) inQuote = true;
-                else if (next == 'E' && inQuote) inQuote = false;
+                if (next == 'Q') {
+                    int quoteEnd = pattern.indexOf("\\E", i + 1);
+                    if (quoteEnd < 0) return false;
+                    i = quoteEnd + 1;
+                }
                 continue;
             }
-            if (inQuote) continue;
             if (c == '[') return true;
             if (c == ']') return false;
         }
