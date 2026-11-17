@@ -64,6 +64,28 @@ public final class Jackson3Parser extends StreamingParser {
         this.prefetched = parser.currentToken() != null;
     }
 
+    /**
+     * Access the native Jackson 3 cursor for compiled structural traversal.
+     * A pending lookahead token must be consumed before switching cursors.
+     */
+    public JsonParser nativeParser() {
+        if (prefetched) {
+            throw new IllegalStateException("cannot access native parser with pending lookahead token");
+        }
+        return parser;
+    }
+
+    /**
+     * Hand a token advanced by the compiled native array loop to a consuming
+     * wrapper read. Its next read must use the current token, not advance again.
+     */
+    public void reuseCurrentToken() {
+        if (prefetched || parser.currentToken() == null) {
+            throw new IllegalStateException("cannot adopt a pending or absent native token");
+        }
+        prefetched = true;
+    }
+
     /* --------------------------------------------------------------
      * Document / inspection
      * -------------------------------------------------------------- */
@@ -341,6 +363,21 @@ public final class Jackson3Parser extends StreamingParser {
             return null;
         }
         throw expected("string or null", current);
+    }
+
+    /**
+     * Read the native array element already selected by nextToken(), without
+     * advancing or changing the wrapper's lookahead state.
+     */
+    public String readCurrentString() throws IOException {
+        JsonToken token = parser.currentToken();
+        if (token == JsonToken.VALUE_STRING) {
+            return parser.getString();
+        }
+        if (token == JsonToken.VALUE_NULL) {
+            return null;
+        }
+        throw expected("string or null", token);
     }
 
     @Override

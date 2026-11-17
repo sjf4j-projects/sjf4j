@@ -9,6 +9,7 @@ import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.TypeRegistry;
 import tools.jackson.core.ObjectReadContext;
 import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
 import tools.jackson.core.json.JsonFactory;
 
 import java.io.IOException;
@@ -409,6 +410,44 @@ class Jackson3ParserTest {
             assertEquals(6, value.get("a"));
             assertEquals(2, ((List<?>) value.get("f")).size());
             p.end();
+        }
+    }
+
+    @Test
+    void nativeArrayTraversalHandsTokensBackToWrapperReads() throws Exception {
+        String json = "[\"A\",null,7,{\"id\":3},[\"x\"]]";
+        Jackson3Binder binder = new Jackson3Binder();
+        for (boolean utf8 : new boolean[]{false, true}) {
+            try (Jackson3Parser p = utf8
+                    ? binder.createParser(json.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    : binder.createParser(json)) {
+                JsonParser nativeParser = p.nativeParser();
+                assertEquals(JsonToken.START_ARRAY, nativeParser.nextToken());
+                assertEquals(JsonToken.VALUE_STRING, nativeParser.nextToken());
+                assertEquals("A", p.readCurrentString());
+                assertEquals(JsonToken.VALUE_NULL, nativeParser.nextToken());
+                assertNull(p.readCurrentString());
+
+                assertEquals(JsonToken.VALUE_NUMBER_INT, nativeParser.nextToken());
+                p.reuseCurrentToken();
+                assertThrows(IllegalStateException.class, p::nativeParser);
+                assertEquals(7, p.readIntValue());
+
+                assertEquals(JsonToken.START_OBJECT, nativeParser.nextToken());
+                p.reuseCurrentToken();
+                p.readObjectStart();
+                assertEquals("id", p.nextName());
+                assertEquals(3, p.readIntValue());
+                p.readObjectEnd();
+
+                assertEquals(JsonToken.START_ARRAY, nativeParser.nextToken());
+                assertEquals(JsonToken.VALUE_STRING, nativeParser.nextToken());
+                p.reuseCurrentToken();
+                assertEquals("x", p.readString());
+                assertEquals(JsonToken.END_ARRAY, nativeParser.nextToken());
+                assertEquals(JsonToken.END_ARRAY, nativeParser.nextToken());
+                p.end();
+            }
         }
     }
 
