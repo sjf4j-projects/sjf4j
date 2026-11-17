@@ -6,15 +6,11 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * I-Regexp matching (RFC 9485) backed by the JDK regular expression engine.
+ * Java regular-expression matching for JSONPath {@code match()} and {@code search()}.
  *
- * <p>RFC-compatible patterns use I-Regexp semantics: an unescaped dot matches
- * any Unicode code point except CR and LF, while unescaped '^' and '$' are
- * literal characters. Java regular expression extensions are also accepted;
- * this is not a strict RFC 9485 syntax checker.</p>
- *
- * <p>As with other backtracking engines, untrusted patterns may cause
- * excessive CPU usage.</p>
+ * <p>Patterns use JDK {@link Pattern} syntax and semantics rather than strict
+ * RFC 9485 I-Regexp semantics. JDK regexes use backtracking, so matching
+ * untrusted patterns may consume excessive CPU time.</p>
  */
 public final class IRegexpUtil {
     private IRegexpUtil() {
@@ -31,79 +27,11 @@ public final class IRegexpUtil {
     }
 
     private static Pattern compile(String pattern) {
-        if (pattern == null) throw new NodeException("I-Regexp pattern must not be null");
+        if (pattern == null) throw new NodeException("regex pattern must not be null");
         try {
-            return Pattern.compile(toJavaPattern(pattern));
+            return Pattern.compile(pattern);
         } catch (PatternSyntaxException e) {
             throw new NodeException("invalid regular expression '" + pattern + "'", e);
         }
-    }
-
-    /**
-     * Converts only the constructs where I-Regexp and Java Pattern disagree.
-     * Escaped characters, quoted spans, and character classes must retain
-     * their meaning; blind String.replace calls would break those contexts.
-     */
-    private static String toJavaPattern(String pattern) {
-        StringBuilder out = new StringBuilder(pattern.length() + 12);
-        int classDepth = 0;
-        boolean nestedClass = false;
-        for (int i = 0; i < pattern.length(); i++) {
-            char c = pattern.charAt(i);
-            if (c == '\\' && i + 1 < pattern.length()) {
-                char next = pattern.charAt(++i);
-                out.append(c).append(next);
-                if (next == 'Q') {
-                    // Inside \Q...\E, even a backslash is literal. Skip the
-                    // whole span so a trailing backslash cannot hide \E.
-                    int quoteEnd = pattern.indexOf("\\E", i + 1);
-                    if (quoteEnd < 0) {
-                        out.append(pattern, i + 1, pattern.length());
-                        break;
-                    }
-                    out.append(pattern, i + 1, quoteEnd + 2);
-                    i = quoteEnd + 1;
-                }
-                continue;
-            }
-            if (c == '[') {
-                if (classDepth == 0) nestedClass = hasNestedClass(pattern, i);
-                classDepth++;
-                out.append(c);
-            } else if (c == ']' && classDepth > 0) {
-                classDepth--;
-                out.append(c);
-            } else if (classDepth == 0) {
-                if (c == '.') out.append("[^\\r\\n]");
-                else if (c == '^' || c == '$') out.append('\\').append(c);
-                else out.append(c);
-            } else if (c == '&' && !nestedClass) {
-                // A pair of literal '&' characters is a Java class intersection.
-                // For RFC classes, escape ampersands (including consecutive ones).
-                out.append("\\&");
-            } else {
-                out.append(c);
-            }
-        }
-        return out.toString();
-    }
-
-    /** A nested character class is a Java-only extension (typically [a-z&&[^aeiou]]). */
-    private static boolean hasNestedClass(String pattern, int opening) {
-        for (int i = opening + 1; i < pattern.length(); i++) {
-            char c = pattern.charAt(i);
-            if (c == '\\' && i + 1 < pattern.length()) {
-                char next = pattern.charAt(++i);
-                if (next == 'Q') {
-                    int quoteEnd = pattern.indexOf("\\E", i + 1);
-                    if (quoteEnd < 0) return false;
-                    i = quoteEnd + 1;
-                }
-                continue;
-            }
-            if (c == '[') return true;
-            if (c == ']') return false;
-        }
-        return false;
     }
 }
