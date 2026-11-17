@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- JSONPath `match()` and `search()` now use JDK `Pattern` directly, replacing the limited I-Regexp matcher. Regex syntax follows Java semantics rather than strict RFC 9485.
+- JSONPath `match()` and `search()` now use JDK `Pattern` directly; removed `IRegexpUtil`. Regex syntax follows Java semantics rather than strict RFC 9485.
 
 
 

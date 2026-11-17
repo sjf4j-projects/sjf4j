@@ -10,6 +10,7 @@ import org.sjf4j.util.Asserts;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 
@@ -171,7 +172,7 @@ public class FunctionRegistry {
                     String text = Nodes.toString(node);
                     if (text == null) return false;
                     try {
-                        return IRegexpUtil.match(pattern, text);
+                        return Pattern.compile(pattern).matcher(text).matches();
                     } catch (PatternSyntaxException invalidPattern) {
                         // Invalid regular expressions do not match.
                         return false;
@@ -200,7 +201,7 @@ public class FunctionRegistry {
                     String text = Nodes.toString(node);
                     if (text == null) return false;
                     try {
-                        return IRegexpUtil.search(pattern, text);
+                        return Pattern.compile(pattern).matcher(text).find();
                     } catch (PatternSyntaxException invalidPattern) {
                         // Invalid regular expressions do not match.
                         return false;
