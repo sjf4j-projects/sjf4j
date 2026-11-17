@@ -10,6 +10,7 @@ import org.sjf4j.util.Asserts;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.PatternSyntaxException;
 
 
 /**
@@ -150,7 +151,7 @@ public class FunctionRegistry {
         }));
 
         // match
-        // follows RFC i-regexp semantics and does not support full regular expressions.
+        // Java Pattern semantics for JSONPath match().
         FunctionRegistry.register(new FunctionDescriptor("match", (target, args) -> {
             if (args.length != 1)
                 throw new NodeException("match(): expected exactly 1 argument, but got " + args.length);
@@ -168,7 +169,13 @@ public class FunctionRegistry {
             switch (JsonType.of(node)) {
                 case STRING:
                     String text = Nodes.toString(node);
-                    return text != null && IRegexpUtil.match(pattern, text);
+                    if (text == null) return false;
+                    try {
+                        return IRegexpUtil.match(pattern, text);
+                    } catch (PatternSyntaxException invalidPattern) {
+                        // Invalid regular expressions do not match.
+                        return false;
+                    }
             }
             return false;
         }));
@@ -191,7 +198,13 @@ public class FunctionRegistry {
             switch (JsonType.of(node)) {
                 case STRING:
                     String text = Nodes.toString(node);
-                    return text != null && IRegexpUtil.search(pattern, text);
+                    if (text == null) return false;
+                    try {
+                        return IRegexpUtil.search(pattern, text);
+                    } catch (PatternSyntaxException invalidPattern) {
+                        // Invalid regular expressions do not match.
+                        return false;
+                    }
             }
             return false;
         }));

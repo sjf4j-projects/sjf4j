@@ -1,154 +1,25 @@
 package org.sjf4j.path;
 
-import org.sjf4j.exception.NodeException;
-
+import java.util.regex.Pattern;
 
 /**
- * Minimal implementation of the JSONPath I-Regexp draft.
- * See: <a href="https://www.rfc-editor.org/rfc/rfc9485.html">RFC 9485</a>
+ * Java regular-expression matching for JSONPath {@code match()} and {@code search()}.
  *
- * <p>This is a lightweight matcher used by JSONPath functions such as
- * {@code match()} and {@code search()}. It recognizes literals, single-character
- * wildcards, escapes, and character classes/ranges; it is not a general
- * {@link java.util.regex.Pattern} implementation.
+ * <p>Patterns use JDK {@link Pattern} syntax and semantics rather than strict
+ * RFC 9485 I-Regexp semantics. JDK regexes use backtracking, so matching
+ * untrusted patterns may consume excessive CPU time.</p>
  */
-public class IRegexpUtil {
+public final class IRegexpUtil {
+    private IRegexpUtil() {
+    }
 
-
-    /**
-     * Returns true when input fully matches the I-Regexp pattern.
-     */
+    /** Returns true when the entire input matches the expression. */
     public static boolean match(String pattern, String input) {
-        if (input == null) return false;
-        if (input.length() != patternLength(pattern)) return false;
-        return matchesAt(pattern, input, 0);
+        return input != null && Pattern.compile(pattern).matcher(input).matches();
     }
 
-    /**
-     * Returns true when input contains a substring that matches the pattern.
-     */
+    /** Returns true when any substring of the input matches the expression. */
     public static boolean search(String pattern, String input) {
-        if (input == null) return false;
-
-        int plen = patternLength(pattern);
-        if (plen == 0) return true;
-        if (input.length() < plen) return false;
-
-        for (int i = 0; i <= input.length() - plen; i++) {
-            if (matchesAt(pattern, input, i)) {
-                return true;
-            }
-        }
-        return false;
+        return input != null && Pattern.compile(pattern).matcher(input).find();
     }
-
-    /*
-     * --------------------------------------------------------------
-     * Private Helpers
-     * --------------------------------------------------------------
-     */
-
-    /**
-     * Matches pattern against input starting from the given position.
-     */
-    private static boolean matchesAt(String pattern, String input, int si) {
-        int pi = 0;
-        int start = si;
-
-        while (pi < pattern.length()) {
-            if (si >= input.length()) return false;
-
-            char pc = pattern.charAt(pi);
-
-            if (pc == '\\') {
-                pi++;
-                if (pi >= pattern.length()) return false;
-                if (pattern.charAt(pi) != input.charAt(si)) return false;
-                pi++; si++;
-                continue;
-            }
-
-            if (pc == '.') {
-                pi++; si++;
-                continue;
-            }
-
-            if (pc == '[') {
-                int end = findClassEnd(pattern, pi);
-                if (!matchClass(pattern, pi + 1, end, input.charAt(si))) {
-                    return false;
-                }
-                pi = end + 1;
-                si++;
-                continue;
-            }
-
-            if (pc != input.charAt(si)) return false;
-
-            pi++; si++;
-        }
-
-        return true;
-    }
-
-    /**
-     * Finds the closing bracket for a character class.
-     */
-    private static int findClassEnd(String p, int start) {
-        for (int i = start + 1; i < p.length(); i++) {
-            if (p.charAt(i) == ']') return i;
-        }
-        throw new NodeException("unclosed character class '[' at position " + start +
-                " in I-Regexp pattern '" + p + "'");
-    }
-
-    /**
-     * Matches one character against a character class.
-     */
-    private static boolean matchClass(String p, int from, int to, char ch) {
-        for (int i = from; i < to; i++) {
-            char c = p.charAt(i);
-            if (c == '\\') {
-                i++;
-                if (i >= to) throw new NodeException("invalid escape in character class of I-Regexp pattern '" + p + "'");
-                if (p.charAt(i) == ch) return true;
-            } else if (i + 2 < to && p.charAt(i + 1) == '-') {
-                char lo = c;
-                char hi = p.charAt(i + 2);
-                if (ch >= lo && ch <= hi) return true;
-                i += 2;
-            } else if (c == ch) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Returns the logical character length represented by the pattern.
-     */
-    private static int patternLength(String pattern) {
-        int len = 0;
-        int i = 0;
-        while (i < pattern.length()) {
-            char c = pattern.charAt(i);
-            if (c == '\\') {
-                i += 2;
-                len++;
-            } else if (c == '[') {
-                i++;
-                while (i < pattern.length() && pattern.charAt(i) != ']') {
-                    if (pattern.charAt(i) == '\\') i++;
-                    i++;
-                }
-                if (i < pattern.length() && pattern.charAt(i) == ']') i++;
-                len++;
-            } else {
-                i++;
-                len++;
-            }
-        }
-        return len;
-    }
-
 }
