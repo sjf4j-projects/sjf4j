@@ -376,8 +376,8 @@ class CompiledBinderConformanceTest {
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("tools.jackson.core.JsonParser nativeParser = parser.nativeParser();"), generated);
-        assertTrue(generated.contains("while (nativeParser.nextToken() != tools.jackson.core.JsonToken.END_ARRAY)"), generated);
+        assertTrue(generated.contains("JsonParser nativeParser = parser.nativeParser();"), generated);
+        assertTrue(generated.contains("while (nativeParser.nextToken() != JsonToken.END_ARRAY)"), generated);
         assertTrue(generated.contains("parser.readCurrentString()"), generated);
         assertTrue(generated.contains("parser.reuseCurrentToken();"), generated);
         assertTrue(generated.contains("parser.nextNameMatch("), generated);
