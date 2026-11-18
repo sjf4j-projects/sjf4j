@@ -1,0 +1,97 @@
+name: Path Regex Comparison (JDK 25)
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/path-regex-comparison.yml"
+      - "sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/path/RegexFunctionComparisonBenchmark.java"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+
+      - name: Record environment and run 2-fork benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/performance/path-regex
+          {
+            echo "Commit: $GITHUB_SHA"
+            lscpu
+            java -version 2>&1
+          } > build/performance/path-regex/environment.txt
+          JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' | sort | head -n 1)"
+          test -n "$JAR"
+          java -jar "$JAR" \
+            '^org\.sjf4j\.testbench\.path\.RegexFunctionComparisonBenchmark\.(match|search)_(sjf4j_function|sjf4j_operator|jayway_regex)$' \
+            -t 1 -f 2 -wi 3 -i 4 -w 300ms -r 400ms -prof gc \
+            -rf json -rff build/performance/path-regex/regex-jmh.json \
+            | tee build/performance/path-regex/regex-jmh.log
+
+      - name: Summarize JMH comparison
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee build/performance/path-regex/summary.md | tee -a "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          from statistics import mean
+
+          data = json.loads(Path("build/performance/path-regex/regex-jmh.json").read_text())
+          rows = {(r["benchmark"].rsplit(".", 1)[-1], r["params"]["count"]): r for r in data}
+          counts = ("16", "128", "1024")
+          methods = ("match_sjf4j_function", "match_sjf4j_operator", "match_jayway_regex",
+                     "search_sjf4j_function", "search_sjf4j_operator", "search_jayway_regex")
+          expected = {(m, n) for m in methods for n in counts}
+          if set(rows) != expected:
+              raise SystemExit(f"Unexpected JMH cases: missing {expected - set(rows)}, extra {set(rows) - expected}")
+
+          def stats(method, count):
+              row = rows[method, count]
+              raw = row["primaryMetric"]["rawData"]
+              if len(raw) != 2 or any(len(fork) != 4 for fork in raw):
+                  raise SystemExit(f"Missing fork data: {method}/{count}")
+              ns = mean([mean(fork) for fork in raw])
+              alloc = row.get("secondaryMetrics", {}).get("gc.alloc.rate.norm", {}).get("score", float("nan"))
+              return ns, alloc
+
+          print("## Regex comparison: SJF4J vs Jayway")
+          print()
+          print("Map/List input; JDK 25; 2 forks; ns per complete query (lower is better).")
+          print("SJF4J functions compile regex per element; SJF4J and Jayway =~ reuse compiled regex.")
+          print("Jayway has no match()/search() functions; =~ queries have equivalent results for this fixture.")
+          print()
+          print("| Function | Rows | SJF4J function ns/op | SJF4J =~ ns/op | Jayway =~ ns/op | Jayway / SJF4J | SJF4J B/op | Jayway B/op |")
+          print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
+          for mode in ("match", "search"):
+              for n in counts:
+                  f, fb = stats(f"{mode}_sjf4j_function", n)
+                  o, _ = stats(f"{mode}_sjf4j_operator", n)
+                  j, jb = stats(f"{mode}_jayway_regex", n)
+                  print(f"| {mode} | {n} | {f:,.1f} | {o:,.1f} | {j:,.1f} | {j/f:.2f}x | {fb:,.1f} | {jb:,.1f} |")
+          PY
+
+      - name: Upload raw JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: path-regex-comparison-jmh
+          path: build/performance/path-regex/
+          if-no-files-found: warn
+          retention-days: 30
