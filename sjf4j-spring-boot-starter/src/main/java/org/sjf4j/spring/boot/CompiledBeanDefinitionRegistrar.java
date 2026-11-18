@@ -56,7 +56,7 @@ public final class CompiledBeanDefinitionRegistrar
                 continue;
             }
 
-            Class<?> implementation = load(name + "_Impl");
+            Class<?> implementation = load(name + CompiledInstances.IMPL_SUFFIX);
             if (!type.isAssignableFrom(implementation)) {
                 throw new BeanDefinitionStoreException("Generated implementation " + implementation.getName() +
                         " does not implement " + name);

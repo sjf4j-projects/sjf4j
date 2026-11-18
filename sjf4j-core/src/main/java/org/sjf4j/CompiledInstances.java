@@ -19,7 +19,8 @@ import java.lang.reflect.Constructor;
  */
 public final class CompiledInstances {
 
-    private static final String IMPL_SUFFIX = "_Impl";
+    /** Suffix used for every standard annotation-processor generated implementation. */
+    public static final String IMPL_SUFFIX = "_Impl";
 
     private CompiledInstances() {}
 

@@ -14,7 +14,9 @@ import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.mapping.JdbcRowMapper;
 
+import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.util.List;
 import java.util.Map;
 
 public final class CompiledFixtures {
@@ -74,6 +76,7 @@ public final class CompiledFixtures {
 
     @CompiledJdbcMapper
     public interface UserJdbcMapper {
+        List<User> users(ResultSet resultSet);
         JdbcRowMapper<User> prepare(ResultSetMetaData metadata);
     }
 
