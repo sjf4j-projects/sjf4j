@@ -102,10 +102,14 @@ class Sjf4jAutoConfigurationTest {
         @Bean
         @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
         CompiledFixtures.UserMapper prototypeMapper() {
-            return source -> {
-                CompiledFixtures.UserDto result = new CompiledFixtures.UserDto();
-                result.name = "prototype";
-                return result;
+            // Use a new object rather than a stateless lambda (which the JVM may cache).
+            return new CompiledFixtures.UserMapper() {
+                @Override
+                public CompiledFixtures.UserDto toDto(CompiledFixtures.User source) {
+                    CompiledFixtures.UserDto result = new CompiledFixtures.UserDto();
+                    result.name = "prototype";
+                    return result;
+                }
             };
         }
     }
