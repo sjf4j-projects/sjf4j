@@ -25,6 +25,7 @@ tasks.named("test") {
     dependsOn(
         ":sjf4j-core:test", ":sjf4j-asm:test", ":sjf4j-schema:test",
         ":sjf4j-processor:test", ":sjf4j-testbench:test",
+        ":sjf4j-spring-boot-starter:test",
         ":sjf4j-backend-gson:test", ":sjf4j-backend-jackson2:test",
         ":sjf4j-backend-jackson3:test", ":sjf4j-backend-fastjson2:test",
         ":sjf4j-backend-jsonp:test", ":sjf4j-backend-snake:test"

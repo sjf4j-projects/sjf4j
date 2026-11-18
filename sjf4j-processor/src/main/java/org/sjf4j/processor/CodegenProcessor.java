@@ -71,6 +71,11 @@ public final class CodegenProcessor extends AbstractProcessor {
             Set<? extends TypeElement> annotations,
             RoundEnvironment roundEnv) {
 
+        if (roundEnv.processingOver()) {
+            if (!roundEnv.errorRaised()) context.writeCompiledIndex();
+            return false;
+        }
+
         annotationValidator.validate(annotations, roundEnv);
 
         // Discovery precedes generation within each annotation processing round.
