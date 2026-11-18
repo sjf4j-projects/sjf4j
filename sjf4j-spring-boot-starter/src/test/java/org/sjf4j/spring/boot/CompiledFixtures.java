@@ -5,6 +5,8 @@ import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.mapping.CompiledMapper;
+import org.sjf4j.annotation.mapping.Mapping;
+import org.springframework.core.convert.converter.Converter;
 import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.GetByPath;
@@ -32,6 +34,30 @@ public final class CompiledFixtures {
     @CompiledMapper
     public interface UserMapper {
         UserDto toDto(User source);
+    }
+
+    public static class Car {
+        public String model;
+        public int seatConfiguration;
+
+        public Car() {}
+
+        public Car(String model, int seatConfiguration) {
+            this.model = model;
+            this.seatConfiguration = seatConfiguration;
+        }
+    }
+
+    public static class CarDto {
+        public String model;
+        public int seats;
+    }
+
+    @CompiledMapper
+    public interface CarMapper extends Converter<Car, CarDto> {
+        @Override
+        @Mapping(target = "seats", source = "seatConfiguration")
+        CarDto convert(Car car);
     }
 
     @CompiledNavigator

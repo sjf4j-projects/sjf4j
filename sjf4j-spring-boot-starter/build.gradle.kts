@@ -18,6 +18,7 @@ dependencies {
     testImplementation(project(":sjf4j-schema"))
     testAnnotationProcessor(project(":sjf4j-processor"))
     testImplementation("org.springframework.boot:spring-boot-starter-test:3.4.13")
+    testImplementation("org.springframework.boot:spring-boot-starter-web:3.4.13")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
