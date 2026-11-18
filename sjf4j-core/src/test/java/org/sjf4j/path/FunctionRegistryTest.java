@@ -38,6 +38,4 @@ public class FunctionRegistryTest {
 
         assertThrows(Exception.class, () -> JsonPath.parse("$.hi(@.aa)").eval(jo, String.class));
     }
-
-
 }
