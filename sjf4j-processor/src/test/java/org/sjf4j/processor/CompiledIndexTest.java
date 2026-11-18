@@ -19,7 +19,7 @@ class CompiledIndexTest {
                 "package fixture; import org.sjf4j.annotation.path.*; "
                 + "public class Outer { "
                 + "@CompiledNavigator public interface Paths { "
-                + "@GetByPath(\"$.name\") String name(java.util.Map<String,Object> data); } "
+                + "@GetByPath(\"$.name\") String name(java.util.Map<String,String> data); } "
                 + "}");
         sources.put("fixture/Dto.java",
                 "package fixture; public class Dto { public String name; }");
