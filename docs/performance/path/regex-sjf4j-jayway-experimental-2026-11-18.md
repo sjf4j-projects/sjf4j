@@ -54,10 +54,10 @@ These are exploratory GitHub-hosted runner results. The whole-path benchmark inc
 
 On JDK 25:
 
-`@bash
+```bash
 ./gradlew :sjf4j-testbench:jmhJar
 JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' | sort | head -n 1)"
 java -jar "$JAR" \
   '^org\.sjf4j\.testbench\.path\.RegexFunctionComparisonBenchmark\.(match|search)_(sjf4j_function|sjf4j_operator|jayway_regex)$' \
   -t 1 -f 2 -wi 3 -i 4 -w 300ms -r 400ms -prof gc
-`@
+```
