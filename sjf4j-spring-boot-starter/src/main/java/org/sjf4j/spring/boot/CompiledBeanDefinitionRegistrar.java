@@ -52,7 +52,7 @@ public final class CompiledBeanDefinitionRegistrar
             }
 
             // An explicitly registered bean of the same interface takes priority.
-            if (beanFactory.getBeanNamesForType(type, false, false).length != 0) continue;
+            if (beanFactory.getBeanNamesForType(type, true, false).length != 0) continue;
 
             Class<?> implementation = load(name + "_Impl");
             if (!type.isAssignableFrom(implementation)) {

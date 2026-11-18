@@ -3,10 +3,12 @@ package org.sjf4j.spring.boot;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,21 @@ class Sjf4jAutoConfigurationTest {
     }
 
     @Test
+    void explicitPrototypeBeanWins() {
+        runner.withUserConfiguration(PrototypeOverrideConfiguration.class).run(context -> {
+            assertThat(context).hasSingleBean(CompiledFixtures.UserMapper.class);
+            assertThat(context.getBeanNamesForType(CompiledFixtures.UserMapper.class))
+                    .containsExactly("prototypeMapper");
+            assertThat(context.getBeanFactory().isPrototype("prototypeMapper")).isTrue();
+
+            CompiledFixtures.UserMapper first = context.getBean(CompiledFixtures.UserMapper.class);
+            CompiledFixtures.UserMapper second = context.getBean(CompiledFixtures.UserMapper.class);
+            assertThat(first).isNotSameAs(second);
+            assertThat(first.toDto(new CompiledFixtures.User("Ada")).name).isEqualTo("prototype");
+        });
+    }
+
+    @Test
     void acceptsUserRuntimeContext() {
         runner.withBean(RuntimeContext.class, () -> RuntimeContext.EMPTY)
                 .run(context -> assertThat(context).hasSingleBean(CompiledFixtures.UserMapper.class));
@@ -75,6 +92,19 @@ class Sjf4jAutoConfigurationTest {
             return source -> {
                 CompiledFixtures.UserDto result = new CompiledFixtures.UserDto();
                 result.name = "custom";
+                return result;
+            };
+        }
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    static class PrototypeOverrideConfiguration {
+        @Bean
+        @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+        CompiledFixtures.UserMapper prototypeMapper() {
+            return source -> {
+                CompiledFixtures.UserDto result = new CompiledFixtures.UserDto();
+                result.name = "prototype";
                 return result;
             };
         }
