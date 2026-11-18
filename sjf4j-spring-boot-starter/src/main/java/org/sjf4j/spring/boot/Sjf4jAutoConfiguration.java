@@ -1,14 +1,11 @@
 package org.sjf4j.spring.boot;
 
+import org.sjf4j.spring.Sjf4jSpringConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 
-/** Registers indexed compiled SJF4J interfaces without Spring annotations on generated code. */
+/** Enables the shared SJF4J Spring integration automatically in Spring Boot. */
 @AutoConfiguration
+@Import(Sjf4jSpringConfiguration.class)
 public class Sjf4jAutoConfiguration {
-
-    @Bean
-    public static CompiledBeanDefinitionRegistrar sjf4jCompiledBeanDefinitionRegistrar() {
-        return new CompiledBeanDefinitionRegistrar();
-    }
 }

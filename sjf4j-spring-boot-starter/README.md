@@ -1,6 +1,7 @@
 # Spring Boot Integration
 
-The `sjf4j-spring-boot-starter` registers compiled SJF4J interfaces as
+The `sjf4j-spring-boot-starter` enables the shared [`sjf4j-spring`](../sjf4j-spring/) integration
+through Spring Boot auto-configuration, registering compiled SJF4J interfaces as
 ordinary Spring Beans. No `@Component`, `@Bean`, package scan, or per-interface
 configuration is required.
 
@@ -26,7 +27,7 @@ public class UserService {
 The annotation processor writes `META-INF/sjf4j/compiled.interfaces` containing the
 binary names of successfully generated interfaces. At startup, the starter
 collects **all** indexes from the classpath (including dependency JARs),
-de-duplicates them, and registers lazy singleton BeanDefinitions. Spring creates
+de-duplicates them, and registers lazy singleton BeanDefinitions through `sjf4j-spring`. Spring creates
 instances through `CompiledInstances.create(type, context)`: it uses an
 application-provided `RuntimeContext` when one exists, or
 `RuntimeContext.EMPTY` otherwise. Explicit user Beans of the same type win.
@@ -41,3 +42,5 @@ Note: mappers included through `@CompiledMapper(importing = ...)` are created
 internally by SJF4J and do not reuse Spring-managed instances. Spring AOT and
 GraalVM Native Image are not yet supported by this integration. Requires
 Spring Boot 3.x and Java 17 or newer.
+
+For applications using Spring Framework without Spring Boot, use [`sjf4j-spring`](../sjf4j-spring/) and `@EnableSjf4j` instead.

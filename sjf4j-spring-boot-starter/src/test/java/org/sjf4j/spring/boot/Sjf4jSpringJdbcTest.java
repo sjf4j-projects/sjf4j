@@ -7,7 +7,6 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,8 +33,7 @@ class Sjf4jSpringJdbcTest {
         String sql = "SELECT name FROM users ORDER BY id";
 
         // Compiled JDBC mapper can be injected and used directly.
-        ResultSetExtractor<List<CompiledFixtures.User>> extractor = userJdbcMapper::users;
-        List<CompiledFixtures.User> users = jdbcTemplate.query(sql, extractor);
+        List<CompiledFixtures.User> users = jdbcTemplate.query(sql, userJdbcMapper::users);
         assertThat(users).extracting(user -> user.name).containsExactly("Alice", "Bob");
 
         // Or prepare column indexes once and map each row without repeated lookup.

@@ -1,4 +1,4 @@
-package org.sjf4j.spring.boot;
+package org.sjf4j.spring;
 
 import org.junit.jupiter.api.Test;
 

@@ -12,7 +12,7 @@ java {
 }
 
 dependencies {
-    api(project(":sjf4j-core"))
+    api(project(":sjf4j-spring"))
     api("org.springframework.boot:spring-boot-starter:3.4.13")
 
     testImplementation(project(":sjf4j-schema"))
