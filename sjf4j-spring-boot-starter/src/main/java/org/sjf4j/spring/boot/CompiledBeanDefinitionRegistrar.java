@@ -26,7 +26,7 @@ import java.util.TreeSet;
 public final class CompiledBeanDefinitionRegistrar
         implements BeanDefinitionRegistryPostProcessor, BeanFactoryAware, BeanClassLoaderAware {
 
-    private static final String INDEX = "classpath*:META-INF/sjf4j/compiled.idx";
+    private static final String INDEX = "classpath*:META-INF/sjf4j/compiled.interfaces";
     private ConfigurableListableBeanFactory beanFactory;
     private ClassLoader classLoader = ClassUtils.getDefaultClassLoader();
 

@@ -29,7 +29,7 @@ class CompiledIndexTest {
 
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
-        String index = Files.readString(result.classes.resolve("META-INF/sjf4j/compiled.idx"));
+        String index = Files.readString(result.classes.resolve("META-INF/sjf4j/compiled.interfaces"));
         assertEquals("fixture.Mapper\nfixture.Outer$Paths\n", index);
         assertTrue(Files.exists(result.classes.resolve("fixture/Mapper_Impl.class")));
         assertTrue(Files.exists(result.classes.resolve("fixture/Outer$Paths_Impl.class")));
@@ -41,6 +41,6 @@ class CompiledIndexTest {
                 Map.of("fixture/Plain.java", "package fixture; public class Plain {}"),
                 CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
-        assertFalse(Files.exists(result.classes.resolve("META-INF/sjf4j/compiled.idx")));
+        assertFalse(Files.exists(result.classes.resolve("META-INF/sjf4j/compiled.interfaces")));
     }
 }

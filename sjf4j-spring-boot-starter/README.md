@@ -23,7 +23,7 @@ public class UserService {
 }
 ```
 
-The annotation processor writes `META-INF/sjf4j/compiled.idx` containing the
+The annotation processor writes `META-INF/sjf4j/compiled.interfaces` containing the
 binary names of successfully generated interfaces. At startup, the starter
 collects **all** indexes from the classpath (including dependency JARs),
 de-duplicates them, and registers lazy singleton BeanDefinitions. Spring creates

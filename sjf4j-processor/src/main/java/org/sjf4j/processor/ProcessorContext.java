@@ -74,7 +74,7 @@ public final class ProcessorContext {
 
         try {
             FileObject file = filer.createResource(
-                    StandardLocation.CLASS_OUTPUT, "", "META-INF/sjf4j/compiled.idx",
+                    StandardLocation.CLASS_OUTPUT, "", "META-INF/sjf4j/compiled.interfaces",
                     compiledInterfaces.values().toArray(new Element[0]));
             try (Writer out = file.openWriter()) {
                 for (String name : compiledInterfaces.keySet()) {

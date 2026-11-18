@@ -30,7 +30,7 @@ class CompiledIndexResourcesTest {
     private Path writeIndexJar(String index) throws Exception {
         Path jar = Files.createTempFile("sjf4j-index-", ".jar");
         try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(jar))) {
-            out.putNextEntry(new JarEntry("META-INF/sjf4j/compiled.idx"));
+            out.putNextEntry(new JarEntry("META-INF/sjf4j/compiled.interfaces"));
             out.write(index.getBytes(StandardCharsets.UTF_8));
             out.closeEntry();
         }
