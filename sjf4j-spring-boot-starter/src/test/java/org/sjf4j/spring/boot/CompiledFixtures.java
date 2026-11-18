@@ -37,7 +37,7 @@ public final class CompiledFixtures {
     @CompiledNavigator
     public interface UserNavigator {
         @GetByPath("$.name")
-        String name(Map<String, Object> source);
+        String name(Map<String, String> source);
     }
 
     @CompiledBinder(backend = Backend.SIMPLE)
