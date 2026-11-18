@@ -32,8 +32,10 @@ application-provided `RuntimeContext` when one exists, or
 `RuntimeContext.EMPTY` otherwise. Explicit user Beans of the same type win.
 
 Interfaces can be injected, looked up by type through `getBean()`, obtained
-through `ObjectProvider`, or injected as a collection. Normal Spring
-post-processing, AOP and bean lifecycle callbacks still apply.
+through `ObjectProvider`, or injected as a collection. Standard Spring
+post-processing and bean lifecycle callbacks apply. Since generated classes
+are `final`, AOP on compiled beans requires interface-based JDK proxies
+(e.g. `spring.aop.proxy-target-class=false`), not CGLIB subclass proxies.
 
 Note: mappers included through `@CompiledMapper(importing = ...)` are created
 internally by SJF4J and do not reuse Spring-managed instances. Spring AOT and
