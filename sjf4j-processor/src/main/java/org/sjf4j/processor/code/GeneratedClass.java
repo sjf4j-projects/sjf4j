@@ -1,5 +1,6 @@
 package org.sjf4j.processor.code;
 
+import org.sjf4j.CompiledInstances;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.util.Asserts;
 
@@ -19,7 +20,7 @@ import java.util.List;
  */
 public final class GeneratedClass {
 
-    public static final String IMPL_SUFFIX = "_Impl";
+    public static final String IMPL_SUFFIX = CompiledInstances.IMPL_SUFFIX;
 
     private final ProcessorContext context;
     private final TypeElement origin;
