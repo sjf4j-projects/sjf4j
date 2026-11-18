@@ -14,8 +14,13 @@ java {
 dependencies {
     api(project(":sjf4j-core"))
     api("org.springframework:spring-context:6.2.15")
+    compileOnly("org.springframework:spring-web:6.2.15")
 
     testImplementation(project(":sjf4j-schema"))
+    testImplementation(project(":sjf4j-backend-snake"))
+    testImplementation("org.yaml:snakeyaml:2.5")
+    testImplementation("org.springframework:spring-web:6.2.15")
+    testImplementation("org.springframework:spring-test:6.2.15")
     testAnnotationProcessor(project(":sjf4j-processor"))
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
