@@ -238,7 +238,7 @@ interface UserJdbcMapper {
 }
 ```
 
-Learn more → [JDBC ResultSet Mapping](https://sjf4j.org/docs/jdbc_mapping)
+Learn more → [JDBC ResultSet Mapping](https://sjf4j.org/docs/jdbc-mapping)
 
 
 ### Patching
