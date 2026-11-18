@@ -2,6 +2,8 @@ package org.sjf4j.spring.boot;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.RuntimeContext;
+import org.sjf4j.spring.CompiledBeanDefinitionRegistrar;
+import org.sjf4j.spring.EnableSjf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -70,9 +72,23 @@ class Sjf4jAutoConfigurationTest {
     }
 
     @Test
+    void explicitEnableAndBootAutoConfigurationShareOneRegistrar() {
+        runner.withUserConfiguration(AlsoEnableSjf4jConfiguration.class).run(context -> {
+            assertThat(context).hasNotFailed();
+            assertThat(context).hasSingleBean(CompiledBeanDefinitionRegistrar.class);
+            assertThat(context).hasSingleBean(CompiledFixtures.UserMapper.class);
+        });
+    }
+
+    @Test
     void acceptsUserRuntimeContext() {
         runner.withBean(RuntimeContext.class, () -> RuntimeContext.EMPTY)
                 .run(context -> assertThat(context).hasSingleBean(CompiledFixtures.UserMapper.class));
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @EnableSjf4j
+    static class AlsoEnableSjf4jConfiguration {
     }
 
     @Configuration(proxyBeanMethods = false)

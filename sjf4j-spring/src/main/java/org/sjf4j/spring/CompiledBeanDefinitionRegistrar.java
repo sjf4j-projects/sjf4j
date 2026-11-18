@@ -1,4 +1,4 @@
-package org.sjf4j.spring.boot;
+package org.sjf4j.spring;
 
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.RuntimeContext;
@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.TreeSet;
 
-/** Registers the generated implementations as ordinary, lazy Spring Beans. */
+/** Registers indexed compiled SJF4J interfaces as ordinary, lazy Spring Beans. */
 public final class CompiledBeanDefinitionRegistrar
         implements BeanDefinitionRegistryPostProcessor, BeanFactoryAware, BeanClassLoaderAware {
 
