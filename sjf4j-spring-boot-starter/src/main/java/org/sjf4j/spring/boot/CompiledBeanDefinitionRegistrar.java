@@ -52,13 +52,14 @@ public final class CompiledBeanDefinitionRegistrar
             }
 
             // An explicitly registered bean of the same interface takes priority.
-            if (beanFactory.getBeanNamesForType(type, true, false).length != 0) continue;
+            if (beanFactory.getBeanNamesForType(type, true, false).length != 0) {
+                continue;
+            }
 
             Class<?> implementation = load(name + "_Impl");
             if (!type.isAssignableFrom(implementation)) {
-                throw new BeanDefinitionStoreException(
-                        "Generated implementation " + implementation.getName()
-                                + " does not implement " + name);
+                throw new BeanDefinitionStoreException("Generated implementation " + implementation.getName() +
+                        " does not implement " + name);
             }
             if (registry.containsBeanDefinition(name)) {
                 throw new BeanDefinitionStoreException("SJF4J Bean name already in use: " + name);
@@ -104,9 +105,8 @@ public final class CompiledBeanDefinitionRegistrar
         try {
             return ClassUtils.forName(name, classLoader);
         } catch (ClassNotFoundException | LinkageError e) {
-            throw new BeanDefinitionStoreException(
-                    "Cannot load indexed SJF4J class " + name
-                            + "; check annotation processing and packaging", e);
+            throw new BeanDefinitionStoreException("Cannot load indexed SJF4J class " + name +
+                    "; check annotation processing and packaging", e);
         }
     }
 }
