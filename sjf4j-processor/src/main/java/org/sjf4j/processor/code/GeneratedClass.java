@@ -28,6 +28,7 @@ public final class GeneratedClass {
     private final String simpleName;
     private final String qualifiedName;
     private final String originName;
+    private final boolean standardImpl;
     private final GeneratedNames names;
 
     private final List<Member> fields = new ArrayList<>();
@@ -68,6 +69,7 @@ public final class GeneratedClass {
         this.simpleName = binarySimpleName + suffix;
         this.qualifiedName = packageName.isEmpty() ? simpleName : packageName + '.' + simpleName;
         this.originName = origin.getQualifiedName().toString();
+        this.standardImpl = IMPL_SUFFIX.equals(suffix);
         this.names = new GeneratedNames(context.elements, origin, simpleName);
     }
 
@@ -207,6 +209,7 @@ public final class GeneratedClass {
             try (JavaWriter out = new JavaWriter(writer, packageName, simpleName)) {
                 writeClass(out);
             }
+            if (standardImpl) context.recordCompiledInterface(origin);
 
         } catch (IOException e) {
             context.error(

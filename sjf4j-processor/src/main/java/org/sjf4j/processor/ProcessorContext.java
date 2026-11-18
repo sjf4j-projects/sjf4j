@@ -17,7 +17,12 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.util.Objects;
+import javax.tools.FileObject;
+import javax.tools.StandardLocation;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Compiler services and shared metadata resolvers for one processing run.
@@ -39,6 +44,8 @@ public final class ProcessorContext {
     public final NodeAccessResolver access;
     public final InterfaceMethodResolver methods;
 
+    private final Map<String, TypeElement> compiledInterfaces = new TreeMap<>();
+
     public ProcessorContext(ProcessingEnvironment environment) {
         Asserts.notNull(environment, "environment");
 
@@ -54,6 +61,31 @@ public final class ProcessorContext {
         this.properties = new PropertyResolver(typeUtils, elements, messager, types, annotations);
         this.access = new NodeAccessResolver(types, properties);
         this.methods = new InterfaceMethodResolver(typeUtils, elements, types);
+    }
+
+    /** Records an implementation only after its source file was emitted successfully. */
+    public void recordCompiledInterface(TypeElement type) {
+        compiledInterfaces.put(elements.getBinaryName(type).toString(), type);
+    }
+
+    /** Writes a framework-neutral index once, in the final processing round. */
+    public void writeCompiledIndex() {
+        if (compiledInterfaces.isEmpty()) return;
+
+        try {
+            FileObject file = filer.createResource(
+                    StandardLocation.CLASS_OUTPUT, "", "META-INF/sjf4j/compiled.interfaces",
+                    compiledInterfaces.values().toArray(new Element[0]));
+            try (Writer out = file.openWriter()) {
+                for (String name : compiledInterfaces.keySet()) {
+                    out.write(name);
+                    out.write('\n');
+                }
+            }
+        } catch (IOException e) {
+            messager.printMessage(Diagnostic.Kind.ERROR,
+                    "Failed to write SJF4J compiled interface index: " + e.getMessage());
+        }
     }
 
     /** Per-interface, immutable-source metadata view. */
