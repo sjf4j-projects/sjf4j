@@ -118,6 +118,22 @@ public final class Sjf4j {
         return jsonBinder;
     }
 
+
+    /**
+     * Returns the YAML binder provider used by this runtime.
+     */
+    public BinderProvider yamlProvider() {
+        return yamlProvider;
+    }
+
+    /**
+     * Returns the YAML binder used by this runtime.
+     */
+    public Binder<?, ?> yamlBinder() {
+        return yamlBinder;
+    }
+
+
     /**
      * Returns the properties binder used by this runtime.
      */

@@ -51,7 +51,7 @@ implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
 implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
 ```
 
-Learn more → [Installation (Modular)](https://sjf4j.org/docs/installation)
+Learn more → [Installation](https://sjf4j.org/docs/installation)
 
 
 ## Quickstart
@@ -129,7 +129,7 @@ SJF4J's open streaming architecture supports custom data formats and backends.
 Its rich binding capabilities include `@OneOf` polymorphism, multi-format `ValueCodec` support,
 and fully managed `ExternalNode` integration.
 
-Learn more → [Binding (Formats)](https://sjf4j.org/docs/binding)
+Learn more → [Binding](https://sjf4j.org/docs/binding)
 
 
 ### Navigating
@@ -159,7 +159,7 @@ interface UserNavigator {
 
 SJF4J combines standards-compliant JSONPath querying with powerful structural navigation and mutation, operating directly on Java objects without intermediate JSON trees.
 
-Learn more → [Navigating (JSONPath)](https://sjf4j.org/docs/navigating)
+Learn more → [Navigating](https://sjf4j.org/docs/navigating)
 
 
 ### Validating
@@ -199,7 +199,7 @@ including full validation and annotation collection.
 *Experimental: JSON Schema can also be used to generate Java models
 through the online [Schema-to-Java Generator](https://sjf4j.org/generator).*
 
-Learn more → [Validating (JSON Schema)](https://sjf4j.org/docs/validating)
+Learn more → [Validating](https://sjf4j.org/docs/validating)
 
 
 ### Mapping
@@ -228,7 +228,7 @@ interface UserMapper {
 }
 ```
 
-Learn more → [Mapping (Object-to-object)](https://sjf4j.org/docs/mapping)
+Learn more → [Object Mapping](https://sjf4j.org/docs/mapping)
 
 `@CompiledJdbcMapper` generates direct mappings from JDBC `ResultSet` to Java objects:
 ```java
@@ -253,7 +253,7 @@ JsonPatch patch = JsonPatch.fromJson("""
 patch.apply(user);  // Update in place
 ```
 
-Learn more → [Patching (JSON Patch)](https://sjf4j.org/docs/patching)
+Learn more → [Patching](https://sjf4j.org/docs/patching)
 
 
 ### Modeling
