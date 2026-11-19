@@ -168,20 +168,31 @@ final class FindEmitter {
                                 int unionIndex, int choiceIndex) {
         if (step == null) return;
         if (step.kind == FindPlan.Kind.FILTER) {
-            String field = generated.names().field("FIND_FILTER");
-            fields.put(step, field);
-
-            String parsed = "org.sjf4j.path.JsonPath.parse(" +
-                    JavaWriter.stringLiteral(expression) + ").segments()[" + step.segmentIndex + "]";
-            if (unionIndex == step.segmentIndex) {
-                parsed = "((org.sjf4j.path.PathSegment.Union) " + parsed +
-                        ").union[" + choiceIndex + "]";
+            if (step.filter == null) throw new AssertionError("Missing filter plan");
+            if (step.filter.kind != FilterPlan.Kind.FALLBACK) {
+                fields.put(step, new FilterEmitter().emit(step.filter, generated));
+            } else {
+                String field = generated.names().field("FIND_FILTER");
+                String helper = generated.names().helperMethod("findFilter");
+                fields.put(step, helper);
+                String parsed = "org.sjf4j.path.JsonPath.parse(" +
+                        JavaWriter.stringLiteral(expression) + ").segments()[" + step.segmentIndex + "]";
+                if (unionIndex == step.segmentIndex) {
+                    parsed = "((org.sjf4j.path.PathSegment.Union) " + parsed +
+                            ").union[" + choiceIndex + "]";
+                }
+                final String filterReference = parsed;
+                generated.addField(out -> out.line(
+                        "private static final org.sjf4j.path.FilterExpr " + field +
+                                " = ((org.sjf4j.path.PathSegment.Filter) " + filterReference +
+                                ").filterExpr;"));
+                generated.addHelper(out -> {
+                    out.beginBlock("private static boolean " + helper +
+                            "(Object root, Object current, org.sjf4j.node.NodeWalker.Access access)");
+                    out.line("return " + field + ".evalTruth(root, current, access);");
+                    out.endBlock();
+                });
             }
-            final String filterReference = parsed;
-            generated.addField(out -> out.line(
-                    "private static final org.sjf4j.path.FilterExpr " + field +
-                            " = ((org.sjf4j.path.PathSegment.Filter) " + filterReference +
-                            ").filterExpr;"));
         }
         if (step.kind == FindPlan.Kind.UNION) {
             for (int i = 0; i < step.alternatives.size(); i++) {
@@ -383,7 +394,7 @@ final class FindEmitter {
             if (step.kind == FindPlan.Kind.FILTER) {
                 out.beginBlock("else");
                 out.beginBlock("if (" + filters.get(step) +
-                        ".evalTruth(" + root + ", " + owner + ", " + accessVar + "))");
+                        "(" + root + ", " + owner + ", " + accessVar + "))");
                 emitStep(out, names, step.next, owner, root, result,
                         filters, descendants, accessVar);
                 out.endBlock();
@@ -394,7 +405,7 @@ final class FindEmitter {
 
         if (step.kind == FindPlan.Kind.FILTER && kind.isValue()) {
             out.beginBlock("if (" + filters.get(step) +
-                    ".evalTruth(" + root + ", " + owner + ", " + accessVar + "))");
+                    "(" + root + ", " + owner + ", " + accessVar + "))");
             emitStep(out, names, step.next, owner, root, result,
                     filters, descendants, accessVar);
             out.endBlock();
@@ -438,7 +449,7 @@ final class FindEmitter {
                                     String accessVar) {
         if (step.kind == FindPlan.Kind.FILTER) {
             out.beginBlock("if (" + filters.get(step) +
-                    ".evalTruth(" + root + ", " + item + ", " + accessVar + "))");
+                    "(" + root + ", " + item + ", " + accessVar + "))");
         }
         emitStep(out, names, step.next, item, root, result,
                 filters, descendants, accessVar);
