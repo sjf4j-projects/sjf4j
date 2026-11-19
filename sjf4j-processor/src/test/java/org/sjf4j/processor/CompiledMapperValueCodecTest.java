@@ -116,7 +116,7 @@ class CompiledMapperValueCodecTest {
         sources.put("fixture/Codecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "public class Codecs { @NodeValue "
+                + "@org.sjf4j.annotation.node.ValueCodecRegistry public class Codecs { @NodeValue "
                 + "public static final ValueCodec<Token, String> TOKEN = "
                 + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
                 + "v -> v.text, Token::new); }");
@@ -288,7 +288,7 @@ class CompiledMapperValueCodecTest {
                 "package fixture; import java.io.Serializable; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "public class Codecs { @NodeValue "
+                + "@org.sjf4j.annotation.node.ValueCodecRegistry public class Codecs { @NodeValue "
                 + "public static final ValueCodec<Serializable,String> CODEC = "
                 + "new ValueCodec.SimpleValueCodec<>(Serializable.class, String.class, "
                 + "Object::toString, raw -> raw); }");
@@ -350,7 +350,7 @@ class CompiledMapperValueCodecTest {
         sources.put("fixture/Codecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "public final class Codecs { "
+                + "@org.sjf4j.annotation.node.ValueCodecRegistry public final class Codecs { "
                 + "@NodeValue public static final ValueCodec<Token,String> TEXT = "
                 + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
                 + "v -> v.text, raw -> new Token(\"text:\" + raw)); "
