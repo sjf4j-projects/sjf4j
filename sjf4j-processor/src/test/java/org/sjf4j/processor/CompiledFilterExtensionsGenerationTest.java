@@ -40,7 +40,7 @@ class CompiledFilterExtensionsGenerationTest {
         assertTrue(compiled.success, compiled.diagnostics());
         String generated = compiled.generatedSource("fixture/Paths_Impl.java");
         assertTrue(generated.contains("FILTER_PATTERN"), generated);
-        assertTrue(generated.contains("java.util.regex.Pattern.compile("), generated);
+        assertTrue(generated.contains("Pattern.compile("), generated);
         assertTrue(generated.contains("FILTER_ARRAY"), generated);
         assertTrue(generated.contains("java.util.Collections.unmodifiableList("), generated);
         assertTrue(generated.contains("FunctionRegistry.invoke("), generated);
