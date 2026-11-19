@@ -288,4 +288,24 @@ class RegistryDiscoveryTest {
     }
 
 
+    @Test
+    void externalNodeFactoryMethodsAreRejected() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder public interface Binder {}");
+        input.put("fixture/BadExternal.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeRegistry; "
+                + "import org.sjf4j.external.ExternalNode; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@NodeRegistry public interface BadExternal { "
+                + "static ExternalNode<ClasspathRegistries.ExternalValue> factory() { return null; } "
+                + "}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("factory methods are not supported"),
+                result.diagnostics());
+    }
+
+
 }
