@@ -1,26 +1,41 @@
 package org.sjf4j.annotation.node;
 
-import org.sjf4j.value.ValueCodec;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Identifies an interface declaring value codecs through public static final
- * fields or public static no-argument factory methods returning
- * {@code ValueCodec<V, R>}.
+ * Declares an interface containing value codecs. Public static final fields
+ * and public static no-argument factory methods returning {@code ValueCodec<V, R>}
+ * are recognized by their generic types; {@link NodeValue} is optional and
+ * selects a named format or explicit default.
  *
- * <p>Codec declarations are recognized by their declared types. An optional
- * {@link NodeValue} on a member selects a named format or explicit default.
- * Registries in the current compilation are discovered by the processor;
- * precompiled registries must be referenced in the compiled interface's
- * {@code registries} option.
+ * <p>For example, given an {@code OrderId} value type:
+ * <pre>{@code
+ * @NodeRegistry
+ * interface AppCodecs {
+ *     ValueCodec<OrderId, String> ORDER_ID =
+ *             new ValueCodec.SimpleValueCodec<>(
+ *                     OrderId.class, String.class, id -> id.value, OrderId::new);
  *
- * <p>Compile-time discovery does not register codecs at runtime. Call
- * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} before
- * metadata for the affected types is analyzed.
+ *     @NodeValue(format = "uppercase")
+ *     static ValueCodec<OrderId, String> uppercase() {
+ *         return new ValueCodec.SimpleValueCodec<>(
+ *                 OrderId.class, String.class,
+ *                 id -> id.value.toUpperCase(java.util.Locale.ROOT), OrderId::new);
+ *     }
+ * }
+ * }</pre>
+ *
+ * <p>The annotation processor discovers registries in the current compilation;
+ * precompiled registries must be named via {@code registries} on
+ * {@link org.sjf4j.annotation.binding.CompiledBinder @CompiledBinder} or
+ * {@link org.sjf4j.annotation.mapping.CompiledMapper @CompiledMapper}.
+ * Compile-time discovery does not register codecs at runtime: call
+ * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)
+ * ValueRegistry.registerAnnotated(AppCodecs.class)} during initialization,
+ * before metadata for the affected types is analyzed.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
