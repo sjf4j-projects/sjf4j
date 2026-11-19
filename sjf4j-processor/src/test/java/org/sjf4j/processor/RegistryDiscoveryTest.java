@@ -308,4 +308,19 @@ class RegistryDiscoveryTest {
     }
 
 
+    @Test
+    void compiledClasspathFactoriesAreAlsoRejected() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledBinder(registries=ClasspathRegistries.LegacyFactory.class) "
+                + "public interface Binder {}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("factory methods are not supported"),
+                result.diagnostics());
+    }
+
+
 }
