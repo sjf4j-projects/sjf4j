@@ -101,7 +101,7 @@ public class CompiledFindBenchmark {
         public Double price;
     }
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     public interface FindNodes {
         @FindByPath("$.store.book[*].author")
         List<String> authors(Bookstore root);
