@@ -11,8 +11,8 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /** Emits a direct predicate without runtime FilterExpr AST evaluation. */
