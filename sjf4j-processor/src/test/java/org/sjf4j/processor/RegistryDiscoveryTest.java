@@ -236,4 +236,26 @@ class RegistryDiscoveryTest {
     }
 
 
+    @Test
+    void compiledValidatorUsesRegistryCodecRawType() throws Exception {
+        Map<String, String> input = new LinkedHashMap<>();
+        input.put("fixture/Bean.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeProperty; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "public class Bean { @NodeProperty(valueFormat=\"\") "
+                + "public ClasspathRegistries.Money money; }");
+        input.put("fixture/Validator.java",
+                "package fixture; import org.sjf4j.annotation.schema.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledValidator(fallback=false, registries=ClasspathRegistries.Third.class) "
+                + "public interface Validator { "
+                + "@ValidJsonSchema(\"{\\\"properties\\\":{\\\"money\\\":{\\\"type\\\":\\\"string\\\"}}}\") "
+                + "boolean valid(Bean value); }");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.generatedSource("fixture/Validator_Impl.java").contains("valid("),
+                result.generatedSource("fixture/Validator_Impl.java"));
+    }
+
+
 }
