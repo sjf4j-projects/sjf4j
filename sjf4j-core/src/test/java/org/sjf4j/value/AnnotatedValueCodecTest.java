@@ -213,46 +213,10 @@ class AnnotatedValueCodecTest {
     }
 
     @NodeRegistry
-    public interface FactoryCodecs {
-        public static ValueCodec<FactoryId, String> factoryId() {
+    public interface UnsupportedFactory {
+        static ValueCodec<FactoryId, String> create() {
             return new ValueCodec.SimpleValueCodec<>(
                     FactoryId.class, String.class, id -> id.value, FactoryId::new);
-        }
-
-        @NodeValue(format = "upper")
-        public static ValueCodec<FactoryId, String> upper() {
-            return new ValueCodec.SimpleValueCodec<>(
-                    FactoryId.class, String.class,
-                    id -> id.value.toUpperCase(java.util.Locale.ROOT), FactoryId::new);
-        }
-    }
-
-    static final class InterfaceId {
-        final String value;
-        InterfaceId(String value) { this.value = value; }
-    }
-
-    @NodeRegistry
-    public interface InterfaceCodecs {
-        static ValueCodec<InterfaceId, String> interfaceId() {
-            return new ValueCodec.SimpleValueCodec<>(
-                    InterfaceId.class, String.class, id -> id.value, InterfaceId::new);
-        }
-    }
-
-    @Test
-    void allowsExplicitRegistrationOfInterfaceHolder() {
-        ValueRegistry.registerAnnotated(InterfaceCodecs.class);
-        assertEquals("\"interface-1\"", new Sjf4j().toJsonString(new InterfaceId("interface-1")));
-        assertEquals("interface-1",
-                new Sjf4j().fromJson("\"interface-1\"", InterfaceId.class).value);
-    }
-
-    @NodeRegistry
-    public interface BadFactory {
-        @NodeValue
-        default ValueCodec<FactoryId, String> invalid() {
-            return FactoryCodecs.factoryId();
         }
     }
 
@@ -260,30 +224,10 @@ class AnnotatedValueCodecTest {
     public interface EmptyRegistry {
     }
 
-    public static class MissingRegistry {
-        public static ValueCodec<FactoryId, String> factory() {
-            return FactoryCodecs.factoryId();
-        }
-    }
-
     @Test
-    void registersFactoryMethodsWithoutMemberAnnotations() {
-        ValueRegistry.registerAnnotated(FactoryCodecs.class);
-        assertInvalid(FactoryCodecs.class, "already registered");
-
-        ValueSet codecs = ValueRegistry.resolve(FactoryId.class);
-        assertEquals("", codecs.defaultInfo.valueFormat);
-        assertNotNull(codecs.requireFormat("upper"));
-        assertEquals("\"abc\"", new Sjf4j().toJsonString(new FactoryId("abc")));
-        assertEquals("abc", new Sjf4j().fromJson("\"abc\"", FactoryId.class).value);
-        assertEquals("ABC", codecs.requireFormat("upper").valueToRaw(new FactoryId("abc")));
-    }
-
-    @Test
-    void rejectsInvalidCodecRegistryFactories() {
-        assertInvalid(BadFactory.class, "public static, no-arg");
+    void rejectsFactoryMethodsAndAcceptsEmptyRegistries() {
+        assertInvalid(UnsupportedFactory.class, "factory methods are not supported");
         assertDoesNotThrow(() -> ValueRegistry.registerAnnotated(EmptyRegistry.class));
-        assertInvalid(MissingRegistry.class, "expected @NodeRegistry interface");
     }
 
     private static void assertInvalid(Class<?> owner, String part) {

@@ -221,7 +221,7 @@ class RegistryDiscoveryTest {
                 + "import org.sjf4j.external.ExternalNode; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "@NodeRegistry public interface ExternalOnly { "
-                + "static ExternalNode<ClasspathRegistries.ExternalValue> adapter() { return null; } "
+                + "ExternalNode<ClasspathRegistries.ExternalValue> adapter = null; "
                 + "}");
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
                 input, RegistryDiscoveryProbeProcessor.class);
@@ -285,6 +285,41 @@ class RegistryDiscoveryTest {
                 + "@CompiledBinder(registries=EmptyNodes.class) public interface Binder {}"),
                 CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
+    }
+
+
+    @Test
+    void externalNodeFactoryMethodsAreRejected() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder public interface Binder {}");
+        input.put("fixture/BadExternal.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeRegistry; "
+                + "import org.sjf4j.external.ExternalNode; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@NodeRegistry public interface BadExternal { "
+                + "static ExternalNode<ClasspathRegistries.ExternalValue> factory() { return null; } "
+                + "}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("factory methods are not supported"),
+                result.diagnostics());
+    }
+
+
+    @Test
+    void compiledClasspathFactoriesAreAlsoRejected() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledBinder(registries=ClasspathRegistries.LegacyFactory.class) "
+                + "public interface Binder {}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("factory methods are not supported"),
+                result.diagnostics());
     }
 
 

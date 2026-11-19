@@ -114,41 +114,26 @@ class CompiledValueCodecDiscoveryTest {
     }
 
     @Test
-    void staticFactoryMethodNeedsNoNodeValueAnnotation() throws Exception {
+    void registryFactoriesAreRejectedAtCompileTime() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Money.java",
-                "package fixture; public final class Money { "
-                + " public final String value; public Money(String value) { this.value=value; } }");
+                "package fixture; public final class Money { public String value; }");
         sources.put("fixture/AppCodecs.java",
-                "package fixture; "
-                + "import org.sjf4j.annotation.node.NodeRegistry; "
+                "package fixture; import org.sjf4j.annotation.node.NodeRegistry; "
                 + "import org.sjf4j.value.ValueCodec; "
                 + "@NodeRegistry public interface AppCodecs { "
-                + " public static ValueCodec<Money, String> money() { "
-                + " return new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
-                + " x -> x.value, Money::new); } }");
+                + "static ValueCodec<Money, String> money() { "
+                + "return new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
+                + "x -> x.value, raw -> new Money()); } }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
-                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
-                + " @Read Money read(String json) throws java.io.IOException; "
-                + " @Write String write(Money value) throws java.io.IOException; }");
+                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder {}");
 
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
-        assertTrue(compiled.success, compiled.diagnostics());
-        assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
-                        .contains("requireRegisteredValueInfo"), compiled.diagnostics());
-
-        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
-            ValueRegistry.registerAnnotated(loader.loadClass("fixture.AppCodecs"));
-            Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
-            Class<?> moneyType = loader.loadClass("fixture.Money");
-            Object binder = binderType.getConstructor().newInstance();
-            Object value = binderType.getMethod("read", String.class).invoke(binder, "\"42.50\"");
-            assertEquals("42.50", moneyType.getField("value").get(value));
-            assertEquals("\"42.50\"", binderType.getMethod("write", moneyType)
-                    .invoke(binder, value));
-        }
+        assertFalse(compiled.success, compiled.diagnostics());
+        assertTrue(compiled.diagnostics().contains("factory methods are not supported"),
+                compiled.diagnostics());
     }
 
     @Test

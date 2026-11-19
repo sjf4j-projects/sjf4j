@@ -10,6 +10,9 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.mapping.CreatorResolver;
 import org.sjf4j.processor.property.Property;
 import org.sjf4j.processor.type.TypeSystem;
+import org.sjf4j.processor.discovery.CompiledMetadata;
+import org.sjf4j.processor.discovery.ValueCodecMetadata;
+import org.sjf4j.value.ValueCodec;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -69,6 +72,7 @@ public final class JdbcCompiler {
 
     private final ProcessorContext context;
     private final TypeSystem types;
+    private final CompiledMetadata metadata;
     private final TypeElement mapper;
     private final CreatorResolver creators;
 
@@ -86,6 +90,7 @@ public final class JdbcCompiler {
         this.context = context;
         this.types = context.types;
         this.mapper = mapper;
+        this.metadata = context.metadata(mapper);
 
         this.creators = new CreatorResolver(context);
         this.stringType = requiredType(String.class);
@@ -291,8 +296,8 @@ public final class JdbcCompiler {
             }
 
             Value value = rule == null
-                    ? directValue(name, valueType, generated, plan.method())
-                    : value(rule, valueType, generated, plan.method());
+                    ? directValue(name, valueType, generated, plan.method(), property.valueFormat())
+                    : value(rule, valueType, generated, plan.method(), property.valueFormat());
 
             if (value == null) return null;
 
@@ -384,14 +389,23 @@ public final class JdbcCompiler {
 
     private Value value(JdbcPlan.Rule rule, TypeMirror targetType,
                         GeneratedClass generated, ExecutableElement method) {
-        if (rule.compute().trim().length() != 0) return computeValue(rule, targetType, generated, method);
+        return value(rule, targetType, generated, method, null);
+    }
 
-        return directValue(sourceName(rule), targetType, generated, method);
+    private Value value(JdbcPlan.Rule rule, TypeMirror targetType,
+                        GeneratedClass generated, ExecutableElement method, String format) {
+        if (rule.compute().trim().length() != 0) return computeValue(rule, targetType, generated, method);
+        return directValue(sourceName(rule), targetType, generated, method, format);
     }
 
     private Value directValue(String column, TypeMirror targetType,
                               GeneratedClass generated, ExecutableElement method) {
-        ColumnRead read = columnRead(column, targetType, generated, method);
+        return directValue(column, targetType, generated, method, null);
+    }
+
+    private Value directValue(String column, TypeMirror targetType,
+                              GeneratedClass generated, ExecutableElement method, String format) {
+        ColumnRead read = columnRead(column, targetType, generated, method, format);
         return read == null ? null : Value.read(read);
     }
 
@@ -538,6 +552,43 @@ public final class JdbcCompiler {
         return result;
     }
 
+    /**
+     * Only user-declared codecs get the direct fast path. Built-in codecs
+     * describe JSON serialization, not JDBC driver conversions; keep typed
+     * getObject for LocalDate, UUID, and other standard JDBC types.
+     */
+    private boolean hasBuiltinCodec(TypeMirror type) {
+        for (ValueCodecMetadata codec : metadata.valueCodecs(type)) {
+            if (ValueCodec.class.getName().equals(
+                    codec.declaration.getEnclosingElement().toString())) return true;
+        }
+        return false;
+    }
+
+    private ValueCodecMetadata directCodec(TypeMirror type, String format) {
+        if (hasBuiltinCodec(type)) return null;
+        ValueCodecMetadata selected = metadata.valueCodec(type, format);
+        if (selected == null || selected.declaration.getKind() != ElementKind.FIELD
+                || !types.isSameErasure(type, selected.valueType)) return null;
+
+        // Generated implementations are top-level classes. A codec field in a
+        // private nested holder or another package's non-public holder cannot
+        // be referenced safely, even if the field itself is public static.
+        Element holder = selected.declaration.getEnclosingElement();
+        boolean samePackage = context.elements.getPackageOf(holder)
+                .equals(context.elements.getPackageOf(mapper));
+        for (Element current = holder; current instanceof TypeElement;
+                current = current.getEnclosingElement()) {
+            if (current.getModifiers().contains(Modifier.PRIVATE)
+                    || (!samePackage && !current.getModifiers().contains(Modifier.PUBLIC))) {
+                context.error(mapper, "JDBC ValueCodec field is not accessible from generated mapper: "
+                        + selected.declaration);
+                return null;
+            }
+        }
+        return selected;
+    }
+
     private boolean isComputeJdbcType(TypeMirror type) {
         TypeMirror boxed = types.boxed(type);
         return COMPUTE_JDBC_TYPES.contains(erasureName(boxed)) || sameArray(boxed, bytesType);
@@ -545,6 +596,11 @@ public final class JdbcCompiler {
 
     private ColumnRead columnRead(String column, TypeMirror targetType,
                                   GeneratedClass generated, ExecutableElement method) {
+        return columnRead(column, targetType, generated, method, null);
+    }
+
+    private ColumnRead columnRead(String column, TypeMirror targetType,
+                                  GeneratedClass generated, ExecutableElement method, String format) {
         if (column == null || column.length() == 0) {
             error(method, generated, "JDBC source column cannot be empty");
 
@@ -615,9 +671,29 @@ public final class JdbcCompiler {
         if (types.isObject(boxed)) return read(column, ReadKind.OBJECT, targetType);
 
         /*
-         * @NodeValue uses the SJF4J binding conversion pipeline.
+         * Keep JDBC typed getObject for types with built-in ValueCodecs
+         * (notably LocalDate, LocalDateTime, OffsetDateTime and UUID).
+         * A built-in codec describes JSON serialization, not conversion
+         * from the untyped JDBC value supplied by a driver.
          */
-        if (types.isNodeValue(boxed)) return read(column, ReadKind.NODE_VALUE, targetType);
+        if (types.isNodeValue(boxed)) {
+            return read(column, ReadKind.NODE_VALUE, targetType);
+        }
+        ValueCodecMetadata codec = directCodec(boxed, format);
+        if (codec != null) {
+            return new ColumnRead(column, ReadKind.DIRECT_CODEC, targetType, codec);
+        }
+        if (format != null && metadata.hasValueCodec(boxed)
+                && !hasBuiltinCodec(boxed)) {
+            error(method, generated, "Unknown JDBC ValueCodec format '" + format
+                    + "' for " + targetType);
+            return null;
+        }
+        if (metadata.hasValueCodec(boxed) && !hasBuiltinCodec(boxed)) {
+            // An inherited codec may produce a supertype that cannot be
+            // assigned directly. Preserve the old runtime conversion path.
+            return read(column, ReadKind.NODE_VALUE, targetType);
+        }
 
         /*
          * Containers are structural targets and are not synthesized from one
@@ -1102,7 +1178,8 @@ public final class JdbcCompiler {
         OBJECT,
         TYPED_OBJECT,
 
-        NODE_VALUE
+        NODE_VALUE,
+        DIRECT_CODEC
     }
 
     public static final class ColumnRead {
@@ -1110,11 +1187,21 @@ public final class JdbcCompiler {
         private final String column;
         private final ReadKind kind;
         private final TypeMirror targetType;
+        private final ValueCodecMetadata codec;
 
         ColumnRead(String column, ReadKind kind, TypeMirror targetType) {
+            this(column, kind, targetType, null);
+        }
+
+        ColumnRead(String column, ReadKind kind, TypeMirror targetType, ValueCodecMetadata codec) {
             this.column = column;
             this.kind = kind;
             this.targetType = targetType;
+            this.codec = codec;
+        }
+
+        public ValueCodecMetadata codec() {
+            return codec;
         }
 
         public String column() {

@@ -105,7 +105,7 @@ final class ObjectCompiler {
                 return null;
             }
             SchemaCheck patternCheck = schemaCompiler.compileValue(snapshot, patternMap.getNode(expression),
-                    SchemaValue.of(context, null), childPointer(rootUri, "patternProperties", expression), depth + 1);
+                    schemaCompiler.schemaValue(null), childPointer(rootUri, "patternProperties", expression), depth + 1);
             if (patternCheck == null || patternCheck.hasFallback()) return null;
             patternChecks.add(new SchemaCheck.PatternProperty(javaPattern, patternCheck));
         }
@@ -115,7 +115,7 @@ final class ObjectCompiler {
         SchemaCheck propertyNamesCheck = null;
         if (root.containsKey("propertyNames")) {
             propertyNamesCheck = schemaCompiler.compileValue(snapshot, root.getNode("propertyNames"),
-                    SchemaValue.of(context, null),
+                    schemaCompiler.schemaValue(null),
                     SchemaCompiler.keywordUri(rootUri, "propertyNames"), depth + 1);
             if (propertyNamesCheck == null || propertyNamesCheck.hasFallback()) return null;
         }
@@ -130,7 +130,7 @@ final class ObjectCompiler {
             JsonObject schemaMap = Nodes.toJsonObject(rawSchemaMap);
             for (String trigger : schemaMap.keySet()) {
                 SchemaCheck child = schemaCompiler.compileValue(snapshot, schemaMap.getNode(trigger),
-                        SchemaValue.of(context, null),
+                        schemaCompiler.schemaValue(null),
                         childPointer(rootUri, "dependentSchemas", trigger), depth + 1);
                 if (child == null || child.hasFallback()) return null;
                 if (child.kind != SchemaCheck.Kind.PASS) {
@@ -149,7 +149,7 @@ final class ObjectCompiler {
                 if (shape == JsonType.OBJECT || shape == JsonType.BOOLEAN) {
                     String childUri = childPointer(rootUri, "dependencies", trigger);
                     SchemaCheck child = schemaCompiler.compileValue(snapshot, dependency,
-                            SchemaValue.of(context, null), childUri, depth + 1);
+                            schemaCompiler.schemaValue(null), childUri, depth + 1);
                     if (child == null || child.hasFallback()) return null;
                     if (child.kind != SchemaCheck.Kind.PASS)
                         dependentSchemaChecks.add(new SchemaCheck.DependentSchema(trigger, child));
@@ -242,7 +242,7 @@ final class ObjectCompiler {
                 }
             } else if (JsonType.of(additional) == JsonType.OBJECT) {
                 additionalCheck = schemaCompiler.compileValue(snapshot, additional,
-                        SchemaValue.of(context, null),
+                        schemaCompiler.schemaValue(null),
                         SchemaCompiler.keywordUri(rootUri, additionalKeyword), depth + 1);
                 if (additionalCheck == null || additionalCheck.hasFallback()) return null;
             } else {
@@ -278,8 +278,7 @@ final class ObjectCompiler {
 
         List<SchemaCheck.PropertyCheck> properties = new ArrayList<SchemaCheck.PropertyCheck>();
         // Includes built-in formats; unresolved runtime registrations stay dynamic.
-        CompiledMetadata codecMetadata = dynamic ? null
-                : context.metadata(context.types.typeElement(type));
+        CompiledMetadata codecMetadata = dynamic ? null : schemaCompiler.codecMetadata();
         int directCount = (typeRequired && propertyMap.isEmpty() ? 1 : 0)
                 + (propertyNamesCheck != null && propertyNamesCheck.kind != SchemaCheck.Kind.PASS ? 1 : 0)
                 + (!dependentSchemaChecks.isEmpty() ? 1 : 0)
@@ -305,7 +304,7 @@ final class ObjectCompiler {
             if (explicitCodec && !supportsCodecProperty(propertySchema)) return null;
             SchemaValue value = explicitCodec
                     ? encodedValue(declared, property, codecMetadata)
-                    : SchemaValue.of(context, declared);
+                    : schemaCompiler.schemaValue(declared);
             SchemaCheck check = schemaCompiler.compileValue(snapshot, propertySchema, value, uri, depth + 1);
             // A fallback on just the child value loses @NodeProperty codec selection.
             if (explicitCodec && (check == null || check.hasFallback())) return null;
@@ -326,7 +325,7 @@ final class ObjectCompiler {
         return new SchemaCheck.ObjectCheck(dynamic, jsonObject, typeRequired,
                 Boolean.FALSE.equals(additional), additionalCheck, patternChecks,
                 propertyNamesCheck, dependentSchemaChecks,
-                SchemaValue.of(context, null), minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
+                schemaCompiler.schemaValue(null), minProperties, maxProperties, dynamic ? -1 : javaProperties.size(),
                 new ArrayList<String>(propertyMap.keySet()), requiredChecks, dependencies, properties,
                 typeRequired ? SchemaCompiler.diagnostic(rootUri, "type") : null,
                 minProperties == null ? null : SchemaCompiler.diagnostic(rootUri, "minProperties"),
@@ -358,7 +357,7 @@ final class ObjectCompiler {
      * Map/List raw types are never converted into structural SchemaValue shapes.
      */
     private SchemaValue encodedValue(TypeMirror domain, Property property, CompiledMetadata metadata) {
-        if (domain == null) return SchemaValue.of(context, null);
+        if (domain == null) return schemaCompiler.schemaValue(null);
         TypeMirror raw = null;
         if (metadata != null) {
             // A pattern always selects the default codec, regardless of valueFormat.
@@ -375,7 +374,7 @@ final class ObjectCompiler {
             }
         }
         if (raw != null && !raw.getKind().isPrimitive()) {
-            SchemaValue value = SchemaValue.of(context, raw);
+            SchemaValue value = schemaCompiler.schemaValue(raw);
             if ((value.shape == SchemaValue.Shape.STRING
                     && "java.lang.String".equals(raw.toString()))
                     || value.shape == SchemaValue.Shape.NUMBER
@@ -383,7 +382,7 @@ final class ObjectCompiler {
                 return value;
             }
         }
-        return SchemaValue.of(context, null);
+        return schemaCompiler.schemaValue(null);
     }
 
     /**
@@ -453,7 +452,7 @@ final class ObjectCompiler {
         // Otherwise a final codec-backed Java class might be compiled as a POJO.
         TypeElement registered = context.types.typeElement(type);
         if (kind == NodeKind.OBJECT_POJO && registered != null
-                && context.metadata(registered).hasValueCodec(type)) return true;
+                && schemaCompiler.codecMetadata().hasValueCodec(type)) return true;
         if (kind != NodeKind.OBJECT_POJO) return true;
         TypeElement owner = context.types.typeElement(type);
         return owner == null || !owner.getModifiers().contains(Modifier.PUBLIC)

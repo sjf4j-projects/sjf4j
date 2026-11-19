@@ -59,4 +59,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface CompiledJdbcMapper {
+    /** Additional precompiled {@link org.sjf4j.annotation.node.NodeRegistry} interfaces. */
+    Class<?>[] registries() default {};
 }

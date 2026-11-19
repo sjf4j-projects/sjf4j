@@ -15,27 +15,17 @@ class NodeRegistryVisibilityTest {
         FieldValue(String value) { this.value = value; }
     }
 
-    static final class FactoryValue {
-        final String value;
-        FactoryValue(String value) { this.value = value; }
-    }
-
     @NodeRegistry
     interface HiddenCodecs {
         ValueCodec<FieldValue, String> FIELD =
                 new ValueCodec.SimpleValueCodec<>(
                         FieldValue.class, String.class, value -> value.value, FieldValue::new);
 
-        static ValueCodec<FactoryValue, String> factory() {
-            return new ValueCodec.SimpleValueCodec<>(
-                    FactoryValue.class, String.class, value -> value.value, FactoryValue::new);
-        }
     }
 
     @Test
-    void registersCodecFieldsAndFactoriesOnPackagePrivateInterface() {
+    void registersCodecFieldsOnPackagePrivateInterface() {
         ValueRegistry.registerAnnotated(HiddenCodecs.class);
         assertNotNull(ValueRegistry.resolve(FieldValue.class));
-        assertNotNull(ValueRegistry.resolve(FactoryValue.class));
     }
 }

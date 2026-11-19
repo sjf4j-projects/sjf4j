@@ -121,7 +121,8 @@ public final class CodegenProcessor extends AbstractProcessor {
             }
             TypeElement owner = (TypeElement) element;
             try {
-                if (annotationType == CompiledBinder.class || annotationType == CompiledMapper.class) {
+                if (annotationType == CompiledBinder.class || annotationType == CompiledMapper.class
+                        || annotationType == CompiledJdbcMapper.class || annotationType == CompiledValidator.class) {
                     context.types.setRegisteredExternalRoots(context.discovery.externalTypes(owner));
                 }
                 generator.accept(owner);

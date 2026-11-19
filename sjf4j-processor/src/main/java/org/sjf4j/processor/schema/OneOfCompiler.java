@@ -117,7 +117,7 @@ final class OneOfCompiler {
                 if (!enclosing.getModifiers().contains(Modifier.PUBLIC)) return null;
             }
 
-            SchemaValue subtypeValue = SchemaValue.of(context, subtype);
+            SchemaValue subtypeValue = compiler.schemaValue(subtype);
             String constant = publicConstant(subtype, discriminator);
             List<SchemaCheck> branches = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {

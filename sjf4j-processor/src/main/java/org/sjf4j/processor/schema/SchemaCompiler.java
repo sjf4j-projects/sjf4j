@@ -12,6 +12,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.path.JsonPointer;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 
 import javax.lang.model.type.TypeMirror;
 import java.io.ByteArrayOutputStream;
@@ -32,6 +33,7 @@ import java.util.Set;
  */
 final class SchemaCompiler {
     private final ProcessorContext context;
+    private final CompiledMetadata metadata;
     private final ObjectCompiler objects;
     private final ScalarCompiler scalars;
     private final ArrayCompiler arrays;
@@ -93,12 +95,22 @@ final class SchemaCompiler {
         if (fallbackReason == null) fallbackReason = reason;
     }
 
-    SchemaCompiler(ProcessorContext context) {
+    SchemaCompiler(ProcessorContext context, CompiledMetadata metadata) {
         this.context = context;
+        this.metadata = metadata;
         this.objects = new ObjectCompiler(context, this);
         this.scalars = new ScalarCompiler();
         this.arrays = new ArrayCompiler(context, this);
         this.oneOf = new OneOfCompiler(context, objects, this);
+    }
+
+    /** The codec view belongs to the enclosing compiled validator interface. */
+    CompiledMetadata codecMetadata() {
+        return metadata;
+    }
+
+    SchemaValue schemaValue(TypeMirror type) {
+        return SchemaValue.of(context, type, metadata);
     }
 
     /** Compiles a non-object root, including a root oneOf or selected JSON Pointer fragment. */
@@ -121,7 +133,7 @@ final class SchemaCompiler {
             root = selected.value;
             uri = selected.uri;
         }
-        SchemaCheck compiled = compileValue(snapshot, root, SchemaValue.of(context, type), uri, 0);
+        SchemaCheck compiled = compileValue(snapshot, root, schemaValue(type), uri, 0);
         if ((compiled == null || compiled.hasFallback()) && fallbackReason == null) {
             unsupported("schema at " + snapshot.selectedUri
                     + " requires runtime validation: no complete direct predicate is available");
@@ -478,7 +490,7 @@ final class SchemaCompiler {
         boolean matching = ("STRING".equals(jsonType) && value.shape == SchemaValue.Shape.STRING)
                 || ("NUMBER".equals(jsonType) && value.shape == SchemaValue.Shape.NUMBER)
                 || ("ARRAY".equals(jsonType) && value.isArrayLike());
-        return matching ? value : SchemaValue.of(context, null);
+        return matching ? value : schemaValue(null);
     }
 
     /** Compile only the type keyword; every other assertion is independent. */
