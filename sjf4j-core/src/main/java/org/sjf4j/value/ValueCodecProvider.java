@@ -3,10 +3,12 @@ package org.sjf4j.value;
 /**
  * ServiceLoader marker for a class annotated with {@code @ValueCodecRegistry}.
  *
- * <p>The provider class declares codecs through static fields or factory methods;
- * {@code @NodeValue} is optional for named formats. It must have an accessible no-argument
- * constructor for ServiceLoader. ValueRegistry reads those declarations
- * using the same registration and validation path as registerAnnotated().
+ * <p>This interface is intentionally empty. A provider must be a concrete
+ * {@code @ValueCodecRegistry} class with a public no-argument constructor.
+ * Its codecs are declared through static fields or factory methods; member
+ * {@code @NodeValue} annotations are optional for named formats.
+ * {@link ValueRegistry#registerAnnotated(Class)} is used for both explicit
+ * registration and ServiceLoader discovery.
  */
 public interface ValueCodecProvider {
 }
