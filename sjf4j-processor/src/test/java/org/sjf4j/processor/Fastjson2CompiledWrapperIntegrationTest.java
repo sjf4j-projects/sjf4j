@@ -31,7 +31,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
                 "fixture/Codecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public class Codecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface Codecs { "
                 + "@NodeValue public static final ValueCodec<BadValue,String> BAD = "
                 + "new ValueCodec.SimpleValueCodec<>(BadValue.class, String.class, "
                 + "value -> { throw new IllegalStateException(\"codec failed\"); }, "
