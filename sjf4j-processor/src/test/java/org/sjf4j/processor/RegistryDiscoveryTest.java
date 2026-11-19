@@ -221,7 +221,7 @@ class RegistryDiscoveryTest {
                 + "import org.sjf4j.external.ExternalNode; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "@NodeRegistry public interface ExternalOnly { "
-                + "static ExternalNode<ClasspathRegistries.ExternalValue> adapter() { return null; } "
+                + "ExternalNode<ClasspathRegistries.ExternalValue> adapter = null; "
                 + "}");
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
                 input, RegistryDiscoveryProbeProcessor.class);
