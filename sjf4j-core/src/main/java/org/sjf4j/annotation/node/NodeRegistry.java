@@ -34,10 +34,11 @@ import java.lang.annotation.Target;
  * precompiled registries must be named via {@code registries} on
  * {@link org.sjf4j.annotation.binding.CompiledBinder @CompiledBinder} or
  * {@link org.sjf4j.annotation.mapping.CompiledMapper @CompiledMapper}.
- * Compile-time discovery does not register adapters at runtime: call
- * {@link org.sjf4j.NodeRegistries#register(Class)
- * NodeRegistries.register(AppCodecs.class)} during initialization,
- * before metadata for the affected types is analyzed.
+ * Compile-time discovery does not register adapters at runtime. Register
+ * custom codecs via {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)}
+ * and external adapters via
+ * {@link org.sjf4j.external.ExternalRegistry#registerAnnotated(Class)}
+ * as needed, before metadata for the affected types is analyzed.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
