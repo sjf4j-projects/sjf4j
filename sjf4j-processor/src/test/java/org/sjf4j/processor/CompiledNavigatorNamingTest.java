@@ -42,7 +42,7 @@ class CompiledNavigatorNamingTest {
                 "package fixture; import java.util.*; import org.sjf4j.annotation.path.*;"
                 + " @CompiledNavigator(fallback=true)"
                 + " public interface Navigator extends Base {"
-                + " @FindByPath(\"$[?(@.scores[*] > 18)].name\")"
+                + " @FindByPath(\"$[?(@.scores[*])].name\")"
                 + " List<String> adults(List<Item> root);"
                 + " @FindByPath(\"$..name\")"
                 + " List<String> descendants(List<Item> root);"
