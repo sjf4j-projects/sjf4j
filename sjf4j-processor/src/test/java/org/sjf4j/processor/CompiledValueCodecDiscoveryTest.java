@@ -85,7 +85,7 @@ class CompiledValueCodecDiscoveryTest {
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
                 + "@org.sjf4j.annotation.node.ValueCodecRegistry public class AppCodecs { "
-                + "@NodeValue public static final ValueCodec<Money, String> MONEY = "
+                + "public static final ValueCodec<Money, String> MONEY = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " x -> x.value, Money::new); }");
         sources.put("fixture/Binder.java",
