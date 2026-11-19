@@ -25,6 +25,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class MyHttpMessageConverterTest {
 
+    @RestController
+    static class UserController {
+
+        @PostMapping(path = "/users",
+                consumes = {"application/json", "application/yaml"},
+                produces = {"application/json", "application/yaml"})
+        public User echo(@RequestBody User user) {
+            return user;
+        }
+    }
+
+    public static class User {
+        public String name;
+    }
+
+
     private final MyHttpMessageConverter converter = new MyHttpMessageConverter(RuntimeContext.EMPTY);
 
     @Test
@@ -86,18 +102,4 @@ class MyHttpMessageConverterTest {
         assertFalse(converter.canWrite(ProblemDetail.class, MediaType.APPLICATION_JSON));
     }
 
-    @RestController
-    static class UserController {
-
-        @PostMapping(path = "/users",
-                consumes = {"application/json", "application/yaml"},
-                produces = {"application/json", "application/yaml"})
-        public User echo(@RequestBody User user) {
-            return user;
-        }
-    }
-
-    public static class User {
-        public String name;
-    }
 }
