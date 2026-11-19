@@ -17,12 +17,10 @@ java {
 
 dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
-    // Runtime requires Jakarta JSON-P API 2.1+ (JsonParser.currentEvent()) and a provider implementation.
-    compileOnly("jakarta.json:jakarta.json-api:2.1.3")
-    compileOnly("org.eclipse.parsson:parsson:1.1.7")
+    // Expose the JSON-P API; supply a default provider at runtime.
+    api("jakarta.json:jakarta.json-api:2.1.3")
+    runtimeOnly("org.eclipse.parsson:parsson:1.1.7")
 
-    testImplementation("jakarta.json:jakarta.json-api:2.1.3")
-    testImplementation("org.eclipse.parsson:parsson:1.1.7")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
