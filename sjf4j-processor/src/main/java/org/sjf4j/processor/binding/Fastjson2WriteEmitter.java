@@ -269,7 +269,7 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writeRuntimeValue(JavaWriter out, String expression) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, "
-                    + expression + ", this.context);");
+                    + expression + ", this.config);");
         }
 
         @Override
@@ -292,7 +292,7 @@ final class Fastjson2WriteEmitter {
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.context);");
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.config);");
         } else {
             StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode), writes.naming());
              switch (value.kind()) {
@@ -376,7 +376,7 @@ final class Fastjson2WriteEmitter {
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line("org.sjf4j.binding.StreamingIO.writeNode("
-                        + generator + ", " + expression + ", this.context);");
+                        + generator + ", " + expression + ", this.config);");
                 return;
             case NUMBER:
                 out.line(generator + ".writeNumber(" + expression + ");");

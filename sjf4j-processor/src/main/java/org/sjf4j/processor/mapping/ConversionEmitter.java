@@ -194,7 +194,7 @@ public final class ConversionEmitter
             generated.addField(out -> out.line("private final " + type + " " + field + ";"));
             generated.addConfigInitializer(out ->
                     out.line("this." + field + " = org.sjf4j.CompiledInstances.create(" +
-                            type + ".class, context);"));
+                            type + ".class, config);"));
         }
     }
 
