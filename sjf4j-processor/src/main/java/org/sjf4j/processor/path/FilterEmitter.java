@@ -7,6 +7,8 @@ import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.type.TypeSystem;
 
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -87,6 +89,16 @@ final class FilterEmitter {
         String owner = "((" + javaType(prefix[0].ownerType()) + ") node)";
         for (int i = 0; i < prefix.length; i++) {
             NodeAccess member = prefix[i];
+            TypeElement ownerElement = types.typeElement(types.concrete(member.ownerType()));
+            if (ownerElement != null && !ownerElement.getModifiers().contains(Modifier.FINAL)) {
+                // A subclass may hide a field or change the node-facing property.
+                // Specialize only the exact compile-time type; otherwise use OBNT.
+                String actual = i == 0 ? "node" : owner;
+                out.line("if (" + actual + ".getClass() != " +
+                        ownerElement.getQualifiedName() + ".class) return " +
+                        "org.sjf4j.path.CompiledFilterSupport.value(" + actual + ", " +
+                        memberArrayLiteral(plan.members, i) + ", access);");
+            }
             String value = "filterValue" + i;
             String read = reads.name(member, owner, JavaWriter.stringLiteral(plan.members[i]));
             out.line(javaType(member.readType()) + " " + value + " = " + read + ";");
@@ -104,6 +116,16 @@ final class FilterEmitter {
             out.line("return " + owner + ";");
         }
         out.endBlock();
+    }
+
+    /** Only allocated when the non-final POJO's runtime type differs. */
+    private String memberArrayLiteral(String[] members, int start) {
+        StringBuilder literal = new StringBuilder("new String[] {");
+        for (int i = start; i < members.length; i++) {
+            if (i > start) literal.append(", ");
+            literal.append(JavaWriter.stringLiteral(members[i]));
+        }
+        return literal.append("}").toString();
     }
 
     private String javaType(TypeMirror type) {
