@@ -10,8 +10,13 @@ import org.sjf4j.node.NodeWalker;
  * runtime JSONPath parsing and FilterExpr interpretation. Object access
  * retains the same present-null versus absent semantics as JSONPath.</p>
  */
-public final class CompiledFilterSupport {
-    private CompiledFilterSupport() {
+public final class PathSupport {
+    private PathSupport() {
+    }
+
+    /** The same singleton used by runtime FilterExpr for an absent path. */
+    public static Object missing() {
+        return FilterExpr.PathExpr.NOTHING;
     }
 
     public static Object value(Object current, String[] members, NodeWalker.Access access) {

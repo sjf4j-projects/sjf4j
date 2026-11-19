@@ -187,7 +187,7 @@ final class SchemaResourceResolver {
         boolean hasDynamicRef = false;
         for (List<URI> queue = new ArrayList<URI>(resources.keySet()); !queue.isEmpty();) {
             URI uri = queue.remove(0);
-            SchemaSupport.Analysis analysis = SchemaSupport.analyze(
+            SchemaAnalyzer.Analysis analysis = SchemaAnalyzer.analyze(
                     uri, JsonSchema.fromJson(resources.get(uri)));
             customDialect |= analysis.customDialect;
             hasDynamicRef |= analysis.hasDynamicRef;
@@ -219,7 +219,7 @@ final class SchemaResourceResolver {
             throw new IllegalArgumentException("unresolved selected schema: " + snapshot.selectedUri);
         }
         snapshot.registry = registry;
-        // CompiledSupport inspected schema-bearing positions before plan construction.
+        // SchemaAnalyzer inspected schema-bearing positions before plan construction.
         snapshot.customDialect = customDialect;
         snapshot.hasDynamicRef = hasDynamicRef;
         return snapshot;

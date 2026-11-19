@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-class CompiledSupportTest {
+class SchemaSupportTest {
     @Test
     void scalarMemberCodecRespectsPropertyAndContextFormats() {
         Instant instant = Instant.ofEpochMilli(2_000);
@@ -25,29 +25,29 @@ class CompiledSupportTest {
         Event event = new Event();
         event.declared = instant;
         event.dynamic = instant;
-        assertEquals(2_000L, CompiledSupport.scalarValueInObject(
+        assertEquals(2_000L, SchemaSupport.scalarValueInObject(
                 event, "declared", NodeConfig.DEFAULT));
-        assertEquals(instant.toString(), CompiledSupport.scalarValueInObject(
+        assertEquals(instant.toString(), SchemaSupport.scalarValueInObject(
                 event, "dynamic", NodeConfig.DEFAULT));
-        assertEquals(2_000L, CompiledSupport.scalarValueInObject(
+        assertEquals(2_000L, SchemaSupport.scalarValueInObject(
                 event, "dynamic", epochMillis));
 
         Map<String, Object> map = Map.of("when", instant);
-        assertEquals(instant.toString(), CompiledSupport.scalarValueInObject(
+        assertEquals(instant.toString(), SchemaSupport.scalarValueInObject(
                 map, "when", NodeConfig.DEFAULT));
-        assertEquals(2_000L, CompiledSupport.scalarValueInObject(
+        assertEquals(2_000L, SchemaSupport.scalarValueInObject(
                 map, "when", epochMillis));
 
         Jojo jojo = new Jojo();
         jojo.declared = instant;
         jojo.put("dynamic", instant);
-        assertEquals(2_000L, CompiledSupport.scalarValueInObject(
+        assertEquals(2_000L, SchemaSupport.scalarValueInObject(
                 jojo, "declared", NodeConfig.DEFAULT));
-        assertEquals(instant.toString(), CompiledSupport.scalarValueInObject(
+        assertEquals(instant.toString(), SchemaSupport.scalarValueInObject(
                 jojo, "dynamic", NodeConfig.DEFAULT));
-        assertEquals(2_000L, CompiledSupport.scalarValueInObject(
+        assertEquals(2_000L, SchemaSupport.scalarValueInObject(
                 jojo, "dynamic", epochMillis));
-        assertNull(CompiledSupport.scalarValueInObject(
+        assertNull(SchemaSupport.scalarValueInObject(
                 jojo, "missing", epochMillis));
     }
 
@@ -56,13 +56,13 @@ class CompiledSupportTest {
         MapValue mapValue = new MapValue(Map.of("member", 1));
         ListValue listValue = new ListValue();
         Map<String, Object> values = Map.of("map", mapValue, "list", listValue);
-        assertSame(mapValue, CompiledSupport.scalarValueInObject(
+        assertSame(mapValue, SchemaSupport.scalarValueInObject(
                 values, "map", NodeConfig.DEFAULT));
-        assertSame(listValue, CompiledSupport.scalarValueInObject(
+        assertSame(listValue, SchemaSupport.scalarValueInObject(
                 values, "list", NodeConfig.DEFAULT));
 
         Object plain = new Event();
-        assertSame(plain, CompiledSupport.scalarValueInObject(
+        assertSame(plain, SchemaSupport.scalarValueInObject(
                 Map.of("plain", plain), "plain", NodeConfig.DEFAULT));
     }
 

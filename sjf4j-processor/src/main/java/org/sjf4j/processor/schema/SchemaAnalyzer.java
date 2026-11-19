@@ -17,8 +17,8 @@ import java.util.Set;
  * Discovers referenced resources and unknown dialects before runtime
  * SchemaPlanner builds evaluation plans.
  */
-final class SchemaSupport {
-    private SchemaSupport() {}
+final class SchemaAnalyzer {
+    private SchemaAnalyzer() {}
 
     static final class Analysis {
         final Set<URI> referencedDocuments = new LinkedHashSet<>();

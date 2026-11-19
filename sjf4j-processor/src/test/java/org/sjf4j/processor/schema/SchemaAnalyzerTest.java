@@ -7,7 +7,7 @@ import java.net.URI;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class SchemaSupportTest {
+class SchemaAnalyzerTest {
     private static final URI RETRIEVAL = URI.create("classpath:/schemas/root.json");
 
     @Test
@@ -19,7 +19,7 @@ class SchemaSupportTest {
                 + "\"properties\":{\"x\":{\"$ref\":\"#/$defs/child\"}}}},"
                 + "\"const\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\","
                 + "\"$ref\":\"https://ignored.test/\"}}");
-        SchemaSupport.Analysis analyzed = SchemaSupport.analyze(RETRIEVAL, schema);
+        SchemaAnalyzer.Analysis analyzed = SchemaAnalyzer.analyze(RETRIEVAL, schema);
         assertTrue(analyzed.referencedDocuments.contains(URI.create("https://example.test/other")));
         assertTrue(analyzed.referencedDocuments.contains(URI.create("https://example.test/nested/part")));
         assertEquals(2, analyzed.referencedDocuments.size());
@@ -30,7 +30,7 @@ class SchemaSupportTest {
     void recognizesExplicitOlderDraftAtAnySchemaPosition() {
         JsonSchema old = JsonSchema.fromJson(
                 "{\"$defs\":{\"child\":{\"$schema\":\"https://json-schema.org/draft/2019-09/schema\"}}}");
-        assertFalse(SchemaSupport.analyze(RETRIEVAL, old).customDialect);
+        assertFalse(SchemaAnalyzer.analyze(RETRIEVAL, old).customDialect);
     }
 
     @Test
@@ -40,7 +40,7 @@ class SchemaSupportTest {
                 + "\"definitions\":{\"target\":{\"$ref\":\"https://used.test/value\"}},"
                 + "\"$ref\":\"#/definitions/target\","
                 + "\"properties\":{\"ignored\":{\"$ref\":\"https://ignored.test/value\"}}}");
-        SchemaSupport.Analysis analyzed = SchemaSupport.analyze(RETRIEVAL, schema);
+        SchemaAnalyzer.Analysis analyzed = SchemaAnalyzer.analyze(RETRIEVAL, schema);
         assertTrue(analyzed.referencedDocuments.contains(RETRIEVAL));
         assertTrue(analyzed.referencedDocuments.contains(URI.create("https://used.test/value")));
         assertFalse(analyzed.referencedDocuments.contains(URI.create("https://ignored.test/value")));
@@ -49,12 +49,12 @@ class SchemaSupportTest {
 
     @Test
     void unknownDialectRequiresFallbackButAbsentDialectDefaultsTo202012() {
-        assertTrue(SchemaSupport.analyze(RETRIEVAL,
+        assertTrue(SchemaAnalyzer.analyze(RETRIEVAL,
                 JsonSchema.fromJson("{\"$defs\":{\"child\":{\"$schema\":\"https://example.test/custom\"}}}"))
                 .customDialect);
-        assertFalse(SchemaSupport.analyze(RETRIEVAL,
+        assertFalse(SchemaAnalyzer.analyze(RETRIEVAL,
                 JsonSchema.fromJson("{\"type\":\"string\"}")).customDialect);
-        assertFalse(SchemaSupport.analyze(RETRIEVAL,
+        assertFalse(SchemaAnalyzer.analyze(RETRIEVAL,
                 JsonSchema.fromJson("false")).customDialect);
     }
 }

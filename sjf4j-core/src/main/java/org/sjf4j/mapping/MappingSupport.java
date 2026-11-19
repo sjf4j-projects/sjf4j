@@ -13,8 +13,8 @@ import java.sql.SQLException;
  * <p>Resolves JDBC column labels to mapped property indexes. Prepared row
  * mappers capture the resolved indexes explicitly and retain no JDBC resources.</p>
  */
-public final class CompiledSupport {
-    private CompiledSupport() {
+public final class MappingSupport {
+    private MappingSupport() {
     }
 
     public static int[] resolve(ResultSetMetaData metadata, String[] names,

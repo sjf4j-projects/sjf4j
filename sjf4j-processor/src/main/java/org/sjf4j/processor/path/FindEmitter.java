@@ -24,8 +24,10 @@ import java.util.Map;
 final class FindEmitter {
     private final TypeSystem types;
     private final NodeReadEmitter reads;
+    private final ProcessorContext context;
 
     FindEmitter(ProcessorContext context) {
+        this.context = context;
         this.types = context.types;
         this.reads = new NodeReadEmitter(context.types);
     }
@@ -170,7 +172,7 @@ final class FindEmitter {
         if (step.kind == FindPlan.Kind.FILTER) {
             if (step.filter == null) throw new AssertionError("Missing filter plan");
             if (step.filter.kind != FilterPlan.Kind.FALLBACK) {
-                fields.put(step, new FilterEmitter().emit(step.filter, generated));
+                fields.put(step, new FilterEmitter(context).emit(step.filter, generated));
             } else {
                 String field = generated.names().field("FIND_FILTER");
                 String helper = generated.names().helperMethod("findFilter");

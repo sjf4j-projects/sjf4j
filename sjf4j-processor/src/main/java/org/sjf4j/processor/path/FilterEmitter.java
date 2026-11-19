@@ -1,15 +1,30 @@
 package org.sjf4j.processor.path;
 
+import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.type.TypeSystem;
 
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
 /** Emits a direct predicate without runtime FilterExpr AST evaluation. */
 final class FilterEmitter {
     private final Map<FilterPlan, String> paths = new IdentityHashMap<>();
+    private final Map<FilterPlan, String> directPaths = new IdentityHashMap<>();
     private final Map<FilterPlan, String> numbers = new IdentityHashMap<>();
+    private final TypeSystem types;
+    private final NodeReadEmitter reads;
+
+    FilterEmitter(ProcessorContext context) {
+        this.types = context.types;
+        this.reads = new NodeReadEmitter(types);
+    }
 
     String emit(FilterPlan plan, GeneratedClass generated) {
         prepare(plan, generated);
@@ -25,16 +40,17 @@ final class FilterEmitter {
 
     private void prepare(FilterPlan plan, GeneratedClass generated) {
         if (plan.kind == FilterPlan.Kind.PATH && plan.members.length > 0) {
-            String field = generated.names().field("FILTER_PATH");
-            paths.put(plan, field);
-            StringBuilder init = new StringBuilder("new String[] {");
-            for (int i = 0; i < plan.members.length; i++) {
-                if (i > 0) init.append(", ");
-                init.append(JavaWriter.stringLiteral(plan.members[i]));
+            int prefixLength = plan.propertyPrefix.length;
+            if (prefixLength > 0) {
+                String helper = generated.names().helperMethod("filterPath");
+                directPaths.put(plan, helper);
+                if (prefixLength < plan.members.length) {
+                    paths.put(plan, addMemberArray(generated, plan.members, prefixLength));
+                }
+                generated.addHelper(out -> emitDirectPath(out, helper, plan));
+            } else {
+                paths.put(plan, addMemberArray(generated, plan.members, 0));
             }
-            init.append("}");
-            generated.addField(out -> out.line("private static final String[] " + field +
-                    " = " + init + ";"));
         } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof Double) {
             String field = generated.names().field("FILTER_NUMBER");
             numbers.put(plan, field);
@@ -46,13 +62,87 @@ final class FilterEmitter {
         if (plan.right != null) prepare(plan.right, generated);
     }
 
+    private String addMemberArray(GeneratedClass generated, String[] members, int start) {
+        String field = generated.names().field("FILTER_PATH");
+        StringBuilder init = new StringBuilder("new String[] {");
+        for (int i = start; i < members.length; i++) {
+            if (i > start) init.append(", ");
+            init.append(JavaWriter.stringLiteral(members[i]));
+        }
+        init.append("}");
+        generated.addField(out -> out.line("private static final String[] " + field +
+                " = " + init + ";"));
+        return field;
+    }
+
+    /**
+     * Directly read the statically resolved POJO prefix. The generated helper
+     * reads each member once and checks null between accesses. An absent
+     * intermediate node returns Nothing, not Java null.
+     */
+    private void emitDirectPath(JavaWriter out, String helper, FilterPlan plan) {
+        out.beginBlock("private static Object " + helper +
+                "(Object node, org.sjf4j.node.NodeWalker.Access access)");
+        out.line("if (node == null) return org.sjf4j.path.PathSupport.missing();");
+
+        NodeAccess[] prefix = plan.propertyPrefix;
+        String owner = "((" + javaType(prefix[0].ownerType()) + ") node)";
+        for (int i = 0; i < prefix.length; i++) {
+            NodeAccess member = prefix[i];
+            TypeElement ownerElement = types.typeElement(types.concrete(member.ownerType()));
+            if (ownerElement != null && !ownerElement.getModifiers().contains(Modifier.FINAL)) {
+                // A subclass may hide a field or change the node-facing property.
+                // Specialize only the exact compile-time type; otherwise use OBNT.
+                String actual = i == 0 ? "node" : owner;
+                out.line("if (" + actual + ".getClass() != " +
+                        ownerElement.getQualifiedName() + ".class) return " +
+                        "org.sjf4j.path.PathSupport.value(" + actual + ", " +
+                        memberArrayLiteral(plan.members, i) + ", access);");
+            }
+            String value = "filterValue" + i;
+            String read = reads.name(member, owner, JavaWriter.stringLiteral(plan.members[i]));
+            out.line(javaType(member.readType()) + " " + value + " = " + read + ";");
+            if (i + 1 < prefix.length) {
+                out.line("if (" + value +
+                        " == null) return org.sjf4j.path.PathSupport.missing();");
+            }
+            owner = value;
+        }
+
+        if (prefix.length < plan.members.length) {
+            out.line("return org.sjf4j.path.PathSupport.value(" +
+                    owner + ", " + paths.get(plan) + ", access);");
+        } else {
+            out.line("return " + owner + ";");
+        }
+        out.endBlock();
+    }
+
+    /** Only allocated when the non-final POJO's runtime type differs. */
+    private String memberArrayLiteral(String[] members, int start) {
+        StringBuilder literal = new StringBuilder("new String[] {");
+        for (int i = start; i < members.length; i++) {
+            if (i > start) literal.append(", ");
+            literal.append(JavaWriter.stringLiteral(members[i]));
+        }
+        return literal.append("}").toString();
+    }
+
+    private String javaType(TypeMirror type) {
+        return types.concrete(type).toString();
+    }
+
     private String predicate(FilterPlan plan) {
         switch (plan.kind) {
             case LITERAL:
                 return "org.sjf4j.path.FilterExpr.truth(" + value(plan) + ")";
             case PATH:
                 if (plan.members.length == 0) return "true";
-                return "org.sjf4j.path.CompiledFilterSupport.exists(" +
+                if (directPaths.containsKey(plan)) {
+                    return "(" + value(plan) +
+                            " != org.sjf4j.path.PathSupport.missing())";
+                }
+                return "org.sjf4j.path.PathSupport.exists(" +
                         (plan.rooted ? "root" : "current") + ", " +
                         paths.get(plan) + ", access)";
             case NOT:
@@ -82,7 +172,11 @@ final class FilterEmitter {
                 throw new AssertionError(plan.literal);
             case PATH:
                 if (plan.members.length == 0) return plan.rooted ? "root" : "current";
-                return "org.sjf4j.path.CompiledFilterSupport.value(" +
+                if (directPaths.containsKey(plan)) {
+                    return directPaths.get(plan) + "(" +
+                            (plan.rooted ? "root" : "current") + ", access)";
+                }
+                return "org.sjf4j.path.PathSupport.value(" +
                         (plan.rooted ? "root" : "current") + ", " +
                         paths.get(plan) + ", access)";
             case NOT: case AND: case OR: case COMPARE:

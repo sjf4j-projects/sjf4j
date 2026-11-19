@@ -26,6 +26,7 @@ final class FindCompiler {
     private final ProcessorContext context;
     private final TypeSystem types;
     private boolean allowFallback;
+    private TypeMirror rootType;
 
     FindCompiler(ProcessorContext context) {
         this.context = context;
@@ -80,6 +81,7 @@ final class FindCompiler {
 
         VariableElement root = parameters.get(0);
         this.allowFallback = allowFallback;
+        this.rootType = root.asType();
         try {
             FindPlan.Step traversal = compilePath(root.asType(), segments, 1, elementType);
             return new FindPlan(method, root, expression, elementType, traversal);
@@ -152,19 +154,6 @@ final class FindCompiler {
         if (segment instanceof PathSegment.Wildcard ||
                 segment instanceof PathSegment.Slice ||
                 segment instanceof PathSegment.Filter) {
-            FilterPlan filter = null;
-            if (segment instanceof PathSegment.Filter) {
-                try {
-                    filter = new FilterCompiler().compile(((PathSegment.Filter) segment).filterExpr);
-                } catch (UnsupportedOperationException e) {
-                    if (!allowFallback) {
-                        throw unsupported(e.getMessage() +
-                                "; use @CompiledNavigator(fallback=true) to allow runtime evaluation");
-                    }
-                    filter = FilterPlan.fallback();
-                }
-            }
-
             NodeKind kind = types.nodeKind(owner);
             boolean slice = segment instanceof PathSegment.Slice;
             if (slice && kind == NodeKind.ARRAY_SET) {
@@ -178,6 +167,20 @@ final class FindCompiler {
                     throw unsupported("cannot enumerate " + segment + " on " + owner);
                 }
                 return FindPlan.Step.empty(owner);
+            }
+
+            FilterPlan filter = null;
+            if (segment instanceof PathSegment.Filter) {
+                try {
+                    filter = new FilterCompiler(context).compile(
+                            ((PathSegment.Filter) segment).filterExpr, rootType, value);
+                } catch (UnsupportedOperationException e) {
+                    if (!allowFallback) {
+                        throw unsupported(e.getMessage() +
+                                "; use @CompiledNavigator(fallback=true) to allow runtime evaluation");
+                    }
+                    filter = FilterPlan.fallback();
+                }
             }
 
             NodeAccess iteration;

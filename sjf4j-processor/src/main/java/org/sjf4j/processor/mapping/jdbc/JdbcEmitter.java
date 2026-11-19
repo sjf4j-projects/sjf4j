@@ -811,7 +811,7 @@ public final class JdbcEmitter {
 
         String resolved = names.newName("columnIndexes");
         String policyExpr = "org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy." + policy.name();
-        out.line("int[] " + resolved + " = org.sjf4j.mapping.CompiledSupport.resolve("
+        out.line("int[] " + resolved + " = org.sjf4j.mapping.MappingSupport.resolve("
                 + metadata + ", " + namesLiteral + ", " + policyExpr + ", " + !presentOnly + ");");
 
         Map<String, String> result = new LinkedHashMap<>();

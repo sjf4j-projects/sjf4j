@@ -405,7 +405,9 @@ public class FindProcessorTest {
         Path genSource = gen.resolve("testcase/FindFiltered_Impl.java");
         assertTrue(Files.exists(genSource), "Generated source not found at " + genSource);
         String source = Files.readString(genSource);
-        assertTrue(source.contains("CompiledFilterSupport.value("), source);
+        assertTrue(source.contains(".getAge()"), source);
+        assertTrue(source.contains("filterPath("), source);
+        assertTrue(source.contains(".getClass() != "), source); // Subtype-safe OBNT fallback
         assertTrue(source.contains("FilterExpr.compare("), source);
         assertFalse(source.contains(".evalTruth("), source);
         assertFalse(source.contains(".find("), "Filter path should not fall back to .find(; source:\n" + source);
