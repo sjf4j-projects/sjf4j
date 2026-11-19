@@ -155,15 +155,14 @@ public final class ValueCodecResolver {
                 continue;
             }
             // Match ValueRegistry.registerAnnotated(): explicit defaults first,
-            // then stable method and field name ordering.
+            // then stable field name ordering.
             List<Element> declarations = new ArrayList<>();
             for (Element element : holder.getEnclosedElements()) {
                 if (isCodecDeclaration(element)) declarations.add(element);
             }
             declarations.sort(Comparator
                     .comparing((Element element) -> !isDefaultCodec(element))
-                    .thenComparing(element -> element.getSimpleName().toString())
-                    .thenComparing(element -> element.getKind() == ElementKind.FIELD ? 0 : 1));
+                    .thenComparing(element -> element.getSimpleName().toString()));
             Map<String, String> explicitDefaults = new LinkedHashMap<>();
             for (Element element : declarations) {
                 ValueCodecMetadata metadata = parse(element);
@@ -189,22 +188,11 @@ public final class ValueCodecResolver {
     }
 
     private boolean isCodecDeclaration(Element element) {
-        if (element.getKind() != ElementKind.FIELD && element.getKind() != ElementKind.METHOD) {
-            return false;
-        }
+        if (element.getKind() != ElementKind.FIELD) return false;
         if (element.getAnnotation(NodeValue.class) != null) return true;
-        TypeMirror type;
-        if (element.getKind() == ElementKind.FIELD) {
-            if (!element.getModifiers().containsAll(Arrays.asList(
-                    Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))) return false;
-            type = element.asType();
-        } else {
-            ExecutableElement method = (ExecutableElement) element;
-            if (!method.getModifiers().containsAll(Arrays.asList(Modifier.PUBLIC, Modifier.STATIC))
-                    || !method.getParameters().isEmpty()) return false;
-            type = method.getReturnType();
-        }
-        return context.typeUtils.isAssignable(context.typeUtils.erasure(type),
+        if (!element.getModifiers().containsAll(Arrays.asList(
+                Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))) return false;
+        return context.typeUtils.isAssignable(context.typeUtils.erasure(element.asType()),
                 context.typeUtils.erasure(codecType));
     }
 
@@ -216,29 +204,15 @@ public final class ValueCodecResolver {
     /** Validate a declaration using compiler model types, without running factories. */
     private ValueCodecMetadata parse(Element declaration) {
         TypeMirror type;
-        if (declaration.getKind() == ElementKind.FIELD) {
-            VariableElement field = (VariableElement) declaration;
-            if (!field.getModifiers().containsAll(Arrays.asList(
-                    Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
-                    || !context.typeUtils.isAssignable(context.typeUtils.erasure(field.asType()),
-                            context.typeUtils.erasure(codecType))) {
-                context.error(field, "@NodeValue codec field must be public static final ValueCodec<V, R>");
-                return null;
-            }
-            type = field.asType();
-        } else {
-            ExecutableElement method = (ExecutableElement) declaration;
-            if (!method.getModifiers().containsAll(Arrays.asList(Modifier.PUBLIC, Modifier.STATIC))
-                    || !method.getParameters().isEmpty()
-                    || !context.typeUtils.isAssignable(context.typeUtils.erasure(method.getReturnType()),
-                            context.typeUtils.erasure(codecType))) {
-                context.error(method, "@NodeValue codec method must be public static, no-arg, "
-                        + "and return ValueCodec<V, R>");
-                return null;
-            }
-            type = method.getReturnType();
+        VariableElement field = (VariableElement) declaration;
+        if (!field.getModifiers().containsAll(Arrays.asList(
+                Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
+                || !context.typeUtils.isAssignable(context.typeUtils.erasure(field.asType()),
+                        context.typeUtils.erasure(codecType))) {
+            context.error(field, "@NodeValue codec field must be public static final ValueCodec<V, R>");
+            return null;
         }
-
+        type = field.asType();
         if (!(type instanceof DeclaredType)) {
             context.error(declaration, "@NodeValue codec declaration must specify concrete V/R classes");
             return null;
