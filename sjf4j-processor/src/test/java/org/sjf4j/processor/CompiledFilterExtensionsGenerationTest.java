@@ -25,6 +25,8 @@ class CompiledFilterExtensionsGenerationTest {
                 + "List<String> members(Root root);"
                 + "@FindByPath(\"$.items[?(@.name nin ['Alice'])].name\") "
                 + "List<String> nonMembers(Root root);"
+                + "@FindByPath(\"$.items[?(@.name in [null])].name\") "
+                + "List<String> singletonNull(Root root);"
                 + "@FindByPath(\"$.items[?(length(@.tags) >= 2)].name\") "
                 + "List<String> length(Root root);"
                 + "@FindByPath(\"$.items[?(match(@.name, '^A.*'))].name\") "
@@ -43,6 +45,7 @@ class CompiledFilterExtensionsGenerationTest {
         assertTrue(generated.contains("Pattern.compile("), generated);
         assertTrue(generated.contains("FILTER_ARRAY"), generated);
         assertTrue(generated.contains("java.util.Collections.unmodifiableList("), generated);
+        assertTrue(generated.contains("Arrays.asList(new Object[] {null})"), generated);
         assertTrue(generated.contains("FunctionRegistry.invoke("), generated);
         assertTrue(generated.contains("FILTER_NO_ARGS"), generated);
         assertTrue(generated.contains("FilterExpr.compare("), generated);
