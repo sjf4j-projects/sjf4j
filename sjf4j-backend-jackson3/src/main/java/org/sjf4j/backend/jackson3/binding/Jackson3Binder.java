@@ -36,8 +36,8 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime config.
-     * @param config the SJF4J runtime settings
+     * Creates a binder with default backend settings and supplied node configuration.
+     * @param config the SJF4J node configuration
      */
     public Jackson3Binder(NodeConfig config) {
         this(new JsonFactory(), config);
@@ -54,7 +54,7 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
     /**
      * Creates a binder from a supplied factory with runtime settings.
      * @param factory the Jackson 3 factory to rebuild
-     * @param config the SJF4J runtime settings
+     * @param config the SJF4J node configuration
      */
     public Jackson3Binder(JsonFactory factory, NodeConfig config) {
         super(config);

@@ -98,7 +98,7 @@ public final class Sjf4j {
      */
 
     /**
-     * Returns the immutable runtime settings used by this instance.
+     * Returns the immutable node configuration used by this instance.
      */
     public NodeConfig nodeConfig() {
         return nodeConfig;

@@ -29,8 +29,8 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime config.
-     * @param config the SJF4J runtime settings
+     * Creates a binder with default backend settings and supplied node configuration.
+     * @param config the SJF4J node configuration
      */
     public Jackson2Binder(NodeConfig config) {
         this(new JsonFactory(), config);
@@ -47,7 +47,7 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
     /**
      * Creates a binder using a supplied factory and runtime settings.
      * @param factory the Jackson 2 factory to configure
-     * @param config the SJF4J runtime settings
+     * @param config the SJF4J node configuration
      */
     @SuppressWarnings("deprecation")
     public Jackson2Binder(JsonFactory factory, NodeConfig config) {

@@ -6,8 +6,8 @@ import org.sjf4j.util.Asserts;
 import java.util.Map;
 
 /**
- * Immutable runtime settings assembled by {@link Sjf4j.Builder} or supplied
- * directly to node conversion. Default value formats are matched by exact
+ * Immutable node configuration assembled by {@link Sjf4j.Builder} or supplied
+ * directly to node binding and conversion. Default value formats are matched by exact
  * non-primitive class, rather than by assignability.
  */
 public final class NodeConfig {
@@ -15,7 +15,6 @@ public final class NodeConfig {
     private final Class<?>[] valueFormatTypes;
     private final String[] valueFormats;
 
-    // Empty
     private static final Class<?>[] EMPTY_VALUE_TYPES = new Class<?>[0];
     private static final String[] EMPTY_VALUE_FORMATS = new String[0];
 

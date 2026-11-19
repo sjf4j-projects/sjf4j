@@ -31,7 +31,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         this.config = Asserts.notNull(config, "config");
     }
 
-    /** Returns this backend Binder's immutable SJF4J runtime settings. */
+    /** Returns this binder's immutable SJF4J node configuration. */
     public final NodeConfig config() {
         return config;
     }

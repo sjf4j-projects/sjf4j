@@ -21,7 +21,7 @@ public interface BinderProvider {
     Format format();
 
     /**
-     * Creates a binder using the supplied immutable runtime configuration.
+     * Creates a binder using the supplied immutable node configuration.
      */
     Binder<?, ?> create(NodeConfig config);
 

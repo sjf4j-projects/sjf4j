@@ -21,8 +21,8 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * JSON binder backed directly by Fastjson2's streaming reader and writer.
- * The supplied contexts are configured in place to use doubles for decimal
- * reads and to write nulls; SJF4J controls omission of null object members.
+ * The reader context is configured in place to use doubles for decimal reads.
+ * The writer context is reused; SJF4J controls omission of null object members.
  */
 public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Generator> {
 
@@ -35,8 +35,8 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime config.
-     * @param config the SJF4J runtime settings
+     * Creates a binder with default backend settings and supplied node configuration.
+     * @param config the SJF4J node configuration
      */
     public Fastjson2Binder(NodeConfig config) {
         this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), config);
@@ -44,8 +44,8 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /**
      * Creates a binder with caller-supplied reader and writer contexts.
-     * @param readerContext the read config, configured in place
-     * @param writerContext the write config, configured in place
+     * @param readerContext the Fastjson2 read context, configured in place
+     * @param writerContext the Fastjson2 write context
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
         this(readerContext, writerContext, NodeConfig.DEFAULT);
@@ -53,9 +53,9 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /**
      * Creates a binder with caller-supplied contexts and runtime settings.
-     * @param readerContext the read config, configured in place
-     * @param writerContext the write config, configured in place
-     * @param config the SJF4J runtime settings
+     * @param readerContext the Fastjson2 read context, configured in place
+     * @param writerContext the Fastjson2 write context
+     * @param config the SJF4J node configuration
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
                            NodeConfig config) {
@@ -143,7 +143,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     }
 
     /**
-     * Creates an in-memory writer using this binder's configured config.
+     * Creates an in-memory writer using this binder's writer context.
      * @return a writer with a Fastjson2-owned output buffer
      */
     public Fastjson2Generator createGenerator() {
