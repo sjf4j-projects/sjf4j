@@ -149,11 +149,6 @@ public final class ValueRegistry {
                 || !registryClass.isAnnotationPresent(NodeRegistry.class)) {
             throw new BindingException("expected @NodeRegistry interface: " + registryClass.getName());
         }
-        registerDeclaredCodecs(registryClass);
-    }
-
-    private static void registerDeclaredCodecs(Class<?> registryClass) {
-
         List<AnnotatedElement> declarations = new ArrayList<>();
         for (Field field : registryClass.getDeclaredFields()) {
             if (field.isAnnotationPresent(NodeValue.class)
