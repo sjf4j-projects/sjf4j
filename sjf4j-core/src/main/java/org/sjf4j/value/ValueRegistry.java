@@ -1,8 +1,9 @@
 package org.sjf4j.value;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.external.ExternalNode;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.ValueCodecRegistry;
+import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -138,7 +139,7 @@ public final class ValueRegistry {
 
     /**
      * Registers codec fields and factory methods on a
-     * {@link ValueCodecRegistry} class or interface.
+     * {@link NodeRegistry} interface.
      *
      * <p>Fields must be public static final and methods public static with no
      * parameters. Both must declare a concrete ValueCodec<V, R> type. The
@@ -147,9 +148,14 @@ public final class ValueRegistry {
      * has been analyzed.
      */
     public static synchronized void registerAnnotated(Class<?> registryClass) {
+        registerHolder(registryClass, false);
+    }
+
+    private static void registerHolder(Class<?> registryClass, boolean spiProvider) {
         Asserts.notNull(registryClass, "registryClass");
-        if (!registryClass.isAnnotationPresent(ValueCodecRegistry.class)) {
-            throw new BindingException("missing @ValueCodecRegistry on " + registryClass.getName());
+        if (!spiProvider && (!registryClass.isInterface()
+                || !registryClass.isAnnotationPresent(NodeRegistry.class))) {
+            throw new BindingException("expected @NodeRegistry interface: " + registryClass.getName());
         }
         if (REGISTERED_HOLDERS.contains(registryClass)) return;
 
@@ -173,7 +179,13 @@ public final class ValueRegistry {
             }
         }
         if (declarations.isEmpty()) {
-            throw new BindingException("@ValueCodecRegistry has no codec declarations: "
+            // External-only @NodeRegistry interfaces are valid; their adapters
+            // are registered separately by ExternalRegistry.
+            if (!spiProvider && hasExternalDeclarations(registryClass)) {
+                REGISTERED_HOLDERS.add(registryClass);
+                return;
+            }
+            throw new BindingException("@NodeRegistry has no codec declarations: "
                     + registryClass.getName());
         }
         // Resolve the declared default first, independently of reflection order.
@@ -268,6 +280,16 @@ public final class ValueRegistry {
         REGISTERED_HOLDERS.add(registryClass);
     }
 
+    private static boolean hasExternalDeclarations(Class<?> type) {
+        for (Field field : type.getDeclaredFields()) {
+            if (ExternalNode.class.isAssignableFrom(field.getType())) return true;
+        }
+        for (Method method : type.getDeclaredMethods()) {
+            if (ExternalNode.class.isAssignableFrom(method.getReturnType())) return true;
+        }
+        return false;
+    }
+
     private static boolean isDefaultCodec(AnnotatedElement declaration) {
         NodeValue annotation = declaration.getAnnotation(NodeValue.class);
         return annotation == null || annotation.defaultCodec() || annotation.format().isEmpty();
@@ -304,7 +326,7 @@ public final class ValueRegistry {
         registerAnnotated(ValueCodec.class);
         for (ValueCodecProvider provider : ServiceLoader.load(
                 ValueCodecProvider.class, ValueCodecProvider.class.getClassLoader())) {
-            registerAnnotated(provider.getClass());
+            registerHolder(provider.getClass(), true);
         }
     }
 
