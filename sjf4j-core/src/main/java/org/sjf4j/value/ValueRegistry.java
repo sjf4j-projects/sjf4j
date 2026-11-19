@@ -143,9 +143,9 @@ public final class ValueRegistry {
      *
      * <p>Fields must be public static final and methods public static with no
      * parameters. Both must declare a concrete ValueCodec<V, R> type. The
-     * operation is idempotent for the same registry class, including one
-     * previously discovered by ServiceLoader. Register before type metadata
-     * has been analyzed.
+     * operation is idempotent for the same registry interface.
+     * ServiceLoader providers use a separate concrete-class registration path.
+     * Register before type metadata has been analyzed.
      */
     public static synchronized void registerAnnotated(Class<?> registryClass) {
         registerHolder(registryClass, false);
