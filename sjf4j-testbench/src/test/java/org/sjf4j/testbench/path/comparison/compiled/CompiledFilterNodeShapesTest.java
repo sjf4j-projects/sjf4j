@@ -64,6 +64,18 @@ class CompiledFilterNodeShapesTest {
 
         @FindByPath("$.items[?(@.score > $.limit)].name")
         List<Object> jsonp(JsonValue root);
+
+        @FindByPath("$.items[?(@.scores[-1] >= $.limit)].name")
+        List<Object> indexedJackson2(com.fasterxml.jackson.databind.JsonNode root);
+
+        @FindByPath("$.items[?(@.scores[-1] >= $.limit)].name")
+        List<Object> indexedJackson3(tools.jackson.databind.JsonNode root);
+
+        @FindByPath("$.items[?(@.scores[-1] >= $.limit)].name")
+        List<Object> indexedGson(JsonElement root);
+
+        @FindByPath("$.items[?(@.scores[-1] >= $.limit)].name")
+        List<Object> indexedJsonp(JsonValue root);
     }
 
     private final Paths paths = CompiledInstances.create(Paths.class);
@@ -134,6 +146,44 @@ class CompiledFilterNodeShapesTest {
         List<Object> j3Result = paths.jackson3(j3);
         List<Object> gsonResult = paths.gson(gson);
         List<Object> jsonpResult = paths.jsonp(jsonp);
+        assertMatches(path, j2, j2Result);
+        assertMatches(path, j3, j3Result);
+        assertMatches(path, gson, gsonResult);
+        assertMatches(path, jsonp, jsonpResult);
+        assertEquals(2, j2Result.size());
+        assertEquals(2, j3Result.size());
+        assertEquals(2, gsonResult.size());
+        assertEquals(2, jsonpResult.size());
+        assertSame(j2.get("items").get(1).get("name"), j2Result.get(0));
+        assertSame(j3.get("items").get(1).get("name"), j3Result.get(0));
+        assertSame(gson.getAsJsonObject().getAsJsonArray("items")
+                .get(1).getAsJsonObject().get("name"), gsonResult.get(0));
+        assertSame(jsonp.asJsonObject().getJsonArray("items")
+                .getJsonObject(1).get("name"), jsonpResult.get(0));
+    }
+
+    @Test
+    void indexedFiltersRetainRuntimeSemanticsAcrossExternalBackends() throws Exception {
+        String json = "{\"limit\":80,\"items\":["
+                + "{\"name\":\"low\",\"scores\":[10,20]},"
+                + "{\"name\":\"high\",\"scores\":[10,95]},"
+                + "{\"name\":\"empty\",\"scores\":[]},"
+                + "{\"name\":\"missing\"},"
+                + "{\"name\":\"null\",\"scores\":null},"
+                + "{\"name\":\"last\",\"scores\":[95,90]}]}";
+        String path = "$.items[?(@.scores[-1] >= $.limit)].name";
+
+        com.fasterxml.jackson.databind.JsonNode j2 =
+                new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+        tools.jackson.databind.JsonNode j3 =
+                new tools.jackson.databind.ObjectMapper().readTree(json);
+        JsonElement gson = JsonParser.parseString(json);
+        JsonValue jsonp = jsonp(json);
+
+        List<Object> j2Result = paths.indexedJackson2(j2);
+        List<Object> j3Result = paths.indexedJackson3(j3);
+        List<Object> gsonResult = paths.indexedGson(gson);
+        List<Object> jsonpResult = paths.indexedJsonp(jsonp);
         assertMatches(path, j2, j2Result);
         assertMatches(path, j3, j3Result);
         assertMatches(path, gson, gsonResult);
