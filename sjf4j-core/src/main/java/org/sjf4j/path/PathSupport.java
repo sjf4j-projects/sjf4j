@@ -32,6 +32,31 @@ public final class PathSupport {
         return node;
     }
 
+    /**
+     * Reads a precompiled path of String member names and Integer indexes.
+     * The selector array is emitted once per filter, never parsed per candidate.
+     * Missing and present-null remain distinct, including negative indexes.
+     */
+    public static Object indexedValue(Object current, Object[] selectors,
+                                      int start, NodeWalker.Access access) {
+        Object node = current;
+        for (int i = start; i < selectors.length; i++) {
+            if (node == null) return FilterExpr.PathExpr.NOTHING;
+            Object selector = selectors[i];
+            JsonType type = JsonType.of(node);
+            if (selector instanceof String) {
+                if (!type.isObject()) return FilterExpr.PathExpr.NOTHING;
+                NodeWalker.getAccessInObject(node, (String) selector, access);
+            } else {
+                if (!type.isArray()) return FilterExpr.PathExpr.NOTHING;
+                NodeWalker.getAccessInArray(node, (Integer) selector, access);
+            }
+            if (!access.present) return FilterExpr.PathExpr.NOTHING;
+            node = access.node;
+        }
+        return node;
+    }
+
     /** A path predicate tests presence, including values null, false and zero. */
     public static boolean exists(Object current, String[] members, NodeWalker.Access access) {
         return members.length == 0 || value(current, members, access) != FilterExpr.PathExpr.NOTHING;

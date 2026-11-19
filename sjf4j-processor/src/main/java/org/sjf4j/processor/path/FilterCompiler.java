@@ -68,13 +68,23 @@ final class FilterCompiler {
                 throw unsupported("path root " + segments[0]);
             }
             List<String> names = new ArrayList<>();
+            List<Object> selectors = new ArrayList<>();
+            boolean indexed = false;
             for (int i = 1; i < segments.length; i++) {
-                if (!(segments[i] instanceof PathSegment.Name)) {
+                if (segments[i] instanceof PathSegment.Name) {
+                    String name = ((PathSegment.Name) segments[i]).name;
+                    names.add(name);
+                    selectors.add(name);
+                } else if (segments[i] instanceof PathSegment.Index) {
+                    names.add(null);
+                    selectors.add(((PathSegment.Index) segments[i]).index);
+                    indexed = true;
+                } else {
                     throw unsupported("path selector " + segments[i]);
                 }
-                names.add(((PathSegment.Name) segments[i]).name);
             }
             return FilterPlan.path(rooted, names.toArray(new String[0]),
+                    indexed ? selectors.toArray(new Object[0]) : null,
                     propertyPrefix(rooted ? rootType : currentType, names));
         }
         if (expression instanceof FilterExpr.UnaryExpr) {

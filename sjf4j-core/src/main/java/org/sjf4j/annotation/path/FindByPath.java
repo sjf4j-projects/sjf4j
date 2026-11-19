@@ -18,7 +18,8 @@ import java.lang.annotation.Target;
  * nested combinations and unions of POJO properties. Dynamically typed OBNT
  * nodes are traversed through NodeWalker, and descendant selection uses
  * generated recursive helpers. Filter traversal and supported predicates
- * (paths, comparisons, regex, membership and function calls) are generated;
+ * (including singular member/index paths, comparisons, regex, membership and
+ * function calls) are generated;
  * function calls retain FunctionRegistry dispatch. Unsupported predicates
  * may use cached runtime expressions only when
  * {@link CompiledNavigator#fallback()} is enabled. There is no whole-path

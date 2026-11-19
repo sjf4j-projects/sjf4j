@@ -11,6 +11,8 @@ final class FilterPlan {
     final Object literal;
     final boolean rooted;
     final String[] members;
+    /** Non-null only for mixed name/index paths; contains String or Integer selectors. */
+    final Object[] selectors;
     /** Directly readable POJO prefix; remaining members use OBNT traversal. */
     final NodeAccess[] propertyPrefix;
     final FilterExpr.Op operator;
@@ -22,16 +24,17 @@ final class FilterPlan {
     private FilterPlan(Kind kind, Object literal, boolean rooted, String[] members,
                        NodeAccess[] propertyPrefix, FilterExpr.Op operator,
                        FilterPlan left, FilterPlan right) {
-        this(kind, literal, rooted, members, propertyPrefix, operator, left, right, null, null);
+        this(kind, literal, rooted, members, null, propertyPrefix, operator, left, right, null, null);
     }
 
     private FilterPlan(Kind kind, Object literal, boolean rooted, String[] members,
-                       NodeAccess[] propertyPrefix, FilterExpr.Op operator,
+                       Object[] selectors, NodeAccess[] propertyPrefix, FilterExpr.Op operator,
                        FilterPlan left, FilterPlan right, String functionName, FilterPlan[] arguments) {
         this.kind = kind;
         this.literal = literal;
         this.rooted = rooted;
         this.members = members;
+        this.selectors = selectors;
         this.propertyPrefix = propertyPrefix;
         this.operator = operator;
         this.left = left;
@@ -44,8 +47,10 @@ final class FilterPlan {
         return new FilterPlan(Kind.LITERAL, value, false, null, null, null, null, null);
     }
 
-    static FilterPlan path(boolean rooted, String[] members, NodeAccess[] propertyPrefix) {
-        return new FilterPlan(Kind.PATH, null, rooted, members, propertyPrefix, null, null, null);
+    static FilterPlan path(boolean rooted, String[] members,
+                           Object[] selectors, NodeAccess[] propertyPrefix) {
+        return new FilterPlan(Kind.PATH, null, rooted, members, selectors, propertyPrefix,
+                null, null, null, null, null);
     }
 
     static FilterPlan not(FilterPlan value) {
@@ -58,7 +63,7 @@ final class FilterPlan {
 
     static FilterPlan function(String name, FilterPlan[] arguments) {
         return new FilterPlan(Kind.FUNCTION, null, false, null, null, null,
-                null, null, name, arguments);
+                null, null, null, name, arguments);
     }
 
     static FilterPlan fallback() {
