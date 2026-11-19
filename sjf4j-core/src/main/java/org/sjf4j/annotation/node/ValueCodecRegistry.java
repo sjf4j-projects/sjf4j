@@ -6,8 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Identifies a class or interface declaring value codecs through annotated
- * public static final fields or public static no-argument factory methods.
+ * Identifies a class or interface declaring value codecs through public static
+ * final fields or public static no-argument factory methods.
+ * Member-level @NodeValue annotations are optional and specify named formats.
  *
  * <p>Use ValueRegistry.registerAnnotated(...) or implement ValueCodecProvider
  * to register the declarations during application initialization.
