@@ -187,4 +187,35 @@ class RegistryDiscoveryTest {
         assertTrue(result.diagnostics().contains("duplicate @NodeValue codec format"),
                 result.diagnostics());
     }
+    @Test
+    void externalRegistryIsScopedToEachCompiledAnnotation() throws Exception {
+        Map<String, String> input = new LinkedHashMap<>();
+        input.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder public interface Binder {}");
+        input.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledMapper(registries=ClasspathRegistries.ExternalNodes.class) "
+                + "public interface Mapper {}");
+        input.put("fixture/Rows.java",
+                "package fixture; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledJdbcMapper(registries=ClasspathRegistries.ExternalNodes.class) "
+                + "public interface Rows {}");
+        input.put("fixture/Validator.java",
+                "package fixture; import org.sjf4j.annotation.schema.CompiledValidator; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledValidator(registries=ClasspathRegistries.ExternalNodes.class) "
+                + "public interface Validator {}");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                input, RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.Binder false"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.Mapper true"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.Rows true"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.Validator true"), result.diagnostics());
+    }
+
+
 }
