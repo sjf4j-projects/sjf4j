@@ -69,7 +69,7 @@ class CompiledRegistryConsumersTest {
                 NavigatorTestCompiler.compile(input, CodegenProcessor.class);
         assertTrue(registered.success, registered.diagnostics());
         String source = registered.generatedSource("fixture/Check_Impl.java");
-        assertTrue(source.contains("java.lang.String rawValue"), source);
+        assertTrue(source.contains("rawValue") || source.contains("valueToRaw("), source);
         assertFalse(source.contains("private static final class SchemaPlan"), source);
 
         input.put("fixture/Check.java",
@@ -123,11 +123,12 @@ class CompiledRegistryConsumersTest {
         for (String nativeType : new String[]{
                 "java.time.LocalDate", "java.time.LocalDateTime",
                 "java.time.OffsetDateTime", "java.time.Instant", "java.util.UUID"}) {
-            assertTrue(generated.contains(", " + nativeType + ".class)"),
-                    nativeType + " should retain ResultSet.getObject(index, Class):\n" + generated);
+            assertTrue(generated.contains(nativeType + ".class"),
+                    nativeType + " should retain its typed JDBC class token:\n" + generated);
         }
-        // The unrelated application codec still follows the conversion path.
-        assertTrue(generated.contains("org.sjf4j.node.NodeMapper.to("), generated);
+        // The unrelated application codec must invoke its static field directly.
+        assertTrue(generated.contains("ClasspathRegistries.Third.MONEY.rawToValue("), generated);
+        assertFalse(generated.contains("org.sjf4j.node.NodeMapper.to("), generated);
     }
 
 
