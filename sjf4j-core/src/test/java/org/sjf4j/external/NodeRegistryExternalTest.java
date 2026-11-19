@@ -3,7 +3,6 @@ package org.sjf4j.external;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
-import org.sjf4j.NodeRegistries;
 import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.value.ValueCodec;
@@ -64,7 +63,7 @@ public class NodeRegistryExternalTest {
 
     @Test
     void externalOnlyRegistrySupportsFieldAndFactory() {
-        NodeRegistries.register(ExternalOnly.class);
+        ExternalRegistry.registerAnnotated(ExternalOnly.class);
         assertSame(ExternalOnly.FIELD, ExternalRegistry.resolve(NativeNode.class));
         assertNotNull(ExternalRegistry.resolve(FactoryNode.class));
         assertEquals(NodeKind.VALUE_STRING_EXTERNAL, NodeKind.of(new NativeNode("n")));
@@ -73,7 +72,8 @@ public class NodeRegistryExternalTest {
 
     @Test
     void mixedRegistryRegistersBothKinds() {
-        NodeRegistries.register(Mixed.class);
+        ValueRegistry.registerAnnotated(Mixed.class);
+        ExternalRegistry.registerAnnotated(Mixed.class);
         assertSame(Mixed.EXTERNAL, ExternalRegistry.resolve(MixedNode.class));
         assertNotNull(ValueRegistry.resolve(Tag.class));
         assertEquals(NodeKind.VALUE_STRING_EXTERNAL, NodeKind.of(new MixedNode("m")));
