@@ -568,8 +568,25 @@ public final class JdbcCompiler {
     private ValueCodecMetadata directCodec(TypeMirror type, String format) {
         if (hasBuiltinCodec(type)) return null;
         ValueCodecMetadata selected = metadata.valueCodec(type, format);
-        return selected != null && selected.declaration.getKind() == ElementKind.FIELD
-                ? selected : null;
+        if (selected == null || selected.declaration.getKind() != ElementKind.FIELD
+                || !types.isSameErasure(type, selected.valueType)) return null;
+
+        // Generated implementations are top-level classes. A codec field in a
+        // private nested holder or another package's non-public holder cannot
+        // be referenced safely, even if the field itself is public static.
+        Element holder = selected.declaration.getEnclosingElement();
+        boolean samePackage = context.elements.getPackageOf(holder)
+                .equals(context.elements.getPackageOf(mapper));
+        for (Element current = holder; current instanceof TypeElement;
+                current = current.getEnclosingElement()) {
+            if (current.getModifiers().contains(Modifier.PRIVATE)
+                    || (!samePackage && !current.getModifiers().contains(Modifier.PUBLIC))) {
+                context.error(mapper, "JDBC ValueCodec field is not accessible from generated mapper: "
+                        + selected.declaration);
+                return null;
+            }
+        }
+        return selected;
     }
 
     private boolean isComputeJdbcType(TypeMirror type) {
@@ -671,6 +688,11 @@ public final class JdbcCompiler {
             error(method, generated, "Unknown JDBC ValueCodec format '" + format
                     + "' for " + targetType);
             return null;
+        }
+        if (metadata.hasValueCodec(boxed) && !hasBuiltinCodec(boxed)) {
+            // An inherited codec may produce a supertype that cannot be
+            // assigned directly. Preserve the old runtime conversion path.
+            return read(column, ReadKind.NODE_VALUE, targetType);
         }
 
         /*
