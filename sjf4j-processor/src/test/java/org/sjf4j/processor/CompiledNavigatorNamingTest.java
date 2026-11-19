@@ -15,7 +15,7 @@ class CompiledNavigatorNamingTest {
                 "package fixture; public class Item { public int age; public String name; }");
         sources.put("fixture/Navigator.java",
                 "package fixture; import java.util.*; import org.sjf4j.annotation.path.*;"
-                + " @CompiledNavigator(fallback=true) public interface Navigator {"
+                + " @CompiledNavigator public interface Navigator {"
                 + " @FindByPath(\"$[?(@.age > 18)].name\") List<String> adults(List<Item> root);"
                 + " @FindByPath(\"$..name\") List<String> descendants(List<Item> root);"
                 + " }");
