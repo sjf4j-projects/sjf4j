@@ -19,7 +19,8 @@ final class JdbcTestSupport {
                         return ++row[0] < rows.length;
                     }
                     if (method.getName().equals("getObject") || method.getName().equals("getString") ||
-                            method.getName().equals("getTimestamp")) {
+                            method.getName().equals("getTimestamp")
+                            || method.getName().equals("getBigDecimal")) {
                         int column = column(columns, arguments[0]);
                         return last[0] = rows[row[0]][column - 1];
                     }
@@ -49,7 +50,8 @@ final class JdbcTestSupport {
                         nextCalls[0]++;
                         throw new AssertionError("current-row mapper must not advance the ResultSet");
                     }
-                    if (method.getName().equals("getObject") || method.getName().equals("getString")) {
+                    if (method.getName().equals("getObject") || method.getName().equals("getString")
+                            || method.getName().equals("getBigDecimal")) {
                         int column = column(columns, arguments[0]);
                         return last[0] = values[column - 1];
                     }
