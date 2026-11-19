@@ -38,6 +38,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.SOURCE)
 public @interface CompiledNavigator {
-    /** Whether @FindByPath filters may use cached runtime FilterExpr evaluation. */
+    /** Whether unsupported @FindByPath predicates may use cached runtime FilterExpr evaluation. */
     boolean fallback() default false;
 }
