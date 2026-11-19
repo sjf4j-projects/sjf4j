@@ -218,4 +218,22 @@ class RegistryDiscoveryTest {
     }
 
 
+    @Test
+    void jdbcMapperCompilesRegisteredCodecAsValueConversion() throws Exception {
+        Map<String, String> input = new LinkedHashMap<>();
+        input.put("fixture/Row.java",
+                "package fixture; import org.sjf4j.processor.ClasspathRegistries; "
+                + "public class Row { public ClasspathRegistries.Money money; }");
+        input.put("fixture/Rows.java",
+                "package fixture; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledJdbcMapper(registries=ClasspathRegistries.Third.class) "
+                + "public interface Rows { Row map(java.sql.ResultSet rs); }");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.generatedSource("fixture/Rows_Impl.java").contains("NodeMapper.to("),
+                result.generatedSource("fixture/Rows_Impl.java"));
+    }
+
+
 }
