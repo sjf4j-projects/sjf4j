@@ -274,4 +274,18 @@ class RegistryDiscoveryTest {
     }
 
 
+    @Test
+    void emptyRegistryIsAcceptedByCompiledBinder() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/EmptyNodes.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeRegistry; "
+                + "@NodeRegistry interface EmptyNodes {}",
+                "fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder(registries=EmptyNodes.class) public interface Binder {}"),
+                CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+    }
+
+
 }
