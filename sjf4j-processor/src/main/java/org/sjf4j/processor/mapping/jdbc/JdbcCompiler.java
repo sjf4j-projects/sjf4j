@@ -5,6 +5,7 @@ import org.sjf4j.annotation.mapping.jdbc.ColumnNamingPolicy;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.path.PathSyntax;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.mapping.CreatorResolver;
@@ -70,6 +71,7 @@ public final class JdbcCompiler {
     private final ProcessorContext context;
     private final TypeSystem types;
     private final TypeElement mapper;
+    private final CompiledMetadata nodeMetadata;
     private final CreatorResolver creators;
 
     private final TypeMirror stringType;
@@ -86,6 +88,7 @@ public final class JdbcCompiler {
         this.context = context;
         this.types = context.types;
         this.mapper = mapper;
+        this.nodeMetadata = context.metadata(mapper);
 
         this.creators = new CreatorResolver(context);
         this.stringType = requiredType(String.class);
@@ -617,7 +620,9 @@ public final class JdbcCompiler {
         /*
          * @NodeValue uses the SJF4J binding conversion pipeline.
          */
-        if (types.isNodeValue(boxed)) return read(column, ReadKind.NODE_VALUE, targetType);
+        if (types.isNodeValue(boxed) || nodeMetadata.hasValueCodec(boxed)) {
+            return read(column, ReadKind.NODE_VALUE, targetType);
+        }
 
         /*
          * Containers are structural targets and are not synthesized from one
