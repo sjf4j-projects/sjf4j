@@ -36,12 +36,15 @@ import java.lang.annotation.Target;
  * {@link org.sjf4j.annotation.mapping.CompiledMapper @CompiledMapper},
  * {@link org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper @CompiledJdbcMapper}
  * or {@link org.sjf4j.annotation.schema.CompiledValidator @CompiledValidator}.
- * <p>This annotation is used for compile-time discovery; it does not
- * register adapters at runtime. Custom value codecs can be registered with
- * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} before type
- * metadata is analyzed. External node adapters are registered independently
- * through {@link org.sjf4j.external.ExternalProvider} and
- * {@link java.util.ServiceLoader}.
+ * <p>Compile-time discovery reads field types without initializing registry
+ * fields and does not perform runtime registration. Call
+ * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} during
+ * application initialization when runtime ValueCodec resolution is needed,
+ * before type metadata is analyzed. Generated JDBC mappers call selected
+ * registry codec fields directly and do not require this runtime registration.
+ * External node fields are compile-time type declarations only; runtime
+ * adapters are provided independently through
+ * {@link org.sjf4j.external.ExternalProvider} and {@link java.util.ServiceLoader}.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

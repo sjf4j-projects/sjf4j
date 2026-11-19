@@ -3,6 +3,7 @@ package org.sjf4j.processor;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.node.NodeRegistry;
+import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.annotation.mapping.CompiledMapper;
@@ -267,6 +268,7 @@ final class AnnotationValidator {
         result.addAll(CREATOR_ANNOTATIONS);
 
         result.add(NodeRegistry.class.getName());
+        result.add(NodeValue.class.getName());
 
         result.add(MappingOptions.class.getName());
         result.add(JdbcMappingOptions.class.getName());
