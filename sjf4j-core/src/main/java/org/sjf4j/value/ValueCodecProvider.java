@@ -7,8 +7,8 @@ package org.sjf4j.value;
  * class with a public no-argument constructor.
  * Its codecs are declared through static fields or factory methods; member
  * {@code @NodeValue} annotations are optional for named formats.
- * {@link ValueRegistry#registerAnnotated(Class)} is used for both explicit
- * registration and ServiceLoader discovery.
+ * ServiceLoader discovers these concrete provider classes independently of
+ * {@code @NodeRegistry} interfaces used for explicit registration.
  */
 public interface ValueCodecProvider {
 }
