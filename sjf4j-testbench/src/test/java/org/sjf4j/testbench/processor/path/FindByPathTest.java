@@ -151,6 +151,9 @@ public class FindByPathTest {
 
         @FindByPath("$.items[?(@ == null)]")
         List<Object> nullItems(Map<String, Object> root);
+
+        @FindByPath("$..friends[?@.scores.math >= 90].name")
+        List<Object> highMathFriends(Map<String, Object> root);
     }
 
     /** Unsupported predicates still require explicit fallback. */
@@ -337,6 +340,19 @@ public class FindByPathTest {
         FindNodes nodes = CompiledInstances.create(FindNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.itemNames(null));
+    }
+
+    @Test
+    public void recursiveDescentCanUseCompiledNestedFilter() {
+        BasicFilterNodes compiled = CompiledInstances.create(BasicFilterNodes.class);
+        Map<String, Object> friends = Map.of("friends", List.of(
+                Map.of("name", "Alice", "scores", Map.of("math", 95)),
+                Map.of("name", "Bob", "scores", Map.of("math", 89)),
+                Map.of("name", "Charlie", "scores", Map.of("math", 90))));
+        Map<String, Object> root = Map.of("classroom", friends);
+        String path = "$..friends[?@.scores.math >= 90].name";
+        assertEquals(List.of("Alice", "Charlie"), compiled.highMathFriends(root));
+        assertEquals(JsonPath.parse(path).find(root, Object.class), compiled.highMathFriends(root));
     }
 
     @Test
