@@ -269,7 +269,7 @@ class AnnotatedValueCodecTest {
     @Test
     void registersFactoryMethodsWithoutMemberAnnotations() {
         ValueRegistry.registerAnnotated(FactoryCodecs.class);
-        ValueRegistry.registerAnnotated(FactoryCodecs.class); // Idempotent.
+        assertInvalid(FactoryCodecs.class, "already registered");
 
         ValueSet codecs = ValueRegistry.resolve(FactoryId.class);
         assertEquals("", codecs.defaultInfo.valueFormat);
