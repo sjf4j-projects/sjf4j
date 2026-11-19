@@ -45,8 +45,8 @@ Each key must be an absolute retrieval URI without a fragment. Each value must
 be an object or boolean JSON Schema. Inline `externalSchemas` takes precedence
 over `externalSchemasRef`. Both are scoped to the individual schema binding, so
 different methods may use different documents under the same URI. These mappings
-are compiled without HTTP requests, override the directory registry on URI
-collisions, and can be reconstructed from the annotation for runtime fallback.
+are compiled without HTTP requests and reconstructed from the annotation for
+runtime fallback.
 The mapping file must remain available at runtime if fallback is enabled.
 Changes to external mapping files must be tracked as build inputs.
 

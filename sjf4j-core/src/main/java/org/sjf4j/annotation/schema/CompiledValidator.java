@@ -22,8 +22,9 @@ import java.lang.annotation.Target;
  * can be generated without a runtime {@code SchemaPlan}.</p>
  *
  * <p><b>Incremental compilation:</b> external schema resources referenced via
- * {@link ValidJsonSchema#ref()} (or implicit filename lookup) can change without
- * triggering the Java annotation processor. JSR 269 cannot declare resource
+ * {@link ValidJsonSchema#ref()} or {@link ValidJsonSchema#externalSchemasRef()}
+ * (or implicit filename lookup) can change without triggering the Java
+ * annotation processor. JSR 269 cannot declare resource
  * files as incremental compilation dependencies. Build tooling must track
  * these inputs and rerun compilation, or a clean rebuild may be needed.</p>
  */
