@@ -1508,15 +1508,20 @@ public final class JdbcEmitter {
         String expression;
         if ("java.lang.String".equals(rawType)) {
             expression = resultSet + ".getString(" + column + ")";
+        } else if ("java.math.BigDecimal".equals(rawType)) {
+            expression = resultSet + ".getBigDecimal(" + column + ")";
+        } else if ("java.math.BigInteger".equals(rawType)) {
+            String decimal = names.newName("decimal_" + read.column());
+            out.line("java.math.BigDecimal " + decimal + " = "
+                    + resultSet + ".getBigDecimal(" + column + ");");
+            expression = decimal + " == null ? null : " + decimal + ".toBigIntegerExact()";
         } else if ("java.lang.Boolean".equals(rawType)
                 || "java.lang.Byte".equals(rawType)
                 || "java.lang.Short".equals(rawType)
                 || "java.lang.Integer".equals(rawType)
                 || "java.lang.Long".equals(rawType)
                 || "java.lang.Float".equals(rawType)
-                || "java.lang.Double".equals(rawType)
-                || "java.math.BigDecimal".equals(rawType)
-                || "java.math.BigInteger".equals(rawType)) {
+                || "java.lang.Double".equals(rawType)) {
             expression = resultSet + ".getObject(" + column + ", " + rawType + ".class)";
         } else {
             expression = "(" + rawType + ") " + resultSet + ".getObject(" + column + ")";
