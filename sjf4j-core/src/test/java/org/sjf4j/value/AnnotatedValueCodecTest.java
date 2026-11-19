@@ -229,6 +229,27 @@ class AnnotatedValueCodecTest {
         }
     }
 
+    static final class InterfaceId {
+        final String value;
+        InterfaceId(String value) { this.value = value; }
+    }
+
+    @ValueCodecRegistry
+    public interface InterfaceCodecs {
+        static ValueCodec<InterfaceId, String> interfaceId() {
+            return new ValueCodec.SimpleValueCodec<>(
+                    InterfaceId.class, String.class, id -> id.value, InterfaceId::new);
+        }
+    }
+
+    @Test
+    void allowsExplicitRegistrationOfInterfaceHolder() {
+        ValueRegistry.registerAnnotated(InterfaceCodecs.class);
+        assertEquals("\"interface-1\"", new Sjf4j().toJsonString(new InterfaceId("interface-1")));
+        assertEquals("interface-1",
+                new Sjf4j().fromJson("\"interface-1\"", InterfaceId.class).value);
+    }
+
     @ValueCodecRegistry
     public static class BadFactory {
         @NodeValue
