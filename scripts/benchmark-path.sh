@@ -97,7 +97,7 @@ cat > "$META" <<EOF
 - Queries: direct, wildcard, filter, descendant, slice
 - Expected JMH cases: $EXPECTED
 - Query compilation and JSON deserialization: excluded from Query groups; Parse group measures compilation only
-- CompiledNavigator: all five queries generated for Map, JsonNode and POJO; only Filter uses cached FilterExpr (fallback=true); no full-path fallback
+- CompiledNavigator: all five queries generated for Map, JsonNode and POJO; supported filter predicates compile directly; unsupported expressions require explicit fallback; no full-path fallback
 - Full reporting: Best 2 Mean per exact method + size; exclude each case's slowest fork
 - Baseline eligible: $(if [[ "$PROFILE" == "full" && "${GITHUB_ACTIONS:-false}" != "true" ]]; then echo yes; else echo no; fi)
 - Execution: $(if [[ "${GITHUB_ACTIONS:-false}" == "true" ]]; then echo "GitHub Actions (shared runner, exploratory)"; else echo "local"; fi)

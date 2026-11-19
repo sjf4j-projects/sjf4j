@@ -39,7 +39,7 @@ Object price = path.getNode(map);
 
 **SJF4J Compiled**
 ```java
-@CompiledNavigator(fallback = true)
+@CompiledNavigator
 interface MapPaths {
     MapPaths INSTANCE = CompiledInstances.create(MapPaths.class);
     
@@ -156,7 +156,7 @@ Measures parsing JSONPath expressions into reusable query objects: `JsonPath.par
 
 At the tested 1/10/100KB sizes, SJF4J Runtime was faster than Jayway in **30 of 30** comparable Map and JsonNode query cases. CompiledNavigator was faster than Runtime in **45 of 45** comparable Map, JsonNode, and POJO query cases.
 
-All **134 JMH cases** completed: 45 Map, 45 JsonNode, 30 POJO and 14 Parse. All five query types now have CompiledNavigator implementations for all three data representations. Compiled Descendant uses generated traversal rather than full-path runtime fallback; Compiled Filter uses a cached `FilterExpr` predicate, enabled with `fallback=true`.
+All **134 JMH cases** completed: 45 Map, 45 JsonNode, 30 POJO and 14 Parse. All five query types now have CompiledNavigator implementations for all three data representations. Compiled Descendant uses generated traversal rather than full-path runtime fallback; For this **v1.5.0 historical run**, Compiled Filter used a cached `FilterExpr` predicate with `fallback=true`; current versions compile supported filter predicates directly. These figures must not be treated as measurements of the newer implementation.
 
 These results are workload-specific; compare implementations within the same input type and runner job. Map/POJO/Parse and JsonNode used different GitHub-hosted runner CPU models.
 

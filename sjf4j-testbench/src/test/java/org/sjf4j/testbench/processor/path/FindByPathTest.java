@@ -156,8 +156,8 @@ public class FindByPathTest {
         List<Object> highMathFriends(Map<String, Object> root);
     }
 
-    /** Unsupported predicates still require explicit fallback. */
-    @CompiledNavigator(fallback = true)
+    /** Typed, registry-backed, and nullable filter cases must compile directly. */
+    @CompiledNavigator
     interface FilterNodes {
         @FindByPath(value = "$.items[?(@.age > 18)].name")
         List<String> adultItemNames(Container root);
@@ -358,14 +358,14 @@ public class FindByPathTest {
     @Test
     public void basicCompiledFiltersMatchRuntimeJsonPath() {
         BasicFilterNodes compiled = CompiledInstances.create(BasicFilterNodes.class);
-        FilterNodes fallback = CompiledInstances.create(FilterNodes.class);
+        FilterNodes filters = CompiledInstances.create(FilterNodes.class);
         Container root = container();
 
         assertEquals(List.of("Bob", "Charlie"), compiled.adultNames(root));
         assertEquals(List.of("Bob"), compiled.ageRange(root));
         assertEquals(List.of("Alice", "Charlie"), compiled.youngOrCharlie(root));
         assertEquals(List.of("Alice", "Bob", "Charlie"), compiled.withoutDisabled(root));
-        assertEquals(List.of("Bob"), fallback.regexNames(root));
+        assertEquals(List.of("Bob"), filters.regexNames(root));
 
         assertEquals(JsonPath.parse("$.items[?(@.age >= 18)].name")
                 .find(root, Object.class), compiled.adultNames(root));

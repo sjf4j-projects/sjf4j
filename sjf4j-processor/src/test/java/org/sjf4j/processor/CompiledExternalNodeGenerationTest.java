@@ -53,7 +53,7 @@ class CompiledExternalNodeGenerationTest {
         sources.put("fixture/Paths.java",
                 "package fixture; import java.util.List;"
                 + "import org.sjf4j.annotation.path.*;"
-                + "@CompiledNavigator(fallback=true) public interface Paths {"
+                + "@CompiledNavigator public interface Paths {"
                 + "@FindByPath(\"$..price\") List<Object> descendant(com.fasterxml.jackson.databind.JsonNode root);"
                 + "@FindByPath(\"$.items[?(@.price > 10)].title\") "
                 + "List<Object> filter(com.fasterxml.jackson.databind.JsonNode root);"
@@ -76,7 +76,7 @@ class CompiledExternalNodeGenerationTest {
         sources.put("fixture/Paths.java",
                 "package fixture; import java.util.List;"
                 + "import org.sjf4j.annotation.path.*;"
-                + "@CompiledNavigator(fallback=true) public interface Paths {"
+                + "@CompiledNavigator public interface Paths {"
                 + "@FindByPath(\"$.items[?(@.score > $.limit)].name\")"
                 + "List<Object> filter(tools.jackson.databind.JsonNode root);"
                 + "}");

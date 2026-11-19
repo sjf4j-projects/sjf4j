@@ -4,11 +4,11 @@ import org.sjf4j.JsonType;
 import org.sjf4j.node.NodeWalker;
 
 /**
- * Direct evaluation of statically known filter member paths.
+ * Direct evaluation of statically known filter member and index paths.
  *
  * <p>Generated navigators provide precomputed path segments, avoiding
- * runtime JSONPath parsing and FilterExpr interpretation. Object access
- * retains the same present-null versus absent semantics as JSONPath.</p>
+ * runtime JSONPath parsing and FilterExpr interpretation. Object and array access
+ * retain the same present-null versus absent semantics as JSONPath.</p>
  */
 public final class PathSupport {
     private PathSupport() {
