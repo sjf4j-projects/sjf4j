@@ -20,7 +20,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-/** Predicate evaluation is cached; surrounding Find traversal remains compiled. */
+/** Direct filter predicates across typed, dynamic, and external OBNT nodes. */
 class CompiledFilterNodeShapesTest {
 
     static class ScoredPojo {
@@ -45,7 +45,7 @@ class CompiledFilterNodeShapesTest {
 
     record Root(int limit, Object items) {}
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     interface Paths {
         @FindByPath("$.items[?(@.score > $.limit)].name")
         List<Object> mixedRootFilter(Root root);
