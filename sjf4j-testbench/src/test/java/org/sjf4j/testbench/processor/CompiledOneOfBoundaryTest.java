@@ -6,7 +6,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.binding.Backend;
-import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -49,7 +48,8 @@ public class CompiledOneOfBoundaryTest {
         public DecimalTag(BigDecimal value) { this.value = value; }
     }
 
-    public static final class CodecRegistry {
+    @org.sjf4j.annotation.node.NodeRegistry
+    public interface CodecRegistry {
         @NodeValue(format = "fixed", defaultCodec = true)
         public static final ValueCodec<LongTag, Long> LONG =
                 new ValueCodec.SimpleValueCodec<>(LongTag.class, Long.class,
@@ -162,8 +162,7 @@ public class CompiledOneOfBoundaryTest {
         public String getValue() { return value; }
     }
 
-    @CompiledBinder(backend = Backend.JACKSON2)
-    @BindingOptions(registries = {CodecRegistry.class})
+    @CompiledBinder(backend = Backend.JACKSON2, registries = {CodecRegistry.class})
     public interface Reader {
         @Read NumericChoice readNumeric(String json) throws IOException;
         @Read OptionalChoice readOptional(String json) throws IOException;
