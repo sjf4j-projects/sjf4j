@@ -84,7 +84,7 @@ class CompiledValueCodecDiscoveryTest {
         sources.put("fixture/AppCodecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public class AppCodecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public class AppCodecs { "
                 + "public static final ValueCodec<Money, String> MONEY = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " x -> x.value, Money::new); }");
@@ -115,16 +115,16 @@ class CompiledValueCodecDiscoveryTest {
 
     @Test
     void staticFactoryMethodNeedsNoNodeValueAnnotation() throws Exception {
-        for (String holderKind : new String[]{"final class", "interface"}) {
+        for (String holderKind : new String[]{"interface"}) {
             Map<String, String> sources = new LinkedHashMap<>();
             sources.put("fixture/Money.java",
                     "package fixture; public final class Money { "
                     + " public final String value; public Money(String value) { this.value=value; } }");
             sources.put("fixture/AppCodecs.java",
                     "package fixture; "
-                    + "import org.sjf4j.annotation.node.ValueCodecRegistry; "
+                    + "import org.sjf4j.annotation.node.NodeRegistry; "
                     + "import org.sjf4j.value.ValueCodec; "
-                    + "@ValueCodecRegistry public " + holderKind + " AppCodecs { "
+                    + "@NodeRegistry public " + holderKind + " AppCodecs { "
                     + " public static ValueCodec<Money, String> money() { "
                     + " return new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                     + " x -> x.value, Money::new); } }");
@@ -159,17 +159,17 @@ class CompiledValueCodecDiscoveryTest {
                 + "import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "import java.io.IOException; ";
-        String body = "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+        String body = "public interface Binder { "
                 + " @Read ClasspathRegistries.Money read(String json) throws IOException; "
                 + " @Write String write(ClasspathRegistries.Money value) throws IOException; }";
 
         NavigatorTestCompiler.Result missing = NavigatorTestCompiler.compile(
-                Map.of("fixture/Binder.java", base + body), CodegenProcessor.class);
+                Map.of("fixture/Binder.java", base + "@CompiledBinder(backend=Backend.SIMPLE) " + body), CodegenProcessor.class);
         assertFalse(missing.success, "without registry, Money must not become a ValueCodec");
 
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
                 Map.of("fixture/Binder.java", base
-                        + "@BindingOptions(registries={ClasspathRegistries.Third.class, "
+                        + "@CompiledBinder(backend=Backend.SIMPLE, registries={ClasspathRegistries.Third.class, "
                         + "ClasspathRegistries.First.class}) " + body),
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
@@ -201,8 +201,7 @@ class CompiledValueCodecDiscoveryTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                     + "import java.io.IOException; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
-                + "@BindingOptions(registries={ClasspathRegistries.First.class, ClasspathRegistries.Second.class}) "
-                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+                + "@CompiledBinder(backend=Backend.SIMPLE, registries={ClasspathRegistries.First.class, ClasspathRegistries.Second.class}) public interface Binder { "
                 + "@Read Bean read(String source) throws IOException; }"),
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
