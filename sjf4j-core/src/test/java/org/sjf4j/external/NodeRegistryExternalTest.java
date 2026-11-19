@@ -12,7 +12,7 @@ import org.sjf4j.value.ValueRegistry;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Runtime registration of external-only and mixed registry interfaces. */
-class NodeRegistryExternalTest {
+public class NodeRegistryExternalTest {
     static final class NativeNode {
         final String text;
         NativeNode(String text) { this.text = text; }
@@ -58,7 +58,8 @@ class NodeRegistryExternalTest {
 
     @NodeRegistry
     public interface Mismatch {
-        ExternalNode<NativeNode> WRONG = adapter(FactoryNode.class);
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        ExternalNode<NativeNode> WRONG = (ExternalNode) adapter(FactoryNode.class);
     }
 
     @Test
