@@ -16,6 +16,12 @@ dependencies {
     api("org.springframework:spring-context:6.2.15")
 
     testImplementation(project(":sjf4j-schema"))
+    // Test-only Spring MVC integration example; no new runtime dependencies.
+    testImplementation("org.springframework:spring-webmvc:6.2.15")
+    testImplementation("org.springframework:spring-test:6.2.15")
+    testImplementation("jakarta.servlet:jakarta.servlet-api:6.0.0")
+    testImplementation(project(":sjf4j-backend-snake"))
+    testImplementation("org.yaml:snakeyaml:2.5")
     testAnnotationProcessor(project(":sjf4j-processor"))
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
