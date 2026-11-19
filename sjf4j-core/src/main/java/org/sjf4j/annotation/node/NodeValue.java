@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 
 
 /**
- * Marks a type as a logical value node or a registry codec field or factory method.
+ * Marks a type as a logical value node or a registry codec field.
  * <p>
  * In SJF4J's OBNT model, a {@code @NodeValue} type is a logical value node rather
  * than a POJO, JOJO, or JAJO. A {@link ValueCodec} or methods annotated with
@@ -31,8 +31,7 @@ import java.lang.annotation.Target;
  * immutable types that should serialize as one logical value node rather than a
  * POJO with declared properties.
  *
- * <p>On a {@code public static final ValueCodec<V, R>} field or
- * {@code public static ValueCodec<V, R>} no-argument method in a
+ * <p>On a {@code public static final ValueCodec<V, R>} field in a
  * {@link NodeRegistry} interface, this optional annotation declares a named
  * format or explicit default for {@code V}. Without it, the codec is a
  * default-format declaration. Call
@@ -42,10 +41,10 @@ import java.lang.annotation.Target;
  * require an external codec field.
  */
 @Inherited
-@Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})
+@Target({ElementType.TYPE, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface NodeValue {
-    /** Unique format name for an annotated codec field or factory method. */
+    /** Unique format name for an annotated codec field. */
     String format() default "";
 
     /** Designates this codec as the default output representation. */
