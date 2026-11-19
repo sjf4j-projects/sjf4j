@@ -45,6 +45,7 @@ public final class ProcessorContext {
     public final InterfaceMethodResolver methods;
 
     private final Map<String, TypeElement> compiledInterfaces = new TreeMap<>();
+    private TypeElement activeCompiledInterface;
 
     public ProcessorContext(ProcessingEnvironment environment) {
         Asserts.notNull(environment, "environment");
@@ -88,9 +89,16 @@ public final class ProcessorContext {
         }
     }
 
+    /** Set the registry scope before generating each compiled interface. */
+    public void activate(TypeElement compiledInterface) {
+        activeCompiledInterface = compiledInterface;
+        types.setExternalNodeTypes(discovery.externalTypes(compiledInterface));
+    }
+
     /** Per-interface, immutable-source metadata view. */
     public CompiledMetadata metadata(TypeElement owner) {
-        return new CompiledMetadata(this, owner);
+        return new CompiledMetadata(this,
+                activeCompiledInterface != null ? activeCompiledInterface : owner);
     }
 
     /** Emits a compile-time error at the supplied source element. */
