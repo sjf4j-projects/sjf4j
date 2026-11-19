@@ -25,7 +25,7 @@ import java.util.List;
 final class FindCompiler {
     private final ProcessorContext context;
     private final TypeSystem types;
-    private boolean allowFilter;
+    private boolean allowFallback;
 
     FindCompiler(ProcessorContext context) {
         this.context = context;
@@ -79,7 +79,7 @@ final class FindCompiler {
         }
 
         VariableElement root = parameters.get(0);
-        allowFilter = allowFallback;
+        this.allowFallback = allowFallback;
         try {
             FindPlan.Step traversal = compilePath(root.asType(), segments, 1, elementType);
             return new FindPlan(method, root, expression, elementType, traversal);
@@ -152,8 +152,17 @@ final class FindCompiler {
         if (segment instanceof PathSegment.Wildcard ||
                 segment instanceof PathSegment.Slice ||
                 segment instanceof PathSegment.Filter) {
-            if (segment instanceof PathSegment.Filter && !allowFilter) {
-                throw unsupported("filter predicates require @CompiledNavigator(fallback=true)");
+            FilterPlan filter = null;
+            if (segment instanceof PathSegment.Filter) {
+                try {
+                    filter = new FilterCompiler().compile(((PathSegment.Filter) segment).filterExpr);
+                } catch (UnsupportedOperationException e) {
+                    if (!allowFallback) {
+                        throw unsupported(e.getMessage() +
+                                "; use @CompiledNavigator(fallback=true) to allow runtime evaluation");
+                    }
+                    filter = FilterPlan.fallback();
+                }
             }
 
             NodeKind kind = types.nodeKind(owner);
@@ -161,7 +170,7 @@ final class FindCompiler {
             if (slice && kind == NodeKind.ARRAY_SET) {
                 throw invalid("Set does not support indexed slice selection");
             }
-            TypeMirror value = elementType(owner, !slice);
+            TypeMirror value = elementType(owner, !slice, segment instanceof PathSegment.Filter);
 
             // An inapplicable selector on a known static shape selects nothing.
             if (value == null) {
@@ -189,7 +198,7 @@ final class FindCompiler {
                     ? FindPlan.Kind.WILDCARD
                     : segment instanceof PathSegment.Filter ? FindPlan.Kind.FILTER
                     : FindPlan.Kind.SLICE;
-            return new FindPlan.Step(selection, segment, index, owner, value, iteration, next, null);
+            return new FindPlan.Step(selection, segment, index, owner, value, iteration, next, null, filter);
         }
 
         if (segment instanceof PathSegment.Descendant) {
@@ -205,7 +214,7 @@ final class FindCompiler {
         throw unsupported("unsupported path segment " + segment);
     }
 
-    private TypeMirror elementType(TypeMirror type, boolean allowObject) {
+    private TypeMirror elementType(TypeMirror type, boolean allowObject, boolean allowScalarFilter) {
         type = types.concrete(type);
         NodeKind kind = types.nodeKind(type);
         if (allowObject && (kind == NodeKind.OBJECT_MAP
@@ -224,7 +233,7 @@ final class FindCompiler {
             return types.objectType();
         }
         // Filters can also evaluate one scalar/current node (runtime behavior).
-        if (allowObject && allowFilter && (kind.isValue())) return type;
+        if (allowObject && allowScalarFilter && kind.isValue()) return type;
         return null;
     }
 
