@@ -4,6 +4,7 @@ import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.mapping.CreatorResolver;
@@ -1193,6 +1194,9 @@ public final class JdbcEmitter {
                         read,
                         column);
 
+            case DIRECT_CODEC:
+                return emitDirectCodecRead(out, names, resultSet, read, column);
+
             default:
                 throw new AssertionError(
                         read.kind());
@@ -1486,6 +1490,41 @@ public final class JdbcEmitter {
                                 read.targetType()) +
                         ");");
 
+        return value;
+    }
+
+    private String emitDirectCodecRead(JavaWriter out, NameAllocator names,
+                                      String resultSet, JdbcCompiler.ColumnRead read,
+                                      String column) {
+        ValueCodecMetadata codec = read.codec();
+        String rawType = codec.rawType.toString();
+        String raw = names.newName("raw_" + read.column());
+        String value = names.newName("value_" + read.column());
+
+        // Read the declared wire type directly; never route through NodeMapper.
+        // String is supported by every JDBC driver, whereas getObject(index,
+        // String.class) is optional. JDBC 4.1 typed getObject handles boxed
+        // scalar conversions; Map/List remain driver-owned raw values.
+        String expression;
+        if ("java.lang.String".equals(rawType)) {
+            expression = resultSet + ".getString(" + column + ")";
+        } else if ("java.lang.Boolean".equals(rawType)
+                || "java.lang.Byte".equals(rawType)
+                || "java.lang.Short".equals(rawType)
+                || "java.lang.Integer".equals(rawType)
+                || "java.lang.Long".equals(rawType)
+                || "java.lang.Float".equals(rawType)
+                || "java.lang.Double".equals(rawType)
+                || "java.math.BigDecimal".equals(rawType)
+                || "java.math.BigInteger".equals(rawType)) {
+            expression = resultSet + ".getObject(" + column + ", " + rawType + ".class)";
+        } else {
+            expression = "(" + rawType + ") " + resultSet + ".getObject(" + column + ")";
+        }
+        out.line(rawType + " " + raw + " = " + expression + ";");
+        out.line(read.targetType() + " " + value + " = "
+                + codec.declaration.getEnclosingElement() + "."
+                + codec.declaration.getSimpleName() + ".rawToValue(" + raw + ");");
         return value;
     }
 
