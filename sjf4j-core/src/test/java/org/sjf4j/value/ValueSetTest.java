@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.Sjf4j;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -32,12 +32,12 @@ class ValueSetTest {
     @Test
     void creatorArgumentWithoutExplicitCodecUsesIncomingShape() {
         Instant expected = Instant.parse("2024-01-01T10:00:00Z");
-        RuntimeContext preferredEpoch = new RuntimeContext(Map.of(Instant.class, "epochMillis"));
+        NodeConfig preferredEpoch = new NodeConfig(Map.of(Instant.class, "epochMillis"));
 
         InstantCreator fromString = (InstantCreator) NodeMapper.convert(
                 Map.of("time", expected.toString()), InstantCreator.class, false, preferredEpoch);
         InstantCreator fromNumber = (InstantCreator) NodeMapper.convert(
-                Map.of("time", expected.toEpochMilli()), InstantCreator.class, false, RuntimeContext.EMPTY);
+                Map.of("time", expected.toEpochMilli()), InstantCreator.class, false, NodeConfig.DEFAULT);
 
         assertEquals(expected, fromString.time);
         assertEquals(expected, fromNumber.time);
@@ -129,9 +129,9 @@ class ValueSetTest {
         assertEquals(iso, defaults.toJsonString(expected));
         assertEquals(String.valueOf(millis), epoch.toJsonString(expected));
 
-        assertEquals(expected, NodeMapper.convert(millis, Instant.class, false, RuntimeContext.EMPTY));
+        assertEquals(expected, NodeMapper.convert(millis, Instant.class, false, NodeConfig.DEFAULT));
         assertEquals(expected, NodeMapper.convert(expected.toString(), Instant.class,
-                false, new RuntimeContext(Map.of(Instant.class, "epochMillis"))));
+                false, new NodeConfig(Map.of(Instant.class, "epochMillis"))));
     }
 
     public static final class NullTagged {
