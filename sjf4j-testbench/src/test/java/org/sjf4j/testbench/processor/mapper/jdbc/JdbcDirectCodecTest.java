@@ -41,8 +41,8 @@ class JdbcDirectCodecTest {
     }
 
     public static final class Document {
-        public final Map<String, Object> values;
-        public Document(Map<String, Object> values) { this.values = values; }
+        public final Map<?, ?> values;
+        public Document(Map<?, ?> values) { this.values = values; }
     }
 
     public static final class Items {
