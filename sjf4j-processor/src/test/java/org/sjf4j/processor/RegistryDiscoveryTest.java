@@ -18,7 +18,7 @@ class RegistryDiscoveryTest {
                 "package fixture; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public final class Codecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface Codecs { "
                 + " @NodeValue "
                 + " public static final ValueCodec<Money, String> MONEY = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
@@ -60,7 +60,7 @@ class RegistryDiscoveryTest {
         sources.put("fixture/AmountCodecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue;"
                 + "import org.sjf4j.value.ValueCodec;"
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public class AmountCodecs {"
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface AmountCodecs {"
                 + " @NodeValue(format=\"epoch\")"
                 + " public static final ValueCodec<Amount, Long> A_EPOCH = "
                 + " new ValueCodec.SimpleValueCodec<>(Amount.class, Long.class,"
@@ -83,9 +83,8 @@ class RegistryDiscoveryTest {
                 "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
-                + "@BindingOptions(registries = {ClasspathRegistries.First.class, "
-                + "ClasspathRegistries.Second.class}) "
-                + "@CompiledBinder public interface Binder {}"),
+                + "@CompiledBinder(registries = {ClasspathRegistries.First.class, "
+                + "ClasspathRegistries.Second.class}) public interface Binder {}"),
                 RegistryDiscoveryProbeProcessor.class);
         assertTrue(result.success, result.diagnostics());
         assertTrue(result.diagnostics().contains("DISCOVER java.time.Instant/alpha -> java.lang.String"),
@@ -113,13 +112,11 @@ class RegistryDiscoveryTest {
         Map<String, String> input = sources(
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
-                + "@BindingOptions(registries={ClasspathRegistries.First.class}) "
-                + "@CompiledBinder public interface Binder {}");
+                + "@CompiledBinder(registries={ClasspathRegistries.First.class}) public interface Binder {}");
         input.put("fixture/OtherBinder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
-                + "@BindingOptions(registries={ClasspathRegistries.Second.class}) "
-                + "@CompiledBinder public interface OtherBinder {}");
+                + "@CompiledBinder(registries={ClasspathRegistries.Second.class}) public interface OtherBinder {}");
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
                 input, RegistryDiscoveryProbeProcessor.class);
         assertTrue(result.success, result.diagnostics());
@@ -135,24 +132,22 @@ class RegistryDiscoveryTest {
                 "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
-                + "@BindingOptions(registries = {ClasspathRegistries.First.class, "
-                + "ClasspathRegistries.First.class}) "
-                + "@CompiledBinder public interface Binder {}"),
+                + "@CompiledBinder(registries = {ClasspathRegistries.First.class, "
+                + "ClasspathRegistries.First.class}) public interface Binder {}"),
                 RegistryDiscoveryProbeProcessor.class);
         assertTrue(result.success, result.diagnostics());
     }
 
     @Test
-    void bindingOptionsDoNotChangeExistingCodeGeneration() throws Exception {
+    void explicitRegistriesDoNotChangeExistingCodeGeneration() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Binder.java",
                 "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "import java.io.IOException; "
-                + "@BindingOptions(registries={ClasspathRegistries.First.class, "
-                + "ClasspathRegistries.Second.class}) "
-                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+                + "@CompiledBinder(backend=Backend.SIMPLE, registries={ClasspathRegistries.First.class, "
+                + "ClasspathRegistries.Second.class}) public interface Binder { "
                 + " @Read String read(String json) throws IOException; "
                 + " }"), CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
@@ -160,15 +155,15 @@ class RegistryDiscoveryTest {
     }
 
     @Test
-    void bindingOptionsRequireCompiledInterface() throws Exception {
+    void nodeRegistryMustBeInterface() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bad.java",
                 "package fixture; "
-                + "import org.sjf4j.annotation.binding.BindingOptions; "
-                + "@BindingOptions "
+                + "import org.sjf4j.annotation.node.NodeRegistry; "
+                + "@NodeRegistry "
                 + "public class Bad {}"), CodegenProcessor.class);
         assertFalse(result.success, result.diagnostics());
-        assertTrue(result.diagnostics().contains("@BindingOptions can be applied only"),
+        assertTrue(result.diagnostics().contains("@NodeRegistry must annotate an interface"),
                 result.diagnostics());
     }
 
@@ -181,7 +176,7 @@ class RegistryDiscoveryTest {
                 "package fixture; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public final class ExtraCodecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface ExtraCodecs { "
                 + " @NodeValue public static final ValueCodec<Money, String> MONEY = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " m -> m.value, raw -> new Money()); "
