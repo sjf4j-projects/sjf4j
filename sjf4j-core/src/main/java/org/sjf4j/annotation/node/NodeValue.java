@@ -33,7 +33,7 @@ import java.lang.annotation.Target;
  *
  * <p>On a {@code public static final ValueCodec<V, R>} field or a
  * {@code public static ValueCodec<V, R>} no-argument factory method inside
- * {@link ValueCodecRegistry}, this optional annotation declares a named format
+ * {@link NodeRegistry}, this optional annotation declares a named format
  * or explicit default for {@code V}; unannotated codec declarations use the
  * default format. Call
  * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} during
