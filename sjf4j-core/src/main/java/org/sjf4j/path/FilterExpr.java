@@ -275,7 +275,7 @@ public interface FilterExpr {
         }
 
         public List<FilterExpr> arguments() {
-            return Collections.unmodifiableList(args);
+            return args;
         }
 
         /**
