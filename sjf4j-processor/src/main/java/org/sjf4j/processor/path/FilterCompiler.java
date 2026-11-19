@@ -4,6 +4,7 @@ import org.sjf4j.path.FilterExpr;
 import org.sjf4j.path.PathSegment;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
+import org.sjf4j.processor.property.Property;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -79,6 +80,17 @@ final class FilterCompiler {
             NodeAccess access = context.access.resolveName(owner, member);
             if (access == null || access.kind() != NodeAccess.Kind.PROPERTY
                     || !access.readable()) break;
+
+            // Navigation's general resolver does not apply every runtime
+            // POJO rule (@NodeIgnore, transient, field/bean precedence,
+            // renamed members). Only specialize the exact accessor that
+            // runtime structural access would select.
+            Property runtime = context.properties.resolveForBinding(owner).get(member);
+            if (runtime == null || runtime.read() == null ||
+                    !runtime.read().member().equals(access.property().read().member())) {
+                break;
+            }
+
             resolved.add(access);
             owner = access.readType();
         }
