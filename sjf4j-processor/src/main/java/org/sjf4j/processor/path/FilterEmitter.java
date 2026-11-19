@@ -4,11 +4,10 @@ import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.access.NodeAccess;
 import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
+import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.type.TypeMirror;
-import org.sjf4j.processor.code.JavaWriter;
-
 import java.util.IdentityHashMap;
 import java.util.Map;
 
