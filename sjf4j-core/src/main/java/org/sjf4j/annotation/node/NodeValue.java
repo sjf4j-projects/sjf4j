@@ -34,11 +34,13 @@ import java.lang.annotation.Target;
  * <p>On a {@code public static final ValueCodec<V, R>} field in a
  * {@link NodeRegistry} interface, this optional annotation declares a named
  * format or explicit default for {@code V}. Without it, the codec is a
- * default-format declaration. Call
+ * default-format declaration. The empty format name denotes the default.
+ * For runtime codec lookup, call
  * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} during
- * application initialization. The empty format name denotes the default.
- * The existing type-level annotation uses conversion methods and does not
- * require an external codec field.
+ * application initialization, before type metadata is cached. Compile-time
+ * discovery alone does not register codecs at runtime; generated JDBC mappers
+ * can instead invoke discovered codec fields directly. The type-level
+ * annotation uses conversion methods and does not require a registry field.
  */
 @Inherited
 @Target({ElementType.TYPE, ElementType.FIELD})
