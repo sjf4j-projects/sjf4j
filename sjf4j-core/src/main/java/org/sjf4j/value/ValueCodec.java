@@ -330,6 +330,12 @@ public interface ValueCodec<V, R> {
             }, (generator, timestamp) -> generator.writeLocalDateTime(
                     timestamp == null ? null : timestamp.toLocalDateTime()));
 
+    // Opt-in epoch milliseconds: this format loses sub-millisecond precision.
+    @NodeValue(format = "epochMillis")
+    ValueCodec<java.sql.Timestamp, Long> SQL_TIMESTAMP_EPOCH_MILLIS =
+            new SimpleValueCodec<>(java.sql.Timestamp.class, Long.class,
+                    java.sql.Timestamp::getTime, java.sql.Timestamp::new);
+
     // Retain the historical PatternedValueCodec fields as aliases; register
     // all built-in value types from this single declaration surface.
     @NodeValue(format = "iso", defaultCodec = true)
