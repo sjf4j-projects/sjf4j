@@ -72,12 +72,12 @@ final class FilterEmitter {
             constants.put(plan, field);
             List<?> values = (List<?>) plan.literal;
             StringBuilder initializer = new StringBuilder("java.util.Collections.unmodifiableList(" +
-                    "java.util.Arrays.<Object>asList(");
+                    "java.util.Arrays.asList(new Object[] {");
             for (int i = 0; i < values.size(); i++) {
                 if (i > 0) initializer.append(", ");
                 initializer.append(literal(values.get(i)));
             }
-            initializer.append("))");
+            initializer.append("}))");
             generated.addField(out -> out.line("private static final java.util.List<Object> " +
                     field + " = " + initializer + ";"));
         }
