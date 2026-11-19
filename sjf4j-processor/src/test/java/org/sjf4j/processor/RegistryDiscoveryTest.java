@@ -248,4 +248,30 @@ class RegistryDiscoveryTest {
     }
 
 
+    @Test
+    void compiledBinderAndMapperAcceptRegisteredExternalRoots() throws Exception {
+        Map<String, String> input = new LinkedHashMap<>();
+        input.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledBinder(backend=Backend.SIMPLE, "
+                + "registries=ClasspathRegistries.ExternalNodes.class) "
+                + "public interface Binder { "
+                + "@Write String write(ClasspathRegistries.ExternalValue value) throws java.io.IOException; "
+                + "}");
+        input.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledMapper(registries=ClasspathRegistries.ExternalNodes.class) "
+                + "public interface Mapper { "
+                + "String map(ClasspathRegistries.ExternalValue value); "
+                + "}");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.generatedSource("fixture/Binder_Impl.java").contains("class Binder_Impl"));
+        assertTrue(result.generatedSource("fixture/Mapper_Impl.java").contains("class Mapper_Impl"));
+    }
+
+
 }
