@@ -41,9 +41,23 @@ public final class RegistryDiscovery {
             }
             TypeElement holder = (TypeElement) element;
             sourceRegistries.put(holder.getQualifiedName().toString(), holder);
+            TypeElement codec = context.elements.getTypeElement(ValueCodec.class.getName());
+            TypeElement external = context.elements.getTypeElement(ExternalNode.class.getName());
+            for (Element member : holder.getEnclosedElements()) {
+                if (member.getKind() != ElementKind.METHOD) continue;
+                TypeMirror returnType = ((ExecutableElement) member).getReturnType();
+                if ((codec != null && context.typeUtils.isAssignable(
+                        context.typeUtils.erasure(returnType),
+                        context.typeUtils.erasure(codec.asType())))
+                        || (external != null && context.typeUtils.isAssignable(
+                        context.typeUtils.erasure(returnType),
+                        context.typeUtils.erasure(external.asType())))) {
+                    context.error(member, "@NodeRegistry supports static fields only; factory methods are not supported");
+                }
+            }
         }
         for (Element element : roundEnv.getElementsAnnotatedWith(NodeValue.class)) {
-            if (element.getKind() != ElementKind.FIELD && element.getKind() != ElementKind.METHOD) continue;
+            if (element.getKind() != ElementKind.FIELD) continue;
             Element owner = element.getEnclosingElement();
             if (owner instanceof TypeElement && owner.getAnnotation(NodeRegistry.class) == null) {
                 context.error(element, "@NodeValue codec declaration requires @NodeRegistry on "
@@ -70,7 +84,7 @@ public final class RegistryDiscovery {
 
     /**
      * External root types visible to one compiled interface. Only the generic
-     * declarations are read; registry fields and factories are never executed.
+     * declarations are read; registry fields are never executed.
      */
     public List<TypeMirror> externalTypes(TypeElement owner) {
         TypeElement externalNode = context.elements.getTypeElement(ExternalNode.class.getName());
@@ -93,14 +107,11 @@ public final class RegistryDiscovery {
                     declaration = member.asType();
                 } else if (member.getKind() == ElementKind.METHOD) {
                     ExecutableElement method = (ExecutableElement) member;
-                    if (!context.typeUtils.isAssignable(
-                            context.typeUtils.erasure(method.getReturnType()), adapterType)) continue;
-                    if (!member.getModifiers().containsAll(java.util.Arrays.asList(
-                            Modifier.PUBLIC, Modifier.STATIC)) || !method.getParameters().isEmpty()) {
-                        context.error(member, "ExternalNode factory must be public static, no-arg");
-                        continue;
+                    if (context.typeUtils.isAssignable(
+                            context.typeUtils.erasure(method.getReturnType()), adapterType)) {
+                        context.error(member, "@NodeRegistry supports ExternalNode fields only; factory methods are not supported");
                     }
-                    declaration = method.getReturnType();
+                    continue;
                 } else continue;
 
                 if (!(declaration instanceof DeclaredType)) {
@@ -125,7 +136,9 @@ public final class RegistryDiscovery {
         for (AnnotationMirror annotation : owner.getAnnotationMirrors()) {
             String name = annotation.getAnnotationType().asElement().toString();
             if (!name.equals("org.sjf4j.annotation.binding.CompiledBinder")
-                    && !name.equals("org.sjf4j.annotation.mapping.CompiledMapper")) continue;
+                    && !name.equals("org.sjf4j.annotation.mapping.CompiledMapper")
+                    && !name.equals("org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper")
+                    && !name.equals("org.sjf4j.annotation.schema.CompiledValidator")) continue;
             for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
                     context.elements.getElementValuesWithDefaults(annotation).entrySet()) {
                 if (!entry.getKey().getSimpleName().contentEquals("registries")) continue;
