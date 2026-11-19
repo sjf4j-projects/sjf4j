@@ -190,4 +190,6 @@ public @interface CompiledMapper {
      * converter classes are intentionally not supported.</p>
      */
     Class<?>[] importing() default {};
+    /** Additional {@link org.sjf4j.annotation.node.NodeRegistry} interfaces visible at compile time. */
+    Class<?>[] registries() default {};
 }
