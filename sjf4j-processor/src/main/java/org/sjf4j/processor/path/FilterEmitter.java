@@ -44,15 +44,15 @@ final class FilterEmitter {
     private void prepare(FilterPlan plan, GeneratedClass generated) {
         if (plan.kind == FilterPlan.Kind.PATH && plan.members.length > 0) {
             int prefixLength = plan.propertyPrefix.length;
+            if (plan.selectors != null) {
+                paths.put(plan, addIndexedArray(generated, plan.selectors));
+            } else if (prefixLength < plan.members.length) {
+                paths.put(plan, addMemberArray(generated, plan.members, prefixLength));
+            }
             if (prefixLength > 0) {
                 String helper = generated.names().helperMethod("filterPath");
                 directPaths.put(plan, helper);
-                if (prefixLength < plan.members.length) {
-                    paths.put(plan, addMemberArray(generated, plan.members, prefixLength));
-                }
                 generated.addHelper(out -> emitDirectPath(out, helper, plan));
-            } else {
-                paths.put(plan, addMemberArray(generated, plan.members, 0));
             }
         } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof Double) {
             String field = generated.names().field("FILTER_NUMBER");
@@ -106,6 +106,24 @@ final class FilterEmitter {
         return field;
     }
 
+    private String addIndexedArray(GeneratedClass generated, Object[] selectors) {
+        String field = generated.names().field("FILTER_SELECTORS");
+        StringBuilder init = new StringBuilder("new Object[] {");
+        for (int i = 0; i < selectors.length; i++) {
+            if (i > 0) init.append(", ");
+            Object selector = selectors[i];
+            if (selector instanceof String) {
+                init.append(JavaWriter.stringLiteral((String) selector));
+            } else {
+                init.append("Integer.valueOf(").append(selector).append(")");
+            }
+        }
+        init.append("}");
+        generated.addField(out -> out.line("private static final Object[] " + field +
+                " = " + init + ";"));
+        return field;
+    }
+
     /**
      * Directly read the statically resolved POJO prefix. The generated helper
      * reads each member once and checks null between accesses. An absent
@@ -125,10 +143,13 @@ final class FilterEmitter {
                 // A subclass may hide a field or change the node-facing property.
                 // Specialize only the exact compile-time type; otherwise use OBNT.
                 String actual = i == 0 ? "node" : owner;
+                String fallback = plan.selectors == null
+                        ? "org.sjf4j.path.PathSupport.value(" + actual + ", " +
+                            memberArrayLiteral(plan.members, i) + ", access)"
+                        : "org.sjf4j.path.PathSupport.indexedValue(" + actual + ", " +
+                            paths.get(plan) + ", " + i + ", access)";
                 out.line("if (" + actual + ".getClass() != " +
-                        ownerElement.getQualifiedName() + ".class) return " +
-                        "org.sjf4j.path.PathSupport.value(" + actual + ", " +
-                        memberArrayLiteral(plan.members, i) + ", access);");
+                        ownerElement.getQualifiedName() + ".class) return " + fallback + ";");
             }
             String value = "filterValue" + i;
             String read = reads.name(member, owner, JavaWriter.stringLiteral(plan.members[i]));
@@ -141,8 +162,12 @@ final class FilterEmitter {
         }
 
         if (prefix.length < plan.members.length) {
-            out.line("return org.sjf4j.path.PathSupport.value(" +
-                    owner + ", " + paths.get(plan) + ", access);");
+            String suffix = plan.selectors == null
+                    ? "org.sjf4j.path.PathSupport.value(" + owner + ", " +
+                        paths.get(plan) + ", access)"
+                    : "org.sjf4j.path.PathSupport.indexedValue(" + owner + ", " +
+                        paths.get(plan) + ", " + prefix.length + ", access)";
+            out.line("return " + suffix + ";");
         } else {
             out.line("return " + owner + ";");
         }
@@ -180,7 +205,7 @@ final class FilterEmitter {
                 return "org.sjf4j.path.FilterExpr.truth(" + value(plan) + ")";
             case PATH:
                 if (plan.members.length == 0) return "true";
-                if (directPaths.containsKey(plan)) {
+                if (directPaths.containsKey(plan) || plan.selectors != null) {
                     return "(" + value(plan) +
                             " != org.sjf4j.path.PathSupport.missing())";
                 }
@@ -215,6 +240,11 @@ final class FilterEmitter {
                 if (directPaths.containsKey(plan)) {
                     return directPaths.get(plan) + "(" +
                             (plan.rooted ? "root" : "current") + ", access)";
+                }
+                if (plan.selectors != null) {
+                    return "org.sjf4j.path.PathSupport.indexedValue(" +
+                            (plan.rooted ? "root" : "current") + ", " +
+                            paths.get(plan) + ", 0, access)";
                 }
                 return "org.sjf4j.path.PathSupport.value(" +
                         (plan.rooted ? "root" : "current") + ", " +
