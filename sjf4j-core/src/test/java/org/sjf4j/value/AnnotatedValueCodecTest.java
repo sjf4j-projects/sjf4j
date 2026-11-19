@@ -42,7 +42,7 @@ class AnnotatedValueCodecTest {
     void discoversBuiltinsAndPreservesDefaultAndNamedFormats() {
         long annotated = Arrays.stream(ValueCodec.class.getDeclaredFields())
                 .filter(f -> f.isAnnotationPresent(NodeValue.class)).count();
-        assertEquals(23, annotated);
+        assertEquals(27, annotated);
 
         assertEquals(String.class, TypeRegistry.requireRegisteredValueInfo(UUID.class, null).rawClazz);
         assertEquals("standard", TypeRegistry.requireRegisteredValueInfo(UUID.class, null).valueFormat);
