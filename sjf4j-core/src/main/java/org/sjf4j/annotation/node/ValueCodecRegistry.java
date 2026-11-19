@@ -10,8 +10,10 @@ import java.lang.annotation.Target;
  * final fields or public static no-argument factory methods.
  * Member-level @NodeValue annotations are optional and specify named formats.
  *
- * <p>Use ValueRegistry.registerAnnotated(...) or implement ValueCodecProvider
- * to register the declarations during application initialization.
+ * <p>Class and interface holders work with explicit registration and APT.
+ * For ServiceLoader discovery, use a concrete class implementing
+ * {@link org.sjf4j.value.ValueCodecProvider}; ServiceLoader cannot instantiate
+ * an interface holder. Register before type metadata is analyzed.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
