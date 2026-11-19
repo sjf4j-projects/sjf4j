@@ -407,7 +407,7 @@ public class FindProcessorTest {
         String source = Files.readString(genSource);
         assertTrue(source.contains(".getAge()"), source);
         assertTrue(source.contains("filterPath("), source);
-        assertFalse(source.contains("CompiledFilterSupport.value("), source);
+        assertTrue(source.contains(".getClass() != "), source); // Subtype-safe OBNT fallback
         assertTrue(source.contains("FilterExpr.compare("), source);
         assertFalse(source.contains(".evalTruth("), source);
         assertFalse(source.contains(".find("), "Filter path should not fall back to .find(; source:\n" + source);
