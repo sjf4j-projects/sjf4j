@@ -34,4 +34,7 @@ public @interface CompiledValidator {
     /** Whether unsupported checks and ValidationResult methods may use SchemaPlan at runtime. */
     boolean fallback() default false;
 
+    /** Additional precompiled {@link org.sjf4j.annotation.node.NodeRegistry} interfaces. */
+    Class<?>[] registries() default {};
+
 }
