@@ -125,8 +125,7 @@ class AnnotatedValueCodecTest {
         @NodeValue public static ValueCodec<Key, String> BAD = codec("");
     }
 
-    @NodeRegistry
-    public interface NotPublic {
+    public static class NotPublic {
         @NodeValue private static final ValueCodec<Key, String> BAD = codec("");
     }
 
@@ -198,7 +197,7 @@ class AnnotatedValueCodecTest {
     void rejectsInvalidFieldDeclarations() {
         assertInvalid(NotStatic.class, "expected @NodeRegistry interface");
         assertInvalid(NotFinal.class, "expected @NodeRegistry interface");
-        assertInvalid(NotPublic.class, "public static final");
+        assertInvalid(NotPublic.class, "expected @NodeRegistry interface");
         assertInvalid(NotCodec.class, "public static final");
         assertInvalid(RawType.class, "concrete V/R");
         assertInvalid(WrongDeclaredValueType.class, "do not match");
