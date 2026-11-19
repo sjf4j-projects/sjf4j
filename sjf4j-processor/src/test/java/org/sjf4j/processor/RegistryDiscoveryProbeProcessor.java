@@ -59,6 +59,19 @@ public final class RegistryDiscoveryProbeProcessor extends AbstractProcessor {
                 }
             }
         }
+        TypeElement external = context.elements.getTypeElement(
+                ClasspathRegistries.ExternalValue.class.getCanonicalName());
+        if (external != null) {
+            for (String name : new String[]{"fixture.Binder", "fixture.Mapper",
+                    "fixture.Rows", "fixture.Validator"}) {
+                TypeElement compiled = context.elements.getTypeElement(name);
+                if (compiled == null) continue;
+                context.types.setExternalNodeTypes(context.discovery.externalTypes(compiled));
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,
+                        "EXTERNAL " + name + " " + context.types.isExternalNode(external.asType()));
+            }
+        }
+
         TypeElement otherOwner = context.elements.getTypeElement("fixture.OtherBinder");
         if (otherOwner != null) {
             CompiledMetadata other = context.metadata(otherOwner);
