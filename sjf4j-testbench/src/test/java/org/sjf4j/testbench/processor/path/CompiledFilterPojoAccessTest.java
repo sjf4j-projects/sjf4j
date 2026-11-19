@@ -47,6 +47,16 @@ class CompiledFilterPojoAccessTest {
 
     record Classroom(List<Student> students, int minimum) {}
 
+    static class BaseScore {
+        public int rank = 50;
+    }
+
+    static final class HiddenScore extends BaseScore {
+        public int rank = 99;
+    }
+
+    record MixedScores(List<BaseScore> items) {}
+
     @CompiledNavigator
     interface Queries {
         @FindByPath("$.students[?(@.scores.math >= $.minimum)].name")
@@ -66,6 +76,9 @@ class CompiledFilterPojoAccessTest {
 
         @FindByPath("$.students[?(@.alias == 'VIP')].name")
         List<String> publicField(Classroom root);
+
+        @FindByPath("$.items[?(@.rank >= 90)]")
+        List<Object> inheritedField(MixedScores root);
     }
 
     @Test
@@ -92,6 +105,15 @@ class CompiledFilterPojoAccessTest {
                 .find(root, Object.class), compiled.mixedPojoAndMap(root));
         assertEquals(JsonPath.parse("$.students[?(@.alias == 'VIP')].name")
                 .find(root, Object.class), compiled.publicField(root));
+    }
+
+    @Test
+    void shadowedFieldsOnSubclassesUseRuntimePropertySemantics() {
+        MixedScores root = new MixedScores(Arrays.asList(new BaseScore(), new HiddenScore()));
+        Queries compiled = CompiledInstances.create(Queries.class);
+        String path = "$.items[?(@.rank >= 90)]";
+        assertEquals(JsonPath.parse(path).find(root, Object.class),
+                compiled.inheritedField(root));
     }
 
     @Test
