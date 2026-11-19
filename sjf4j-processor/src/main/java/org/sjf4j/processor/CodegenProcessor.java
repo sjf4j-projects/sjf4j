@@ -119,7 +119,15 @@ public final class CodegenProcessor extends AbstractProcessor {
                         "@" + annotationType.getSimpleName() + " can be applied only to interfaces");
                 continue;
             }
-            generator.accept((TypeElement) element);
+            TypeElement owner = (TypeElement) element;
+            try {
+                if (annotationType == CompiledBinder.class || annotationType == CompiledMapper.class) {
+                    context.types.setRegisteredExternalRoots(context.discovery.externalTypes(owner));
+                }
+                generator.accept(owner);
+            } finally {
+                context.types.setRegisteredExternalRoots(java.util.Collections.emptyList());
+            }
         }
     }
 }
