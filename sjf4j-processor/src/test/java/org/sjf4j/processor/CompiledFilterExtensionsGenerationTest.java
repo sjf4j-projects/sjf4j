@@ -44,7 +44,7 @@ class CompiledFilterExtensionsGenerationTest {
         assertTrue(generated.contains("FILTER_PATTERN"), generated);
         assertTrue(generated.contains("Pattern.compile("), generated);
         assertTrue(generated.contains("FILTER_ARRAY"), generated);
-        assertTrue(generated.contains("java.util.Collections.unmodifiableList("), generated);
+        assertTrue(generated.contains("Collections.unmodifiableList("), generated);
         assertTrue(generated.contains("Arrays.asList(new Object[] {null})"), generated);
         assertTrue(generated.contains("FunctionRegistry.invoke("), generated);
         assertTrue(generated.contains("FILTER_NO_ARGS"), generated);
