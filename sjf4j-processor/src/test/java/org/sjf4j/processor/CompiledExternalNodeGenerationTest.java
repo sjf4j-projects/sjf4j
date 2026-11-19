@@ -92,19 +92,19 @@ class CompiledExternalNodeGenerationTest {
         assertFalse(generated.contains(".find("), generated);
     }
     @Test
-    void unsupportedFilterRequiresExplicitFallback() throws Exception {
+    void unsupportedIndexedFilterRequiresExplicitFallback() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Paths.java",
                 "package fixture; import java.util.List;"
                 + "import org.sjf4j.annotation.path.*;"
                 + "@CompiledNavigator public interface Paths {"
-                + "@FindByPath(\"$.items[?(@.name =~ /^A/)].name\")"
+                + "@FindByPath(\"$.items[?(@.scores[0] > 90)].name\")"
                 + "List<Object> filter(java.util.Map<String,Object> root);"
                 + "}");
         NavigatorTestCompiler.Result rejected =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(rejected.success);
-        assertTrue(rejected.diagnostics().contains("cannot compile filter operator =~"),
+        assertTrue(rejected.diagnostics().contains("cannot compile filter path selector"),
                 rejected.diagnostics());
 
         sources.put("fixture/Paths.java",
@@ -116,6 +116,32 @@ class CompiledExternalNodeGenerationTest {
         String generated = accepted.generatedSource("fixture/Paths_Impl.java");
         assertTrue(generated.contains("FIND_FILTER"), generated);
         assertTrue(generated.contains(".evalTruth("), generated);
+    }
+
+    @Test
+    void dynamicArrayLiteralRequiresExplicitFallback() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Paths.java",
+                "package fixture; import java.util.List;"
+                + "import org.sjf4j.annotation.path.*;"
+                + "@CompiledNavigator public interface Paths {"
+                + "@FindByPath(\"$.items[?(@.score in [@.low,@.high])].name\")"
+                + "List<Object> filter(java.util.Map<String,Object> root);"
+                + "}");
+        NavigatorTestCompiler.Result strict =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(strict.success, strict.diagnostics());
+        assertTrue(strict.diagnostics().contains("cannot compile filter dynamic array literal"),
+                strict.diagnostics());
+
+        sources.put("fixture/Paths.java", sources.get("fixture/Paths.java")
+                .replace("@CompiledNavigator public", "@CompiledNavigator(fallback=true) public"));
+        NavigatorTestCompiler.Result fallback =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(fallback.success, fallback.diagnostics());
+        String generated = fallback.generatedSource("fixture/Paths_Impl.java");
+        assertTrue(generated.contains(".evalTruth("), generated);
+        assertFalse(generated.contains(".find("), generated);
     }
 
 }

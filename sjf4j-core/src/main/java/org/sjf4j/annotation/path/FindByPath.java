@@ -17,9 +17,10 @@ import java.lang.annotation.Target;
  * composable wildcard ({@code [*]}), slice, and union selectors, including
  * nested combinations and unions of POJO properties. Dynamically typed OBNT
  * nodes are traversed through NodeWalker, and descendant selection uses
- * generated recursive helpers. Filter traversal is generated, while its
- * simple predicate paths and comparisons are generated directly; unsupported
- * predicates may use cached runtime expressions only when
+ * generated recursive helpers. Filter traversal and supported predicates
+ * (paths, comparisons, regex, membership and function calls) are generated;
+ * function calls retain FunctionRegistry dispatch. Unsupported predicates
+ * may use cached runtime expressions only when
  * {@link CompiledNavigator#fallback()} is enabled. There is no whole-path
  * runtime fallback; unsupported operations fail at compile time.</p>
  *

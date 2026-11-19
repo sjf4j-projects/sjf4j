@@ -28,6 +28,38 @@ final class FilterCompiler {
             }
             throw unsupported("literal type " + value.getClass().getName());
         }
+        if (expression instanceof FilterExpr.RegexExpr) {
+            // Reuse the parsed Pattern and its flags; the emitter caches the
+            // same pattern once rather than recompiling it for every item.
+            return FilterPlan.literal(((FilterExpr.RegexExpr) expression).pattern());
+        }
+        if (expression instanceof FilterExpr.ArrayExpr) {
+            List<Object> values = ((FilterExpr.ArrayExpr) expression).literalValues();
+            if (values == null) throw unsupported("dynamic array literal");
+            for (Object value : values) {
+                if (value != null && !(value instanceof String)
+                        && !(value instanceof Boolean) && !(value instanceof Double)) {
+                    throw unsupported("array literal type " + value.getClass().getName());
+                }
+            }
+            return FilterPlan.literal(values);
+        }
+        if (expression instanceof FilterExpr.FunctionExpr) {
+            FilterExpr.FunctionExpr function = (FilterExpr.FunctionExpr) expression;
+            List<FilterExpr> args = function.arguments();
+            if (args.isEmpty()) {
+                // The runtime FilterExpr requires a target; retain its error
+                // behavior under explicit fallback rather than changing it.
+                throw unsupported("function " + function.name() + " without target");
+            }
+            FilterPlan[] compiled = new FilterPlan[args.size()];
+            for (int i = 0; i < args.size(); i++) {
+                compiled[i] = compile(args.get(i), rootType, currentType);
+            }
+            // FunctionRegistry is replaceable at runtime: generated code must
+            // dispatch through it rather than bake in built-in implementations.
+            return FilterPlan.function(function.name(), compiled);
+        }
         if (expression instanceof FilterExpr.PathExpr) {
             PathSegment[] segments = ((FilterExpr.PathExpr) expression).path().segments();
             if (segments.length == 0) throw unsupported("empty path");
@@ -58,6 +90,7 @@ final class FilterCompiler {
                 case AND: kind = FilterPlan.Kind.AND; break;
                 case OR: kind = FilterPlan.Kind.OR; break;
                 case EQ: case NE: case GT: case GE: case LT: case LE:
+                case MATCH: case IN: case NIN:
                     kind = FilterPlan.Kind.COMPARE;
                     break;
                 default: throw unsupported("operator " + op);
