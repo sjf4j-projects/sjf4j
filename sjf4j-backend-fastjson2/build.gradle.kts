@@ -17,9 +17,8 @@ java {
 
 dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
-    compileOnly("com.alibaba.fastjson2:fastjson2:2.0.66")
+    api("com.alibaba.fastjson2:fastjson2:2.0.66")
 
-    testImplementation("com.alibaba.fastjson2:fastjson2:2.0.66")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

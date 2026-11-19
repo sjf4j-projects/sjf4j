@@ -17,9 +17,8 @@ java {
 
 dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
-    compileOnly("org.yaml:snakeyaml:2.5")
+    api("org.yaml:snakeyaml:2.5")
 
-    testImplementation("org.yaml:snakeyaml:2.5")
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

@@ -37,9 +37,8 @@ SJF4J supports **Java 8+**. Add the modules you need (Gradle):
 dependencies {
     implementation("org.sjf4j:sjf4j-core:{version}")
 
-    // Optional: Jackson 2.x backend and its library
+    // Optional: Jackson 2.x backend (includes Jackson dependencies)
     implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
 
     // Optional: Compiled APIs
     annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
