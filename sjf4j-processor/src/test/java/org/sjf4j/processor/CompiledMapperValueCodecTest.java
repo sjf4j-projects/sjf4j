@@ -80,7 +80,6 @@ class CompiledMapperValueCodecTest {
                 + "public class Source { public String money; }";
         String mapper = "package fixture; "
                 + "import org.sjf4j.annotation.mapping.CompiledMapper; "
-                + ""
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "%s public interface Mapper { "
                 + "Target map(Source source); Source reverse(Target source); }";
@@ -359,7 +358,6 @@ class CompiledMapperValueCodecTest {
                 + "v -> 7L, raw -> new Token(\"number:\" + raw)); }");
         sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
-                + ""
                 + "@CompiledMapper(registries={Codecs.class}) public interface Mapper { "
                 + "Token fromNumber(Long value); Token fromText(String value); }");
 
@@ -379,7 +377,6 @@ class CompiledMapperValueCodecTest {
 
         sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
-                + ""
                 + "@CompiledMapper(registries={Codecs.class}) public interface Mapper { Token fromBoolean(Boolean value); }");
         NavigatorTestCompiler.Result incompatible =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
