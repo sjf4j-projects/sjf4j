@@ -111,22 +111,24 @@ class CompiledValidatorExternalSchemasTest {
     }
 
     @Test
-    void directorySourceCacheDoesNotOverridePerBindingExternalSchemas() throws Exception {
-        Files.writeString(directory.resolve("word.json"), "{\"type\":\"boolean\"}");
+    void externalSchemaMappingFilesRemainIsolatedBetweenValidators() throws Exception {
         String target = "https://example.test/word.json";
+        Path strings = directory.resolve("strings.json");
+        Path numbers = directory.resolve("numbers.json");
+        Files.writeString(strings, "{\"" + target + "\":{\"type\":\"string\"}}");
+        Files.writeString(numbers, "{\"" + target + "\":{\"type\":\"integer\"}}");
+
         String root = quote("{\"$ref\":\"" + target + "\"}");
-        String options = "registryDir=" + quote(directory.toUri().toString())
-                + ",registryBaseUri=\"https://example.test/\",";
-        String textMap = quote("{\"" + target + "\":{\"type\":\"string\"}}");
-        String numberMap = quote("{\"" + target + "\":{\"type\":\"integer\"}}");
         String direct = "package fixture; import org.sjf4j.annotation.schema.*; "
-                + "@CompiledValidator(" + options + "fallback=false) public interface Direct { "
-                + "@ValidJsonSchema(value=" + root + ",externalSchemas=" + textMap + ") "
+                + "@CompiledValidator(fallback=false) public interface Direct { "
+                + "@ValidJsonSchema(value=" + root + ",externalSchemasRef="
+                + quote(strings.toUri().toString()) + ") "
                 + "boolean valid(Object value); }";
         String fallback = "package fixture; import org.sjf4j.annotation.schema.*; "
                 + "import org.sjf4j.schema.ValidationResult; "
-                + "@CompiledValidator(" + options + "fallback=true) public interface Fallback { "
-                + "@ValidJsonSchema(value=" + root + ",externalSchemas=" + numberMap + ") "
+                + "@CompiledValidator(fallback=true) public interface Fallback { "
+                + "@ValidJsonSchema(value=" + root + ",externalSchemasRef="
+                + quote(numbers.toUri().toString()) + ") "
                 + "ValidationResult valid(Object value); }";
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
                 Map.of("fixture/Direct.java", direct, "fixture/Fallback.java", fallback),

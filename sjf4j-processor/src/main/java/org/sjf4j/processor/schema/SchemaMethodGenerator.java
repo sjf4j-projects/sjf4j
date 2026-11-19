@@ -21,7 +21,6 @@ import javax.lang.model.type.TypeMirror;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Compiles and emits individual methods of a compiled validator.
@@ -36,13 +35,10 @@ final class SchemaMethodGenerator {
     private final SchemaFallbackEmitter fallbacks;
     private int methodSerial;
 
-    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated,
-                          String registryDir, String registryBaseUri,
-                          Map<String, Map<String, SchemaResourceResolver.IndexedSource>> registryCache) {
+    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated) {
         this.context = context;
-        this.resources = new SchemaResourceResolver(context, registryDir, registryBaseUri,
-                registryCache);
-        this.fallbacks = new SchemaFallbackEmitter(generated.names(), registryDir, registryBaseUri);
+        this.resources = new SchemaResourceResolver(context);
+        this.fallbacks = new SchemaFallbackEmitter(generated.names());
     }
 
     void emitFallbacks(GeneratedClass generated) {

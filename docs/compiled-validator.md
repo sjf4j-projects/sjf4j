@@ -18,16 +18,6 @@ UserValidator validator = CompiledInstances.create(UserValidator.class);
 boolean valid = validator.isValid(user);
 ```
 
-To preload an entire set of referenced schemas at annotation-processing time, specify an optional file-system **registry directory**:
-
-```java
-@CompiledValidator(fallback = true, registryDir = "file:/path/to/schemas/")
-public interface ExternalValidator {
-    @ValidJsonSchema(ref = "classpath:/schemas/strict.json")
-    boolean isValid(Object value);
-}
-```
-
 To mock or preload specific retrieval URIs, configure the binding itself using
 `@ValidJsonSchema.externalSchemas` (an inline JSON object) or
 `@ValidJsonSchema.externalSchemasRef` (a local JSON mapping file):
@@ -60,7 +50,9 @@ collisions, and can be reconstructed from the annotation for runtime fallback.
 The mapping file must remain available at runtime if fallback is enabled.
 Changes to external mapping files must be tracked as build inputs.
 
-The processor reads and caches directory Schema source documents once per directory and retrieval-base combination in an annotation-processing run. Each `@ValidJsonSchema` binding then creates its own `SchemaRegistry`, indexes its explicit resources with `index()`, and fills missing directory resources with `indexIfAbsent()`. The registry's existing conflict rules remain unchanged, and no precompiled `SchemaPlan` is shared between these bindings. When local files represent remotely retrieved schemas **without `$id`**, set `registryBaseUri` to their logical retrieval directory, for example `registryBaseUri = "http://localhost:1234/"`. Files are still read from `registryDir`, but `draft2020-12/integer.json` is indexed as `http://localhost:1234/draft2020-12/integer.json`. No HTTP requests are made. The default `registryDir = ""` and `registryBaseUri = ""` preserve existing behavior. File-system directories are supported (absolute `file:` URI or working-directory-relative path ending in `/`); classpath directory enumeration and automatic HTTP fetching are deliberately unsupported. Runtime fallback must be able to read the **same directory** after deployment; fully direct validators do not need it at runtime. Gradle incremental builds must track this directory as an input.
+At annotation-processing time, each schema binding builds its own `SchemaRegistry` from the root schema, local references, and explicitly mapped external schemas. The processor never fetches remote URIs over HTTP. There is no directory-scanning configuration on `@CompiledValidator`; for a collection of offline schemas, supply a URI-to-schema mapping file through `externalSchemasRef`. Runtime `SchemaRegistry.indexDir(...)` remains available independently.
+
+`externalSchemasRef` must remain accessible after deployment when runtime fallback is used. Fully compiled validators do not load these resources at runtime. Build tooling must track the mapping file and referenced schema files as inputs for incremental compilation.
 
 The method's **return type** determines its behavior:
 
@@ -90,7 +82,7 @@ public interface UserDiagnosticValidator {
 
 Supported assertions compile into Java predicates. A partially supported schema can delegate an unsupported subtree to `SchemaPlan`; keywords that need shared evaluation state (notably `unevaluated*`) fall back at the appropriate scope. `ValidationResult` methods always use the runtime engine for complete diagnostics.
 
-When a validator needs fallback, annotation processing reports the **first unsupported construct at its schema location**. Where evaluation-location propagation crosses a keyword boundary, the diagnostic names the actual combination, e.g. `allOf + unevaluatedProperties requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator`. The error also advises `@CompiledValidator(fallback=true)`. Remaining limitations such as cross-schema evaluated-location tracking, `$vocabulary` interpretation, and `ValidationResult` aggregation are diagnosed explicitly; a second keyword is never invented. With `fallback=false` this is a compilation error; `fallback=true` permits runtime fallback without a compiler warning. Non-semantic projection failures report the specific schema keyword and location where possible, not a fabricated combination. For inherited Java types with multiple `@ValidJsonSchema` annotations, boolean and `void` validator methods compile each binding independently, applying parent bindings before child bindings. If any binding cannot compile directly, the entire method uses runtime fallback with a diagnostic naming the failing binding. `ValidationResult` methods continue using runtime aggregation. `CompiledInstances.create(Validator.class, RuntimeContext)` is supported as a factory, but validation options currently come from method arguments, not `RuntimeContext`.
+When a validator needs fallback, annotation processing reports the **first unsupported construct at its schema location**. Where evaluation-location propagation crosses a keyword boundary, the diagnostic names the actual combination, e.g. `allOf + unevaluatedProperties requires runtime fallback: cross-schema evaluated-location tracking is not supported by CompiledValidator`. The error also advises `@CompiledValidator(fallback=true)`. Remaining limitations such as cross-schema evaluated-location tracking, `$vocabulary` interpretation, and `ValidationResult` aggregation are diagnosed explicitly; a second keyword is never invented. With `fallback=false` this is a compilation error; `fallback=true` permits runtime fallback without a compiler warning. Non-semantic projection failures report the specific schema keyword and location where possible, not a fabricated combination. For inherited Java types with multiple `@ValidJsonSchema` annotations, boolean and `void` validator methods compile each binding independently, applying parent bindings before child bindings. If any binding cannot compile directly, the entire method uses runtime fallback with a diagnostic naming the failing binding. `ValidationResult` methods continue using runtime aggregation. `CompiledInstances.create(Validator.class, NodeConfig)` is supported, but validation options currently come from method arguments rather than `NodeConfig`.
 
 ### Direct code-generation coverage
 
