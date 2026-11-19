@@ -2,7 +2,7 @@ package org.sjf4j.value;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.ValueCodecRegistry;
+import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.TypeRegistry;
@@ -28,8 +28,8 @@ class AnnotatedValueCodecTest {
                 v -> v.text + suffix, raw -> new Key(raw + suffix));
     }
 
-    @ValueCodecRegistry
-    public static final class KeyCodecs {
+    @NodeRegistry
+    public interface KeyCodecs {
         // Deliberately named before the default to prove reflection order is irrelevant.
         @NodeValue(format = "expanded")
         public static final ValueCodec<Key, String> A_EXPANDED = codec("!");
@@ -87,8 +87,8 @@ class AnnotatedValueCodecTest {
         NamedOnly(String value) { this.value = value; }
     }
 
-    @ValueCodecRegistry
-    public static final class NamedOnlyCodecs {
+    @NodeRegistry
+    public interface NamedOnlyCodecs {
         @NodeValue(format = "zzz")
         public static final ValueCodec<NamedOnly, String> B_ZZZ =
                 new ValueCodec.SimpleValueCodec<>(NamedOnly.class, String.class,
@@ -100,8 +100,8 @@ class AnnotatedValueCodecTest {
                         x -> x.value, NamedOnly::new);
     }
 
-    @ValueCodecRegistry
-    public static final class NamedOnlyPreferred {
+    @NodeRegistry
+    public interface NamedOnlyPreferred {
         @NodeValue(format = "preferred", defaultCodec = true)
         public static final ValueCodec<NamedOnly, String> PREFERRED =
                 new ValueCodec.SimpleValueCodec<>(NamedOnly.class, String.class,
@@ -117,28 +117,26 @@ class AnnotatedValueCodecTest {
         assertEquals("preferred", ValueRegistry.resolve(NamedOnly.class).defaultInfo.valueFormat);
     }
 
-    @ValueCodecRegistry
     public static class NotStatic {
         @NodeValue public final ValueCodec<Key, String> BAD = codec("");
     }
 
-    @ValueCodecRegistry
     public static class NotFinal {
         @NodeValue public static ValueCodec<Key, String> BAD = codec("");
     }
 
-    @ValueCodecRegistry
-    public static class NotPublic {
+    @NodeRegistry
+    public interface NotPublic {
         @NodeValue private static final ValueCodec<Key, String> BAD = codec("");
     }
 
-    @ValueCodecRegistry
-    public static class NotCodec {
+    @NodeRegistry
+    public interface NotCodec {
         @NodeValue public static final String BAD = "bad";
     }
 
-    @ValueCodecRegistry
-    public static class RawType {
+    @NodeRegistry
+    public interface RawType {
         @SuppressWarnings("rawtypes")
         @NodeValue public static final ValueCodec BAD = codec("");
     }
@@ -148,20 +146,20 @@ class AnnotatedValueCodecTest {
         Mismatched(String value) { this.value = value; }
     }
 
-    @ValueCodecRegistry
-    public static class WrongDeclaredValueType {
+    @NodeRegistry
+    public interface WrongDeclaredValueType {
         @SuppressWarnings({"unchecked", "rawtypes"})
         @NodeValue public static final ValueCodec<Mismatched, String> BAD =
                 (ValueCodec) codec("");
     }
 
-    @ValueCodecRegistry
-    public static class NullCodec {
+    @NodeRegistry
+    public interface NullCodec {
         @NodeValue public static final ValueCodec<Mismatched, String> BAD = null;
     }
 
-    @ValueCodecRegistry
-    public static class DuplicateDefault {
+    @NodeRegistry
+    public interface DuplicateDefault {
         @NodeValue(format = "first", defaultCodec = true)
         public static final ValueCodec<Mismatched, String> FIRST =
                 new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
@@ -172,19 +170,20 @@ class AnnotatedValueCodecTest {
                         x -> x.value, Mismatched::new);
     }
 
-    @ValueCodecRegistry
-    public static class DuplicateCodecInstance {
-        private static final ValueCodec<Mismatched, String> SHARED =
-                new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
-                        x -> x.value, Mismatched::new);
+    private static final ValueCodec<Mismatched, String> SHARED_CODEC =
+            new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
+                    x -> x.value, Mismatched::new);
+
+    @NodeRegistry
+    public interface DuplicateCodecInstance {
         @NodeValue(format = "primary")
-        public static final ValueCodec<Mismatched, String> FIRST = SHARED;
+        public static final ValueCodec<Mismatched, String> FIRST = SHARED_CODEC;
         @NodeValue(format = "alternative")
-        public static final ValueCodec<Mismatched, String> SECOND = SHARED;
+        public static final ValueCodec<Mismatched, String> SECOND = SHARED_CODEC;
     }
 
-    @ValueCodecRegistry
-    public static class DuplicateAcrossFields {
+    @NodeRegistry
+    public interface DuplicateAcrossFields {
         @NodeValue(format = "same")
         public static final ValueCodec<Mismatched, String> FIRST =
                 new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
@@ -197,8 +196,8 @@ class AnnotatedValueCodecTest {
 
     @Test
     void rejectsInvalidFieldDeclarations() {
-        assertInvalid(NotStatic.class, "public static final");
-        assertInvalid(NotFinal.class, "public static final");
+        assertInvalid(NotStatic.class, "expected @NodeRegistry interface");
+        assertInvalid(NotFinal.class, "expected @NodeRegistry interface");
         assertInvalid(NotPublic.class, "public static final");
         assertInvalid(NotCodec.class, "public static final");
         assertInvalid(RawType.class, "concrete V/R");
@@ -214,8 +213,8 @@ class AnnotatedValueCodecTest {
         FactoryId(String value) { this.value = value; }
     }
 
-    @ValueCodecRegistry
-    public static final class FactoryCodecs {
+    @NodeRegistry
+    public interface FactoryCodecs {
         public static ValueCodec<FactoryId, String> factoryId() {
             return new ValueCodec.SimpleValueCodec<>(
                     FactoryId.class, String.class, id -> id.value, FactoryId::new);
@@ -234,7 +233,7 @@ class AnnotatedValueCodecTest {
         InterfaceId(String value) { this.value = value; }
     }
 
-    @ValueCodecRegistry
+    @NodeRegistry
     public interface InterfaceCodecs {
         static ValueCodec<InterfaceId, String> interfaceId() {
             return new ValueCodec.SimpleValueCodec<>(
@@ -250,16 +249,16 @@ class AnnotatedValueCodecTest {
                 new Sjf4j().fromJson("\"interface-1\"", InterfaceId.class).value);
     }
 
-    @ValueCodecRegistry
-    public static class BadFactory {
+    @NodeRegistry
+    public interface BadFactory {
         @NodeValue
         public ValueCodec<FactoryId, String> invalid() {
             return FactoryCodecs.factoryId();
         }
     }
 
-    @ValueCodecRegistry
-    public static class EmptyRegistry {
+    @NodeRegistry
+    public interface EmptyRegistry {
     }
 
     public static class MissingRegistry {
@@ -285,7 +284,7 @@ class AnnotatedValueCodecTest {
     void rejectsInvalidCodecRegistryFactories() {
         assertInvalid(BadFactory.class, "public static, no-arg");
         assertInvalid(EmptyRegistry.class, "no codec declarations");
-        assertInvalid(MissingRegistry.class, "missing @ValueCodecRegistry");
+        assertInvalid(MissingRegistry.class, "expected @NodeRegistry interface");
     }
 
     @Test
@@ -297,8 +296,7 @@ class AnnotatedValueCodecTest {
         assertEquals("spi-1",
                 new Sjf4j().fromJson("\"spi-1\"", TestAutoCodecProvider.AutoId.class).value);
 
-        // An explicit registration of the same provider is harmless.
-        ValueRegistry.registerAnnotated(TestAutoCodecProvider.class);
+        // SPI provider classes are separate from @NodeRegistry interfaces.
     }
 
     private static void assertInvalid(Class<?> owner, String part) {
