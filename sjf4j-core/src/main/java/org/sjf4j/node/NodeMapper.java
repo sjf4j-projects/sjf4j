@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.NodeKind;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.exception.BindingException;
@@ -64,7 +64,7 @@ public final class NodeMapper {
      * Character and enum values use their textual representation. A node value
      * must use a String raw representation under the selected value format.
      */
-    public static String toString(Object node, RuntimeContext context) {
+    public static String toString(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof String) return (String) node;
         if (node instanceof Character) return node.toString();
@@ -72,7 +72,7 @@ public final class NodeMapper {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.valueFormat(node.getClass()));
+            ValueInfo vi = ti.requireValueInfo(config.valueFormat(node.getClass()));
             if (vi.rawClazz != String.class) {
                 throw new NodeException("expected String raw type for '" + Types.name(node)
                         + "', but was '" + vi.rawClazz.getName() + "'");
@@ -92,7 +92,7 @@ public final class NodeMapper {
      *
      * @throws NodeException if the node is not a supported scalar
      */
-    public static String asString(Object node, RuntimeContext context) {
+    public static String asString(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof String) return (String) node;
         if (node instanceof Number || node instanceof Boolean || node instanceof Character) {
@@ -104,8 +104,8 @@ public final class NodeMapper {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.valueFormat(node.getClass()));
-            return asString(vi.valueToRaw(node), context);
+            ValueInfo vi = ti.requireValueInfo(config.valueFormat(node.getClass()));
+            return asString(vi.valueToRaw(node), config);
         }
         if (ti.externalNode != null) {
             switch (ti.externalNode.jsonType(node)) {
@@ -123,11 +123,11 @@ public final class NodeMapper {
      * Returns a Character from a single-character string representation.
      * Empty or multi-character strings are rejected.
      */
-    public static Character toChar(Object node, RuntimeContext context) {
+    public static Character toChar(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
 
-        String s = toString(node, context);
+        String s = toString(node, config);
         if (s == null) return null;
         if (s.length() != 1) {
             throw new NodeException("cannot convert to char: expected single-character string, but length was " + s.length());
@@ -139,11 +139,11 @@ public final class NodeMapper {
      * Returns the first character of the lenient string representation.
      * Returns {@code null} for an absent or empty string.
      */
-    public static Character asChar(Object node, RuntimeContext context) {
+    public static Character asChar(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
 
-        String s = asString(node, context);
+        String s = asString(node, config);
         return s != null && !s.isEmpty() ? s.charAt(0) : null;
     }
 
@@ -151,12 +151,12 @@ public final class NodeMapper {
      * Resolves an enum constant by its exact name, using strict string semantics.
      * Numeric ordinals are not accepted.
      */
-    public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz, RuntimeContext context) {
+    public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz, NodeConfig config) {
         Asserts.notNull(enumClazz, "enumClazz");
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return enumClazz.cast(node);
 
-        String s = toString(node, context);
+        String s = toString(node, config);
         if (s == null) return null;
         try {
             return Enum.valueOf(enumClazz, s);
@@ -171,7 +171,7 @@ public final class NodeMapper {
      * must be an exact, in-range integer. Numeric strings are treated as names,
      * not ordinals. Returns {@code null} for an unknown name or invalid ordinal.
      */
-    public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz, RuntimeContext context) {
+    public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz, NodeConfig config) {
         Asserts.notNull(enumClazz, "enumClazz");
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return enumClazz.cast(node);
@@ -181,7 +181,7 @@ public final class NodeMapper {
                 && !(value instanceof Character) && !(value instanceof Enum)) {
             TypeInfo ti = TypeRegistry.registerTypeInfo(value.getClass());
             if (ti.valueSet != null) {
-                ValueInfo vi = ti.requireValueInfo(context.valueFormat(value.getClass()));
+                ValueInfo vi = ti.requireValueInfo(config.valueFormat(value.getClass()));
                 value = vi.valueToRaw(value);
             } else if (ti.externalNode != null && ti.externalNode.jsonType(value) == JsonType.NUMBER) {
                 value = ti.externalNode.toNumber(value);
@@ -200,7 +200,7 @@ public final class NodeMapper {
             return ordinal >= 0 && ordinal < values.length ? values[ordinal] : null;
         }
 
-        String s = asString(value, context);
+        String s = asString(value, config);
         if (s == null) return null;
         try {
             return Enum.valueOf(enumClazz, s);
@@ -213,13 +213,13 @@ public final class NodeMapper {
      * Returns the numeric value of a number-shaped node without coercion from
      * strings or booleans. The selected value codec must have a numeric raw type.
      */
-    public static Number toNumber(Object node, RuntimeContext context) {
+    public static Number toNumber(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Number) return (Number) node;
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.valueFormat(node.getClass()));
+            ValueInfo vi = ti.requireValueInfo(config.valueFormat(node.getClass()));
             if (!Number.class.isAssignableFrom(Types.box(vi.rawClazz))) {
                 throw new NodeException("expected Number raw type for '" + Types.name(node)
                         + "', but was '" + vi.rawClazz.getName() + "'");
@@ -235,7 +235,7 @@ public final class NodeMapper {
      * booleans map to 1/0, and enums map to their ordinal.
      * Invalid numeric text follows {@link Numbers#parseNumber(String)} semantics.
      */
-    public static Number asNumber(Object node, RuntimeContext context) {
+    public static Number asNumber(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Number) return (Number) node;
         if (node instanceof Boolean) return (Boolean) node ? 1 : 0;
@@ -244,8 +244,8 @@ public final class NodeMapper {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.valueFormat(node.getClass()));
-            return asNumber(vi.valueToRaw(node), context);
+            ValueInfo vi = ti.requireValueInfo(config.valueFormat(node.getClass()));
+            return asNumber(vi.valueToRaw(node), config);
         }
         if (ti.externalNode != null) {
             switch (ti.externalNode.jsonType(node)) {
@@ -264,13 +264,13 @@ public final class NodeMapper {
      * Returns a boolean-shaped node without coercion from numbers or strings.
      * The selected value codec must use Boolean as its raw type.
      */
-    public static Boolean toBoolean(Object node, RuntimeContext context) {
+    public static Boolean toBoolean(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.valueFormat(node.getClass()));
+            ValueInfo vi = ti.requireValueInfo(config.valueFormat(node.getClass()));
             if (Types.box(vi.rawClazz) != Boolean.class) {
                 throw new NodeException("expected Boolean raw type for '" + Types.name(node)
                         + "', but was '" + vi.rawClazz.getName() + "'");
@@ -286,7 +286,7 @@ public final class NodeMapper {
      * Accepted strings are true/false, yes/no, on/off, and 1/0 (ignoring case).
      * Numeric values must be exactly 0 or 1; fractions and overflow are rejected.
      */
-    public static Boolean asBoolean(Object node, RuntimeContext context) {
+    public static Boolean asBoolean(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
         if (node instanceof String || node instanceof Character) {
@@ -306,15 +306,15 @@ public final class NodeMapper {
 
         TypeInfo ti = TypeRegistry.registerTypeInfo(node.getClass());
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.valueFormat(node.getClass()));
-            return asBoolean(vi.valueToRaw(node), context);
+            ValueInfo vi = ti.requireValueInfo(config.valueFormat(node.getClass()));
+            return asBoolean(vi.valueToRaw(node), config);
         }
         if (ti.externalNode != null) {
             switch (ti.externalNode.jsonType(node)) {
                 case NULL: return null;
                 case BOOLEAN: return ti.externalNode.toBoolean(node);
-                case NUMBER: return asBoolean(ti.externalNode.toNumber(node), context);
-                case STRING: return asBoolean(ti.externalNode.toString(node), context);
+                case NUMBER: return asBoolean(ti.externalNode.toNumber(node), config);
+                case STRING: return asBoolean(ti.externalNode.toString(node), config);
                 default: break;
             }
         }
@@ -328,7 +328,7 @@ public final class NodeMapper {
      * outer container; nested entry values are not recursively mapped.
      */
     @SuppressWarnings("unchecked")
-    public static JsonObject toJsonObject(Object node, RuntimeContext context) {
+    public static JsonObject toJsonObject(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof JsonObject) return (JsonObject) node;
         if (node instanceof Map) return new JsonObject((Map<String, Object>) node);
@@ -367,7 +367,7 @@ public final class NodeMapper {
      * not validate keys of existing maps at runtime.
      */
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> toMap(Object node, RuntimeContext context) {
+    public static Map<String, Object> toMap(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Map) return (Map<String, Object>) node;
         if (node instanceof JsonObject) return ((JsonObject) node).toMap();
@@ -406,10 +406,10 @@ public final class NodeMapper {
      * Map-backed object nodes must have String keys.
      */
     @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz, RuntimeContext context) {
+    public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz, NodeConfig config) {
         if (node == null) return null;
         if (valueClazz == null || valueClazz == Object.class) {
-            return (Map<String, T>) toMap(node, context);
+            return (Map<String, T>) toMap(node, config);
         }
 
         if (!(node instanceof Map) && !(node instanceof JsonObject)) {
@@ -420,7 +420,7 @@ public final class NodeMapper {
         }
 
         Map<String, T> map = new LinkedHashMap<>();
-        NodeWalker.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz, context)));
+        NodeWalker.forEachObject(node, (k, v) -> map.put(k, to(v, valueClazz, config)));
         return map;
     }
 
@@ -432,7 +432,7 @@ public final class NodeMapper {
      * container, without recursively mapping child elements.
      */
     @SuppressWarnings("unchecked")
-    public static JsonArray toJsonArray(Object node, RuntimeContext context) {
+    public static JsonArray toJsonArray(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof JsonArray) return (JsonArray) node;
         if (node instanceof List) return new JsonArray((List<Object>) node);
@@ -469,7 +469,7 @@ public final class NodeMapper {
      * snapshot semantics; other sources copy only their outer sequence.
      */
     @SuppressWarnings("unchecked")
-    public static List<Object> toList(Object node, RuntimeContext context) {
+    public static List<Object> toList(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof List) return (List<Object>) node;
         if (node instanceof JsonArray) return ((JsonArray) node).toList();
@@ -504,10 +504,10 @@ public final class NodeMapper {
      * shallow List form, which may return the original List.
      */
     @SuppressWarnings("unchecked")
-    public static <T> List<T> toList(Object node, Class<T> elementClazz, RuntimeContext context) {
+    public static <T> List<T> toList(Object node, Class<T> elementClazz, NodeConfig config) {
         if (node == null) return null;
         if (elementClazz == null || elementClazz == Object.class) {
-            return (List<T>) toList(node, context);
+            return (List<T>) toList(node, config);
         }
 
         if (!(node instanceof List) && !(node instanceof JsonArray)
@@ -519,7 +519,7 @@ public final class NodeMapper {
         }
 
         List<T> list = new ArrayList<>();
-        NodeWalker.forEachArray(node, (i, e) -> list.add(to(e, elementClazz, context)));
+        NodeWalker.forEachArray(node, (i, e) -> list.add(to(e, elementClazz, config)));
         return list;
     }
 
@@ -529,7 +529,7 @@ public final class NodeMapper {
      * array. Other indexed sources are shallowly copied into an Object array.
      */
     @SuppressWarnings("unchecked")
-    public static Object[] toArray(Object node, RuntimeContext context) {
+    public static Object[] toArray(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node.getClass().isArray()) {
             if (node.getClass().getComponentType().isPrimitive()) {
@@ -566,15 +566,15 @@ public final class NodeMapper {
 
     /**
      * Returns a typed reference array, adapting each element strictly.
-     * Passing null or Object.class uses {@link #toArray(Object, RuntimeContext)}.
-     * Primitive component types must use {@link #to(Object, Class, RuntimeContext)}
+     * Passing null or Object.class uses {@link #toArray(Object, NodeConfig)}.
+     * Primitive component types must use {@link #to(Object, Class, NodeConfig)}
      * with an array class such as {@code int[].class} instead.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T[] toArray(Object node, Class<T> componentClazz, RuntimeContext context) {
+    public static <T> T[] toArray(Object node, Class<T> componentClazz, NodeConfig config) {
         if (node == null) return null;
         if (componentClazz == null || componentClazz == Object.class) {
-            return (T[]) toArray(node, context);
+            return (T[]) toArray(node, config);
         }
         if (componentClazz.isPrimitive()) {
             throw new IllegalArgumentException("primitive array component is not supported by toArray: "
@@ -591,7 +591,7 @@ public final class NodeMapper {
 
         int len = NodeWalker.sizeInArray(node);
         T[] arr = (T[]) Array.newInstance(componentClazz, len);
-        NodeWalker.forEachArray(node, (i, e) -> arr[i] = to(e, componentClazz, context));
+        NodeWalker.forEachArray(node, (i, e) -> arr[i] = to(e, componentClazz, config));
         return arr;
     }
 
@@ -601,7 +601,7 @@ public final class NodeMapper {
      * removing duplicates while preserving encounter order.
      */
     @SuppressWarnings("unchecked")
-    public static Set<Object> toSet(Object node, RuntimeContext context) {
+    public static Set<Object> toSet(Object node, NodeConfig config) {
         if (node == null) return null;
         if (node instanceof Set) return (Set<Object>) node;
         if (node instanceof List) {
@@ -636,10 +636,10 @@ public final class NodeMapper {
      * shallow Set form, which may return the original Set.
      */
     @SuppressWarnings("unchecked")
-    public static <T> Set<T> toSet(Object node, Class<T> elementClazz, RuntimeContext context) {
+    public static <T> Set<T> toSet(Object node, Class<T> elementClazz, NodeConfig config) {
         if (node == null) return null;
         if (elementClazz == null || elementClazz == Object.class) {
-            return (Set<T>) toSet(node, context);
+            return (Set<T>) toSet(node, config);
         }
 
         if (!(node instanceof List) && !(node instanceof JsonArray)
@@ -651,7 +651,7 @@ public final class NodeMapper {
         }
 
         Set<T> set = new LinkedHashSet<>();
-        NodeWalker.forEachArray(node, (i, e) -> set.add(to(e, elementClazz, context)));
+        NodeWalker.forEachArray(node, (i, e) -> set.add(to(e, elementClazz, config)));
         return set;
     }
 
@@ -671,35 +671,35 @@ public final class NodeMapper {
      * structures through their value codecs.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object _adapt(Object node, Class<?> toClazz, boolean lenient, RuntimeContext context) {
+    private static Object _adapt(Object node, Class<?> toClazz, boolean lenient, NodeConfig config) {
         if (toClazz == Object.class) return node;
-        if (node == null) return NodeMapper.convert(null, toClazz, false, context);
+        if (node == null) return NodeMapper.convert(null, toClazz, false, config);
         if (toClazz.isInstance(node)) return node;
 
         Class<?> toBoxed = Types.box(toClazz);
         if (toBoxed == String.class) {
-            return lenient ? asString(node, context) : toString(node, context);
+            return lenient ? asString(node, config) : toString(node, config);
         }
         if (toBoxed == Boolean.class) {
-            return lenient ? asBoolean(node, context) : toBoolean(node, context);
+            return lenient ? asBoolean(node, config) : toBoolean(node, config);
         }
         if (Number.class.isAssignableFrom(toBoxed)) {
-            Number n = lenient ? asNumber(node, context) : toNumber(node, context);
+            Number n = lenient ? asNumber(node, config) : toNumber(node, config);
             return n == null ? null : Numbers.to(n, toBoxed);
         }
         if (toBoxed == Character.class) {
-            return lenient ? asChar(node, context) : toChar(node, context);
+            return lenient ? asChar(node, config) : toChar(node, config);
         }
         if (toClazz.isEnum()) {
-            return lenient ? asEnum(node, (Class<? extends Enum>) toClazz, context)
-                    : toEnum(node, (Class<? extends Enum>) toClazz, context);
+            return lenient ? asEnum(node, (Class<? extends Enum>) toClazz, config)
+                    : toEnum(node, (Class<? extends Enum>) toClazz, config);
         }
 
-        if (toClazz == Map.class) return toMap(node, context);
-        if (toClazz == JsonObject.class) return toJsonObject(node, context);
-        if (toClazz == List.class) return toList(node, context);
-        if (toClazz == JsonArray.class) return toJsonArray(node, context);
-        if (toClazz == Set.class) return toSet(node, context);
+        if (toClazz == Map.class) return toMap(node, config);
+        if (toClazz == JsonObject.class) return toJsonObject(node, config);
+        if (toClazz == List.class) return toList(node, config);
+        if (toClazz == JsonArray.class) return toJsonArray(node, config);
+        if (toClazz == Set.class) return toSet(node, config);
 
         if (toClazz.isArray()) {
             if (!(node instanceof List) && !(node instanceof JsonArray)
@@ -714,11 +714,11 @@ public final class NodeMapper {
             int len = NodeWalker.sizeInArray(node);
             Object arr = Array.newInstance(componentClazz, len);
             NodeWalker.forEachArray(node, (i, e) ->
-                    Array.set(arr, i, _adapt(e, componentClazz, lenient, context)));
+                    Array.set(arr, i, _adapt(e, componentClazz, lenient, config)));
             return arr;
         }
 
-        return NodeMapper.convert(node, toClazz, false, context);
+        return NodeMapper.convert(node, toClazz, false, config);
     }
 
     /**
@@ -728,12 +728,12 @@ public final class NodeMapper {
      * adaptation; other supported concrete targets may use structural mapping
      * without forcing a deep copy.
      *
-     * @throws NullPointerException if clazz or context is null
+     * @throws NullPointerException if clazz or config is null
      */
     @SuppressWarnings("unchecked")
-    public static <T> T to(Object node, Class<T> clazz, RuntimeContext context) {
+    public static <T> T to(Object node, Class<T> clazz, NodeConfig config) {
         Asserts.notNull(clazz, "clazz");
-        return (T) _adapt(node, clazz, false, context);
+        return (T) _adapt(node, clazz, false, config);
     }
 
     /**
@@ -741,16 +741,16 @@ public final class NodeMapper {
      * <p>
      * Leniency applies to the requested scalar value, not recursively to POJO
      * properties or other nested members. Structural targets use the same
-     * mapping semantics as {@link #to(Object, Class, RuntimeContext)}.
+     * mapping semantics as {@link #to(Object, Class, NodeConfig)}.
      * An invalid enum name or ordinal returns null; other invalid coercions
      * may throw an exception.
      *
-     * @throws NullPointerException if clazz or context is null
+     * @throws NullPointerException if clazz or config is null
      */
     @SuppressWarnings("unchecked")
-    public static <T> T as(Object node, Class<T> clazz, RuntimeContext context) {
+    public static <T> T as(Object node, Class<T> clazz, NodeConfig config) {
         Asserts.notNull(clazz, "clazz");
-        return (T) _adapt(node, clazz, true, context);
+        return (T) _adapt(node, clazz, true, config);
     }
 
     /*
@@ -766,12 +766,12 @@ public final class NodeMapper {
      * otherwise compatible values can be reused. Binding failures can carry
      * a node path to the value that could not be converted.
      */
-    public static Object convert(Object node, Type type, boolean deepCopy, RuntimeContext context) {
+    public static Object convert(Object node, Type type, boolean deepCopy, NodeConfig config) {
         Asserts.notNull(type, "type");
-        Asserts.notNull(context, "context");
+        Asserts.notNull(config, "config");
         try {
             Class<?> rawBox = Types.rawBox(type);
-            return _convert(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE, context);
+            return _convert(node, type, rawBox, null, deepCopy, PathSegment.Root.INSTANCE, config);
         } catch (BindingException e) {
             throw e;
         } catch (Exception e) {
@@ -782,14 +782,14 @@ public final class NodeMapper {
 
     /**
      * Converts a node to its raw JSON-compatible representation using the
-     * supplied runtime context.
+     * supplied runtime config.
      *
      * <p>Object nodes become maps, array nodes become lists, and node values
      * are converted through their configured value codecs.
      */
-    public static Object convertToRaw(Object node, RuntimeContext context) {
-        Asserts.notNull(context, "context");
-        return _convertToRaw(node, PathSegment.Root.INSTANCE, context);
+    public static Object convertToRaw(Object node, NodeConfig config) {
+        Asserts.notNull(config, "config");
+        return _convertToRaw(node, PathSegment.Root.INSTANCE, config);
     }
 
 
@@ -798,12 +798,12 @@ public final class NodeMapper {
      */
     @SuppressWarnings("unchecked")
     private static Object _convert(Object node, Type toType, Class<?> toBoxed,
-                                   TypeInfo ti, boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                   TypeInfo ti, boolean deepCopy, PathSegment ps, NodeConfig config) {
         try {
             if (node == null) {
                 if (ti == null) ti = TypeRegistry.registerTypeInfo(toBoxed);
                 if (ti.valueSet != null) {
-                    String valueFormat = context.valueFormat(toBoxed);
+                    String valueFormat = config.valueFormat(toBoxed);
                     return ti.valueSet.selectForRead(JsonType.NULL, valueFormat).rawToValue(null);
                 }
                 // External targets, like other reference targets, retain Java null.
@@ -811,34 +811,34 @@ public final class NodeMapper {
             }
 
             if (toBoxed == Object.class) {
-                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
+                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, config) : node;
             }
 
             // Resolve unknown metadata before identity so class-level OneOf also
             // applies when the source already implements the declared target type.
             if (ti == null) ti = TypeRegistry.registerTypeInfo(toBoxed);
             if (ti.oneOfInfo != null) {
-                return _convertOneOf(node, toBoxed, ti.oneOfInfo, deepCopy, ps, context);
+                return _convertOneOf(node, toBoxed, ti.oneOfInfo, deepCopy, ps, config);
             }
 
             // Compatible values can only be returned as-is when the target has no
             // generic structure to honor. Parameterized containers/POJOs still need
             // traversal so their declared element/member types are converted.
             if (toBoxed.isInstance(node) && !Types.hasGenericStructure(toType)) {
-                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, context) : node;
+                return deepCopy ? _deepCopy(node, toType, toBoxed, ps, config) : node;
             }
 
             if (ti.valueSet != null) {
-                return _convertValue(node, toBoxed, ti.valueSet, deepCopy, ps, context);
+                return _convertValue(node, toBoxed, ti.valueSet, deepCopy, ps, config);
             }
             // Map/List classification wins over an external adapter. Only
             // nonconstructible containers use its mapping-only native builder.
             if (ti.containerInfo != null && ti.containerInfo.externalNode != null
                     && (Map.class.isAssignableFrom(toBoxed) || List.class.isAssignableFrom(toBoxed))) {
-                return _convertExternal(node, toBoxed, ti.containerInfo.externalNode, deepCopy, ps, context);
+                return _convertExternal(node, toBoxed, ti.containerInfo.externalNode, deepCopy, ps, config);
             }
             if (ti.externalNode != null) {
-                return _convertExternal(node, toBoxed, ti.externalNode, deepCopy, ps, context);
+                return _convertExternal(node, toBoxed, ti.externalNode, deepCopy, ps, config);
             }
 
             // Dispatch on the source representation for plain and unregistered targets.
@@ -873,45 +873,45 @@ public final class NodeMapper {
             if (node instanceof Map) {
                 return _convertFromObjectEntries(
                         ((Map<String, Object>) node).entrySet(), ((Map<?, ?>) node).size(),
-                        false, "Map", toBoxed, toType, deepCopy, ps, context);
+                        false, "Map", toBoxed, toType, deepCopy, ps, config);
             }
 
             if (node instanceof List) {
                 return _convertFromIndexedSource(node, null, "List",
-                        toBoxed, toType, deepCopy, ps, context);
+                        toBoxed, toType, deepCopy, ps, config);
             }
 
             if (node instanceof JsonObject) {
                 JsonObject jo = (JsonObject) node;
                 return _convertFromObjectEntries(jo.entrySet(), jo.size(),
-                        false, "JsonObject", toBoxed, toType, deepCopy, ps, context);
+                        false, "JsonObject", toBoxed, toType, deepCopy, ps, config);
             }
 
             if (node instanceof JsonArray) {
                 return _convertFromIndexedSource(node, null, "JsonArray",
-                        toBoxed, toType, deepCopy, ps, context);
+                        toBoxed, toType, deepCopy, ps, config);
             }
 
             if (node.getClass().isArray()) {
                 return _convertFromIndexedSource(node, null, "Array",
-                        toBoxed, toType, deepCopy, ps, context);
+                        toBoxed, toType, deepCopy, ps, config);
             }
 
             if (node instanceof Set) {
                 return _convertFromSet((Set<Object>) node,
-                        toBoxed, toType, deepCopy, ps, context);
+                        toBoxed, toType, deepCopy, ps, config);
             }
 
             TypeInfo sourceTi = TypeRegistry.registerTypeInfo(node.getClass());
             if (sourceTi.externalNode != null) {
                 return _convertFromExternal(node, sourceTi.externalNode,
-                        toBoxed, toType, deepCopy, ps, context);
+                        toBoxed, toType, deepCopy, ps, config);
             }
 
             PojoInfo sourceInfo = sourceTi.pojoInfo;
             if (sourceInfo != null) {
                 return _convertFromPojo(node, sourceInfo,
-                        toBoxed, toType, deepCopy, ps, context);
+                        toBoxed, toType, deepCopy, ps, config);
             }
 
             throw new BindingException("cannot convert node from '" +
@@ -931,8 +931,8 @@ public final class NodeMapper {
      */
     private static Object _convertValue(Object node, Class<?> toBoxed,
                                         ValueSet set,
-                                        boolean deepCopy, PathSegment ps, RuntimeContext context) {
-        String preferred = context.valueFormat(toBoxed);
+                                        boolean deepCopy, PathSegment ps, NodeConfig config) {
+        String preferred = config.valueFormat(toBoxed);
         if (node == null) return set.selectForRead(JsonType.NULL, preferred).rawToValue(null);
         if (toBoxed.isInstance(node)) {
             return deepCopy ? set.forWrite(preferred).valueCopy(node) : node;
@@ -944,10 +944,10 @@ public final class NodeMapper {
             TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
             if (sourceInfo.valueSet != null) {
                 ValueInfo source = sourceInfo.requireValueInfo(
-                        context.valueFormat(node.getClass()));
+                        config.valueFormat(node.getClass()));
                 raw = source.valueToRaw(node);
             } else if (sourceInfo.externalNode != null) {
-                raw = _convertToRaw(node, ps, context);
+                raw = _convertToRaw(node, ps, config);
             }
         }
 
@@ -958,7 +958,7 @@ public final class NodeMapper {
     }
 
     private static Object _convertValue(Object node, Class<?> toBoxed, ValueInfo target,
-                                        boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                        boolean deepCopy, PathSegment ps, NodeConfig config) {
         if (node == null) return target.rawToValue(null);
         if (toBoxed.isInstance(node)) {
             return deepCopy ? target.valueCopy(node) : node;
@@ -973,10 +973,10 @@ public final class NodeMapper {
         Object raw = node;
         if (sourceInfo.valueSet != null) {
             ValueInfo source = sourceInfo.requireValueInfo(
-                    context.valueFormat(node.getClass()));
+                    config.valueFormat(node.getClass()));
             raw = source.valueToRaw(node);
         } else if (sourceInfo.externalNode != null) {
-            raw = _convertToRaw(node, ps, context);
+            raw = _convertToRaw(node, ps, config);
         }
         return target.rawToValue(raw);
     }
@@ -984,23 +984,23 @@ public final class NodeMapper {
 
     private static Object _convertFromExternal(Object node, ExternalNode<Object> external,
                                                Class<?> toBoxed, Type type, boolean deepCopy,
-                                               PathSegment ps, RuntimeContext context) {
+                                               PathSegment ps, NodeConfig config) {
         switch (external.jsonType(node)) {
             case NULL:
-                return _convert(null, type, toBoxed, null, deepCopy, ps, context);
+                return _convert(null, type, toBoxed, null, deepCopy, ps, config);
             case STRING:
-                return _convert(external.toString(node), type, toBoxed, null, deepCopy, ps, context);
+                return _convert(external.toString(node), type, toBoxed, null, deepCopy, ps, config);
             case NUMBER:
-                return _convert(external.toNumber(node), type, toBoxed, null, deepCopy, ps, context);
+                return _convert(external.toNumber(node), type, toBoxed, null, deepCopy, ps, config);
             case BOOLEAN:
-                return _convert(external.toBoolean(node), type, toBoxed, null, deepCopy, ps, context);
+                return _convert(external.toBoolean(node), type, toBoxed, null, deepCopy, ps, config);
             case OBJECT:
                 return _convertFromObjectEntries(external.entrySetInObject(node),
                         external.sizeInObject(node), true,
-                        "External object", toBoxed, type, deepCopy, ps, context);
+                        "External object", toBoxed, type, deepCopy, ps, config);
             case ARRAY:
                 return _convertFromIndexedSource(node, external, "External array",
-                        toBoxed, type, deepCopy, ps, context);
+                        toBoxed, type, deepCopy, ps, config);
             default:
                 throw new BindingException("unsupported external node type '" + Types.name(node) + "'", ps);
         }
@@ -1012,7 +1012,7 @@ public final class NodeMapper {
      */
     private static Object _convertExternal(Object node, Class<?> toBoxed,
                                            ExternalNode<Object> target,
-                                           boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                           boolean deepCopy, PathSegment ps, NodeConfig config) {
         try {
             Object result;
             if (node == null) {
@@ -1028,14 +1028,14 @@ public final class NodeMapper {
             } else if (node instanceof Map || node instanceof JsonObject
                     || node instanceof List || node instanceof JsonArray
                     || node.getClass().isArray() || node instanceof Set) {
-                result = target.convertContainer(toBoxed, node, context);
+                result = target.convertContainer(toBoxed, node, config);
                 if (deepCopy) result = target.deepCopy(result);
             } else {
                 TypeInfo sourceInfo = TypeRegistry.registerTypeInfo(node.getClass());
                 if (sourceInfo.valueSet != null) {
-                    ValueInfo info = sourceInfo.requireValueInfo(context.valueFormat(node.getClass()));
+                    ValueInfo info = sourceInfo.requireValueInfo(config.valueFormat(node.getClass()));
                     return _requireExternalTarget(_convertExternal(
-                            info.valueToRaw(node), target.nodeType(), target, deepCopy, ps, context), toBoxed, ps);
+                            info.valueToRaw(node), target.nodeType(), target, deepCopy, ps, config), toBoxed, ps);
                 }
 
                 ExternalNode<Object> sourceExternal = sourceInfo.externalNode;
@@ -1055,14 +1055,14 @@ public final class NodeMapper {
                             break;
                         case OBJECT:
                         case ARRAY:
-                            result = target.convertContainer(toBoxed, node, context);
+                            result = target.convertContainer(toBoxed, node, config);
                             if (deepCopy) result = target.deepCopy(result);
                             break;
                         default:
                             throw new BindingException("unsupported external node type '" + Types.name(node) + "'", ps);
                     }
                 } else if (sourceInfo.pojoInfo != null) {
-                    result = target.convertContainer(toBoxed, node, context);
+                    result = target.convertContainer(toBoxed, node, config);
                     if (deepCopy) result = target.deepCopy(result);
                 } else {
                     throw new BindingException("unsupported node type '" + Types.name(node) + "'", ps);
@@ -1086,7 +1086,7 @@ public final class NodeMapper {
     }
 
     private static Object _convertOneOf(Object node, Class<?> toBoxed,
-                                        OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                        OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, NodeConfig config) {
         LazyTypeInfo target;
         if (oneOfInfo.hasDiscriminator && oneOfInfo.scope != OneOf.Scope.CURRENT) {
             throw new BindingException("oneOf scope '" + oneOfInfo.scope + "' is not supported", ps);
@@ -1099,7 +1099,7 @@ public final class NodeMapper {
             for (OneOfCase candidate : oneOfInfo.cases) {
                 if (candidate.type().isInstance(node)) {
                     return deepCopy
-                            ? _deepCopy(node, candidate.type(), candidate.type(), ps, context)
+                            ? _deepCopy(node, candidate.type(), candidate.type(), ps, config)
                             : node;
                 }
             }
@@ -1131,7 +1131,7 @@ public final class NodeMapper {
             if (discriminatorValue != null) {
                 TypeInfo discriminatorTi = TypeRegistry.registerTypeInfo(discriminatorValue.getClass());
                 if (discriminatorTi.externalNode != null) {
-                    discriminatorValue = _convertToRaw(discriminatorValue, ps, context);
+                    discriminatorValue = _convertToRaw(discriminatorValue, ps, config);
                 }
             }
 
@@ -1164,7 +1164,7 @@ public final class NodeMapper {
             }
         }
 
-        return _convert(node, target.clazz, Types.rawBox(target.clazz), target.get(), deepCopy, ps, context);
+        return _convert(node, target.clazz, Types.rawBox(target.clazz), target.get(), deepCopy, ps, config);
     }
 
     /**
@@ -1172,7 +1172,7 @@ public final class NodeMapper {
      */
     @SuppressWarnings("unchecked")
     private static Object _deepCopy(Object node, Type toType, Class<?> toBoxed, PathSegment ps,
-                                    RuntimeContext context) {
+                                    NodeConfig config) {
         try {
             if (node == null) return null;
 
@@ -1183,7 +1183,7 @@ public final class NodeMapper {
              * establish the requested target representation first.
              */
             if (toBoxed != Object.class && !toBoxed.isInstance(node)) {
-                return _convert(node, toType, toBoxed, null, true, ps, context);
+                return _convert(node, toType, toBoxed, null, true, ps, config);
             }
 
             Class<?> nodeClazz = node.getClass();
@@ -1200,7 +1200,7 @@ public final class NodeMapper {
             TypeInfo ti = TypeRegistry.registerTypeInfo(nodeClazz);
 
             if (ti.valueSet != null) {
-                String valueFormat = context.valueFormat(nodeClazz);
+                String valueFormat = config.valueFormat(nodeClazz);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueCopy(node);
             }
@@ -1217,7 +1217,7 @@ public final class NodeMapper {
                 Class<?> valueBoxed = Types.rawBox(valueType);
                 for (Map.Entry<String, Object> entry : src.entrySet()) {
                     PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                    target.put(entry.getKey(), _deepCopy(entry.getValue(), valueType, valueBoxed, cps, context));
+                    target.put(entry.getKey(), _deepCopy(entry.getValue(), valueType, valueBoxed, cps, config));
                 }
                 return target;
             }
@@ -1237,7 +1237,7 @@ public final class NodeMapper {
                 int i = 0;
                 for (Object value : src) {
                     PathSegment cps = new PathSegment.Index(ps, i++);
-                    target.add(_deepCopy(value, elemType, elemBoxed, cps, context));
+                    target.add(_deepCopy(value, elemType, elemBoxed, cps, config));
                 }
                 return target;
             }
@@ -1252,7 +1252,7 @@ public final class NodeMapper {
                 JsonObject target = new JsonObject();
                 src.forEach((key, value) -> {
                     PathSegment cps = new PathSegment.Name(ps, key);
-                    target.put(key, _deepCopy(value, Object.class, Object.class, cps, context));
+                    target.put(key, _deepCopy(value, Object.class, Object.class, cps, config));
                 });
                 return target;
             }
@@ -1269,7 +1269,7 @@ public final class NodeMapper {
                 Class<?> elemBoxed = Types.rawBox(elemType);
                 for (int i = 0; i < src.size(); i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    target.add(_deepCopy(src.getNode(i), elemType, elemBoxed, cps, context));
+                    target.add(_deepCopy(src.getNode(i), elemType, elemBoxed, cps, config));
                 }
                 return target;
             }
@@ -1284,7 +1284,7 @@ public final class NodeMapper {
                 Class<?> componentBoxed = Types.rawBox(componentClass);
                 for (int i = 0; i < len; i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    Array.set(target, i, _deepCopy(Array.get(node, i), componentClass, componentBoxed, cps, context));
+                    Array.set(target, i, _deepCopy(Array.get(node, i), componentClass, componentBoxed, cps, config));
                 }
                 return target;
             }
@@ -1300,7 +1300,7 @@ public final class NodeMapper {
                 int i = 0;
                 for (Object value : src) {
                     PathSegment cps = new PathSegment.Index(ps, i++);
-                    target.add(_deepCopy(value, elemType, elemBoxed, cps, context));
+                    target.add(_deepCopy(value, elemType, elemBoxed, cps, config));
                 }
                 return target;
             }
@@ -1322,7 +1322,7 @@ public final class NodeMapper {
                  * runtime class rather than against the declared supertype.
                  */
                 Type pojoType = nodeClazz == toBoxed ? toType : nodeClazz;
-                return _deepCopyPojo(node, pojoType, nodeClazz, pojoInfo, ps, context);
+                return _deepCopyPojo(node, pojoType, nodeClazz, pojoInfo, ps, config);
             }
 
             /*
@@ -1337,7 +1337,7 @@ public final class NodeMapper {
     }
 
     private static Object _deepCopyPojo(Object source, Type type, Class<?> boxed, PojoInfo pojoInfo, PathSegment ps,
-                                        RuntimeContext context) {
+                                        NodeConfig config) {
         CreatorInfo ci = pojoInfo.requireCreatorInfo();
         int expected = pojoInfo.gettableProperties.length;
         if (source instanceof JsonObject) {
@@ -1359,7 +1359,7 @@ public final class NodeMapper {
                 ValueInfo valueInfo = ci.argValueCodecs[argIdx];
                 Object copied = value != null && valueInfo != null
                         ? valueInfo.valueCopy(value)
-                        : _deepCopy(value, argType, argBoxed, cps, context);
+                        : _deepCopy(value, argType, argBoxed, cps, config);
                 session.acceptCtorArg(argIdx, copied);
                 continue;
             }
@@ -1374,7 +1374,7 @@ public final class NodeMapper {
             Class<?> propertyBoxed = Types.rawBox(propertyType);
             Object copied = value != null && property.oneOfInfo == null && property.valueInfo != null
                     ? property.valueInfo.valueCopy(value)
-                    : _deepCopy(value, propertyType, propertyBoxed, cps, context);
+                    : _deepCopy(value, propertyType, propertyBoxed, cps, config);
             session.acceptProperty(property, copied);
         }
 
@@ -1389,7 +1389,7 @@ public final class NodeMapper {
             for (Map.Entry<String, Object> entry : jo.entrySet()) {
                 String key = entry.getKey();
                 PathSegment cps = new PathSegment.Name(ps, key);
-                session.acceptDynamic(key, _deepCopy(entry.getValue(), Object.class, Object.class, cps, context));
+                session.acceptDynamic(key, _deepCopy(entry.getValue(), Object.class, Object.class, cps, config));
             }
         }
 
@@ -1423,7 +1423,7 @@ public final class NodeMapper {
                                                    Type type,
                                                    boolean deepCopy,
                                                    PathSegment ps,
-                                                   RuntimeContext context) {
+                                                   NodeConfig config) {
         if (Map.class.isAssignableFrom(toBoxed)) {
             Map<String, Object> map =
                     TypeRegistry.newMapContainer(toBoxed, sourceSize, false);
@@ -1435,7 +1435,7 @@ public final class NodeMapper {
             for (Map.Entry<String, Object> entry : entries) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object value = _convertSourceChild(entry.getValue(),
-                        valueType, valueRaw, valueTi, deepCopy, cps, context, externalSource);
+                        valueType, valueRaw, valueTi, deepCopy, cps, config, externalSource);
                 map.put(entry.getKey(), value);
             }
             return map;
@@ -1446,7 +1446,7 @@ public final class NodeMapper {
             for (Map.Entry<String, Object> entry : entries) {
                 PathSegment cps = new PathSegment.Name(ps, entry.getKey());
                 Object value = _convertSourceChild(entry.getValue(),
-                        Object.class, Object.class, null, deepCopy, cps, context, externalSource);
+                        Object.class, Object.class, null, deepCopy, cps, config, externalSource);
                 jo.put(entry.getKey(), value);
             }
             return jo;
@@ -1455,7 +1455,7 @@ public final class NodeMapper {
         PojoInfo pi = TypeRegistry.registerTypeInfo(toBoxed).pojoInfo;
         if (pi != null && !pi.isJajo) {
             return _convertPojoFromEntries(
-                    entries, type, toBoxed, pi, deepCopy, ps, context, externalSource);
+                    entries, type, toBoxed, pi, deepCopy, ps, config, externalSource);
         }
 
         throw new BindingException(
@@ -1469,7 +1469,7 @@ public final class NodeMapper {
      */
     private static Object _convertPojoFromEntries(Iterable<Map.Entry<String, Object>> entries, Type type, Class<?> toBoxed,
                                                   PojoInfo pi, boolean deepCopy, PathSegment ps,
-                                                  RuntimeContext context, boolean externalSource) {
+                                                  NodeConfig config, boolean externalSource) {
         CreatorInfo ci = pi.requireCreatorInfo();
         Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
         CreatorState state = direct == null ? new CreatorState(ci) : null;
@@ -1480,7 +1480,7 @@ public final class NodeMapper {
             int argIdx = ci.getArgIndexOrAlias(key);
             if (argIdx >= 0) {
                 _acceptCreatorArgument(state, ci, argIdx, rawValue, type, toBoxed,
-                        deepCopy, new PathSegment.Name(ps, key), context, externalSource);
+                        deepCopy, new PathSegment.Name(ps, key), config, externalSource);
                 continue;
             }
 
@@ -1488,14 +1488,14 @@ public final class NodeMapper {
             if (propertyInfo != null) {
                 if (propertyInfo.settable) {
                     _acceptPojoProperty(direct, state, propertyInfo, rawValue, type, toBoxed,
-                            deepCopy, new PathSegment.Name(ps, key), context, externalSource);
+                            deepCopy, new PathSegment.Name(ps, key), config, externalSource);
                 }
                 continue;
             }
 
             if (pi.isJojo && pi.readDynamic) {
                 Object value = _convertSourceChild(rawValue, Object.class, Object.class, null,
-                        deepCopy, new PathSegment.Name(ps, key), context, externalSource);
+                        deepCopy, new PathSegment.Name(ps, key), config, externalSource);
                 if (direct != null) {
                     ((JsonObject) direct).put(key, value);
                 } else {
@@ -1515,7 +1515,7 @@ public final class NodeMapper {
                                                int argIdx, Object rawValue,
                                                Type targetType, Class<?> targetClass,
                                                boolean deepCopy, PathSegment ps,
-                                               RuntimeContext context, boolean externalSource) {
+                                               NodeConfig config, boolean externalSource) {
         Type argType = Types.resolveMemberType(targetType, targetClass, creator.argTypes[argIdx]);
         Class<?> argRaw = Types.rawBox(argType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
@@ -1524,11 +1524,11 @@ public final class NodeMapper {
         // Unannotated value parameters must select by the incoming JSON shape.
         OneOfInfo explicitOneOf = creator.argOneOfInfos[argIdx];
         Object value = explicitOneOf != null
-                ? (rawValue == null ? null : _convertOneOf(rawValue, argRaw, explicitOneOf, deepCopy, ps, context))
+                ? (rawValue == null ? null : _convertOneOf(rawValue, argRaw, explicitOneOf, deepCopy, ps, config))
                 : ti.oneOfInfo == null && codec != null
-                ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, context)
+                ? _convertValue(rawValue, argRaw, codec, deepCopy, ps, config)
                 : _convertSourceChild(rawValue, argType, argRaw, ti,
-                        deepCopy, ps, context, externalSource);
+                        deepCopy, ps, config, externalSource);
         state.acceptCtorArg(argIdx, value);
     }
 
@@ -1536,7 +1536,7 @@ public final class NodeMapper {
     private static void _acceptPojoProperty(Object direct, CreatorState state, PropertyInfo property,
                                             Object rawValue, Type targetType, Class<?> targetClass,
                                             boolean deepCopy, PathSegment ps,
-                                            RuntimeContext context, boolean externalSource) {
+                                            NodeConfig config, boolean externalSource) {
         Type fieldType = property.genericDependent
                 ? Types.resolveMemberType(targetType, targetClass, property.type)
                 : property.type;
@@ -1547,15 +1547,15 @@ public final class NodeMapper {
         Object value;
         if (property.oneOfInfo != null) {
             value = rawValue == null ? null
-                    : _convertOneOf(rawValue, fieldRaw, property.oneOfInfo, deepCopy, ps, context);
+                    : _convertOneOf(rawValue, fieldRaw, property.oneOfInfo, deepCopy, ps, config);
         } else if (property.valueInfo != null) {
-            value = _convertValue(rawValue, fieldRaw, property.valueInfo, deepCopy, ps, context);
+            value = _convertValue(rawValue, fieldRaw, property.valueInfo, deepCopy, ps, config);
         } else {
             // Generic-dependent fields require the resolved owner type, not the declaration hint.
             TypeInfo declaredInfo = property.genericDependent || property.typeInfo == null
                     ? null : property.typeInfo.get();
             value = _convertSourceChild(rawValue, fieldType, fieldRaw, declaredInfo,
-                    deepCopy, ps, context, externalSource);
+                    deepCopy, ps, config, externalSource);
         }
 
         if (direct != null) {
@@ -1573,7 +1573,7 @@ public final class NodeMapper {
                                           Type type,
                                           boolean deepCopy,
                                           PathSegment ps,
-                                          RuntimeContext context) {
+                                          NodeConfig config) {
         int size = oldSet.size();
 
         if (List.class.isAssignableFrom(toBoxed)) {
@@ -1587,7 +1587,7 @@ public final class NodeMapper {
             int i = 0;
             for (Object value : oldSet) {
                 list.add(_convert(value, valueType, valueRaw, valueTi,
-                        deepCopy, new PathSegment.Index(ps, i++), context));
+                        deepCopy, new PathSegment.Index(ps, i++), config));
             }
             return list;
         }
@@ -1598,7 +1598,7 @@ public final class NodeMapper {
             for (Object value : oldSet) {
                 ja.add(_convert(value,
                         Object.class, Object.class, null, deepCopy,
-                        new PathSegment.Index(ps, i++), context));
+                        new PathSegment.Index(ps, i++), config));
             }
             return ja;
         }
@@ -1613,7 +1613,7 @@ public final class NodeMapper {
             for (Object value : oldSet) {
                 jajo.add(_convert(value,
                         valueRaw, valueRaw, valueTi, deepCopy,
-                        new PathSegment.Index(ps, i++), context));
+                        new PathSegment.Index(ps, i++), config));
             }
             return jajo;
         }
@@ -1628,7 +1628,7 @@ public final class NodeMapper {
             for (Object value : oldSet) {
                 Array.set(array, i, _convert(value,
                         valueType, valueRaw, valueTi, deepCopy,
-                        new PathSegment.Index(ps, i++), context));
+                        new PathSegment.Index(ps, i++), config));
             }
             return array;
         }
@@ -1644,7 +1644,7 @@ public final class NodeMapper {
             int i = 0;
             for (Object value : oldSet) {
                 set.add(_convert(value, valueType, valueRaw, valueTi,
-                        deepCopy, new PathSegment.Index(ps, i++), context));
+                        deepCopy, new PathSegment.Index(ps, i++), config));
             }
             return set;
         }
@@ -1659,7 +1659,7 @@ public final class NodeMapper {
                                                     Type type,
                                                     boolean deepCopy,
                                                     PathSegment ps,
-                                                    RuntimeContext context) {
+                                                    NodeConfig config) {
         // Snapshot only sequential Lists; indexed reads on them can be quadratic.
         // Keep native external, JsonArray (getNode), array and RandomAccess reads unchanged.
         if (source instanceof List && !(source instanceof RandomAccess)) {
@@ -1678,7 +1678,7 @@ public final class NodeMapper {
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 list.add(_convertSourceChild(_indexedValue(source, external, i),
-                        valueType, valueRaw, valueTi, deepCopy, cps, context, externalSource));
+                        valueType, valueRaw, valueTi, deepCopy, cps, config, externalSource));
             }
             return list;
         }
@@ -1688,7 +1688,7 @@ public final class NodeMapper {
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 ja.add(_convertSourceChild(_indexedValue(source, external, i),
-                        Object.class, Object.class, null, deepCopy, cps, context, externalSource));
+                        Object.class, Object.class, null, deepCopy, cps, config, externalSource));
             }
             return ja;
         }
@@ -1702,7 +1702,7 @@ public final class NodeMapper {
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 jajo.add(_convertSourceChild(_indexedValue(source, external, i),
-                        valueRaw, valueRaw, valueTi, deepCopy, cps, context, externalSource));
+                        valueRaw, valueRaw, valueTi, deepCopy, cps, config, externalSource));
             }
             return jajo;
         }
@@ -1716,7 +1716,7 @@ public final class NodeMapper {
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 Array.set(array, i, _convertSourceChild(_indexedValue(source, external, i),
-                        valueType, valueRaw, valueTi, deepCopy, cps, context, externalSource));
+                        valueType, valueRaw, valueTi, deepCopy, cps, config, externalSource));
             }
             return array;
         }
@@ -1732,7 +1732,7 @@ public final class NodeMapper {
             for (int i = 0; i < size; i++) {
                 PathSegment cps = new PathSegment.Index(ps, i);
                 set.add(_convertSourceChild(_indexedValue(source, external, i),
-                        valueType, valueRaw, valueTi, deepCopy, cps, context, externalSource));
+                        valueType, valueRaw, valueTi, deepCopy, cps, config, externalSource));
             }
             return set;
         }
@@ -1773,7 +1773,7 @@ public final class NodeMapper {
                                            Type type,
                                            boolean deepCopy,
                                            PathSegment ps,
-                                           RuntimeContext context) {
+                                           NodeConfig config) {
         if (Map.class.isAssignableFrom(toBoxed)) {
             Map<String, Object> map = TypeRegistry.newMapContainer(
                     toBoxed, sourceInfo.gettableProperties.length, false);
@@ -1785,7 +1785,7 @@ public final class NodeMapper {
                 Object value = propertyInfo.invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
                 map.put(propertyInfo.name,
-                        _convert(value, valueType, valueRaw, valueTi, deepCopy, cps, context));
+                        _convert(value, valueType, valueRaw, valueTi, deepCopy, cps, config));
             }
             return map;
         }
@@ -1796,14 +1796,14 @@ public final class NodeMapper {
                 Object value = propertyInfo.invokeGetter(node);
                 PathSegment cps = new PathSegment.Name(ps, propertyInfo.name);
                 jo.put(propertyInfo.name,
-                        _convert(value, Object.class, Object.class, null, deepCopy, cps, context));
+                        _convert(value, Object.class, Object.class, null, deepCopy, cps, config));
             }
             return jo;
         }
 
         PojoInfo targetInfo = TypeRegistry.registerTypeInfo(toBoxed).pojoInfo;
         if (targetInfo != null && !targetInfo.isJajo) {
-            return _convertPojoFromProperties(node, sourceInfo, type, toBoxed, targetInfo, deepCopy, ps, context);
+            return _convertPojoFromProperties(node, sourceInfo, type, toBoxed, targetInfo, deepCopy, ps, config);
         }
 
         throw new BindingException("cannot convert POJO to '" + toBoxed.getName() + "'", ps);
@@ -1816,7 +1816,7 @@ public final class NodeMapper {
                                                      PojoInfo targetInfo,
                                                      boolean deepCopy,
                                                      PathSegment ps,
-                                                     RuntimeContext context) {
+                                                     NodeConfig config) {
         CreatorInfo ci = targetInfo.requireCreatorInfo();
         Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
         CreatorState state = direct == null ? new CreatorState(ci) : null;
@@ -1832,17 +1832,17 @@ public final class NodeMapper {
             PathSegment cps = new PathSegment.Name(ps, name);
             if (argIdx >= 0) {
                 _acceptCreatorArgument(state, ci, argIdx, rawValue, type, toBoxed,
-                        deepCopy, cps, context, false);
+                        deepCopy, cps, config, false);
                 continue;
             }
 
             if (targetProperty != null) {
                 _acceptPojoProperty(direct, state, targetProperty, rawValue, type, toBoxed,
-                        deepCopy, cps, context, false);
+                        deepCopy, cps, config, false);
                 continue;
             }
 
-            Object value = _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, context);
+            Object value = _convert(rawValue, Object.class, Object.class, null, deepCopy, cps, config);
             if (direct != null) {
                 ((JsonObject) direct).put(name, value);
             } else {
@@ -1856,12 +1856,12 @@ public final class NodeMapper {
 
     private static Object _convertSourceChild(Object value, Type type, Class<?> raw,
                                                TypeInfo ti, boolean deepCopy,
-                                               PathSegment ps, RuntimeContext context,
+                                               PathSegment ps, NodeConfig config,
                                                boolean externalSource) {
         if (externalSource && raw == Object.class) {
-            return _convertToRaw(value, ps, context);
+            return _convertToRaw(value, ps, config);
         }
-        return _convert(value, type, raw, ti, deepCopy, ps, context);
+        return _convert(value, type, raw, ti, deepCopy, ps, config);
     }
 
 
@@ -1872,7 +1872,7 @@ public final class NodeMapper {
      */
 
     @SuppressWarnings("unchecked")
-    private static Object _convertToRaw(Object node, PathSegment ps, RuntimeContext context) {
+    private static Object _convertToRaw(Object node, PathSegment ps, NodeConfig config) {
         try {
             if (node == null) return null;
 
@@ -1894,7 +1894,7 @@ public final class NodeMapper {
 
                 for (Map.Entry<String, Object> entry : oldMap.entrySet()) {
                     PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                    newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, context));
+                    newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, config));
                 }
                 return newMap;
             }
@@ -1906,7 +1906,7 @@ public final class NodeMapper {
                 int i = 0;
                 for (Object value : oldList) {
                     PathSegment cps = new PathSegment.Index(ps, i++);
-                    newList.add(_convertToRaw(value, cps, context));
+                    newList.add(_convertToRaw(value, cps, config));
                 }
                 return newList;
             }
@@ -1921,7 +1921,7 @@ public final class NodeMapper {
 
                     for (Map.Entry<String, Object> entry : jo.entrySet()) {
                         PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                        newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, context));
+                        newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, config));
                     }
                     return newMap;
                 }
@@ -1939,7 +1939,7 @@ public final class NodeMapper {
 
                     Object raw = value != null && propertyInfo.valueInfo != null
                             ? propertyInfo.valueInfo.valueToRaw(value)
-                            : _convertToRaw(value, cps, context);
+                            : _convertToRaw(value, cps, config);
 
                     newMap.put(propertyInfo.name, raw);
                 }
@@ -1947,7 +1947,7 @@ public final class NodeMapper {
                 if (dynamic != null) {
                     for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
                         PathSegment cps = new PathSegment.Name(ps, entry.getKey());
-                        newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, context));
+                        newMap.put(entry.getKey(), _convertToRaw(entry.getValue(), cps, config));
                     }
                 }
 
@@ -1960,7 +1960,7 @@ public final class NodeMapper {
 
                 for (int i = 0, len = ja.size(); i < len; i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    newList.add(_convertToRaw(ja.getNode(i), cps, context));
+                    newList.add(_convertToRaw(ja.getNode(i), cps, config));
                 }
                 return newList;
             }
@@ -1971,7 +1971,7 @@ public final class NodeMapper {
 
                 for (int i = 0; i < len; i++) {
                     PathSegment cps = new PathSegment.Index(ps, i);
-                    newList.add(_convertToRaw(Array.get(node, i), cps, context));
+                    newList.add(_convertToRaw(Array.get(node, i), cps, config));
                 }
                 return newList;
             }
@@ -1983,7 +1983,7 @@ public final class NodeMapper {
                 int i = 0;
                 for (Object value : set) {
                     PathSegment cps = new PathSegment.Index(ps, i++);
-                    newList.add(_convertToRaw(value, cps, context));
+                    newList.add(_convertToRaw(value, cps, config));
                 }
                 return newList;
             }
@@ -2012,7 +2012,7 @@ public final class NodeMapper {
                         Map<String, Object> map = new LinkedHashMap<>();
                         for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
                             map.put(entry.getKey(), _convertToRaw(entry.getValue(),
-                                    new PathSegment.Name(ps, entry.getKey()), context));
+                                    new PathSegment.Name(ps, entry.getKey()), config));
                         }
                         return map;
                     }
@@ -2021,7 +2021,7 @@ public final class NodeMapper {
                         List<Object> list = new ArrayList<>(size);
                         for (int i = 0; i < size; i++) {
                             list.add(_convertToRaw(external.getInArray(node, i),
-                                    new PathSegment.Index(ps, i), context));
+                                    new PathSegment.Index(ps, i), config));
                         }
                         return list;
                     }
@@ -2030,7 +2030,7 @@ public final class NodeMapper {
                 }
             }
             if (ti.valueSet != null) {
-                String valueFormat = context.valueFormat(rawClazz);
+                String valueFormat = config.valueFormat(rawClazz);
                 ValueInfo valueInfo = ti.requireValueInfo(valueFormat);
                 return valueInfo.valueToRaw(node);
             }
@@ -2046,7 +2046,7 @@ public final class NodeMapper {
 
                     Object raw = value != null && propertyInfo.valueInfo != null
                             ? propertyInfo.valueInfo.valueToRaw(value)
-                            : _convertToRaw(value, cps, context);
+                            : _convertToRaw(value, cps, config);
 
                     newMap.put(propertyInfo.name, raw);
                 }

@@ -1,7 +1,7 @@
 package org.sjf4j.spring.example;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
@@ -41,7 +41,7 @@ class MyHttpMessageConverterTest {
     }
 
 
-    private final MyHttpMessageConverter converter = new MyHttpMessageConverter(RuntimeContext.EMPTY);
+    private final MyHttpMessageConverter converter = new MyHttpMessageConverter(NodeConfig.DEFAULT);
 
     @Test
     void handlesJsonRequestAndResponseInSpringMvc() throws Exception {

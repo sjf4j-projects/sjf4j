@@ -36,7 +36,7 @@ public final class JdbcMapperGenerator {
         }
 
         GeneratedClass generated = GeneratedClass.forInterface(context, mapper);
-        generated.enableRuntimeContext();
+        generated.enableNodeConfig();
 
         List<ResolvedMethod> abstractMethods = context.methods.abstractMethods(mapper);
         List<JdbcPlan> plans = new ArrayList<JdbcPlan>(abstractMethods.size());

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.net.URLClassLoader;
 import java.net.URI;
@@ -101,7 +101,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                 assertEquals("2024/02/03 04:05:06", normal.path("patterned").asText(), backend);
 
                 Object configured = CompiledInstances.create(binderType,
-                        new RuntimeContext(Map.of(Instant.class, "epochMillis")));
+                        new NodeConfig(Map.of(Instant.class, "epochMillis")));
                 JsonNode alternate = mapper.readTree((String) binderType.getMethod("write", beanType)
                         .invoke(configured, bean));
                 assertEquals(instant.toEpochMilli(), alternate.path("instant").asLong(), backend);

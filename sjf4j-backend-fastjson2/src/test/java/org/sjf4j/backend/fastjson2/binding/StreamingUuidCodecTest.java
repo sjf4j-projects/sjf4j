@@ -1,7 +1,7 @@
 package org.sjf4j.backend.fastjson2.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -43,7 +43,7 @@ class StreamingUuidCodecTest {
 
         Fastjson2Binder omitNulls = new Fastjson2Binder(
                 com.alibaba.fastjson2.JSONFactory.createReadContext(),
-                com.alibaba.fastjson2.JSONFactory.createWriteContext(), new RuntimeContext(false));
+                com.alibaba.fastjson2.JSONFactory.createWriteContext(), new NodeConfig(false));
         assertFalse(omitNulls.writeNodeAsString(holder).contains("\"optional\""));
     }
 

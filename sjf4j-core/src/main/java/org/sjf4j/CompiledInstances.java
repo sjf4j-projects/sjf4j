@@ -29,12 +29,12 @@ public final class CompiledInstances {
      * The returned instance is not cached.
      */
     public static <T> T create(Class<T> type) {
-        return create(type, RuntimeContext.EMPTY);
+        return create(type, NodeConfig.DEFAULT);
     }
 
     /** Creates an independent compiled implementation with the supplied settings. */
-    public static <T> T create(Class<T> type, RuntimeContext context) {
-        return _instantiate(type, RuntimeContext.class, Asserts.notNull(context, "context"));
+    public static <T> T create(Class<T> type, NodeConfig config) {
+        return _instantiate(type, NodeConfig.class, Asserts.notNull(config, "config"));
     }
 
     /**

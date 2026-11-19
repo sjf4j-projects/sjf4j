@@ -1,7 +1,7 @@
 package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
@@ -16,30 +16,30 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** SJF4J NodeValue contracts structurally adapted from Jackson custom-deserializer cases. */
 public abstract class ValueCodecDeserializationContract {
-    protected abstract Binder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     /** Structural source: ValueAnnotationsDeserTest#testRootInterfaceUsing; NodeValue replaces JsonDeserialize(using). */
     @Test void testRootInterfaceUsing() {
-        Code value = (Code) binding(RuntimeContext.EMPTY).readNode("\"alpha\"", Code.class);
-        assertEquals("alpha", value.value); assertEquals("alpha", binding(RuntimeContext.EMPTY).readNode(binding(RuntimeContext.EMPTY).writeNodeAsString(value), String.class));
+        Code value = (Code) binding(NodeConfig.DEFAULT).readNode("\"alpha\"", Code.class);
+        assertEquals("alpha", value.value); assertEquals("alpha", binding(NodeConfig.DEFAULT).readNode(binding(NodeConfig.DEFAULT).writeNodeAsString(value), String.class));
     }
     /** Structural source: ValueAnnotationsDeserTest#testRootInterfaceUsing; adapts root dispatch to a NodeValue field. */
     @Test void testValueCodecProperty() {
-        CodeHolder value = (CodeHolder) binding(RuntimeContext.EMPTY).readNode("{\"code\":\"beta\"}", CodeHolder.class);
+        CodeHolder value = (CodeHolder) binding(NodeConfig.DEFAULT).readNode("{\"code\":\"beta\"}", CodeHolder.class);
         assertEquals("beta", value.code.value);
     }
     /** Structural source: ValueAnnotationsDeserTest#testRootMapAsOld; its list root becomes a NodeValue list codec. */
     @Test void testValueCodecList() {
-            assertEquals(List.of("a", "b"), ((ListCode) binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", ListCode.class)).value);
+            assertEquals(List.of("a", "b"), ((ListCode) binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", ListCode.class)).value);
         }
     /** Structural source: ValueAnnotationsDeserTest#testRootListAsOld; its map root becomes a NodeValue map codec. */
     @Test void testValueCodecMap() {
-            assertEquals(Map.of("x", 3), ((MapCode) binding(RuntimeContext.EMPTY).readNode("{\"x\":3}", MapCode.class)).value);
+            assertEquals(Map.of("x", 3), ((MapCode) binding(NodeConfig.DEFAULT).readNode("{\"x\":3}", MapCode.class)).value);
         }
     /** JSON null is passed to the configured NodeValue decoder. */
     @Test void testNullValueCodec() {
-        Code root = (Code) binding(RuntimeContext.EMPTY).readNode("null", Code.class);
-        CodeHolder field = (CodeHolder) binding(RuntimeContext.EMPTY).readNode("{\"code\":null}", CodeHolder.class);
-        CreatorCodeHolder creator = (CreatorCodeHolder) binding(RuntimeContext.EMPTY).readNode("{\"code\":null}", CreatorCodeHolder.class);
+        Code root = (Code) binding(NodeConfig.DEFAULT).readNode("null", Code.class);
+        CodeHolder field = (CodeHolder) binding(NodeConfig.DEFAULT).readNode("{\"code\":null}", CodeHolder.class);
+        CreatorCodeHolder creator = (CreatorCodeHolder) binding(NodeConfig.DEFAULT).readNode("{\"code\":null}", CreatorCodeHolder.class);
 
         assertEquals("<null>", root.value);
         assertEquals("<null>", field.code.value);

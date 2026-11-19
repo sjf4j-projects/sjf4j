@@ -31,7 +31,7 @@ public final class GeneratedNames {
         Asserts.notNull(origin, "origin");
 
         // Fixed members emitted by GeneratedClass and BindingGenerator.
-        members.reserve(implementationName).reserve("context").reserve("binder");
+        members.reserve(implementationName).reserve("config").reserve("binder");
 
         // Include inherited and default methods, not just abstract methods.
         // The conservative shared namespace also avoids field/method/type

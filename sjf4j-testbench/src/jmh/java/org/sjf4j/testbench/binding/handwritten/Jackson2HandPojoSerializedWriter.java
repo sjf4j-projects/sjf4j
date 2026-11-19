@@ -11,7 +11,7 @@ import org.sjf4j.testbench.model.Users;
 
 import java.io.IOException;
 import java.net.URI;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import java.util.List;
 
 /** Direct Jackson UTF-8 writer for {@link Users}. */
@@ -54,12 +54,12 @@ public final class Jackson2HandPojoSerializedWriter {
 
     private Jackson2HandPojoSerializedWriter() {}
 
-    /** Backwards-compatible default; benchmarks pass the same context as Compiled. */
+    /** Backwards-compatible default; benchmarks pass the same config as Compiled. */
     public static void writeUsers(JsonGenerator g, Users v) throws IOException {
-        writeUsers(g, v, RuntimeContext.EMPTY);
+        writeUsers(g, v, NodeConfig.DEFAULT);
     }
 
-    public static void writeUsers(JsonGenerator g, Users v, RuntimeContext context)
+    public static void writeUsers(JsonGenerator g, Users v, NodeConfig config)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -67,9 +67,9 @@ public final class Jackson2HandPojoSerializedWriter {
         }
         g.writeStartObject();
         List<User> property0 = v.getUsers();
-        if (context.includeNulls || property0 != null) {
+        if (config.includeNulls || property0 != null) {
             g.writeFieldName(USERS);
-            users(g, property0, context);
+            users(g, property0, config);
         }
         g.writeFieldName(TOTAL);
         g.writeNumber(v.getTotal());
@@ -80,7 +80,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeEndObject();
     }
 
-    private static void users(JsonGenerator g, List<User> v, RuntimeContext context)
+    private static void users(JsonGenerator g, List<User> v, NodeConfig config)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -88,19 +88,19 @@ public final class Jackson2HandPojoSerializedWriter {
         }
         g.writeStartArray();
         if (v instanceof java.util.RandomAccess) {
-            for (int i = 0, n = v.size(); i < n; i++) writeUser(g, v.get(i), context);
+            for (int i = 0, n = v.size(); i < n; i++) writeUser(g, v.get(i), config);
         } else {
-            for (User item : v) writeUser(g, item, context);
+            for (User item : v) writeUser(g, item, config);
         }
         g.writeEndArray();
     }
 
     /** Field order and null-policy branches mirror generated CompiledBinder. */
     public static void writeUser(JsonGenerator g, User v) throws IOException {
-        writeUser(g, v, RuntimeContext.EMPTY);
+        writeUser(g, v, NodeConfig.DEFAULT);
     }
 
-    public static void writeUser(JsonGenerator g, User v, RuntimeContext context)
+    public static void writeUser(JsonGenerator g, User v, NodeConfig config)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -134,52 +134,52 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeFieldName(LONGITUDE);
         g.writeNumber(v.getLongitude());
         String property13 = v.getUsername();
-        if (context.includeNulls || property13 != null) {
+        if (config.includeNulls || property13 != null) {
             str(g, USERNAME, property13);
         }
         String property14 = v.getEmail();
-        if (context.includeNulls || property14 != null) {
+        if (config.includeNulls || property14 != null) {
             str(g, EMAIL, property14);
         }
         String property15 = v.getDisplayName();
-        if (context.includeNulls || property15 != null) {
+        if (config.includeNulls || property15 != null) {
             str(g, DISPLAY_NAME, property15);
         }
         String property16 = v.getPasswordHash();
-        if (context.includeNulls || property16 != null) {
+        if (config.includeNulls || property16 != null) {
             str(g, PASSWORD_HASH, property16);
         }
         String property17 = v.getBio();
-        if (context.includeNulls || property17 != null) {
+        if (config.includeNulls || property17 != null) {
             str(g, BIO, property17);
         }
         URI property18 = v.getWebsite();
-        if (context.includeNulls || property18 != null) {
+        if (config.includeNulls || property18 != null) {
             str(g, WEBSITE, ValueCodec.URI_CODEC.valueToRaw(property18));
         }
         String property19 = v.getDepartment();
-        if (context.includeNulls || property19 != null) {
+        if (config.includeNulls || property19 != null) {
             str(g, DEPARTMENT, property19);
         }
         Address property20 = v.getAddress();
-        if (context.includeNulls || property20 != null) {
+        if (config.includeNulls || property20 != null) {
             g.writeFieldName(ADDRESS);
-            address(g, property20, context);
+            address(g, property20, config);
         }
         List<String> property21 = v.getTags();
-        if (context.includeNulls || property21 != null) {
+        if (config.includeNulls || property21 != null) {
             g.writeFieldName(TAGS);
-            tags(g, property21, context);
+            tags(g, property21, config);
         }
         List<Friend> property22 = v.getFriends();
-        if (context.includeNulls || property22 != null) {
+        if (config.includeNulls || property22 != null) {
             g.writeFieldName(FRIENDS);
-            friends(g, property22, context);
+            friends(g, property22, config);
         }
         g.writeEndObject();
     }
 
-    private static void address(JsonGenerator g, Address v, RuntimeContext context)
+    private static void address(JsonGenerator g, Address v, NodeConfig config)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -187,29 +187,29 @@ public final class Jackson2HandPojoSerializedWriter {
         }
         g.writeStartObject();
         String property0 = v.getStreet();
-        if (context.includeNulls || property0 != null) {
+        if (config.includeNulls || property0 != null) {
             str(g, STREET, property0);
         }
         String property1 = v.getCity();
-        if (context.includeNulls || property1 != null) {
+        if (config.includeNulls || property1 != null) {
             str(g, CITY, property1);
         }
         String property2 = v.getState();
-        if (context.includeNulls || property2 != null) {
+        if (config.includeNulls || property2 != null) {
             str(g, STATE, property2);
         }
         String property3 = v.getZip();
-        if (context.includeNulls || property3 != null) {
+        if (config.includeNulls || property3 != null) {
             str(g, ZIP, property3);
         }
         String property4 = v.getCountry();
-        if (context.includeNulls || property4 != null) {
+        if (config.includeNulls || property4 != null) {
             str(g, COUNTRY, property4);
         }
         g.writeEndObject();
     }
 
-    private static void friends(JsonGenerator g, List<Friend> v, RuntimeContext context)
+    private static void friends(JsonGenerator g, List<Friend> v, NodeConfig config)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -217,14 +217,14 @@ public final class Jackson2HandPojoSerializedWriter {
         }
         g.writeStartArray();
         if (v instanceof java.util.RandomAccess) {
-            for (int i = 0, n = v.size(); i < n; i++) friend(g, v.get(i), context);
+            for (int i = 0, n = v.size(); i < n; i++) friend(g, v.get(i), config);
         } else {
-            for (Friend item : v) friend(g, item, context);
+            for (Friend item : v) friend(g, item, config);
         }
         g.writeEndArray();
     }
 
-    private static void friend(JsonGenerator g, Friend v, RuntimeContext context)
+    private static void friend(JsonGenerator g, Friend v, NodeConfig config)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -236,7 +236,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeFieldName(SINCE);
         g.writeNumber(v.getSince());
         String property2 = v.getName();
-        if (context.includeNulls || property2 != null) {
+        if (config.includeNulls || property2 != null) {
             str(g, NAME, property2);
         }
         g.writeFieldName(CLOSE);
@@ -244,7 +244,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeEndObject();
     }
 
-    private static void tags(JsonGenerator g, List<String> v, RuntimeContext context)
+    private static void tags(JsonGenerator g, List<String> v, NodeConfig config)
             throws IOException {
         if (v == null) {
             g.writeNull();

@@ -1,7 +1,7 @@
 package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -11,22 +11,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Retained SJF4J NodeValue dispatch contract; it is not Jackson-derived. */
 public abstract class RetainedValueCodecDeserializationContract {
-    protected abstract Binder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     @Test void testBooleanCodecAtRoot() {
-        assertEquals(true, ((BooleanCode) binding(RuntimeContext.EMPTY).readNode("true", BooleanCode.class)).value);
+        assertEquals(true, ((BooleanCode) binding(NodeConfig.DEFAULT).readNode("true", BooleanCode.class)).value);
     }
 
     @Test void testNumberCodecAtRoot() {
-        assertEquals(7, ((NumberCode) binding(RuntimeContext.EMPTY).readNode("7", NumberCode.class)).value.intValue());
+        assertEquals(7, ((NumberCode) binding(NodeConfig.DEFAULT).readNode("7", NumberCode.class)).value.intValue());
     }
 
     @Test void testBooleanCodecAtField() {
-        assertEquals(false, ((CodecHolder) binding(RuntimeContext.EMPTY).readNode("{\"booleanCode\":false}", CodecHolder.class)).booleanCode.value);
+        assertEquals(false, ((CodecHolder) binding(NodeConfig.DEFAULT).readNode("{\"booleanCode\":false}", CodecHolder.class)).booleanCode.value);
     }
 
     @Test void testNumberCodecAtField() {
-        assertEquals(8.5d, ((CodecHolder) binding(RuntimeContext.EMPTY).readNode("{\"numberCode\":8.5}", CodecHolder.class)).numberCode.value.doubleValue());
+        assertEquals(8.5d, ((CodecHolder) binding(NodeConfig.DEFAULT).readNode("{\"numberCode\":8.5}", CodecHolder.class)).numberCode.value.doubleValue());
     }
 
     @NodeValue static class BooleanCode {

@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.Strictness;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -20,7 +20,7 @@ class GsonBinderProviderTest {
         Gson gson = new GsonBuilder().setStrictness(Strictness.LENIENT).create();
         BinderProvider provider = GsonBinderProvider.of(gson);
 
-        GsonBinder binder = assertInstanceOf(GsonBinder.class, provider.create(RuntimeContext.EMPTY));
+        GsonBinder binder = assertInstanceOf(GsonBinder.class, provider.create(NodeConfig.DEFAULT));
 
         assertNull(binder.readNode("/* configured */ null", Object.class));
     }
@@ -30,7 +30,7 @@ class GsonBinderProviderTest {
         BinderProvider provider = BinderFactory.provider(Format.JSON);
 
         assertInstanceOf(GsonBinderProvider.class, provider);
-        assertInstanceOf(GsonBinder.class, provider.create(RuntimeContext.EMPTY));
+        assertInstanceOf(GsonBinder.class, provider.create(NodeConfig.DEFAULT));
     }
 
     @Test

@@ -39,8 +39,8 @@ public class UserService {
 The annotation processor writes `META-INF/sjf4j/compiled.interfaces`. The
 Spring integration collects these indexes across classpath JARs and registers
 lazy singleton Beans. An explicitly registered Bean of the same interface
-takes priority. A user-provided `RuntimeContext` Bean is used when available,
-otherwise `RuntimeContext.EMPTY` is used.
+takes priority. A user-provided `NodeConfig` Bean is used when available,
+otherwise `NodeConfig.DEFAULT` is used.
 
 Spring must discover your application configuration and service (for example,
 through `AnnotationConfigApplicationContext` and `@ComponentScan`). SJF4J

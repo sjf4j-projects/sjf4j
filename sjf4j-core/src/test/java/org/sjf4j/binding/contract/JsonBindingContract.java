@@ -1,7 +1,7 @@
 package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.binding.StreamingGenerator;
@@ -14,11 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Portable streaming-binding behavior. Subclasses opt parser bindings into this contract. */
 public abstract class JsonBindingContract {
 
-    protected abstract Binder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     @Test
     void readerAndWriterExposeStructuralJson() throws Exception {
-        Binder<?, ?> binding = binding(RuntimeContext.EMPTY);
+        Binder<?, ?> binding = binding(NodeConfig.DEFAULT);
         StringWriter output = new StringWriter();
         {
             StreamingGenerator generator = binding.createGenerator(output);

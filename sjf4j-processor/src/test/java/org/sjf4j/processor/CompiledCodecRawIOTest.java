@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.net.URLClassLoader;
 import java.time.Instant;
@@ -53,7 +53,7 @@ class CompiledCodecRawIOTest {
             assertTrue(generated.contains("rawClazz == Long.class")
                             || generated.contains("rawClazz == java.lang.Long.class"),
                     backend + ": explicit Instant Long optimization missing");
-            assertTrue(generated.contains(".writeRaw(rawValue, this.context)"),
+            assertTrue(generated.contains(".writeRaw(rawValue, this.config)"),
                     backend + ": runtime raw-type fallback missing");
             assertTrue(generated.contains(".streamParser.read("),
                     backend + ": compiled streaming codec read path missing");
@@ -80,7 +80,7 @@ class CompiledCodecRawIOTest {
 
                 Object defaults = CompiledInstances.create(binderType);
                 Object configured = CompiledInstances.create(binderType,
-                        new RuntimeContext(Map.of(Instant.class, "epochMillis")));
+                        new NodeConfig(Map.of(Instant.class, "epochMillis")));
                 String normal = (String) binderType.getMethod("write", beanType)
                         .invoke(defaults, bean);
                 String differentFormat = (String) binderType.getMethod("write", beanType)

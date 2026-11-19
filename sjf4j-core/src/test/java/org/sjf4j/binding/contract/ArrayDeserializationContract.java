@@ -1,7 +1,7 @@
 package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -10,42 +10,42 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Default array bindings from Jackson's ArrayDeserializationTest. */
 public abstract class ArrayDeserializationContract {
-    protected abstract Binder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** Source: ArrayDeserializationTest#testUntypedArray. */
     @Test
     void testUntypedArray() {
-        Object[] value = (Object[]) binding(RuntimeContext.EMPTY).readNode("[1,null,\"x\",true,2.0]", Object[].class);
+        Object[] value = (Object[]) binding(NodeConfig.DEFAULT).readNode("[1,null,\"x\",true,2.0]", Object[].class);
         assertEquals(5, value.length); assertEquals(1, value[0]); assertNull(value[1]); assertEquals("x", value[2]); assertEquals(true, value[3]); assertEquals(2.0, value[4]);
     }
 
     /** Source: ArrayDeserializationTest#testIntegerArray and #testStringArray. */
     @Test
     void testObjectArrays() {
-        assertArrayEquals(new Integer[] { 1, -2 }, (Integer[]) binding(RuntimeContext.EMPTY).readNode("[1,-2]", Integer[].class));
-        assertArrayEquals(new String[] { "a", null, "b" }, (String[]) binding(RuntimeContext.EMPTY).readNode("[\"a\",null,\"b\"]", String[].class));
+        assertArrayEquals(new Integer[] { 1, -2 }, (Integer[]) binding(NodeConfig.DEFAULT).readNode("[1,-2]", Integer[].class));
+        assertArrayEquals(new String[] { "a", null, "b" }, (String[]) binding(NodeConfig.DEFAULT).readNode("[\"a\",null,\"b\"]", String[].class));
     }
 
     /** Source: ArrayDeserializationTest#testBooleanArray, #testShortArray, #testIntArray, #testLongArray, #testFloatArray, and #testDoubleArray. */
     @Test
     void testPrimitiveArrays() {
-        assertArrayEquals(new boolean[] { true, false }, (boolean[]) binding(RuntimeContext.EMPTY).readNode("[true,false]", boolean[].class));
-        assertArrayEquals(new short[] { 1, -2 }, (short[]) binding(RuntimeContext.EMPTY).readNode("[1,-2]", short[].class));
-        assertArrayEquals(new int[] { 1, -2 }, (int[]) binding(RuntimeContext.EMPTY).readNode("[1,-2]", int[].class));
-        assertArrayEquals(new long[] { 1L, -2L }, (long[]) binding(RuntimeContext.EMPTY).readNode("[1,-2]", long[].class));
-        assertArrayEquals(new float[] { 1.5f, -2f }, (float[]) binding(RuntimeContext.EMPTY).readNode("[1.5,-2]", float[].class));
-        assertArrayEquals(new double[] { 1.5d, -2d }, (double[]) binding(RuntimeContext.EMPTY).readNode("[1.5,-2]", double[].class));
+        assertArrayEquals(new boolean[] { true, false }, (boolean[]) binding(NodeConfig.DEFAULT).readNode("[true,false]", boolean[].class));
+        assertArrayEquals(new short[] { 1, -2 }, (short[]) binding(NodeConfig.DEFAULT).readNode("[1,-2]", short[].class));
+        assertArrayEquals(new int[] { 1, -2 }, (int[]) binding(NodeConfig.DEFAULT).readNode("[1,-2]", int[].class));
+        assertArrayEquals(new long[] { 1L, -2L }, (long[]) binding(NodeConfig.DEFAULT).readNode("[1,-2]", long[].class));
+        assertArrayEquals(new float[] { 1.5f, -2f }, (float[]) binding(NodeConfig.DEFAULT).readNode("[1.5,-2]", float[].class));
+        assertArrayEquals(new double[] { 1.5d, -2d }, (double[]) binding(NodeConfig.DEFAULT).readNode("[1.5,-2]", double[].class));
     }
 
     /** Source: ArrayDeserializationTest#testCharArray. */
     @Test
     void testCharArray() {
-        assertArrayEquals("abc".toCharArray(), (char[]) binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\",\"c\"]", char[].class));
+        assertArrayEquals("abc".toCharArray(), (char[]) binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\",\"c\"]", char[].class));
     }
 
     /** Source: ArrayDeserializationTest#testByteArrayAsNumbers. */
     @Test
     void testByteArrayAsNumbers() {
-        assertArrayEquals(new byte[] { -1, 0, 127 }, (byte[]) binding(RuntimeContext.EMPTY).readNode("[-1,0,127]", byte[].class));
+        assertArrayEquals(new byte[] { -1, 0, 127 }, (byte[]) binding(NodeConfig.DEFAULT).readNode("[-1,0,127]", byte[].class));
     }
 }

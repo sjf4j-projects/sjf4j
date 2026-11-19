@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.backend.jsonp.external.JsonpExternalProvider;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.exception.BindingException;
@@ -97,9 +97,9 @@ class JsonpNodeTest {
         assertSame(array.get(0), arrayCopy.get(0));
 
         JsonObject mappedObject = (JsonObject) NodeMapper.convert(
-                java.util.Collections.singletonMap("value", 7), JsonObject.class, false, RuntimeContext.EMPTY);
+                java.util.Collections.singletonMap("value", 7), JsonObject.class, false, NodeConfig.DEFAULT);
         JsonArray mappedArray = (JsonArray) NodeMapper.convert(
-                Arrays.asList(1, 2), JsonArray.class, false, RuntimeContext.EMPTY);
+                Arrays.asList(1, 2), JsonArray.class, false, NodeConfig.DEFAULT);
         assertEquals(7, mappedObject.getInt("value"));
         assertEquals(2, mappedArray.getInt(1));
 

@@ -2,7 +2,7 @@ package org.sjf4j.binding.simple;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.binding.CompiledName;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 
 import java.io.BufferedWriter;
@@ -204,7 +204,7 @@ class SimpleJsonGeneratorTest {
 
     private static void assertJsonBinderRejectsNonFiniteNumber(Number value) {
         StringWriter output = new StringWriter();
-        assertThrows(BindingException.class, () -> new SimpleJsonBinder(RuntimeContext.EMPTY).writeNode(output, value));
+        assertThrows(BindingException.class, () -> new SimpleJsonBinder(NodeConfig.DEFAULT).writeNode(output, value));
         assertEquals("", output.toString());
     }
 

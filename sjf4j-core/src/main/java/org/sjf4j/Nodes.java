@@ -58,56 +58,56 @@ public final class Nodes {
      * Converts a node to a String with strict type checking.
      */
     public static String toString(Object node) {
-        return NodeMapper.toString(node, RuntimeContext.EMPTY);
+        return NodeMapper.toString(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to a String with flexible type conversion.
      */
     public static String asString(Object node) {
-        return NodeMapper.asString(node, RuntimeContext.EMPTY);
+        return NodeMapper.asString(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to Character using strict conversion.
      */
     public static Character toChar(Object node) {
-        return NodeMapper.toChar(node, RuntimeContext.EMPTY);
+        return NodeMapper.toChar(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to Character using lenient conversion.
      */
     public static Character asChar(Object node) {
-        return NodeMapper.asChar(node, RuntimeContext.EMPTY);
+        return NodeMapper.asChar(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to enum using strict conversion.
      */
     public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz) {
-        return NodeMapper.toEnum(node, enumClazz, RuntimeContext.EMPTY);
+        return NodeMapper.toEnum(node, enumClazz, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to enum using lenient conversion.
      */
     public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz) {
-        return NodeMapper.asEnum(node, enumClazz, RuntimeContext.EMPTY);
+        return NodeMapper.asEnum(node, enumClazz, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to a Number with strict type checking.
      */
     public static Number toNumber(Object node) {
-        return NodeMapper.toNumber(node, RuntimeContext.EMPTY);
+        return NodeMapper.toNumber(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to a Number with flexible type conversion.
      */
     public static Number asNumber(Object node) {
-        return NodeMapper.asNumber(node, RuntimeContext.EMPTY);
+        return NodeMapper.asNumber(node, NodeConfig.DEFAULT);
     }
 
 
@@ -259,14 +259,14 @@ public final class Nodes {
      * Converts a node to Boolean using strict conversion.
      */
     public static Boolean toBoolean(Object node) {
-        return NodeMapper.toBoolean(node, RuntimeContext.EMPTY);
+        return NodeMapper.toBoolean(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to Boolean using lenient conversion.
      */
     public static Boolean asBoolean(Object node) {
-        return NodeMapper.asBoolean(node, RuntimeContext.EMPTY);
+        return NodeMapper.asBoolean(node, NodeConfig.DEFAULT);
     }
 
     /**
@@ -278,7 +278,7 @@ public final class Nodes {
      * values retain their original references; this is not a deep copy.
      */
     public static JsonObject toJsonObject(Object node) {
-        return NodeMapper.toJsonObject(node, RuntimeContext.EMPTY);
+        return NodeMapper.toJsonObject(node, NodeConfig.DEFAULT);
     }
 
     /**
@@ -289,7 +289,7 @@ public final class Nodes {
      * gettable members; entry values are not recursively converted.
      */
     public static Map<String, Object> toMap(Object node) {
-        return NodeMapper.toMap(node, RuntimeContext.EMPTY);
+        return NodeMapper.toMap(node, NodeConfig.DEFAULT);
     }
 
     /**
@@ -297,7 +297,7 @@ public final class Nodes {
      * {@link #toMap(Object)}, this may convert entry values.
      */
     public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz) {
-        return NodeMapper.toMap(node, valueClazz, RuntimeContext.EMPTY);
+        return NodeMapper.toMap(node, valueClazz, NodeConfig.DEFAULT);
     }
 
     /**
@@ -309,7 +309,7 @@ public final class Nodes {
      * values retain their original references; this is not a deep copy.
      */
     public static JsonArray toJsonArray(Object node) {
-        return NodeMapper.toJsonArray(node, RuntimeContext.EMPTY);
+        return NodeMapper.toJsonArray(node, NodeConfig.DEFAULT);
     }
 
     /**
@@ -321,7 +321,7 @@ public final class Nodes {
      * recursively converted.
      */
     public static List<Object> toList(Object node) {
-        return NodeMapper.toList(node, RuntimeContext.EMPTY);
+        return NodeMapper.toList(node, NodeConfig.DEFAULT);
     }
 
     /**
@@ -329,35 +329,35 @@ public final class Nodes {
      * {@link #toList(Object)}, this may convert elements.
      */
     public static <T> List<T> toList(Object node, Class<T> elementClazz) {
-        return NodeMapper.toList(node, elementClazz, RuntimeContext.EMPTY);
+        return NodeMapper.toList(node, elementClazz, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to Object array.
      */
     public static Object[] toArray(Object node) {
-        return NodeMapper.toArray(node, RuntimeContext.EMPTY);
+        return NodeMapper.toArray(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to typed array.
      */
     public static <T> T[] toArray(Object node, Class<T> componentClazz) {
-        return NodeMapper.toArray(node, componentClazz, RuntimeContext.EMPTY);
+        return NodeMapper.toArray(node, componentClazz, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to Set with Object values.
      */
     public static Set<Object> toSet(Object node) {
-        return NodeMapper.toSet(node, RuntimeContext.EMPTY);
+        return NodeMapper.toSet(node, NodeConfig.DEFAULT);
     }
 
     /**
      * Converts a node to typed Set.
      */
     public static <T> Set<T> toSet(Object node, Class<T> elementClazz) {
-        return NodeMapper.toSet(node, elementClazz, RuntimeContext.EMPTY);
+        return NodeMapper.toSet(node, elementClazz, NodeConfig.DEFAULT);
     }
 
     /**
@@ -366,7 +366,7 @@ public final class Nodes {
      * List to JsonArray copy only the outer container, retaining nested values.
      */
     public static <T> T to(Object node, Class<T> clazz) {
-        return NodeMapper.to(node, clazz, RuntimeContext.EMPTY);
+        return NodeMapper.to(node, clazz, NodeConfig.DEFAULT);
     }
 
     /**
@@ -378,7 +378,7 @@ public final class Nodes {
      * conversions can throw.
      */
     public static <T> T as(Object node, Class<T> clazz) {
-        return NodeMapper.as(node, clazz, RuntimeContext.EMPTY);
+        return NodeMapper.as(node, clazz, NodeConfig.DEFAULT);
     }
 
 

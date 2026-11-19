@@ -3,7 +3,7 @@ package org.sjf4j.node;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.PropertyInfo;
@@ -579,7 +579,7 @@ public final class NodeWalker {
     public static <T> T getInObject(Object node, String key, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Object sub = getInObject(node, key);
-        return NodeMapper.to(sub, clazz, RuntimeContext.EMPTY);
+        return NodeMapper.to(sub, clazz, NodeConfig.DEFAULT);
     }
 
     /**
@@ -634,7 +634,7 @@ public final class NodeWalker {
     public static <T> T getInArray(Object node, int idx, Class<T> clazz) {
         Asserts.notNull(clazz, "clazz");
         Object sub = getInArray(node, idx);
-        return NodeMapper.to(sub, clazz, RuntimeContext.EMPTY);
+        return NodeMapper.to(sub, clazz, NodeConfig.DEFAULT);
     }
 
     /**

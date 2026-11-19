@@ -40,7 +40,7 @@ public final class Sjf4j {
 
     private static final Sjf4j GLOBAL = new Builder().build();
 
-    private final RuntimeContext runtimeContext;
+    private final NodeConfig nodeConfig;
     private final BinderProvider jsonProvider;
     private final BinderProvider yamlProvider;
 
@@ -56,15 +56,15 @@ public final class Sjf4j {
     }
 
     private Sjf4j(Builder builder) {
-        this.runtimeContext = new RuntimeContext(builder.valueFormats, builder.includeNulls);
+        this.nodeConfig = new NodeConfig(builder.valueFormats, builder.includeNulls);
 
         this.jsonProvider = builder.jsonProvider == null
                 ? BinderFactory.jsonProvider() : builder.jsonProvider;
-        this.jsonBinder = jsonProvider.create(this.runtimeContext);
+        this.jsonBinder = jsonProvider.create(this.nodeConfig);
 
         this.yamlProvider = builder.yamlProvider == null
                 ? BinderFactory.yamlProvider() : builder.yamlProvider;
-        this.yamlBinder = yamlProvider.create(this.runtimeContext);
+        this.yamlBinder = yamlProvider.create(this.nodeConfig);
 
         this.propertiesBinder = builder.propertiesBinder == null
                 ? new SimplePropertiesBinder() : builder.propertiesBinder;
@@ -100,8 +100,8 @@ public final class Sjf4j {
     /**
      * Returns the immutable runtime settings used by this instance.
      */
-    public RuntimeContext runtimeContext() {
-        return runtimeContext;
+    public NodeConfig nodeConfig() {
+        return nodeConfig;
     }
 
     /**
@@ -358,7 +358,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T convert(Object node, Class<T> clazz) {
-        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), false, runtimeContext);
+        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), false, nodeConfig);
     }
 
     /**
@@ -370,7 +370,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T convert(Object node, TypeReference<T> type) {
-        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), false, runtimeContext);
+        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), false, nodeConfig);
     }
 
     /**
@@ -382,7 +382,7 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T deepConvert(Object node, Class<T> clazz) {
-        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), true, runtimeContext);
+        return (T) NodeMapper.convert(node, Asserts.notNull(clazz, "clazz"), true, nodeConfig);
     }
 
     /**
@@ -394,14 +394,14 @@ public final class Sjf4j {
      */
     @SuppressWarnings("unchecked")
     public <T> T deepConvert(Object node, TypeReference<T> type) {
-        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), true, runtimeContext);
+        return (T) NodeMapper.convert(node, Asserts.notNull(type, "type").getType(), true, nodeConfig);
     }
 
     /**
      * Creates a recursive copy of supported OBNT structures, retaining the
      * source's runtime type. Returns {@code null} for a null source.
      * <p>
-     * Delegates to {@link NodeMapper#convert(Object, java.lang.reflect.Type, boolean, RuntimeContext)}
+     * Delegates to {@link NodeMapper#convert(Object, java.lang.reflect.Type, boolean, NodeConfig)}
      * with deep copying enabled. Unsupported values,
      * including external mutable containers without a deep-copy implementation,
      * fail with {@link org.sjf4j.exception.BindingException}.
@@ -409,7 +409,7 @@ public final class Sjf4j {
     @SuppressWarnings("unchecked")
     public <T> T deepCopy(T node) {
         if (node == null) return null;
-        return (T) NodeMapper.convert(node, node.getClass(), true, runtimeContext);
+        return (T) NodeMapper.convert(node, node.getClass(), true, nodeConfig);
     }
 
     /**
@@ -420,7 +420,7 @@ public final class Sjf4j {
      * value binding; scalar raw values may be returned unchanged.
      */
     public Object convertToRaw(Object node) {
-        return NodeMapper.convertToRaw(node, runtimeContext);
+        return NodeMapper.convertToRaw(node, nodeConfig);
     }
 
 
@@ -491,7 +491,7 @@ public final class Sjf4j {
         /**
          * Creates a builder initialized from an existing runtime instance.
          * <p>
-         * This copies binder providers and the current {@link RuntimeContext}
+         * This copies binder providers and the current {@link NodeConfig}
          * settings so callers can derive a slightly adjusted runtime.
          */
         public Builder(Sjf4j sjf4j) {
@@ -499,8 +499,8 @@ public final class Sjf4j {
             this.jsonProvider = sjf4j.jsonProvider;
             this.yamlProvider = sjf4j.yamlProvider;
             this.propertiesBinder = sjf4j.propertiesBinder;
-            sjf4j.runtimeContext.copyValueFormatsTo(this.valueFormats);
-            this.includeNulls = sjf4j.runtimeContext.includeNulls;
+            sjf4j.nodeConfig.copyValueFormatsTo(this.valueFormats);
+            this.includeNulls = sjf4j.nodeConfig.includeNulls;
         }
 
         /**

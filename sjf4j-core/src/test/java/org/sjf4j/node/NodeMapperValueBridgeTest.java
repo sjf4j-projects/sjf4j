@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -25,27 +25,27 @@ class NodeMapperValueBridgeTest {
     @Test
     void convertsDifferentNodeValuesThroughCompatibleRawWithoutCoercion() {
         A source = new A("hello");
-        B result = (B) NodeMapper.convert(source, B.class, false, RuntimeContext.EMPTY);
+        B result = (B) NodeMapper.convert(source, B.class, false, NodeConfig.DEFAULT);
         assertEquals("hello", result.text);
-        assertThrows(BindingException.class, () -> NodeMapper.convert(source, LongValue.class, false, RuntimeContext.EMPTY));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(source, LongValue.class, false, NodeConfig.DEFAULT));
     }
 
     @Test
     void sameTypeRetainsIdentityUnlessDeepCopyWasRequested() {
         A source = new A("hello");
-        assertSame(source, NodeMapper.convert(source, A.class, false, RuntimeContext.EMPTY));
-        A copy = (A) NodeMapper.convert(source, A.class, true, RuntimeContext.EMPTY);
+        assertSame(source, NodeMapper.convert(source, A.class, false, NodeConfig.DEFAULT));
+        A copy = (A) NodeMapper.convert(source, A.class, true, NodeConfig.DEFAULT);
         assertNotSame(source, copy);
         assertEquals("hello", copy.text);
     }
 
     @Test
     void nullRawValuesCanBeDecodedIntoNonNullNodeValues() {
-        assertNull(NodeMapper.convert(null, String.class, false, RuntimeContext.EMPTY));
-        assertEquals("<null>", ((B) NodeMapper.convert(null, B.class, false, RuntimeContext.EMPTY)).text);
-        assertEquals("<null>", ((B) NodeMapper.convert(new A(null), B.class, false, RuntimeContext.EMPTY)).text);
+        assertNull(NodeMapper.convert(null, String.class, false, NodeConfig.DEFAULT));
+        assertEquals("<null>", ((B) NodeMapper.convert(null, B.class, false, NodeConfig.DEFAULT)).text);
+        assertEquals("<null>", ((B) NodeMapper.convert(new A(null), B.class, false, NodeConfig.DEFAULT)).text);
         TargetHolder holder = (TargetHolder) NodeMapper.convert(
-                JsonObject.of("value", null), TargetHolder.class, false, RuntimeContext.EMPTY);
+                JsonObject.of("value", null), TargetHolder.class, false, NodeConfig.DEFAULT);
         assertEquals("<null>", holder.value.text);
     }
 
@@ -53,16 +53,16 @@ class NodeMapperValueBridgeTest {
     void mapRawCodecTransfersWithoutMaterializingAnotherTree() {
         Map<String, Object> raw = new LinkedHashMap<>();
         raw.put("nested", Arrays.asList(1, 2));
-        MapB target = (MapB) NodeMapper.convert(new MapA(raw), MapB.class, false, RuntimeContext.EMPTY);
+        MapB target = (MapB) NodeMapper.convert(new MapA(raw), MapB.class, false, NodeConfig.DEFAULT);
         assertSame(raw, target.raw);
-        assertThrows(BindingException.class, () -> NodeMapper.convert(new MapA(raw), B.class, false, RuntimeContext.EMPTY));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(new MapA(raw), B.class, false, NodeConfig.DEFAULT));
     }
 
     @Test
     void convertsValueElementsInTypedListAndMap() {
         List<B> list = (List<B>) NodeMapper.convert(
                 Arrays.asList(new A("a"), new A(null)),
-                new TypeReference<List<B>>() {}.getType(), false, RuntimeContext.EMPTY);
+                new TypeReference<List<B>>() {}.getType(), false, NodeConfig.DEFAULT);
         assertEquals("a", list.get(0).text);
         assertEquals("<null>", list.get(1).text);
 
@@ -70,7 +70,7 @@ class NodeMapperValueBridgeTest {
         source.put("first", new A("x"));
         source.put("second", null);
         Map<String, B> map = (Map<String, B>) NodeMapper.convert(
-                source, new TypeReference<Map<String, B>>() {}.getType(), false, RuntimeContext.EMPTY);
+                source, new TypeReference<Map<String, B>>() {}.getType(), false, NodeConfig.DEFAULT);
         assertEquals("x", map.get("first").text);
         assertEquals("<null>", map.get("second").text);
     }
@@ -80,14 +80,14 @@ class NodeMapperValueBridgeTest {
         SourceHolder source = new SourceHolder();
         source.value = new A("pojo");
         source.count = 3;
-        TargetCreator fromPojo = (TargetCreator) NodeMapper.convert(source, TargetCreator.class, false, RuntimeContext.EMPTY);
+        TargetCreator fromPojo = (TargetCreator) NodeMapper.convert(source, TargetCreator.class, false, NodeConfig.DEFAULT);
         assertEquals("pojo", fromPojo.value.text);
         assertEquals(3, fromPojo.count);
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("value", new A("map"));
         map.put("count", 4);
-        TargetCreator fromMap = (TargetCreator) NodeMapper.convert(map, TargetCreator.class, false, RuntimeContext.EMPTY);
+        TargetCreator fromMap = (TargetCreator) NodeMapper.convert(map, TargetCreator.class, false, NodeConfig.DEFAULT);
         assertEquals("map", fromMap.value.text);
         assertEquals(4, fromMap.count);
     }
@@ -103,11 +103,11 @@ class NodeMapperValueBridgeTest {
         map.put("count", 9);
 
         for (Object source : new Object[]{pojo, map, new JsonObject(map)}) {
-            TargetCreator creator = (TargetCreator) NodeMapper.convert(source, TargetCreator.class, false, RuntimeContext.EMPTY);
+            TargetCreator creator = (TargetCreator) NodeMapper.convert(source, TargetCreator.class, false, NodeConfig.DEFAULT);
             assertEquals("encoded", creator.value.text);
             assertEquals(9, creator.count);
 
-            TargetHolder holder = (TargetHolder) NodeMapper.convert(source, TargetHolder.class, false, RuntimeContext.EMPTY);
+            TargetHolder holder = (TargetHolder) NodeMapper.convert(source, TargetHolder.class, false, NodeConfig.DEFAULT);
             assertEquals("encoded", holder.value.text);
         }
     }

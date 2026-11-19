@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jackson3;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeMapper;
 import tools.jackson.databind.JsonNode;
@@ -28,28 +28,28 @@ class Jackson3ExternalMappingTest {
         source.put("name", "Ada");
         source.put("age", 32);
         source.put("items", Arrays.asList(1, null, 3));
-        ObjectNode node = (ObjectNode) NodeMapper.convert(source, JsonNode.class, false, RuntimeContext.EMPTY);
+        ObjectNode node = (ObjectNode) NodeMapper.convert(source, JsonNode.class, false, NodeConfig.DEFAULT);
 
         assertEquals("Ada", node.get("name").stringValue());
         assertEquals(32, node.get("age").intValue());
         assertTrue(node.get("items").get(1).isNull());
-        Person person = (Person) NodeMapper.convert(node, Person.class, false, RuntimeContext.EMPTY);
+        Person person = (Person) NodeMapper.convert(node, Person.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", person.name);
         assertEquals(32, person.age);
 
-        Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(node, RuntimeContext.EMPTY));
+        Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(node, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1, null, 3), raw.get("items"));
-        assertNull(NodeMapper.convert(null, JsonNode.class, false, RuntimeContext.EMPTY));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(source, StringNode.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(null, JsonNode.class, false, NodeConfig.DEFAULT));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(source, StringNode.class, false, NodeConfig.DEFAULT));
     }
 
     @Test
     void convertsJavaArraysToNativeArrays() {
-        ArrayNode node = (ArrayNode) NodeMapper.convert(new int[]{1, 2}, JsonNode.class, false, RuntimeContext.EMPTY);
+        ArrayNode node = (ArrayNode) NodeMapper.convert(new int[]{1, 2}, JsonNode.class, false, NodeConfig.DEFAULT);
         assertEquals(2, node.size());
         assertEquals(1, node.get(0).intValue());
         List<?> list = assertInstanceOf(List.class, NodeMapper.convert(node,
-                new org.sjf4j.TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY));
+                new org.sjf4j.TypeReference<List<Integer>>() {}.getType(), false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1, 2), list);
     }
 }

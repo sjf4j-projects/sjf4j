@@ -2,7 +2,7 @@ package org.sjf4j.binding;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeMapper;
@@ -31,22 +31,22 @@ public final class OneOfIO {
      * The caller owns document boundaries and parser lifecycle.
      */
     public static Object readOneOf(StreamingParser parser, OneOfInfo oneOfInfo,
-                                   RuntimeContext context) throws IOException {
+                                   NodeConfig config) throws IOException {
         if (parser.peekToken() == StreamingParser.Token.NULL) {
             parser.nextIfNull();
             return null;
         }
         return oneOfInfo.hasDiscriminator
-                ? readOneOfByDtor(parser, oneOfInfo, context)
-                : readOneOfByJsonType(parser, oneOfInfo, context);
+                ? readOneOfByDtor(parser, oneOfInfo, config)
+                : readOneOfByJsonType(parser, oneOfInfo, config);
     }
 
     static Object readOneOfByJsonType(StreamingParser parser, OneOfInfo oneOfInfo,
-                                      RuntimeContext context) throws IOException {
+                                      NodeConfig config) throws IOException {
         JsonType jsonType = parser.peekToken().jsonType();
         LazyTypeInfo target = oneOfInfo.lazyTypeInfoByJsonType(jsonType);
         if (target != null) {
-            return StreamingIO.readNode(parser, target.clazz, target.clazz, target.get(), context);
+            return StreamingIO.readNode(parser, target.clazz, target.clazz, target.get(), config);
         }
 
         if (oneOfInfo.fallbackNull) {
@@ -60,7 +60,7 @@ public final class OneOfIO {
 
 
     static Object readOneOfByDtor(StreamingParser parser, OneOfInfo oneOfInfo,
-                                  RuntimeContext context) throws IOException {
+                                  NodeConfig config) throws IOException {
         if (oneOfInfo.scope != OneOf.Scope.CURRENT) {
             throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + oneOfInfo.scope);
         }
@@ -75,20 +75,20 @@ public final class OneOfIO {
         }
 
         if (oneOfInfo.keyDiscriminator) {
-            return _readByDtorKey(parser, oneOfInfo, context);
+            return _readByDtorKey(parser, oneOfInfo, config);
         }
-        return _readByDtorPath(parser, oneOfInfo, context);
+        return _readByDtorPath(parser, oneOfInfo, config);
     }
 
 
     private static Object _readByDtorPath(StreamingParser parser, OneOfInfo oneOfInfo,
-                                          RuntimeContext context) throws IOException {
-        return _convertRawOneOf(parser.readRaw(), oneOfInfo, context);
+                                          NodeConfig config) throws IOException {
+        return _convertRawOneOf(parser.readRaw(), oneOfInfo, config);
     }
 
 
     private static Object _readByDtorKey(StreamingParser parser, OneOfInfo oneOfInfo,
-                                         RuntimeContext context) throws IOException {
+                                         NodeConfig config) throws IOException {
         final boolean fallbackNull = oneOfInfo.fallbackNull;
         final String discriminatorKey = oneOfInfo.discriminatorKey;
         String[] pendingNames = null;
@@ -119,7 +119,7 @@ public final class OneOfIO {
                 }
 
                 return _readPojoRemaining(parser, target, pendingNames, pendingValues, pendingSize,
-                        discriminatorKey, discriminatorValue, context);
+                        discriminatorKey, discriminatorValue, config);
             }
 
             String name = parser.currentName();
@@ -148,7 +148,7 @@ public final class OneOfIO {
     private static Object _readPojoRemaining(StreamingParser parser, LazyTypeInfo target,
                                              String[] pendingNames, Object[] pendingValues, int pendingSize,
                                              String discriminatorKey, Object discriminatorValue,
-                                             RuntimeContext context) throws IOException {
+                                             NodeConfig config) throws IOException {
 
         Class<?> targetClazz = target.clazz;
         PojoInfo pi = target.requirePojoInfo();
@@ -166,9 +166,9 @@ public final class OneOfIO {
          */
 
         for (int i = 0; i < pendingSize; i++) {
-            _acceptRawField(pendingNames[i], pendingValues[i], targetClazz, pi, state, context);
+            _acceptRawField(pendingNames[i], pendingValues[i], targetClazz, pi, state, config);
         }
-        _acceptRawField(discriminatorKey, discriminatorValue, targetClazz, pi, state, context);
+        _acceptRawField(discriminatorKey, discriminatorValue, targetClazz, pi, state, config);
 
         // Creator-bound types already have an index-aligned matcher. Let the
         // backend recognize field names directly, rather than allocating names
@@ -192,21 +192,21 @@ public final class OneOfIO {
                         ValueInfo codec = ci.argValueCodecs[argIdx];
                         Object value;
                         if (ci.argOneOfInfos[argIdx] != null) {
-                            value = readOneOf(parser, ci.argOneOfInfos[argIdx], context);
+                            value = readOneOf(parser, ci.argOneOfInfos[argIdx], config);
                         } else if (codec != null) {
-                            value = StreamingIO.readValueCodec(parser, codec, context);
+                            value = StreamingIO.readValueCodec(parser, codec, config);
                         } else {
                             LazyTypeInfo lazy = ci.argTypeInfos[argIdx];
                             if (lazy != null) {
                                 value = StreamingIO.readNode(parser, lazy.clazz, Types.box(lazy.clazz),
-                                        lazy.get(), context);
+                                        lazy.get(), config);
                             } else {
                                 Type argType = ci.argGenericDependent[argIdx]
                                         ? Types.resolveMemberType(targetClazz, targetClazz, ci.argTypes[argIdx])
                                         : ci.argTypes[argIdx];
                                 Class<?> argBoxed = Types.rawBox(argType);
                                 TypeInfo argTi = TypeRegistry.registerTypeInfo(argBoxed);
-                                value = StreamingIO.readNode(parser, argType, argBoxed, argTi, context);
+                                value = StreamingIO.readNode(parser, argType, argBoxed, argTi, config);
                             }
                         }
                         state.acceptCtorArg(argIdx, value);
@@ -216,9 +216,9 @@ public final class OneOfIO {
                     PropertyInfo fi = pi.creatorMatchProperties[index];
                     if (fi != null && fi.parser != null) {
                         if (state.isCreated()) {
-                            fi.parser.parse(parser, state.pojo(), targetClazz, targetClazz, context);
+                            fi.parser.parse(parser, state.pojo(), targetClazz, targetClazz, config);
                         } else {
-                            Object value = StreamingIO.readProperty(parser, fi, targetClazz, targetClazz, context);
+                            Object value = StreamingIO.readProperty(parser, fi, targetClazz, targetClazz, config);
                             state.bufferProperty(fi, value);
                         }
                         continue;
@@ -248,7 +248,7 @@ public final class OneOfIO {
             }
 
             if (index >= 0) {
-                pi.propertyParsers[index].parse(parser, state.pojo(), targetClazz, targetClazz, context);
+                pi.propertyParsers[index].parse(parser, state.pojo(), targetClazz, targetClazz, config);
                 expectedIndex = index + 1;
             } else if (pi.isJojo && pi.readDynamic) {
                 String key = parser.currentName();
@@ -285,14 +285,14 @@ public final class OneOfIO {
 
 
     private static void _acceptRawField(String key, Object rawValue, Class<?> ownerClazz,
-                                        PojoInfo pi, CreatorState state, RuntimeContext context) {
+                                        PojoInfo pi, CreatorState state, NodeConfig config) {
 
         CreatorInfo ci = pi.requireCreatorInfo();
         int argIdx = ci.getArgIndexOrAlias(key);
         if (argIdx >= 0) {
             Object value;
             if (ci.argOneOfInfos[argIdx] != null) {
-                value = _convertRawOneOf(rawValue, ci.argOneOfInfos[argIdx], context);
+                value = _convertRawOneOf(rawValue, ci.argOneOfInfos[argIdx], config);
             } else if (ci.argValueCodecs[argIdx] != null) {
                 ValueInfo codec = ci.argValueCodecs[argIdx];
                 if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
@@ -307,13 +307,13 @@ public final class OneOfIO {
                     Class<?> boxed = Types.rawBox(argType);
                     TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
                     if (ti.valueSet != null) {
-                        ValueInfo selected = ti.valueSet.selectForRead(JsonType.NUMBER, context.valueFormat(boxed));
+                        ValueInfo selected = ti.valueSet.selectForRead(JsonType.NUMBER, config.valueFormat(boxed));
                         if (Number.class.isAssignableFrom(selected.rawClazz)) {
                             rawValue = Numbers.to((Number) rawValue, selected.rawClazz);
                         }
                     }
                 }
-                value = NodeMapper.convert(rawValue, argType, false, context);
+                value = NodeMapper.convert(rawValue, argType, false, config);
             }
             state.acceptCtorArg(argIdx, value);
             return;
@@ -323,7 +323,7 @@ public final class OneOfIO {
         if (fi != null && fi.settable) {
             Object value;
             if (fi.oneOfInfo != null) {
-                value = _convertRawOneOf(rawValue, fi.oneOfInfo, context);
+                value = _convertRawOneOf(rawValue, fi.oneOfInfo, config);
             } else if (fi.valueInfo != null) {
                 ValueInfo codec = fi.valueInfo;
                 if (rawValue instanceof Number && Number.class.isAssignableFrom(codec.rawClazz)) {
@@ -336,13 +336,13 @@ public final class OneOfIO {
                     Class<?> boxed = Types.rawBox(argType);
                     TypeInfo ti = TypeRegistry.registerTypeInfo(boxed);
                     if (ti.valueSet != null) {
-                        ValueInfo selected = ti.valueSet.selectForRead(JsonType.NUMBER, context.valueFormat(boxed));
+                        ValueInfo selected = ti.valueSet.selectForRead(JsonType.NUMBER, config.valueFormat(boxed));
                         if (Number.class.isAssignableFrom(selected.rawClazz)) {
                             rawValue = Numbers.to((Number) rawValue, selected.rawClazz);
                         }
                     }
                 }
-                value = NodeMapper.convert(rawValue, argType, false, context);
+                value = NodeMapper.convert(rawValue, argType, false, config);
             }
             if (state.isCreated()) {
                 fi.invokeSetter(state.pojo(), value);
@@ -359,7 +359,7 @@ public final class OneOfIO {
 
 
     /** Converts an already-buffered OneOf node using its explicit member metadata. */
-    private static Object _convertRawOneOf(Object raw, OneOfInfo info, RuntimeContext context) {
+    private static Object _convertRawOneOf(Object raw, OneOfInfo info, NodeConfig config) {
         if (raw == null) return null;
 
         LazyTypeInfo target;
@@ -385,7 +385,7 @@ public final class OneOfIO {
             target = info.lazyTypeInfoByWhen(discriminator);
         }
 
-        if (target != null) return NodeMapper.convert(raw, target.clazz, false, context);
+        if (target != null) return NodeMapper.convert(raw, target.clazz, false, config);
         if (info.fallbackNull) return null;
         throw new BindingException("oneOf mapping has no matching target for type '" + info.clazz.getName() + "'");
     }

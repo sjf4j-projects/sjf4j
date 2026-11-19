@@ -43,7 +43,7 @@ final class StreamingWriteEmitter {
                 break;
             case JSON_OBJECT:
             case JSON_ARRAY:
-                out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
+                out.line(STREAMING_IO + ".writeNode(generator, value, this.config);");
                 break;
             case LIST:
             case SET:
@@ -80,7 +80,7 @@ final class StreamingWriteEmitter {
             String expression = "(" + type + ") value";
             if (subtype.cachedPojo) {
                 out.line(STREAMING_IO + ".writePojo(generator, value, " + metadata
-                        + ", this.context);");
+                        + ", this.config);");
             } else {
                 writeValue(out, subtype.compiled, "generator", expression);
             }
@@ -88,7 +88,7 @@ final class StreamingWriteEmitter {
             out.endBlock();
         }
         // Unknown classes and subtypes with inaccessible fields retain Runtime semantics.
-        out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
+        out.line(STREAMING_IO + ".writeNode(generator, value, this.config);");
     }
 
     private void emitPojo(JavaWriter out, BindingValue value) {
@@ -117,7 +117,7 @@ final class StreamingWriteEmitter {
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
                     + "value.dynamicMembers().entrySet())");
             out.line("generator.writeName(entry.getKey(), count++ > 0);");
-            out.line(STREAMING_IO + ".writeNode(generator, entry.getValue(), this.context);");
+            out.line(STREAMING_IO + ".writeNode(generator, entry.getValue(), this.config);");
             out.endBlock();
         }
 
@@ -166,7 +166,7 @@ final class StreamingWriteEmitter {
             // helper. A mixed compiled parent can still reach them.
             if (!requiresWriteHelper(value)) {
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
-                        + expression + ", this.context);");
+                        + expression + ", this.config);");
                 return;
             }
             // All remaining helpers use the same (generator, value) convention.
@@ -240,7 +240,7 @@ final class StreamingWriteEmitter {
 
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
-                        + expression + ", this.context);");
+                        + expression + ", this.config);");
                 return;
 
             default:

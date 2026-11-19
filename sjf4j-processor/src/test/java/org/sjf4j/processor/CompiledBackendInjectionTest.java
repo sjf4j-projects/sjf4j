@@ -2,7 +2,7 @@ package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.backend.gson.binding.GsonBinder;
 import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
@@ -124,13 +124,13 @@ class CompiledBackendInjectionTest {
             Class<?> beanType = loader.loadClass("fixture.Bean");
             Object bean = beanType.getConstructor().newInstance();
 
-            RuntimeContext context = new RuntimeContext(
+            NodeConfig config = new NodeConfig(
                     Map.of(java.time.Instant.class, "epochMillis"), false);
-            Jackson2Binder backend = new Jackson2Binder(new JsonFactory(), context);
-            assertSame(context, backend.context());
+            Jackson2Binder backend = new Jackson2Binder(new JsonFactory(), config);
+            assertSame(config, backend.config());
 
             Object byBackend = CompiledInstances.create(binderType, backend);
-            Object byContext = CompiledInstances.create(binderType, context);
+            Object byContext = CompiledInstances.create(binderType, config);
             String expected = "{\"present\":\"ok\",\"when\":1234}";
             assertEquals(expected, binderType.getMethod("write", beanType).invoke(byBackend, bean));
             assertEquals(expected, binderType.getMethod("write", beanType).invoke(byContext, bean));

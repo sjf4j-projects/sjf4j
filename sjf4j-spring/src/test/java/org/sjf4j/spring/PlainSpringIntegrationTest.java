@@ -1,7 +1,7 @@
 package org.sjf4j.spring;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -50,12 +50,12 @@ class PlainSpringIntegrationTest {
     }
 
     @Test
-    void usesApplicationRuntimeContextWhenAvailable() {
+    void usesApplicationNodeConfigWhenAvailable() {
         try (AnnotationConfigApplicationContext context =
                 new AnnotationConfigApplicationContext(RuntimeConfig.class)) {
 
-            assertTrue(context.containsBean("runtimeContext"));
-            assertTrue(!context.getBean(RuntimeContext.class).includeNulls);
+            assertTrue(context.containsBean("nodeConfig"));
+            assertTrue(!context.getBean(NodeConfig.class).includeNulls);
             assertNotNull(context.getBean(SpringFixtures.UserMapper.class));
         }
     }
@@ -103,8 +103,8 @@ class PlainSpringIntegrationTest {
     @EnableSjf4j
     static class RuntimeConfig {
         @Bean
-        RuntimeContext runtimeContext() {
-            return new RuntimeContext(false);
+        NodeConfig nodeConfig() {
+            return new NodeConfig(false);
         }
     }
 

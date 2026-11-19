@@ -16,7 +16,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.mapping.CompiledMapper;
 import org.sjf4j.node.NodeMapper;
@@ -123,13 +123,13 @@ public class NodeMapperBenchmark {
                 "labels", labelNodes, "primaryLabel", "primary-production");
         compiledMapper = CompiledInstances.create(UserGraphMapper.class);
         assertGraph(compiledMapper.map(userGraphNode), userGraph);
-        assertGraph((UserGraph) NodeMapper.convert(userGraphNode, UserGraph.class, false, RuntimeContext.EMPTY), userGraph);
+        assertGraph((UserGraph) NodeMapper.convert(userGraphNode, UserGraph.class, false, NodeConfig.DEFAULT), userGraph);
         assertGraph(readUserGraph(userGraphNode), userGraph);
     }
 
     @Benchmark
     public Object nodeMapper_fullGraph_read() {
-        return NodeMapper.convert(userGraphNode, UserGraph.class, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(userGraphNode, UserGraph.class, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
@@ -139,7 +139,7 @@ public class NodeMapperBenchmark {
 
     @Benchmark
     public Object nodeMapper_fullGraph_write() {
-        return NodeMapper.convertToRaw(userGraph, RuntimeContext.EMPTY);
+        return NodeMapper.convertToRaw(userGraph, NodeConfig.DEFAULT);
     }
 
     @Benchmark
@@ -154,27 +154,27 @@ public class NodeMapperBenchmark {
 
     @Benchmark
     public Object nodeMapper_users_nestedCollection_read() {
-        return NodeMapper.convert(usersNode, Users.class, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(usersNode, Users.class, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_oneOf_login_read() {
-        return NodeMapper.convert(loginEventNode, UserEvent.class, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(loginEventNode, UserEvent.class, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_oneOf_comment_read() {
-        return NodeMapper.convert(commentEventNode, UserEvent.class, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(commentEventNode, UserEvent.class, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_oneOf_eventsList_read() {
-        return NodeMapper.convert(eventsNode, EVENT_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(eventsNode, EVENT_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_nodeValue_map_read() {
-        return NodeMapper.convert(valueMapNode, VALUE_MAP_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(valueMapNode, VALUE_MAP_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @CompiledMapper
@@ -284,7 +284,7 @@ public class NodeMapperBenchmark {
                         JsonObject.of("id", 2000L + index, "since", 1_600_000_000_000L + index,
                                 "name", "Friend " + index, "close", true),
                         JsonObject.of("id", 3000L + index, "since", 1_610_000_000_000L + index,
-                                "name", "Colleague " + index, "close", false, RuntimeContext.EMPTY)));
+                                "name", "Colleague " + index, "close", false, NodeConfig.DEFAULT)));
     }
 
     private static long updatedAt(int index) {

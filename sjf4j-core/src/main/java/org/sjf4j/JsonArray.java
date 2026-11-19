@@ -296,7 +296,7 @@ public class JsonArray extends JsonContainer {
      * Structurally converts a value to a JsonArray.
      */
     public static JsonArray fromNode(Object node) {
-        return (JsonArray) NodeMapper.convert(node, JsonArray.class, false, RuntimeContext.EMPTY);
+        return (JsonArray) NodeMapper.convert(node, JsonArray.class, false, NodeConfig.DEFAULT);
     }
 
 

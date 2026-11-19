@@ -1,7 +1,7 @@
 package org.sjf4j.testbench.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NamingStrategy;
 import org.sjf4j.annotation.node.NodeObject;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RecordBindingTest {
-    private final SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+    private final SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
     @Test
     void bindsCanonicalArgumentsRegardlessOfJsonOrder() {

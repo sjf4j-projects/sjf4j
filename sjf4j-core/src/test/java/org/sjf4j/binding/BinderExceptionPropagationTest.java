@@ -1,7 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.path.PathSegment;
 
@@ -52,7 +52,7 @@ class BinderExceptionPropagationTest {
         private final RuntimeException failure;
 
         private FailingBinder(RuntimeException failure) {
-            super(RuntimeContext.EMPTY);
+            super(NodeConfig.DEFAULT);
             this.failure = failure;
         }
 

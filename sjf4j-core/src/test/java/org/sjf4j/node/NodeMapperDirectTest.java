@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.NodeException;
 
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public class NodeMapperDirectTest {
 
     @Test
     void directAdaptationRejectsInvalidValuesAndKeepsEmptyCopiesMutable() {
-        RuntimeContext ctx = RuntimeContext.EMPTY;
+        NodeConfig ctx = NodeConfig.DEFAULT;
 
         // Lenient string adaptation accepts scalar values only.
         assertEquals("123", NodeMapper.asString(123, ctx));

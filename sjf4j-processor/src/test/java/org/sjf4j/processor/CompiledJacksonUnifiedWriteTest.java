@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.net.URLClassLoader;
 import java.util.LinkedHashMap;
@@ -68,10 +68,10 @@ class CompiledJacksonUnifiedWriteTest {
                 assertTrue(generated.contains("private static void _writeStringMember("), backend);
                 assertTrue(generated.contains("boolean includeNulls)"), backend);
                 assertTrue(generated.contains("if (includeNulls)"), backend);
-                assertTrue(generated.contains(", this.context.includeNulls);"), backend);
+                assertTrue(generated.contains(", this.config.includeNulls);"), backend);
             } else {
                 assertTrue(generated.contains("private void _writeStringMember("), backend);
-                assertTrue(generated.contains("if (this.context.includeNulls)"), backend);
+                assertTrue(generated.contains("if (this.config.includeNulls)"), backend);
                 assertFalse(generated.contains("boolean includeNulls)"), backend);
             }
             assertTrue(generated.contains("if (value == null)"), backend);
@@ -81,7 +81,7 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
-            assertTrue(generated.contains("this.context.includeNulls"), backend);
+            assertTrue(generated.contains("this.config.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(generator,"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -89,7 +89,7 @@ class CompiledJacksonUnifiedWriteTest {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Object model = modelType.getConstructor().newInstance();
                 Object normal = CompiledInstances.create(binderType);
-                Object withoutNulls = CompiledInstances.create(binderType, new RuntimeContext(false));
+                Object withoutNulls = CompiledInstances.create(binderType, new NodeConfig(false));
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
                 java.lang.reflect.Method writeList = binderType.getMethod("writeList", java.util.List.class);
                 java.util.List<String> words = java.util.Arrays.asList("one", null, "two");

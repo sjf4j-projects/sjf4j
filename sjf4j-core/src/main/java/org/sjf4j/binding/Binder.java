@@ -1,6 +1,6 @@
 package org.sjf4j.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
@@ -25,15 +25,15 @@ import java.nio.charset.StandardCharsets;
  */
 public abstract class Binder<R extends StreamingParser, W extends StreamingGenerator> {
 
-    protected final RuntimeContext context;
+    protected final NodeConfig config;
 
-    protected Binder(RuntimeContext context) {
-        this.context = Asserts.notNull(context, "context");
+    protected Binder(NodeConfig config) {
+        this.config = Asserts.notNull(config, "config");
     }
 
     /** Returns this backend Binder's immutable SJF4J runtime settings. */
-    public final RuntimeContext context() {
-        return context;
+    public final NodeConfig config() {
+        return config;
     }
 
     /*
@@ -80,7 +80,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (StreamingParser parser = createParser(input)) {
                 parser.start();
-                Object node = StreamingIO.readNode(parser, type, context);
+                Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
                 return node;
             }
@@ -100,7 +100,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (StreamingParser parser = createParser(input)) {
                 parser.start();
-                Object node = StreamingIO.readNode(parser, type, context);
+                Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
                 return node;
             }
@@ -120,7 +120,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (StreamingParser parser = createParser(input)) {
                 parser.start();
-                Object node = StreamingIO.readNode(parser, type, context);
+                Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
                 return node;
             }
@@ -140,7 +140,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (StreamingParser parser = createParser(input)) {
                 parser.start();
-                Object node = StreamingIO.readNode(parser, type, context);
+                Object node = StreamingIO.readNode(parser, type, config);
                 parser.end();
                 return node;
             }
@@ -177,7 +177,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (StreamingGenerator generator = createGenerator(output)) {
                 generator.start();
-                StreamingIO.writeNode(generator, node, context);
+                StreamingIO.writeNode(generator, node, config);
                 generator.end();
             }
         } catch (BindingException e) {
@@ -195,7 +195,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (StreamingGenerator generator = createGenerator(output)) {
                 generator.start();
-                StreamingIO.writeNode(generator, node, context);
+                StreamingIO.writeNode(generator, node, config);
                 generator.end();
             }
         } catch (BindingException e) {
@@ -213,7 +213,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (W generator = createGenerator(output)) {
                 generator.start();
-                StreamingIO.writeNode(generator, node, context);
+                StreamingIO.writeNode(generator, node, config);
                 generator.end();
             }
             return output.toString();
@@ -234,7 +234,7 @@ public abstract class Binder<R extends StreamingParser, W extends StreamingGener
         try {
             try (W generator = createGenerator(output)) {
                 generator.start();
-                StreamingIO.writeNode(generator, node, context);
+                StreamingIO.writeNode(generator, node, config);
                 generator.end();
             }
             return output.toByteArray();

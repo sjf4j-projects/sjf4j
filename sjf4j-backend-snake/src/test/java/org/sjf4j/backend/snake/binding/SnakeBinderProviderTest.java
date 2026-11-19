@@ -1,7 +1,7 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -22,7 +22,7 @@ class SnakeBinderProviderTest {
         dumperOptions.setIndent(4);
         BinderProvider provider = SnakeBinderProvider.of(new LoaderOptions(), dumperOptions);
 
-        SnakeBinder binder = assertInstanceOf(SnakeBinder.class, provider.create(RuntimeContext.EMPTY));
+        SnakeBinder binder = assertInstanceOf(SnakeBinder.class, provider.create(NodeConfig.DEFAULT));
 
         assertTrue(binder.writeNodeAsString(Map.of("parent", Map.of("child", "value")))
                 .contains("\n    child: value"));
@@ -33,7 +33,7 @@ class SnakeBinderProviderTest {
         BinderProvider provider = BinderFactory.provider(Format.YAML);
 
         assertInstanceOf(SnakeBinderProvider.class, provider);
-        assertInstanceOf(SnakeBinder.class, provider.create(RuntimeContext.EMPTY));
+        assertInstanceOf(SnakeBinder.class, provider.create(NodeConfig.DEFAULT));
     }
 
     @Test

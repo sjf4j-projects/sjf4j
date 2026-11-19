@@ -12,21 +12,21 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class RuntimeContextTest {
+class NodeConfigTest {
     @Test
     void storesFormatsAndForwardsThemToCopies() {
-        RuntimeContext context = new RuntimeContext(Map.of(LocalDate.class, "ISO"), false);
+        NodeConfig config = new NodeConfig(Map.of(LocalDate.class, "ISO"), false);
         Map<Class<?>, String> formats = new LinkedHashMap<>();
-        context.copyValueFormatsTo(formats);
+        config.copyValueFormatsTo(formats);
 
-        assertFalse(context.includeNulls);
-        assertEquals("ISO", context.valueFormat(LocalDate.class));
-        assertNull(context.valueFormat(String.class));
+        assertFalse(config.includeNulls);
+        assertEquals("ISO", config.valueFormat(LocalDate.class));
+        assertNull(config.valueFormat(String.class));
         assertEquals(Map.of(LocalDate.class, "ISO"), formats);
     }
 
     @Test
-    void emptyContextIncludesNulls() {
-        assertTrue(RuntimeContext.EMPTY.includeNulls);
+    void defaultConfigIncludesNulls() {
+        assertTrue(NodeConfig.DEFAULT.includeNulls);
     }
 }

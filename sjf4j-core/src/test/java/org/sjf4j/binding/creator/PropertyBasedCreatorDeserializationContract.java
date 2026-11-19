@@ -3,14 +3,14 @@ package org.sjf4j.binding.creator;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class PropertyBasedCreatorDeserializationContract {
-    private final SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+    private final SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
     // Structural source: TestCreators#testConstructorAndProps; NodeCreator/NodeProperty replace JsonCreator/JsonProperty.
     @Test void constructorCreatorAcceptsOutOfOrderPropertiesAndThenCallsSetter() {

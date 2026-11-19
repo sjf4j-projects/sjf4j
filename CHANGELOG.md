@@ -246,7 +246,7 @@ and backend integrations. Previously generated compiled implementations must be 
 - Added `Nodes.shape(...)` and `JsonContainer.shape()` to produce compact inspect-style structural summaries that keep supported container structure while rendering terminal values by simple runtime type name.
 - Added Jackson 3 facade-node mutation support for object put/remove, array set/append/insert/remove, and JSONPath writes against Jackson 3 native tree nodes.
 - Added `@NodeBinding(readDynamic = ... , writeDynamic = ...)` for JOJO types so unknown-field retention on read and dynamic-property emission on write can be controlled per type.
-- Added instance-scoped `RuntimeContext`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
+- Added instance-scoped `NodeConfig`, facade providers, and new `Sjf4j.Builder` hooks so each runtime can build isolated JSON/YAML/properties/node facades with its own streaming mode.
 - Added `ValueFormatMapping`, named `ValueCodec` formats, `Sjf4j.Builder.defaultValueFormat(...)`, and `@NodeProperty(valueFormat = ...)` so value-codec selection can be configured per runtime, field, and creator parameter.
 - Added `Sjf4j.Builder.includeNulls(...)` so each runtime can choose whether JSON serialization keeps or omits `null` properties across Gson, Jackson 2, Jackson 3, and Fastjson2 facades.
 

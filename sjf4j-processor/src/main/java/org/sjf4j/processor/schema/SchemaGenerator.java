@@ -35,7 +35,7 @@ public final class SchemaGenerator {
 
         GeneratedClass generated = GeneratedClass.forInterface(context, iface);
         // Keep the CompiledInstances constructor protocol unchanged.
-        generated.enableRuntimeContext();
+        generated.enableNodeConfig();
 
         CompiledValidator options = iface.getAnnotation(CompiledValidator.class);
         // A fresh method generator per interface preserves plan sharing within

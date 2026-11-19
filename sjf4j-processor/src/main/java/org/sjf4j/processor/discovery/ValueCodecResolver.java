@@ -46,7 +46,7 @@ public final class ValueCodecResolver {
      * A statically known raw type is usable for specialization only if all
      * selectable declared formats agree (or an explicit format selects one).
      * Generated writers still check ValueInfo.rawClazz: runtime registrations
-     * and RuntimeContext defaults are not controlled by the processor.
+     * and NodeConfig defaults are not controlled by the processor.
      */
     public TypeMirror stableRawType(TypeMirror valueType, String format) {
         ensureScanned();

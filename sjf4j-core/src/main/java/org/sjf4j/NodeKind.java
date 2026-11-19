@@ -43,7 +43,7 @@ public enum NodeKind {
     /**
      * Logical value bindings classified by their default raw encoding.
      * MAP and LIST remain atomic value nodes, not traversable object/array nodes.
-     * A different RuntimeContext format may select another encoding.
+     * A different NodeConfig format may select another encoding.
      */
     VALUE_CODEC_STRING,
     VALUE_CODEC_NUMBER,

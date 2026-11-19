@@ -4,7 +4,7 @@ import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.util.Asserts;
 
 import java.io.FilterReader;
@@ -32,11 +32,11 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public JsonpBinder(RuntimeContext context) {
-        this(JsonProvider.provider(), context);
+    public JsonpBinder(NodeConfig config) {
+        this(JsonProvider.provider(), config);
     }
 
     /**
@@ -44,16 +44,16 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
      * @param provider the JSON-P provider
      */
     public JsonpBinder(JsonProvider provider) {
-        this(provider, RuntimeContext.EMPTY);
+        this(provider, NodeConfig.DEFAULT);
     }
 
     /**
      * Creates a binder with an explicit provider and runtime settings.
      * @param provider the JSON-P provider
-     * @param context the SJF4J runtime settings
+     * @param config the SJF4J runtime settings
      */
-    public JsonpBinder(JsonProvider provider, RuntimeContext context) {
-        super(context);
+    public JsonpBinder(JsonProvider provider, NodeConfig config) {
+        super(config);
         this.provider = Asserts.notNull(provider, "provider");
     }
 
