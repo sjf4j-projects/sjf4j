@@ -1,6 +1,7 @@
 package org.sjf4j.value;
 
 import org.sjf4j.NodeKind;
+import org.sjf4j.external.ExternalNode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.annotation.node.RawToValue;
@@ -139,8 +140,9 @@ public final class ValueRegistry {
      * {@link NodeRegistry} interface.
      *
      * <p>Fields must be public static final and methods public static with no
-     * parameters. Both must declare a concrete ValueCodec<V, R> type. The
-     * operation is idempotent for the same registry interface.
+     * parameters. Both must declare a concrete ValueCodec<V, R> type.
+     * ExternalNode declarations are ignored here; call
+     * {@link org.sjf4j.NodeRegistries#register(Class)} to register both kinds.
      * Register before type metadata has been analyzed.
      */
     public static void registerAnnotated(Class<?> registryClass) {
@@ -169,7 +171,15 @@ public final class ValueRegistry {
             }
         }
         if (declarations.isEmpty()) {
-            throw new BindingException("@NodeRegistry has no codec declarations: "
+            // External-only registries are valid; their adapters are handled by
+            // ExternalRegistry. A completely empty registry remains an error.
+            for (Field field : registryClass.getDeclaredFields()) {
+                if (ExternalNode.class.isAssignableFrom(field.getType())) return;
+            }
+            for (Method method : registryClass.getDeclaredMethods()) {
+                if (ExternalNode.class.isAssignableFrom(method.getReturnType())) return;
+            }
+            throw new BindingException("@NodeRegistry has no node declarations: "
                     + registryClass.getName());
         }
         // Resolve the declared default first, independently of reflection order.
