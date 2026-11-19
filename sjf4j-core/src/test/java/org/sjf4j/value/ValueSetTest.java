@@ -9,6 +9,7 @@ import org.sjf4j.node.NodeMapper;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.NodeRegistry;
 
 import java.util.Map;
 import java.util.List;
@@ -159,12 +160,14 @@ class ValueSetTest {
         };
     }
 
-    public static final class FirstNullCodec {
+    @NodeRegistry
+    public interface FirstNullCodec {
         @NodeValue(format = "first")
         public static final ValueCodec<NullTagged, Long> FIRST = nullTaggedCodec("first");
     }
 
-    public static final class DefaultNullCodec {
+    @NodeRegistry
+    public interface DefaultNullCodec {
         @NodeValue(format = "second", defaultCodec = true)
         public static final ValueCodec<NullTagged, Long> SECOND = nullTaggedCodec("default");
     }

@@ -1,6 +1,6 @@
 package org.sjf4j.processor.discovery;
 
-import org.sjf4j.annotation.binding.BindingOptions;
+import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.value.ValueCodec;
@@ -9,8 +9,8 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -19,16 +19,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Discovers registry holders. Only source declarations in the current processing
- * run can be enumerated; dependency classes require an explicit entry point.
- *
- * <p>This class discovers holder types, not codec instances. It never loads
- * application classes or executes initialization code.
- */
+/** Discovers source registry interfaces and explicitly selected dependency holders. */
 public final class RegistryDiscovery {
-
-    private static final String BUILTIN_VALUE_CODECS = ValueCodec.class.getName();
 
     private final ProcessorContext context;
     private final Map<String, TypeElement> sourceRegistries = new LinkedHashMap<>();
@@ -37,34 +29,37 @@ public final class RegistryDiscovery {
         this.context = context;
     }
 
-    /** Collects registry holders declared in this compilation round. */
+    /** No class loading or initialization occurs during discovery. */
     public void collect(RoundEnvironment roundEnv) {
+        for (Element element : roundEnv.getElementsAnnotatedWith(NodeRegistry.class)) {
+            if (element.getKind() != ElementKind.INTERFACE) {
+                context.error(element, "@NodeRegistry must annotate an interface");
+                continue;
+            }
+            TypeElement holder = (TypeElement) element;
+            sourceRegistries.put(holder.getQualifiedName().toString(), holder);
+        }
         for (Element element : roundEnv.getElementsAnnotatedWith(NodeValue.class)) {
-            if (element.getKind() != ElementKind.FIELD) continue;
-            Element holder = element.getEnclosingElement();
-            if (holder instanceof TypeElement) {
-                TypeElement type = (TypeElement) holder;
-                sourceRegistries.put(type.getQualifiedName().toString(), type);
+            if (element.getKind() != ElementKind.FIELD && element.getKind() != ElementKind.METHOD) continue;
+            Element owner = element.getEnclosingElement();
+            if (owner instanceof TypeElement && owner.getAnnotation(NodeRegistry.class) == null) {
+                context.error(element, "@NodeValue codec declaration requires @NodeRegistry on "
+                        + ((TypeElement) owner).getQualifiedName());
             }
         }
     }
 
-    /** Built-in and source registries, with a stable order and no duplicates. */
+    /** Built-ins, same-compilation declarations, then explicit dependency registries. */
     public List<TypeElement> registries(TypeElement owner) {
         Map<String, TypeElement> result = new LinkedHashMap<>();
-        TypeElement builtins = context.elements.getTypeElement(BUILTIN_VALUE_CODECS);
-        if (builtins != null) {
-            result.put(builtins.getQualifiedName().toString(), builtins);
-        }
+        TypeElement builtins = context.elements.getTypeElement(ValueCodec.class.getName());
+        if (builtins != null) result.put(builtins.getQualifiedName().toString(), builtins);
 
         List<String> names = new ArrayList<>(sourceRegistries.keySet());
         Collections.sort(names);
-        for (String name : names) {
-            result.putIfAbsent(name, sourceRegistries.get(name));
-        }
-        // An explicit list is scoped to the annotated compiled interface.
-        for (TypeElement registry : explicitRegistries(owner)) {
-            result.putIfAbsent(registry.getQualifiedName().toString(), registry);
+        for (String name : names) result.putIfAbsent(name, sourceRegistries.get(name));
+        for (TypeElement holder : explicitRegistries(owner)) {
+            result.putIfAbsent(holder.getQualifiedName().toString(), holder);
         }
         return new ArrayList<>(result.values());
     }
@@ -72,25 +67,27 @@ public final class RegistryDiscovery {
     private List<TypeElement> explicitRegistries(TypeElement owner) {
         List<TypeElement> registries = new ArrayList<>();
         for (AnnotationMirror annotation : owner.getAnnotationMirrors()) {
-            Element declaration = annotation.getAnnotationType().asElement();
-            if (!(declaration instanceof TypeElement)
-                    || !((TypeElement) declaration).getQualifiedName()
-                            .contentEquals(BindingOptions.class.getName())) {
-                continue;
-            }
-
+            String name = annotation.getAnnotationType().asElement().toString();
+            if (!name.equals("org.sjf4j.annotation.binding.CompiledBinder")
+                    && !name.equals("org.sjf4j.annotation.mapping.CompiledMapper")) continue;
             for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
                     context.elements.getElementValuesWithDefaults(annotation).entrySet()) {
                 if (!entry.getKey().getSimpleName().contentEquals("registries")) continue;
-
                 for (Object item : (List<?>) entry.getValue().getValue()) {
-                    TypeMirror type = (TypeMirror) ((AnnotationValue) item).getValue();
-                    Element element = context.typeUtils.asElement(type);
+                    TypeMirror mirror = (TypeMirror) ((AnnotationValue) item).getValue();
+                    Element element = context.typeUtils.asElement(mirror);
                     if (!(element instanceof TypeElement)) {
-                        context.error(owner, "cannot resolve @BindingOptions registry class '" + type + "'");
+                        context.error(owner, "cannot resolve @NodeRegistry interface '" + mirror + "'");
                         continue;
                     }
-                    registries.add((TypeElement) element);
+                    TypeElement holder = (TypeElement) element;
+                    if (holder.getKind() != ElementKind.INTERFACE
+                            || holder.getAnnotation(NodeRegistry.class) == null) {
+                        context.error(owner, "registries requires an @NodeRegistry interface: "
+                                + holder.getQualifiedName());
+                        continue;
+                    }
+                    registries.add(holder);
                 }
             }
         }

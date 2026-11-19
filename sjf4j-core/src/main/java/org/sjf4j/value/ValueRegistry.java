@@ -2,6 +2,7 @@ package org.sjf4j.value;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueCopy;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -13,8 +14,11 @@ import org.sjf4j.util.Asserts;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.Method;
@@ -131,21 +135,48 @@ public final class ValueRegistry {
     }
 
     /**
-     * Registers the public static final ValueCodec fields annotated with
-     * {@link NodeValue} on the specified declaring class. Registration must
-     * precede metadata analysis; this does not rescan inherited fields.
+     * Registers codec fields and factory methods on a
+     * {@link NodeRegistry} interface.
      *
-     * <p>Format names are unique for each domain type. An optional defaultCodec
-     * selects the default output representation without a format alias.
-     * Field names establish stable order within each shape.
+     * <p>Fields must be public static final and methods public static with no
+     * parameters. Both must declare a concrete ValueCodec<V, R> type. The
+     * operation is idempotent for the same registry interface.
+     * Register before type metadata has been analyzed.
      */
     public static void registerAnnotated(Class<?> registryClass) {
         Asserts.notNull(registryClass, "registryClass");
-
-        Field[] fields = registryClass.getDeclaredFields();
-        // Explicit defaults first, then stable field order within each type.
-        Arrays.sort(fields, Comparator.comparing((Field f) ->
-                !isDefaultCodec(f)).thenComparing(Field::getName));
+        if (!registryClass.isInterface()
+                || !registryClass.isAnnotationPresent(NodeRegistry.class)) {
+            throw new BindingException("expected @NodeRegistry interface: " + registryClass.getName());
+        }
+        List<AnnotatedElement> declarations = new ArrayList<>();
+        for (Field field : registryClass.getDeclaredFields()) {
+            if (field.isAnnotationPresent(NodeValue.class)
+                    || (Modifier.isPublic(field.getModifiers())
+                    && Modifier.isStatic(field.getModifiers())
+                    && Modifier.isFinal(field.getModifiers())
+                    && ValueCodec.class.isAssignableFrom(field.getType()))) {
+                declarations.add(field);
+            }
+        }
+        for (Method method : registryClass.getDeclaredMethods()) {
+            if (method.isAnnotationPresent(NodeValue.class)
+                    || (Modifier.isPublic(method.getModifiers())
+                    && Modifier.isStatic(method.getModifiers())
+                    && method.getParameterCount() == 0
+                    && ValueCodec.class.isAssignableFrom(method.getReturnType()))) {
+                declarations.add(method);
+            }
+        }
+        if (declarations.isEmpty()) {
+            throw new BindingException("@NodeRegistry has no codec declarations: "
+                    + registryClass.getName());
+        }
+        // Resolve the declared default first, independently of reflection order.
+        declarations.sort(Comparator.comparing((AnnotatedElement member) ->
+                !isDefaultCodec(member))
+                .thenComparing(member -> ((Member) member).getName())
+                .thenComparing(member -> member instanceof Field ? 0 : 1));
 
         List<ValueInfo> defaults = new ArrayList<>();
         List<ValueInfo> named = new ArrayList<>();
@@ -153,55 +184,69 @@ public final class ValueRegistry {
         Set<Class<?>> explicitDefaults = new HashSet<>();
         Map<Class<?>, IdentityHashMap<ValueCodec<?, ?>, String>> declaredCodecs = new HashMap<>();
 
-        for (Field field : fields) {
-            NodeValue annotation = field.getAnnotation(NodeValue.class);
-            if (annotation == null) continue;
-
-            int modifiers = field.getModifiers();
-            if (!Modifier.isPublic(modifiers) || !Modifier.isStatic(modifiers)
-                    || !Modifier.isFinal(modifiers)
-                    || !ValueCodec.class.isAssignableFrom(field.getType())) {
-                throw new BindingException("@NodeValue codec field must be public static final ValueCodec: " + field);
+        for (AnnotatedElement member : declarations) {
+            NodeValue annotation = member.getAnnotation(NodeValue.class);
+            Type declaredType;
+            ValueCodec<?, ?> codec;
+            if (member instanceof Field) {
+                Field field = (Field) member;
+                int modifiers = field.getModifiers();
+                if (!Modifier.isPublic(modifiers) || !Modifier.isStatic(modifiers)
+                        || !Modifier.isFinal(modifiers)
+                        || !ValueCodec.class.isAssignableFrom(field.getType())) {
+                    throw new BindingException("@NodeValue codec field must be public static final ValueCodec: " + field);
+                }
+                declaredType = field.getGenericType();
+                try {
+                    codec = (ValueCodec<?, ?>) field.get(null);
+                } catch (IllegalAccessException e) {
+                    throw new BindingException("cannot access @NodeValue codec field: " + field, e);
+                }
+            } else {
+                Method method = (Method) member;
+                int modifiers = method.getModifiers();
+                if (!Modifier.isPublic(modifiers) || !Modifier.isStatic(modifiers)
+                        || method.getParameterCount() != 0
+                        || !ValueCodec.class.isAssignableFrom(method.getReturnType())) {
+                    throw new BindingException("@NodeValue codec method must be public static, no-arg, "
+                            + "and return ValueCodec<V, R>: " + method);
+                }
+                declaredType = method.getGenericReturnType();
+                try {
+                    codec = (ValueCodec<?, ?>) method.invoke(null);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new BindingException("cannot invoke @NodeValue codec method: " + method, e);
+                }
             }
-
-            Type declaredType = field.getGenericType();
             if (!(declaredType instanceof ParameterizedType)) {
-                throw new BindingException("@NodeValue codec field must declare concrete V/R types: " + field);
+                throw new BindingException("@NodeValue codec declaration must specify concrete V/R types: " + member);
             }
             Type[] arguments = ((ParameterizedType) declaredType).getActualTypeArguments();
             if (arguments.length != 2 || !(arguments[0] instanceof Class)
                     || !(arguments[1] instanceof Class)) {
-                throw new BindingException("@NodeValue codec field must declare concrete V/R classes: " + field);
-            }
-
-            ValueCodec<?, ?> codec;
-            try {
-                codec = (ValueCodec<?, ?>) field.get(null);
-            } catch (IllegalAccessException e) {
-                throw new BindingException("cannot access @NodeValue codec field: " + field, e);
+                throw new BindingException("@NodeValue codec declaration must specify concrete V/R classes: " + member);
             }
             if (codec == null) {
-                throw new BindingException("@NodeValue codec field is null: " + field);
+                throw new BindingException("@NodeValue codec is null: " + member);
             }
             if (codec.valueClazz() != arguments[0] || codec.rawClazz() != arguments[1]) {
-                throw new BindingException("@NodeValue codec field V/R types do not match codec: " + field);
+                throw new BindingException("@NodeValue codec V/R types do not match declaration: " + member);
             }
 
-            String format = annotation.format();
+            String format = annotation == null ? "" : annotation.format();
             Set<String> seen = declaredFormats.computeIfAbsent(codec.valueClazz(), k -> new HashSet<>());
             if (!seen.add(format)) {
                 throw new BindingException("duplicate @NodeValue codec format '" + format
                         + "' for type '" + codec.valueClazz().getName() + "'");
             }
             IdentityHashMap<ValueCodec<?, ?>, String> valueFormats =
-                    declaredCodecs.computeIfAbsent(codec.valueClazz(),
-                            k -> new IdentityHashMap<>());
+                    declaredCodecs.computeIfAbsent(codec.valueClazz(), k -> new IdentityHashMap<>());
             String prior = valueFormats.putIfAbsent(codec, format);
             if (prior != null) {
                 throw new BindingException("same ValueCodec instance registered under multiple formats for type '"
                         + codec.valueClazz().getName() + "'");
             }
-            boolean isDefault = annotation.defaultCodec() || format.isEmpty();
+            boolean isDefault = (annotation != null && annotation.defaultCodec()) || format.isEmpty();
             if (isDefault && !explicitDefaults.add(codec.valueClazz())) {
                 throw new BindingException("multiple default @NodeValue codecs for type '"
                         + codec.valueClazz().getName() + "'");
@@ -213,16 +258,14 @@ public final class ValueRegistry {
         }
 
         for (ValueInfo info : defaults) {
-            // A named default must also take precedence over codecs previously
-            // registered by another holder; the empty format is already unique.
             register(info, !info.valueFormat.isEmpty());
         }
         for (ValueInfo info : named) register(info, false);
     }
 
-    private static boolean isDefaultCodec(Field field) {
-        NodeValue annotation = field.getAnnotation(NodeValue.class);
-        return annotation != null && (annotation.defaultCodec() || annotation.format().isEmpty());
+    private static boolean isDefaultCodec(AnnotatedElement declaration) {
+        NodeValue annotation = declaration.getAnnotation(NodeValue.class);
+        return annotation == null || annotation.defaultCodec() || annotation.format().isEmpty();
     }
 
     /**
@@ -251,11 +294,10 @@ public final class ValueRegistry {
     }
 
 
-    // Bootstrap all built-in codecs from their annotated declarations.
+    // Register built-in codecs; optional providers are a separate concern.
     static {
         registerAnnotated(ValueCodec.class);
     }
-
 
     /**
      * Analyzes {@code @NodeValue} conversion methods on a class, returning

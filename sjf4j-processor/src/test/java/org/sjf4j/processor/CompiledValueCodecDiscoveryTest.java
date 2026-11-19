@@ -84,8 +84,8 @@ class CompiledValueCodecDiscoveryTest {
         sources.put("fixture/AppCodecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "public class AppCodecs { "
-                + "@NodeValue public static final ValueCodec<Money, String> MONEY = "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface AppCodecs { "
+                + "public static final ValueCodec<Money, String> MONEY = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " x -> x.value, Money::new); }");
         sources.put("fixture/Binder.java",
@@ -114,22 +114,60 @@ class CompiledValueCodecDiscoveryTest {
     }
 
     @Test
+    void staticFactoryMethodNeedsNoNodeValueAnnotation() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Money.java",
+                "package fixture; public final class Money { "
+                + " public final String value; public Money(String value) { this.value=value; } }");
+        sources.put("fixture/AppCodecs.java",
+                "package fixture; "
+                + "import org.sjf4j.annotation.node.NodeRegistry; "
+                + "import org.sjf4j.value.ValueCodec; "
+                + "@NodeRegistry public interface AppCodecs { "
+                + " public static ValueCodec<Money, String> money() { "
+                + " return new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
+                + " x -> x.value, Money::new); } }");
+        sources.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+                + " @Read Money read(String json) throws java.io.IOException; "
+                + " @Write String write(Money value) throws java.io.IOException; }");
+
+        NavigatorTestCompiler.Result compiled =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(compiled.success, compiled.diagnostics());
+        assertTrue(compiled.generatedSource("fixture/Binder_Impl.java")
+                        .contains("requireRegisteredValueInfo"), compiled.diagnostics());
+
+        try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+            ValueRegistry.registerAnnotated(loader.loadClass("fixture.AppCodecs"));
+            Class<?> binderType = loader.loadClass("fixture.Binder_Impl");
+            Class<?> moneyType = loader.loadClass("fixture.Money");
+            Object binder = binderType.getConstructor().newInstance();
+            Object value = binderType.getMethod("read", String.class).invoke(binder, "\"42.50\"");
+            assertEquals("42.50", moneyType.getField("value").get(value));
+            assertEquals("\"42.50\"", binderType.getMethod("write", moneyType)
+                    .invoke(binder, value));
+        }
+    }
+
+    @Test
     void classpathCodecRequiresExplicitRegistryAndExecutesWhenRegistered() throws Exception {
         String base = "package fixture; "
                 + "import org.sjf4j.annotation.binding.*; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
                 + "import java.io.IOException; ";
-        String body = "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+        String body = "public interface Binder { "
                 + " @Read ClasspathRegistries.Money read(String json) throws IOException; "
                 + " @Write String write(ClasspathRegistries.Money value) throws IOException; }";
 
         NavigatorTestCompiler.Result missing = NavigatorTestCompiler.compile(
-                Map.of("fixture/Binder.java", base + body), CodegenProcessor.class);
+                Map.of("fixture/Binder.java", base + "@CompiledBinder(backend=Backend.SIMPLE) " + body), CodegenProcessor.class);
         assertFalse(missing.success, "without registry, Money must not become a ValueCodec");
 
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
                 Map.of("fixture/Binder.java", base
-                        + "@BindingOptions(registries={ClasspathRegistries.Third.class, "
+                        + "@CompiledBinder(backend=Backend.SIMPLE, registries={ClasspathRegistries.Third.class, "
                         + "ClasspathRegistries.First.class}) " + body),
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
@@ -161,8 +199,7 @@ class CompiledValueCodecDiscoveryTest {
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                     + "import java.io.IOException; "
                 + "import org.sjf4j.processor.ClasspathRegistries; "
-                + "@BindingOptions(registries={ClasspathRegistries.First.class, ClasspathRegistries.Second.class}) "
-                + "@CompiledBinder(backend=Backend.SIMPLE) public interface Binder { "
+                + "@CompiledBinder(backend=Backend.SIMPLE, registries={ClasspathRegistries.First.class, ClasspathRegistries.Second.class}) public interface Binder { "
                 + "@Read Bean read(String source) throws IOException; }"),
                 CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
