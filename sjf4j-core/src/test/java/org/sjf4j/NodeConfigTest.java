@@ -26,7 +26,7 @@ class NodeConfigTest {
     }
 
     @Test
-    void emptyContextIncludesNulls() {
+    void defaultConfigIncludesNulls() {
         assertTrue(NodeConfig.DEFAULT.includeNulls);
     }
 }

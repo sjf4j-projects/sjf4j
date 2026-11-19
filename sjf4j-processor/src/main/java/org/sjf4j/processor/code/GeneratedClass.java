@@ -35,7 +35,7 @@ public final class GeneratedClass {
     private final List<Member> fields = new ArrayList<>();
     private final List<Member> methods = new ArrayList<>();
     private final List<Member> helpers = new ArrayList<>();
-    private final List<Member> contextInitializers = new ArrayList<>();
+    private final List<Member> configInitializers = new ArrayList<>();
 
     private boolean nodeConfigConstructor;
     private String backendBinderType;
@@ -164,8 +164,8 @@ public final class GeneratedClass {
     }
 
     /** Adds an assignment after the generated constructor's config field is set. */
-    public void addContextInitializer(Member member) {
-        contextInitializers.add(Asserts.notNull(member, "member"));
+    public void addConfigInitializer(Member member) {
+        configInitializers.add(Asserts.notNull(member, "member"));
     }
 
     public boolean isEmpty() {
@@ -262,7 +262,7 @@ public final class GeneratedClass {
             out.beginBlock("public " + simpleName + "(org.sjf4j.NodeConfig config)");
             if (backendBinderType == null) {
                 out.line("this.config = org.sjf4j.util.Asserts.notNull(config, \"config\");");
-                for (Member initializer : contextInitializers) initializer.write(out);
+                for (Member initializer : configInitializers) initializer.write(out);
             } else {
                 out.line("this(new " + backendBinderType
                         + "(org.sjf4j.util.Asserts.notNull(config, \"config\")));");
@@ -273,7 +273,7 @@ public final class GeneratedClass {
                 out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
                 out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
                 out.line("this.config = this.binder.config();");
-                for (Member initializer : contextInitializers) initializer.write(out);
+                for (Member initializer : configInitializers) initializer.write(out);
                 out.endBlock();
             }
             written = true;
