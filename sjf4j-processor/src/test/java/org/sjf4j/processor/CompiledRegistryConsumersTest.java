@@ -149,4 +149,29 @@ class CompiledRegistryConsumersTest {
     }
 
 
+    @Test
+    void inaccessibleRegistryHolderHasCompilationDiagnostic() throws Exception {
+        Map<String, String> input = new LinkedHashMap<>();
+        input.put("fixture/Domain.java",
+                "package fixture; public final class Domain { public String raw; }");
+        input.put("fixture/Row.java",
+                "package fixture; public class Row { public Domain domain; }");
+        input.put("hidden/HiddenCodecs.java",
+                "package hidden; import org.sjf4j.annotation.node.NodeRegistry; "
+                + "import org.sjf4j.value.ValueCodec; "
+                + "@NodeRegistry interface HiddenCodecs { "
+                + "ValueCodec<fixture.Domain, String> DOMAIN = "
+                + "new ValueCodec.SimpleValueCodec<>(fixture.Domain.class, String.class, "
+                + "v -> v.raw, raw -> new fixture.Domain()); }");
+        input.put("fixture/Rows.java",
+                "package fixture; import org.sjf4j.annotation.mapping.jdbc.CompiledJdbcMapper; "
+                + "@CompiledJdbcMapper public interface Rows { Row map(java.sql.ResultSet rs); }");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(input, CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("not accessible from generated mapper"),
+                result.diagnostics());
+    }
+
+
 }
