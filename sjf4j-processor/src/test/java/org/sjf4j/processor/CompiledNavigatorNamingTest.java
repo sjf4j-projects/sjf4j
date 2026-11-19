@@ -33,7 +33,7 @@ class CompiledNavigatorNamingTest {
     void inheritedFieldNamesDoNotConflictWithGeneratedFindCaches() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Item.java",
-                "package fixture; public class Item { public int age; public String name; }");
+                "package fixture; public class Item { public int age; public String name; public int[] scores; }");
         sources.put("fixture/Base.java",
                 "package fixture; public interface Base {"
                 + " String FIND_FILTER = \"reserved\";"
@@ -42,7 +42,7 @@ class CompiledNavigatorNamingTest {
                 "package fixture; import java.util.*; import org.sjf4j.annotation.path.*;"
                 + " @CompiledNavigator(fallback=true)"
                 + " public interface Navigator extends Base {"
-                + " @FindByPath(\"$[?(@.name =~ /A/)].name\")"
+                + " @FindByPath(\"$[?(@.scores[0] > 18)].name\")"
                 + " List<String> adults(List<Item> root);"
                 + " @FindByPath(\"$..name\")"
                 + " List<String> descendants(List<Item> root);"
