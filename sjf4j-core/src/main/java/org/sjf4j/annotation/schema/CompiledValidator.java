@@ -50,4 +50,7 @@ public @interface CompiledValidator {
      */
     String registryBaseUri() default "";
 
+    /** Additional {@link org.sjf4j.annotation.node.NodeRegistry} interfaces visible at compile time. */
+    Class<?>[] registries() default {};
+
 }
