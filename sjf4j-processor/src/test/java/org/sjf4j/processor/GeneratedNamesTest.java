@@ -50,7 +50,7 @@ public class GeneratedNamesTest {
         assertEquals("_readFallback", names.get("prefixedHelper"));
         assertEquals("USER_NAMES2", names.get("field"));
         assertEquals("USER_NAMES3", names.get("field2"));
-        assertEquals("context2", names.get("context"));
+        assertEquals("config2", names.get("config"));
         assertEquals("binder2", names.get("binder"));
         assertEquals("validate2", names.get("declaredMethod"));
         assertEquals("Sample_Impl2", names.get("nestedType"));
@@ -87,7 +87,7 @@ public class GeneratedNamesTest {
             names.put("prefixedHelper", allocated.helperMethod("_readFallback"));
             names.put("field", allocated.field("USER_NAMES"));
             names.put("field2", allocated.field("USER_NAMES"));
-            names.put("context", allocated.field("context"));
+            names.put("config", allocated.field("config"));
             names.put("binder", allocated.field("binder"));
             names.put("declaredMethod", allocated.field("validate"));
             names.put("nestedType", allocated.type("Sample_Impl"));
