@@ -2,6 +2,7 @@ package org.sjf4j.processor.discovery;
 
 import org.sjf4j.annotation.binding.BindingOptions;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.ValueCodecRegistry;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.value.ValueCodec;
 
@@ -37,14 +38,23 @@ public final class RegistryDiscovery {
         this.context = context;
     }
 
-    /** Collects registry holders declared in this compilation round. */
+    /** Collects annotated registry holders declared in this compilation round. */
     public void collect(RoundEnvironment roundEnv) {
-        for (Element element : roundEnv.getElementsAnnotatedWith(NodeValue.class)) {
-            if (element.getKind() != ElementKind.FIELD) continue;
-            Element holder = element.getEnclosingElement();
-            if (holder instanceof TypeElement) {
-                TypeElement type = (TypeElement) holder;
+        for (Element element : roundEnv.getElementsAnnotatedWith(ValueCodecRegistry.class)) {
+            if (element instanceof TypeElement) {
+                TypeElement type = (TypeElement) element;
                 sourceRegistries.put(type.getQualifiedName().toString(), type);
+            }
+        }
+        for (Element element : roundEnv.getElementsAnnotatedWith(NodeValue.class)) {
+            if (element.getKind() != ElementKind.FIELD && element.getKind() != ElementKind.METHOD) {
+                continue; // @NodeValue on a domain class is a different feature.
+            }
+            Element holder = element.getEnclosingElement();
+            if (holder instanceof TypeElement
+                    && holder.getAnnotation(ValueCodecRegistry.class) == null) {
+                context.error(element, "@NodeValue codec declaration requires @ValueCodecRegistry on "
+                        + ((TypeElement) holder).getQualifiedName());
             }
         }
     }
