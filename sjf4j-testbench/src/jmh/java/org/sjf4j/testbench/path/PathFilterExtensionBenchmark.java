@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/** Prebuilt POJO Filter benchmark: runtime AST vs generated regex, in and functions. */
+/** Prebuilt POJO Filter benchmark: runtime AST vs generated regex, in, functions and indexes. */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Warmup(iterations = 3, time = 1)
@@ -43,6 +43,9 @@ public class PathFilterExtensionBenchmark {
 
         @FindByPath("$.items[?(length(@.tags) >= 2)].name")
         List<String> length(Root root);
+
+        @FindByPath("$.items[?(@.tags[0] == 'a')].name")
+        List<String> firstTag(Root root);
     }
 
     @State(Scope.Thread)
@@ -55,6 +58,7 @@ public class PathFilterExtensionBenchmark {
         JsonPath regex;
         JsonPath membership;
         JsonPath length;
+        JsonPath firstTag;
 
         @Setup(Level.Trial)
         public void setup() {
@@ -68,9 +72,11 @@ public class PathFilterExtensionBenchmark {
             regex = JsonPath.parse("$.items[?(@.name =~ /^match/)].name");
             membership = JsonPath.parse("$.items[?(@.score in [10,20,30])].name");
             length = JsonPath.parse("$.items[?(length(@.tags) >= 2)].name");
+            firstTag = JsonPath.parse("$.items[?(@.tags[0] == 'a')].name");
             if (!compiled.regex(root).equals(regex.find(root)) ||
                     !compiled.membership(root).equals(membership.find(root)) ||
-                    !compiled.length(root).equals(length.find(root))) {
+                    !compiled.length(root).equals(length.find(root)) ||
+                    !compiled.firstTag(root).equals(firstTag.find(root))) {
                 throw new IllegalStateException("Compiled/runtime filter mismatch");
             }
         }
@@ -104,5 +110,15 @@ public class PathFilterExtensionBenchmark {
     @Benchmark
     public Object lengthCompiled(Data data) {
         return data.compiled.length(data.root);
+    }
+
+    @Benchmark
+    public Object firstTagRuntime(Data data) {
+        return data.firstTag.find(data.root);
+    }
+
+    @Benchmark
+    public Object firstTagCompiled(Data data) {
+        return data.compiled.firstTag(data.root);
     }
 }
