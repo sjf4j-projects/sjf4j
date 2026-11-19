@@ -12,12 +12,15 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.regex.Pattern;
 
 /** Emits a direct predicate without runtime FilterExpr AST evaluation. */
 final class FilterEmitter {
     private final Map<FilterPlan, String> paths = new IdentityHashMap<>();
     private final Map<FilterPlan, String> directPaths = new IdentityHashMap<>();
-    private final Map<FilterPlan, String> numbers = new IdentityHashMap<>();
+    private final Map<FilterPlan, String> constants = new IdentityHashMap<>();
+    private String noArgsField;
     private final TypeSystem types;
     private final NodeReadEmitter reads;
 
@@ -53,10 +56,38 @@ final class FilterEmitter {
             }
         } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof Double) {
             String field = generated.names().field("FILTER_NUMBER");
-            numbers.put(plan, field);
+            constants.put(plan, field);
             String value = JavaWriter.stringLiteral(plan.literal.toString());
             generated.addField(out -> out.line("private static final Double " + field +
                     " = Double.valueOf(" + value + ");"));
+        } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof Pattern) {
+            Pattern pattern = (Pattern) plan.literal;
+            String field = generated.names().field("FILTER_PATTERN");
+            constants.put(plan, field);
+            generated.addField(out -> out.line("private static final java.util.regex.Pattern " +
+                    field + " = java.util.regex.Pattern.compile(" +
+                    JavaWriter.stringLiteral(pattern.pattern()) + ", " + pattern.flags() + ");"));
+        } else if (plan.kind == FilterPlan.Kind.LITERAL && plan.literal instanceof List) {
+            String field = generated.names().field("FILTER_ARRAY");
+            constants.put(plan, field);
+            List<?> values = (List<?>) plan.literal;
+            StringBuilder initializer = new StringBuilder("java.util.Collections.unmodifiableList(" +
+                    "java.util.Arrays.<Object>asList(");
+            for (int i = 0; i < values.size(); i++) {
+                if (i > 0) initializer.append(", ");
+                initializer.append(literal(values.get(i)));
+            }
+            initializer.append("))");
+            generated.addField(out -> out.line("private static final java.util.List<Object> " +
+                    field + " = " + initializer + ";"));
+        }
+        if (plan.kind == FilterPlan.Kind.FUNCTION) {
+            if (plan.arguments.length == 1 && noArgsField == null) {
+                noArgsField = generated.names().field("FILTER_NO_ARGS");
+                generated.addField(out -> out.line(
+                        "private static final Object[] " + noArgsField + " = new Object[0];"));
+            }
+            for (FilterPlan argument : plan.arguments) prepare(argument, generated);
         }
         if (plan.left != null) prepare(plan.left, generated);
         if (plan.right != null) prepare(plan.right, generated);
@@ -132,9 +163,20 @@ final class FilterEmitter {
         return types.concrete(type).toString();
     }
 
+    private String literal(Object value) {
+        if (value == null) return "null";
+        if (value instanceof String) return JavaWriter.stringLiteral((String) value);
+        if (value instanceof Boolean) return value.toString();
+        if (value instanceof Double) {
+            return "Double.valueOf(" + JavaWriter.stringLiteral(value.toString()) + ")";
+        }
+        throw new AssertionError(value.getClass().getName());
+    }
+
     private String predicate(FilterPlan plan) {
         switch (plan.kind) {
             case LITERAL:
+            case FUNCTION:
                 return "org.sjf4j.path.FilterExpr.truth(" + value(plan) + ")";
             case PATH:
                 if (plan.members.length == 0) return "true";
@@ -163,13 +205,11 @@ final class FilterEmitter {
     private String value(FilterPlan plan) {
         switch (plan.kind) {
             case LITERAL:
-                if (plan.literal == null) return "null";
-                if (plan.literal instanceof String) {
-                    return JavaWriter.stringLiteral((String) plan.literal);
+                if (plan.literal instanceof Double || plan.literal instanceof Pattern
+                        || plan.literal instanceof List) {
+                    return constants.get(plan);
                 }
-                if (plan.literal instanceof Boolean) return plan.literal.toString();
-                if (plan.literal instanceof Double) return numbers.get(plan);
-                throw new AssertionError(plan.literal);
+                return literal(plan.literal);
             case PATH:
                 if (plan.members.length == 0) return plan.rooted ? "root" : "current";
                 if (directPaths.containsKey(plan)) {
@@ -179,6 +219,21 @@ final class FilterEmitter {
                 return "org.sjf4j.path.PathSupport.value(" +
                         (plan.rooted ? "root" : "current") + ", " +
                         paths.get(plan) + ", access)";
+            case FUNCTION:
+                StringBuilder args = new StringBuilder();
+                if (plan.arguments.length == 1) {
+                    args.append(noArgsField);
+                } else {
+                    args.append("new Object[] {");
+                    for (int i = 1; i < plan.arguments.length; i++) {
+                        if (i > 1) args.append(", ");
+                        args.append(value(plan.arguments[i]));
+                    }
+                    args.append("}");
+                }
+                return "org.sjf4j.path.FunctionRegistry.invoke(" +
+                        JavaWriter.stringLiteral(plan.functionName) + ", " +
+                        value(plan.arguments[0]) + ", " + args + ")";
             case NOT: case AND: case OR: case COMPARE:
                 return "Boolean.valueOf(" + predicate(plan) + ")";
             default:
