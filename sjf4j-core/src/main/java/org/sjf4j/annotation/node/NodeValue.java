@@ -33,8 +33,9 @@ import java.lang.annotation.Target;
  *
  * <p>On a {@code public static final ValueCodec<V, R>} field or a
  * {@code public static ValueCodec<V, R>} no-argument factory method inside
- * {@link ValueCodecRegistry}, this annotation declares one format for
- * {@code V}; call
+ * {@link ValueCodecRegistry}, this optional annotation declares a named format
+ * or explicit default for {@code V}; unannotated codec declarations use the
+ * default format. Call
  * {@link org.sjf4j.value.ValueRegistry#registerAnnotated(Class)} during
  * application initialization. The empty format name denotes the default.
  * The existing type-level annotation uses conversion methods and does not
@@ -44,7 +45,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE, ElementType.FIELD, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface NodeValue {
-    /** Unique format name for an annotated ValueCodec field. */
+    /** Unique format name for an annotated ValueCodec field or method. */
     String format() default "";
 
     /** Designates this codec as the default output representation. */
