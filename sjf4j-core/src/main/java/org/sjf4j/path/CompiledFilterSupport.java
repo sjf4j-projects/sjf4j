@@ -14,6 +14,11 @@ public final class CompiledFilterSupport {
     private CompiledFilterSupport() {
     }
 
+    /** The same singleton used by runtime FilterExpr for an absent path. */
+    public static Object missing() {
+        return FilterExpr.PathExpr.NOTHING;
+    }
+
     public static Object value(Object current, String[] members, NodeWalker.Access access) {
         Object node = current;
         for (String member : members) {
