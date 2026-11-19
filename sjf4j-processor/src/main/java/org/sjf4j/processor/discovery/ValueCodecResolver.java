@@ -1,11 +1,13 @@
 package org.sjf4j.processor.discovery;
 
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.ValueCodecRegistry;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.processor.ProcessorContext;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -92,7 +94,8 @@ public final class ValueCodecResolver {
             // ValueRegistry's forceDefault behavior, not the first format seen.
             ValueCodecMetadata selected = codecs.values().iterator().next();
             for (ValueCodecMetadata candidate : codecs.values()) {
-                if (candidate.declaration.getAnnotation(NodeValue.class).defaultCodec()) {
+                NodeValue annotation = candidate.declaration.getAnnotation(NodeValue.class);
+                if (annotation != null && annotation.defaultCodec()) {
                     selected = candidate;
                 }
             }
@@ -146,23 +149,27 @@ public final class ValueCodecResolver {
 
     private void scan() {
         for (TypeElement holder : registries) {
-            // Match ValueRegistry.registerAnnotated(): designated defaults
-            // precede named variants and declaration order is not significant.
-            List<VariableElement> fields = new ArrayList<>();
-            for (Element element : holder.getEnclosedElements()) {
-                if (element.getKind() == ElementKind.FIELD
-                        && element.getAnnotation(NodeValue.class) != null) {
-                    fields.add((VariableElement) element);
-                }
+            if (holder.getAnnotation(ValueCodecRegistry.class) == null) {
+                context.error(holder, "missing @ValueCodecRegistry on " + holder.getQualifiedName());
+                continue;
             }
-            fields.sort(Comparator
-                    .comparing((VariableElement field) -> {
-                        NodeValue annotation = field.getAnnotation(NodeValue.class);
-                        return !(annotation.defaultCodec() || annotation.format().isEmpty());
-                    })
-                    .thenComparing(field -> field.getSimpleName().toString()));
-            for (VariableElement field : fields) {
-                ValueCodecMetadata metadata = parse(field);
+            // Match ValueRegistry.registerAnnotated(): explicit defaults first,
+            // then stable method and field name ordering.
+            List<Element> declarations = new ArrayList<>();
+            for (Element element : holder.getEnclosedElements()) {
+                if (isCodecDeclaration(element)) declarations.add(element);
+            }
+            if (declarations.isEmpty()) {
+                context.error(holder, "@ValueCodecRegistry has no codec declarations");
+                continue;
+            }
+            declarations.sort(Comparator
+                    .comparing((Element element) -> !isDefaultCodec(element))
+                    .thenComparing(element -> element.getSimpleName().toString())
+                    .thenComparing(element -> element.getKind() == ElementKind.FIELD ? 0 : 1));
+            Map<String, String> explicitDefaults = new LinkedHashMap<>();
+            for (Element element : declarations) {
+                ValueCodecMetadata metadata = parse(element);
                 if (metadata == null) continue;
                 String typeName = context.typeUtils.erasure(metadata.valueType).toString();
                 Map<String, ValueCodecMetadata> formats =
@@ -173,34 +180,81 @@ public final class ValueCodecResolver {
                             + metadata.format + "' for type '" + typeName + "'; previously declared by "
                             + previous.declaration);
                 }
+                if (isDefaultCodec(element)) {
+                    String previousDefault = explicitDefaults.putIfAbsent(typeName, element.toString());
+                    if (previousDefault != null) {
+                        context.error(element, "multiple default @NodeValue codecs for type '"
+                                + typeName + "'; previously declared by " + previousDefault);
+                    }
+                }
             }
         }
     }
 
-    /** Validates a declaration without loading or initializing its codec instance. */
-    private ValueCodecMetadata parse(VariableElement field) {
-        if (!field.getModifiers().containsAll(Arrays.asList(
-                Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
-                || !context.typeUtils.isAssignable(
-                        context.typeUtils.erasure(field.asType()),
-                        context.typeUtils.erasure(codecType))) {
-            context.error(field, "@NodeValue codec field must be public static final ValueCodec<V, R>");
-            return null;
+    private boolean isCodecDeclaration(Element element) {
+        if (element.getKind() != ElementKind.FIELD && element.getKind() != ElementKind.METHOD) {
+            return false;
+        }
+        if (element.getAnnotation(NodeValue.class) != null) return true;
+        TypeMirror type;
+        if (element.getKind() == ElementKind.FIELD) {
+            if (!element.getModifiers().containsAll(Arrays.asList(
+                    Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))) return false;
+            type = element.asType();
+        } else {
+            ExecutableElement method = (ExecutableElement) element;
+            if (!method.getModifiers().containsAll(Arrays.asList(Modifier.PUBLIC, Modifier.STATIC))
+                    || !method.getParameters().isEmpty()) return false;
+            type = method.getReturnType();
+        }
+        return context.typeUtils.isAssignable(context.typeUtils.erasure(type),
+                context.typeUtils.erasure(codecType));
+    }
+
+    private boolean isDefaultCodec(Element declaration) {
+        NodeValue annotation = declaration.getAnnotation(NodeValue.class);
+        return annotation == null || annotation.defaultCodec() || annotation.format().isEmpty();
+    }
+
+    /** Validate a declaration using compiler model types, without running factories. */
+    private ValueCodecMetadata parse(Element declaration) {
+        TypeMirror type;
+        if (declaration.getKind() == ElementKind.FIELD) {
+            VariableElement field = (VariableElement) declaration;
+            if (!field.getModifiers().containsAll(Arrays.asList(
+                    Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))
+                    || !context.typeUtils.isAssignable(context.typeUtils.erasure(field.asType()),
+                            context.typeUtils.erasure(codecType))) {
+                context.error(field, "@NodeValue codec field must be public static final ValueCodec<V, R>");
+                return null;
+            }
+            type = field.asType();
+        } else {
+            ExecutableElement method = (ExecutableElement) declaration;
+            if (!method.getModifiers().containsAll(Arrays.asList(Modifier.PUBLIC, Modifier.STATIC))
+                    || !method.getParameters().isEmpty()
+                    || !context.typeUtils.isAssignable(context.typeUtils.erasure(method.getReturnType()),
+                            context.typeUtils.erasure(codecType))) {
+                context.error(method, "@NodeValue codec method must be public static, no-arg, "
+                        + "and return ValueCodec<V, R>");
+                return null;
+            }
+            type = method.getReturnType();
         }
 
-        if (!(field.asType() instanceof DeclaredType)) {
-            context.error(field, "@NodeValue codec field must declare concrete V/R classes");
+        if (!(type instanceof DeclaredType)) {
+            context.error(declaration, "@NodeValue codec declaration must specify concrete V/R classes");
             return null;
         }
-        List<? extends TypeMirror> arguments = ((DeclaredType) field.asType()).getTypeArguments();
+        List<? extends TypeMirror> arguments = ((DeclaredType) type).getTypeArguments();
         if (arguments.size() != 2 || !concreteClass(arguments.get(0))
                 || !concreteClass(arguments.get(1))) {
-            context.error(field, "@NodeValue codec field must declare concrete V/R classes");
+            context.error(declaration, "@NodeValue codec declaration must specify concrete V/R classes");
             return null;
         }
-
-        String format = field.getAnnotation(NodeValue.class).format();
-        return new ValueCodecMetadata(arguments.get(0), arguments.get(1), format, field);
+        NodeValue annotation = declaration.getAnnotation(NodeValue.class);
+        String format = annotation == null ? "" : annotation.format();
+        return new ValueCodecMetadata(arguments.get(0), arguments.get(1), format, declaration);
     }
 
     private boolean concreteClass(TypeMirror type) {
