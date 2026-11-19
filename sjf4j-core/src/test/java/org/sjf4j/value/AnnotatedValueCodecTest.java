@@ -251,7 +251,7 @@ class AnnotatedValueCodecTest {
     @NodeRegistry
     public interface BadFactory {
         @NodeValue
-        public ValueCodec<FactoryId, String> invalid() {
+        default ValueCodec<FactoryId, String> invalid() {
             return FactoryCodecs.factoryId();
         }
     }
