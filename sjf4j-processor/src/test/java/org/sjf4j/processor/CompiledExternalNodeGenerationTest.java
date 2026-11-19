@@ -92,19 +92,19 @@ class CompiledExternalNodeGenerationTest {
         assertFalse(generated.contains(".find("), generated);
     }
     @Test
-    void unsupportedFilterRequiresExplicitFallback() throws Exception {
+    void unsupportedIndexedFilterRequiresExplicitFallback() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Paths.java",
                 "package fixture; import java.util.List;"
                 + "import org.sjf4j.annotation.path.*;"
                 + "@CompiledNavigator public interface Paths {"
-                + "@FindByPath(\"$.items[?(@.name =~ /^A/)].name\")"
+                + "@FindByPath(\"$.items[?(@.scores[0] > 90)].name\")"
                 + "List<Object> filter(java.util.Map<String,Object> root);"
                 + "}");
         NavigatorTestCompiler.Result rejected =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(rejected.success);
-        assertTrue(rejected.diagnostics().contains("cannot compile filter operator =~"),
+        assertTrue(rejected.diagnostics().contains("cannot compile filter path selector"),
                 rejected.diagnostics());
 
         sources.put("fixture/Paths.java",
