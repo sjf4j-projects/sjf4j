@@ -23,7 +23,7 @@ public interface BinderProvider {
     /**
      * Creates a binder using the supplied immutable runtime configuration.
      */
-    Binder<?, ?> create(NodeConfig context);
+    Binder<?, ?> create(NodeConfig config);
 
     /**
      * Returns whether this optional provider can create its backend binder.
@@ -69,8 +69,8 @@ public interface BinderProvider {
             }
 
             @Override
-            public Binder<?, ?> create(NodeConfig context) {
-                return factory.apply(context);
+            public Binder<?, ?> create(NodeConfig config) {
+                return factory.apply(config);
             }
 
             @Override

@@ -6,7 +6,7 @@ import org.sjf4j.binding.beans.BeanDeserializationContract;
 
 class SimpleBeanDeserializationContractTest extends BeanDeserializationContract {
     @Override
-    protected Binder<?, ?> binding(NodeConfig context) {
-            return new SimpleJsonBinder(context);
+    protected Binder<?, ?> binding(NodeConfig config) {
+            return new SimpleJsonBinder(config);
         }
 }

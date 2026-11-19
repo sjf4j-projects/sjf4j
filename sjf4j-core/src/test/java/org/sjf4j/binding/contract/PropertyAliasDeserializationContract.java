@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /** NodeProperty alias and NodeBinding naming contracts structurally adapted from Jackson tests. */
 public abstract class PropertyAliasDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     /** Structural source: PropertyAliasTest#testSimpleAliases; NodeProperty aliases replace JsonAlias. */
     @Test void testSimpleAliases() {
         AliasBean bean = (AliasBean) binding(NodeConfig.DEFAULT).readNode("{\"Name\":\"Foobar\"}", AliasBean.class);

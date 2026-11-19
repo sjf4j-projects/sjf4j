@@ -15,13 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class NodeConfigTest {
     @Test
     void storesFormatsAndForwardsThemToCopies() {
-        NodeConfig context = new NodeConfig(Map.of(LocalDate.class, "ISO"), false);
+        NodeConfig config = new NodeConfig(Map.of(LocalDate.class, "ISO"), false);
         Map<Class<?>, String> formats = new LinkedHashMap<>();
-        context.copyValueFormatsTo(formats);
+        config.copyValueFormatsTo(formats);
 
-        assertFalse(context.includeNulls);
-        assertEquals("ISO", context.valueFormat(LocalDate.class));
-        assertNull(context.valueFormat(String.class));
+        assertFalse(config.includeNulls);
+        assertEquals("ISO", config.valueFormat(LocalDate.class));
+        assertNull(config.valueFormat(String.class));
         assertEquals(Map.of(LocalDate.class, "ISO"), formats);
     }
 

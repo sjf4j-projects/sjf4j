@@ -93,7 +93,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             structures.emitOneOf(out, value);
         } else if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line(STREAMING_IO + ".writeNode(generator, value, this.context);");
+            out.line(STREAMING_IO + ".writeNode(generator, value, this.config);");
         } else {
             switch (value.kind()) {
                 case POJO:
@@ -160,7 +160,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                                   String expression) {
         out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
                 + ".serializedName, " + expression
-                + (jackson2() ? "" : ", this.context.includeNulls") + ");");
+                + (jackson2() ? "" : ", this.config.includeNulls") + ");");
     }
 
     @Override
@@ -217,7 +217,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
         out.line(STREAMING_IO + ".writeNode(generator, " + expression
-                + ", this.context);");
+                + ", this.config);");
     }
 
     /**
@@ -242,7 +242,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                 return;
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
-                        + expression + ", this.context);");
+                        + expression + ", this.config);");
                 return;
             case STRING:
                 out.line(writes.stringHelper() + "(" + nativeGenerator + ", " + expression + ");");

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Plain Jackson enum defaults, adapted through SJF4J's public binding API. */
 public abstract class EnumDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** Source: EnumDeserializationTest#testSimple. */
     @Test void testSimple() {

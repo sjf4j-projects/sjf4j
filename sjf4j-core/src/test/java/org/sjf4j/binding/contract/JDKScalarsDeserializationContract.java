@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Portable scalar cases from Jackson's JDKScalarsDeserTest. */
 public abstract class JDKScalarsDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     /** Source: JDKScalarsDeserTest#testBooleanWrapper. */
     @Test void testBooleanWrapper() {
         assertEquals(Boolean.TRUE, binding(NodeConfig.DEFAULT).readNode("true", Boolean.class));

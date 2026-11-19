@@ -44,7 +44,7 @@ class CompiledNullableScalarWriteTest {
 
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("if (this.context.includeNulls)"), backend);
+            assertTrue(generated.contains("if (this.config.includeNulls)"), backend);
             assertFalse(generated.matches("(?s).*\\bitem = property\\d+;.*"), backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {

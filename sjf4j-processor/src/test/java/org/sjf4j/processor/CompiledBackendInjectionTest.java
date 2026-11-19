@@ -124,13 +124,13 @@ class CompiledBackendInjectionTest {
             Class<?> beanType = loader.loadClass("fixture.Bean");
             Object bean = beanType.getConstructor().newInstance();
 
-            NodeConfig context = new NodeConfig(
+            NodeConfig config = new NodeConfig(
                     Map.of(java.time.Instant.class, "epochMillis"), false);
-            Jackson2Binder backend = new Jackson2Binder(new JsonFactory(), context);
-            assertSame(context, backend.context());
+            Jackson2Binder backend = new Jackson2Binder(new JsonFactory(), config);
+            assertSame(config, backend.config());
 
             Object byBackend = CompiledInstances.create(binderType, backend);
-            Object byContext = CompiledInstances.create(binderType, context);
+            Object byContext = CompiledInstances.create(binderType, config);
             String expected = "{\"present\":\"ok\",\"when\":1234}";
             assertEquals(expected, binderType.getMethod("write", beanType).invoke(byBackend, bean));
             assertEquals(expected, binderType.getMethod("write", beanType).invoke(byContext, bean));

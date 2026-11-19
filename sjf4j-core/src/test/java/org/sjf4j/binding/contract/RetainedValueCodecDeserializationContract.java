@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Retained SJF4J NodeValue dispatch contract; it is not Jackson-derived. */
 public abstract class RetainedValueCodecDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     @Test void testBooleanCodecAtRoot() {
         assertEquals(true, ((BooleanCode) binding(NodeConfig.DEFAULT).readNode("true", BooleanCode.class)).value);

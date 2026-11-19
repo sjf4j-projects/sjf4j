@@ -29,11 +29,11 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public Jackson2Binder(NodeConfig context) {
-        this(new JsonFactory(), context);
+    public Jackson2Binder(NodeConfig config) {
+        this(new JsonFactory(), config);
     }
 
     /**
@@ -47,11 +47,11 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
     /**
      * Creates a binder using a supplied factory and runtime settings.
      * @param factory the Jackson 2 factory to configure
-     * @param context the SJF4J runtime settings
+     * @param config the SJF4J runtime settings
      */
     @SuppressWarnings("deprecation")
-    public Jackson2Binder(JsonFactory factory, NodeConfig context) {
-        super(context);
+    public Jackson2Binder(JsonFactory factory, NodeConfig config) {
+        super(config);
         Asserts.notNull(factory, "factory");
         this.factory = factory;
         this.factory.disable(JsonFactory.Feature.CHARSET_DETECTION);

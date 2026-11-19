@@ -163,7 +163,7 @@ public final class GeneratedClass {
         this.backendBinderType = Asserts.notNull(binderType, "binderType");
     }
 
-    /** Adds an assignment after the generated constructor's context field is set. */
+    /** Adds an assignment after the generated constructor's config field is set. */
     public void addContextInitializer(Member member) {
         contextInitializers.add(Asserts.notNull(member, "member"));
     }
@@ -241,7 +241,7 @@ public final class GeneratedClass {
         boolean written = false;
 
         if (nodeConfigConstructor) {
-            out.line("private final org.sjf4j.NodeConfig context;");
+            out.line("private final org.sjf4j.NodeConfig config;");
             written = true;
         }
 
@@ -259,20 +259,20 @@ public final class GeneratedClass {
                     : "this(new " + backendBinderType + "());");
             out.endBlock();
             out.blank();
-            out.beginBlock("public " + simpleName + "(org.sjf4j.NodeConfig context)");
+            out.beginBlock("public " + simpleName + "(org.sjf4j.NodeConfig config)");
             if (backendBinderType == null) {
-                out.line("this.context = org.sjf4j.util.Asserts.notNull(context, \"context\");");
+                out.line("this.config = org.sjf4j.util.Asserts.notNull(config, \"config\");");
                 for (Member initializer : contextInitializers) initializer.write(out);
             } else {
                 out.line("this(new " + backendBinderType
-                        + "(org.sjf4j.util.Asserts.notNull(context, \"context\")));");
+                        + "(org.sjf4j.util.Asserts.notNull(config, \"config\")));");
             }
             out.endBlock();
             if (backendBinderType != null) {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
                 out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
-                out.line("this.context = this.binder.context();");
+                out.line("this.config = this.binder.config();");
                 for (Member initializer : contextInitializers) initializer.write(out);
                 out.endBlock();
             }

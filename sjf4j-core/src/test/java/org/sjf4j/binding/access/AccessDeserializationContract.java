@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Source-derived access behavior that has a public SJF4J equivalent. */
 public abstract class AccessDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** Retained SJF4J structural coverage (no Jackson source): unknown values are deliberately discarded. */
     @Test void testCreatorUnknownFieldsDoNotPreventLaterCreatorAndSetterValues() {

@@ -29,7 +29,7 @@ public final class Jackson2BinderProvider implements BinderProvider {
     public static BinderProvider of(JsonFactory factory) {
         JsonFactory checkedFactory = Asserts.notNull(factory, "factory");
         return BinderProvider.of(Format.JSON, 500,
-                context -> new Jackson2Binder(checkedFactory, context));
+                config -> new Jackson2Binder(checkedFactory, config));
     }
 
     @Override
@@ -48,8 +48,8 @@ public final class Jackson2BinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(NodeConfig context) {
-        return new Jackson2Binder(new JsonFactory(), context);
+    public Binder<?, ?> create(NodeConfig config) {
+        return new Jackson2Binder(new JsonFactory(), config);
     }
 
 }

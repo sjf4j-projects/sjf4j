@@ -35,17 +35,17 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public Fastjson2Binder(NodeConfig context) {
-        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
+    public Fastjson2Binder(NodeConfig config) {
+        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), config);
     }
 
     /**
      * Creates a binder with caller-supplied reader and writer contexts.
-     * @param readerContext the read context, configured in place
-     * @param writerContext the write context, configured in place
+     * @param readerContext the read config, configured in place
+     * @param writerContext the write config, configured in place
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
         this(readerContext, writerContext, NodeConfig.DEFAULT);
@@ -53,13 +53,13 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /**
      * Creates a binder with caller-supplied contexts and runtime settings.
-     * @param readerContext the read context, configured in place
-     * @param writerContext the write context, configured in place
-     * @param context the SJF4J runtime settings
+     * @param readerContext the read config, configured in place
+     * @param writerContext the write config, configured in place
+     * @param config the SJF4J runtime settings
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
-                           NodeConfig context) {
-        super(context);
+                           NodeConfig config) {
+        super(config);
         this.readerContext = Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
@@ -143,7 +143,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     }
 
     /**
-     * Creates an in-memory writer using this binder's configured context.
+     * Creates an in-memory writer using this binder's configured config.
      * @return a writer with a Fastjson2-owned output buffer
      */
     public Fastjson2Generator createGenerator() {
@@ -210,7 +210,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
         try (JSONWriter output = JSONWriter.of(writerContext)) {
             Fastjson2Generator generator = new Fastjson2Generator(output);
             generator.start();
-            StreamingIO.writeNode(generator, node, context);
+            StreamingIO.writeNode(generator, node, config);
             generator.end();
             return output.toString();
         } catch (BindingException e) {
@@ -227,7 +227,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
         try (JSONWriter output = JSONWriter.ofUTF8(writerContext)) {
             Fastjson2Generator generator = new Fastjson2Generator(output);
             generator.start();
-            StreamingIO.writeNode(generator, node, context);
+            StreamingIO.writeNode(generator, node, config);
             generator.end();
             return output.getBytes();
         } catch (BindingException e) {

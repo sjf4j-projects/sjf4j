@@ -33,11 +33,11 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public GsonBinder(NodeConfig context) {
-        this(new Gson(), context);
+    public GsonBinder(NodeConfig config) {
+        this(new Gson(), config);
     }
 
     /**
@@ -51,10 +51,10 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
     /**
      * Creates a binder using the supplied Gson instance and runtime settings.
      * @param gson the Gson instance used for reader and writer creation
-     * @param context the SJF4J runtime settings
+     * @param config the SJF4J runtime settings
      */
-    public GsonBinder(Gson gson, NodeConfig context) {
-        super(context);
+    public GsonBinder(Gson gson, NodeConfig config) {
+        super(config);
         this.gson = Asserts.notNull(gson, "gson");
     }
 

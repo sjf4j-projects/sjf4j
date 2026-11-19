@@ -520,253 +520,253 @@ class NodeMapperConversionTest {
 
     @Test
     void directStringAndCharacterAdaptationDistinguishesStrictAndLenient() {
-        NodeConfig context = NodeConfig.DEFAULT;
-        assertNull(NodeMapper.toString(null, context));
-        assertEquals("text", NodeMapper.toString("text", context));
-        assertEquals("x", NodeMapper.toString('x', context));
-        assertEquals("OK", NodeMapper.toString(Status.OK, context));
-        assertEquals("value", NodeMapper.toString(new EncodedA("value"), context));
-        assertThrows(NodeException.class, () -> NodeMapper.toString(new NumericValue(1L), context));
-        assertThrows(NodeException.class, () -> NodeMapper.toString(42, context));
+        NodeConfig config = NodeConfig.DEFAULT;
+        assertNull(NodeMapper.toString(null, config));
+        assertEquals("text", NodeMapper.toString("text", config));
+        assertEquals("x", NodeMapper.toString('x', config));
+        assertEquals("OK", NodeMapper.toString(Status.OK, config));
+        assertEquals("value", NodeMapper.toString(new EncodedA("value"), config));
+        assertThrows(NodeException.class, () -> NodeMapper.toString(new NumericValue(1L), config));
+        assertThrows(NodeException.class, () -> NodeMapper.toString(42, config));
 
-        assertNull(NodeMapper.asString(null, context));
-        assertEquals("42", NodeMapper.asString(42, context));
-        assertEquals("true", NodeMapper.asString(true, context));
-        assertEquals("OK", NodeMapper.asString(Status.OK, context));
-        assertEquals("7", NodeMapper.asString(new NumericValue(7L), context));
+        assertNull(NodeMapper.asString(null, config));
+        assertEquals("42", NodeMapper.asString(42, config));
+        assertEquals("true", NodeMapper.asString(true, config));
+        assertEquals("OK", NodeMapper.asString(Status.OK, config));
+        assertEquals("7", NodeMapper.asString(new NumericValue(7L), config));
 
-        assertNull(NodeMapper.toChar(null, context));
-        assertEquals('x', NodeMapper.toChar('x', context));
-        assertEquals('x', NodeMapper.toChar("x", context));
-        assertEquals('x', NodeMapper.toChar(new EncodedA("x"), context));
-        assertThrows(NodeException.class, () -> NodeMapper.toChar("", context));
-        assertThrows(NodeException.class, () -> NodeMapper.toChar("xy", context));
-        assertThrows(NodeException.class, () -> NodeMapper.toChar(1, context));
+        assertNull(NodeMapper.toChar(null, config));
+        assertEquals('x', NodeMapper.toChar('x', config));
+        assertEquals('x', NodeMapper.toChar("x", config));
+        assertEquals('x', NodeMapper.toChar(new EncodedA("x"), config));
+        assertThrows(NodeException.class, () -> NodeMapper.toChar("", config));
+        assertThrows(NodeException.class, () -> NodeMapper.toChar("xy", config));
+        assertThrows(NodeException.class, () -> NodeMapper.toChar(1, config));
 
-        assertNull(NodeMapper.asChar(null, context));
-        assertNull(NodeMapper.asChar("", context));
-        assertEquals('x', NodeMapper.asChar('x', context));
-        assertEquals('x', NodeMapper.asChar("xyz", context));
-        assertEquals('1', NodeMapper.asChar(123, context));
+        assertNull(NodeMapper.asChar(null, config));
+        assertNull(NodeMapper.asChar("", config));
+        assertEquals('x', NodeMapper.asChar('x', config));
+        assertEquals('x', NodeMapper.asChar("xyz", config));
+        assertEquals('1', NodeMapper.asChar(123, config));
     }
 
     @Test
     void directEnumAndNumberAdaptationChecksNamesOrdinalsAndRawTypes() {
-        NodeConfig context = NodeConfig.DEFAULT;
-        assertNull(NodeMapper.toEnum(null, Status.class, context));
-        assertSame(Status.OK, NodeMapper.toEnum(Status.OK, Status.class, context));
-        assertSame(Status.FAILED, NodeMapper.toEnum("FAILED", Status.class, context));
-        assertSame(Status.OK, NodeMapper.toEnum(new EncodedA("OK"), Status.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toEnum("missing", Status.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toEnum(1, Status.class, context));
+        NodeConfig config = NodeConfig.DEFAULT;
+        assertNull(NodeMapper.toEnum(null, Status.class, config));
+        assertSame(Status.OK, NodeMapper.toEnum(Status.OK, Status.class, config));
+        assertSame(Status.FAILED, NodeMapper.toEnum("FAILED", Status.class, config));
+        assertSame(Status.OK, NodeMapper.toEnum(new EncodedA("OK"), Status.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toEnum("missing", Status.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toEnum(1, Status.class, config));
 
-        assertNull(NodeMapper.asEnum(null, Status.class, context));
-        assertSame(Status.OK, NodeMapper.asEnum(Status.OK, Status.class, context));
-        assertSame(Status.FAILED, NodeMapper.asEnum(1L, Status.class, context));
-        assertSame(Status.FAILED, NodeMapper.asEnum(new NumericValue(1L), Status.class, context));
-        assertSame(SingleLetter.O, NodeMapper.asEnum('O', SingleLetter.class, context));
-        assertNull(NodeMapper.asEnum("1", Status.class, context));
-        assertNull(NodeMapper.asEnum("missing", Status.class, context));
-        assertNull(NodeMapper.asEnum(1.5, Status.class, context));
-        assertNull(NodeMapper.asEnum(-1, Status.class, context));
-        assertNull(NodeMapper.asEnum(2, Status.class, context));
-        assertNull(NodeMapper.asEnum(new BigInteger("4294967297"), Status.class, context));
+        assertNull(NodeMapper.asEnum(null, Status.class, config));
+        assertSame(Status.OK, NodeMapper.asEnum(Status.OK, Status.class, config));
+        assertSame(Status.FAILED, NodeMapper.asEnum(1L, Status.class, config));
+        assertSame(Status.FAILED, NodeMapper.asEnum(new NumericValue(1L), Status.class, config));
+        assertSame(SingleLetter.O, NodeMapper.asEnum('O', SingleLetter.class, config));
+        assertNull(NodeMapper.asEnum("1", Status.class, config));
+        assertNull(NodeMapper.asEnum("missing", Status.class, config));
+        assertNull(NodeMapper.asEnum(1.5, Status.class, config));
+        assertNull(NodeMapper.asEnum(-1, Status.class, config));
+        assertNull(NodeMapper.asEnum(2, Status.class, config));
+        assertNull(NodeMapper.asEnum(new BigInteger("4294967297"), Status.class, config));
 
-        assertNull(NodeMapper.toNumber(null, context));
-        assertEquals(2L, NodeMapper.toNumber(2L, context));
-        assertEquals(3L, NodeMapper.toNumber(new NumericValue(3L), context));
-        assertThrows(NodeException.class, () -> NodeMapper.toNumber(new EncodedA("3"), context));
-        assertThrows(NodeException.class, () -> NodeMapper.toNumber("3", context));
+        assertNull(NodeMapper.toNumber(null, config));
+        assertEquals(2L, NodeMapper.toNumber(2L, config));
+        assertEquals(3L, NodeMapper.toNumber(new NumericValue(3L), config));
+        assertThrows(NodeException.class, () -> NodeMapper.toNumber(new EncodedA("3"), config));
+        assertThrows(NodeException.class, () -> NodeMapper.toNumber("3", config));
 
-        assertNull(NodeMapper.asNumber(null, context));
-        assertEquals(2L, NodeMapper.asNumber(2L, context));
-        assertEquals(1, NodeMapper.asNumber(true, context));
-        assertEquals(0, NodeMapper.asNumber(false, context));
-        assertEquals(0, NodeMapper.asNumber(Status.OK, context));
-        assertEquals(3, NodeMapper.asNumber("3", context));
-        assertEquals(4, NodeMapper.asNumber('4', context));
-        assertEquals(5, NodeMapper.asNumber(new EncodedA("5"), context));
-        assertThrows(NodeException.class, () -> NodeMapper.asNumber(new Object(), context));
+        assertNull(NodeMapper.asNumber(null, config));
+        assertEquals(2L, NodeMapper.asNumber(2L, config));
+        assertEquals(1, NodeMapper.asNumber(true, config));
+        assertEquals(0, NodeMapper.asNumber(false, config));
+        assertEquals(0, NodeMapper.asNumber(Status.OK, config));
+        assertEquals(3, NodeMapper.asNumber("3", config));
+        assertEquals(4, NodeMapper.asNumber('4', config));
+        assertEquals(5, NodeMapper.asNumber(new EncodedA("5"), config));
+        assertThrows(NodeException.class, () -> NodeMapper.asNumber(new Object(), config));
     }
 
     @Test
     void directBooleanAdaptationChecksSupportedTextAndIntegralNumbers() {
-        NodeConfig context = NodeConfig.DEFAULT;
-        assertNull(NodeMapper.toBoolean(null, context));
-        assertEquals(true, NodeMapper.toBoolean(true, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toBoolean("true", context));
-        assertThrows(NodeException.class, () -> NodeMapper.toBoolean(new EncodedA("true"), context));
+        NodeConfig config = NodeConfig.DEFAULT;
+        assertNull(NodeMapper.toBoolean(null, config));
+        assertEquals(true, NodeMapper.toBoolean(true, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toBoolean("true", config));
+        assertThrows(NodeException.class, () -> NodeMapper.toBoolean(new EncodedA("true"), config));
 
-        assertNull(NodeMapper.asBoolean(null, context));
-        assertEquals(true, NodeMapper.asBoolean(true, context));
+        assertNull(NodeMapper.asBoolean(null, config));
+        assertEquals(true, NodeMapper.asBoolean(true, config));
         for (String value : Arrays.asList("TRUE", "yes", "On", "1")) {
-            assertEquals(true, NodeMapper.asBoolean(value, context));
+            assertEquals(true, NodeMapper.asBoolean(value, config));
         }
         for (String value : Arrays.asList("FALSE", "No", "off", "0")) {
-            assertEquals(false, NodeMapper.asBoolean(value, context));
+            assertEquals(false, NodeMapper.asBoolean(value, config));
         }
-        assertEquals(true, NodeMapper.asBoolean(1, context));
-        assertEquals(false, NodeMapper.asBoolean(0L, context));
-        assertEquals(true, NodeMapper.asBoolean(new EncodedA("yes"), context));
-        assertThrows(NodeException.class, () -> NodeMapper.asBoolean("maybe", context));
-        assertThrows(NodeException.class, () -> NodeMapper.asBoolean(2, context));
-        assertThrows(NodeException.class, () -> NodeMapper.asBoolean(new Object(), context));
+        assertEquals(true, NodeMapper.asBoolean(1, config));
+        assertEquals(false, NodeMapper.asBoolean(0L, config));
+        assertEquals(true, NodeMapper.asBoolean(new EncodedA("yes"), config));
+        assertThrows(NodeException.class, () -> NodeMapper.asBoolean("maybe", config));
+        assertThrows(NodeException.class, () -> NodeMapper.asBoolean(2, config));
+        assertThrows(NodeException.class, () -> NodeMapper.asBoolean(new Object(), config));
     }
 
     @Test
     void directObjectAdaptationRetainsShallowValuesAndTypesEntriesStrictly() {
-        NodeConfig context = NodeConfig.DEFAULT;
+        NodeConfig config = NodeConfig.DEFAULT;
         JsonObject object = JsonObject.of("name", "Ada", "age", 3);
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("name", "Ada");
         map.put("age", 3);
 
-        assertNull(NodeMapper.toJsonObject(null, context));
-        assertSame(object, NodeMapper.toJsonObject(object, context));
-        assertEquals(map, NodeMapper.toJsonObject(map, context).toMap());
-        assertEquals("Ada", NodeMapper.toJsonObject(profile(), context).getNode("name"));
-        assertThrows(NodeException.class, () -> NodeMapper.toJsonObject(1, context));
+        assertNull(NodeMapper.toJsonObject(null, config));
+        assertSame(object, NodeMapper.toJsonObject(object, config));
+        assertEquals(map, NodeMapper.toJsonObject(map, config).toMap());
+        assertEquals("Ada", NodeMapper.toJsonObject(profile(), config).getNode("name"));
+        assertThrows(NodeException.class, () -> NodeMapper.toJsonObject(1, config));
 
-        assertNull(NodeMapper.toMap(null, context));
-        assertSame(map, NodeMapper.toMap(map, context));
-        assertEquals(map, NodeMapper.toMap(object, context));
-        assertEquals("Ada", NodeMapper.toMap(profile(), context).get("name"));
-        assertThrows(NodeException.class, () -> NodeMapper.toMap("text", context));
+        assertNull(NodeMapper.toMap(null, config));
+        assertSame(map, NodeMapper.toMap(map, config));
+        assertEquals(map, NodeMapper.toMap(object, config));
+        assertEquals("Ada", NodeMapper.toMap(profile(), config).get("name"));
+        assertThrows(NodeException.class, () -> NodeMapper.toMap("text", config));
 
-        assertNull(NodeMapper.toMap(null, String.class, context));
-        assertSame(map, NodeMapper.toMap(map, null, context));
-        assertSame(map, NodeMapper.toMap(map, Object.class, context));
+        assertNull(NodeMapper.toMap(null, String.class, config));
+        assertSame(map, NodeMapper.toMap(map, null, config));
+        assertSame(map, NodeMapper.toMap(map, Object.class, config));
         assertEquals(Map.of("first", "a", "second", "b"), NodeMapper.toMap(
-                JsonObject.of("first", "a", "second", "b"), String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toMap(object, String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toMap(1, String.class, context));
+                JsonObject.of("first", "a", "second", "b"), String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toMap(object, String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toMap(1, String.class, config));
     }
 
     @Test
     void directArrayAdaptationReusesShallowContainersAndChecksTypedElements() {
-        NodeConfig context = NodeConfig.DEFAULT;
+        NodeConfig config = NodeConfig.DEFAULT;
         List<Object> list = new ArrayList<>(Arrays.asList("a", "b", "a"));
         JsonArray json = JsonArray.of("a", "b", "a");
         Set<String> set = new LinkedHashSet<>(Arrays.asList("a", "b"));
         String[] strings = {"a", "b"};
 
-        assertNull(NodeMapper.toJsonArray(null, context));
-        assertSame(json, NodeMapper.toJsonArray(json, context));
-        assertEquals(list, NodeMapper.toJsonArray(list, context).toList());
-        assertEquals(JsonArray.of("a", "b"), NodeMapper.toJsonArray(set, context));
-        assertEquals(JsonArray.of(1, 2), NodeMapper.toJsonArray(new int[]{1, 2}, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toJsonArray(Map.of("name", "Ada"), context));
+        assertNull(NodeMapper.toJsonArray(null, config));
+        assertSame(json, NodeMapper.toJsonArray(json, config));
+        assertEquals(list, NodeMapper.toJsonArray(list, config).toList());
+        assertEquals(JsonArray.of("a", "b"), NodeMapper.toJsonArray(set, config));
+        assertEquals(JsonArray.of(1, 2), NodeMapper.toJsonArray(new int[]{1, 2}, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toJsonArray(Map.of("name", "Ada"), config));
 
-        assertNull(NodeMapper.toList(null, context));
-        assertSame(list, NodeMapper.toList(list, context));
-        assertEquals(list, NodeMapper.toList(json, context));
-        assertEquals(Arrays.asList("a", "b"), NodeMapper.toList(set, context));
-        assertEquals(Arrays.asList(1, 2), NodeMapper.toList(new int[]{1, 2}, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toList(Map.of("name", "Ada"), context));
-        assertNull(NodeMapper.toList(null, String.class, context));
-        assertSame(list, NodeMapper.toList(list, Object.class, context));
-        assertEquals(Arrays.asList("a", "b"), NodeMapper.toList(strings, String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toList(json, Integer.class, context));
+        assertNull(NodeMapper.toList(null, config));
+        assertSame(list, NodeMapper.toList(list, config));
+        assertEquals(list, NodeMapper.toList(json, config));
+        assertEquals(Arrays.asList("a", "b"), NodeMapper.toList(set, config));
+        assertEquals(Arrays.asList(1, 2), NodeMapper.toList(new int[]{1, 2}, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toList(Map.of("name", "Ada"), config));
+        assertNull(NodeMapper.toList(null, String.class, config));
+        assertSame(list, NodeMapper.toList(list, Object.class, config));
+        assertEquals(Arrays.asList("a", "b"), NodeMapper.toList(strings, String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toList(json, Integer.class, config));
 
-        assertNull(NodeMapper.toSet(null, context));
-        assertSame(set, NodeMapper.toSet(set, context));
-        assertEquals(set, NodeMapper.toSet(list, context));
-        assertEquals(set, NodeMapper.toSet(json, context));
+        assertNull(NodeMapper.toSet(null, config));
+        assertSame(set, NodeMapper.toSet(set, config));
+        assertEquals(set, NodeMapper.toSet(list, config));
+        assertEquals(set, NodeMapper.toSet(json, config));
         assertEquals(new LinkedHashSet<>(Arrays.asList(1, 2)),
-                NodeMapper.toSet(new int[]{1, 2, 1}, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toSet(Map.of("name", "Ada"), context));
-        assertNull(NodeMapper.toSet(null, String.class, context));
-        assertSame(set, NodeMapper.toSet(set, Object.class, context));
-        assertEquals(set, NodeMapper.toSet(strings, String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toSet(json, Integer.class, context));
+                NodeMapper.toSet(new int[]{1, 2, 1}, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toSet(Map.of("name", "Ada"), config));
+        assertNull(NodeMapper.toSet(null, String.class, config));
+        assertSame(set, NodeMapper.toSet(set, Object.class, config));
+        assertEquals(set, NodeMapper.toSet(strings, String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toSet(json, Integer.class, config));
 
-        assertNull(NodeMapper.toArray(null, context));
-        assertSame(strings, NodeMapper.toArray(strings, context));
-        assertArrayEquals(new Object[]{1, 2}, NodeMapper.toArray(new int[]{1, 2}, context));
-        assertArrayEquals(new Object[]{"a", "b", "a"}, NodeMapper.toArray(list, context));
-        assertArrayEquals(new Object[]{"a", "b", "a"}, NodeMapper.toArray(json, context));
-        assertArrayEquals(strings, NodeMapper.toArray(set, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toArray(Map.of("name", "Ada"), context));
-        assertNull(NodeMapper.toArray(null, String.class, context));
-        assertSame(strings, NodeMapper.toArray(strings, Object.class, context));
-        assertArrayEquals(new String[]{"a", "b", "a"}, NodeMapper.toArray(json, String.class, context));
-        assertThrows(IllegalArgumentException.class, () -> NodeMapper.toArray(list, int.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toArray(json, Integer.class, context));
+        assertNull(NodeMapper.toArray(null, config));
+        assertSame(strings, NodeMapper.toArray(strings, config));
+        assertArrayEquals(new Object[]{1, 2}, NodeMapper.toArray(new int[]{1, 2}, config));
+        assertArrayEquals(new Object[]{"a", "b", "a"}, NodeMapper.toArray(list, config));
+        assertArrayEquals(new Object[]{"a", "b", "a"}, NodeMapper.toArray(json, config));
+        assertArrayEquals(strings, NodeMapper.toArray(set, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toArray(Map.of("name", "Ada"), config));
+        assertNull(NodeMapper.toArray(null, String.class, config));
+        assertSame(strings, NodeMapper.toArray(strings, Object.class, config));
+        assertArrayEquals(new String[]{"a", "b", "a"}, NodeMapper.toArray(json, String.class, config));
+        assertThrows(IllegalArgumentException.class, () -> NodeMapper.toArray(list, int.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toArray(json, Integer.class, config));
     }
 
     @Test
     void directClassAdaptationRoutesScalarsArraysAndStructuralTargets() {
-        NodeConfig context = NodeConfig.DEFAULT;
+        NodeConfig config = NodeConfig.DEFAULT;
         JsonArray json = JsonArray.of("a", "b");
-        assertSame(json, NodeMapper.to(json, JsonArray.class, context));
-        assertSame(json, NodeMapper.as(json, Object.class, context));
-        assertThrows(NullPointerException.class, () -> NodeMapper.to(json, null, context));
-        assertNull(NodeMapper.to(null, String.class, context));
-        assertEquals("<null>", NodeMapper.as(null, NullValue.class, context).value);
-        assertEquals("3", NodeMapper.as(3, String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.to(3, String.class, context));
-        assertEquals(true, NodeMapper.as("yes", boolean.class, context));
-        assertEquals(true, NodeMapper.to(true, Boolean.class, context));
-        assertEquals(3, NodeMapper.to(3L, int.class, context));
-        assertEquals(3, NodeMapper.as("3", Integer.class, context));
-        assertEquals('a', NodeMapper.to("a", char.class, context));
-        assertEquals('a', NodeMapper.as("abc", Character.class, context));
-        assertSame(Status.OK, NodeMapper.to("OK", Status.class, context));
-        assertSame(Status.FAILED, NodeMapper.as(1, Status.class, context));
-        assertNull(NodeMapper.as("unknown", Status.class, context));
+        assertSame(json, NodeMapper.to(json, JsonArray.class, config));
+        assertSame(json, NodeMapper.as(json, Object.class, config));
+        assertThrows(NullPointerException.class, () -> NodeMapper.to(json, null, config));
+        assertNull(NodeMapper.to(null, String.class, config));
+        assertEquals("<null>", NodeMapper.as(null, NullValue.class, config).value);
+        assertEquals("3", NodeMapper.as(3, String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.to(3, String.class, config));
+        assertEquals(true, NodeMapper.as("yes", boolean.class, config));
+        assertEquals(true, NodeMapper.to(true, Boolean.class, config));
+        assertEquals(3, NodeMapper.to(3L, int.class, config));
+        assertEquals(3, NodeMapper.as("3", Integer.class, config));
+        assertEquals('a', NodeMapper.to("a", char.class, config));
+        assertEquals('a', NodeMapper.as("abc", Character.class, config));
+        assertSame(Status.OK, NodeMapper.to("OK", Status.class, config));
+        assertSame(Status.FAILED, NodeMapper.as(1, Status.class, config));
+        assertNull(NodeMapper.as("unknown", Status.class, config));
 
-        assertEquals(Map.of("name", "Ada"), NodeMapper.to(Map.of("name", "Ada"), Map.class, context));
-        assertEquals("Ada", NodeMapper.to(JsonObject.of("name", "Ada"), Map.class, context).get("name"));
-        assertEquals("Ada", NodeMapper.to(Map.of("name", "Ada"), JsonObject.class, context).getNode("name"));
-        assertEquals(Arrays.asList("a", "b"), NodeMapper.to(json, List.class, context));
-        assertEquals(json, NodeMapper.to(Arrays.asList("a", "b"), JsonArray.class, context));
-        assertEquals(new LinkedHashSet<>(Arrays.asList("a", "b")), NodeMapper.to(json, Set.class, context));
-        assertArrayEquals(new String[]{"a", "b"}, NodeMapper.to(json, String[].class, context));
-        assertArrayEquals(new int[]{1, 2}, NodeMapper.to(new long[]{1, 2}, int[].class, context));
-        assertArrayEquals(new int[]{1, 2}, NodeMapper.as(Arrays.asList("1", "2"), int[].class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.to(Arrays.asList("1"), int[].class, context));
-        assertEquals("Ada", NodeMapper.to(Map.of("name", "Ada"), NameOnly.class, context).name);
-        assertEquals("Ada", NodeMapper.as(Map.of("name", "Ada"), NameOnly.class, context).name);
+        assertEquals(Map.of("name", "Ada"), NodeMapper.to(Map.of("name", "Ada"), Map.class, config));
+        assertEquals("Ada", NodeMapper.to(JsonObject.of("name", "Ada"), Map.class, config).get("name"));
+        assertEquals("Ada", NodeMapper.to(Map.of("name", "Ada"), JsonObject.class, config).getNode("name"));
+        assertEquals(Arrays.asList("a", "b"), NodeMapper.to(json, List.class, config));
+        assertEquals(json, NodeMapper.to(Arrays.asList("a", "b"), JsonArray.class, config));
+        assertEquals(new LinkedHashSet<>(Arrays.asList("a", "b")), NodeMapper.to(json, Set.class, config));
+        assertArrayEquals(new String[]{"a", "b"}, NodeMapper.to(json, String[].class, config));
+        assertArrayEquals(new int[]{1, 2}, NodeMapper.to(new long[]{1, 2}, int[].class, config));
+        assertArrayEquals(new int[]{1, 2}, NodeMapper.as(Arrays.asList("1", "2"), int[].class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.to(Arrays.asList("1"), int[].class, config));
+        assertEquals("Ada", NodeMapper.to(Map.of("name", "Ada"), NameOnly.class, config).name);
+        assertEquals("Ada", NodeMapper.as(Map.of("name", "Ada"), NameOnly.class, config).name);
     }
 
     @Test
     void directTypedContainersHandleNullsAndRejectIncompatibleSources() {
-        NodeConfig context = NodeConfig.DEFAULT;
+        NodeConfig config = NodeConfig.DEFAULT;
         Map<String, String> typedMap = NodeMapper.toMap(
-                JsonObject.of("empty", null, "letter", 'a'), String.class, context);
+                JsonObject.of("empty", null, "letter", 'a'), String.class, config);
         assertEquals("a", typedMap.get("letter"));
         assertNull(typedMap.get("empty"));
         assertEquals(Arrays.asList("a", null),
-                NodeMapper.toList(JsonArray.of("a", null), String.class, context));
+                NodeMapper.toList(JsonArray.of("a", null), String.class, config));
         assertEquals(new LinkedHashSet<>(Arrays.asList("a", null)),
-                NodeMapper.toSet(Arrays.asList("a", null), String.class, context));
+                NodeMapper.toSet(Arrays.asList("a", null), String.class, config));
         assertArrayEquals(new String[]{"a", null},
-                NodeMapper.toArray(JsonArray.of("a", null), String.class, context));
-        assertEquals(Arrays.asList("a"), NodeMapper.toList(JsonArray.of("a"), null, context));
-        assertEquals(Set.of("a"), NodeMapper.toSet(JsonArray.of("a"), null, context));
-        assertArrayEquals(new Object[]{"a"}, NodeMapper.toArray(JsonArray.of("a"), null, context));
+                NodeMapper.toArray(JsonArray.of("a", null), String.class, config));
+        assertEquals(Arrays.asList("a"), NodeMapper.toList(JsonArray.of("a"), null, config));
+        assertEquals(Set.of("a"), NodeMapper.toSet(JsonArray.of("a"), null, config));
+        assertArrayEquals(new Object[]{"a"}, NodeMapper.toArray(JsonArray.of("a"), null, config));
 
-        assertThrows(NodeException.class, () -> NodeMapper.toList(Map.of("key", 1), String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toSet(Map.of("key", 1), String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toArray(Map.of("key", 1), String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.toMap(JsonArray.of(1), String.class, context));
+        assertThrows(NodeException.class, () -> NodeMapper.toList(Map.of("key", 1), String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toSet(Map.of("key", 1), String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toArray(Map.of("key", 1), String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.toMap(JsonArray.of(1), String.class, config));
 
-        assertEquals("a", NodeMapper.to('a', String.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.to(1, Boolean.class, context));
-        assertNull(NodeMapper.as(new NullValue(null), Integer.class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.to(new EncodedA("a"), int[].class, context));
-        assertThrows(NodeException.class, () -> NodeMapper.to(Map.of("a", 1), int[].class, context));
+        assertEquals("a", NodeMapper.to('a', String.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.to(1, Boolean.class, config));
+        assertNull(NodeMapper.as(new NullValue(null), Integer.class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.to(new EncodedA("a"), int[].class, config));
+        assertThrows(NodeException.class, () -> NodeMapper.to(Map.of("a", 1), int[].class, config));
     }
 
     @Test
     void directClassArraysRejectNodeValuesWithoutArrayShape() {
-        NodeConfig context = NodeConfig.DEFAULT;
+        NodeConfig config = NodeConfig.DEFAULT;
         assertThrows(NodeException.class,
-                () -> NodeMapper.to(new StringListValue(Arrays.asList("a", "b")), String[].class, context));
+                () -> NodeMapper.to(new StringListValue(Arrays.asList("a", "b")), String[].class, config));
         assertThrows(NodeException.class,
-                () -> NodeMapper.to(new StringListValue(null), String[].class, context));
+                () -> NodeMapper.to(new StringListValue(null), String[].class, config));
         assertThrows(NodeException.class,
-                () -> NodeMapper.to(new StringListValue(Arrays.asList("a", 1)), String[].class, context));
+                () -> NodeMapper.to(new StringListValue(Arrays.asList("a", 1)), String[].class, config));
     }
 
     @NodeValue

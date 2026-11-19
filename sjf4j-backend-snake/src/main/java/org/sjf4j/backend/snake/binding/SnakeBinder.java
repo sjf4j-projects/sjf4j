@@ -27,22 +27,22 @@ public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public SnakeBinder(NodeConfig context) {
-        this(new LoaderOptions(), new DumperOptions(), context);
+    public SnakeBinder(NodeConfig config) {
+        this(new LoaderOptions(), new DumperOptions(), config);
     }
 
     /**
      * Creates a binder with supplied SnakeYAML options and runtime settings.
      * @param loaderOptions the parser options
      * @param dumperOptions the emitter options
-     * @param context the SJF4J runtime settings
+     * @param config the SJF4J runtime settings
      */
     public SnakeBinder(LoaderOptions loaderOptions, DumperOptions dumperOptions,
-                       NodeConfig context) {
-        super(context);
+                       NodeConfig config) {
+        super(config);
         this.loaderOptions = Asserts.notNull(loaderOptions, "loaderOptions");
         this.dumperOptions = Asserts.notNull(dumperOptions, "dumperOptions");
     }

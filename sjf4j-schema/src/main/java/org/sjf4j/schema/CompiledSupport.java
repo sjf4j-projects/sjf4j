@@ -35,13 +35,13 @@ public final class CompiledSupport {
     /**
      * Reads a member for generated schema validation using its scalar raw
      * ValueCodec representation. Property-level formats take precedence over
-     * the runtime context's format selection.
+     * the runtime config's format selection.
      *
      * <p>Map/List-encoded value nodes remain atomic: their raw containers must
      * not be traversed as structural schema objects or arrays.
      */
-    public static Object scalarValueInObject(Object owner, String key, NodeConfig context) {
-        Asserts.notNull(context, "context");
+    public static Object scalarValueInObject(Object owner, String key, NodeConfig config) {
+        Asserts.notNull(config, "config");
         Object value = NodeWalker.getInObject(owner, key);
         if (value == null) return null;
 
@@ -59,7 +59,7 @@ public final class CompiledSupport {
             if (NodeKind.plainOf(valueClass) == NodeKind.UNKNOWN) {
                 TypeInfo valueInfo = TypeRegistry.registerTypeInfo(valueClass);
                 if (valueInfo.valueSet != null) {
-                    codec = valueInfo.requireValueInfo(context.valueFormat(valueClass));
+                    codec = valueInfo.requireValueInfo(config.valueFormat(valueClass));
                 }
             }
         }

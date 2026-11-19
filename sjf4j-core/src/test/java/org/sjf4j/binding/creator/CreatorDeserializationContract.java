@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** NodeCreator constructor and factory cases structurally adapted from Jackson creator tests. */
 public abstract class CreatorDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     /** Structural source: CreatorPropertyConstraintsTest#testRequiredAnnotatedParam; SJF4J has no required flag, so a missing primitive uses its Java default. */
     @Test void testRequiredAnnotatedParam() {
         ConstructorBean bean = (ConstructorBean) binding(NodeConfig.DEFAULT).readNode("{\"name\":\"han\"}", ConstructorBean.class);

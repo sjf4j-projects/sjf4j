@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Portable collection cases from Jackson's CollectionDeserializationTest. */
 public abstract class CollectionDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     /** Source: CollectionDeserializationTest#testUntypedList. */
     @Test void testUntypedList() {
         List<?> value = assertInstanceOf(List.class, binding(NodeConfig.DEFAULT).readNode("[\"text!\",true,null,23]", Object.class));

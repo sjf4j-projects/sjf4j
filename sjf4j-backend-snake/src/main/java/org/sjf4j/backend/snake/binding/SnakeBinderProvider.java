@@ -32,7 +32,7 @@ public final class SnakeBinderProvider implements BinderProvider {
         LoaderOptions checkedLoaderOptions = Asserts.notNull(loaderOptions, "loaderOptions");
         DumperOptions checkedDumperOptions = Asserts.notNull(dumperOptions, "dumperOptions");
         return BinderProvider.of(Format.YAML, 100,
-                context -> new SnakeBinder(checkedLoaderOptions, checkedDumperOptions, context));
+                config -> new SnakeBinder(checkedLoaderOptions, checkedDumperOptions, config));
     }
 
     @Override
@@ -51,7 +51,7 @@ public final class SnakeBinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(NodeConfig context) {
-        return new SnakeBinder(new LoaderOptions(), new DumperOptions(), context);
+    public Binder<?, ?> create(NodeConfig config) {
+        return new SnakeBinder(new LoaderOptions(), new DumperOptions(), config);
     }
 }

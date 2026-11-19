@@ -114,14 +114,14 @@ final class BindingHelperEmitter {
                             + ".selectForRead(this."
                             + names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet")
                             + ".defaultInfo.rawJsonType, "
-                            + "context.valueFormat(" + value.type() + ".class));"));
+                            + "config.valueFormat(" + value.type() + ".class));"));
         } else {
             generated.addContextInitializer(out -> out.line(
                     "this." + info + " = "
                             + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
                             + value.type() + ".class, "
                             + (value.valueFormat() == null
-                                    ? "context.valueFormat(" + value.type() + ".class)"
+                                    ? "config.valueFormat(" + value.type() + ".class)"
                                     : JavaWriter.stringLiteral(value.valueFormat()))
                             + ", "
                             + (value.valuePattern() == null ? "null"

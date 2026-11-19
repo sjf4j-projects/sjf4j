@@ -15,8 +15,8 @@ import java.io.Writer;
  */
 public final class SimpleYamlBinder extends Binder<StreamingParser, StreamingGenerator> {
 
-    public SimpleYamlBinder(NodeConfig context) {
-        super(context);
+    public SimpleYamlBinder(NodeConfig config) {
+        super(config);
     }
 
     @Override

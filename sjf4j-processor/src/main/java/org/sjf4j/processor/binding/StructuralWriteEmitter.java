@@ -64,7 +64,7 @@ final class StructuralWriteEmitter {
                 expr = propertyVar;
                 if (!stringMember && (nonNullScalar(child) || child.helperRequired())) {
                     out.beginBlock("if (" + propertyVar + " == null)");
-                    out.beginBlock("if (this.context.includeNulls)");
+                    out.beginBlock("if (this.config.includeNulls)");
                     emitPropertyName(out, value, index);
                     ops.writeNull(out);
                     out.endBlock();
@@ -77,7 +77,7 @@ final class StructuralWriteEmitter {
                     continue;
                 }
                 if (!stringMember) {
-                    out.beginBlock("if (" + propertyVar + " != null || this.context.includeNulls)");
+                    out.beginBlock("if (" + propertyVar + " != null || this.config.includeNulls)");
                 }
             }
 
@@ -98,7 +98,7 @@ final class StructuralWriteEmitter {
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
                     + "value.dynamicMembers().entrySet())");
             out.line("Object dynamicValue = entry.getValue();");
-            out.beginBlock("if (dynamicValue != null || this.context.includeNulls)");
+            out.beginBlock("if (dynamicValue != null || this.config.includeNulls)");
             if (ops.explicitObjectSeparators()) {
                 ops.beforeObjectMember(out, "memberCount++");
             }
@@ -189,7 +189,7 @@ final class StructuralWriteEmitter {
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
         out.line("Object mapValue = entry.getValue();");
-        out.beginBlock("if (mapValue != null || this.context.includeNulls)");
+        out.beginBlock("if (mapValue != null || this.config.includeNulls)");
         if (ops.explicitObjectSeparators()) {
             ops.beforeObjectMember(out, "memberCount++");
         }
@@ -220,7 +220,7 @@ final class StructuralWriteEmitter {
             out.beginBlock("if (actualClass == " + type + ".class)");
             if (subtype.cachedPojo) {
                 out.line("org.sjf4j.binding.StreamingIO.writePojo(generator, value, "
-                        + metadata + ", this.context);");
+                        + metadata + ", this.config);");
             } else {
                 if (subtype.compiled.helperRequired()) {
                     ops.writeNonNullValue(out, subtype.compiled, "(" + type + ") value");

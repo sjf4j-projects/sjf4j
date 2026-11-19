@@ -37,9 +37,9 @@ public final class MyHttpMessageConverter extends AbstractGenericHttpMessageConv
     private final Binder<?, ?> json;
     private final Binder<?, ?> yaml;
 
-    public MyHttpMessageConverter(NodeConfig context) {
-        this(BinderFactory.jsonProvider().create(context),
-                BinderFactory.yamlProvider().create(context));
+    public MyHttpMessageConverter(NodeConfig config) {
+        this(BinderFactory.jsonProvider().create(config),
+                BinderFactory.yamlProvider().create(config));
     }
 
     public MyHttpMessageConverter(Binder<?, ?> json, Binder<?, ?> yaml) {

@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Portable streaming-binding behavior. Subclasses opt parser bindings into this contract. */
 public abstract class JsonBindingContract {
 
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     @Test
     void readerAndWriterExposeStructuralJson() throws Exception {

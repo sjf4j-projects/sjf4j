@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Default array bindings from Jackson's ArrayDeserializationTest. */
 public abstract class ArrayDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** Source: ArrayDeserializationTest#testUntypedArray. */
     @Test

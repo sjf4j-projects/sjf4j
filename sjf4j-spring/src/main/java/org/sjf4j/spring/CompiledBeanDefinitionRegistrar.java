@@ -68,9 +68,9 @@ public final class CompiledBeanDefinitionRegistrar
             RootBeanDefinition definition = new RootBeanDefinition(implementation);
             definition.setLazyInit(true);
             definition.setInstanceSupplier(() -> {
-                NodeConfig context = beanFactory.getBeanProvider(NodeConfig.class)
+                NodeConfig config = beanFactory.getBeanProvider(NodeConfig.class)
                         .getIfAvailable(() -> NodeConfig.DEFAULT);
-                return CompiledInstances.create(type, context);
+                return CompiledInstances.create(type, config);
             });
             registry.registerBeanDefinition(name, definition);
         }

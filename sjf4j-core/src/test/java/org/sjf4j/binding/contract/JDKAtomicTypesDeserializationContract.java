@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** User-registered non-native atomic-value bindings via SJF4J's ValueCodec extension API. */
 public abstract class JDKAtomicTypesDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     private static final class AtomicCodecs {
         static {
             ValueRegistry.registerByCodec(new ValueCodec.SimpleValueCodec<>(

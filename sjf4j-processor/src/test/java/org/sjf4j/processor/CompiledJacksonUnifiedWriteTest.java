@@ -68,10 +68,10 @@ class CompiledJacksonUnifiedWriteTest {
                 assertTrue(generated.contains("private static void _writeStringMember("), backend);
                 assertTrue(generated.contains("boolean includeNulls)"), backend);
                 assertTrue(generated.contains("if (includeNulls)"), backend);
-                assertTrue(generated.contains(", this.context.includeNulls);"), backend);
+                assertTrue(generated.contains(", this.config.includeNulls);"), backend);
             } else {
                 assertTrue(generated.contains("private void _writeStringMember("), backend);
-                assertTrue(generated.contains("if (this.context.includeNulls)"), backend);
+                assertTrue(generated.contains("if (this.config.includeNulls)"), backend);
                 assertFalse(generated.contains("boolean includeNulls)"), backend);
             }
             assertTrue(generated.contains("if (value == null)"), backend);
@@ -81,7 +81,7 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
-            assertTrue(generated.contains("this.context.includeNulls"), backend);
+            assertTrue(generated.contains("this.config.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(generator,"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {

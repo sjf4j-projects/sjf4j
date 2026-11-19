@@ -295,9 +295,9 @@ public abstract class StreamingGenerator implements Flushable, Closeable {
      * Writes a raw JSON value without POJO, external-node, or ValueCodec binding.
      * Accepts JSON scalars, maps with String keys, and lists of raw values.
      * Raw denotes a data value, not unescaped JSON text.
-     * Object null omission follows the supplied context; array nulls remain.
+     * Object null omission follows the supplied config; array nulls remain.
      */
-    public void writeRaw(Object raw, NodeConfig context) throws IOException {
+    public void writeRaw(Object raw, NodeConfig config) throws IOException {
         if (raw == null) {
             writeNull();
         } else if (raw instanceof String) {
@@ -327,9 +327,9 @@ public abstract class StreamingGenerator implements Flushable, Closeable {
             int count = 0;
             for (Map.Entry<?, ?> entry : ((Map<?, ?>) raw).entrySet()) {
                 Object child = entry.getValue();
-                if (child == null && !context.includeNulls) continue;
+                if (child == null && !config.includeNulls) continue;
                 writeName((String) entry.getKey(), count++ > 0);
-                writeRaw(child, context);
+                writeRaw(child, config);
             }
             writeObjectEnd();
         } else if (raw instanceof List) {
@@ -338,13 +338,13 @@ public abstract class StreamingGenerator implements Flushable, Closeable {
             if (list instanceof RandomAccess) {
                 for (int i = 0, size = list.size(); i < size; i++) {
                     if (i > 0) writeArraySeparator();
-                    writeRaw(list.get(i), context);
+                    writeRaw(list.get(i), config);
                 }
             } else {
                 int count = 0;
                 for (Object child : list) {
                     if (count++ > 0) writeArraySeparator();
-                    writeRaw(child, context);
+                    writeRaw(child, config);
                 }
             }
             writeArrayEnd();

@@ -29,7 +29,7 @@ public final class GsonBinderProvider implements BinderProvider {
     public static BinderProvider of(Gson gson) {
         Gson checkedGson = Asserts.notNull(gson, "gson");
         return BinderProvider.of(Format.JSON, 400,
-                context -> new GsonBinder(checkedGson, context));
+                config -> new GsonBinder(checkedGson, config));
     }
 
     @Override
@@ -48,7 +48,7 @@ public final class GsonBinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(NodeConfig context) {
-        return new GsonBinder(new Gson(), context);
+    public Binder<?, ?> create(NodeConfig config) {
+        return new GsonBinder(new Gson(), config);
     }
 }

@@ -126,8 +126,8 @@ class Jackson3BinderTest {
 
     @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
-        NodeConfig context = new NodeConfig(false);
-        Jackson3Binder binder = new Jackson3Binder(new JsonFactory(), context);
+        NodeConfig config = new NodeConfig(false);
+        Jackson3Binder binder = new Jackson3Binder(new JsonFactory(), config);
         StringWriter output = new StringWriter();
 
         {

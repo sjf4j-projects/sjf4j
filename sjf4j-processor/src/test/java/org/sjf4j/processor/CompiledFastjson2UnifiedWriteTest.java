@@ -66,7 +66,7 @@ class CompiledFastjson2UnifiedWriteTest {
         assertTrue(generated.contains("_writeModelUtf8(generator,"), generated);
         assertTrue(generated.contains("_writeModelUtf16(generator,"), generated);
         assertTrue(generated.contains("writeName") && generated.contains("Raw("), generated);
-        assertTrue(generated.contains("this.context.includeNulls"), generated);
+        assertTrue(generated.contains("this.config.includeNulls"), generated);
         assertTrue(generated.contains("StreamingIO.writeNode(generator,"), generated);
         assertFalse(generated.contains("StructuralWriteEmitter"), generated);
         // A OneOf/codec/dynamic descendant must not force its parent to Runtime.

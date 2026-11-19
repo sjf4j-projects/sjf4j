@@ -780,7 +780,7 @@ final class ReadEmitter {
                 String rawReader = codecRawReader(value);
                 String info = names.field(value, "valueInfo", BindingNames.lowerType(value.type()) + "ValueInfo");
                 String runtimeRead = STREAMING_IO + ".readValueCodec(" + parser + ", "
-                        + info + ", this.context)";
+                        + info + ", this.config)";
                 String scalarRead;
                 if (rawReader == null) {
                     scalarRead = runtimeRead;
@@ -801,7 +801,7 @@ final class ReadEmitter {
                     String set = names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet");
                     String selected = STREAMING_IO + ".readValueSet(" + parser + ", "
                             + value.type() + ".class, " + value.type() + ".class, "
-                            + set + ", this.context)";
+                            + set + ", this.config)";
                     return "(" + value.type() + ") (" + set + ".multiples ? "
                             + selected + " : " + scalarRead + ")";
                 }
@@ -810,13 +810,13 @@ final class ReadEmitter {
             case ENUM:
                 if (fastjson2 != null) return fastjson2.readExpression(value, parser);
                 return "(" + value.type() + ") " + STREAMING_IO + ".readEnum(" + parser + ", "
-                        + value.type() + ".class, this.context)";
+                        + value.type() + ".class, this.config)";
 
             case ONE_OF:
                 if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
                 return (context.types.isObject(value.type()) ? "" : "(" + value.type() + ") ")
                         + "org.sjf4j.binding.OneOfIO.readOneOf(" + parser + ", "
-                        + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", this.context)";
+                        + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", this.config)";
 
             case RAW_MAP:
                 return rawReadExpression(value, parser, true);
@@ -827,7 +827,7 @@ final class ReadEmitter {
             case RUNTIME:
                 if (context.types.isObject(value.type())) return parser + ".readRaw()";
                 return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
-                        + context.typeUtils.erasure(value.type()) + ".class, this.context)";
+                        + context.typeUtils.erasure(value.type()) + ".class, this.config)";
 
             default:
                 throw new AssertionError("Unsupported read kind " + value.kind());

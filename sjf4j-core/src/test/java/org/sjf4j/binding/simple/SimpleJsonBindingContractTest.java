@@ -6,7 +6,7 @@ import org.sjf4j.NodeConfig;
 
 class SimpleJsonBindingContractTest extends JsonBindingContract {
     @Override
-    protected Binder<?, ?> binding(NodeConfig context) {
-        return new SimpleJsonBinder(context);
+    protected Binder<?, ?> binding(NodeConfig config) {
+        return new SimpleJsonBinder(config);
     }
 }

@@ -148,7 +148,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
-            out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", this.context);");
+            out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", this.config);");
     }
 
     @Override

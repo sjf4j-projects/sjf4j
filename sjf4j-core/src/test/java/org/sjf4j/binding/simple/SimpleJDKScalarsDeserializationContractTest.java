@@ -4,7 +4,7 @@ import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.contract.JDKScalarsDeserializationContract;
 class SimpleJDKScalarsDeserializationContractTest extends JDKScalarsDeserializationContract {
      @Override
-    protected Binder<?, ?> binding(NodeConfig context) {
-        return new SimpleJsonBinder(context);
+    protected Binder<?, ?> binding(NodeConfig config) {
+        return new SimpleJsonBinder(config);
     }
  }

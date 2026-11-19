@@ -26,7 +26,7 @@ final class SchemaEmitter {
     private final GeneratedClass generated;
     private final String helperPrefix;
     private NameAllocator locals;
-    private String nodeConfigExpression = "this.context";
+    private String nodeConfigExpression = "this.config";
     private final Map<String, String> decimalConstants = new LinkedHashMap<String, String>();
     private int helperCount;
     private final Map<String, String> failureHelpers = new LinkedHashMap<String, String>();
@@ -454,8 +454,8 @@ final class SchemaEmitter {
                     List<String> body = new ArrayList<String>();
                     NameAllocator parentLocals = locals;
                     String parentContext = nodeConfigExpression;
-                    locals = generated.names().helperLocals("value", "strictFormat", "context");
-                    nodeConfigExpression = "context";
+                    locals = generated.names().helperLocals("value", "strictFormat", "config");
+                    nodeConfigExpression = "config";
                     try {
                         emitValue(body, plan, reference.target, value, "value", method,
                                 "strictFormat", 0, "return false;");
@@ -467,7 +467,7 @@ final class SchemaEmitter {
                             && "return false;".equals(body.get(body.size() - 1));
                     generated.addHelper(out -> {
                         out.beginBlock("private static boolean " + method + "("
-                                + parameterType + " value, boolean strictFormat, org.sjf4j.NodeConfig context)");
+                                + parameterType + " value, boolean strictFormat, org.sjf4j.NodeConfig config)");
                         for (String statement : body) out.line(statement);
                         if (!alwaysRejects) out.line("return true;");
                         out.endBlock();
@@ -659,8 +659,8 @@ final class SchemaEmitter {
         // A nested boolean helper owns an independent method-level namespace.
         NameAllocator parentLocals = locals;
         String parentContext = nodeConfigExpression;
-        locals = generated.names().helperLocals("value", "strictFormat", "context");
-        nodeConfigExpression = "context";
+        locals = generated.names().helperLocals("value", "strictFormat", "config");
+        nodeConfigExpression = "config";
         try {
             emitValue(body, plan, branch, value, "value", helper, "strictFormat", 0,
                     "return false;");
@@ -673,7 +673,7 @@ final class SchemaEmitter {
         String parameterType = value.type == null ? "Object" : value.type.toString();
         generated.addHelper(out -> {
             out.beginBlock("private static boolean " + helper + "("
-                    + parameterType + " value, boolean strictFormat, org.sjf4j.NodeConfig context)");
+                    + parameterType + " value, boolean strictFormat, org.sjf4j.NodeConfig config)");
             for (String source : body) out.line(source);
             if (!alwaysRejects) out.line("return true;");
             out.endBlock();

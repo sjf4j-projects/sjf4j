@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Ordinary and root POJO contracts sourced from Jackson's default bean reads. */
 public abstract class BeanDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** Direct source: bean/BeanDeserializerVanillaTest#allKnownProperties. */
     @Test void readsAllOrdinaryPojoPropertiesAtTheRoot() {

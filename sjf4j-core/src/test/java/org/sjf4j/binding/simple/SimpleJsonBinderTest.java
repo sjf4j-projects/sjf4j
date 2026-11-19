@@ -26,10 +26,10 @@ class SimpleJsonBinderTest {
 
     @Test
     void requiresAStreamingContext() {
-        NodeConfig context = new NodeConfig(false);
+        NodeConfig config = new NodeConfig(false);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("missing", null);
-        assertEquals("{}", new SimpleJsonBinder(context).writeNodeAsString(source));
+        assertEquals("{}", new SimpleJsonBinder(config).writeNodeAsString(source));
         assertThrows(NullPointerException.class, () -> new SimpleJsonBinder(null));
     }
 

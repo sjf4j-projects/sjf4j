@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Default SJF4J unknown-property behavior structurally compared with Jackson cases. */
 public abstract class UnknownPropertyDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** Structural source: UnknownPropertyDeserTest#testUnknownHandlingIgnoreWithFeature. */
     @Test void testUnknownHandlingIgnoreWithFeature() {

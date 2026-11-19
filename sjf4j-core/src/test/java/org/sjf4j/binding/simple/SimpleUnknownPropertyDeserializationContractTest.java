@@ -4,7 +4,7 @@ import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.access.UnknownPropertyDeserializationContract;
 class SimpleUnknownPropertyDeserializationContractTest extends UnknownPropertyDeserializationContract {
      @Override
-    protected Binder<?, ?> binding(NodeConfig context) {
-        return new SimpleJsonBinder(context);
+    protected Binder<?, ?> binding(NodeConfig config) {
+        return new SimpleJsonBinder(config);
     }
  }

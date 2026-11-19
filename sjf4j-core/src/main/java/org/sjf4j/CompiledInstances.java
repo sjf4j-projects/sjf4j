@@ -33,8 +33,8 @@ public final class CompiledInstances {
     }
 
     /** Creates an independent compiled implementation with the supplied settings. */
-    public static <T> T create(Class<T> type, NodeConfig context) {
-        return _instantiate(type, NodeConfig.class, Asserts.notNull(context, "context"));
+    public static <T> T create(Class<T> type, NodeConfig config) {
+        return _instantiate(type, NodeConfig.class, Asserts.notNull(config, "config"));
     }
 
     /**

@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Opt-in epoch-millis date bindings using named SJF4J value codecs, not Jackson defaults. */
 public abstract class DateDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     private static final NodeConfig EPOCH_MILLIS = new NodeConfig(java.util.Map.of(
             Date.class, "epochMillis", Calendar.class, "epochMillis"));
 

@@ -36,11 +36,11 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public Jackson3Binder(NodeConfig context) {
-        this(new JsonFactory(), context);
+    public Jackson3Binder(NodeConfig config) {
+        this(new JsonFactory(), config);
     }
 
     /**
@@ -54,10 +54,10 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
     /**
      * Creates a binder from a supplied factory with runtime settings.
      * @param factory the Jackson 3 factory to rebuild
-     * @param context the SJF4J runtime settings
+     * @param config the SJF4J runtime settings
      */
-    public Jackson3Binder(JsonFactory factory, NodeConfig context) {
-        super(context);
+    public Jackson3Binder(JsonFactory factory, NodeConfig config) {
+        super(config);
         Asserts.notNull(factory, "factory");
         this.factory = factory.rebuild()
                 .disable(TokenStreamFactory.Feature.CHARSET_DETECTION)

@@ -1519,7 +1519,7 @@ public final class JdbcEmitter {
         out.line(read.targetType() + " " + value + " = "
                 + (generic ? "(" + read.targetType() + ") " : "")
                 + "org.sjf4j.node.NodeMapper.to(" + raw + ", "
-                + classLiteral(read.targetType()) + ", this.context);");
+                + classLiteral(read.targetType()) + ", this.config);");
 
         return value;
     }

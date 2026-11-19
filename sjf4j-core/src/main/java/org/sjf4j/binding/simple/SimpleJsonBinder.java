@@ -18,8 +18,8 @@ public final class SimpleJsonBinder extends Binder<SimpleJsonParser, SimpleJsonG
         this(NodeConfig.DEFAULT);
     }
 
-    public SimpleJsonBinder(NodeConfig context) {
-        super(context);
+    public SimpleJsonBinder(NodeConfig config) {
+        super(config);
     }
 
     /**

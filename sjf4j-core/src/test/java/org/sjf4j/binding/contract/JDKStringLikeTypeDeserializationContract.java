@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** SJF4J-supported JDK string-like bindings and explicit unsupported-type contracts. */
 public abstract class JDKStringLikeTypeDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     private Object read(String json, Class<?> type) {
             return binding(NodeConfig.DEFAULT).readNode(json, type);
         }

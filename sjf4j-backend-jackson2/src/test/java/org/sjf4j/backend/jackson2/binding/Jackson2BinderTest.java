@@ -197,8 +197,8 @@ class Jackson2BinderTest {
 
     @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
-        NodeConfig context = new NodeConfig(false);
-        Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), context);
+        NodeConfig config = new NodeConfig(false);
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), config);
         StringWriter output = new StringWriter();
 
         {

@@ -26,15 +26,15 @@ public final class Fastjson2BinderProvider implements BinderProvider {
 
     /**
      * Creates a provider that uses the supplied contexts for every binder it creates.
-     * @param readerContext the shared read context
-     * @param writerContext the shared write context
+     * @param readerContext the shared read config
+     * @param writerContext the shared write config
      * @return a JSON binder provider using these contexts
      */
     public static BinderProvider of(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
         JSONReader.Context checkedReaderContext = Asserts.notNull(readerContext, "readerContext");
         JSONWriter.Context checkedWriterContext = Asserts.notNull(writerContext, "writerContext");
         return BinderProvider.of(Format.JSON, 300,
-                context -> new Fastjson2Binder(checkedReaderContext, checkedWriterContext, context));
+                config -> new Fastjson2Binder(checkedReaderContext, checkedWriterContext, config));
     }
 
     @Override
@@ -53,7 +53,7 @@ public final class Fastjson2BinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(NodeConfig context) {
-        return new Fastjson2Binder(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
+    public Binder<?, ?> create(NodeConfig config) {
+        return new Fastjson2Binder(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), config);
     }
 }

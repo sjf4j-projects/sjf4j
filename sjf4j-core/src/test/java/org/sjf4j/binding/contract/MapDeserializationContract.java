@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Portable map cases from Jackson's MapDeserializationTest. */
 public abstract class MapDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
     /** Source: MapDeserializationTest#testExactStringIntMap. */
     @Test void testExactStringIntMap() {
         Map<String, Integer> value = cast(binding(NodeConfig.DEFAULT).readNode("{\"foo\":13,\"bar\":-39,\"\":0}", new TypeReference<Map<String, Integer>>() {}.getType()));

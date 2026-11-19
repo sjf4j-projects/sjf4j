@@ -57,19 +57,19 @@ public final class StreamingIO {
      * The caller owns document start/end and parser lifecycle.
      */
     public static Object readNode(StreamingParser parser, Type type,
-                                  NodeConfig context) throws IOException {
+                                  NodeConfig config) throws IOException {
         Asserts.notNull(parser, "parser");
         Asserts.notNull(type, "type");
-        Asserts.notNull(context, "context");
+        Asserts.notNull(config, "config");
 
         Class<?> boxed = Types.rawBox(type);
         // The common scalar and collection paths need no registered metadata.
-        return readNode(parser, type, boxed, null, context);
+        return readNode(parser, type, boxed, null, config);
     }
 
 
     static Object readNode(StreamingParser parser, Type type, Class<?> boxed, TypeInfo typeInfo,
-                           NodeConfig context) throws IOException {
+                           NodeConfig config) throws IOException {
         try {
             /*
              * Do NOT probe null here.
@@ -83,7 +83,7 @@ public final class StreamingIO {
              */
 
             if (typeInfo != null && typeInfo != TypeInfo.NONE) {
-                return _readRegistered(parser, type, boxed, typeInfo, context);
+                return _readRegistered(parser, type, boxed, typeInfo, config);
             }
 
             if (boxed == Object.class) {
@@ -146,7 +146,7 @@ public final class StreamingIO {
             }
 
             if (boxed.isEnum()) {
-                return readEnum(parser, boxed, context);
+                return readEnum(parser, boxed, config);
             }
 
             /*
@@ -154,7 +154,7 @@ public final class StreamingIO {
              */
 
             if (Map.class.isAssignableFrom(boxed)) {
-                return readMap(parser, type, boxed, null, null, null, context);
+                return readMap(parser, type, boxed, null, null, null, config);
             }
 
             if (boxed == JsonObject.class) {
@@ -166,7 +166,7 @@ public final class StreamingIO {
              */
 
             if (List.class.isAssignableFrom(boxed)) {
-                return readList(parser, type, boxed, null, null, null, context);
+                return readList(parser, type, boxed, null, null, null, config);
             }
 
             if (boxed == JsonArray.class) {
@@ -174,11 +174,11 @@ public final class StreamingIO {
             }
 
             if (Set.class.isAssignableFrom(boxed)) {
-                return readSet(parser, type, boxed, null, null, null, context);
+                return readSet(parser, type, boxed, null, null, null, config);
             }
 
             if (boxed.isArray()) {
-                return readArray(parser, type, boxed, null, null, null, context);
+                return readArray(parser, type, boxed, null, null, null, config);
             }
 
             // A null TypeInfo means metadata has not been resolved. NONE
@@ -186,7 +186,7 @@ public final class StreamingIO {
             if (typeInfo == null) {
                 TypeInfo resolved = TypeRegistry.registerTypeInfo(boxed);
                 if (resolved != TypeInfo.NONE) {
-                    return _readRegistered(parser, type, boxed, resolved, context);
+                    return _readRegistered(parser, type, boxed, resolved, config);
                 }
             }
 
@@ -217,23 +217,23 @@ public final class StreamingIO {
      */
     private static Object _readRegistered(StreamingParser parser, Type type,
                                               Class<?> boxed, TypeInfo ti,
-                                              NodeConfig context) throws IOException {
+                                              NodeConfig config) throws IOException {
         if (ti.oneOfInfo != null) {
-            return OneOfIO.readOneOf(parser, ti.oneOfInfo, context);
+            return OneOfIO.readOneOf(parser, ti.oneOfInfo, config);
         }
         if (ti.valueSet != null) {
-            return readValueSet(parser, type, boxed, ti.valueSet, context);
+            return readValueSet(parser, type, boxed, ti.valueSet, config);
         }
         if (ti.containerInfo != null) {
             // Streaming binding only constructs Java containers that can be
             // populated with put/add. Native builder construction is mapping-only.
             switch (ti.containerInfo.kind) {
                 case OBJECT_MAP:
-                    return readMap(parser, type, boxed, null, null, null, context);
+                    return readMap(parser, type, boxed, null, null, null, config);
                 case ARRAY_LIST:
-                    return readList(parser, type, boxed, null, null, null, context);
+                    return readList(parser, type, boxed, null, null, null, config);
                 case ARRAY_SET:
-                    return readSet(parser, type, boxed, null, null, null, context);
+                    return readSet(parser, type, boxed, null, null, null, config);
                 default:
                     throw new BindingException("unsupported container type '" + boxed.getName() + "'");
             }
@@ -248,9 +248,9 @@ public final class StreamingIO {
         }
         if (ti.pojoInfo != null) {
             if (ti.pojoInfo.isJajo) {
-                return readJsonArray(parser, type, boxed, ti, context);
+                return readJsonArray(parser, type, boxed, ti, config);
             }
-            return readPojo(parser, type, boxed, ti.pojoInfo, context);
+            return readPojo(parser, type, boxed, ti.pojoInfo, config);
         }
         if (parser.nextIfNull()) {
             return null;
@@ -267,7 +267,7 @@ public final class StreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readEnum(StreamingParser parser, Class<?> enumType,
-                                  NodeConfig context) throws IOException {
+                                  NodeConfig config) throws IOException {
 
         StreamingParser.Token token = parser.peekToken();
         if (token == StreamingParser.Token.NULL) {
@@ -304,17 +304,17 @@ public final class StreamingIO {
      * preserving each backend's fused scalar parser.
      */
     public static Object readValueSet(StreamingParser parser, Type type, Class<?> boxed, ValueSet valueSet,
-                                      NodeConfig context) throws IOException {
-        String preferredFormat = context.valueFormat(boxed);
+                                      NodeConfig config) throws IOException {
+        String preferredFormat = config.valueFormat(boxed);
         JsonType jsonType = valueSet.multiples
                 ? parser.peekToken().jsonType()
                 : valueSet.defaultInfo.rawJsonType;
         ValueInfo codec = valueSet.selectForRead(jsonType, preferredFormat);
-        return readValueCodec(parser, codec, context);
+        return readValueCodec(parser, codec, config);
     }
 
     public static Object readValueCodec(StreamingParser parser, ValueInfo valueInfo,
-                                        NodeConfig context) throws IOException {
+                                        NodeConfig config) throws IOException {
         if (valueInfo.streamParser != null) {
             if (valueInfo.runtimeClazz != null && valueInfo.runtimeClazz != valueInfo.valueClazz) {
                 throw new BindingException("cannot decode value type '" + valueInfo.valueClazz.getName()
@@ -400,7 +400,7 @@ public final class StreamingIO {
      */
 
     public static Object readPojo(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
-                                   NodeConfig context) throws IOException {
+                                   NodeConfig config) throws IOException {
         // JSON null needs no construction, even for write-only POJO types.
         if (pojoInfo.creatorInfo == null) {
             if (parser.nextIfNull()) return null;
@@ -423,7 +423,7 @@ public final class StreamingIO {
                 throw new BindingException("cannot read token '" + parser.peekToken() + "' as object type '" +
                         type.getTypeName() + "'");
             }
-            return readPojoWithCreator(parser, type, boxed, pojoInfo, context);
+            return readPojoWithCreator(parser, type, boxed, pojoInfo, config);
         }
 
         /*
@@ -450,7 +450,7 @@ public final class StreamingIO {
         int index;
         while ((index = parser.nextNameMatch(matcher, expectedIndex)) != NameMatcher.OBJECT_END) {
             if (index >= 0) {
-                propertyParsers[index].parse(parser, pojo, type, boxed, context);
+                propertyParsers[index].parse(parser, pojo, type, boxed, config);
                 expectedIndex = index + 1;
             } else if (retainDynamic) {
                 String name = parser.currentName();
@@ -483,7 +483,7 @@ public final class StreamingIO {
      * The object start has already been consumed.
      */
     public static Object readPojoWithCreator(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
-                                             NodeConfig context) throws IOException {
+                                             NodeConfig config) throws IOException {
 
         CreatorInfo creator = pojoInfo.requireCreatorInfo();
         CreatorState state = new CreatorState(creator);
@@ -524,19 +524,19 @@ public final class StreamingIO {
             if (argIndex >= 0) {
                 Object value;
                 if (creator.argOneOfInfos[argIndex] != null) {
-                    value = OneOfIO.readOneOf(parser, creator.argOneOfInfos[argIndex], context);
+                    value = OneOfIO.readOneOf(parser, creator.argOneOfInfos[argIndex], config);
                 } else if (creator.argValueCodecs[argIndex] != null) {
-                    value = readValueCodec(parser, creator.argValueCodecs[argIndex], context);
+                    value = readValueCodec(parser, creator.argValueCodecs[argIndex], config);
                 } else {
                     LazyTypeInfo lazy = creator.argTypeInfos[argIndex];
                     if (lazy != null) {
-                        value = readNode(parser, lazy.clazz, Types.box(lazy.clazz), lazy.get(), context);
+                        value = readNode(parser, lazy.clazz, Types.box(lazy.clazz), lazy.get(), config);
                     } else {
                         Type argType = creator.argGenericDependent[argIndex]
                                 ? Types.resolveMemberType(type, boxed, creator.argTypes[argIndex])
                                 : creator.argTypes[argIndex];
                         Class<?> argBoxed = Types.rawBox(argType);
-                        value = readNode(parser, argType, argBoxed, null, context);
+                        value = readNode(parser, argType, argBoxed, null, config);
                     }
                 }
                 state.acceptCtorArg(argIndex, value);
@@ -569,7 +569,7 @@ public final class StreamingIO {
 
                 LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(parentValue == UNSET ? null : parentValue);
                 if (target != null) {
-                    Object value = readNode(parser, target.clazz, target.clazz, target.get(), context);
+                    Object value = readNode(parser, target.clazz, target.clazz, target.get(), config);
                     if (state.isCreated()) {
                         property.invokeSetterIfPresent(state.pojo(), value);
                     } else {
@@ -589,7 +589,7 @@ public final class StreamingIO {
              * no setter, because its value may still select a deferred OneOf.
              */
             if (parentKey != null && parentKey.equals(name)) {
-                Object value = readProperty(parser, property, type, boxed, context);
+                Object value = readProperty(parser, property, type, boxed, config);
                 parentValue = value;
 
                 if (state.isCreated()) {
@@ -609,9 +609,9 @@ public final class StreamingIO {
             }
 
             if (state.isCreated() && property.parser != null) {
-                property.parser.parse(parser, state.pojo(), type, boxed, context);
+                property.parser.parse(parser, state.pojo(), type, boxed, config);
             } else {
-                Object value = readProperty(parser, property, type, boxed, context);
+                Object value = readProperty(parser, property, type, boxed, config);
                 if (state.isCreated()) {
                     property.invokeSetter(state.pojo(), value);
                 } else {
@@ -644,7 +644,7 @@ public final class StreamingIO {
         LazyTypeInfo target = oneOfInfo.lazyTypeInfoByWhen(parentValue == UNSET ? null : parentValue);
         Object value;
         if (target != null) {
-            value = NodeMapper.convert(deferredRaw, target.clazz, false, context);
+            value = NodeMapper.convert(deferredRaw, target.clazz, false, config);
         } else if (oneOfInfo.fallbackNull) {
             value = null;
         } else {
@@ -663,7 +663,7 @@ public final class StreamingIO {
      */
 
     public static Object readProperty(StreamingParser parser, PropertyInfo property, Type ownerType, Class<?> ownerBoxed,
-                                      NodeConfig context) throws IOException {
+                                      NodeConfig config) throws IOException {
         Type type = property.genericDependent
                 ? Types.resolveMemberType(ownerType, ownerBoxed, property.type)
                 : property.type;
@@ -673,15 +673,15 @@ public final class StreamingIO {
                 : property.boxed;
 
         if (property.oneOfInfo != null) {
-            return OneOfIO.readOneOf(parser, property.oneOfInfo, context);
+            return OneOfIO.readOneOf(parser, property.oneOfInfo, config);
         }
 
         if (property.valueInfo != null) {
-            return readValueCodec(parser, property.valueInfo, context);
+            return readValueCodec(parser, property.valueInfo, config);
         }
 
         TypeInfo declaredInfo = property.typeInfo == null ? null : property.typeInfo.get();
-        return readNode(parser, type, boxed, declaredInfo, context);
+        return readNode(parser, type, boxed, declaredInfo, config);
     }
 
 
@@ -692,7 +692,7 @@ public final class StreamingIO {
      */
     public static Map<String, Object> readMap(StreamingParser parser, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
-                                              NodeConfig context) throws IOException {
+                                              NodeConfig config) throws IOException {
         // Exact raw container declarations have no generic work to do.
         // Route them before token probes or type metadata initialization.
         if (valueType == null && (type == Map.class || type == LinkedHashMap.class)) {
@@ -727,7 +727,7 @@ public final class StreamingIO {
                 : TypeRegistry.newMapContainer(boxed, 0, false);
         String name;
         while ((name = parser.nextName()) != null) {
-            map.put(name, readNode(parser, valueType, valueBoxed, valueTi, context));
+            map.put(name, readNode(parser, valueType, valueBoxed, valueTi, config));
         }
         return map;
     }
@@ -741,7 +741,7 @@ public final class StreamingIO {
 
     public static List<Object> readList(StreamingParser parser, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
-                                        NodeConfig context) throws IOException {
+                                        NodeConfig config) throws IOException {
         // Exact raw List targets have no generic metadata to resolve.
         if (elementType == null && (type == List.class || type == ArrayList.class)) {
             return parser.readRawArray();
@@ -773,7 +773,7 @@ public final class StreamingIO {
                 ? new ArrayList<>()
                 : TypeRegistry.newListContainer(boxed, 0, false);
         while (!parser.nextIfArrayEnd()) {
-            list.add(readNode(parser, elementType, elementBoxed, elementTi, context));
+            list.add(readNode(parser, elementType, elementBoxed, elementTi, config));
         }
         return list;
     }
@@ -786,7 +786,7 @@ public final class StreamingIO {
 
     public static Set<Object> readSet(StreamingParser parser, Type type, Class<?> boxed,
                                       Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
-                                      NodeConfig context) throws IOException {
+                                      NodeConfig config) throws IOException {
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
@@ -805,7 +805,7 @@ public final class StreamingIO {
                 ? new LinkedHashSet<>()
                 : TypeRegistry.newSetContainer(boxed, 0, false);
         while (!parser.nextIfArrayEnd()) {
-            Object value = readNode(parser, elementType, elementBoxed, elementTi, context);
+            Object value = readNode(parser, elementType, elementBoxed, elementTi, config);
             set.add(value);
         }
         return set;
@@ -819,7 +819,7 @@ public final class StreamingIO {
 
     public static Object readArray(StreamingParser parser, Type type, Class<?> boxed,
                                       Class<?> componentClazz, Class<?> componentBoxed, TypeInfo componentTi,
-                                      NodeConfig context) throws IOException {
+                                      NodeConfig config) throws IOException {
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
@@ -863,7 +863,7 @@ public final class StreamingIO {
                 arr = expanded;
             }
 
-            Object value = readNode(parser, componentClazz, componentBoxed, componentTi, context);
+            Object value = readNode(parser, componentClazz, componentBoxed, componentTi, config);
             Array.set(arr, size++, value);
         }
 
@@ -983,7 +983,7 @@ public final class StreamingIO {
      */
 
     public static JsonArray readJsonArray(StreamingParser parser, Type type, Class<?> boxed, TypeInfo ti,
-                                          NodeConfig context) throws IOException {
+                                          NodeConfig config) throws IOException {
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
@@ -995,7 +995,7 @@ public final class StreamingIO {
         Class<?> element = array.elementClass();
         TypeInfo elementInfo = TypeRegistry.registerTypeInfo(element);
         while (!parser.nextIfArrayEnd()) {
-            Object value = readNode(parser, element, element, elementInfo, context);
+            Object value = readNode(parser, element, element, elementInfo, config);
             array.add(value);
         }
         return array;
@@ -1070,12 +1070,12 @@ public final class StreamingIO {
      * document boundaries, flushing, and generator lifecycle.
      */
     public static void writeNode(StreamingGenerator generator, Object node,
-                                 NodeConfig context) throws IOException {
+                                 NodeConfig config) throws IOException {
         Asserts.notNull(generator, "generator");
-        Asserts.notNull(context, "context");
+        Asserts.notNull(config, "config");
 
         try {
-            _writeNode(generator, node, TypeInfo.NONE, context);
+            _writeNode(generator, node, TypeInfo.NONE, config);
         } catch (BindingException | IOException e) {
             throw e;
         } catch (Throwable e) {
@@ -1085,7 +1085,7 @@ public final class StreamingIO {
 
 
     private static void _writeNode(StreamingGenerator generator, Object node, TypeInfo typeInfo,
-                                   NodeConfig context) throws IOException {
+                                   NodeConfig config) throws IOException {
         if (node == null) {
             generator.writeNull();
             return;
@@ -1094,16 +1094,16 @@ public final class StreamingIO {
         Class<?> clazz = node.getClass();
         if (typeInfo.clazz == clazz) {
             if (typeInfo.pojoInfo != null && !typeInfo.pojoInfo.isJajo) {
-                writePojo(generator, node, typeInfo.pojoInfo, context);
+                writePojo(generator, node, typeInfo.pojoInfo, config);
                 return;
             }
 
             if (typeInfo.valueSet != null) {
-                ValueInfo vi = typeInfo.requireValueInfo(context.valueFormat(clazz));
+                ValueInfo vi = typeInfo.requireValueInfo(config.valueFormat(clazz));
                 if (vi.streamGenerator != null) {
                     vi.streamGenerator.write(generator, node);
                 } else {
-                    _writeNode(generator, vi.valueToRaw(node), TypeInfo.NONE, context);
+                    _writeNode(generator, vi.valueToRaw(node), TypeInfo.NONE, config);
                 }
                 return;
             }
@@ -1172,12 +1172,12 @@ public final class StreamingIO {
          */
 
         if (node instanceof Map) {
-            writeMap(generator, (Map<?, ?>) node, TypeInfo.NONE, context);
+            writeMap(generator, (Map<?, ?>) node, TypeInfo.NONE, config);
             return;
         }
 
         if (node instanceof List) {
-            writeList(generator, (List<?>) node, TypeInfo.NONE, context);
+            writeList(generator, (List<?>) node, TypeInfo.NONE, config);
             return;
         }
 
@@ -1188,22 +1188,22 @@ public final class StreamingIO {
          * declared properties are written before dynamic members.
          */
         if (clazz == JsonObject.class) {
-            writeJsonObject(generator, (JsonObject) node, context);
+            writeJsonObject(generator, (JsonObject) node, config);
             return;
         }
 
         if (node instanceof JsonArray) {
-            writeJsonArray(generator, (JsonArray) node, context);
+            writeJsonArray(generator, (JsonArray) node, config);
             return;
         }
 
         if (node instanceof Set) {
-            writeSet(generator, (Set<?>) node, TypeInfo.NONE, context);
+            writeSet(generator, (Set<?>) node, TypeInfo.NONE, config);
             return;
         }
 
         if (clazz.isArray()) {
-            writeArray(generator, node, clazz, TypeInfo.NONE, context);
+            writeArray(generator, node, clazz, TypeInfo.NONE, config);
             return;
         }
 
@@ -1221,11 +1221,11 @@ public final class StreamingIO {
          * NodeValue / ValueCodec.
          */
         if (ti.valueSet != null) {
-            ValueInfo vi = ti.requireValueInfo(context.valueFormat(clazz));
+            ValueInfo vi = ti.requireValueInfo(config.valueFormat(clazz));
             if (vi.streamGenerator != null) {
                 vi.streamGenerator.write(generator, node);
             } else {
-                _writeNode(generator, vi.valueToRaw(node), TypeInfo.NONE, context);
+                _writeNode(generator, vi.valueToRaw(node), TypeInfo.NONE, config);
             }
             return;
         }
@@ -1235,7 +1235,7 @@ public final class StreamingIO {
          * External object members apply the backend's JSON null semantics.
          */
         if (ti.externalNode != null) {
-            _writeExternalNode(generator, node, ti.externalNode, context);
+            _writeExternalNode(generator, node, ti.externalNode, config);
             return;
         }
 
@@ -1243,7 +1243,7 @@ public final class StreamingIO {
          * POJO / JOJO.
          */
         if (ti.pojoInfo != null && !ti.pojoInfo.isJajo) {
-            writePojo(generator, node, ti.pojoInfo, context);
+            writePojo(generator, node, ti.pojoInfo, config);
             return;
         }
 
@@ -1258,7 +1258,7 @@ public final class StreamingIO {
      */
     private static void _writeExternalNode(StreamingGenerator generator, Object node,
                                            ExternalNode<Object> external,
-                                           NodeConfig context) throws IOException {
+                                           NodeConfig config) throws IOException {
         switch (external.jsonType(node)) {
             case NULL:
                 generator.writeNull();
@@ -1277,12 +1277,12 @@ public final class StreamingIO {
                 int count = 0;
                 for (Map.Entry<String, Object> entry : external.entrySetInObject(node)) {
                     Object value = entry.getValue();
-                    if (!context.includeNulls && (value == null || external.jsonType(value) == JsonType.NULL)) {
+                    if (!config.includeNulls && (value == null || external.jsonType(value) == JsonType.NULL)) {
                         continue;
                     }
                     generator.writeName(entry.getKey(), count > 0);
                     count++;
-                    _writeNode(generator, value, TypeInfo.NONE, context);
+                    _writeNode(generator, value, TypeInfo.NONE, config);
                 }
                 generator.writeObjectEnd();
                 return;
@@ -1293,7 +1293,7 @@ public final class StreamingIO {
                     if (i > 0) {
                         generator.writeArraySeparator();
                     }
-                    _writeNode(generator, external.getInArray(node, i), TypeInfo.NONE, context);
+                    _writeNode(generator, external.getInArray(node, i), TypeInfo.NONE, config);
                 }
                 generator.writeArrayEnd();
                 return;
@@ -1310,34 +1310,34 @@ public final class StreamingIO {
      */
 
     public static void writeMap(StreamingGenerator generator, Map<?, ?> map, TypeInfo valueTi,
-                                NodeConfig context) throws IOException {
+                                NodeConfig config) throws IOException {
         generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object value = entry.getValue();
-            if (value == null && !context.includeNulls) {
+            if (value == null && !config.includeNulls) {
                 continue;
             }
             generator.writeName(entry.getKey().toString(), count > 0);
             count++;
-            _writeNode(generator, value, valueTi, context);
+            _writeNode(generator, value, valueTi, config);
         }
         generator.writeObjectEnd();
     }
 
 
     public static void writeJsonObject(StreamingGenerator generator, JsonObject object,
-                                       NodeConfig context) throws IOException {
+                                       NodeConfig config) throws IOException {
         generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<String, Object> entry : object.entrySet()) {
             Object value = entry.getValue();
-            if (value == null && !context.includeNulls) {
+            if (value == null && !config.includeNulls) {
                 continue;
             }
             generator.writeName(entry.getKey(), count > 0);
             count++;
-            _writeNode(generator, value, TypeInfo.NONE, context);
+            _writeNode(generator, value, TypeInfo.NONE, config);
         }
         generator.writeObjectEnd();
     }
@@ -1350,14 +1350,14 @@ public final class StreamingIO {
      */
 
     public static void writeList(StreamingGenerator generator, List<?> list, TypeInfo elementTi,
-                                 NodeConfig context) throws IOException {
+                                 NodeConfig config) throws IOException {
         generator.writeArrayStart();
         if (list instanceof RandomAccess) {
             for (int i = 0, size = list.size(); i < size; i++) {
                 if (i > 0) {
                     generator.writeArraySeparator();
                 }
-                _writeNode(generator, list.get(i), elementTi, context);
+                _writeNode(generator, list.get(i), elementTi, config);
             }
         } else {
             boolean separated = false;
@@ -1367,7 +1367,7 @@ public final class StreamingIO {
                 } else {
                     separated = true;
                 }
-                _writeNode(generator, value, elementTi, context);
+                _writeNode(generator, value, elementTi, config);
             }
         }
         generator.writeArrayEnd();
@@ -1375,20 +1375,20 @@ public final class StreamingIO {
 
 
     public static void writeJsonArray(StreamingGenerator generator, JsonArray array,
-                                      NodeConfig context) throws IOException {
+                                      NodeConfig config) throws IOException {
         generator.writeArrayStart();
         for (int i = 0, size = array.size(); i < size; i++) {
             if (i > 0) {
                 generator.writeArraySeparator();
             }
-            _writeNode(generator, array.getNode(i), TypeInfo.NONE, context);
+            _writeNode(generator, array.getNode(i), TypeInfo.NONE, config);
         }
         generator.writeArrayEnd();
     }
 
 
     public static void writeSet(StreamingGenerator generator, Set<?> set, TypeInfo elementTi,
-                                NodeConfig context) throws IOException {
+                                NodeConfig config) throws IOException {
         generator.writeArrayStart();
         boolean separated = false;
         for (Object value : set) {
@@ -1397,7 +1397,7 @@ public final class StreamingIO {
             } else {
                 separated = true;
             }
-            _writeNode(generator, value, elementTi, context);
+            _writeNode(generator, value, elementTi, config);
         }
         generator.writeArrayEnd();
     }
@@ -1410,7 +1410,7 @@ public final class StreamingIO {
      */
 
     public static void writeArray(StreamingGenerator generator, Object node, Class<?> clazz, TypeInfo compTi,
-                                  NodeConfig context) throws IOException {
+                                  NodeConfig config) throws IOException {
         generator.writeArrayStart();
         if (clazz == boolean[].class) {
             boolean[] array = (boolean[]) node;
@@ -1467,7 +1467,7 @@ public final class StreamingIO {
             Object[] array = (Object[]) node;
             for (int i = 0; i < array.length; i++) {
                 if (i > 0) generator.writeArraySeparator();
-                _writeNode(generator, array[i], compTi, context);
+                _writeNode(generator, array[i], compTi, config);
             }
         }
         generator.writeArrayEnd();
@@ -1481,13 +1481,13 @@ public final class StreamingIO {
      */
 
     public static void writePojo(StreamingGenerator generator, Object node, PojoInfo pojoInfo,
-                                 NodeConfig context) throws IOException {
+                                 NodeConfig config) throws IOException {
         generator.writeObjectStart();
         PropertyGenerator[] propertyGenerators = pojoInfo.propertyGenerators;
         CompiledName[] compiledNames = generator.compiledNames(pojoInfo);
         int count = 0;
         for (int i = 0, len = propertyGenerators.length; i < len; i++) {
-            count = propertyGenerators[i].generate(generator, compiledNames[i], node, context, count);
+            count = propertyGenerators[i].generate(generator, compiledNames[i], node, config, count);
         }
 
         /*
@@ -1498,13 +1498,13 @@ public final class StreamingIO {
             if (dynamic != null) {
                 for (Map.Entry<String, Object> entry : dynamic.entrySet()) {
                     Object value = entry.getValue();
-                    if (value == null && !context.includeNulls) {
+                    if (value == null && !config.includeNulls) {
                         continue;
                     }
 
                     generator.writeName(entry.getKey(), count > 0);
                     count++;
-                    _writeNode(generator, value, TypeInfo.NONE, context);
+                    _writeNode(generator, value, TypeInfo.NONE, config);
                 }
             }
         }

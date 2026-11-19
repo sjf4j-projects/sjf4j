@@ -142,7 +142,7 @@ final class WriteEmitter {
         // JSON native backends compile structural nodes and fall back locally.
         if (!usesSharedStructure()) {
             // Preserve streaming-only null-policy and dynamic-root semantics.
-            out.beginBlock("if (!this.context.includeNulls)");
+            out.beginBlock("if (!this.config.includeNulls)");
             switch (plan.writeOutput()) {
                 case STRING:
                     out.line("return this.binder.writeNodeAsString(" + source + ");");
@@ -433,7 +433,7 @@ final class WriteEmitter {
                     + (staticMember ? ", boolean includeNulls" : "")
                     + ") throws java.io.IOException");
             out.beginBlock("if (value == null)");
-            out.beginBlock("if (" + (staticMember ? "includeNulls" : "this.context.includeNulls") + ")");
+            out.beginBlock("if (" + (staticMember ? "includeNulls" : "this.config.includeNulls") + ")");
             out.line("g." + nameMethod + "(name);");
             out.line("g.writeNull();");
             out.endBlock();

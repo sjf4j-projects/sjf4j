@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** JDK binding behavior covered by SJF4J's defaults. */
 public abstract class JDKDefaultSupportedTypeDeserializationContract {
-    protected abstract Binder<?, ?> binding(NodeConfig context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** SJF4J supplies Instant through its default ISO-8601 value codec. */
     @Test void testInstantUsesBuiltInCodec() {
