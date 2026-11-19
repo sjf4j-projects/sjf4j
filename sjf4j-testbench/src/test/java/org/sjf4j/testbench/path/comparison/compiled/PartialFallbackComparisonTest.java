@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Partially compiled cases: collection traversal and property access are
- * generated directly; FilterExpr evaluation explicitly requires fallback=true.
+ * generated directly; unsupported predicates require explicit fallback=true.
  */
 class PartialFallbackComparisonTest {
 
@@ -59,7 +59,7 @@ class PartialFallbackComparisonTest {
     }
 
     @Test
-    void filterOnSetKeepsCompiledIterationAndCachedPredicate() {
+    void filterOnSetKeepsCompiledIterationAndDirectPredicate() {
         SetRoot root = new SetRoot(new LinkedHashSet<>(List.of(
                 new Member("Ada", 20), new Member("Bob", 15), new Member("Cy", 30))));
         CompiledComparisonSupport.assertEquivalent("filter_set_members",
