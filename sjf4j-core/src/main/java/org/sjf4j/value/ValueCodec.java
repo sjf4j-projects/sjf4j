@@ -59,7 +59,7 @@ import java.util.regex.Pattern;
  * registration-time check because generic type arguments are erased from
  * {@link #rawClazz()}.
  */
-@ValueCodecRegistry
+@NodeRegistry
 public interface ValueCodec<V, R> {
 
     /**
