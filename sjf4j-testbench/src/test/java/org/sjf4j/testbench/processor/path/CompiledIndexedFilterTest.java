@@ -19,6 +19,18 @@ class CompiledIndexedFilterTest {
     record Student(String name, List<Grade> grades, Map<String, Object> extra) {}
     record Classroom(List<Student> students, List<Integer> minimums) {}
 
+    static class BaseItem {
+        public String name = "base";
+        public List<Integer> values = List.of(20);
+    }
+
+    static final class ChildItem extends BaseItem {
+        public List<Integer> values = List.of(95);
+        ChildItem() { name = "child"; }
+    }
+
+    record InheritedItems(List<BaseItem> items) {}
+
     @CompiledNavigator
     interface Queries {
         @FindByPath("$.students[?(@.grades[0].score >= 90)].name")
@@ -47,6 +59,9 @@ class CompiledIndexedFilterTest {
 
         @FindByPath("$.students[?(@.grades[-99])].name")
         List<String> negativeOutOfBounds(Classroom root);
+
+        @FindByPath("$.items[?(@.values[0] >= 90)].name")
+        List<String> shadowedIndexedField(InheritedItems root);
 
         @FindByPath("$.items[?(@.matrix[0][1] == $.target)].name")
         List<Object> nestedIndexes(Map<String, Object> root);
@@ -84,6 +99,14 @@ class CompiledIndexedFilterTest {
                 compiled.outOfBounds(root), List.of());
         assertParity(root, "$.students[?(@.grades[-99])].name",
                 compiled.negativeOutOfBounds(root), List.of());
+    }
+
+    @Test
+    void subclassesUseRuntimePropertyDiscoveryForIndexedFilters() {
+        InheritedItems root = new InheritedItems(Arrays.asList(new BaseItem(), new ChildItem()));
+        Queries compiled = CompiledInstances.create(Queries.class);
+        assertParity(root, "$.items[?(@.values[0] >= 90)].name",
+                compiled.shadowedIndexedField(root), List.of("child"));
     }
 
     @Test
