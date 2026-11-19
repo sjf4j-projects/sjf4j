@@ -1,7 +1,7 @@
 package org.sjf4j.processor.discovery;
 
 import org.sjf4j.annotation.node.NodeValue;
-import org.sjf4j.annotation.node.ValueCodecRegistry;
+import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.processor.ProcessorContext;
 
@@ -149,8 +149,9 @@ public final class ValueCodecResolver {
 
     private void scan() {
         for (TypeElement holder : registries) {
-            if (holder.getAnnotation(ValueCodecRegistry.class) == null) {
-                context.error(holder, "missing @ValueCodecRegistry on " + holder.getQualifiedName());
+            if (holder.getKind() != ElementKind.INTERFACE
+                    || holder.getAnnotation(NodeRegistry.class) == null) {
+                context.error(holder, "missing @NodeRegistry on " + holder.getQualifiedName());
                 continue;
             }
             // Match ValueRegistry.registerAnnotated(): explicit defaults first,
@@ -159,10 +160,9 @@ public final class ValueCodecResolver {
             for (Element element : holder.getEnclosedElements()) {
                 if (isCodecDeclaration(element)) declarations.add(element);
             }
-            if (declarations.isEmpty()) {
-                context.error(holder, "@ValueCodecRegistry has no codec declarations");
-                continue;
-            }
+            // A registry may declare only ExternalNode adapters. They are
+            // resolved independently from codec metadata.
+            if (declarations.isEmpty()) continue;
             declarations.sort(Comparator
                     .comparing((Element element) -> !isDefaultCodec(element))
                     .thenComparing(element -> element.getSimpleName().toString())
