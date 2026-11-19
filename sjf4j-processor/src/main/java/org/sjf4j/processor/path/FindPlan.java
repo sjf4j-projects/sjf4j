@@ -40,9 +40,16 @@ final class FindPlan {
         final NodeAccess access;
         final Step next;
         final List<Step> alternatives;
+        final FilterPlan filter;
 
         Step(Kind kind, PathSegment segment, int segmentIndex, TypeMirror ownerType,
              TypeMirror valueType, NodeAccess access, Step next, List<Step> alternatives) {
+            this(kind, segment, segmentIndex, ownerType, valueType, access, next, alternatives, null);
+        }
+
+        Step(Kind kind, PathSegment segment, int segmentIndex, TypeMirror ownerType,
+             TypeMirror valueType, NodeAccess access, Step next,
+             List<Step> alternatives, FilterPlan filter) {
             this.kind = kind;
             this.segment = segment;
             this.segmentIndex = segmentIndex;
@@ -50,6 +57,7 @@ final class FindPlan {
             this.valueType = valueType;
             this.access = access;
             this.next = next;
+            this.filter = filter;
             this.alternatives = alternatives == null ? Collections.<Step>emptyList()
                     : Collections.unmodifiableList(alternatives);
         }
