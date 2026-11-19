@@ -31,6 +31,9 @@ class CompiledIndexedFilterTest {
 
     record InheritedItems(List<BaseItem> items) {}
 
+    record PrimitiveRow(String name, int[] scores) {}
+    record PrimitiveRoot(List<PrimitiveRow> items) {}
+
     @CompiledNavigator
     interface Queries {
         @FindByPath("$.students[?(@.grades[0].score >= 90)].name")
@@ -62,6 +65,9 @@ class CompiledIndexedFilterTest {
 
         @FindByPath("$.items[?(@.values[0] >= 90)].name")
         List<String> shadowedIndexedField(InheritedItems root);
+
+        @FindByPath("$.items[?(@.scores[-1] >= 90)].name")
+        List<String> primitiveLastScore(PrimitiveRoot root);
 
         @FindByPath("$.items[?(@.matrix[0][1] == $.target)].name")
         List<Object> nestedIndexes(Map<String, Object> root);
@@ -107,6 +113,18 @@ class CompiledIndexedFilterTest {
         Queries compiled = CompiledInstances.create(Queries.class);
         assertParity(root, "$.items[?(@.values[0] >= 90)].name",
                 compiled.shadowedIndexedField(root), List.of("child"));
+    }
+
+    @Test
+    void primitiveArraysUseTheSameNegativeIndexRules() {
+        PrimitiveRoot root = new PrimitiveRoot(Arrays.asList(
+                new PrimitiveRow("Alice", new int[]{70, 95}),
+                new PrimitiveRow("Bob", new int[]{95, 80}),
+                new PrimitiveRow("Cara", new int[0]),
+                new PrimitiveRow("Dylan", null)));
+        Queries compiled = CompiledInstances.create(Queries.class);
+        assertParity(root, "$.items[?(@.scores[-1] >= 90)].name",
+                compiled.primitiveLastScore(root), List.of("Alice"));
     }
 
     @Test
