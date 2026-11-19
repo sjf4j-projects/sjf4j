@@ -69,6 +69,12 @@ class CompiledFilterExtensionsTest {
         @FindByPath("$.items[?(@.score in [null,2])].name")
         List<Object> nullMembership(Map<String, Object> root);
 
+        @FindByPath("$.items[?(@.score in [null])].name")
+        List<Object> singletonNullMembership(Map<String, Object> root);
+
+        @FindByPath("$.items[?(@.score nin [null])].name")
+        List<Object> singletonNullNonMembership(Map<String, Object> root);
+
         @FindByPath("$.items[?(@.score nin [1,2])].name")
         List<Object> notInWithMissing(Map<String, Object> root);
     }
@@ -123,6 +129,10 @@ class CompiledFilterExtensionsTest {
         Queries compiled = CompiledInstances.create(Queries.class);
         assertMatches(root, "$.items[?(@.score in [null,2])].name",
                 compiled.nullMembership(root), List.of("null", "two"));
+        assertMatches(root, "$.items[?(@.score in [null])].name",
+                compiled.singletonNullMembership(root), List.of("null"));
+        assertMatches(root, "$.items[?(@.score nin [null])].name",
+                compiled.singletonNullNonMembership(root), List.of("two", "ten"));
         assertMatches(root, "$.items[?(@.score nin [1,2])].name",
                 compiled.notInWithMissing(root), List.of("null", "ten"));
     }
