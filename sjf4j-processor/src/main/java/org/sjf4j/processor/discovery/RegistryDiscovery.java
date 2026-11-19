@@ -2,6 +2,7 @@ package org.sjf4j.processor.discovery;
 
 import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.external.ExternalNode;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.value.ValueCodec;
 
@@ -11,6 +12,8 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
@@ -62,6 +65,59 @@ public final class RegistryDiscovery {
             result.putIfAbsent(holder.getQualifiedName().toString(), holder);
         }
         return new ArrayList<>(result.values());
+    }
+
+
+    /**
+     * External root types visible to one compiled interface. Only the generic
+     * declarations are read; registry fields and factories are never executed.
+     */
+    public List<TypeMirror> externalTypes(TypeElement owner) {
+        TypeElement externalNode = context.elements.getTypeElement(ExternalNode.class.getName());
+        if (externalNode == null) return Collections.emptyList();
+        TypeMirror adapterType = context.typeUtils.erasure(externalNode.asType());
+        Map<String, TypeMirror> types = new LinkedHashMap<>();
+
+        for (TypeElement registry : registries(owner)) {
+            if (registry.getAnnotation(NodeRegistry.class) == null) continue;
+            for (Element member : registry.getEnclosedElements()) {
+                TypeMirror declaration;
+                if (member.getKind() == ElementKind.FIELD) {
+                    if (!context.typeUtils.isAssignable(
+                            context.typeUtils.erasure(member.asType()), adapterType)) continue;
+                    if (!member.getModifiers().containsAll(java.util.Arrays.asList(
+                            Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL))) {
+                        context.error(member, "ExternalNode field must be public static final");
+                        continue;
+                    }
+                    declaration = member.asType();
+                } else if (member.getKind() == ElementKind.METHOD) {
+                    ExecutableElement method = (ExecutableElement) member;
+                    if (!context.typeUtils.isAssignable(
+                            context.typeUtils.erasure(method.getReturnType()), adapterType)) continue;
+                    if (!member.getModifiers().containsAll(java.util.Arrays.asList(
+                            Modifier.PUBLIC, Modifier.STATIC)) || !method.getParameters().isEmpty()) {
+                        context.error(member, "ExternalNode factory must be public static, no-arg");
+                        continue;
+                    }
+                    declaration = method.getReturnType();
+                } else continue;
+
+                if (!(declaration instanceof DeclaredType)) {
+                    context.error(member, "ExternalNode declaration must specify concrete N");
+                    continue;
+                }
+                List<? extends TypeMirror> args = ((DeclaredType) declaration).getTypeArguments();
+                if (args.size() != 1 || !(args.get(0) instanceof DeclaredType)
+                        || !((DeclaredType) args.get(0)).getTypeArguments().isEmpty()) {
+                    context.error(member, "ExternalNode declaration must specify concrete N");
+                    continue;
+                }
+                TypeMirror root = args.get(0);
+                types.putIfAbsent(context.typeUtils.erasure(root).toString(), root);
+            }
+        }
+        return new ArrayList<>(types.values());
     }
 
     private List<TypeElement> explicitRegistries(TypeElement owner) {
