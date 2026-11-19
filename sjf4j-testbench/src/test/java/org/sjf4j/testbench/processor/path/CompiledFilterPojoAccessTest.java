@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.FindByPath;
+import org.sjf4j.annotation.node.NodeIgnore;
+import org.sjf4j.annotation.node.NodeObject;
+import org.sjf4j.annotation.node.PropertyStrategy;
 import org.sjf4j.path.JsonPath;
 
 import java.util.Arrays;
@@ -57,6 +60,33 @@ class CompiledFilterPojoAccessTest {
 
     record MixedScores(List<BaseScore> items) {}
 
+    static final class IgnoredValue {
+        @NodeIgnore
+        public int secret = 9;
+        public String name = "ignored";
+    }
+
+    static final class TransientValue {
+        public transient int secret = 9;
+        public String name = "transient";
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.FIELD_ONLY)
+    static final class FieldOnlyValue {
+        public int age = 5;
+        public String name = "field";
+        public int getAge() { return 99; }
+    }
+
+    @NodeObject(propertyStrategy = PropertyStrategy.BEAN_ONLY)
+    static final class BeanOnlyValue {
+        public int age = 99;
+        public String getName() { return "bean"; }
+        public int getAge() { return 5; }
+    }
+
+    record PropertyRoot<T>(List<T> items) {}
+
     @CompiledNavigator
     interface Queries {
         @FindByPath("$.students[?(@.scores.math >= $.minimum)].name")
@@ -79,6 +109,18 @@ class CompiledFilterPojoAccessTest {
 
         @FindByPath("$.items[?(@.rank >= 90)]")
         List<Object> inheritedField(MixedScores root);
+
+        @FindByPath("$.items[?(@.secret)]")
+        List<Object> ignoredProperty(PropertyRoot<IgnoredValue> root);
+
+        @FindByPath("$.items[?(@.secret)]")
+        List<Object> transientProperty(PropertyRoot<TransientValue> root);
+
+        @FindByPath("$.items[?(@.age > 10)]")
+        List<Object> fieldOnly(PropertyRoot<FieldOnlyValue> root);
+
+        @FindByPath("$.items[?(@.age > 10)]")
+        List<Object> beanOnly(PropertyRoot<BeanOnlyValue> root);
     }
 
     @Test
@@ -114,6 +156,28 @@ class CompiledFilterPojoAccessTest {
         String path = "$.items[?(@.rank >= 90)]";
         assertEquals(JsonPath.parse(path).find(root, Object.class),
                 compiled.inheritedField(root));
+    }
+
+    @Test
+    void compilerHonorsRuntimeIgnoredTransientAndPropertyStrategyRules() {
+        Queries compiled = CompiledInstances.create(Queries.class);
+        PropertyRoot<IgnoredValue> ignored =
+                new PropertyRoot<>(List.of(new IgnoredValue()));
+        PropertyRoot<TransientValue> transientRoot =
+                new PropertyRoot<>(List.of(new TransientValue()));
+        PropertyRoot<FieldOnlyValue> fieldRoot =
+                new PropertyRoot<>(List.of(new FieldOnlyValue()));
+        PropertyRoot<BeanOnlyValue> beanRoot =
+                new PropertyRoot<>(List.of(new BeanOnlyValue()));
+
+        assertEquals(JsonPath.parse("$.items[?(@.secret)]").find(ignored, Object.class),
+                compiled.ignoredProperty(ignored));
+        assertEquals(JsonPath.parse("$.items[?(@.secret)]").find(transientRoot, Object.class),
+                compiled.transientProperty(transientRoot));
+        assertEquals(JsonPath.parse("$.items[?(@.age > 10)]").find(fieldRoot, Object.class),
+                compiled.fieldOnly(fieldRoot));
+        assertEquals(JsonPath.parse("$.items[?(@.age > 10)]").find(beanRoot, Object.class),
+                compiled.beanOnly(beanRoot));
     }
 
     @Test
