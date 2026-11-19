@@ -2,7 +2,6 @@ package org.sjf4j.processor.discovery;
 
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.NodeRegistry;
-import org.sjf4j.external.ExternalNode;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.processor.ProcessorContext;
 
@@ -161,11 +160,6 @@ public final class ValueCodecResolver {
             for (Element element : holder.getEnclosedElements()) {
                 if (isCodecDeclaration(element)) declarations.add(element);
             }
-            if (declarations.isEmpty()) {
-                if (hasExternalDeclarations(holder)) continue;
-                context.error(holder, "@NodeRegistry has no node declarations");
-                continue;
-            }
             declarations.sort(Comparator
                     .comparing((Element element) -> !isDefaultCodec(element))
                     .thenComparing(element -> element.getSimpleName().toString())
@@ -192,23 +186,6 @@ public final class ValueCodecResolver {
                 }
             }
         }
-    }
-
-    private boolean hasExternalDeclarations(TypeElement holder) {
-        TypeElement external = context.elements.getTypeElement(ExternalNode.class.getName());
-        if (external == null) return false;
-        TypeMirror adapterType = context.typeUtils.erasure(external.asType());
-        for (Element member : holder.getEnclosedElements()) {
-            TypeMirror candidate;
-            if (member.getKind() == ElementKind.FIELD) candidate = member.asType();
-            else if (member.getKind() == ElementKind.METHOD) {
-                candidate = ((ExecutableElement) member).getReturnType();
-            } else continue;
-            if (context.typeUtils.isAssignable(context.typeUtils.erasure(candidate), adapterType)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean isCodecDeclaration(Element element) {
