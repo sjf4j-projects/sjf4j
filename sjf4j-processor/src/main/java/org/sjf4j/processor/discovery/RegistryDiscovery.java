@@ -19,6 +19,8 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,7 @@ public final class RegistryDiscovery {
 
     private final ProcessorContext context;
     private final Map<String, TypeElement> sourceRegistries = new LinkedHashMap<>();
+    private final Set<String> validatedRegistries = new HashSet<>();
 
     public RegistryDiscovery(ProcessorContext context) {
         this.context = context;
@@ -41,20 +44,7 @@ public final class RegistryDiscovery {
             }
             TypeElement holder = (TypeElement) element;
             sourceRegistries.put(holder.getQualifiedName().toString(), holder);
-            TypeElement codec = context.elements.getTypeElement(ValueCodec.class.getName());
-            TypeElement external = context.elements.getTypeElement(ExternalNode.class.getName());
-            for (Element member : holder.getEnclosedElements()) {
-                if (member.getKind() != ElementKind.METHOD) continue;
-                TypeMirror returnType = ((ExecutableElement) member).getReturnType();
-                if ((codec != null && context.typeUtils.isAssignable(
-                        context.typeUtils.erasure(returnType),
-                        context.typeUtils.erasure(codec.asType())))
-                        || (external != null && context.typeUtils.isAssignable(
-                        context.typeUtils.erasure(returnType),
-                        context.typeUtils.erasure(external.asType())))) {
-                    context.error(member, "@NodeRegistry supports static fields only; factory methods are not supported");
-                }
-            }
+            validateFieldOnlyRegistry(holder);
         }
         for (Element element : roundEnv.getElementsAnnotatedWith(NodeValue.class)) {
             if (element.getKind() != ElementKind.FIELD) continue;
@@ -62,6 +52,24 @@ public final class RegistryDiscovery {
             if (owner instanceof TypeElement && owner.getAnnotation(NodeRegistry.class) == null) {
                 context.error(element, "@NodeValue codec declaration requires @NodeRegistry on "
                         + ((TypeElement) owner).getQualifiedName());
+            }
+        }
+    }
+
+    /** Validate both source and dependency registries, even when no codec is requested. */
+    private void validateFieldOnlyRegistry(TypeElement holder) {
+        if (!validatedRegistries.add(holder.getQualifiedName().toString())) return;
+        TypeElement codec = context.elements.getTypeElement(ValueCodec.class.getName());
+        TypeElement external = context.elements.getTypeElement(ExternalNode.class.getName());
+        for (Element member : holder.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.METHOD) continue;
+            TypeMirror type = ((ExecutableElement) member).getReturnType();
+            if ((codec != null && context.typeUtils.isAssignable(
+                    context.typeUtils.erasure(type), context.typeUtils.erasure(codec.asType())))
+                    || (external != null && context.typeUtils.isAssignable(
+                    context.typeUtils.erasure(type), context.typeUtils.erasure(external.asType())))) {
+                context.error(member,
+                        "@NodeRegistry supports static fields only; factory methods are not supported");
             }
         }
     }
@@ -156,6 +164,7 @@ public final class RegistryDiscovery {
                                 + holder.getQualifiedName());
                         continue;
                     }
+                    validateFieldOnlyRegistry(holder);
                     registries.add(holder);
                 }
             }
