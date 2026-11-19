@@ -78,7 +78,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: jdbc-mapping-jmh
           path: sjf4j-testbench/build/libs
@@ -108,7 +108,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: jdbc-mapping-jmh
           path: sjf4j-testbench/build/libs
