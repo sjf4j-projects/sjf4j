@@ -187,4 +187,59 @@ class RegistryDiscoveryTest {
         assertTrue(result.diagnostics().contains("duplicate @NodeValue codec format"),
                 result.diagnostics());
     }
+    @Test
+    void precompiledExternalNodeIsScopedPerCompiledInterface() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledBinder(registries=ClasspathRegistries.ExternalNodes.class) "
+                + "public interface Binder {}");
+        input.put("fixture/OtherBinder.java",
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder public interface OtherBinder {}");
+
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                input, RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.Binder true"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.OtherBinder false"), result.diagnostics());
+    }
+
+    @Test
+    void sourceExternalOnlyRegistryNeedsNoCodecDeclaration() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder public interface Binder {}");
+        input.put("fixture/ExternalOnly.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeRegistry; "
+                + "import org.sjf4j.external.ExternalNode; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@NodeRegistry public interface ExternalOnly { "
+                + "static ExternalNode<ClasspathRegistries.ExternalValue> adapter() { return null; } "
+                + "}");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                input, RegistryDiscoveryProbeProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.Binder true"), result.diagnostics());
+    }
+
+    @Test
+    void rejectsUnresolvedExternalNodeGenericRoot() throws Exception {
+        Map<String, String> input = sources(
+                "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
+                + "@CompiledBinder public interface Binder {}");
+        input.put("fixture/InvalidNode.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeRegistry; "
+                + "import org.sjf4j.external.ExternalNode; "
+                + "@NodeRegistry public interface InvalidNode { "
+                + "ExternalNode<?> adapter = null; "
+                + "}");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                input, CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains("ExternalNode declaration must specify concrete N"),
+                result.diagnostics());
+    }
+
+
 }
