@@ -26,7 +26,7 @@ dependencies {
     compileOnly("com.alibaba.fastjson2:fastjson2:2.0.66")
     compileOnly("jakarta.json:jakarta.json-api:2.1.3")
     compileOnly("org.eclipse.parsson:parsson:1.1.7")
-    compileOnly("org.yaml:snakeyaml:2.5")
+    compileOnly("org.yaml:snakeyaml:2.7")
     compileOnly("com.ibm.icu:icu4j:77.1")
 
     // test
@@ -35,7 +35,7 @@ dependencies {
     testImplementation("com.alibaba.fastjson2:fastjson2:2.0.66")
     testImplementation("jakarta.json:jakarta.json-api:2.1.3")
     testImplementation("org.eclipse.parsson:parsson:1.1.7")
-    testImplementation("org.yaml:snakeyaml:2.5")
+    testImplementation("org.yaml:snakeyaml:2.7")
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")
