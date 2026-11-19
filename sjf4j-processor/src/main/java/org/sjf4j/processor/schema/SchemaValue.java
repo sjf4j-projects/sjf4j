@@ -2,6 +2,7 @@ package org.sjf4j.processor.schema;
 
 import org.sjf4j.NodeKind;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
@@ -35,7 +36,7 @@ final class SchemaValue {
         this.nullable = type == null || !type.getKind().isPrimitive();
     }
 
-    static SchemaValue of(ProcessorContext context, TypeMirror type) {
+    static SchemaValue of(ProcessorContext context, TypeMirror type, CompiledMetadata metadata) {
         if (type == null || "java.lang.Object".equals(type.toString())) {
             return new SchemaValue(type, Shape.DYNAMIC, false);
         }
@@ -81,7 +82,7 @@ final class SchemaValue {
                 return new SchemaValue(type, Shape.OBJECT, false);
             }
             if (element != null && element.getModifiers().contains(Modifier.FINAL)
-                    && !context.metadata(element).hasValueCodec(type)) {
+                    && (metadata == null || !metadata.hasValueCodec(type))) {
                 return new SchemaValue(type, Shape.OBJECT, false);
             }
         }
