@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 /**
  * Compile-time options for an SJF4J compiled interface.
  *
- * <p>@ValueCodecRegistry holder classes may be declared in the current module or an
+ * <p>ValueCodec registry holder classes may be declared in the current module or an
  * already-compiled dependency. This option only exposes their declarations
  * to the annotation processor. Application initialization is still responsible
  * for runtime registration (for example, via
@@ -20,6 +20,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 public @interface BindingOptions {
 
-    /** Additional classes containing annotated registration fields. */
+    /** Additional classes containing codec fields or factory methods. */
     Class<?>[] registries() default {};
 }
