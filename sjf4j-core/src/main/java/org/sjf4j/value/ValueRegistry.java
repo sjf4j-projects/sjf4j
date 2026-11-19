@@ -137,7 +137,7 @@ public final class ValueRegistry {
     }
 
     /**
-     * Registers annotated codec fields and factory methods on a
+     * Registers codec fields and factory methods on a
      * {@link ValueCodecRegistry} class or interface.
      *
      * <p>Fields must be public static final and methods public static with no
@@ -155,13 +155,25 @@ public final class ValueRegistry {
 
         List<AnnotatedElement> declarations = new ArrayList<>();
         for (Field field : registryClass.getDeclaredFields()) {
-            if (field.isAnnotationPresent(NodeValue.class)) declarations.add(field);
+            if (field.isAnnotationPresent(NodeValue.class)
+                    || (Modifier.isPublic(field.getModifiers())
+                    && Modifier.isStatic(field.getModifiers())
+                    && Modifier.isFinal(field.getModifiers())
+                    && ValueCodec.class.isAssignableFrom(field.getType()))) {
+                declarations.add(field);
+            }
         }
         for (Method method : registryClass.getDeclaredMethods()) {
-            if (method.isAnnotationPresent(NodeValue.class)) declarations.add(method);
+            if (method.isAnnotationPresent(NodeValue.class)
+                    || (Modifier.isPublic(method.getModifiers())
+                    && Modifier.isStatic(method.getModifiers())
+                    && method.getParameterCount() == 0
+                    && ValueCodec.class.isAssignableFrom(method.getReturnType()))) {
+                declarations.add(method);
+            }
         }
         if (declarations.isEmpty()) {
-            throw new BindingException("@ValueCodecRegistry has no @NodeValue declarations: "
+            throw new BindingException("@ValueCodecRegistry has no codec declarations: "
                     + registryClass.getName());
         }
         // Resolve the declared default first, independently of reflection order.
@@ -225,7 +237,7 @@ public final class ValueRegistry {
                 throw new BindingException("@NodeValue codec V/R types do not match declaration: " + member);
             }
 
-            String format = annotation.format();
+            String format = annotation == null ? "" : annotation.format();
             Set<String> seen = declaredFormats.computeIfAbsent(codec.valueClazz(), k -> new HashSet<>());
             if (!seen.add(format)) {
                 throw new BindingException("duplicate @NodeValue codec format '" + format
@@ -238,7 +250,7 @@ public final class ValueRegistry {
                 throw new BindingException("same ValueCodec instance registered under multiple formats for type '"
                         + codec.valueClazz().getName() + "'");
             }
-            boolean isDefault = annotation.defaultCodec() || format.isEmpty();
+            boolean isDefault = (annotation != null && annotation.defaultCodec()) || format.isEmpty();
             if (isDefault && !explicitDefaults.add(codec.valueClazz())) {
                 throw new BindingException("multiple default @NodeValue codecs for type '"
                         + codec.valueClazz().getName() + "'");
@@ -258,7 +270,7 @@ public final class ValueRegistry {
 
     private static boolean isDefaultCodec(AnnotatedElement declaration) {
         NodeValue annotation = declaration.getAnnotation(NodeValue.class);
-        return annotation != null && (annotation.defaultCodec() || annotation.format().isEmpty());
+        return annotation == null || annotation.defaultCodec() || annotation.format().isEmpty();
     }
 
     /**
