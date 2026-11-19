@@ -44,4 +44,14 @@ public final class ClasspathRegistries {
         @NodeValue(format = "beta")
         public static final ValueCodec<Instant, String> BETA = ValueCodec.INSTANT_STR;
     }
+    /** Mimics a registry interface already compiled in a dependency JAR. */
+    @NodeRegistry
+    public interface LegacyFactory {
+        static ValueCodec<Money, String> money() {
+            return new ValueCodec.SimpleValueCodec<>(Money.class, String.class,
+                    value -> value.text, Money::new);
+        }
+    }
+
+
 }
