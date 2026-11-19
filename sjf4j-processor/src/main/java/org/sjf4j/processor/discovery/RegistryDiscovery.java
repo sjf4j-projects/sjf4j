@@ -5,6 +5,7 @@ import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.external.ExternalNode;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.value.ValueCodec;
+import org.sjf4j.value.ValueCodecProvider;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.AnnotationMirror;
@@ -50,8 +51,12 @@ public final class RegistryDiscovery {
             }
             Element holder = element.getEnclosingElement();
             if (holder instanceof TypeElement && holder.getAnnotation(NodeRegistry.class) == null) {
-                context.error(element, "@NodeValue codec declaration requires @NodeRegistry on "
-                        + ((TypeElement) holder).getQualifiedName());
+                TypeElement providerType = context.elements.getTypeElement(ValueCodecProvider.class.getName());
+                if (providerType == null || !context.typeUtils.isAssignable(
+                        holder.asType(), providerType.asType())) {
+                    context.error(element, "@NodeValue codec declaration requires @NodeRegistry on "
+                            + ((TypeElement) holder).getQualifiedName());
+                }
             }
         }
     }
