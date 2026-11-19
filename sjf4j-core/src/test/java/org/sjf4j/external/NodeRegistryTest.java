@@ -25,6 +25,11 @@ class NodeRegistryTest {
         CustomNode(String text) { this.text = text; }
     }
 
+    public static final class OtherNode {
+        public final String text;
+        OtherNode(String text) { this.text = text; }
+    }
+
     public static final class Adapter implements ExternalNode<CustomNode> {
         @Override
         public Class<CustomNode> nodeType() { return CustomNode.class; }
@@ -41,6 +46,15 @@ class NodeRegistryTest {
         ValueCodec<OrderId, String> ORDER_IDS = new ValueCodec.SimpleValueCodec<>(
                 OrderId.class, String.class, value -> value.id, OrderId::new);
         ExternalNode<CustomNode> CUSTOM = new Adapter();
+
+        static ExternalNode<OtherNode> other() {
+            return new ExternalNode<OtherNode>() {
+                @Override
+                public Class<OtherNode> nodeType() { return OtherNode.class; }
+                @Override
+                public JsonType jsonType(OtherNode node) { return JsonType.STRING; }
+            };
+        }
     }
 
     @Test
@@ -51,6 +65,7 @@ class NodeRegistryTest {
         assertNotNull(ValueRegistry.resolve(OrderId.class));
         assertEquals("\"order-1\"", new Sjf4j().toJsonString(new OrderId("order-1")));
         assertSame(AppNodes.CUSTOM, ExternalRegistry.resolve(CustomNode.class));
+        assertNotNull(ExternalRegistry.resolve(OtherNode.class));
         assertEquals(NodeKind.VALUE_STRING_EXTERNAL, NodeKind.of(new CustomNode("example")));
     }
 }
