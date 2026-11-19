@@ -24,7 +24,7 @@ class CompiledRuntimeContextInjectionTest {
         sources.put("fixture/Codecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "public final class Codecs { "
+                + "@org.sjf4j.annotation.node.ValueCodecRegistry public final class Codecs { "
                 + "@NodeValue public static final ValueCodec<Token,String> DEFAULT = "
                 + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
                 + "v -> \"d:\" + v.value, s -> new Token(s.substring(2))); "
