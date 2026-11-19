@@ -48,7 +48,6 @@ public final class ValueRegistry {
 
     /* Immutable snapshots, with default selection resolved at registration. */
     private static final ConcurrentHashMap<Class<?>, ValueSet> VALUE_SETS = new ConcurrentHashMap<>();
-    private static final Set<Class<?>> REGISTERED_HOLDERS = new HashSet<>();
 
     /**
      * Resolves codecs registered directly for a class or declared through {@code @NodeValue}.
@@ -144,7 +143,7 @@ public final class ValueRegistry {
      * operation is idempotent for the same registry interface.
      * Register before type metadata has been analyzed.
      */
-    public static synchronized void registerAnnotated(Class<?> registryClass) {
+    public static void registerAnnotated(Class<?> registryClass) {
         Asserts.notNull(registryClass, "registryClass");
         if (!registryClass.isInterface()
                 || !registryClass.isAnnotationPresent(NodeRegistry.class)) {
@@ -154,7 +153,6 @@ public final class ValueRegistry {
     }
 
     private static void registerDeclaredCodecs(Class<?> registryClass) {
-        if (REGISTERED_HOLDERS.contains(registryClass)) return;
 
         List<AnnotatedElement> declarations = new ArrayList<>();
         for (Field field : registryClass.getDeclaredFields()) {
@@ -268,7 +266,6 @@ public final class ValueRegistry {
             register(info, !info.valueFormat.isEmpty());
         }
         for (ValueInfo info : named) register(info, false);
-        REGISTERED_HOLDERS.add(registryClass);
     }
 
     private static boolean isDefaultCodec(AnnotatedElement declaration) {
