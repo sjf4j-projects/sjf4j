@@ -49,6 +49,7 @@ public class CompiledOneOfBoundaryTest {
         public DecimalTag(BigDecimal value) { this.value = value; }
     }
 
+    @org.sjf4j.annotation.node.ValueCodecRegistry
     public static final class CodecRegistry {
         @NodeValue(format = "fixed", defaultCodec = true)
         public static final ValueCodec<LongTag, Long> LONG =
