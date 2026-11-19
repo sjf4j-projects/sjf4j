@@ -35,18 +35,16 @@ class CompiledFindBoundaryTest {
     }
 
     @Test
-    void filterRequiresExplicitPredicateOptIn() throws Exception {
-        NavigatorTestCompiler.Result disabled = NavigatorTestCompiler.compile(
-                filterSources(false), CodegenProcessor.class);
-        assertFalse(disabled.success, disabled.diagnostics());
-        assertTrue(disabled.diagnostics().contains("fallback=true"), disabled.diagnostics());
-
-        NavigatorTestCompiler.Result enabled = NavigatorTestCompiler.compile(
-                filterSources(true), CodegenProcessor.class);
-        assertTrue(enabled.success, enabled.diagnostics());
-        String generated = enabled.generatedSource("fixture/FindPaths_Impl.java");
-        assertTrue(generated.contains(".evalTruth("), generated);
-        assertFalse(generated.contains(".find("), generated);
+    void simpleFilterCompilesWithoutFallback() throws Exception {
+        for (boolean fallback : new boolean[]{false, true}) {
+            NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(
+                    filterSources(fallback), CodegenProcessor.class);
+            assertTrue(compiled.success, compiled.diagnostics());
+            String generated = compiled.generatedSource("fixture/FindPaths_Impl.java");
+            assertTrue(generated.contains("FilterExpr.compare("), generated);
+            assertFalse(generated.contains(".evalTruth("), generated);
+            assertFalse(generated.contains(".find("), generated);
+        }
     }
 
     @Test
