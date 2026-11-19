@@ -379,7 +379,7 @@ public class FindProcessorTest {
                 "import java.util.List;\n" +
                 "import org.sjf4j.annotation.path.CompiledNavigator;\n" +
                 "import org.sjf4j.annotation.path.FindByPath;\n" +
-                "@CompiledNavigator(fallback=true)\n" +
+                "@CompiledNavigator\n" +
                 "public interface FindFiltered {\n" +
                 "  @FindByPath(value=\"$.items[?(@.age > 18)].name\")\n" +
                 "  List<String> adultNames(FilterRoot root);\n" +
@@ -405,9 +405,9 @@ public class FindProcessorTest {
         Path genSource = gen.resolve("testcase/FindFiltered_Impl.java");
         assertTrue(Files.exists(genSource), "Generated source not found at " + genSource);
         String source = Files.readString(genSource);
-        assertTrue(source.contains("private static final FilterExpr") ||
-                source.contains("private static final org.sjf4j.path.FilterExpr"), source);
-        assertTrue(source.contains(".evalTruth("), source);
+        assertTrue(source.contains("CompiledFilterSupport.value("), source);
+        assertTrue(source.contains("FilterExpr.compare("), source);
+        assertFalse(source.contains(".evalTruth("), source);
         assertFalse(source.contains(".find("), "Filter path should not fall back to .find(; source:\n" + source);
 
         URLClassLoader loader = new URLClassLoader(new URL[]{out.toUri().toURL()}, getClass().getClassLoader());

@@ -53,6 +53,10 @@ public interface FilterExpr {
             this.value = value;
         }
 
+        public Object value() {
+            return value;
+        }
+
         @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             return value;
@@ -89,6 +93,10 @@ public interface FilterExpr {
         /** Creates an expression from an already parsed path. */
         public PathExpr(JsonPath path) {
             this.path = Asserts.notNull(path, "path");
+        }
+
+        public JsonPath path() {
+            return path;
         }
 
         /**
@@ -145,6 +153,14 @@ public interface FilterExpr {
             this.unary = unary;
         }
 
+        public boolean positive() {
+            return truth;
+        }
+
+        public FilterExpr operand() {
+            return unary;
+        }
+
         @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             return truth == unary.evalTruth(rootNode, currentNode, access);
@@ -182,6 +198,18 @@ public interface FilterExpr {
             }
         }
 
+        public FilterExpr left() {
+            return left;
+        }
+
+        public FilterExpr right() {
+            return right;
+        }
+
+        public Op operator() {
+            return op;
+        }
+
         /**
          * Evaluates binary operator over both operands.
          */
@@ -200,33 +228,7 @@ public interface FilterExpr {
             Object b = right.eval(rootNode, currentNode, access);
             _requireScalarFunctionResult(left, a);
             _requireScalarFunctionResult(right, b);
-            if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) {
-                // RFC 9535: Nothing equals Nothing, but not a present JSON
-                // value. Ordering is false; <= and >= include equality.
-                boolean bothMissing = a == PathExpr.NOTHING && b == PathExpr.NOTHING;
-                switch (op) {
-                    case EQ:
-                    case LE:
-                    case GE:
-                        return bothMissing;
-                    case NE:
-                        return !bothMissing;
-                    default:
-                        return false;
-                }
-            }
-            switch (op) {
-                case EQ: return eq(a, b);
-                case NE: return !eq(a, b);
-                case GT: return gt(a, b);
-                case GE: return ge(a, b);
-                case LT: return lt(a, b);
-                case LE: return le(a, b);
-                case MATCH: return match(a, b);
-                case IN: return in(a, b);
-                case NIN: return !in(a, b);
-            }
-            return false;
+            return FilterExpr.compare(op, a, b);
         }
 
         private static void _requireScalarFunctionResult(FilterExpr expr, Object value) {
@@ -380,6 +382,38 @@ public interface FilterExpr {
         @Override
         public String toString() {
             return symbol;
+        }
+    }
+
+    /**
+     * Evaluates comparison operators with JSONPath Nothing semantics.
+     * Shared by interpreted and generated filter implementations.
+     */
+    static boolean compare(Op op, Object a, Object b) {
+        if (a == PathExpr.NOTHING || b == PathExpr.NOTHING) {
+            boolean bothMissing = a == PathExpr.NOTHING && b == PathExpr.NOTHING;
+            switch (op) {
+                case EQ:
+                case LE:
+                case GE:
+                    return bothMissing;
+                case NE:
+                    return !bothMissing;
+                default:
+                    return false;
+            }
+        }
+        switch (op) {
+            case EQ: return eq(a, b);
+            case NE: return !eq(a, b);
+            case GT: return gt(a, b);
+            case GE: return ge(a, b);
+            case LT: return lt(a, b);
+            case LE: return le(a, b);
+            case MATCH: return match(a, b);
+            case IN: return in(a, b);
+            case NIN: return !in(a, b);
+            default: throw new IllegalArgumentException("not a comparison operator: " + op);
         }
     }
 

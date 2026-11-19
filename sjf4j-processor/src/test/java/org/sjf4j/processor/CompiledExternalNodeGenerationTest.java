@@ -65,13 +65,13 @@ class CompiledExternalNodeGenerationTest {
         String generated = result.generatedSource("fixture/Paths_Impl.java");
         assertEquals(1, generated.split(java.util.regex.Pattern.quote("JsonType.of(current)"), -1).length - 1, generated);
         assertFalse(generated.contains("if (current != null)"), generated);
-        assertTrue(generated.contains(".evalTruth(root, item, access)"), generated);
+        assertTrue(generated.contains("CompiledFilterSupport.value("), generated);
         assertTrue(generated.contains("else if ("), generated);
         assertFalse(generated.contains(".isObject() && !"), generated);
     }
 
     @Test
-    void externalFilterEmitsCachedPredicateWithoutFullPathEvaluation() throws Exception {
+    void externalFilterEmitsCompiledPredicateWithoutFullPathEvaluation() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Paths.java",
                 "package fixture; import java.util.List;"
@@ -85,10 +85,37 @@ class CompiledExternalNodeGenerationTest {
         assertTrue(result.success, result.diagnostics());
 
         String generated = result.generatedSource("fixture/Paths_Impl.java");
-        assertTrue(generated.contains("FilterExpr"), generated);
-        assertTrue(generated.contains("FIND_FILTER"), generated);
-        assertTrue(generated.contains(".evalTruth("), generated);
+        assertTrue(generated.contains("FilterExpr.compare("), generated);
+        assertTrue(generated.contains("FILTER_PATH"), generated);
+        assertFalse(generated.contains(".evalTruth("), generated);
         assertTrue(generated.contains("NodeWalker.forEachArray("), generated);
         assertFalse(generated.contains(".find("), generated);
     }
+    @Test
+    void unsupportedFilterRequiresExplicitFallback() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Paths.java",
+                "package fixture; import java.util.List;"
+                + "import org.sjf4j.annotation.path.*;"
+                + "@CompiledNavigator public interface Paths {"
+                + "@FindByPath(\"$.items[?(@.name =~ /^A/)].name\")"
+                + "List<Object> filter(java.util.Map<String,Object> root);"
+                + "}");
+        NavigatorTestCompiler.Result rejected =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertFalse(rejected.success);
+        assertTrue(rejected.diagnostics().contains("cannot compile filter operator =~"),
+                rejected.diagnostics());
+
+        sources.put("fixture/Paths.java",
+                sources.get("fixture/Paths.java").replace("@CompiledNavigator public",
+                        "@CompiledNavigator(fallback=true) public"));
+        NavigatorTestCompiler.Result accepted =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(accepted.success, accepted.diagnostics());
+        String generated = accepted.generatedSource("fixture/Paths_Impl.java");
+        assertTrue(generated.contains("FIND_FILTER"), generated);
+        assertTrue(generated.contains(".evalTruth("), generated);
+    }
+
 }

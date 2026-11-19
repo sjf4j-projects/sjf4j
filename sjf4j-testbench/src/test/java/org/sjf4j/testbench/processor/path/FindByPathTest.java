@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.FindByPath;
 import org.sjf4j.CompiledInstances;
+import org.sjf4j.path.JsonPath;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -119,7 +120,43 @@ public class FindByPathTest {
         List<String> finalConcreteReverseNames(FinalConcrete root);
     }
 
-    /** Only predicate evaluation requires the explicit FilterExpr opt-in. */
+    @CompiledNavigator
+    interface BasicFilterNodes {
+        @FindByPath("$.items[?(@.age >= 18)].name")
+        List<String> adultNames(Container root);
+
+        @FindByPath("$.items[?(@.age >= 18 && @.age < 30)].name")
+        List<String> ageRange(Container root);
+
+        @FindByPath("$.items[?(@.age < 18 || @.name == 'Charlie')].name")
+        List<String> youngOrCharlie(Container root);
+
+        @FindByPath("$.items[?(!@.disabled)].name")
+        List<String> withoutDisabled(Container root);
+
+        @FindByPath("$.items[?(@.flag)].name")
+        List<Object> flagPresent(Map<String, Object> root);
+
+        @FindByPath("$.items[?(!@.flag)].name")
+        List<Object> flagMissing(Map<String, Object> root);
+
+        @FindByPath("$.items[?(@.value == null)].name")
+        List<Object> valueNull(Map<String, Object> root);
+
+        @FindByPath("$.items[?(@.missingA == @.missingB)].name")
+        List<Object> bothMissing(Map<String, Object> root);
+
+        @FindByPath("$.items[?(@.score.math >= $.minimum)].name")
+        List<Object> nestedScore(Map<String, Object> root);
+
+        @FindByPath("$.items[?(@ == null)]")
+        List<Object> nullItems(Map<String, Object> root);
+
+        @FindByPath("$..friends[?@.scores.math >= 90].name")
+        List<Object> highMathFriends(Map<String, Object> root);
+    }
+
+    /** Unsupported predicates still require explicit fallback. */
     @CompiledNavigator(fallback = true)
     interface FilterNodes {
         @FindByPath(value = "$.items[?(@.age > 18)].name")
@@ -136,6 +173,9 @@ public class FindByPathTest {
 
         @FindByPath(value = "$.items[?(@.age > 18)].name")
         List<String> concreteAdultNames(Concrete root);
+
+        @FindByPath("$.items[?(@.name =~ /B/)].name")
+        List<String> regexNames(Container root);
     }
 
     // ---- Tests -------------------------------------------------------------
@@ -300,6 +340,92 @@ public class FindByPathTest {
         FindNodes nodes = CompiledInstances.create(FindNodes.class);
 
         assertThrows(NullPointerException.class, () -> nodes.itemNames(null));
+    }
+
+    @Test
+    public void recursiveDescentCanUseCompiledNestedFilter() {
+        BasicFilterNodes compiled = CompiledInstances.create(BasicFilterNodes.class);
+        Map<String, Object> friends = Map.of("friends", List.of(
+                Map.of("name", "Alice", "scores", Map.of("math", 95)),
+                Map.of("name", "Bob", "scores", Map.of("math", 89)),
+                Map.of("name", "Charlie", "scores", Map.of("math", 90))));
+        Map<String, Object> root = Map.of("classroom", friends);
+        String path = "$..friends[?@.scores.math >= 90].name";
+        assertEquals(List.of("Alice", "Charlie"), compiled.highMathFriends(root));
+        assertEquals(JsonPath.parse(path).find(root, Object.class), compiled.highMathFriends(root));
+    }
+
+    @Test
+    public void basicCompiledFiltersMatchRuntimeJsonPath() {
+        BasicFilterNodes compiled = CompiledInstances.create(BasicFilterNodes.class);
+        FilterNodes fallback = CompiledInstances.create(FilterNodes.class);
+        Container root = container();
+
+        assertEquals(List.of("Bob", "Charlie"), compiled.adultNames(root));
+        assertEquals(List.of("Bob"), compiled.ageRange(root));
+        assertEquals(List.of("Alice", "Charlie"), compiled.youngOrCharlie(root));
+        assertEquals(List.of("Alice", "Bob", "Charlie"), compiled.withoutDisabled(root));
+        assertEquals(List.of("Bob"), fallback.regexNames(root));
+
+        assertEquals(JsonPath.parse("$.items[?(@.age >= 18)].name")
+                .find(root, Object.class), compiled.adultNames(root));
+        assertEquals(JsonPath.parse("$.items[?(@.age >= 18 && @.age < 30)].name")
+                .find(root, Object.class), compiled.ageRange(root));
+        assertEquals(JsonPath.parse("$.items[?(@.age < 18 || @.name == 'Charlie')].name")
+                .find(root, Object.class), compiled.youngOrCharlie(root));
+        assertEquals(JsonPath.parse("$.items[?(!@.disabled)].name")
+                .find(root, Object.class), compiled.withoutDisabled(root));
+    }
+
+    @Test
+    public void compiledFiltersDistinguishMissingFromNullAndUseRootContext() {
+        BasicFilterNodes compiled = CompiledInstances.create(BasicFilterNodes.class);
+        Map<String, Object> first = new LinkedHashMap<>();
+        first.put("name", "first");
+        first.put("flag", false);
+        first.put("value", null);
+        first.put("score", Map.of("math", 91));
+        Map<String, Object> second = new LinkedHashMap<>();
+        second.put("name", "second");
+        second.put("score", Map.of("math", 89));
+        Map<String, Object> third = new LinkedHashMap<>();
+        third.put("name", "third");
+        third.put("flag", null);
+        third.put("value", 42);
+        third.put("score", Map.of("math", 95));
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("items", List.of(first, second, third));
+        root.put("minimum", 90);
+
+        assertEquals(List.of("first", "third"), compiled.flagPresent(root));
+        assertEquals(List.of("second"), compiled.flagMissing(root));
+        assertEquals(List.of("first"), compiled.valueNull(root));
+        assertEquals(List.of("first", "second", "third"), compiled.bothMissing(root));
+        assertEquals(List.of("first", "third"), compiled.nestedScore(root));
+
+        for (String query : List.of(
+                "$.items[?(@.flag)].name",
+                "$.items[?(!@.flag)].name",
+                "$.items[?(@.value == null)].name",
+                "$.items[?(@.missingA == @.missingB)].name",
+                "$.items[?(@.score.math >= $.minimum)].name")) {
+            List<Object> runtime = JsonPath.parse(query).find(root, Object.class);
+            List<Object> actual;
+            switch (query) {
+                case "$.items[?(@.flag)].name": actual = compiled.flagPresent(root); break;
+                case "$.items[?(!@.flag)].name": actual = compiled.flagMissing(root); break;
+                case "$.items[?(@.value == null)].name": actual = compiled.valueNull(root); break;
+                case "$.items[?(@.missingA == @.missingB)].name": actual = compiled.bothMissing(root); break;
+                default: actual = compiled.nestedScore(root);
+            }
+            assertEquals(runtime, actual, query);
+        }
+
+        Map<String, Object> withNull = Map.of("items",
+                java.util.Arrays.asList(first, null, second));
+        assertEquals(java.util.Collections.singletonList(null), compiled.nullItems(withNull));
+        assertEquals(JsonPath.parse("$.items[?(@ == null)]").find(withNull, Object.class),
+                compiled.nullItems(withNull));
     }
 
     // ---- Helpers -----------------------------------------------------------
