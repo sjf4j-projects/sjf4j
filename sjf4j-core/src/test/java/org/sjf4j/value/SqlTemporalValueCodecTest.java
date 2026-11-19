@@ -11,12 +11,15 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /** SQL date/time values use their local temporal semantics, not java.util.Date's instant codec. */
 class SqlTemporalValueCodecTest {
@@ -42,6 +45,37 @@ class SqlTemporalValueCodecTest {
         assertNotNull(TypeRegistry.requireRegisteredValueInfo(Date.class, null).streamParser);
         assertNotNull(TypeRegistry.requireRegisteredValueInfo(Time.class, null).streamGenerator);
         assertNotNull(TypeRegistry.requireRegisteredValueInfo(Timestamp.class, null).streamParser);
+    }
+
+    @Test
+    void timestampEpochMillisIsOptInAndTruncatesFractionalNanoseconds() {
+        Timestamp timestamp = Timestamp.from(Instant.parse("2026-11-19T12:30:01.123456789Z"));
+        long millis = timestamp.getTime();
+
+        assertEquals("iso", TypeRegistry.requireRegisteredValueInfo(Timestamp.class, null).valueFormat);
+        assertEquals(Long.class, TypeRegistry.requireRegisteredValueInfo(Timestamp.class, "epochMillis").rawClazz);
+        assertSame(ValueCodec.SQL_TIMESTAMP_EPOCH_MILLIS,
+                TypeRegistry.requireRegisteredValueInfo(Timestamp.class, "epochMillis").codec);
+
+        assertNull(ValueCodec.SQL_TIMESTAMP_EPOCH_MILLIS.valueToRaw(null));
+        assertNull(ValueCodec.SQL_TIMESTAMP_EPOCH_MILLIS.rawToValue(null));
+        assertEquals(millis, ValueCodec.SQL_TIMESTAMP_EPOCH_MILLIS.valueToRaw(timestamp));
+
+        Timestamp truncated = Timestamp.from(Instant.ofEpochMilli(millis));
+        assertEquals(truncated, ValueCodec.SQL_TIMESTAMP_EPOCH_MILLIS.rawToValue(millis));
+        assertNotEquals(timestamp, truncated);
+
+        Sjf4j epochMillis = Sjf4j.builder().valueFormat(Timestamp.class, "epochMillis").build();
+        assertEquals(Long.toString(millis), epochMillis.toJsonString(timestamp));
+        assertEquals(truncated, epochMillis.fromJson(Long.toString(millis), Timestamp.class));
+
+        // A pre-1970 fractional timestamp must preserve the negative epoch millisecond.
+        Timestamp negative = Timestamp.from(Instant.parse("1969-12-31T23:59:59.123456789Z"));
+        long negativeMillis = negative.getTime();
+        assertEquals(-877L, negativeMillis);
+        assertEquals(negativeMillis, ValueCodec.SQL_TIMESTAMP_EPOCH_MILLIS.valueToRaw(negative));
+        assertEquals(Timestamp.from(Instant.ofEpochMilli(negativeMillis)),
+                ValueCodec.SQL_TIMESTAMP_EPOCH_MILLIS.rawToValue(negativeMillis));
     }
 
     @Test
