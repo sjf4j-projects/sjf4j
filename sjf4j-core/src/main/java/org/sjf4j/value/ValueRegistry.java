@@ -148,15 +148,20 @@ public final class ValueRegistry {
      * Register before type metadata has been analyzed.
      */
     public static synchronized void registerAnnotated(Class<?> registryClass) {
-        registerHolder(registryClass, false);
-    }
-
-    private static void registerHolder(Class<?> registryClass, boolean spiProvider) {
         Asserts.notNull(registryClass, "registryClass");
-        if (!spiProvider && (!registryClass.isInterface()
-                || !registryClass.isAnnotationPresent(NodeRegistry.class))) {
+        if (!registryClass.isInterface()
+                || !registryClass.isAnnotationPresent(NodeRegistry.class)) {
             throw new BindingException("expected @NodeRegistry interface: " + registryClass.getName());
         }
+        registerDeclaredCodecs(registryClass, true);
+    }
+
+    /** Runtime SPI providers are concrete classes, unrelated to @NodeRegistry. */
+    private static void registerSpiProvider(Class<?> providerClass) {
+        registerDeclaredCodecs(providerClass, false);
+    }
+
+    private static void registerDeclaredCodecs(Class<?> registryClass, boolean allowExternalOnly) {
         if (REGISTERED_HOLDERS.contains(registryClass)) return;
 
         List<AnnotatedElement> declarations = new ArrayList<>();
@@ -181,7 +186,7 @@ public final class ValueRegistry {
         if (declarations.isEmpty()) {
             // External-only @NodeRegistry interfaces are valid; their adapters
             // are registered separately by ExternalRegistry.
-            if (!spiProvider && hasExternalDeclarations(registryClass)) {
+            if (allowExternalOnly && hasExternalDeclarations(registryClass)) {
                 REGISTERED_HOLDERS.add(registryClass);
                 return;
             }
@@ -326,7 +331,7 @@ public final class ValueRegistry {
         registerAnnotated(ValueCodec.class);
         for (ValueCodecProvider provider : ServiceLoader.load(
                 ValueCodecProvider.class, ValueCodecProvider.class.getClassLoader())) {
-            registerHolder(provider.getClass(), true);
+            registerSpiProvider(provider.getClass());
         }
     }
 
