@@ -29,32 +29,28 @@ bringing data binding, navigation, validation, mapping, and patching together.
   Enjoy flexible runtime APIs and highly optimized compile-time code generation.
 
 
-## Installation
+## Quickstart
 
-SJF4J requires **Java 8+** and supports modular installation. 
-The latest version: 
-[![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j)
+SJF4J supports **Java 8+**. Add the modules you need (Gradle Kotlin DSL):
 
-Gradle: 
-```java
-// Core structural processing API
-implementation("org.sjf4j:sjf4j-core:{version}")
+```kotlin
+dependencies {
+    implementation("org.sjf4j:sjf4j-core:{version}")
 
-// Optional: Compile-time APIs
-annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
+    // Optional: Jackson 2.x backend and its library
+    implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
 
-// Optional: JSON Schema validation
-implementation("org.sjf4j:sjf4j-schema:{version}")
+    // Optional: Compiled APIs
+    annotationProcessor("org.sjf4j:sjf4j-processor:{version}")
 
-// Optional: Backend and its dependency (Jackson 2.x example) 
-implementation("org.sjf4j:sjf4j-backend-jackson2:{version}")
-implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    // Optional: JSON Schema validation
+    implementation("org.sjf4j:sjf4j-schema:{version}")
+}
 ```
 
-Learn more → [Installation](https://sjf4j.org/docs/installation)
-
-
-## Quickstart
+Replace `{version}` with the latest [Maven Central release](https://central.sonatype.com/artifact/org.sjf4j/sjf4j).
+For Maven and other modules, see the [Installation Guide](https://sjf4j.org/docs/installation).
 
 **Start with an ordinary Java class:**
 ```java
