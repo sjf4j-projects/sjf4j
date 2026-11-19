@@ -140,8 +140,9 @@ public final class ValueRegistry {
      *
      * <p>Fields must be public static final and methods public static with no
      * parameters. Both must declare a concrete ValueCodec<V, R> type.
-     * ExternalNode declarations are ignored here; call
-     * {@link org.sjf4j.NodeRegistries#register(Class)} to register both kinds.
+     * ExternalNode declarations are ignored here; use
+     * {@link org.sjf4j.external.ExternalRegistry#registerAnnotated(Class)}
+     * to register those separately.
      * Register before type metadata has been analyzed.
      */
     public static void registerAnnotated(Class<?> registryClass) {
