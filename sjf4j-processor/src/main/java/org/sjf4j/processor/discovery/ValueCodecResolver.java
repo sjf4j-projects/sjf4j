@@ -158,6 +158,12 @@ public final class ValueCodecResolver {
             // then stable field name ordering.
             List<Element> declarations = new ArrayList<>();
             for (Element element : holder.getEnclosedElements()) {
+                if (element.getKind() == ElementKind.METHOD
+                        && context.typeUtils.isAssignable(
+                        context.typeUtils.erasure(((ExecutableElement) element).getReturnType()),
+                        context.typeUtils.erasure(codecType))) {
+                    context.error(element, "@NodeRegistry supports ValueCodec fields only; factory methods are not supported");
+                }
                 if (isCodecDeclaration(element)) declarations.add(element);
             }
             declarations.sort(Comparator
