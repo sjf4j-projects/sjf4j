@@ -84,7 +84,7 @@ class CompiledValueCodecDiscoveryTest {
         sources.put("fixture/AppCodecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.NodeRegistry public class AppCodecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface AppCodecs { "
                 + "public static final ValueCodec<Money, String> MONEY = "
                 + " new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " x -> x.value, Money::new); }");
