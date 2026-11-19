@@ -209,6 +209,77 @@ class AnnotatedValueCodecTest {
         assertInvalid(DuplicateCodecInstance.class, "same ValueCodec instance");
     }
 
+    static final class FactoryId {
+        final String value;
+        FactoryId(String value) { this.value = value; }
+    }
+
+    @ValueCodecRegistry
+    public static final class FactoryCodecs {
+        public static ValueCodec<FactoryId, String> factoryId() {
+            return new ValueCodec.SimpleValueCodec<>(
+                    FactoryId.class, String.class, id -> id.value, FactoryId::new);
+        }
+
+        @NodeValue(format = "upper")
+        public static ValueCodec<FactoryId, String> upper() {
+            return new ValueCodec.SimpleValueCodec<>(
+                    FactoryId.class, String.class,
+                    id -> id.value.toUpperCase(java.util.Locale.ROOT), FactoryId::new);
+        }
+    }
+
+    @ValueCodecRegistry
+    public static class BadFactory {
+        @NodeValue
+        public ValueCodec<FactoryId, String> invalid() {
+            return FactoryCodecs.factoryId();
+        }
+    }
+
+    @ValueCodecRegistry
+    public static class EmptyRegistry {
+    }
+
+    public static class MissingRegistry {
+        public static ValueCodec<FactoryId, String> factory() {
+            return FactoryCodecs.factoryId();
+        }
+    }
+
+    @Test
+    void registersFactoryMethodsWithoutMemberAnnotations() {
+        ValueRegistry.registerAnnotated(FactoryCodecs.class);
+        ValueRegistry.registerAnnotated(FactoryCodecs.class); // Idempotent.
+
+        ValueSet codecs = ValueRegistry.resolve(FactoryId.class);
+        assertEquals("", codecs.defaultInfo.valueFormat);
+        assertNotNull(codecs.requireFormat("upper"));
+        assertEquals("\"abc\"", new Sjf4j().toJsonString(new FactoryId("abc")));
+        assertEquals("abc", new Sjf4j().fromJson("\"abc\"", FactoryId.class).value);
+        assertEquals("ABC", codecs.requireFormat("upper").valueToRaw(new FactoryId("abc")));
+    }
+
+    @Test
+    void rejectsInvalidCodecRegistryFactories() {
+        assertInvalid(BadFactory.class, "public static, no-arg");
+        assertInvalid(EmptyRegistry.class, "no codec declarations");
+        assertInvalid(MissingRegistry.class, "missing @ValueCodecRegistry");
+    }
+
+    @Test
+    void serviceLoaderDiscoversCodecFactoryWithoutMemberAnnotations() {
+        ValueSet codecs = ValueRegistry.resolve(TestAutoCodecProvider.AutoId.class);
+        assertNotNull(codecs);
+        assertEquals("\"spi-1\"", new Sjf4j().toJsonString(
+                new TestAutoCodecProvider.AutoId("spi-1")));
+        assertEquals("spi-1",
+                new Sjf4j().fromJson("\"spi-1\"", TestAutoCodecProvider.AutoId.class).value);
+
+        // An explicit registration of the same provider is harmless.
+        ValueRegistry.registerAnnotated(TestAutoCodecProvider.class);
+    }
+
     private static void assertInvalid(Class<?> owner, String part) {
         BindingException error = assertThrows(BindingException.class,
                 () -> ValueRegistry.registerAnnotated(owner));
