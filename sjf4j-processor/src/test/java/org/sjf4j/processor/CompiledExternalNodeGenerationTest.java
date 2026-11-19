@@ -98,7 +98,7 @@ class CompiledExternalNodeGenerationTest {
                 "package fixture; import java.util.List;"
                 + "import org.sjf4j.annotation.path.*;"
                 + "@CompiledNavigator public interface Paths {"
-                + "@FindByPath(\"$.items[?(@.scores[*] > 90)].name\")"
+                + "@FindByPath(\"$.items[?(@.scores[*])].name\")"
                 + "List<Object> filter(java.util.Map<String,Object> root);"
                 + "}");
         NavigatorTestCompiler.Result rejected =
