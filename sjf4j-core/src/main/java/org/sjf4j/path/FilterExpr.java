@@ -270,6 +270,14 @@ public interface FilterExpr {
             this.args = args;
         }
 
+        public String name() {
+            return name;
+        }
+
+        public List<FilterExpr> arguments() {
+            return Collections.unmodifiableList(args);
+        }
+
         /**
          * Evaluates function with the first evaluated argument as target and remaining values as args.
          */
@@ -308,6 +316,11 @@ public interface FilterExpr {
             this.literalValues = values == null ? null : Collections.unmodifiableList(values);
         }
 
+        /** Precomputed array values, or null when elements are dynamic. */
+        public List<Object> literalValues() {
+            return literalValues;
+        }
+
         @Override
         public Object eval(Object rootNode, Object currentNode, NodeWalker.Access access) {
             if (literalValues != null) return literalValues;
@@ -342,6 +355,10 @@ public interface FilterExpr {
         public RegexExpr(String source, Pattern pattern) {
             this.source = source;
             this.pattern = pattern;
+        }
+
+        public Pattern pattern() {
+            return pattern;
         }
 
         /**
