@@ -83,7 +83,7 @@ final class FilterEmitter {
     private void emitDirectPath(JavaWriter out, String helper, FilterPlan plan) {
         out.beginBlock("private static Object " + helper +
                 "(Object node, org.sjf4j.node.NodeWalker.Access access)");
-        out.line("if (node == null) return org.sjf4j.path.CompiledFilterSupport.missing();");
+        out.line("if (node == null) return org.sjf4j.path.PathSupport.missing();");
 
         NodeAccess[] prefix = plan.propertyPrefix;
         String owner = "((" + javaType(prefix[0].ownerType()) + ") node)";
@@ -96,7 +96,7 @@ final class FilterEmitter {
                 String actual = i == 0 ? "node" : owner;
                 out.line("if (" + actual + ".getClass() != " +
                         ownerElement.getQualifiedName() + ".class) return " +
-                        "org.sjf4j.path.CompiledFilterSupport.value(" + actual + ", " +
+                        "org.sjf4j.path.PathSupport.value(" + actual + ", " +
                         memberArrayLiteral(plan.members, i) + ", access);");
             }
             String value = "filterValue" + i;
@@ -104,13 +104,13 @@ final class FilterEmitter {
             out.line(javaType(member.readType()) + " " + value + " = " + read + ";");
             if (i + 1 < prefix.length) {
                 out.line("if (" + value +
-                        " == null) return org.sjf4j.path.CompiledFilterSupport.missing();");
+                        " == null) return org.sjf4j.path.PathSupport.missing();");
             }
             owner = value;
         }
 
         if (prefix.length < plan.members.length) {
-            out.line("return org.sjf4j.path.CompiledFilterSupport.value(" +
+            out.line("return org.sjf4j.path.PathSupport.value(" +
                     owner + ", " + paths.get(plan) + ", access);");
         } else {
             out.line("return " + owner + ";");
@@ -140,9 +140,9 @@ final class FilterEmitter {
                 if (plan.members.length == 0) return "true";
                 if (directPaths.containsKey(plan)) {
                     return "(" + value(plan) +
-                            " != org.sjf4j.path.CompiledFilterSupport.missing())";
+                            " != org.sjf4j.path.PathSupport.missing())";
                 }
-                return "org.sjf4j.path.CompiledFilterSupport.exists(" +
+                return "org.sjf4j.path.PathSupport.exists(" +
                         (plan.rooted ? "root" : "current") + ", " +
                         paths.get(plan) + ", access)";
             case NOT:
@@ -176,7 +176,7 @@ final class FilterEmitter {
                     return directPaths.get(plan) + "(" +
                             (plan.rooted ? "root" : "current") + ", access)";
                 }
-                return "org.sjf4j.path.CompiledFilterSupport.value(" +
+                return "org.sjf4j.path.PathSupport.value(" +
                         (plan.rooted ? "root" : "current") + ", " +
                         paths.get(plan) + ", access)";
             case NOT: case AND: case OR: case COMPARE:

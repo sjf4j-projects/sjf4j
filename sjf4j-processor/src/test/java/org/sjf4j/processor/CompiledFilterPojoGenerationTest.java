@@ -44,8 +44,8 @@ class CompiledFilterPojoGenerationTest {
         assertTrue(generated.contains(".minimum()"), generated);
         assertTrue(generated.contains(".getExtra()"), generated);
         assertTrue(generated.contains("if (filterValue0 == null)"), generated);
-        assertTrue(generated.contains("CompiledFilterSupport.missing()"), generated);
-        assertTrue(generated.contains("CompiledFilterSupport.value(filterValue0,"), generated);
+        assertTrue(generated.contains("PathSupport.missing()"), generated);
+        assertTrue(generated.contains("PathSupport.value(filterValue0,"), generated);
         assertTrue(generated.contains("FilterExpr.compare("), generated);
         assertFalse(generated.contains(".evalTruth("), generated);
     }

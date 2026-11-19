@@ -65,7 +65,7 @@ class CompiledExternalNodeGenerationTest {
         String generated = result.generatedSource("fixture/Paths_Impl.java");
         assertEquals(1, generated.split(java.util.regex.Pattern.quote("JsonType.of(current)"), -1).length - 1, generated);
         assertFalse(generated.contains("if (current != null)"), generated);
-        assertTrue(generated.contains("CompiledFilterSupport.value("), generated);
+        assertTrue(generated.contains("PathSupport.value("), generated);
         assertTrue(generated.contains("else if ("), generated);
         assertFalse(generated.contains(".isObject() && !"), generated);
     }
