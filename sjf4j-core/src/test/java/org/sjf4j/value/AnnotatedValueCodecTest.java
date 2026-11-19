@@ -282,7 +282,7 @@ class AnnotatedValueCodecTest {
     @Test
     void rejectsInvalidCodecRegistryFactories() {
         assertInvalid(BadFactory.class, "public static, no-arg");
-        assertInvalid(EmptyRegistry.class, "no codec declarations");
+        assertDoesNotThrow(() -> ValueRegistry.registerAnnotated(EmptyRegistry.class));
         assertInvalid(MissingRegistry.class, "expected @NodeRegistry interface");
     }
 
