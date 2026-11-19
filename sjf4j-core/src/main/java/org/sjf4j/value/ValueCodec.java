@@ -300,6 +300,36 @@ public interface ValueCodec<V, R> {
                 return instant == null ? null : Date.from(instant);
             }, (generator, date) -> generator.writeInstant(date == null ? null : date.toInstant()));
 
+    // SQL date/time types have local date/time semantics; do not inherit the
+    // java.util.Date instant-based codec (java.sql.Date/Time.toInstant throws).
+    @NodeValue(format = "iso", defaultCodec = true)
+    ValueCodec<java.sql.Date, String> SQL_DATE = new StreamingValueCodec<>(java.sql.Date.class, String.class,
+            date -> date.toLocalDate().toString(),
+            raw -> java.sql.Date.valueOf(FastLocalDate.parse(raw)),
+            parser -> {
+                LocalDate date = parser.readLocalDate();
+                return date == null ? null : java.sql.Date.valueOf(date);
+            }, (generator, date) -> generator.writeLocalDate(date == null ? null : date.toLocalDate()));
+
+    @NodeValue(format = "iso", defaultCodec = true)
+    ValueCodec<java.sql.Time, String> SQL_TIME = new StreamingValueCodec<>(java.sql.Time.class, String.class,
+            time -> time.toLocalTime().toString(),
+            raw -> java.sql.Time.valueOf(FastLocalTime.parse(raw)),
+            parser -> {
+                LocalTime time = parser.readLocalTime();
+                return time == null ? null : java.sql.Time.valueOf(time);
+            }, (generator, time) -> generator.writeLocalTime(time == null ? null : time.toLocalTime()));
+
+    @NodeValue(format = "iso", defaultCodec = true)
+    ValueCodec<java.sql.Timestamp, String> SQL_TIMESTAMP = new StreamingValueCodec<>(java.sql.Timestamp.class, String.class,
+            timestamp -> timestamp.toLocalDateTime().toString(),
+            raw -> java.sql.Timestamp.valueOf(FastLocalDateTime.parse(raw)),
+            parser -> {
+                LocalDateTime dateTime = parser.readLocalDateTime();
+                return dateTime == null ? null : java.sql.Timestamp.valueOf(dateTime);
+            }, (generator, timestamp) -> generator.writeLocalDateTime(
+                    timestamp == null ? null : timestamp.toLocalDateTime()));
+
     // Retain the historical PatternedValueCodec fields as aliases; register
     // all built-in value types from this single declaration surface.
     @NodeValue(format = "iso", defaultCodec = true)
