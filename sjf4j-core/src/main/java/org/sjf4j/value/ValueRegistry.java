@@ -1,7 +1,6 @@
 package org.sjf4j.value;
 
 import org.sjf4j.NodeKind;
-import org.sjf4j.external.ExternalNode;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.annotation.node.RawToValue;
@@ -170,18 +169,6 @@ public final class ValueRegistry {
                 declarations.add(method);
             }
         }
-        if (declarations.isEmpty()) {
-            // External-only registries are valid; their adapters are handled by
-            // ExternalRegistry. A completely empty registry remains an error.
-            for (Field field : registryClass.getDeclaredFields()) {
-                if (ExternalNode.class.isAssignableFrom(field.getType())) return;
-            }
-            for (Method method : registryClass.getDeclaredMethods()) {
-                if (ExternalNode.class.isAssignableFrom(method.getReturnType())) return;
-            }
-            throw new BindingException("@NodeRegistry has no codec declarations: "
-                    + registryClass.getName());
-        }
         // Resolve the declared default first, independently of reflection order.
         declarations.sort(Comparator.comparing((AnnotatedElement member) ->
                 !isDefaultCodec(member))
@@ -208,6 +195,7 @@ public final class ValueRegistry {
                 }
                 declaredType = field.getGenericType();
                 try {
+                    field.setAccessible(true);
                     codec = (ValueCodec<?, ?>) field.get(null);
                 } catch (IllegalAccessException e) {
                     throw new BindingException("cannot access @NodeValue codec field: " + field, e);
@@ -223,6 +211,7 @@ public final class ValueRegistry {
                 }
                 declaredType = method.getGenericReturnType();
                 try {
+                    method.setAccessible(true);
                     codec = (ValueCodec<?, ?>) method.invoke(null);
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw new BindingException("cannot invoke @NodeValue codec method: " + method, e);
