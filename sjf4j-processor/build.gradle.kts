@@ -1,3 +1,5 @@
+import org.gradle.api.attributes.java.TargetJvmVersion
+
 plugins {
     id("java-library")
     id("jacoco")
@@ -17,6 +19,14 @@ java {
 configurations {
     testCompileOnly {
         extendsFrom(configurations.annotationProcessor.get())
+    }
+
+    // Tests use Jackson 3 (Java 17); published processor still targets Java 8.
+    named("testCompileClasspath") {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 17)
+    }
+    named("testRuntimeClasspath") {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 17)
     }
 }
 
@@ -59,6 +69,10 @@ tasks.named<JavaCompile>("compileJava") {
         "-Xlint:unchecked",
         "-Xlint:deprecation"
     ))
+}
+
+tasks.named<JavaCompile>("compileTestJava") {
+    options.release.set(17)
 }
 
 tasks.test {
