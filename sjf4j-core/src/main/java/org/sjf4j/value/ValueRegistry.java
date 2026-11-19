@@ -179,7 +179,7 @@ public final class ValueRegistry {
             for (Method method : registryClass.getDeclaredMethods()) {
                 if (ExternalNode.class.isAssignableFrom(method.getReturnType())) return;
             }
-            throw new BindingException("@NodeRegistry has no node declarations: "
+            throw new BindingException("@NodeRegistry has no codec declarations: "
                     + registryClass.getName());
         }
         // Resolve the declared default first, independently of reflection order.
