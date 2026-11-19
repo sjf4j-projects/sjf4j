@@ -31,7 +31,7 @@ bringing data binding, navigation, validation, mapping, and patching together.
 
 ## Quickstart
 
-SJF4J supports **Java 8+**. Add the modules you need (Gradle Kotlin DSL):
+SJF4J supports **Java 8+**. Add the modules you need (Gradle):
 
 ```kotlin
 dependencies {
@@ -50,7 +50,7 @@ dependencies {
 ```
 
 Replace `{version}` with the latest [Maven Central release](https://central.sonatype.com/artifact/org.sjf4j/sjf4j).
-For Maven and other modules, see the [Installation Guide](https://sjf4j.org/docs/installation).
+For Maven and other modules, see the [Installation](https://sjf4j.org/docs/installation).
 
 **Start with an ordinary Java class:**
 ```java
@@ -281,7 +281,7 @@ if (!Nodes.equals(user, userMap)) {
 }
 ```
 
-OBNT also supports extensible object models:
+OBNT supports extensible object models:
 
 - Extend `JsonObject` to create a **JOJO (JSON Object Java Object)**, combining typed properties with dynamic members in a hybrid object model.
 - Extend `JsonArray` to create a **JAJO (JSON Array Java Object)**, a typed, extensible array node.
@@ -328,22 +328,22 @@ See [Compiled APIs](https://sjf4j.org/docs/compiled) for generation details and 
 SJF4J's performance and standards compliance are evaluated through independent comparisons and [JMH](https://github.com/openjdk/jmh) benchmarks.
 
 **JSON Binding**
-- [🔗 Java JSON Benchmark](https://github.com/fabienrenaud/java-json-benchmark) — Independent JSON library benchmarks.
 - [Binding Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/binding.md) — Native JSON backends vs. Runtime and Compiled.
 - [Binding Native Image Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/binding-native.md) — GraalVM AOT, direct library Binding vs. Runtime and Compiled.
+- [🔗 Java JSON Benchmark](https://github.com/fabienrenaud/java-json-benchmark) — Independent JSON library benchmarks.
 
 **JSONPath Navigation**
-- [🔗 JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/) — Cross-implementation specification compatibility.
 - [JSONPath Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/path.md) — Jayway JsonPath vs. Runtime and Compiled.
+- [🔗 JSONPath Comparison](https://cburgmer.github.io/json-path-comparison/) — Cross-implementation specification compatibility.
 
 **JSON Schema Validation**
+- [JSON Schema Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/schema.md) — NetworkNT vs. Runtime and Compiled, including roundtrip performance.
 - [🔗 Creek Service](https://www.creekservice.org/json-schema-validation-comparison/) — Independent JVM validation benchmarks.
 - [🔗 Bowtie](https://bowtie.report/) — Cross-language JSON Schema compliance.
-- [JSON Schema Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/schema.md) — NetworkNT vs. Runtime and Compiled, including roundtrip performance.
 
 **Object Mapping**
-- [🔗 Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) — Independent comparison with Java mapping frameworks.
 - [Object Mapping Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/mapping.md) — MapStruct vs. CompiledMapper.
+- [🔗 Java Object Mapper Benchmark](https://github.com/arey/java-object-mapper-benchmark) — Independent comparison with Java mapping frameworks.
 
 **JDBC Result Mapping**
 - [JDBC Mapping Full Benchmarks](https://github.com/sjf4j-projects/sjf4j/blob/main/docs/performance/jdbc-mapping.md) — Spring JDBC and MyBatis vs. CompiledJdbcMapper.
