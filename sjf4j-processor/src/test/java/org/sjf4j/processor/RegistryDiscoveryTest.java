@@ -175,8 +175,12 @@ class RegistryDiscoveryTest {
     void standaloneNodeValueTypeIsValidWithoutCompiledConsumers() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Value.java",
-                "package fixture; import org.sjf4j.annotation.node.NodeValue; "
-                + "@NodeValue public final class Value {}"), CodegenProcessor.class);
+                "package fixture; import org.sjf4j.annotation.node.*; "
+                + "@NodeValue public final class Value { "
+                + "private final String value; "
+                + "@RawToValue public Value(String value) { this.value = value; } "
+                + "@ValueToRaw public String raw() { return value; } "
+                + "}"), CodegenProcessor.class);
         assertTrue(result.success, result.diagnostics());
     }
 
