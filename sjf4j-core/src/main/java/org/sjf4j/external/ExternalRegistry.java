@@ -74,6 +74,7 @@ public final class ExternalRegistry {
             }
             Class<?> declaredType = declaredNodeType(field.getGenericType(), field.toString());
             try {
+                field.setAccessible(true);
                 registerDeclared((ExternalNode<?>) field.get(null), declaredType, field.toString());
             } catch (IllegalAccessException e) {
                 throw new NodeException("cannot access external node field: " + field, e);
@@ -88,6 +89,7 @@ public final class ExternalRegistry {
             }
             Class<?> declaredType = declaredNodeType(method.getGenericReturnType(), method.toString());
             try {
+                method.setAccessible(true);
                 registerDeclared((ExternalNode<?>) method.invoke(null), declaredType, method.toString());
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new NodeException("cannot invoke external node factory: " + method, e);
