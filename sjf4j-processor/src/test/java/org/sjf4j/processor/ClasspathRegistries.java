@@ -1,6 +1,7 @@
 package org.sjf4j.processor;
 
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.value.ValueCodec;
 
 import java.time.Instant;
@@ -14,19 +15,22 @@ public final class ClasspathRegistries {
         public Money(String text) { this.text = text; }
     }
 
-    public static final class Third {
+    @NodeRegistry
+    public interface Third {
         @NodeValue
         public static final ValueCodec<Money, String> MONEY =
                 new ValueCodec.SimpleValueCodec<>(Money.class, String.class,
                         value -> value.text, Money::new);
     }
 
-    public static final class First {
+    @NodeRegistry
+    public interface First {
         @NodeValue(format = "alpha")
         public static final ValueCodec<Instant, String> ALPHA = ValueCodec.INSTANT_STR;
     }
 
-    public static final class Second {
+    @NodeRegistry
+    public interface Second {
         @NodeValue(format = "beta")
         public static final ValueCodec<Instant, String> BETA = ValueCodec.INSTANT_STR;
     }
