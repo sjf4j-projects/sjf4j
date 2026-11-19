@@ -19,14 +19,14 @@ dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
     api("org.yaml:snakeyaml:2.5")
 
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.23.0")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // JMH
     jmhImplementation("org.yaml:snakeyaml:2.5")
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.23.0")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.36")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
