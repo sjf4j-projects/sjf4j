@@ -19,12 +19,7 @@ final class SchemaFallbackEmitter {
     private final Map<String, Plan> bySnapshot = new LinkedHashMap<String, Plan>();
     private final String fallbackType;
     private final NameAllocator planTypes = new NameAllocator();
-    private final String registryDir;
-    private final String registryBaseUri;
-
-    SchemaFallbackEmitter(GeneratedNames names, String registryDir, String registryBaseUri) {
-        this.registryDir = registryDir.trim();
-        this.registryBaseUri = registryBaseUri.trim();
+    SchemaFallbackEmitter(GeneratedNames names) {
         // Reserve the enclosing class once; nested plan names have their own scope.
         this.fallbackType = names.type("SchemaFallbacks");
     }
@@ -64,8 +59,7 @@ final class SchemaFallbackEmitter {
                 out.line("org.sjf4j.schema.SchemaLoader.Local loader = new org.sjf4j.schema.SchemaLoader.Local("
                         + "org.sjf4j.schema.SchemaRegistry.DEFAULT_JSON_SCHEMA_DIR, "
                         + plan.name + ".class.getClassLoader());");
-                // Rebuild the annotation's scoped external resources before any
-                // local directory, so explicit mappings win collisions.
+                // Restore this binding's scoped external retrieval URI mappings.
                 if (!plan.annotation.externalSchemas().isEmpty()
                         || !plan.annotation.externalSchemasRef().isEmpty()) {
                     out.beginBlock("for (java.util.Map.Entry<java.net.URI, org.sjf4j.schema.JsonSchema> entry : "
@@ -76,10 +70,8 @@ final class SchemaFallbackEmitter {
                     out.endBlock();
                 }
                 for (int i = 0; i < plan.snapshot.uris.length; i++) {
-                    // Registry-backed documents are loaded by indexDir below;
-                    // the default SchemaLoader must never fetch their logical HTTP URIs.
-                    if (plan.snapshot.fromRegistry[i]
-                            || plan.snapshot.externalUris.contains(plan.snapshot.uris[i])) continue;
+                    // External mappings are already indexed; never fetch their logical HTTP URIs.
+                    if (plan.snapshot.externalUris.contains(plan.snapshot.uris[i])) continue;
                     String uri = "java.net.URI.create(" + SchemaEmitter.javaLiteral(plan.snapshot.uris[i]) + ")";
                     if (i == 0 && !plan.annotation.value().isEmpty()) {
                         out.line(registry + ".index(" + uri
@@ -87,16 +79,6 @@ final class SchemaFallbackEmitter {
                                 + plan.annotationExpression + ".value()));");
                     } else {
                         out.line(registry + ".index(" + uri + ", loader.load(" + uri + "));");
-                    }
-                }
-                if (!registryDir.isEmpty()) {
-                    if (registryBaseUri.isEmpty()) {
-                        out.line(registry + ".indexDir(java.net.URI.create("
-                                + SchemaEmitter.javaLiteral(registryDir) + "));");
-                    } else {
-                        out.line(registry + ".indexDir(java.net.URI.create("
-                                + SchemaEmitter.javaLiteral(registryDir) + "), java.net.URI.create("
-                                + SchemaEmitter.javaLiteral(registryBaseUri) + "));");
                     }
                 }
                 out.line("return " + registry + ".resolve(java.net.URI.create("

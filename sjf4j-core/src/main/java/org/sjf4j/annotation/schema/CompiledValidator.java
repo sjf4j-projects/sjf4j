@@ -22,8 +22,9 @@ import java.lang.annotation.Target;
  * can be generated without a runtime {@code SchemaPlan}.</p>
  *
  * <p><b>Incremental compilation:</b> external schema resources referenced via
- * {@link ValidJsonSchema#ref()} (or implicit filename lookup) can change without
- * triggering the Java annotation processor. JSR 269 cannot declare resource
+ * {@link ValidJsonSchema#ref()} or {@link ValidJsonSchema#externalSchemasRef()}
+ * (or implicit filename lookup) can change without triggering the Java
+ * annotation processor. JSR 269 cannot declare resource
  * files as incremental compilation dependencies. Build tooling must track
  * these inputs and rerun compilation, or a clean rebuild may be needed.</p>
  */
@@ -32,22 +33,5 @@ import java.lang.annotation.Target;
 public @interface CompiledValidator {
     /** Whether unsupported checks and ValidationResult methods may use SchemaPlan at runtime. */
     boolean fallback() default false;
-
-    /**
-     * Optional file-system directory containing pre-registered JSON Schemas.
-     * Every .json file is indexed at compile time before reference resolution.
-     * The same directory must be accessible when runtime fallback is used.
-     * Accepts a file: directory URI or a working-directory-relative path ending in '/'.
-     * Classpath directory enumeration and HTTP fetching are not supported.
-     */
-    String registryDir() default "";
-
-    /**
-     * Optional absolute URI base for resources in registryDir, ending in '/'.
-     * Each local file is indexed at this base plus its path relative to registryDir.
-     * Without it, files use their local file: retrieval URIs. This supports
-     * preloaded remote schemas that have no $id, without fetching over HTTP.
-     */
-    String registryBaseUri() default "";
 
 }

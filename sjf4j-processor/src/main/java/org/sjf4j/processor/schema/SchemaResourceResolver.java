@@ -1,8 +1,6 @@
 package org.sjf4j.processor.schema;
 
 import org.sjf4j.Sjf4j;
-import org.sjf4j.JsonType;
-import org.sjf4j.Nodes;
 import org.sjf4j.util.Strings;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.ProcessorContext;
@@ -28,15 +26,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.stream.Stream;
 
 /**
  * Resolves complete schema documents at annotation-processing time.
@@ -48,7 +43,6 @@ final class SchemaResourceResolver {
     static final class Snapshot {
         final String[] uris;
         final String[] documents;
-        final boolean[] fromRegistry;
         final Set<String> externalUris;
         final String selectedUri;
 
@@ -92,34 +86,23 @@ final class SchemaResourceResolver {
             }
         }
 
-        Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> registryResources,
-                 Set<URI> externalSchemas) {
+        Snapshot(Map<URI, String> resources, URI selectedUri, Set<URI> externalSchemas) {
             this.selectedUri = selectedUri.toString();
             this.externalUris = new HashSet<String>();
             for (URI uri : externalSchemas) externalUris.add(uri.toString());
             uris = new String[resources.size()];
             documents = new String[resources.size()];
-            fromRegistry = new boolean[resources.size()];
             int i = 0;
             for (Map.Entry<URI, String> entry : resources.entrySet()) {
                 uris[i] = entry.getKey().toString();
-                fromRegistry[i] = registryResources.contains(entry.getKey());
                 documents[i++] = entry.getValue();
             }
         }
     }
 
     private final ProcessorContext context;
-    private final String registryDir;
-    private final String registryBaseUri;
-    private final Map<String, Map<String, IndexedSource>> registryCache;
-
-    SchemaResourceResolver(ProcessorContext context, String registryDir, String registryBaseUri,
-                           Map<String, Map<String, IndexedSource>> registryCache) {
+    SchemaResourceResolver(ProcessorContext context) {
         this.context = context;
-        this.registryDir = registryDir.trim();
-        this.registryBaseUri = registryBaseUri.trim();
-        this.registryCache = registryCache;
     }
 
     Snapshot resolve(ValidJsonSchema annotation, String ownerName, String originName,
@@ -141,7 +124,6 @@ final class SchemaResourceResolver {
         URI documentUri;
         URI selectedUri;
         String rootDocument;
-        boolean rootFromRegistry = false;
         boolean rootFromExternal = false;
 
         if (!inline.isEmpty()) {
@@ -164,12 +146,7 @@ final class SchemaResourceResolver {
                         rootDocument = Sjf4j.global().toJsonString(mapped);
                         rootFromExternal = true;
                     } else {
-                        IndexedSource indexed = indexedSource(documentUri);
-                        rootDocument = indexed == null ? null : indexed.document;
-                        if (indexed != null) {
-                            documentUri = indexed.retrieval;
-                            rootFromRegistry = true;
-                        }
+                        rootDocument = null;
                     }
                 }
             } else {
@@ -190,9 +167,7 @@ final class SchemaResourceResolver {
         }
 
         Map<URI, String> resources = new LinkedHashMap<URI, String>();
-        Set<URI> registryResources = new HashSet<URI>();
         resources.put(documentUri, rootDocument);
-        if (rootFromRegistry) registryResources.add(documentUri);
 
         // externalSchemas is an input representation; the registry only sees
         // ordinary (retrieval URI, JsonSchema) pairs.
@@ -200,10 +175,7 @@ final class SchemaResourceResolver {
             String document = Sjf4j.global().toJsonString(entry.getValue());
             String present = resources.get(entry.getKey());
             if (present != null) {
-                if (entry.getKey().equals(documentUri) && rootFromRegistry) {
-                    resources.put(entry.getKey(), document);
-                    registryResources.remove(entry.getKey());
-                } else if (!(entry.getKey().equals(documentUri) && rootFromExternal)) {
+                if (!(entry.getKey().equals(documentUri) && rootFromExternal)) {
                     throw new IllegalArgumentException("duplicate external schema URI: " + entry.getKey());
                 }
             } else {
@@ -221,39 +193,25 @@ final class SchemaResourceResolver {
             hasDynamicRef |= analysis.hasDynamicRef;
             for (URI document : analysis.referencedDocuments) {
                 if (resources.containsKey(document)) continue;
-                String contents;
-                URI retrieval = document;
-                if ("classpath".equals(document.getScheme()) || "file".equals(document.getScheme())) {
-                    contents = read(document, resourceDirectory);
-                } else {
-                    IndexedSource indexed = indexedSource(document);
-                    if (indexed == null) continue;
-                    retrieval = indexed.retrieval;
-                    contents = indexed.document;
-                    registryResources.add(retrieval);
-                }
-                if (contents == null || resources.containsKey(retrieval)) continue;
-                resources.put(retrieval, contents);
-                queue.add(retrieval);
+                if (!"classpath".equals(document.getScheme())
+                        && !"file".equals(document.getScheme())) continue;
+                String contents = read(document, resourceDirectory);
+                if (contents == null) continue;
+                resources.put(document, contents);
+                queue.add(document);
             }
         }
 
-        Snapshot snapshot = new Snapshot(resources, selectedUri, registryResources, external.keySet());
-        // Every binding owns a fresh registry. Index its root and directly loaded
-        // references first, followed by explicit external resources. Fill missing
-        // directory resources afterward; never copy precompiled plans.
+        Snapshot snapshot = new Snapshot(resources, selectedUri, external.keySet());
+        // Every binding owns a fresh registry. Index its root, directly loaded
+        // references, and explicit external resources without sharing plans.
         SchemaRegistry registry = new SchemaRegistry();
         for (int i = 0; i < snapshot.uris.length; i++) {
-            if (snapshot.fromRegistry[i] || snapshot.externalUris.contains(snapshot.uris[i])) continue;
+            if (snapshot.externalUris.contains(snapshot.uris[i])) continue;
             registry.index(URI.create(snapshot.uris[i]), JsonSchema.fromJson(snapshot.documents[i]));
         }
         for (Map.Entry<URI, JsonSchema> entry : external.entrySet()) {
             registry.index(entry.getKey(), entry.getValue());
-        }
-        java.util.Set<IndexedSource> visited =
-                Collections.newSetFromMap(new IdentityHashMap<IndexedSource, Boolean>());
-        for (IndexedSource source : directorySources().values()) {
-            if (visited.add(source)) registry.indexIfAbsent(source.retrieval, source.schema);
         }
         // Boolean resources are now indexed alongside object resources, so the
         // selected URI must always resolve during annotation processing.
@@ -265,84 +223,6 @@ final class SchemaResourceResolver {
         snapshot.customDialect = customDialect;
         snapshot.hasDynamicRef = hasDynamicRef;
         return snapshot;
-    }
-
-    static final class IndexedSource {
-        final URI retrieval;
-        final String document;
-        final JsonSchema schema;
-
-        IndexedSource(URI retrieval, String document) {
-            this.retrieval = retrieval;
-            this.document = document;
-            this.schema = JsonSchema.fromJson(document);
-        }
-    }
-
-    /**
-     * Cache source documents, never a mutable registry or ref-bound SchemaPlan.
-     * Each schema binding indexes these resources in its own fresh registry.
-     * Canonical and retrieval aliases point to the same cached source document.
-     */
-    private Map<String, IndexedSource> directorySources() {
-        if (registryDir.isEmpty()) {
-            if (!registryBaseUri.isEmpty()) {
-                throw new IllegalArgumentException("registryBaseUri requires registryDir");
-            }
-            return Collections.emptyMap();
-        }
-        String key = registryDir + "\u0000" + registryBaseUri;
-        Map<String, IndexedSource> cached = registryCache.get(key);
-        if (cached != null) return cached;
-
-        SchemaLoader.Local loader = new SchemaLoader.Local(URI.create(registryDir));
-        URI directoryUri = loader.baseUri();
-        if (!"file".equalsIgnoreCase(directoryUri.getScheme())) {
-            throw new IllegalArgumentException("registryDir must use file: " + directoryUri);
-        }
-        URI base = registryBaseUri.isEmpty() ? directoryUri : URI.create(registryBaseUri);
-        if (!base.isAbsolute() || !base.toString().endsWith("/")
-                || base.getRawQuery() != null || base.getRawFragment() != null) {
-            throw new IllegalArgumentException("schema registry base URI must be an absolute directory URI: "
-                    + base);
-        }
-        Path root = Paths.get(directoryUri);
-        if (!Files.isDirectory(root)) {
-            throw new IllegalArgumentException("schema registry directory not found: " + root);
-        }
-        Map<String, IndexedSource> resources = new LinkedHashMap<String, IndexedSource>();
-        try (Stream<Path> paths = Files.walk(root)) {
-            Iterator<Path> iterator = paths.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".json"))
-                    .sorted().iterator();
-            while (iterator.hasNext()) {
-                Path path = iterator.next();
-                String relative = root.relativize(path).toString().replace('\\', '/');
-                URI retrieval = base.resolve(relative);
-                String document = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
-                IndexedSource indexed = new IndexedSource(retrieval, document);
-                resources.putIfAbsent(retrieval.toString(), indexed);
-                if (indexed.schema instanceof org.sjf4j.schema.ObjectSchema) {
-                    Object id = Nodes.getInObject(indexed.schema, "$id");
-                    if (id instanceof String) {
-                        String stripped = SchemaUtil.stripFragment((String) id);
-                        if (!stripped.isEmpty()) {
-                            URI canonical = SchemaUtil.resolveUri(retrieval, URI.create(stripped));
-                            resources.putIfAbsent(canonical.toString(), indexed);
-                        }
-                    }
-                }
-            }
-        } catch (IOException e) {
-            throw new IllegalArgumentException("cannot index schema registry directory: " + root, e);
-        }
-        registryCache.put(key, resources);
-        return resources;
-    }
-
-    /** Resolves directory source documents by retrieval or canonical URI. */
-    private IndexedSource indexedSource(URI target) {
-        return directorySources().get(target.toString());
     }
 
     private String read(URI uri, Path resourceDirectory) {
