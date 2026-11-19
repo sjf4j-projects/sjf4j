@@ -44,7 +44,7 @@ class CompiledValueCodecReviewTest {
         sources.put("fixture/Codecs.java",
                 "package fixture; import org.sjf4j.value.ValueCodec; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
-                + "@org.sjf4j.annotation.node.NodeRegistry public class Codecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface Codecs { "
                 + "@NodeValue public static final ValueCodec<Parent,String> CODEC = "
                 + "new ValueCodec.SimpleValueCodec<>(Parent.class, String.class, "
                 + "x -> x.text, Parent::new); }");
@@ -77,7 +77,7 @@ class CompiledValueCodecReviewTest {
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
                 + "import com.google.gson.JsonElement; import com.google.gson.JsonNull; "
-                + "@org.sjf4j.annotation.node.NodeRegistry public class Codecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface Codecs { "
                 + "@NodeValue public static final ValueCodec<JsonElement,String> CODEC = "
                 + "new ValueCodec.SimpleValueCodec<>(JsonElement.class, "
                 + "String.class, Object::toString, value -> JsonNull.INSTANCE); }",
@@ -112,13 +112,13 @@ class CompiledValueCodecReviewTest {
         sources.put("fixture/FirstCodecs.java",
                 "package fixture; import org.sjf4j.value.ValueCodec; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
-                + "@org.sjf4j.annotation.node.NodeRegistry public final class FirstCodecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface FirstCodecs { "
                 + "@NodeValue(format=\"first\") public static final ValueCodec<Tag,Long> FIRST = "
                 + "new TagCodec(\"first\"); }");
         sources.put("fixture/DefaultCodecs.java",
                 "package fixture; import org.sjf4j.value.ValueCodec; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
-                + "@org.sjf4j.annotation.node.NodeRegistry public final class DefaultCodecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface DefaultCodecs { "
                 + "@NodeValue(format=\"second\",defaultCodec=true) "
                 + "public static final ValueCodec<Tag,Long> SECOND = new TagCodec(\"default\"); }");
         sources.put("fixture/Binder.java",
