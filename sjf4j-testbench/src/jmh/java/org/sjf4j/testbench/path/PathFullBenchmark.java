@@ -107,7 +107,7 @@ public class PathFullBenchmark {
         public Double price;
     }
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     public interface PojoPaths {
         @GetByPath("$.store.book[1].price")
         Double direct(Bookstore root);
@@ -115,7 +115,7 @@ public class PathFullBenchmark {
         @FindByPath("$.store.book[*].author")
         List<String> wildcard(Bookstore root);
 
-        // Filter uses a cached FilterExpr; descendant traversal is generated.
+        // Filter predicates and typed POJO members are compiled; descendant traversal is generated.
         @FindByPath("$.store.book[?(@.price > 10)].title")
         List<String> filter(Bookstore root);
 
@@ -127,8 +127,8 @@ public class PathFullBenchmark {
     }
 
     // Object-typed Map values and external JsonNode shapes use compiled OBNT
-    // dispatch. Only the cached FilterExpr predicate requires fallback=true.
-    @CompiledNavigator(fallback = true)
+    // dispatch inside their generated filter predicates.
+    @CompiledNavigator
     public interface MapPaths {
         @GetByPath("$.store.book[1].price")
         Object direct(Map<String, Object> root);
@@ -146,7 +146,7 @@ public class PathFullBenchmark {
         List<Object> slice(Map<String, Object> root);
     }
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     public interface JsonNodePaths {
         @GetByPath("$.store.book[1].price")
         Object direct(JsonNode root);
