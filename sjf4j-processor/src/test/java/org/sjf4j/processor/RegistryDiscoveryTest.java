@@ -197,12 +197,18 @@ class RegistryDiscoveryTest {
         input.put("fixture/OtherBinder.java",
                 "package fixture; import org.sjf4j.annotation.binding.CompiledBinder; "
                 + "@CompiledBinder public interface OtherBinder {}");
+        input.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
+                + "import org.sjf4j.processor.ClasspathRegistries; "
+                + "@CompiledMapper(registries=ClasspathRegistries.ExternalNodes.class) "
+                + "public interface Mapper {}");
 
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
                 input, RegistryDiscoveryProbeProcessor.class);
         assertTrue(result.success, result.diagnostics());
         assertTrue(result.diagnostics().contains("EXTERNAL fixture.Binder true"), result.diagnostics());
         assertTrue(result.diagnostics().contains("EXTERNAL fixture.OtherBinder false"), result.diagnostics());
+        assertTrue(result.diagnostics().contains("EXTERNAL fixture.Mapper true"), result.diagnostics());
     }
 
     @Test
