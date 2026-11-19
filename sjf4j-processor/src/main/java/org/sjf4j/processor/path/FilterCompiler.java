@@ -15,7 +15,7 @@ final class FilterCompiler {
                     || value instanceof Double) {
                 return FilterPlan.literal(value);
             }
-            throw unsupported("literal type " + value.getClass().getSimpleName());
+            throw unsupported("literal type " + value.getClass().getName());
         }
         if (expression instanceof FilterExpr.PathExpr) {
             PathSegment[] segments = ((FilterExpr.PathExpr) expression).path().segments();
@@ -52,7 +52,7 @@ final class FilterCompiler {
             }
             return FilterPlan.binary(kind, op, compile(binary.left()), compile(binary.right()));
         }
-        throw unsupported("expression " + expression.getClass().getSimpleName());
+        throw unsupported("expression " + expression.getClass().getName());
     }
 
     private static UnsupportedOperationException unsupported(String message) {
