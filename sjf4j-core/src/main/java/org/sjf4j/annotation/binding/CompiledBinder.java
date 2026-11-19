@@ -48,4 +48,7 @@ public @interface CompiledBinder {
      * first usable backend visible on the compilation classpath.</p>
      */
     Backend backend() default Backend.AUTO;
+
+    /** Additional {@link org.sjf4j.annotation.node.NodeRegistry} interfaces visible at compile time. */
+    Class<?>[] registries() default {};
 }
