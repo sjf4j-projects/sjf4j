@@ -61,7 +61,7 @@ final class ArrayCompiler {
             if (!(keyword instanceof Boolean)) return null;
             unique = Boolean.TRUE.equals(keyword);
         }
-        SchemaValue itemValue = SchemaValue.of(context, value.itemType());
+        SchemaValue itemValue = schemaCompiler.schemaValue(value.itemType());
         List<SchemaCheck> prefixChecks = new ArrayList<SchemaCheck>();
         if (schema.containsKey(prefixKeyword)) {
             Object prefixRaw = schema.getNode(prefixKeyword);
