@@ -115,6 +115,7 @@ class CompiledValueCodecDiscoveryTest {
 
     @Test
     void staticFactoryMethodNeedsNoNodeValueAnnotation() throws Exception {
+        for (String holderKind : new String[]{"final class", "interface"}) {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Money.java",
                 "package fixture; public final class Money { "
@@ -123,7 +124,7 @@ class CompiledValueCodecDiscoveryTest {
                 "package fixture; "
                 + "import org.sjf4j.annotation.node.ValueCodecRegistry; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@ValueCodecRegistry public final class AppCodecs { "
+                + "@ValueCodecRegistry public " + holderKind + " AppCodecs { "
                 + " public static ValueCodec<Money, String> money() { "
                 + " return new ValueCodec.SimpleValueCodec<>(Money.class, String.class, "
                 + " x -> x.value, Money::new); } }");
@@ -148,6 +149,7 @@ class CompiledValueCodecDiscoveryTest {
             assertEquals("42.50", moneyType.getField("value").get(value));
             assertEquals("\"42.50\"", binderType.getMethod("write", moneyType)
                     .invoke(binder, value));
+        }
         }
     }
 
