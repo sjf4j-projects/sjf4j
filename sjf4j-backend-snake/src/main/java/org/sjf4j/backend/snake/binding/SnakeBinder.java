@@ -1,6 +1,6 @@
 package org.sjf4j.backend.snake.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 import org.yaml.snakeyaml.DumperOptions;
@@ -23,14 +23,14 @@ public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
 
     /** Creates a binder with default SnakeYAML options. */
     public SnakeBinder() {
-        this(new LoaderOptions(), new DumperOptions(), RuntimeContext.EMPTY);
+        this(new LoaderOptions(), new DumperOptions(), NodeConfig.DEFAULT);
     }
 
     /**
      * Creates a binder with default backend settings and a supplied runtime context.
      * @param context the SJF4J runtime settings
      */
-    public SnakeBinder(RuntimeContext context) {
+    public SnakeBinder(NodeConfig context) {
         this(new LoaderOptions(), new DumperOptions(), context);
     }
 
@@ -41,7 +41,7 @@ public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
      * @param context the SJF4J runtime settings
      */
     public SnakeBinder(LoaderOptions loaderOptions, DumperOptions dumperOptions,
-                       RuntimeContext context) {
+                       NodeConfig context) {
         super(context);
         this.loaderOptions = Asserts.notNull(loaderOptions, "loaderOptions");
         this.dumperOptions = Asserts.notNull(dumperOptions, "dumperOptions");

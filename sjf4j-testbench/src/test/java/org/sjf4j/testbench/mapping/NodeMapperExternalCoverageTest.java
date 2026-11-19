@@ -7,7 +7,7 @@ import jakarta.json.Json;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeProperty;
@@ -39,63 +39,63 @@ class NodeMapperExternalCoverageTest {
     void convertsTopLevelNodeValueRawAndNullRawIntoExternalValues() {
         com.fasterxml.jackson.databind.JsonNode text = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(new Encoded("encoded"),
-                        com.fasterxml.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY);
+                        com.fasterxml.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT);
         assertEquals("encoded", text.textValue());
 
         tools.jackson.databind.JsonNode nullValue = (tools.jackson.databind.JsonNode)
                 NodeMapper.convert(new Encoded(null),
-                        tools.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY);
+                        tools.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT);
         assertTrue(nullValue.isNull());
 
         JsonElement gson = (JsonElement) NodeMapper.convert(
-                new Encoded("gson"), JsonElement.class, false, RuntimeContext.EMPTY);
+                new Encoded("gson"), JsonElement.class, false, NodeConfig.DEFAULT);
         assertEquals("gson", gson.getAsString());
     }
 
     @Test
     void createsExternalScalarNodesWithStrictRootAndNestedNullSemantics() {
         assertNull(NodeMapper.convert(null,
-                com.fasterxml.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY));
+                com.fasterxml.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT));
         assertNull(NodeMapper.convert(null,
-                tools.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY));
-        assertNull(NodeMapper.convert(null, JsonElement.class, false, RuntimeContext.EMPTY));
-        assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false, RuntimeContext.EMPTY));
+                tools.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT));
+        assertNull(NodeMapper.convert(null, JsonElement.class, false, NodeConfig.DEFAULT));
+        assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false, NodeConfig.DEFAULT));
 
         com.fasterxml.jackson.databind.JsonNode j2 = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert("text", com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertEquals("text", j2.textValue());
         assertTrue(((com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(true, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY)).booleanValue());
+                        false, NodeConfig.DEFAULT)).booleanValue());
         assertEquals(7, ((com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(7, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY)).intValue());
+                        false, NodeConfig.DEFAULT)).intValue());
         assertEquals("A", ((com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert('A', com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY)).textValue());
+                        false, NodeConfig.DEFAULT)).textValue());
         assertEquals("READY", ((com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(State.READY, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY)).textValue());
+                        false, NodeConfig.DEFAULT)).textValue());
 
         tools.jackson.databind.JsonNode j3 = (tools.jackson.databind.JsonNode)
                 NodeMapper.convert(new BigDecimal("0.00120"), tools.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertEquals(0, new BigDecimal("0.00120").compareTo(j3.decimalValue()));
 
         assertEquals("x", ((JsonElement) NodeMapper.convert(
-                "x", JsonElement.class, false, RuntimeContext.EMPTY)).getAsString());
-        assertTrue(((JsonElement) NodeMapper.convert(false, JsonElement.class, false, RuntimeContext.EMPTY))
+                "x", JsonElement.class, false, NodeConfig.DEFAULT)).getAsString());
+        assertTrue(((JsonElement) NodeMapper.convert(false, JsonElement.class, false, NodeConfig.DEFAULT))
                 .getAsJsonPrimitive().isBoolean());
         assertThrows(BindingException.class, () -> NodeMapper.convert("string",
-                com.fasterxml.jackson.databind.node.ObjectNode.class, false, RuntimeContext.EMPTY));
+                com.fasterxml.jackson.databind.node.ObjectNode.class, false, NodeConfig.DEFAULT));
 
         Map<String, Object> nested = new LinkedHashMap<>();
         nested.put("nothing", null);
         nested.put("values", Arrays.asList(null, true));
         com.fasterxml.jackson.databind.JsonNode tree = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(nested, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertTrue(tree.get("nothing").isNull());
         assertTrue(tree.get("values").get(0).isNull());
         assertTrue(tree.get("values").get(1).booleanValue());
@@ -108,19 +108,19 @@ class NodeMapperExternalCoverageTest {
         map.put("active", true);
         com.fasterxml.jackson.databind.JsonNode j2 = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(map, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertEquals(3, j2.get("items").size());
         assertTrue(j2.get("items").get(1).isNull());
 
         JsonObject dynamic = JsonObject.of("name", "Ada", "null", null);
         tools.jackson.databind.JsonNode j3 = (tools.jackson.databind.JsonNode)
-                NodeMapper.convert(dynamic, tools.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY);
+                NodeMapper.convert(dynamic, tools.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", j3.get("name").stringValue());
         assertTrue(j3.get("null").isNull());
 
         Profile pojo = profile();
         JsonElement gson = (JsonElement) NodeMapper.convert(
-                pojo, JsonElement.class, false, RuntimeContext.EMPTY);
+                pojo, JsonElement.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", gson.getAsJsonObject().get("name").getAsString());
         assertEquals("READY", gson.getAsJsonObject().get("state").getAsString());
         assertEquals("codec", gson.getAsJsonObject().get("code").getAsString());
@@ -131,7 +131,7 @@ class NodeMapperExternalCoverageTest {
         jojo.put("extra", JsonArray.of(1, 2));
         com.fasterxml.jackson.databind.JsonNode nativeJojo = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(jojo, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertEquals("static", nativeJojo.get("name").textValue());
         assertEquals(2, nativeJojo.get("extra").size());
     }
@@ -140,23 +140,23 @@ class NodeMapperExternalCoverageTest {
     void buildsExternalArraysFromAllSupportedJavaSequenceShapes() {
         com.fasterxml.jackson.databind.JsonNode list = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(Arrays.asList("a", null, 2),
-                        com.fasterxml.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY);
+                        com.fasterxml.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT);
         assertTrue(list.isArray());
         assertTrue(list.get(1).isNull());
 
         com.fasterxml.jackson.databind.JsonNode jsonArray = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(JsonArray.of("a", 2),
-                        com.fasterxml.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY);
+                        com.fasterxml.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT);
         assertEquals(2, jsonArray.size());
 
         tools.jackson.databind.JsonNode primitiveArray = (tools.jackson.databind.JsonNode)
                 NodeMapper.convert(new int[]{1, 2, 3}, tools.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertEquals(3, primitiveArray.size());
         assertEquals(3, primitiveArray.get(2).intValue());
 
         JsonElement set = (JsonElement) NodeMapper.convert(
-                new LinkedHashSet<>(Arrays.asList("a", "b")), JsonElement.class, false, RuntimeContext.EMPTY);
+                new LinkedHashSet<>(Arrays.asList("a", "b")), JsonElement.class, false, NodeConfig.DEFAULT);
         assertEquals("a", set.getAsJsonArray().get(0).getAsString());
         assertEquals("b", set.getAsJsonArray().get(1).getAsString());
     }
@@ -165,29 +165,29 @@ class NodeMapperExternalCoverageTest {
     void readsNativeScalarAndNullNodesAsJavaScalarsAndRawValues() {
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         assertEquals("text", NodeMapper.convert(
-                mapper.getNodeFactory().textNode("text"), String.class, false, RuntimeContext.EMPTY));
+                mapper.getNodeFactory().textNode("text"), String.class, false, NodeConfig.DEFAULT));
         assertEquals(12, NodeMapper.convert(
-                mapper.getNodeFactory().numberNode(12), Integer.class, false, RuntimeContext.EMPTY));
+                mapper.getNodeFactory().numberNode(12), Integer.class, false, NodeConfig.DEFAULT));
         assertEquals(true, NodeMapper.convert(
-                mapper.getNodeFactory().booleanNode(true), Boolean.class, false, RuntimeContext.EMPTY));
+                mapper.getNodeFactory().booleanNode(true), Boolean.class, false, NodeConfig.DEFAULT));
         assertNull(NodeMapper.convert(com.fasterxml.jackson.databind.node.NullNode.instance,
-                String.class, false, RuntimeContext.EMPTY));
+                String.class, false, NodeConfig.DEFAULT));
 
-        assertEquals("text", NodeMapper.convertToRaw(mapper.getNodeFactory().textNode("text"), RuntimeContext.EMPTY));
+        assertEquals("text", NodeMapper.convertToRaw(mapper.getNodeFactory().textNode("text"), NodeConfig.DEFAULT));
         assertEquals(12, ((Number) NodeMapper.convertToRaw(
-                mapper.getNodeFactory().numberNode(12), RuntimeContext.EMPTY)).intValue());
+                mapper.getNodeFactory().numberNode(12), NodeConfig.DEFAULT)).intValue());
         assertEquals(true, NodeMapper.convertToRaw(
-                mapper.getNodeFactory().booleanNode(true), RuntimeContext.EMPTY));
+                mapper.getNodeFactory().booleanNode(true), NodeConfig.DEFAULT));
         assertNull(NodeMapper.convertToRaw(com.fasterxml.jackson.databind.node.NullNode.instance,
-                RuntimeContext.EMPTY));
+                NodeConfig.DEFAULT));
 
         assertEquals("value", NodeMapper.convert(
-                JsonParser.parseString("\"value\""), String.class, false, RuntimeContext.EMPTY));
+                JsonParser.parseString("\"value\""), String.class, false, NodeConfig.DEFAULT));
         assertEquals(42, ((Number) NodeMapper.convert(
-                JsonParser.parseString("42"), Number.class, false, RuntimeContext.EMPTY)).intValue());
+                JsonParser.parseString("42"), Number.class, false, NodeConfig.DEFAULT)).intValue());
         assertEquals(false, NodeMapper.convert(
-                JsonParser.parseString("false"), Boolean.class, false, RuntimeContext.EMPTY));
-        assertNull(NodeMapper.convert(JsonNull.INSTANCE, String.class, false, RuntimeContext.EMPTY));
+                JsonParser.parseString("false"), Boolean.class, false, NodeConfig.DEFAULT));
+        assertNull(NodeMapper.convert(JsonNull.INSTANCE, String.class, false, NodeConfig.DEFAULT));
     }
 
     @Test
@@ -196,7 +196,7 @@ class NodeMapperExternalCoverageTest {
         com.fasterxml.jackson.databind.JsonNode nativePojo = mapper.createObjectNode()
                 .put("name", "Ada").put("state", "READY").put("code", "raw")
                 .set("scores", mapper.createArrayNode().add(3).add(5));
-        Profile profile = (Profile) NodeMapper.convert(nativePojo, Profile.class, false, RuntimeContext.EMPTY);
+        Profile profile = (Profile) NodeMapper.convert(nativePojo, Profile.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", profile.name);
         assertEquals(State.READY, profile.state);
         assertEquals("raw", profile.code.raw);
@@ -205,7 +205,7 @@ class NodeMapperExternalCoverageTest {
         com.fasterxml.jackson.databind.JsonNode nativeCreator = mapper.createObjectNode()
                 .put("code", "value").put("age", 21);
         Immutable fromCreator = (Immutable) NodeMapper.convert(
-                nativeCreator, Immutable.class, false, RuntimeContext.EMPTY);
+                nativeCreator, Immutable.class, false, NodeConfig.DEFAULT);
         assertEquals("value", fromCreator.code.raw);
         assertEquals(21, fromCreator.age);
 
@@ -214,25 +214,25 @@ class NodeMapperExternalCoverageTest {
                 .add(mapper.createObjectNode().put("code", "b").put("age", 2));
 
         List<Immutable> typed = (List<Immutable>) NodeMapper.convert(
-                array, new TypeReference<List<Immutable>>() {}.getType(), false, RuntimeContext.EMPTY);
+                array, new TypeReference<List<Immutable>>() {}.getType(), false, NodeConfig.DEFAULT);
         assertEquals(2, typed.size());
         assertEquals("b", typed.get(1).code.raw);
 
         Immutable[] typedArray = (Immutable[]) NodeMapper.convert(
-                array, Immutable[].class, false, RuntimeContext.EMPTY);
+                array, Immutable[].class, false, NodeConfig.DEFAULT);
         assertEquals(1, typedArray[0].age);
 
-        JsonArray sjfArray = (JsonArray) NodeMapper.convert(array, JsonArray.class, false, RuntimeContext.EMPTY);
+        JsonArray sjfArray = (JsonArray) NodeMapper.convert(array, JsonArray.class, false, NodeConfig.DEFAULT);
         assertEquals("a", ((Map<?, ?>) sjfArray.getNode(0)).get("code"));
-        assertEquals(2, ((List<?>) NodeMapper.convert(array, List.class, false, RuntimeContext.EMPTY)).size());
+        assertEquals(2, ((List<?>) NodeMapper.convert(array, List.class, false, NodeConfig.DEFAULT)).size());
         assertEquals(2, ((LinkedHashSet<?>) NodeMapper.convert(
-                mapper.createArrayNode().add(1).add(2), LinkedHashSet.class, false, RuntimeContext.EMPTY)).size());
+                mapper.createArrayNode().add(1).add(2), LinkedHashSet.class, false, NodeConfig.DEFAULT)).size());
 
         JsonObject sjfObject = (JsonObject) NodeMapper.convert(
-                nativePojo, JsonObject.class, false, RuntimeContext.EMPTY);
+                nativePojo, JsonObject.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", sjfObject.get("name"));
         Map<String, Object> rawMap = (Map<String, Object>) NodeMapper.convert(
-                nativePojo, Map.class, false, RuntimeContext.EMPTY);
+                nativePojo, Map.class, false, NodeConfig.DEFAULT);
         assertEquals(Arrays.asList(3, 5), rawMap.get("scores"));
         assertTrue(rawMap.get("scores") instanceof List);
     }
@@ -249,21 +249,21 @@ class NodeMapperExternalCoverageTest {
 
         for (Object source : sources) {
             List<Integer> list = (List<Integer>) NodeMapper.convert(
-                    source, listType.getType(), false, RuntimeContext.EMPTY);
+                    source, listType.getType(), false, NodeConfig.DEFAULT);
             assertEquals(Arrays.asList(1, null, 3), list);
 
-            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false, RuntimeContext.EMPTY);
+            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false, NodeConfig.DEFAULT);
             assertEquals(3, jsonArray.size());
             assertEquals(1, ((Number) jsonArray.getNode(0)).intValue());
             assertNull(jsonArray.getNode(1));
             assertEquals(3, ((Number) jsonArray.getNode(2)).intValue());
 
             Integer[] array = (Integer[]) NodeMapper.convert(
-                    source, Integer[].class, false, RuntimeContext.EMPTY);
+                    source, Integer[].class, false, NodeConfig.DEFAULT);
             assertArrayEquals(new Integer[]{1, null, 3}, array);
 
             java.util.Set<Integer> set = (java.util.Set<Integer>) NodeMapper.convert(
-                    source, setType.getType(), false, RuntimeContext.EMPTY);
+                    source, setType.getType(), false, NodeConfig.DEFAULT);
             assertEquals(new LinkedHashSet<>(Arrays.asList(1, null, 3)), set);
         }
     }
@@ -273,12 +273,12 @@ class NodeMapperExternalCoverageTest {
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.JsonNode nativeDog =
                 mapper.createObjectNode().put("kind", "dog").put("name", "Rex");
-        Pet pet = (Pet) NodeMapper.convert(nativeDog, Pet.class, false, RuntimeContext.EMPTY);
+        Pet pet = (Pet) NodeMapper.convert(nativeDog, Pet.class, false, NodeConfig.DEFAULT);
         assertEquals("Rex", assertInstanceOf(Dog.class, pet).name);
 
         BindingException invalid = assertThrows(BindingException.class, () ->
                 NodeMapper.convert(mapper.createArrayNode().add(1).add(true),
-                        new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY));
+                        new TypeReference<List<Integer>>() {}.getType(), false, NodeConfig.DEFAULT));
         assertTrue(invalid.getMessage().contains("$[1]"));
     }
 
@@ -288,32 +288,32 @@ class NodeMapperExternalCoverageTest {
         com.fasterxml.jackson.databind.JsonNode source = mapper.createObjectNode()
                 .put("title", "x").put("flag", true).put("amount", new BigDecimal("12.50"))
                 .set("array", mapper.createArrayNode().add(1).addNull().add("three"));
-        JsonElement gson = (JsonElement) NodeMapper.convert(source, JsonElement.class, false, RuntimeContext.EMPTY);
+        JsonElement gson = (JsonElement) NodeMapper.convert(source, JsonElement.class, false, NodeConfig.DEFAULT);
         tools.jackson.databind.JsonNode j3 = (tools.jackson.databind.JsonNode)
-                NodeMapper.convert(gson, tools.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY);
+                NodeMapper.convert(gson, tools.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT);
         assertEquals("x", j3.get("title").stringValue());
         assertTrue(j3.get("flag").booleanValue());
         assertTrue(j3.get("array").get(1).isNull());
 
         JsonElement scalar = (JsonElement) NodeMapper.convert(
-                mapper.getNodeFactory().numberNode(9), JsonElement.class, false, RuntimeContext.EMPTY);
+                mapper.getNodeFactory().numberNode(9), JsonElement.class, false, NodeConfig.DEFAULT);
         assertEquals(9, scalar.getAsInt());
         assertTrue(((JsonElement) NodeMapper.convert(
                 mapper.getNodeFactory().booleanNode(true), JsonElement.class,
-                false, RuntimeContext.EMPTY)).getAsBoolean());
+                false, NodeConfig.DEFAULT)).getAsBoolean());
         assertEquals("a", ((JsonElement) NodeMapper.convert(
-                mapper.getNodeFactory().textNode("a"), JsonElement.class, false, RuntimeContext.EMPTY)).getAsString());
+                mapper.getNodeFactory().textNode("a"), JsonElement.class, false, NodeConfig.DEFAULT)).getAsString());
         assertTrue(((JsonElement) NodeMapper.convert(
                 com.fasterxml.jackson.databind.node.NullNode.instance,
-                JsonElement.class, false, RuntimeContext.EMPTY)).isJsonNull());
+                JsonElement.class, false, NodeConfig.DEFAULT)).isJsonNull());
 
         JsonElement gsonArray = (JsonElement) NodeMapper.convert(
-                mapper.createArrayNode().add(1).add(2), JsonElement.class, false, RuntimeContext.EMPTY);
+                mapper.createArrayNode().add(1).add(2), JsonElement.class, false, NodeConfig.DEFAULT);
         assertEquals(2, gsonArray.getAsJsonArray().size());
 
         tools.jackson.databind.JsonNode fromGsonNull = (tools.jackson.databind.JsonNode)
                 NodeMapper.convert(JsonNull.INSTANCE, tools.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertTrue(fromGsonNull.isNull());
     }
 
@@ -325,33 +325,33 @@ class NodeMapperExternalCoverageTest {
         source.put("child", child);
         com.fasterxml.jackson.databind.JsonNode retained = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(source, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         com.fasterxml.jackson.databind.JsonNode copied = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(source, com.fasterxml.jackson.databind.JsonNode.class,
-                        true, RuntimeContext.EMPTY);
+                        true, NodeConfig.DEFAULT);
         assertSame(child, retained.get("child"));
         assertNotSame(child, copied.get("child"));
         assertSame(child, NodeMapper.convert(child,
-                com.fasterxml.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY));
+                com.fasterxml.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT));
         assertNotSame(child, NodeMapper.convert(child,
-                com.fasterxml.jackson.databind.JsonNode.class, true, RuntimeContext.EMPTY));
+                com.fasterxml.jackson.databind.JsonNode.class, true, NodeConfig.DEFAULT));
 
         // Default ExternalNode.convert now owns array construction too. Mutable
         // native children must retain the same shallow/deep-copy distinction.
         com.fasterxml.jackson.databind.JsonNode retainedArray = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(Arrays.asList(child), com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         com.fasterxml.jackson.databind.JsonNode copiedArray = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(Arrays.asList(child), com.fasterxml.jackson.databind.JsonNode.class,
-                        true, RuntimeContext.EMPTY);
+                        true, NodeConfig.DEFAULT);
         assertSame(child, retainedArray.get(0));
         assertNotSame(child, copiedArray.get(0));
 
         JsonElement gsonChild = JsonParser.parseString("{\"n\":1}");
         JsonElement gsonRetained = (JsonElement) NodeMapper.convert(
-                Arrays.asList(gsonChild), JsonElement.class, false, RuntimeContext.EMPTY);
+                Arrays.asList(gsonChild), JsonElement.class, false, NodeConfig.DEFAULT);
         JsonElement gsonCopied = (JsonElement) NodeMapper.convert(
-                Arrays.asList(gsonChild), JsonElement.class, true, RuntimeContext.EMPTY);
+                Arrays.asList(gsonChild), JsonElement.class, true, NodeConfig.DEFAULT);
         assertSame(gsonChild, gsonRetained.getAsJsonArray().get(0));
         assertNotSame(gsonChild, gsonCopied.getAsJsonArray().get(0));
     }
@@ -366,36 +366,36 @@ class NodeMapperExternalCoverageTest {
         // Map/List-first conversion preserves assignable sources when no copy
         // is requested. Explicit raw conversion is the detached JSON-compatible path.
         Map<String, Object> javaMap = (Map<String, Object>) NodeMapper.convert(
-                source, Map.class, false, RuntimeContext.EMPTY);
+                source, Map.class, false, NodeConfig.DEFAULT);
         assertSame(source, javaMap);
         Map<String, Object> rawMap = (Map<String, Object>)
-                NodeMapper.convertToRaw(source, RuntimeContext.EMPTY);
+                NodeMapper.convertToRaw(source, NodeConfig.DEFAULT);
         assertFalse(rawMap instanceof jakarta.json.JsonValue);
         assertEquals(Arrays.asList("x", null), rawMap.get("items"));
 
         com.fasterxml.jackson.databind.JsonNode j2 = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(source, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertEquals("x", j2.get("items").get(0).textValue());
 
         jakarta.json.JsonArray arr = Json.createArrayBuilder().add(1).addNull().build();
-        List<Object> javaList = (List<Object>) NodeMapper.convert(arr, List.class, false, RuntimeContext.EMPTY);
+        List<Object> javaList = (List<Object>) NodeMapper.convert(arr, List.class, false, NodeConfig.DEFAULT);
         assertSame(arr, javaList);
         List<Object> rawList = (List<Object>)
-                NodeMapper.convertToRaw(arr, RuntimeContext.EMPTY);
+                NodeMapper.convertToRaw(arr, NodeConfig.DEFAULT);
         assertEquals(2, rawList.size());
         assertEquals(1, ((Number) rawList.get(0)).intValue());
         assertNull(rawList.get(1));
-        assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(null, jakarta.json.JsonValue.class, false, NodeConfig.DEFAULT));
         jakarta.json.JsonArray nativeArray = (jakarta.json.JsonArray) NodeMapper.convert(
-                Arrays.asList(1, 2), jakarta.json.JsonValue.class, false, RuntimeContext.EMPTY);
+                Arrays.asList(1, 2), jakarta.json.JsonValue.class, false, NodeConfig.DEFAULT);
         assertEquals(2, nativeArray.size());
         assertEquals(2, nativeArray.getInt(1));
         jakarta.json.JsonValue nativeString = (jakarta.json.JsonValue) NodeMapper.convert(
-                "value", jakarta.json.JsonValue.class, false, RuntimeContext.EMPTY);
+                "value", jakarta.json.JsonValue.class, false, NodeConfig.DEFAULT);
         assertEquals("value", ((jakarta.json.JsonString) nativeString).getString());
         jakarta.json.JsonObject remapped = (jakarta.json.JsonObject)
-                NodeMapper.convert(j2, jakarta.json.JsonValue.class, false, RuntimeContext.EMPTY);
+                NodeMapper.convert(j2, jakarta.json.JsonValue.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", remapped.getString("name"));
         assertSame(jakarta.json.JsonValue.NULL, remapped.getJsonArray("items").get(1));
     }
@@ -405,18 +405,18 @@ class NodeMapperExternalCoverageTest {
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         com.fasterxml.jackson.databind.JsonNode source = mapper.createObjectNode()
                 .set("a", mapper.createArrayNode().add(mapper.createObjectNode().put("b", 1)));
-        Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(source, RuntimeContext.EMPTY);
+        Map<String, Object> raw = (Map<String, Object>) NodeMapper.convertToRaw(source, NodeConfig.DEFAULT);
         List<Object> list = (List<Object>) raw.get("a");
         assertEquals(1, ((Number) ((Map<?, ?>) list.get(0)).get("b")).intValue());
         list.add("mutated");
         assertEquals(1, source.get("a").size());
 
         assertEquals(Arrays.asList(1, 2), NodeMapper.convertToRaw(
-                mapper.createArrayNode().add(1).add(2), RuntimeContext.EMPTY));
+                mapper.createArrayNode().add(1).add(2), NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1, 2), NodeMapper.convertToRaw(
-                new int[]{1, 2}, RuntimeContext.EMPTY));
-        assertEquals("READY", NodeMapper.convertToRaw(State.READY, RuntimeContext.EMPTY));
-        assertEquals("raw", NodeMapper.convertToRaw(new Encoded("raw"), RuntimeContext.EMPTY));
+                new int[]{1, 2}, NodeConfig.DEFAULT));
+        assertEquals("READY", NodeMapper.convertToRaw(State.READY, NodeConfig.DEFAULT));
+        assertEquals("raw", NodeMapper.convertToRaw(new Encoded("raw"), NodeConfig.DEFAULT));
     }
 
     private static Profile profile() {

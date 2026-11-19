@@ -1,7 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 
 import java.math.BigDecimal;
@@ -20,7 +20,7 @@ class PropertyGeneratorTest {
 
     @Test
     void writesReadablePrivateFieldThroughGetter() {
-        assertEquals("{\"name\":\"Ada\"}", new SimpleJsonBinder(RuntimeContext.EMPTY).writeNodeAsString(new Person()));
+        assertEquals("{\"name\":\"Ada\"}", new SimpleJsonBinder(NodeConfig.DEFAULT).writeNodeAsString(new Person()));
     }
 
     enum Choice { FIRST }
@@ -46,7 +46,7 @@ class PropertyGeneratorTest {
         assertEquals("{\"text\":\"text\",\"integer\":1,\"longer\":2,\"decimal\":3.5,\"floating\":1.25,"
                         + "\"shorter\":6,\"smaller\":7,\"flag\":true,\"character\":\"x\",\"bigInteger\":10,\"bigDecimal\":2.5,"
                         + "\"number\":4,\"choice\":\"FIRST\"}",
-                new SimpleJsonBinder(RuntimeContext.EMPTY).writeNodeAsString(new BoxedValues()));
+                new SimpleJsonBinder(NodeConfig.DEFAULT).writeNodeAsString(new BoxedValues()));
     }
 
     static class NullableValues {
@@ -58,9 +58,9 @@ class PropertyGeneratorTest {
     @Test
     void filtersOrWritesNullBoxedScalarsAccordingToContext() {
         NullableValues values = new NullableValues();
-        assertEquals("{}", new SimpleJsonBinder(new RuntimeContext(Collections.emptyMap(), false))
+        assertEquals("{}", new SimpleJsonBinder(new NodeConfig(Collections.emptyMap(), false))
                 .writeNodeAsString(values));
         assertEquals("{\"integer\":null,\"character\":null,\"choice\":null}",
-                new SimpleJsonBinder(RuntimeContext.EMPTY).writeNodeAsString(values));
+                new SimpleJsonBinder(NodeConfig.DEFAULT).writeNodeAsString(values));
     }
 }

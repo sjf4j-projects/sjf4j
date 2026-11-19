@@ -1,6 +1,6 @@
 package org.sjf4j.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.util.Asserts;
 
 import java.util.function.Function;
@@ -23,7 +23,7 @@ public interface BinderProvider {
     /**
      * Creates a binder using the supplied immutable runtime configuration.
      */
-    Binder<?, ?> create(RuntimeContext context);
+    Binder<?, ?> create(NodeConfig context);
 
     /**
      * Returns whether this optional provider can create its backend binder.
@@ -59,7 +59,7 @@ public interface BinderProvider {
      * Creates a provider with the supplied format, priority, and binder factory.
      */
     static BinderProvider of(Format format, int priority,
-                             Function<RuntimeContext, ? extends Binder<?, ?>> factory) {
+                             Function<NodeConfig, ? extends Binder<?, ?>> factory) {
         Asserts.notNull(format, "format");
         Asserts.notNull(factory, "factory");
         return new BinderProvider() {
@@ -69,7 +69,7 @@ public interface BinderProvider {
             }
 
             @Override
-            public Binder<?, ?> create(RuntimeContext context) {
+            public Binder<?, ?> create(NodeConfig context) {
                 return factory.apply(context);
             }
 

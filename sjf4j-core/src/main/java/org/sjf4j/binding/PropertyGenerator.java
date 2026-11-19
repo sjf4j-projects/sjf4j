@@ -3,7 +3,7 @@ package org.sjf4j.binding;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PojoInfo;
 import org.sjf4j.meta.TypeInfo;
@@ -39,7 +39,7 @@ public interface PropertyGenerator {
      * @param count number of properties already written
      * @return updated property count
      */
-    int generate(StreamingGenerator generator, CompiledName compiledName, Object owner, RuntimeContext context, int count) throws IOException;
+    int generate(StreamingGenerator generator, CompiledName compiledName, Object owner, NodeConfig context, int count) throws IOException;
 
 
     @FunctionalInterface
@@ -803,7 +803,7 @@ public interface PropertyGenerator {
     }
 
     static int _writeNullValueField(StreamingGenerator generator, CompiledName compiledName,
-                                    RuntimeContext context, int count) throws IOException {
+                                    NodeConfig context, int count) throws IOException {
         if (!context.includeNulls) {
             return count;
         }

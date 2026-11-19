@@ -3,7 +3,7 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
@@ -31,14 +31,14 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /** Creates a binder with default Fastjson2 contexts. */
     public Fastjson2Binder() {
-        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), RuntimeContext.EMPTY);
+        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), NodeConfig.DEFAULT);
     }
 
     /**
      * Creates a binder with default backend settings and a supplied runtime context.
      * @param context the SJF4J runtime settings
      */
-    public Fastjson2Binder(RuntimeContext context) {
+    public Fastjson2Binder(NodeConfig context) {
         this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
     }
 
@@ -48,7 +48,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
      * @param writerContext the write context, configured in place
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
-        this(readerContext, writerContext, RuntimeContext.EMPTY);
+        this(readerContext, writerContext, NodeConfig.DEFAULT);
     }
 
     /**
@@ -58,7 +58,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
      * @param context the SJF4J runtime settings
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
-                           RuntimeContext context) {
+                           NodeConfig context) {
         super(context);
         this.readerContext = Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");

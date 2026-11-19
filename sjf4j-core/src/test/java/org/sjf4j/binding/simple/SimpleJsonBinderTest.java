@@ -3,7 +3,7 @@ package org.sjf4j.binding.simple;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 
 import java.io.ByteArrayInputStream;
@@ -26,7 +26,7 @@ class SimpleJsonBinderTest {
 
     @Test
     void requiresAStreamingContext() {
-        RuntimeContext context = new RuntimeContext(false);
+        NodeConfig context = new NodeConfig(false);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("missing", null);
         assertEquals("{}", new SimpleJsonBinder(context).writeNodeAsString(source));
@@ -35,7 +35,7 @@ class SimpleJsonBinderTest {
 
     @Test
     void createsConcreteReadersAndWritersForAllFactoryForms() throws Exception {
-        SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
         {
             SimpleJsonParser parser = binding.createParser(new StringReader("null"));
@@ -99,7 +99,7 @@ class SimpleJsonBinderTest {
 
     @Test
     void readsAndWritesNestedNodesThroughConvenienceMethods() {
-        SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
         Map<String, Object> source = new LinkedHashMap<>();
         source.put("greeting", "héllo");
         source.put("items", List.of(1, JsonObject.of("nested", JsonArray.of(true, "x"))));
@@ -128,7 +128,7 @@ class SimpleJsonBinderTest {
 
     @Test
     void handlesRootValuesAndRejectsTrailingDocuments() {
-        SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
         assertEquals("null", binding.writeNodeAsString(null));
         assertEquals("true", binding.writeNodeAsString(true));
@@ -152,7 +152,7 @@ class SimpleJsonBinderTest {
 
     @Test
     void readsStringsAtAndAcrossTheInternalBufferBoundary() {
-        SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
         String prefix = "a".repeat(8190);
         String atBufferSize = '"' + prefix + '"';
         String json = '"' + prefix + "\\n\"";
@@ -167,13 +167,13 @@ class SimpleJsonBinderTest {
         source.put("present", 1);
         source.put("missing", null);
 
-        assertEquals("{\"present\":1,\"missing\":null}", new SimpleJsonBinder(RuntimeContext.EMPTY).writeNodeAsString(source));
-        assertEquals("{\"present\":1}", new SimpleJsonBinder(new RuntimeContext(false)).writeNodeAsString(source));
+        assertEquals("{\"present\":1,\"missing\":null}", new SimpleJsonBinder(NodeConfig.DEFAULT).writeNodeAsString(source));
+        assertEquals("{\"present\":1}", new SimpleJsonBinder(new NodeConfig(false)).writeNodeAsString(source));
     }
 
     @Test
     void reportsMalformedInputAndNonFiniteOutputFailuresDirectly() {
-        SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
         BindingException readFailure = assertThrowsExactly(BindingException.class,
                 () -> binding.readNode("{\"value\":}", Map.class));

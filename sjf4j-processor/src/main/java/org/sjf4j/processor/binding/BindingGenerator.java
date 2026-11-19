@@ -37,7 +37,7 @@ public final class BindingGenerator {
 
         if (backend == null || !generated.isValid()) return;
 
-        generated.enableRuntimeContext();
+        generated.enableNodeConfig();
         generated.enableBackendBinder(backend.binderType());
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));

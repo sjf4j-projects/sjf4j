@@ -2,7 +2,7 @@ package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.value.ValueRegistry;
 
 import java.net.URLClassLoader;
@@ -12,7 +12,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Verifies per-instance runtime configuration in generated mapper and binder implementations. */
-class CompiledRuntimeContextInjectionTest {
+class CompiledNodeConfigInjectionTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -58,11 +58,11 @@ class CompiledRuntimeContextInjectionTest {
         assertTrue(compiled.success, compiled.diagnostics());
         String mapperSource = compiled.generatedSource("fixture/Mapper_Impl.java");
         String binderSource = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(mapperSource.contains("RuntimeContext context)"), mapperSource);
+        assertTrue(mapperSource.contains("NodeConfig context)"), mapperSource);
         String outerSource = compiled.generatedSource("fixture/Outer_Impl.java");
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
         assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
-        assertTrue(binderSource.contains("RuntimeContext context)"), binderSource);
+        assertTrue(binderSource.contains("NodeConfig context)"), binderSource);
         assertTrue(binderSource.contains("context.valueFormat("), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
         assertFalse(binderSource.contains("org.sjf4j.Nodes."), binderSource);
@@ -78,7 +78,7 @@ class CompiledRuntimeContextInjectionTest {
             assertNotSame(defaultMapper, CompiledInstances.create(mapperInterface));
             assertNotSame(defaultBinder, CompiledInstances.create(binderInterface));
 
-            RuntimeContext context = new RuntimeContext(Map.of(tokenClass, "alternate"), false);
+            NodeConfig context = new NodeConfig(Map.of(tokenClass, "alternate"), false);
             Object configuredMapper = CompiledInstances.create(mapperInterface, context);
             Object configuredBinder = CompiledInstances.create(binderInterface, context);
             assertNotSame(defaultMapper, configuredMapper);
@@ -161,7 +161,7 @@ class CompiledRuntimeContextInjectionTest {
                 beanType.getField("address").set(bean,
                         loader.loadClass("fixture.Address").getConstructor().newInstance());
 
-                RuntimeContext context = new RuntimeContext(
+                NodeConfig context = new NodeConfig(
                         Map.of(java.time.Instant.class, "epochMillis"), false);
                 Object defaults = CompiledInstances.create(type);
                 Object configured = CompiledInstances.create(type, context);
@@ -202,14 +202,14 @@ class CompiledRuntimeContextInjectionTest {
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         assertTrue(compiled.generatedSource("fixture/Paths_Impl.java")
-                .contains("RuntimeContext context)"));
+                .contains("NodeConfig context)"));
         assertTrue(compiled.generatedSource("fixture/Rows_Impl.java")
-                .contains("RuntimeContext context)"));
+                .contains("NodeConfig context)"));
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class pathsType = loader.loadClass("fixture.Paths");
             Class rowsType = loader.loadClass("fixture.Rows");
-            RuntimeContext context = new RuntimeContext(Map.of(), false);
+            NodeConfig context = new NodeConfig(Map.of(), false);
 
             Object navigator = CompiledInstances.create(pathsType, context);
             assertNotSame(navigator, CompiledInstances.create(pathsType));

@@ -1,7 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.exception.BindingException;
 
@@ -14,14 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class StreamingIOExceptionTest {
 
-    private final SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+    private final SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
     @Test
     void readPropagatesIOException() throws IOException {
         IOException failure = new IOException("read failure");
         StreamingParser parser = binder.createParser(failingReader(failure));
         assertSame(failure, assertThrows(IOException.class,
-                () -> StreamingIO.readNode(parser, String.class, RuntimeContext.EMPTY)));
+                () -> StreamingIO.readNode(parser, String.class, NodeConfig.DEFAULT)));
     }
 
     @Test
@@ -29,7 +29,7 @@ class StreamingIOExceptionTest {
         IOException failure = new IOException("write failure");
         StreamingGenerator generator = binder.createGenerator(failingWriter(failure));
         assertSame(failure, assertThrows(IOException.class,
-                () -> StreamingIO.writeNode(generator, "value", RuntimeContext.EMPTY)));
+                () -> StreamingIO.writeNode(generator, "value", NodeConfig.DEFAULT)));
     }
 
     @Test
@@ -37,7 +37,7 @@ class StreamingIOExceptionTest {
         AssertionError failure = new AssertionError("read error");
         StreamingParser parser = binder.createParser(failingReader(failure));
         BindingException thrown = assertThrows(BindingException.class,
-                () -> StreamingIO.readNode(parser, String.class, RuntimeContext.EMPTY));
+                () -> StreamingIO.readNode(parser, String.class, NodeConfig.DEFAULT));
         assertSame(failure, thrown.getCause());
     }
 
@@ -46,7 +46,7 @@ class StreamingIOExceptionTest {
         AssertionError failure = new AssertionError("write error");
         StreamingGenerator generator = binder.createGenerator(failingWriter(failure));
         BindingException thrown = assertThrows(BindingException.class,
-                () -> StreamingIO.writeNode(generator, "value", RuntimeContext.EMPTY));
+                () -> StreamingIO.writeNode(generator, "value", NodeConfig.DEFAULT));
         assertSame(failure, thrown.getCause());
     }
 

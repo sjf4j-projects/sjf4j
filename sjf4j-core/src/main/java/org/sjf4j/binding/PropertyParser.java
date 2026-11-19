@@ -2,7 +2,7 @@ package org.sjf4j.binding;
 
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueInfo;
 import org.sjf4j.meta.OneOfInfo;
@@ -37,7 +37,7 @@ import java.util.function.ObjLongConsumer;
 public interface PropertyParser {
 
     void parse(StreamingParser parser, Object owner, Type ownerType, Class<?> ownerBoxed,
-              RuntimeContext context) throws IOException;
+              NodeConfig context) throws IOException;
 
 
     @FunctionalInterface

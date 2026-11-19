@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
@@ -77,7 +77,7 @@ class CompiledFastjson2UnifiedWriteTest {
             Class binderType = loader.loadClass("fixture.Binder");
             Object model = modelType.getConstructor().newInstance();
             Object normal = CompiledInstances.create(binderType);
-            Object withoutNulls = CompiledInstances.create(binderType, new RuntimeContext(false));
+            Object withoutNulls = CompiledInstances.create(binderType, new NodeConfig(false));
             java.lang.reflect.Method write = binderType.getMethod("write", modelType);
             java.lang.reflect.Method writeBytes = binderType.getMethod("writeBytes", modelType);
             ObjectMapper json = new ObjectMapper();

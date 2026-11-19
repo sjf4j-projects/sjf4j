@@ -29,8 +29,8 @@ binary names of successfully generated interfaces. At startup, the starter
 collects **all** indexes from the classpath (including dependency JARs),
 de-duplicates them, and registers lazy singleton BeanDefinitions through `sjf4j-spring`. Spring creates
 instances through `CompiledInstances.create(type, context)`: it uses an
-application-provided `RuntimeContext` when one exists, or
-`RuntimeContext.EMPTY` otherwise. Explicit user Beans of the same type win.
+application-provided `NodeConfig` when one exists, or
+`NodeConfig.DEFAULT` otherwise. Explicit user Beans of the same type win.
 
 Interfaces can be injected, looked up by type through `getBean()`, obtained
 through `ObjectProvider`, or injected as a collection. Standard Spring

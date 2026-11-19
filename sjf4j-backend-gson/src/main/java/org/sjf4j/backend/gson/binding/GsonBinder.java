@@ -3,7 +3,7 @@ package org.sjf4j.backend.gson.binding;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
@@ -29,14 +29,14 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
 
     /** Creates a binder with a default Gson instance and runtime settings. */
     public GsonBinder() {
-        this(new Gson(), RuntimeContext.EMPTY);
+        this(new Gson(), NodeConfig.DEFAULT);
     }
 
     /**
      * Creates a binder with default backend settings and a supplied runtime context.
      * @param context the SJF4J runtime settings
      */
-    public GsonBinder(RuntimeContext context) {
+    public GsonBinder(NodeConfig context) {
         this(new Gson(), context);
     }
 
@@ -45,7 +45,7 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
      * @param gson the Gson instance used for reader and writer creation
      */
     public GsonBinder(Gson gson) {
-        this(gson, RuntimeContext.EMPTY);
+        this(gson, NodeConfig.DEFAULT);
     }
 
     /**
@@ -53,7 +53,7 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
      * @param gson the Gson instance used for reader and writer creation
      * @param context the SJF4J runtime settings
      */
-    public GsonBinder(Gson gson, RuntimeContext context) {
+    public GsonBinder(Gson gson, NodeConfig context) {
         super(context);
         this.gson = Asserts.notNull(gson, "gson");
     }

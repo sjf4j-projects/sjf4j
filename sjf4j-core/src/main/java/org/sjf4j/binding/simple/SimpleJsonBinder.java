@@ -1,6 +1,6 @@
 package org.sjf4j.binding.simple;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 
@@ -15,10 +15,10 @@ import java.nio.charset.StandardCharsets;
 public final class SimpleJsonBinder extends Binder<SimpleJsonParser, SimpleJsonGenerator> {
 
     public SimpleJsonBinder() {
-        this(RuntimeContext.EMPTY);
+        this(NodeConfig.DEFAULT);
     }
 
-    public SimpleJsonBinder(RuntimeContext context) {
+    public SimpleJsonBinder(NodeConfig context) {
         super(context);
     }
 

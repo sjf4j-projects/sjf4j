@@ -2,7 +2,7 @@ package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.NodeKind;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.simple.SimpleJsonParser;
 import org.sjf4j.binding.simple.SimpleJsonGenerator;
 import org.sjf4j.exception.BindingException;
@@ -80,10 +80,10 @@ class BindingExceptionPropagationTest {
 
         assertSame(failure, assertThrowsExactly(BindingException.class,
                 () -> parser.parse(new SimpleJsonParser(new StringReader("1")), accessor,
-                        Object.class, PrimitiveAccessor.class, RuntimeContext.EMPTY)));
+                        Object.class, PrimitiveAccessor.class, NodeConfig.DEFAULT)));
         assertSame(failure, assertThrowsExactly(BindingException.class,
                 () -> generator.generate(new SimpleJsonGenerator(null, new StringWriter()),
-                        new CompiledName("value"), accessor, RuntimeContext.EMPTY, 0)));
+                        new CompiledName("value"), accessor, NodeConfig.DEFAULT, 0)));
     }
 
     public static Object throwCreator() {

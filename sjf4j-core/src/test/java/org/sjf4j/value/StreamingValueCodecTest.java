@@ -1,7 +1,7 @@
 package org.sjf4j.value;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
 import org.sjf4j.meta.TypeRegistry;
 
@@ -40,7 +40,7 @@ class StreamingValueCodecTest {
         assertEquals("alpha", ((Key) info.rawToValue("alpha")).value);
         assertEquals("alpha", info.valueToRaw(new Key("alpha")));
 
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         assertEquals("alpha", ((Key) binder.readNode("\"alpha\"", Key.class)).value);
         assertEquals("\"alpha\"", binder.writeNodeAsString(new Key("alpha")));
         assertNull(binder.readNode("null", Key.class));
@@ -63,7 +63,7 @@ class StreamingValueCodecTest {
         assertNull(info.streamParser);
         assertNull(info.streamGenerator);
 
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         assertEquals("beta", ((Fallback) binder.readNode("\"beta\"", Fallback.class)).value);
         assertEquals("\"beta\"", binder.writeNodeAsString(new Fallback("beta")));
     }

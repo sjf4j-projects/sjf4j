@@ -1,6 +1,6 @@
 package org.sjf4j.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.util.Types;
 import org.sjf4j.util.Asserts;
@@ -25,14 +25,14 @@ import java.nio.charset.StandardCharsets;
  */
 public abstract class Binder<R extends StreamingParser, W extends StreamingGenerator> {
 
-    protected final RuntimeContext context;
+    protected final NodeConfig context;
 
-    protected Binder(RuntimeContext context) {
+    protected Binder(NodeConfig context) {
         this.context = Asserts.notNull(context, "context");
     }
 
     /** Returns this backend Binder's immutable SJF4J runtime settings. */
-    public final RuntimeContext context() {
+    public final NodeConfig context() {
         return context;
     }
 

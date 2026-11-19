@@ -66,7 +66,7 @@ public enum JsonType {
 
     /**
      * Resolves the default logical JSON shape of an OBNT value, without
-     * executing a codec or inspecting RuntimeContext.
+     * executing a codec or inspecting NodeConfig.
      * Use {@link #rawOf(Class)} for the default raw encoding shape.
      */
     public static JsonType of(Object node) {

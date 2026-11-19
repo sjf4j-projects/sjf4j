@@ -4,7 +4,7 @@ import jakarta.json.spi.JsonProvider;
 import java.net.URL;
 import java.net.URLClassLoader;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -20,7 +20,7 @@ class JsonpBinderProviderTest {
     void createsBinderWithSuppliedJsonProvider() {
         BinderProvider provider = JsonpBinderProvider.of(JsonProvider.provider());
 
-        JsonpBinder binder = assertInstanceOf(JsonpBinder.class, provider.create(RuntimeContext.EMPTY));
+        JsonpBinder binder = assertInstanceOf(JsonpBinder.class, provider.create(NodeConfig.DEFAULT));
 
         assertNull(binder.readNode("null", Object.class));
     }
@@ -30,7 +30,7 @@ class JsonpBinderProviderTest {
         BinderProvider provider = BinderFactory.provider(Format.JSON);
 
         assertInstanceOf(JsonpBinderProvider.class, provider);
-        assertInstanceOf(JsonpBinder.class, provider.create(RuntimeContext.EMPTY));
+        assertInstanceOf(JsonpBinder.class, provider.create(NodeConfig.DEFAULT));
     }
 
     @Test

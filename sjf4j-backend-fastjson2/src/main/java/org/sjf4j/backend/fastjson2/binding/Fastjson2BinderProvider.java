@@ -3,7 +3,7 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
@@ -53,7 +53,7 @@ public final class Fastjson2BinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(NodeConfig context) {
         return new Fastjson2Binder(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
     }
 }

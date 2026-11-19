@@ -26,7 +26,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.util.Numbers;
@@ -168,7 +168,7 @@ try {
              Jackson2Parser parser = new Jackson2Parser(nativeParser);
 try {
             parser.start();
-            Object result = StreamingIO.readNode(parser, User.class, RuntimeContext.EMPTY);
+            Object result = StreamingIO.readNode(parser, User.class, NodeConfig.DEFAULT);
             parser.end();
             return result;
         

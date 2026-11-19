@@ -148,7 +148,7 @@ class RuntimeCreatorOneOfTest {
         assertEquals(7, assertInstanceOf(Dog.class, inherited.pet, name).age(), name);
         InheritedZoo mapped = (InheritedZoo) NodeMapper.convert(
                 Map.of("animal", Map.of("kind", "cat", "name", "Mog", "lives", 9)),
-                InheritedZoo.class, false, org.sjf4j.RuntimeContext.EMPTY);
+                InheritedZoo.class, false, org.sjf4j.NodeConfig.DEFAULT);
         assertEquals(9, assertInstanceOf(Cat.class, mapped.pet, name).lives(), name);
         BindingException conflict = assertThrows(BindingException.class,
                 () -> binder.readNode(json, InheritedConflictZoo.class), name);
@@ -162,7 +162,7 @@ class RuntimeCreatorOneOfTest {
     @MethodSource("backends")
     void supportsNodeMappingAndRejectsParent(String name, Binder<?, ?> binder) {
         Map<String, Object> json = Map.of("pet", Map.of("kind", "dog", "name", "Rex", "age", 7), "after", 19);
-        Zoo mapped = (Zoo) NodeMapper.convert(json, Zoo.class, false, org.sjf4j.RuntimeContext.EMPTY);
+        Zoo mapped = (Zoo) NodeMapper.convert(json, Zoo.class, false, org.sjf4j.NodeConfig.DEFAULT);
         assertInstanceOf(Dog.class, mapped.pet(), name);
         PathZoo path = (PathZoo) binder.readNode(
                 "{\"pet\":{\"meta\":{\"kind\":\"dog\"},\"kind\":\"dog\",\"name\":\"Rex\",\"age\":7}}",

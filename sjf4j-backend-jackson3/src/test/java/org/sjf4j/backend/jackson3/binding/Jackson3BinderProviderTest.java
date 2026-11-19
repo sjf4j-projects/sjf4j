@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -23,7 +23,7 @@ class Jackson3BinderProviderTest {
         BinderProvider provider = Jackson3BinderProvider.of(factory);
 
         Jackson3Binder binder = assertInstanceOf(Jackson3Binder.class,
-                provider.create(RuntimeContext.EMPTY));
+                provider.create(NodeConfig.DEFAULT));
 
         assertNull(binder.readNode("/* configured */ null", Object.class));
     }

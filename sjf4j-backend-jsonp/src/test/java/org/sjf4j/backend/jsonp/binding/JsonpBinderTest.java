@@ -10,7 +10,7 @@ import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.json.stream.JsonParser;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.Nodes;
 import org.sjf4j.exception.BindingException;
 
@@ -49,7 +49,7 @@ class JsonpBinderTest {
         assertNull(value.nullable);
 
         String includingNulls = binder.writeNodeAsString(value);
-        String omittingNulls = new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false))
+        String omittingNulls = new JsonpBinder(JsonProvider.provider(), new NodeConfig(false))
                 .writeNodeAsString(value);
         assertTrue(includingNulls.contains("\"nullable\":null"));
         assertFalse(omittingNulls.contains("\"nullable\""));
@@ -79,7 +79,7 @@ class JsonpBinderTest {
         mixed.put("array", array);
         mixed.put("nil", JsonValue.NULL);
         assertEquals("{\"tree\":" + json + ",\"array\":[true,{\"n\":1}],\"nil\":null}",
-                new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false)).writeNodeAsString(mixed));
+                new JsonpBinder(JsonProvider.provider(), new NodeConfig(false)).writeNodeAsString(mixed));
         TreeDocument nested = new TreeDocument();
         nested.before = 1;
         nested.tree = Json.createObjectBuilder().add("items", Json.createArrayBuilder().add(true)).build();
@@ -109,7 +109,7 @@ class JsonpBinderTest {
                 .build();
         String expected = "{\"empty\":null,\"items\":[null,1]}";
         assertEquals(expected, new JsonpBinder(
-                JsonProvider.provider(), new RuntimeContext(false)).writeNodeAsString(object));
+                JsonProvider.provider(), new NodeConfig(false)).writeNodeAsString(object));
         assertEquals(expected, new JsonpBinder().writeNodeAsString(object));
     }
 
@@ -136,7 +136,7 @@ class JsonpBinderTest {
 
     @Test
     void supportsIoAndNativeParserGeneratorOverloads() throws Exception {
-        JsonpBinder binder = new JsonpBinder(JsonProvider.provider(), new RuntimeContext(false));
+        JsonpBinder binder = new JsonpBinder(JsonProvider.provider(), new NodeConfig(false));
         byte[] input = "{\"title\":\"héllo\"}".getBytes(StandardCharsets.UTF_8);
 
         assertEquals("héllo", ((Document) binder.readNode(input, Document.class)).title);

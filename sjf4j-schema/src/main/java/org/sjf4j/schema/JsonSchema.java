@@ -1,7 +1,7 @@
 package org.sjf4j.schema;
 
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
@@ -72,7 +72,7 @@ public interface JsonSchema {
      * The returned value is not compiled yet.
      */
     static JsonSchema fromNode(Object node) {
-        return (JsonSchema) NodeMapper.convert(node, JsonSchema.class, false, RuntimeContext.EMPTY);
+        return (JsonSchema) NodeMapper.convert(node, JsonSchema.class, false, NodeConfig.DEFAULT);
     }
 
 }

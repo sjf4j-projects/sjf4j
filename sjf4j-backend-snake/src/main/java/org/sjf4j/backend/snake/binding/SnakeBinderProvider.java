@@ -1,6 +1,6 @@
 package org.sjf4j.backend.snake.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
@@ -51,7 +51,7 @@ public final class SnakeBinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(NodeConfig context) {
         return new SnakeBinder(new LoaderOptions(), new DumperOptions(), context);
     }
 }

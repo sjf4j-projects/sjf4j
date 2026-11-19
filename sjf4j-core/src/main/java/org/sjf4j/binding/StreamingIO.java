@@ -4,7 +4,7 @@ import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.external.ExternalNode;
@@ -57,7 +57,7 @@ public final class StreamingIO {
      * The caller owns document start/end and parser lifecycle.
      */
     public static Object readNode(StreamingParser parser, Type type,
-                                  RuntimeContext context) throws IOException {
+                                  NodeConfig context) throws IOException {
         Asserts.notNull(parser, "parser");
         Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
@@ -69,7 +69,7 @@ public final class StreamingIO {
 
 
     static Object readNode(StreamingParser parser, Type type, Class<?> boxed, TypeInfo typeInfo,
-                           RuntimeContext context) throws IOException {
+                           NodeConfig context) throws IOException {
         try {
             /*
              * Do NOT probe null here.
@@ -217,7 +217,7 @@ public final class StreamingIO {
      */
     private static Object _readRegistered(StreamingParser parser, Type type,
                                               Class<?> boxed, TypeInfo ti,
-                                              RuntimeContext context) throws IOException {
+                                              NodeConfig context) throws IOException {
         if (ti.oneOfInfo != null) {
             return OneOfIO.readOneOf(parser, ti.oneOfInfo, context);
         }
@@ -267,7 +267,7 @@ public final class StreamingIO {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static Object readEnum(StreamingParser parser, Class<?> enumType,
-                                  RuntimeContext context) throws IOException {
+                                  NodeConfig context) throws IOException {
 
         StreamingParser.Token token = parser.peekToken();
         if (token == StreamingParser.Token.NULL) {
@@ -304,7 +304,7 @@ public final class StreamingIO {
      * preserving each backend's fused scalar parser.
      */
     public static Object readValueSet(StreamingParser parser, Type type, Class<?> boxed, ValueSet valueSet,
-                                      RuntimeContext context) throws IOException {
+                                      NodeConfig context) throws IOException {
         String preferredFormat = context.valueFormat(boxed);
         JsonType jsonType = valueSet.multiples
                 ? parser.peekToken().jsonType()
@@ -314,7 +314,7 @@ public final class StreamingIO {
     }
 
     public static Object readValueCodec(StreamingParser parser, ValueInfo valueInfo,
-                                        RuntimeContext context) throws IOException {
+                                        NodeConfig context) throws IOException {
         if (valueInfo.streamParser != null) {
             if (valueInfo.runtimeClazz != null && valueInfo.runtimeClazz != valueInfo.valueClazz) {
                 throw new BindingException("cannot decode value type '" + valueInfo.valueClazz.getName()
@@ -400,7 +400,7 @@ public final class StreamingIO {
      */
 
     public static Object readPojo(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
-                                   RuntimeContext context) throws IOException {
+                                   NodeConfig context) throws IOException {
         // JSON null needs no construction, even for write-only POJO types.
         if (pojoInfo.creatorInfo == null) {
             if (parser.nextIfNull()) return null;
@@ -483,7 +483,7 @@ public final class StreamingIO {
      * The object start has already been consumed.
      */
     public static Object readPojoWithCreator(StreamingParser parser, Type type, Class<?> boxed, PojoInfo pojoInfo,
-                                             RuntimeContext context) throws IOException {
+                                             NodeConfig context) throws IOException {
 
         CreatorInfo creator = pojoInfo.requireCreatorInfo();
         CreatorState state = new CreatorState(creator);
@@ -663,7 +663,7 @@ public final class StreamingIO {
      */
 
     public static Object readProperty(StreamingParser parser, PropertyInfo property, Type ownerType, Class<?> ownerBoxed,
-                                      RuntimeContext context) throws IOException {
+                                      NodeConfig context) throws IOException {
         Type type = property.genericDependent
                 ? Types.resolveMemberType(ownerType, ownerBoxed, property.type)
                 : property.type;
@@ -692,7 +692,7 @@ public final class StreamingIO {
      */
     public static Map<String, Object> readMap(StreamingParser parser, Type type, Class<?> boxed,
                                               Type valueType, Class<?> valueBoxed, TypeInfo valueTi,
-                                              RuntimeContext context) throws IOException {
+                                              NodeConfig context) throws IOException {
         // Exact raw container declarations have no generic work to do.
         // Route them before token probes or type metadata initialization.
         if (valueType == null && (type == Map.class || type == LinkedHashMap.class)) {
@@ -741,7 +741,7 @@ public final class StreamingIO {
 
     public static List<Object> readList(StreamingParser parser, Type type, Class<?> boxed,
                                         Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
-                                        RuntimeContext context) throws IOException {
+                                        NodeConfig context) throws IOException {
         // Exact raw List targets have no generic metadata to resolve.
         if (elementType == null && (type == List.class || type == ArrayList.class)) {
             return parser.readRawArray();
@@ -786,7 +786,7 @@ public final class StreamingIO {
 
     public static Set<Object> readSet(StreamingParser parser, Type type, Class<?> boxed,
                                       Type elementType, Class<?> elementBoxed, TypeInfo elementTi,
-                                      RuntimeContext context) throws IOException {
+                                      NodeConfig context) throws IOException {
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
@@ -819,7 +819,7 @@ public final class StreamingIO {
 
     public static Object readArray(StreamingParser parser, Type type, Class<?> boxed,
                                       Class<?> componentClazz, Class<?> componentBoxed, TypeInfo componentTi,
-                                      RuntimeContext context) throws IOException {
+                                      NodeConfig context) throws IOException {
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
@@ -983,7 +983,7 @@ public final class StreamingIO {
      */
 
     public static JsonArray readJsonArray(StreamingParser parser, Type type, Class<?> boxed, TypeInfo ti,
-                                          RuntimeContext context) throws IOException {
+                                          NodeConfig context) throws IOException {
         if (!parser.nextIfArrayStart()) {
             if (parser.nextIfNull()) {
                 return null;
@@ -1070,7 +1070,7 @@ public final class StreamingIO {
      * document boundaries, flushing, and generator lifecycle.
      */
     public static void writeNode(StreamingGenerator generator, Object node,
-                                 RuntimeContext context) throws IOException {
+                                 NodeConfig context) throws IOException {
         Asserts.notNull(generator, "generator");
         Asserts.notNull(context, "context");
 
@@ -1085,7 +1085,7 @@ public final class StreamingIO {
 
 
     private static void _writeNode(StreamingGenerator generator, Object node, TypeInfo typeInfo,
-                                   RuntimeContext context) throws IOException {
+                                   NodeConfig context) throws IOException {
         if (node == null) {
             generator.writeNull();
             return;
@@ -1258,7 +1258,7 @@ public final class StreamingIO {
      */
     private static void _writeExternalNode(StreamingGenerator generator, Object node,
                                            ExternalNode<Object> external,
-                                           RuntimeContext context) throws IOException {
+                                           NodeConfig context) throws IOException {
         switch (external.jsonType(node)) {
             case NULL:
                 generator.writeNull();
@@ -1310,7 +1310,7 @@ public final class StreamingIO {
      */
 
     public static void writeMap(StreamingGenerator generator, Map<?, ?> map, TypeInfo valueTi,
-                                RuntimeContext context) throws IOException {
+                                NodeConfig context) throws IOException {
         generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
@@ -1327,7 +1327,7 @@ public final class StreamingIO {
 
 
     public static void writeJsonObject(StreamingGenerator generator, JsonObject object,
-                                       RuntimeContext context) throws IOException {
+                                       NodeConfig context) throws IOException {
         generator.writeObjectStart();
         int count = 0;
         for (Map.Entry<String, Object> entry : object.entrySet()) {
@@ -1350,7 +1350,7 @@ public final class StreamingIO {
      */
 
     public static void writeList(StreamingGenerator generator, List<?> list, TypeInfo elementTi,
-                                 RuntimeContext context) throws IOException {
+                                 NodeConfig context) throws IOException {
         generator.writeArrayStart();
         if (list instanceof RandomAccess) {
             for (int i = 0, size = list.size(); i < size; i++) {
@@ -1375,7 +1375,7 @@ public final class StreamingIO {
 
 
     public static void writeJsonArray(StreamingGenerator generator, JsonArray array,
-                                      RuntimeContext context) throws IOException {
+                                      NodeConfig context) throws IOException {
         generator.writeArrayStart();
         for (int i = 0, size = array.size(); i < size; i++) {
             if (i > 0) {
@@ -1388,7 +1388,7 @@ public final class StreamingIO {
 
 
     public static void writeSet(StreamingGenerator generator, Set<?> set, TypeInfo elementTi,
-                                RuntimeContext context) throws IOException {
+                                NodeConfig context) throws IOException {
         generator.writeArrayStart();
         boolean separated = false;
         for (Object value : set) {
@@ -1410,7 +1410,7 @@ public final class StreamingIO {
      */
 
     public static void writeArray(StreamingGenerator generator, Object node, Class<?> clazz, TypeInfo compTi,
-                                  RuntimeContext context) throws IOException {
+                                  NodeConfig context) throws IOException {
         generator.writeArrayStart();
         if (clazz == boolean[].class) {
             boolean[] array = (boolean[]) node;
@@ -1481,7 +1481,7 @@ public final class StreamingIO {
      */
 
     public static void writePojo(StreamingGenerator generator, Object node, PojoInfo pojoInfo,
-                                 RuntimeContext context) throws IOException {
+                                 NodeConfig context) throws IOException {
         generator.writeObjectStart();
         PropertyGenerator[] propertyGenerators = pojoInfo.propertyGenerators;
         CompiledName[] compiledNames = generator.compiledNames(pojoInfo);

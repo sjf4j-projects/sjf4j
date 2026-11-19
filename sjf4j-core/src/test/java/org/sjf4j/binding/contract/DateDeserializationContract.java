@@ -4,7 +4,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.value.ValueRegistry;
 import org.sjf4j.value.ValueCodec;
@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /** Opt-in epoch-millis date bindings using named SJF4J value codecs, not Jackson defaults. */
 public abstract class DateDeserializationContract {
-    protected abstract Binder<?, ?> binding(RuntimeContext context);
-    private static final RuntimeContext EPOCH_MILLIS = new RuntimeContext(java.util.Map.of(
+    protected abstract Binder<?, ?> binding(NodeConfig context);
+    private static final NodeConfig EPOCH_MILLIS = new NodeConfig(java.util.Map.of(
             Date.class, "epochMillis", Calendar.class, "epochMillis"));
 
     private static final class EpochMillisCodecs {
@@ -35,7 +35,7 @@ public abstract class DateDeserializationContract {
         static void ensureRegistered() { }
     }
 
-    private static RuntimeContext epochMillisContext() {
+    private static NodeConfig epochMillisContext() {
         EpochMillisCodecs.ensureRegistered();
         return EPOCH_MILLIS;
     }

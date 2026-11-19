@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Write;
@@ -110,10 +110,10 @@ public class CompiledJacksonNullOmissionTest {
     public void jackson2CompiledRespectsBothPolicies() throws IOException {
         TestBean bean = sample();
         Jackson2Compiled including = CompiledInstances.create(Jackson2Compiled.class,
-                new RuntimeContext(true));
+                new NodeConfig(true));
         Jackson2Compiled omitting = CompiledInstances.create(Jackson2Compiled.class,
-                new RuntimeContext(false));
-        Jackson2Binder runtime = new Jackson2Binder(new JsonFactory(), new RuntimeContext(false));
+                new NodeConfig(false));
+        Jackson2Binder runtime = new Jackson2Binder(new JsonFactory(), new NodeConfig(false));
 
         equivalent(runtime.writeNodeAsString(bean), omitting.writePojo(bean));
         equivalent(runtime.writeNodeAsString(bean),
@@ -143,11 +143,11 @@ public class CompiledJacksonNullOmissionTest {
     public void jackson3CompiledRespectsBothPolicies() throws IOException {
         TestBean bean = sample();
         Jackson3Compiled including = CompiledInstances.create(Jackson3Compiled.class,
-                new RuntimeContext(true));
+                new NodeConfig(true));
         Jackson3Compiled omitting = CompiledInstances.create(Jackson3Compiled.class,
-                new RuntimeContext(false));
+                new NodeConfig(false));
         Jackson3Binder runtime = new Jackson3Binder(
-                new tools.jackson.core.json.JsonFactory(), new RuntimeContext(false));
+                new tools.jackson.core.json.JsonFactory(), new NodeConfig(false));
 
         equivalent(runtime.writeNodeAsString(bean), omitting.writePojo(bean));
         equivalent(runtime.writeNodeAsString(bean),

@@ -3,7 +3,7 @@ package org.sjf4j.node;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeMapperFixtures.Box;
@@ -34,9 +34,9 @@ class NodeMapperCopyTest {
     void copyRecreatesNestedMutableNodesWhileConvertPreservesIdentity() {
         Profile source = profile();
 
-        assertSame(source, NodeMapper.convert(source, Profile.class, false, RuntimeContext.EMPTY));
+        assertSame(source, NodeMapper.convert(source, Profile.class, false, NodeConfig.DEFAULT));
 
-        Profile copied = (Profile) NodeMapper.convert(source, source.getClass(), true, RuntimeContext.EMPTY);
+        Profile copied = (Profile) NodeMapper.convert(source, source.getClass(), true, NodeConfig.DEFAULT);
 
         assertNotSame(source, copied);
         assertNotSame(source.aliases, copied.aliases);
@@ -58,8 +58,8 @@ class NodeMapperCopyTest {
         map.put("key", "value");
         JsonObject nested = JsonObject.of("value", 1);
         map.put("nested", nested);
-        JsonObject shallowObject = (JsonObject) NodeMapper.convert(map, JsonObject.class, false, RuntimeContext.EMPTY);
-        JsonObject deepObject = (JsonObject) NodeMapper.convert(map, JsonObject.class, true, RuntimeContext.EMPTY);
+        JsonObject shallowObject = (JsonObject) NodeMapper.convert(map, JsonObject.class, false, NodeConfig.DEFAULT);
+        JsonObject deepObject = (JsonObject) NodeMapper.convert(map, JsonObject.class, true, NodeConfig.DEFAULT);
         map.put("later", 2);
 
         assertFalse(shallowObject.containsKey("later"));
@@ -69,8 +69,8 @@ class NodeMapperCopyTest {
 
         List<Object> list = new ArrayList<>();
         list.add(1);
-        JsonArray shallowArray = (JsonArray) NodeMapper.convert(list, JsonArray.class, false, RuntimeContext.EMPTY);
-        JsonArray deepArray = (JsonArray) NodeMapper.convert(list, JsonArray.class, true, RuntimeContext.EMPTY);
+        JsonArray shallowArray = (JsonArray) NodeMapper.convert(list, JsonArray.class, false, NodeConfig.DEFAULT);
+        JsonArray deepArray = (JsonArray) NodeMapper.convert(list, JsonArray.class, true, NodeConfig.DEFAULT);
         list.add(2);
 
         assertEquals(1, shallowArray.size());
@@ -88,7 +88,7 @@ class NodeMapperCopyTest {
         source.value = rawUser;
 
         Box<GenericUser> bound = (Box<GenericUser>) NodeMapper.convert(
-                source, new TypeReference<Box<GenericUser>>() {}.getType(), true, RuntimeContext.EMPTY);
+                source, new TypeReference<Box<GenericUser>>() {}.getType(), true, NodeConfig.DEFAULT);
 
         assertNotSame(source, bound);
         assertInstanceOf(GenericUser.class, bound.value);
@@ -108,7 +108,7 @@ class NodeMapperCopyTest {
         source.add(rawUser);
 
         List<GenericUser> deepCopied = (List<GenericUser>) NodeMapper.convert(
-                source, new TypeReference<List<GenericUser>>() {}.getType(), true, RuntimeContext.EMPTY);
+                source, new TypeReference<List<GenericUser>>() {}.getType(), true, NodeConfig.DEFAULT);
 
         assertNotSame(source, deepCopied);
         assertNotSame(meta, deepCopied.get(0).meta);
@@ -122,9 +122,9 @@ class NodeMapperCopyTest {
         Type type = new TypeReference<List<Map<String, Object>>>() {}.getType();
 
         List<Map<String, Object>> shallow = (List<Map<String, Object>>) NodeMapper.convert(
-                source, type, false, RuntimeContext.EMPTY);
+                source, type, false, NodeConfig.DEFAULT);
         List<Map<String, Object>> deep = (List<Map<String, Object>>) NodeMapper.convert(
-                source, type, true, RuntimeContext.EMPTY);
+                source, type, true, NodeConfig.DEFAULT);
 
         assertNotSame(source, shallow);
         assertNotSame(source.get(0), shallow.get(0));
@@ -132,7 +132,7 @@ class NodeMapperCopyTest {
         assertNotSame(nested, deep.get(0).get("child"));
         ((JsonObject) deep.get(0).get("child")).put("n", 2);
         assertEquals(1, nested.getInt("n"));
-        assertSame(source, NodeMapper.convert(source, List.class, false, RuntimeContext.EMPTY));
+        assertSame(source, NodeMapper.convert(source, List.class, false, NodeConfig.DEFAULT));
     }
 
     @Test
@@ -142,10 +142,10 @@ class NodeMapperCopyTest {
         Type type = new TypeReference<Box<List<JsonObject>>>() {}.getType();
 
         Box<List<JsonObject>> shallow = (Box<List<JsonObject>>) NodeMapper.convert(
-                source, type, false, RuntimeContext.EMPTY);
+                source, type, false, NodeConfig.DEFAULT);
         Box<List<JsonObject>> deep = (Box<List<JsonObject>>) NodeMapper.convert(
-                source, type, true, RuntimeContext.EMPTY);
-        Object untyped = NodeMapper.convert(source, Object.class, true, RuntimeContext.EMPTY);
+                source, type, true, NodeConfig.DEFAULT);
+        Object untyped = NodeMapper.convert(source, Object.class, true, NodeConfig.DEFAULT);
 
         assertNotSame(source, shallow);
         assertNotSame(source.value, shallow.value);
@@ -163,18 +163,18 @@ class NodeMapperCopyTest {
         source.add(nested);
         source.add('A');
 
-        List<Object> copied = (List<Object>) NodeMapper.convert(source, Object.class, true, RuntimeContext.EMPTY);
+        List<Object> copied = (List<Object>) NodeMapper.convert(source, Object.class, true, NodeConfig.DEFAULT);
         assertNotSame(source, copied);
         assertNotSame(nested, copied.get(0));
         assertEquals('A', copied.get(1));
 
-        List<Object> raw = (List<Object>) NodeMapper.convertToRaw(source, RuntimeContext.EMPTY);
+        List<Object> raw = (List<Object>) NodeMapper.convertToRaw(source, NodeConfig.DEFAULT);
         assertEquals(Arrays.asList(Map.of("value", 1), "A"), raw);
         assertNotSame(nested, raw.get(0));
 
         source.add(new Object());
         BindingException error = assertThrows(BindingException.class,
-                () -> NodeMapper.convertToRaw(source, RuntimeContext.EMPTY));
+                () -> NodeMapper.convertToRaw(source, NodeConfig.DEFAULT));
         assertTrue(error.getMessage().contains("$[2]"));
     }
 }

@@ -2,7 +2,7 @@ package org.sjf4j.binding.contract;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Disabled;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.sjf4j.binding.Binder;
 
@@ -22,10 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 /** Portable collection cases from Jackson's CollectionDeserializationTest. */
 public abstract class CollectionDeserializationContract {
-    protected abstract Binder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(NodeConfig context);
     /** Source: CollectionDeserializationTest#testUntypedList. */
     @Test void testUntypedList() {
-        List<?> value = assertInstanceOf(List.class, binding(RuntimeContext.EMPTY).readNode("[\"text!\",true,null,23]", Object.class));
+        List<?> value = assertInstanceOf(List.class, binding(NodeConfig.DEFAULT).readNode("[\"text!\",true,null,23]", Object.class));
         assertEquals("text!", value.get(0));
         assertEquals(true, value.get(1));
         assertNull(value.get(2));
@@ -35,33 +35,33 @@ public abstract class CollectionDeserializationContract {
     /** Source: CollectionDeserializationTest#testExactStringCollection. */
     @Test
     void testExactStringCollection() {
-        assertEquals(List.of("a", "b"), binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<ArrayList<String>>() {}.getType()));
+        assertEquals(List.of("a", "b"), binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", new TypeReference<ArrayList<String>>() {}.getType()));
     }
 
     /** Source: CollectionDeserializationTest#testAbstractListAndSet (structural: source requests AbstractSet). */
     @Test
     void testSet() {
-        assertEquals(Set.of("a", "b"), binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<Set<String>>() {}.getType()));
+        assertEquals(Set.of("a", "b"), binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", new TypeReference<Set<String>>() {}.getType()));
     }
 
     /** Source: CollectionDeserializationTest#testJava6Types. */
     @Disabled("TODO: define default container and null policy for Queue/Deque across binding paths.")
     @SuppressWarnings("unchecked")
     @Test void testDeque() {
-        assertEquals(List.of(1, 2), new java.util.ArrayList<>((Deque<Integer>) binding(RuntimeContext.EMPTY).readNode("[1,2]", new TypeReference<Deque<Integer>>() {}.getType())));
+        assertEquals(List.of(1, 2), new java.util.ArrayList<>((Deque<Integer>) binding(NodeConfig.DEFAULT).readNode("[1,2]", new TypeReference<Deque<Integer>>() {}.getType())));
     }
 
     /** Retained SJF4J default concrete-collection coverage; no Jackson source attribution. */
     @Test void testConcreteCollections() {
-        assertEquals(List.of("a", "b"), binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<LinkedList<String>>() {}.getType()));
-        assertEquals(Set.of("a", "b"), binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<HashSet<String>>() {}.getType()));
-        assertEquals(Set.of("a", "b"), binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<LinkedHashSet<String>>() {}.getType()));
+        assertEquals(List.of("a", "b"), binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", new TypeReference<LinkedList<String>>() {}.getType()));
+        assertEquals(Set.of("a", "b"), binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", new TypeReference<HashSet<String>>() {}.getType()));
+        assertEquals(Set.of("a", "b"), binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", new TypeReference<LinkedHashSet<String>>() {}.getType()));
     }
 
     /** Retained SJF4J list-interface coverage; no Jackson source attribution. */
     @Test
     void testList() {
-        assertEquals(List.of("a", "b"), binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<List<String>>() {}.getType()));
+        assertEquals(List.of("a", "b"), binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", new TypeReference<List<String>>() {}.getType()));
     }
 
     /** Retained SJF4J queue-interface coverage; no Jackson source attribution. */
@@ -69,7 +69,7 @@ public abstract class CollectionDeserializationContract {
     @SuppressWarnings("unchecked")
     @Test
     void testQueue() {
-        assertEquals(List.of(1, 2), new ArrayList<>((Queue<Integer>) binding(RuntimeContext.EMPTY).readNode("[1,2]", new TypeReference<Queue<Integer>>() {}.getType())));
+        assertEquals(List.of(1, 2), new ArrayList<>((Queue<Integer>) binding(NodeConfig.DEFAULT).readNode("[1,2]", new TypeReference<Queue<Integer>>() {}.getType())));
     }
 
     /** Retained SJF4J concrete deque coverage; no Jackson source attribution. */
@@ -77,6 +77,6 @@ public abstract class CollectionDeserializationContract {
     @SuppressWarnings("unchecked")
     @Test
     void testArrayDeque() {
-        assertEquals(List.of("a", "b"), new java.util.ArrayList<>((ArrayDeque<String>) binding(RuntimeContext.EMPTY).readNode("[\"a\",\"b\"]", new TypeReference<ArrayDeque<String>>() {}.getType())));
+        assertEquals(List.of("a", "b"), new java.util.ArrayList<>((ArrayDeque<String>) binding(NodeConfig.DEFAULT).readNode("[\"a\",\"b\"]", new TypeReference<ArrayDeque<String>>() {}.getType())));
     }
 }

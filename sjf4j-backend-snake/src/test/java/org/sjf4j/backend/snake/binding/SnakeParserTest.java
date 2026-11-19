@@ -378,7 +378,7 @@ class SnakeParserTest {
     @Test
     void readsCommentsWhenParserExposesEvents() throws Exception {
         LoaderOptions options = new LoaderOptions().setProcessComments(true);
-        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.RuntimeContext.EMPTY);
+        SnakeBinder binder = new SnakeBinder(options, new DumperOptions(), org.sjf4j.NodeConfig.DEFAULT);
         assertEquals(1, ((Map<?, ?>) binder.readNode("# before\na: 1 # after\n", Object.class)).get("a"));
     }
 

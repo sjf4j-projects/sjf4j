@@ -46,7 +46,7 @@ final class CodecWriteEmitter {
             }
             out.endBlock(" else {");
             out.indent();
-            // A different RuntimeContext format or later registration may use
+            // A different NodeConfig format or later registration may use
             // a different raw type. Do not force the compiler's selected shape.
             out.line(generator + ".writeRaw(rawValue, this.context);");
             out.endBlock();

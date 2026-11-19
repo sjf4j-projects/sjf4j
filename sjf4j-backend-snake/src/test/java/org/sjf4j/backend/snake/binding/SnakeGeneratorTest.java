@@ -152,7 +152,7 @@ class SnakeGeneratorTest {
         options.setExplicitStart(true);
         options.setExplicitEnd(true);
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.FLOW);
-        SnakeBinder binder = new SnakeBinder(new LoaderOptions(), options, org.sjf4j.RuntimeContext.EMPTY);
+        SnakeBinder binder = new SnakeBinder(new LoaderOptions(), options, org.sjf4j.NodeConfig.DEFAULT);
         String yaml = binder.writeNodeAsString(Map.of("values", List.of(1, 2)));
         assertTrue(yaml.startsWith("---"));
         assertTrue(yaml.contains("[1, 2]"));

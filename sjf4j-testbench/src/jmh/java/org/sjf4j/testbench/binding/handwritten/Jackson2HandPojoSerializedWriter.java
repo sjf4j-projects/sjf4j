@@ -11,7 +11,7 @@ import org.sjf4j.testbench.model.Users;
 
 import java.io.IOException;
 import java.net.URI;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import java.util.List;
 
 /** Direct Jackson UTF-8 writer for {@link Users}. */
@@ -56,10 +56,10 @@ public final class Jackson2HandPojoSerializedWriter {
 
     /** Backwards-compatible default; benchmarks pass the same context as Compiled. */
     public static void writeUsers(JsonGenerator g, Users v) throws IOException {
-        writeUsers(g, v, RuntimeContext.EMPTY);
+        writeUsers(g, v, NodeConfig.DEFAULT);
     }
 
-    public static void writeUsers(JsonGenerator g, Users v, RuntimeContext context)
+    public static void writeUsers(JsonGenerator g, Users v, NodeConfig context)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -80,7 +80,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeEndObject();
     }
 
-    private static void users(JsonGenerator g, List<User> v, RuntimeContext context)
+    private static void users(JsonGenerator g, List<User> v, NodeConfig context)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -97,10 +97,10 @@ public final class Jackson2HandPojoSerializedWriter {
 
     /** Field order and null-policy branches mirror generated CompiledBinder. */
     public static void writeUser(JsonGenerator g, User v) throws IOException {
-        writeUser(g, v, RuntimeContext.EMPTY);
+        writeUser(g, v, NodeConfig.DEFAULT);
     }
 
-    public static void writeUser(JsonGenerator g, User v, RuntimeContext context)
+    public static void writeUser(JsonGenerator g, User v, NodeConfig context)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -179,7 +179,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeEndObject();
     }
 
-    private static void address(JsonGenerator g, Address v, RuntimeContext context)
+    private static void address(JsonGenerator g, Address v, NodeConfig context)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -209,7 +209,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeEndObject();
     }
 
-    private static void friends(JsonGenerator g, List<Friend> v, RuntimeContext context)
+    private static void friends(JsonGenerator g, List<Friend> v, NodeConfig context)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -224,7 +224,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeEndArray();
     }
 
-    private static void friend(JsonGenerator g, Friend v, RuntimeContext context)
+    private static void friend(JsonGenerator g, Friend v, NodeConfig context)
             throws IOException {
         if (v == null) {
             g.writeNull();
@@ -244,7 +244,7 @@ public final class Jackson2HandPojoSerializedWriter {
         g.writeEndObject();
     }
 
-    private static void tags(JsonGenerator g, List<String> v, RuntimeContext context)
+    private static void tags(JsonGenerator g, List<String> v, NodeConfig context)
             throws IOException {
         if (v == null) {
             g.writeNull();

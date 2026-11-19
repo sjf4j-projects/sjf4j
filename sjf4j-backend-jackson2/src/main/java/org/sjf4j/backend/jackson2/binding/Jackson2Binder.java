@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import org.sjf4j.binding.Binder;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.util.Asserts;
 
 import java.io.IOException;
@@ -25,14 +25,14 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
 
     /** Creates a binder with a default Jackson 2 factory. */
     public Jackson2Binder() {
-        this(new JsonFactory(), RuntimeContext.EMPTY);
+        this(new JsonFactory(), NodeConfig.DEFAULT);
     }
 
     /**
      * Creates a binder with default backend settings and a supplied runtime context.
      * @param context the SJF4J runtime settings
      */
-    public Jackson2Binder(RuntimeContext context) {
+    public Jackson2Binder(NodeConfig context) {
         this(new JsonFactory(), context);
     }
 
@@ -41,7 +41,7 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
      * @param factory the Jackson 2 factory to configure
      */
     public Jackson2Binder(JsonFactory factory) {
-        this(factory, RuntimeContext.EMPTY);
+        this(factory, NodeConfig.DEFAULT);
     }
 
     /**
@@ -50,7 +50,7 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
      * @param context the SJF4J runtime settings
      */
     @SuppressWarnings("deprecation")
-    public Jackson2Binder(JsonFactory factory, RuntimeContext context) {
+    public Jackson2Binder(JsonFactory factory, NodeConfig context) {
         super(context);
         Asserts.notNull(factory, "factory");
         this.factory = factory;

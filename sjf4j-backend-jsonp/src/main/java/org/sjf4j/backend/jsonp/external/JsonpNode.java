@@ -10,7 +10,7 @@ import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.external.ExternalNode;
@@ -60,7 +60,7 @@ public final class JsonpNode implements ExternalNode<JsonValue> {
     }
 
     @Override
-    public Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {
+    public Object convertContainer(Class<?> clazz, Object source, NodeConfig context) {
         JsonType shape = JsonType.of(source);
         if (shape.isObject()) {
             JsonObjectBuilder builder = Json.createObjectBuilder();

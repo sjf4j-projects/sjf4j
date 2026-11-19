@@ -1,6 +1,6 @@
 package org.sjf4j.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PojoInfo;
@@ -297,7 +297,7 @@ public abstract class StreamingGenerator implements Flushable, Closeable {
      * Raw denotes a data value, not unescaped JSON text.
      * Object null omission follows the supplied context; array nulls remain.
      */
-    public void writeRaw(Object raw, RuntimeContext context) throws IOException {
+    public void writeRaw(Object raw, NodeConfig context) throws IOException {
         if (raw == null) {
             writeNull();
         } else if (raw instanceof String) {

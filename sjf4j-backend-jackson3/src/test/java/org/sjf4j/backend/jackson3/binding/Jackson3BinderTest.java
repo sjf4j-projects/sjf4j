@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.PooledStringWriter;
 import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.binding.BinderProvider;
@@ -91,7 +91,7 @@ class Jackson3BinderTest {
         BinderProvider provider = BinderFactory.provider(Format.JSON);
 
         assertInstanceOf(Jackson3BinderProvider.class, provider);
-        assertInstanceOf(Jackson3Binder.class, provider.create(RuntimeContext.EMPTY));
+        assertInstanceOf(Jackson3Binder.class, provider.create(NodeConfig.DEFAULT));
     }
 
     @Test
@@ -116,7 +116,7 @@ class Jackson3BinderTest {
 
         String includingNulls = new Jackson3Binder(new JsonFactory())
                 .writeNodeAsString(value);
-        String omittingNulls = new Jackson3Binder(new JsonFactory(), new RuntimeContext(false))
+        String omittingNulls = new Jackson3Binder(new JsonFactory(), new NodeConfig(false))
                 .writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
@@ -126,7 +126,7 @@ class Jackson3BinderTest {
 
     @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
-        RuntimeContext context = new RuntimeContext(false);
+        NodeConfig context = new NodeConfig(false);
         Jackson3Binder binder = new Jackson3Binder(new JsonFactory(), context);
         StringWriter output = new StringWriter();
 

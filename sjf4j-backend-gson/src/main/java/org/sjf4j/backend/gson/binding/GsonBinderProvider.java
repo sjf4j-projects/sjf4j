@@ -1,7 +1,7 @@
 package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.Gson;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
@@ -48,7 +48,7 @@ public final class GsonBinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(NodeConfig context) {
         return new GsonBinder(new Gson(), context);
     }
 }

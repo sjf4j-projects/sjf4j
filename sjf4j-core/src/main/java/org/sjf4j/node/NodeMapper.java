@@ -6,7 +6,7 @@ import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
 import org.sjf4j.NodeKind;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.annotation.node.OneOfCase;
 import org.sjf4j.exception.BindingException;
@@ -64,7 +64,7 @@ public final class NodeMapper {
      * Character and enum values use their textual representation. A node value
      * must use a String raw representation under the selected value format.
      */
-    public static String toString(Object node, RuntimeContext context) {
+    public static String toString(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof String) return (String) node;
         if (node instanceof Character) return node.toString();
@@ -92,7 +92,7 @@ public final class NodeMapper {
      *
      * @throws NodeException if the node is not a supported scalar
      */
-    public static String asString(Object node, RuntimeContext context) {
+    public static String asString(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof String) return (String) node;
         if (node instanceof Number || node instanceof Boolean || node instanceof Character) {
@@ -123,7 +123,7 @@ public final class NodeMapper {
      * Returns a Character from a single-character string representation.
      * Empty or multi-character strings are rejected.
      */
-    public static Character toChar(Object node, RuntimeContext context) {
+    public static Character toChar(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
 
@@ -139,7 +139,7 @@ public final class NodeMapper {
      * Returns the first character of the lenient string representation.
      * Returns {@code null} for an absent or empty string.
      */
-    public static Character asChar(Object node, RuntimeContext context) {
+    public static Character asChar(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Character) return (Character) node;
 
@@ -151,7 +151,7 @@ public final class NodeMapper {
      * Resolves an enum constant by its exact name, using strict string semantics.
      * Numeric ordinals are not accepted.
      */
-    public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz, RuntimeContext context) {
+    public static <E extends Enum<E>> E toEnum(Object node, Class<E> enumClazz, NodeConfig context) {
         Asserts.notNull(enumClazz, "enumClazz");
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return enumClazz.cast(node);
@@ -171,7 +171,7 @@ public final class NodeMapper {
      * must be an exact, in-range integer. Numeric strings are treated as names,
      * not ordinals. Returns {@code null} for an unknown name or invalid ordinal.
      */
-    public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz, RuntimeContext context) {
+    public static <E extends Enum<E>> E asEnum(Object node, Class<E> enumClazz, NodeConfig context) {
         Asserts.notNull(enumClazz, "enumClazz");
         if (node == null) return null;
         if (enumClazz.isInstance(node)) return enumClazz.cast(node);
@@ -213,7 +213,7 @@ public final class NodeMapper {
      * Returns the numeric value of a number-shaped node without coercion from
      * strings or booleans. The selected value codec must have a numeric raw type.
      */
-    public static Number toNumber(Object node, RuntimeContext context) {
+    public static Number toNumber(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Number) return (Number) node;
 
@@ -235,7 +235,7 @@ public final class NodeMapper {
      * booleans map to 1/0, and enums map to their ordinal.
      * Invalid numeric text follows {@link Numbers#parseNumber(String)} semantics.
      */
-    public static Number asNumber(Object node, RuntimeContext context) {
+    public static Number asNumber(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Number) return (Number) node;
         if (node instanceof Boolean) return (Boolean) node ? 1 : 0;
@@ -264,7 +264,7 @@ public final class NodeMapper {
      * Returns a boolean-shaped node without coercion from numbers or strings.
      * The selected value codec must use Boolean as its raw type.
      */
-    public static Boolean toBoolean(Object node, RuntimeContext context) {
+    public static Boolean toBoolean(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
 
@@ -286,7 +286,7 @@ public final class NodeMapper {
      * Accepted strings are true/false, yes/no, on/off, and 1/0 (ignoring case).
      * Numeric values must be exactly 0 or 1; fractions and overflow are rejected.
      */
-    public static Boolean asBoolean(Object node, RuntimeContext context) {
+    public static Boolean asBoolean(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Boolean) return (Boolean) node;
         if (node instanceof String || node instanceof Character) {
@@ -328,7 +328,7 @@ public final class NodeMapper {
      * outer container; nested entry values are not recursively mapped.
      */
     @SuppressWarnings("unchecked")
-    public static JsonObject toJsonObject(Object node, RuntimeContext context) {
+    public static JsonObject toJsonObject(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof JsonObject) return (JsonObject) node;
         if (node instanceof Map) return new JsonObject((Map<String, Object>) node);
@@ -367,7 +367,7 @@ public final class NodeMapper {
      * not validate keys of existing maps at runtime.
      */
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> toMap(Object node, RuntimeContext context) {
+    public static Map<String, Object> toMap(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Map) return (Map<String, Object>) node;
         if (node instanceof JsonObject) return ((JsonObject) node).toMap();
@@ -406,7 +406,7 @@ public final class NodeMapper {
      * Map-backed object nodes must have String keys.
      */
     @SuppressWarnings("unchecked")
-    public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz, RuntimeContext context) {
+    public static <T> Map<String, T> toMap(Object node, Class<T> valueClazz, NodeConfig context) {
         if (node == null) return null;
         if (valueClazz == null || valueClazz == Object.class) {
             return (Map<String, T>) toMap(node, context);
@@ -432,7 +432,7 @@ public final class NodeMapper {
      * container, without recursively mapping child elements.
      */
     @SuppressWarnings("unchecked")
-    public static JsonArray toJsonArray(Object node, RuntimeContext context) {
+    public static JsonArray toJsonArray(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof JsonArray) return (JsonArray) node;
         if (node instanceof List) return new JsonArray((List<Object>) node);
@@ -469,7 +469,7 @@ public final class NodeMapper {
      * snapshot semantics; other sources copy only their outer sequence.
      */
     @SuppressWarnings("unchecked")
-    public static List<Object> toList(Object node, RuntimeContext context) {
+    public static List<Object> toList(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof List) return (List<Object>) node;
         if (node instanceof JsonArray) return ((JsonArray) node).toList();
@@ -504,7 +504,7 @@ public final class NodeMapper {
      * shallow List form, which may return the original List.
      */
     @SuppressWarnings("unchecked")
-    public static <T> List<T> toList(Object node, Class<T> elementClazz, RuntimeContext context) {
+    public static <T> List<T> toList(Object node, Class<T> elementClazz, NodeConfig context) {
         if (node == null) return null;
         if (elementClazz == null || elementClazz == Object.class) {
             return (List<T>) toList(node, context);
@@ -529,7 +529,7 @@ public final class NodeMapper {
      * array. Other indexed sources are shallowly copied into an Object array.
      */
     @SuppressWarnings("unchecked")
-    public static Object[] toArray(Object node, RuntimeContext context) {
+    public static Object[] toArray(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node.getClass().isArray()) {
             if (node.getClass().getComponentType().isPrimitive()) {
@@ -566,12 +566,12 @@ public final class NodeMapper {
 
     /**
      * Returns a typed reference array, adapting each element strictly.
-     * Passing null or Object.class uses {@link #toArray(Object, RuntimeContext)}.
-     * Primitive component types must use {@link #to(Object, Class, RuntimeContext)}
+     * Passing null or Object.class uses {@link #toArray(Object, NodeConfig)}.
+     * Primitive component types must use {@link #to(Object, Class, NodeConfig)}
      * with an array class such as {@code int[].class} instead.
      */
     @SuppressWarnings("unchecked")
-    public static <T> T[] toArray(Object node, Class<T> componentClazz, RuntimeContext context) {
+    public static <T> T[] toArray(Object node, Class<T> componentClazz, NodeConfig context) {
         if (node == null) return null;
         if (componentClazz == null || componentClazz == Object.class) {
             return (T[]) toArray(node, context);
@@ -601,7 +601,7 @@ public final class NodeMapper {
      * removing duplicates while preserving encounter order.
      */
     @SuppressWarnings("unchecked")
-    public static Set<Object> toSet(Object node, RuntimeContext context) {
+    public static Set<Object> toSet(Object node, NodeConfig context) {
         if (node == null) return null;
         if (node instanceof Set) return (Set<Object>) node;
         if (node instanceof List) {
@@ -636,7 +636,7 @@ public final class NodeMapper {
      * shallow Set form, which may return the original Set.
      */
     @SuppressWarnings("unchecked")
-    public static <T> Set<T> toSet(Object node, Class<T> elementClazz, RuntimeContext context) {
+    public static <T> Set<T> toSet(Object node, Class<T> elementClazz, NodeConfig context) {
         if (node == null) return null;
         if (elementClazz == null || elementClazz == Object.class) {
             return (Set<T>) toSet(node, context);
@@ -671,7 +671,7 @@ public final class NodeMapper {
      * structures through their value codecs.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static Object _adapt(Object node, Class<?> toClazz, boolean lenient, RuntimeContext context) {
+    private static Object _adapt(Object node, Class<?> toClazz, boolean lenient, NodeConfig context) {
         if (toClazz == Object.class) return node;
         if (node == null) return NodeMapper.convert(null, toClazz, false, context);
         if (toClazz.isInstance(node)) return node;
@@ -731,7 +731,7 @@ public final class NodeMapper {
      * @throws NullPointerException if clazz or context is null
      */
     @SuppressWarnings("unchecked")
-    public static <T> T to(Object node, Class<T> clazz, RuntimeContext context) {
+    public static <T> T to(Object node, Class<T> clazz, NodeConfig context) {
         Asserts.notNull(clazz, "clazz");
         return (T) _adapt(node, clazz, false, context);
     }
@@ -741,14 +741,14 @@ public final class NodeMapper {
      * <p>
      * Leniency applies to the requested scalar value, not recursively to POJO
      * properties or other nested members. Structural targets use the same
-     * mapping semantics as {@link #to(Object, Class, RuntimeContext)}.
+     * mapping semantics as {@link #to(Object, Class, NodeConfig)}.
      * An invalid enum name or ordinal returns null; other invalid coercions
      * may throw an exception.
      *
      * @throws NullPointerException if clazz or context is null
      */
     @SuppressWarnings("unchecked")
-    public static <T> T as(Object node, Class<T> clazz, RuntimeContext context) {
+    public static <T> T as(Object node, Class<T> clazz, NodeConfig context) {
         Asserts.notNull(clazz, "clazz");
         return (T) _adapt(node, clazz, true, context);
     }
@@ -766,7 +766,7 @@ public final class NodeMapper {
      * otherwise compatible values can be reused. Binding failures can carry
      * a node path to the value that could not be converted.
      */
-    public static Object convert(Object node, Type type, boolean deepCopy, RuntimeContext context) {
+    public static Object convert(Object node, Type type, boolean deepCopy, NodeConfig context) {
         Asserts.notNull(type, "type");
         Asserts.notNull(context, "context");
         try {
@@ -787,7 +787,7 @@ public final class NodeMapper {
      * <p>Object nodes become maps, array nodes become lists, and node values
      * are converted through their configured value codecs.
      */
-    public static Object convertToRaw(Object node, RuntimeContext context) {
+    public static Object convertToRaw(Object node, NodeConfig context) {
         Asserts.notNull(context, "context");
         return _convertToRaw(node, PathSegment.Root.INSTANCE, context);
     }
@@ -798,7 +798,7 @@ public final class NodeMapper {
      */
     @SuppressWarnings("unchecked")
     private static Object _convert(Object node, Type toType, Class<?> toBoxed,
-                                   TypeInfo ti, boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                   TypeInfo ti, boolean deepCopy, PathSegment ps, NodeConfig context) {
         try {
             if (node == null) {
                 if (ti == null) ti = TypeRegistry.registerTypeInfo(toBoxed);
@@ -931,7 +931,7 @@ public final class NodeMapper {
      */
     private static Object _convertValue(Object node, Class<?> toBoxed,
                                         ValueSet set,
-                                        boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                        boolean deepCopy, PathSegment ps, NodeConfig context) {
         String preferred = context.valueFormat(toBoxed);
         if (node == null) return set.selectForRead(JsonType.NULL, preferred).rawToValue(null);
         if (toBoxed.isInstance(node)) {
@@ -958,7 +958,7 @@ public final class NodeMapper {
     }
 
     private static Object _convertValue(Object node, Class<?> toBoxed, ValueInfo target,
-                                        boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                        boolean deepCopy, PathSegment ps, NodeConfig context) {
         if (node == null) return target.rawToValue(null);
         if (toBoxed.isInstance(node)) {
             return deepCopy ? target.valueCopy(node) : node;
@@ -984,7 +984,7 @@ public final class NodeMapper {
 
     private static Object _convertFromExternal(Object node, ExternalNode<Object> external,
                                                Class<?> toBoxed, Type type, boolean deepCopy,
-                                               PathSegment ps, RuntimeContext context) {
+                                               PathSegment ps, NodeConfig context) {
         switch (external.jsonType(node)) {
             case NULL:
                 return _convert(null, type, toBoxed, null, deepCopy, ps, context);
@@ -1012,7 +1012,7 @@ public final class NodeMapper {
      */
     private static Object _convertExternal(Object node, Class<?> toBoxed,
                                            ExternalNode<Object> target,
-                                           boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                           boolean deepCopy, PathSegment ps, NodeConfig context) {
         try {
             Object result;
             if (node == null) {
@@ -1086,7 +1086,7 @@ public final class NodeMapper {
     }
 
     private static Object _convertOneOf(Object node, Class<?> toBoxed,
-                                        OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, RuntimeContext context) {
+                                        OneOfInfo oneOfInfo, boolean deepCopy, PathSegment ps, NodeConfig context) {
         LazyTypeInfo target;
         if (oneOfInfo.hasDiscriminator && oneOfInfo.scope != OneOf.Scope.CURRENT) {
             throw new BindingException("oneOf scope '" + oneOfInfo.scope + "' is not supported", ps);
@@ -1172,7 +1172,7 @@ public final class NodeMapper {
      */
     @SuppressWarnings("unchecked")
     private static Object _deepCopy(Object node, Type toType, Class<?> toBoxed, PathSegment ps,
-                                    RuntimeContext context) {
+                                    NodeConfig context) {
         try {
             if (node == null) return null;
 
@@ -1337,7 +1337,7 @@ public final class NodeMapper {
     }
 
     private static Object _deepCopyPojo(Object source, Type type, Class<?> boxed, PojoInfo pojoInfo, PathSegment ps,
-                                        RuntimeContext context) {
+                                        NodeConfig context) {
         CreatorInfo ci = pojoInfo.requireCreatorInfo();
         int expected = pojoInfo.gettableProperties.length;
         if (source instanceof JsonObject) {
@@ -1423,7 +1423,7 @@ public final class NodeMapper {
                                                    Type type,
                                                    boolean deepCopy,
                                                    PathSegment ps,
-                                                   RuntimeContext context) {
+                                                   NodeConfig context) {
         if (Map.class.isAssignableFrom(toBoxed)) {
             Map<String, Object> map =
                     TypeRegistry.newMapContainer(toBoxed, sourceSize, false);
@@ -1469,7 +1469,7 @@ public final class NodeMapper {
      */
     private static Object _convertPojoFromEntries(Iterable<Map.Entry<String, Object>> entries, Type type, Class<?> toBoxed,
                                                   PojoInfo pi, boolean deepCopy, PathSegment ps,
-                                                  RuntimeContext context, boolean externalSource) {
+                                                  NodeConfig context, boolean externalSource) {
         CreatorInfo ci = pi.requireCreatorInfo();
         Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
         CreatorState state = direct == null ? new CreatorState(ci) : null;
@@ -1515,7 +1515,7 @@ public final class NodeMapper {
                                                int argIdx, Object rawValue,
                                                Type targetType, Class<?> targetClass,
                                                boolean deepCopy, PathSegment ps,
-                                               RuntimeContext context, boolean externalSource) {
+                                               NodeConfig context, boolean externalSource) {
         Type argType = Types.resolveMemberType(targetType, targetClass, creator.argTypes[argIdx]);
         Class<?> argRaw = Types.rawBox(argType);
         TypeInfo ti = TypeRegistry.registerTypeInfo(argRaw);
@@ -1536,7 +1536,7 @@ public final class NodeMapper {
     private static void _acceptPojoProperty(Object direct, CreatorState state, PropertyInfo property,
                                             Object rawValue, Type targetType, Class<?> targetClass,
                                             boolean deepCopy, PathSegment ps,
-                                            RuntimeContext context, boolean externalSource) {
+                                            NodeConfig context, boolean externalSource) {
         Type fieldType = property.genericDependent
                 ? Types.resolveMemberType(targetType, targetClass, property.type)
                 : property.type;
@@ -1573,7 +1573,7 @@ public final class NodeMapper {
                                           Type type,
                                           boolean deepCopy,
                                           PathSegment ps,
-                                          RuntimeContext context) {
+                                          NodeConfig context) {
         int size = oldSet.size();
 
         if (List.class.isAssignableFrom(toBoxed)) {
@@ -1659,7 +1659,7 @@ public final class NodeMapper {
                                                     Type type,
                                                     boolean deepCopy,
                                                     PathSegment ps,
-                                                    RuntimeContext context) {
+                                                    NodeConfig context) {
         // Snapshot only sequential Lists; indexed reads on them can be quadratic.
         // Keep native external, JsonArray (getNode), array and RandomAccess reads unchanged.
         if (source instanceof List && !(source instanceof RandomAccess)) {
@@ -1773,7 +1773,7 @@ public final class NodeMapper {
                                            Type type,
                                            boolean deepCopy,
                                            PathSegment ps,
-                                           RuntimeContext context) {
+                                           NodeConfig context) {
         if (Map.class.isAssignableFrom(toBoxed)) {
             Map<String, Object> map = TypeRegistry.newMapContainer(
                     toBoxed, sourceInfo.gettableProperties.length, false);
@@ -1816,7 +1816,7 @@ public final class NodeMapper {
                                                      PojoInfo targetInfo,
                                                      boolean deepCopy,
                                                      PathSegment ps,
-                                                     RuntimeContext context) {
+                                                     NodeConfig context) {
         CreatorInfo ci = targetInfo.requireCreatorInfo();
         Object direct = ci.hasNoArgsCreator() ? ci.newPojoNoArgs() : null;
         CreatorState state = direct == null ? new CreatorState(ci) : null;
@@ -1856,7 +1856,7 @@ public final class NodeMapper {
 
     private static Object _convertSourceChild(Object value, Type type, Class<?> raw,
                                                TypeInfo ti, boolean deepCopy,
-                                               PathSegment ps, RuntimeContext context,
+                                               PathSegment ps, NodeConfig context,
                                                boolean externalSource) {
         if (externalSource && raw == Object.class) {
             return _convertToRaw(value, ps, context);
@@ -1872,7 +1872,7 @@ public final class NodeMapper {
      */
 
     @SuppressWarnings("unchecked")
-    private static Object _convertToRaw(Object node, PathSegment ps, RuntimeContext context) {
+    private static Object _convertToRaw(Object node, PathSegment ps, NodeConfig context) {
         try {
             if (node == null) return null;
 

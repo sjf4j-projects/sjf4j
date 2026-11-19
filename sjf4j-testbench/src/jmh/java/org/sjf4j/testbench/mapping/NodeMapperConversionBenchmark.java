@@ -14,7 +14,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 import org.sjf4j.JsonArray;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.sjf4j.node.NodeMapper;
 
@@ -98,100 +98,100 @@ public class NodeMapperConversionBenchmark {
 
     @Benchmark
     public Object nodeMapper_pojoToPojo() {
-        return NodeMapper.convert(pojoSource, TargetUser.class, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(pojoSource, TargetUser.class, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_setToList() {
-        return NodeMapper.convert(setSource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(setSource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_setToPrimitiveArray() {
-        return NodeMapper.convert(setSource, int[].class, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(setSource, int[].class, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_setToJsonArray() {
-        return NodeMapper.convert(setSource, JsonArray.class, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(setSource, JsonArray.class, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_listToTypedList() {
-        return NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_jsonArrayToTypedList() {
-        return NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_javaArrayToTypedList() {
-        return NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_boxedLongArrayToTypedList() {
-        return NodeMapper.convert(boxedArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(boxedArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_intArrayToTypedList() {
-        return NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_byteArrayToTypedList() {
-        return NodeMapper.convert(byteArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(byteArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_shortArrayToTypedList() {
-        return NodeMapper.convert(shortArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(shortArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_floatArrayToTypedList() {
-        return NodeMapper.convert(floatArraySource, FLOAT_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(floatArraySource, FLOAT_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_doubleArrayToTypedList() {
-        return NodeMapper.convert(doubleArraySource, DOUBLE_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(doubleArraySource, DOUBLE_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_booleanArrayToTypedList() {
-        return NodeMapper.convert(booleanArraySource, BOOLEAN_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(booleanArraySource, BOOLEAN_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @Benchmark
     public Object nodeMapper_charArrayToTypedList() {
-        return NodeMapper.convert(charArraySource, CHARACTER_LIST_TYPE, false, RuntimeContext.EMPTY);
+        return NodeMapper.convert(charArraySource, CHARACTER_LIST_TYPE, false, NodeConfig.DEFAULT);
     }
 
     @SuppressWarnings("unchecked")
     private void verifySources() {
-        TargetUser target = (TargetUser) NodeMapper.convert(pojoSource, TargetUser.class, false, RuntimeContext.EMPTY);
+        TargetUser target = (TargetUser) NodeMapper.convert(pojoSource, TargetUser.class, false, NodeConfig.DEFAULT);
         if (!"Ann".equals(target.name) || target.age != 42) throw new AssertionError();
 
         List<Integer> list = (List<Integer>) NodeMapper.convert(
-                setSource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY);
-        int[] array = (int[]) NodeMapper.convert(setSource, int[].class, false, RuntimeContext.EMPTY);
-        JsonArray jsonArray = (JsonArray) NodeMapper.convert(setSource, JsonArray.class, false, RuntimeContext.EMPTY);
+                setSource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT);
+        int[] array = (int[]) NodeMapper.convert(setSource, int[].class, false, NodeConfig.DEFAULT);
+        JsonArray jsonArray = (JsonArray) NodeMapper.convert(setSource, JsonArray.class, false, NodeConfig.DEFAULT);
         if (list.size() != 32 || array.length != 32 || jsonArray.size() != 32) throw new AssertionError();
-        if (((List<?>) NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(boxedArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(byteArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(shortArraySource, INTEGER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(floatArraySource, FLOAT_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(doubleArraySource, DOUBLE_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(booleanArraySource, BOOLEAN_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
-                || ((List<?>) NodeMapper.convert(charArraySource, CHARACTER_LIST_TYPE, false, RuntimeContext.EMPTY)).size() != 32
+        if (((List<?>) NodeMapper.convert(listSource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(jsonArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(arraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(boxedArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(intArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(byteArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(shortArraySource, INTEGER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(floatArraySource, FLOAT_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(doubleArraySource, DOUBLE_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(booleanArraySource, BOOLEAN_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
+                || ((List<?>) NodeMapper.convert(charArraySource, CHARACTER_LIST_TYPE, false, NodeConfig.DEFAULT)).size() != 32
 ) {
             throw new AssertionError("indexed mapping baseline mismatch");
         }

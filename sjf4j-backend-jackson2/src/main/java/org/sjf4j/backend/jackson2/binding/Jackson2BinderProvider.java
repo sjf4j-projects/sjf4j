@@ -1,7 +1,7 @@
 package org.sjf4j.backend.jackson2.binding;
 
 import com.fasterxml.jackson.core.JsonFactory;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
@@ -48,7 +48,7 @@ public final class Jackson2BinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(NodeConfig context) {
         return new Jackson2Binder(new JsonFactory(), context);
     }
 

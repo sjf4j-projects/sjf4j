@@ -1,6 +1,6 @@
 package org.sjf4j.backend.jackson3.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
@@ -48,7 +48,7 @@ public final class Jackson3BinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(NodeConfig context) {
         return new Jackson3Binder(new JsonFactory(), context);
     }
 

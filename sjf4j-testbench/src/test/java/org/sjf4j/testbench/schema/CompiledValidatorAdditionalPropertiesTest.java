@@ -3,7 +3,7 @@ package org.sjf4j.testbench.schema;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
@@ -117,11 +117,11 @@ public class CompiledValidatorAdditionalPropertiesTest {
     }
 
     @Test
-    void dynamicPropertyCodecUsesCompiledRuntimeContext() {
+    void dynamicPropertyCodecUsesCompiledNodeConfig() {
         Instant when = Instant.ofEpochMilli(2_000);
         Checks defaults = CompiledInstances.create(Checks.class);
         Checks epoch = CompiledInstances.create(Checks.class,
-                new RuntimeContext(Map.of(Instant.class, "epochMillis")));
+                new NodeConfig(Map.of(Instant.class, "epochMillis")));
 
         assertFalse(defaults.dynamicNumber(Map.of("when", when)));
         assertTrue(epoch.dynamicNumber(Map.of("when", when)));

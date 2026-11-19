@@ -1,7 +1,7 @@
 package org.sjf4j.spring;
 
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.BeanFactory;
@@ -68,8 +68,8 @@ public final class CompiledBeanDefinitionRegistrar
             RootBeanDefinition definition = new RootBeanDefinition(implementation);
             definition.setLazyInit(true);
             definition.setInstanceSupplier(() -> {
-                RuntimeContext context = beanFactory.getBeanProvider(RuntimeContext.class)
-                        .getIfAvailable(() -> RuntimeContext.EMPTY);
+                NodeConfig context = beanFactory.getBeanProvider(NodeConfig.class)
+                        .getIfAvailable(() -> NodeConfig.DEFAULT);
                 return CompiledInstances.create(type, context);
             });
             registry.registerBeanDefinition(name, definition);

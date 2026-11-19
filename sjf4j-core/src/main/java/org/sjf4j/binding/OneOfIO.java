@@ -2,7 +2,7 @@ package org.sjf4j.binding;
 
 import org.sjf4j.JsonType;
 import org.sjf4j.Nodes;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.OneOf;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeMapper;
@@ -31,7 +31,7 @@ public final class OneOfIO {
      * The caller owns document boundaries and parser lifecycle.
      */
     public static Object readOneOf(StreamingParser parser, OneOfInfo oneOfInfo,
-                                   RuntimeContext context) throws IOException {
+                                   NodeConfig context) throws IOException {
         if (parser.peekToken() == StreamingParser.Token.NULL) {
             parser.nextIfNull();
             return null;
@@ -42,7 +42,7 @@ public final class OneOfIO {
     }
 
     static Object readOneOfByJsonType(StreamingParser parser, OneOfInfo oneOfInfo,
-                                      RuntimeContext context) throws IOException {
+                                      NodeConfig context) throws IOException {
         JsonType jsonType = parser.peekToken().jsonType();
         LazyTypeInfo target = oneOfInfo.lazyTypeInfoByJsonType(jsonType);
         if (target != null) {
@@ -60,7 +60,7 @@ public final class OneOfIO {
 
 
     static Object readOneOfByDtor(StreamingParser parser, OneOfInfo oneOfInfo,
-                                  RuntimeContext context) throws IOException {
+                                  NodeConfig context) throws IOException {
         if (oneOfInfo.scope != OneOf.Scope.CURRENT) {
             throw new BindingException("oneOf discriminator scope must be CURRENT here, but was " + oneOfInfo.scope);
         }
@@ -82,13 +82,13 @@ public final class OneOfIO {
 
 
     private static Object _readByDtorPath(StreamingParser parser, OneOfInfo oneOfInfo,
-                                          RuntimeContext context) throws IOException {
+                                          NodeConfig context) throws IOException {
         return _convertRawOneOf(parser.readRaw(), oneOfInfo, context);
     }
 
 
     private static Object _readByDtorKey(StreamingParser parser, OneOfInfo oneOfInfo,
-                                         RuntimeContext context) throws IOException {
+                                         NodeConfig context) throws IOException {
         final boolean fallbackNull = oneOfInfo.fallbackNull;
         final String discriminatorKey = oneOfInfo.discriminatorKey;
         String[] pendingNames = null;
@@ -148,7 +148,7 @@ public final class OneOfIO {
     private static Object _readPojoRemaining(StreamingParser parser, LazyTypeInfo target,
                                              String[] pendingNames, Object[] pendingValues, int pendingSize,
                                              String discriminatorKey, Object discriminatorValue,
-                                             RuntimeContext context) throws IOException {
+                                             NodeConfig context) throws IOException {
 
         Class<?> targetClazz = target.clazz;
         PojoInfo pi = target.requirePojoInfo();
@@ -285,7 +285,7 @@ public final class OneOfIO {
 
 
     private static void _acceptRawField(String key, Object rawValue, Class<?> ownerClazz,
-                                        PojoInfo pi, CreatorState state, RuntimeContext context) {
+                                        PojoInfo pi, CreatorState state, NodeConfig context) {
 
         CreatorInfo ci = pi.requireCreatorInfo();
         int argIdx = ci.getArgIndexOrAlias(key);
@@ -359,7 +359,7 @@ public final class OneOfIO {
 
 
     /** Converts an already-buffered OneOf node using its explicit member metadata. */
-    private static Object _convertRawOneOf(Object raw, OneOfInfo info, RuntimeContext context) {
+    private static Object _convertRawOneOf(Object raw, OneOfInfo info, NodeConfig context) {
         if (raw == null) return null;
 
         LazyTypeInfo target;

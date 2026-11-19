@@ -3,7 +3,7 @@ package org.sjf4j.external;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.NodeWalker;
@@ -282,7 +282,7 @@ public interface ExternalNode<N> {
      * StreamingIO does not route native targets through readRaw() and this
      * method to create immutable trees.</p>
      */
-    default Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {
+    default Object convertContainer(Class<?> clazz, Object source, NodeConfig context) {
         Class<N> nativeType = nodeType();
         switch (JsonType.of(source)) {
             case OBJECT: {

@@ -8,7 +8,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -115,14 +115,14 @@ class GsonBinderTest {
     }
 
     @Test
-    void runtimeContextControlsNullSerialization() {
+    void nodeConfigControlsNullSerialization() {
         Document value = document();
         Gson gson = new Gson();
 
         JsonObject nativeJson = JsonParser.parseString(gson.toJson(value)).getAsJsonObject();
         JsonObject binderJson = JsonParser.parseString(new GsonBinder(gson).writeNodeAsString(value)).getAsJsonObject();
         JsonObject omitNullsJson = JsonParser.parseString(
-                new GsonBinder(gson, new RuntimeContext(false)).writeNodeAsString(value)).getAsJsonObject();
+                new GsonBinder(gson, new NodeConfig(false)).writeNodeAsString(value)).getAsJsonObject();
 
         assertFalse(nativeJson.has("nullable"));
         assertTrue(binderJson.get("nullable").isJsonNull());
@@ -223,8 +223,8 @@ class GsonBinderTest {
         JsonObject object = new JsonObject();
         object.add("empty", JsonNull.INSTANCE);
 
-        GsonBinder withoutNulls = new GsonBinder(new Gson(), new RuntimeContext(false));
-        GsonBinder withNulls = new GsonBinder(new Gson(), RuntimeContext.EMPTY);
+        GsonBinder withoutNulls = new GsonBinder(new Gson(), new NodeConfig(false));
+        GsonBinder withNulls = new GsonBinder(new Gson(), NodeConfig.DEFAULT);
 
         assertFalse(JsonParser.parseString(withoutNulls.writeNodeAsString(object))
                 .getAsJsonObject().has("empty"));
@@ -247,7 +247,7 @@ class GsonBinderTest {
         java.util.Map<String, Object> wrapper = new java.util.LinkedHashMap<>();
         wrapper.put("ordinary", null);
         wrapper.put("native", nativeTree);
-        GsonBinder binder = new GsonBinder(new Gson(), new RuntimeContext(false));
+        GsonBinder binder = new GsonBinder(new Gson(), new NodeConfig(false));
         assertEquals(
                 "{\"native\":{\"child\":{},\"items\":[null,\"x\"]}}",
                 binder.writeNodeAsString(wrapper));

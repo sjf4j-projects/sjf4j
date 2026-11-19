@@ -5,7 +5,7 @@ import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.backend.jackson2.binding.Jackson2Parser;
 import org.sjf4j.annotation.binding.Backend;
@@ -162,7 +162,7 @@ public class OneOfReadBenchmark {
             parser.end();
             Object kind = ((Map<?, ?>) raw).get("kind");
             Class<?> subtype = "dog".equals(kind) ? Dog.class : Cat.class;
-            return (Pet) NodeMapper.convert(raw, subtype, false, RuntimeContext.EMPTY);
+            return (Pet) NodeMapper.convert(raw, subtype, false, NodeConfig.DEFAULT);
         } finally {
             parser.close();
         }

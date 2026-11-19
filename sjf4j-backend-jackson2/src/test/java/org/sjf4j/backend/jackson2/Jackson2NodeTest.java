@@ -26,7 +26,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.node.NodeMapper;
 import java.util.ServiceLoader;
 
@@ -199,7 +199,7 @@ class Jackson2NodeTest {
         source.put("items", Arrays.asList(true, 3, null));
 
         ObjectNode direct = (ObjectNode) node().convertContainer(
-                JsonNode.class, source, RuntimeContext.EMPTY);
+                JsonNode.class, source, NodeConfig.DEFAULT);
         assertEquals("Ada", direct.get("name").textValue());
         assertEquals(32, direct.get("age").intValue());
         assertEquals("Beijing", direct.get("address").get("city").textValue());
@@ -208,7 +208,7 @@ class Jackson2NodeTest {
         assertSame(NullNode.instance, direct.get("items").get(2));
 
         ObjectNode mapped = (ObjectNode) NodeMapper.convert(
-                source, JsonNode.class, false, RuntimeContext.EMPTY);
+                source, JsonNode.class, false, NodeConfig.DEFAULT);
         assertEquals(direct, mapped);
     }
 
@@ -219,9 +219,9 @@ class Jackson2NodeTest {
         source.put("child", child);
 
         ObjectNode shared = (ObjectNode) NodeMapper.convert(
-                source, JsonNode.class, false, RuntimeContext.EMPTY);
+                source, JsonNode.class, false, NodeConfig.DEFAULT);
         ObjectNode detached = (ObjectNode) NodeMapper.convert(
-                source, JsonNode.class, true, RuntimeContext.EMPTY);
+                source, JsonNode.class, true, NodeConfig.DEFAULT);
 
         assertSame(child, shared.get("child"));
         assertNotSame(child, detached.get("child"));

@@ -37,7 +37,7 @@ public final class GeneratedClass {
     private final List<Member> helpers = new ArrayList<>();
     private final List<Member> contextInitializers = new ArrayList<>();
 
-    private boolean runtimeContextConstructor;
+    private boolean nodeConfigConstructor;
     private String backendBinderType;
 
     private boolean valid = true;
@@ -154,8 +154,8 @@ public final class GeneratedClass {
      * Gives the generated implementation immutable per-instance runtime settings.
      * The no-arg constructor preserves the default settings contract.
      */
-    public void enableRuntimeContext() {
-        runtimeContextConstructor = true;
+    public void enableNodeConfig() {
+        nodeConfigConstructor = true;
     }
 
     /** Adds a constructor accepting the concrete backend Binder for a CompiledBinder. */
@@ -240,8 +240,8 @@ public final class GeneratedClass {
     private void writeMembers(JavaWriter out) {
         boolean written = false;
 
-        if (runtimeContextConstructor) {
-            out.line("private final org.sjf4j.RuntimeContext context;");
+        if (nodeConfigConstructor) {
+            out.line("private final org.sjf4j.NodeConfig context;");
             written = true;
         }
 
@@ -251,15 +251,15 @@ public final class GeneratedClass {
             written = true;
         }
 
-        if (runtimeContextConstructor) {
+        if (nodeConfigConstructor) {
             if (written) out.blank();
             out.beginBlock("public " + simpleName + "()");
             out.line(backendBinderType == null
-                    ? "this(org.sjf4j.RuntimeContext.EMPTY);"
+                    ? "this(org.sjf4j.NodeConfig.DEFAULT);"
                     : "this(new " + backendBinderType + "());");
             out.endBlock();
             out.blank();
-            out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
+            out.beginBlock("public " + simpleName + "(org.sjf4j.NodeConfig context)");
             if (backendBinderType == null) {
                 out.line("this.context = org.sjf4j.util.Asserts.notNull(context, \"context\");");
                 for (Member initializer : contextInitializers) initializer.write(out);

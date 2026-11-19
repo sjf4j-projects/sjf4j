@@ -1,6 +1,6 @@
 package org.sjf4j.spring.example;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.exception.BindingException;
@@ -37,7 +37,7 @@ public final class MyHttpMessageConverter extends AbstractGenericHttpMessageConv
     private final Binder<?, ?> json;
     private final Binder<?, ?> yaml;
 
-    public MyHttpMessageConverter(RuntimeContext context) {
+    public MyHttpMessageConverter(NodeConfig context) {
         this(BinderFactory.jsonProvider().create(context),
                 BinderFactory.yamlProvider().create(context));
     }

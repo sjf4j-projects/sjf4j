@@ -1,7 +1,7 @@
 package org.sjf4j.spring.boot;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.spring.CompiledBeanDefinitionRegistrar;
 import org.sjf4j.spring.EnableSjf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -81,8 +81,8 @@ class Sjf4jAutoConfigurationTest {
     }
 
     @Test
-    void acceptsUserRuntimeContext() {
-        runner.withBean(RuntimeContext.class, () -> RuntimeContext.EMPTY)
+    void acceptsUserNodeConfig() {
+        runner.withBean(NodeConfig.class, () -> NodeConfig.DEFAULT)
                 .run(context -> assertThat(context).hasSingleBean(CompiledFixtures.UserMapper.class));
     }
 

@@ -2,7 +2,7 @@ package org.sjf4j.backend.jsonp.binding;
 
 import jakarta.json.JsonException;
 import jakarta.json.spi.JsonProvider;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.Format;
 import org.sjf4j.binding.Binder;
@@ -49,7 +49,7 @@ public final class JsonpBinderProvider implements BinderProvider {
     }
 
     @Override
-    public Binder<?, ?> create(RuntimeContext context) {
+    public Binder<?, ?> create(NodeConfig context) {
         if (!AVAILABLE) {
             throw new IllegalStateException("no Jakarta JSON-P implementation available; add a JSON-P provider");
         }
