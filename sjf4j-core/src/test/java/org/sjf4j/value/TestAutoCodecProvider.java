@@ -1,9 +1,7 @@
 package org.sjf4j.value;
 
-import org.sjf4j.annotation.node.ValueCodecRegistry;
 
 /** Test SPI provider, discovered without explicit registerAnnotated(). */
-@ValueCodecRegistry
 public final class TestAutoCodecProvider implements ValueCodecProvider {
 
     public TestAutoCodecProvider() {
