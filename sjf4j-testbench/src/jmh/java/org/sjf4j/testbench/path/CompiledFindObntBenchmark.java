@@ -57,7 +57,7 @@ public class CompiledFindObntBenchmark {
         List<Object> externalDescendant(JsonNode root);
     }
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     public interface CompiledFilter {
         @FindByPath("$.books[?(@.score >= $.limit)].name.title")
         List<Object> externalFilter(JsonNode root);
