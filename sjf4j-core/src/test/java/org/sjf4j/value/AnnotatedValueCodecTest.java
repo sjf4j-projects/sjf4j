@@ -2,6 +2,7 @@ package org.sjf4j.value;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.ValueCodecRegistry;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.TypeRegistry;
@@ -27,6 +28,7 @@ class AnnotatedValueCodecTest {
                 v -> v.text + suffix, raw -> new Key(raw + suffix));
     }
 
+    @ValueCodecRegistry
     public static final class KeyCodecs {
         // Deliberately named before the default to prove reflection order is irrelevant.
         @NodeValue(format = "expanded")
@@ -85,6 +87,7 @@ class AnnotatedValueCodecTest {
         NamedOnly(String value) { this.value = value; }
     }
 
+    @ValueCodecRegistry
     public static final class NamedOnlyCodecs {
         @NodeValue(format = "zzz")
         public static final ValueCodec<NamedOnly, String> B_ZZZ =
@@ -97,6 +100,7 @@ class AnnotatedValueCodecTest {
                         x -> x.value, NamedOnly::new);
     }
 
+    @ValueCodecRegistry
     public static final class NamedOnlyPreferred {
         @NodeValue(format = "preferred", defaultCodec = true)
         public static final ValueCodec<NamedOnly, String> PREFERRED =
@@ -113,22 +117,27 @@ class AnnotatedValueCodecTest {
         assertEquals("preferred", ValueRegistry.resolve(NamedOnly.class).defaultInfo.valueFormat);
     }
 
+    @ValueCodecRegistry
     public static class NotStatic {
         @NodeValue public final ValueCodec<Key, String> BAD = codec("");
     }
 
+    @ValueCodecRegistry
     public static class NotFinal {
         @NodeValue public static ValueCodec<Key, String> BAD = codec("");
     }
 
+    @ValueCodecRegistry
     public static class NotPublic {
         @NodeValue private static final ValueCodec<Key, String> BAD = codec("");
     }
 
+    @ValueCodecRegistry
     public static class NotCodec {
         @NodeValue public static final String BAD = "bad";
     }
 
+    @ValueCodecRegistry
     public static class RawType {
         @SuppressWarnings("rawtypes")
         @NodeValue public static final ValueCodec BAD = codec("");
@@ -139,16 +148,19 @@ class AnnotatedValueCodecTest {
         Mismatched(String value) { this.value = value; }
     }
 
+    @ValueCodecRegistry
     public static class WrongDeclaredValueType {
         @SuppressWarnings({"unchecked", "rawtypes"})
         @NodeValue public static final ValueCodec<Mismatched, String> BAD =
                 (ValueCodec) codec("");
     }
 
+    @ValueCodecRegistry
     public static class NullCodec {
         @NodeValue public static final ValueCodec<Mismatched, String> BAD = null;
     }
 
+    @ValueCodecRegistry
     public static class DuplicateDefault {
         @NodeValue(format = "first", defaultCodec = true)
         public static final ValueCodec<Mismatched, String> FIRST =
@@ -160,6 +172,7 @@ class AnnotatedValueCodecTest {
                         x -> x.value, Mismatched::new);
     }
 
+    @ValueCodecRegistry
     public static class DuplicateCodecInstance {
         private static final ValueCodec<Mismatched, String> SHARED =
                 new ValueCodec.SimpleValueCodec<>(Mismatched.class, String.class,
@@ -170,6 +183,7 @@ class AnnotatedValueCodecTest {
         public static final ValueCodec<Mismatched, String> SECOND = SHARED;
     }
 
+    @ValueCodecRegistry
     public static class DuplicateAcrossFields {
         @NodeValue(format = "same")
         public static final ValueCodec<Mismatched, String> FIRST =
