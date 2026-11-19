@@ -26,8 +26,8 @@ public final class Fastjson2BinderProvider implements BinderProvider {
 
     /**
      * Creates a provider that uses the supplied contexts for every binder it creates.
-     * @param readerContext the shared read config
-     * @param writerContext the shared write config
+     * @param readerContext the shared Fastjson2 read context
+     * @param writerContext the shared Fastjson2 write context
      * @return a JSON binder provider using these contexts
      */
     public static BinderProvider of(JSONReader.Context readerContext, JSONWriter.Context writerContext) {

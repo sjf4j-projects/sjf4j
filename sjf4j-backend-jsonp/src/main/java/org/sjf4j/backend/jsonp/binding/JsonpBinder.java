@@ -32,8 +32,8 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime config.
-     * @param config the SJF4J runtime settings
+     * Creates a binder with default backend settings and supplied node configuration.
+     * @param config the SJF4J node configuration
      */
     public JsonpBinder(NodeConfig config) {
         this(JsonProvider.provider(), config);
@@ -50,7 +50,7 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
     /**
      * Creates a binder with an explicit provider and runtime settings.
      * @param provider the JSON-P provider
-     * @param config the SJF4J runtime settings
+     * @param config the SJF4J node configuration
      */
     public JsonpBinder(JsonProvider provider, NodeConfig config) {
         super(config);
