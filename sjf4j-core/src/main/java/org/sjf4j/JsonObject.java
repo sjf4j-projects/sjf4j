@@ -457,7 +457,7 @@ public class JsonObject extends JsonContainer {
      * Structurally converts a value to a JsonObject.
      */
     public static JsonObject fromNode(Object node) {
-        return (JsonObject) NodeMapper.convert(node, JsonObject.class, false, RuntimeContext.EMPTY);
+        return (JsonObject) NodeMapper.convert(node, JsonObject.class, false, NodeConfig.DEFAULT);
     }
 
 

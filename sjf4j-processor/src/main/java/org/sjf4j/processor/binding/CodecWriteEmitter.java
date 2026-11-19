@@ -25,7 +25,7 @@ final class CodecWriteEmitter {
         String method = value.codecRawType() == null ? null
                 : nativeWrite(value.codecRawType().toString(), backend, nativeWriter != null);
         if (method == null) {
-            out.line(generator + ".writeRaw(" + info + ".valueToRaw(codecValue), this.context);");
+            out.line(generator + ".writeRaw(" + info + ".valueToRaw(codecValue), this.config);");
         } else {
             out.line("Object rawValue = " + info + ".valueToRaw(codecValue);");
             out.beginBlock("if (" + info + ".rawClazz == "
@@ -46,9 +46,9 @@ final class CodecWriteEmitter {
             }
             out.endBlock(" else {");
             out.indent();
-            // A different RuntimeContext format or later registration may use
+            // A different NodeConfig format or later registration may use
             // a different raw type. Do not force the compiler's selected shape.
-            out.line(generator + ".writeRaw(rawValue, this.context);");
+            out.line(generator + ".writeRaw(rawValue, this.config);");
             out.endBlock();
         }
         out.endBlock();

@@ -60,7 +60,7 @@ public abstract class JsonContainer {
     @SuppressWarnings("unchecked")
     public <T> T toNode(Class<T> clazz, boolean deepCopy) {
         Asserts.notNull(clazz, "clazz");
-        return (T) NodeMapper.convert(this, clazz, deepCopy, RuntimeContext.EMPTY);
+        return (T) NodeMapper.convert(this, clazz, deepCopy, NodeConfig.DEFAULT);
     }
 
     /**
@@ -69,7 +69,7 @@ public abstract class JsonContainer {
      * are encoded using their configured codecs.
      */
     public Object toRaw() {
-        return NodeMapper.convertToRaw(this, RuntimeContext.EMPTY);
+        return NodeMapper.convertToRaw(this, NodeConfig.DEFAULT);
     }
 
 

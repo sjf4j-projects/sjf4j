@@ -192,9 +192,9 @@ public final class ConversionEmitter
             String field = entry.getValue();
 
             generated.addField(out -> out.line("private final " + type + " " + field + ";"));
-            generated.addContextInitializer(out ->
+            generated.addConfigInitializer(out ->
                     out.line("this." + field + " = org.sjf4j.CompiledInstances.create(" +
-                            type + ".class, context);"));
+                            type + ".class, config);"));
         }
     }
 
@@ -552,18 +552,18 @@ public final class ConversionEmitter
         String target = rawName(targetType);
         String expr;
         if ("java.lang.String".equals(target)) {
-            expr = "org.sjf4j.node.NodeMapper.asString(" + source + ", this.context)";
+            expr = "org.sjf4j.node.NodeMapper.asString(" + source + ", this.config)";
         } else if ("java.lang.Boolean".equals(target)) {
-            expr = "org.sjf4j.node.NodeMapper.asBoolean(" + source + ", this.context)";
+            expr = "org.sjf4j.node.NodeMapper.asBoolean(" + source + ", this.config)";
         } else if ("java.lang.Character".equals(target)) {
-            expr = "org.sjf4j.node.NodeMapper.asChar(" + source + ", this.context)";
+            expr = "org.sjf4j.node.NodeMapper.asChar(" + source + ", this.config)";
         } else if (isEnum(targetType)) {
             expr = "org.sjf4j.node.NodeMapper.asEnum(" + source + ", "
-                    + classLiteral(targetType) + ", this.context)";
+                    + classLiteral(targetType) + ", this.config)";
         } else {
             // Numeric targets are normalized and range-checked by NodeMapper.as.
             expr = "org.sjf4j.node.NodeMapper.as(" + source + ", "
-                    + classLiteral(targetType) + ", this.context)";
+                    + classLiteral(targetType) + ", this.config)";
         }
         out.line(localType(targetType) + " " + result + " = " + expr + ";");
         return result;
@@ -1072,7 +1072,7 @@ public final class ConversionEmitter
         String result = names.newName("raw");
         out.line(localType(targetType) + " " + result + " = "
                 + cast(targetType, "org.sjf4j.node.NodeMapper.convertToRaw("
-                        + source + ", this.context)") + ";");
+                        + source + ", this.config)") + ";");
         return result;
     }
 
@@ -1083,11 +1083,11 @@ public final class ConversionEmitter
             // Same strict semantics as NodeMapper.to(node, String.class, context),
             // but avoid target-class dispatch for a statically known String.
             out.line("java.lang.String " + result + " = org.sjf4j.node.NodeMapper.toString("
-                    + source + ", this.context);");
+                    + source + ", this.config);");
         } else {
             out.line(localType(targetType) + " " + result + " = " + mapperToCast(targetType) +
                     "org.sjf4j.node.NodeMapper.to(" + source + ", " + classLiteral(targetType) +
-                    ", this.context);");
+                    ", this.config);");
         }
 
         return result;

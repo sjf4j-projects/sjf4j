@@ -7,7 +7,7 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.Nodes;
 import org.sjf4j.NodeKind;
 import org.sjf4j.JsonType;
@@ -47,7 +47,7 @@ class JsonpExternalMappingTest {
                 .build();
 
         Map<String, Object> map = (Map<String, Object>) NodeMapper.convert(
-                nativeObject, new TypeReference<Map<String, Object>>() {}.getType(), false, RuntimeContext.EMPTY);
+                nativeObject, new TypeReference<Map<String, Object>>() {}.getType(), false, NodeConfig.DEFAULT);
 
         // The parameterized Map is reconstructed, but Object-typed children
         // retain their native JSON-P values in non-copy conversion mode.
@@ -60,7 +60,7 @@ class JsonpExternalMappingTest {
 
         // Explicit raw conversion recursively converts native scalars and null.
         Map<String, Object> raw = (Map<String, Object>)
-                NodeMapper.convertToRaw(nativeObject, RuntimeContext.EMPTY);
+                NodeMapper.convertToRaw(nativeObject, NodeConfig.DEFAULT);
         assertNotSame(nativeObject, raw);
         assertEquals(1, ((Number) raw.get("a")).intValue());
         assertEquals(Arrays.asList("x", null), raw.get("names"));
@@ -76,7 +76,7 @@ class JsonpExternalMappingTest {
         source.put("big", new BigInteger("123456789012345678901234567890"));
         source.put("items", Arrays.asList(1, null, "three"));
 
-        JsonObject target = (JsonObject) NodeMapper.convert(source, JsonValue.class, false, RuntimeContext.EMPTY);
+        JsonObject target = (JsonObject) NodeMapper.convert(source, JsonValue.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", target.getString("name"));
         assertTrue(target.getBoolean("active"));
         assertSame(JsonValue.NULL, target.get("nothing"));
@@ -88,17 +88,17 @@ class JsonpExternalMappingTest {
 
         // The container kind stays Map/List, while its cached builder can
         // materialize an immutable native target.
-        assertEquals(target, NodeMapper.convert(source, JsonObject.class, false, RuntimeContext.EMPTY));
+        assertEquals(target, NodeMapper.convert(source, JsonObject.class, false, NodeConfig.DEFAULT));
         JsonArray directArray = (JsonArray) NodeMapper.convert(
-                Arrays.asList(1, null), JsonArray.class, false, RuntimeContext.EMPTY);
+                Arrays.asList(1, null), JsonArray.class, false, NodeConfig.DEFAULT);
         assertEquals(2, directArray.size());
         assertSame(JsonValue.NULL, directArray.get(1));
         assertEquals(target, Nodes.to(source, JsonObject.class));
         assertEquals(directArray, Nodes.to(Arrays.asList(1, null), JsonArray.class));
-        assertNull(NodeMapper.convert(null, JsonValue.class, false, RuntimeContext.EMPTY));
-        assertInstanceOf(JsonString.class, NodeMapper.convert("x", JsonString.class, false, RuntimeContext.EMPTY));
-        assertEquals(7, ((JsonNumber) NodeMapper.convert(7, JsonNumber.class, false, RuntimeContext.EMPTY)).intValue());
-        assertThrows(BindingException.class, () -> NodeMapper.convert("not an object", JsonObject.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(null, JsonValue.class, false, NodeConfig.DEFAULT));
+        assertInstanceOf(JsonString.class, NodeMapper.convert("x", JsonString.class, false, NodeConfig.DEFAULT));
+        assertEquals(7, ((JsonNumber) NodeMapper.convert(7, JsonNumber.class, false, NodeConfig.DEFAULT)).intValue());
+        assertThrows(BindingException.class, () -> NodeMapper.convert("not an object", JsonObject.class, false, NodeConfig.DEFAULT));
     }
 
     @Test
@@ -111,13 +111,13 @@ class JsonpExternalMappingTest {
                 new LinkedHashSet<>(Arrays.asList(1, 2, 3))
         };
         for (Object source : sources) {
-            JsonArray array = (JsonArray) NodeMapper.convert(source, JsonValue.class, false, RuntimeContext.EMPTY);
+            JsonArray array = (JsonArray) NodeMapper.convert(source, JsonValue.class, false, NodeConfig.DEFAULT);
             assertEquals(3, array.size());
             assertEquals(1, array.getInt(0));
             assertEquals(3, array.getInt(2));
         }
         JsonArray withNull = (JsonArray) NodeMapper.convert(
-                new Integer[]{1, null, 3}, JsonValue.class, false, RuntimeContext.EMPTY);
+                new Integer[]{1, null, 3}, JsonValue.class, false, NodeConfig.DEFAULT);
         assertSame(JsonValue.NULL, withNull.get(1));
     }
 
@@ -128,18 +128,18 @@ class JsonpExternalMappingTest {
         pojo.code = new Encoded("coded");
         pojo.items = Arrays.asList("a", null);
 
-        JsonObject fromPojo = (JsonObject) NodeMapper.convert(pojo, JsonValue.class, false, RuntimeContext.EMPTY);
+        JsonObject fromPojo = (JsonObject) NodeMapper.convert(pojo, JsonValue.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", fromPojo.getString("name"));
         assertEquals("coded", fromPojo.getString("code"));
         assertSame(JsonValue.NULL, fromPojo.getJsonArray("items").get(1));
 
         org.sjf4j.JsonObject jojo = org.sjf4j.JsonObject.of(
                 "static", "value", "dynamic", Arrays.asList(true, false));
-        JsonObject fromJojo = (JsonObject) NodeMapper.convert(jojo, JsonValue.class, true, RuntimeContext.EMPTY);
+        JsonObject fromJojo = (JsonObject) NodeMapper.convert(jojo, JsonValue.class, true, NodeConfig.DEFAULT);
         assertEquals("value", fromJojo.getString("static"));
         assertTrue(fromJojo.getJsonArray("dynamic").getBoolean(0));
 
-        JsonValue code = (JsonValue) NodeMapper.convert(new Encoded("root"), JsonValue.class, false, RuntimeContext.EMPTY);
+        JsonValue code = (JsonValue) NodeMapper.convert(new Encoded("root"), JsonValue.class, false, NodeConfig.DEFAULT);
         assertEquals("root", ((JsonString) code).getString());
         assertEquals("coded", pojo.code.value);
     }
@@ -164,17 +164,17 @@ class JsonpExternalMappingTest {
         assertEquals(2, Nodes.sizeInArray(nativeArray));
 
         // Assignable targets preserve identity without deep copying.
-        assertSame(source, NodeMapper.convert(source, JsonValue.class, false, RuntimeContext.EMPTY));
-        assertSame(source, NodeMapper.convert(source, JsonObject.class, false, RuntimeContext.EMPTY));
-        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, false, RuntimeContext.EMPTY));
+        assertSame(source, NodeMapper.convert(source, JsonValue.class, false, NodeConfig.DEFAULT));
+        assertSame(source, NodeMapper.convert(source, JsonObject.class, false, NodeConfig.DEFAULT));
+        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, false, NodeConfig.DEFAULT));
 
         // The cached native adapter supplies construction/copy without changing
         // the container's NodeKind or Java Map/List read semantics.
         assertNotNull(TypeRegistry.registerTypeInfo(JsonObject.class).containerInfo.externalNode);
         assertNotNull(TypeRegistry.registerTypeInfo(JsonArray.class).containerInfo.externalNode);
-        assertSame(source, NodeMapper.convert(source, JsonValue.class, true, RuntimeContext.EMPTY));
-        assertSame(source, NodeMapper.convert(source, JsonObject.class, true, RuntimeContext.EMPTY));
-        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, true, RuntimeContext.EMPTY));
+        assertSame(source, NodeMapper.convert(source, JsonValue.class, true, NodeConfig.DEFAULT));
+        assertSame(source, NodeMapper.convert(source, JsonObject.class, true, NodeConfig.DEFAULT));
+        assertSame(nativeArray, NodeMapper.convert(nativeArray, JsonArray.class, true, NodeConfig.DEFAULT));
         JsonObject shallowObject = Nodes.copy(source);
         JsonArray shallowArray = Nodes.copy(nativeArray);
         assertNotSame(source, shallowObject);
@@ -208,7 +208,7 @@ class JsonpExternalMappingTest {
 
         // Map/List-first, no deep copy: preserve the source instance.
         Map<String, Object> map = (Map<String, Object>)
-                NodeMapper.convert(nativeObject, Map.class, false, RuntimeContext.EMPTY);
+                NodeMapper.convert(nativeObject, Map.class, false, NodeConfig.DEFAULT);
         assertSame(nativeObject, map);
         assertEquals(1, ((JsonNumber) map.get("a")).intValue());
         assertSame(nativeObject.get("items"), map.get("items"));
@@ -216,19 +216,19 @@ class JsonpExternalMappingTest {
         JsonArray nativeArray = Json.createArrayBuilder()
                 .add(Json.createObjectBuilder().add("id", 1))
                 .addNull().build();
-        List<?> list = (List<?>) NodeMapper.convert(nativeArray, List.class, false, RuntimeContext.EMPTY);
+        List<?> list = (List<?>) NodeMapper.convert(nativeArray, List.class, false, NodeConfig.DEFAULT);
         assertSame(nativeArray, list);
         assertEquals(1, ((JsonNumber) ((JsonObject) list.get(0)).get("id")).intValue());
         assertSame(JsonValue.NULL, list.get(1));
 
         // Detached raw values are an explicit separate operation.
         Map<String, Object> rawMap = (Map<String, Object>)
-                NodeMapper.convertToRaw(nativeObject, RuntimeContext.EMPTY);
+                NodeMapper.convertToRaw(nativeObject, NodeConfig.DEFAULT);
         assertFalse(rawMap instanceof JsonValue);
         assertEquals(1, ((Number) rawMap.get("a")).intValue());
         assertEquals(Arrays.asList(null, "x"), rawMap.get("items"));
 
-        List<?> rawList = (List<?>) NodeMapper.convertToRaw(nativeArray, RuntimeContext.EMPTY);
+        List<?> rawList = (List<?>) NodeMapper.convertToRaw(nativeArray, NodeConfig.DEFAULT);
         assertFalse(rawList instanceof JsonValue);
         assertEquals(1, ((Number) ((Map<?, ?>) rawList.get(0)).get("id")).intValue());
         assertNull(rawList.get(1));

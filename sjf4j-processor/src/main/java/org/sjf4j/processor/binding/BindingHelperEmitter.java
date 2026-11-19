@@ -99,7 +99,7 @@ final class BindingHelperEmitter {
             String set = names.field(value, "valueSet",
                     BindingNames.lowerType(value.type()) + "ValueSet");
             generated.addField(out -> out.line("private final org.sjf4j.value.ValueSet " + set + ";"));
-            generated.addContextInitializer(out -> out.line(
+            generated.addConfigInitializer(out -> out.line(
                     "this." + set + " = org.sjf4j.meta.TypeRegistry.registerTypeInfo("
                             + value.type() + ".class).valueSet;"));
         }
@@ -108,20 +108,20 @@ final class BindingHelperEmitter {
         generated.addField(out -> out.line(
                 "private final org.sjf4j.value.ValueInfo " + info + ";"));
         if (autoRead) {
-            generated.addContextInitializer(out -> out.line(
+            generated.addConfigInitializer(out -> out.line(
                     "this." + info + " = this."
                             + names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet")
                             + ".selectForRead(this."
                             + names.field(value, "valueSet", BindingNames.lowerType(value.type()) + "ValueSet")
                             + ".defaultInfo.rawJsonType, "
-                            + "context.valueFormat(" + value.type() + ".class));"));
+                            + "config.valueFormat(" + value.type() + ".class));"));
         } else {
-            generated.addContextInitializer(out -> out.line(
+            generated.addConfigInitializer(out -> out.line(
                     "this." + info + " = "
                             + "org.sjf4j.meta.TypeRegistry.requireRegisteredValueInfo("
                             + value.type() + ".class, "
                             + (value.valueFormat() == null
-                                    ? "context.valueFormat(" + value.type() + ".class)"
+                                    ? "config.valueFormat(" + value.type() + ".class)"
                                     : JavaWriter.stringLiteral(value.valueFormat()))
                             + ", "
                             + (value.valuePattern() == null ? "null"

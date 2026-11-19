@@ -2,7 +2,7 @@ package org.sjf4j.node;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.TypeReference;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.node.NodeMapperFixtures.IntJajo;
@@ -34,21 +34,21 @@ class NodeMapperIndexedConversionTest {
         };
 
         for (Object source : sources) {
-            List<Integer> list = (List<Integer>) NodeMapper.convert(source, integers, false, RuntimeContext.EMPTY);
+            List<Integer> list = (List<Integer>) NodeMapper.convert(source, integers, false, NodeConfig.DEFAULT);
             assertEquals(Arrays.asList(1, 2, 2), list);
 
-            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false, RuntimeContext.EMPTY);
+            JsonArray jsonArray = (JsonArray) NodeMapper.convert(source, JsonArray.class, false, NodeConfig.DEFAULT);
             assertEquals(3, jsonArray.size());
             assertEquals(2, jsonArray.getNode(2));
 
-            IntJajo jajo = (IntJajo) NodeMapper.convert(source, IntJajo.class, false, RuntimeContext.EMPTY);
+            IntJajo jajo = (IntJajo) NodeMapper.convert(source, IntJajo.class, false, NodeConfig.DEFAULT);
             assertEquals(3, jajo.size());
             assertEquals(2, jajo.getNode(1));
 
-            int[] array = (int[]) NodeMapper.convert(source, int[].class, false, RuntimeContext.EMPTY);
+            int[] array = (int[]) NodeMapper.convert(source, int[].class, false, NodeConfig.DEFAULT);
             assertArrayEquals(new int[]{1, 2, 2}, array);
 
-            Set<Long> set = (Set<Long>) NodeMapper.convert(source, longSet, false, RuntimeContext.EMPTY);
+            Set<Long> set = (Set<Long>) NodeMapper.convert(source, longSet, false, NodeConfig.DEFAULT);
             assertEquals(new LinkedHashSet<>(Arrays.asList(1L, 2L)), set);
         }
     }
@@ -60,19 +60,19 @@ class NodeMapperIndexedConversionTest {
         Type longSet = new TypeReference<Set<Long>>() {}.getType();
 
         assertEquals(Arrays.asList(1L, 2L, 2L),
-                NodeMapper.convert(source, longs, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(source, longs, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1, 2, 2),
-                ((JsonArray) NodeMapper.convert(source, JsonArray.class, false, RuntimeContext.EMPTY)).toList());
+                ((JsonArray) NodeMapper.convert(source, JsonArray.class, false, NodeConfig.DEFAULT)).toList());
         assertEquals(Arrays.asList(1, 2, 2),
-                ((IntJajo) NodeMapper.convert(source, IntJajo.class, false, RuntimeContext.EMPTY)).toList());
+                ((IntJajo) NodeMapper.convert(source, IntJajo.class, false, NodeConfig.DEFAULT)).toList());
         assertArrayEquals(new int[]{1, 2, 2},
-                (int[]) NodeMapper.convert(source, int[].class, false, RuntimeContext.EMPTY));
+                (int[]) NodeMapper.convert(source, int[].class, false, NodeConfig.DEFAULT));
         assertEquals(new LinkedHashSet<>(Arrays.asList(1L, 2L)),
-                NodeMapper.convert(source, longSet, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(source, longSet, false, NodeConfig.DEFAULT));
 
         BindingException error = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(new NoIndexedLinkedList(Arrays.asList(1, true)),
-                        longs, false, RuntimeContext.EMPTY));
+                        longs, false, NodeConfig.DEFAULT));
         assertTrue(error.getMessage().contains("$[1]"));
     }
 
@@ -88,7 +88,7 @@ class NodeMapperIndexedConversionTest {
         source.add(2);
 
         assertEquals(Arrays.asList(2, 3), NodeMapper.convert(source,
-                new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY));
+                new TypeReference<List<Integer>>() {}.getType(), false, NodeConfig.DEFAULT));
     }
 
     private static final class NoIndexedLinkedList extends LinkedList<Object> {
@@ -110,7 +110,7 @@ class NodeMapperIndexedConversionTest {
                 new Integer[]{1, null}
         }) {
             List<Integer> list = (List<Integer>) NodeMapper.convert(
-                    source, new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY);
+                    source, new TypeReference<List<Integer>>() {}.getType(), false, NodeConfig.DEFAULT);
             assertEquals(Arrays.asList(1, null), list);
         }
 
@@ -120,7 +120,7 @@ class NodeMapperIndexedConversionTest {
                 new Object[]{1, true}
         }) {
             BindingException error = assertThrows(BindingException.class,
-                    () -> NodeMapper.convert(source, new TypeReference<List<Integer>>() {}.getType(), false, RuntimeContext.EMPTY));
+                    () -> NodeMapper.convert(source, new TypeReference<List<Integer>>() {}.getType(), false, NodeConfig.DEFAULT));
             assertTrue(error.getMessage().contains("$[1]"));
         }
     }
@@ -137,29 +137,29 @@ class NodeMapperIndexedConversionTest {
                 new Integer[]{1, 2, 3}
         }) {
             assertEquals(Arrays.asList(1, 2, 3),
-                    NodeMapper.convert(source, integers, false, RuntimeContext.EMPTY));
+                    NodeMapper.convert(source, integers, false, NodeConfig.DEFAULT));
             assertEquals(Arrays.asList(1L, 2L, 3L),
-                    NodeMapper.convert(source, longs, true, RuntimeContext.EMPTY));
+                    NodeMapper.convert(source, longs, true, NodeConfig.DEFAULT));
             assertArrayEquals(new int[]{1, 2, 3},
-                    (int[]) NodeMapper.convert(source, int[].class, false, RuntimeContext.EMPTY));
+                    (int[]) NodeMapper.convert(source, int[].class, false, NodeConfig.DEFAULT));
         }
 
         assertEquals(Arrays.asList(1, null, 3),
-                NodeMapper.convert(new Long[]{1L, null, 3L}, integers, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new Long[]{1L, null, 3L}, integers, false, NodeConfig.DEFAULT));
 
         BindingException overflow = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(
                         new long[]{1L, ((long) Integer.MAX_VALUE) + 1},
-                        integers, false, RuntimeContext.EMPTY));
+                        integers, false, NodeConfig.DEFAULT));
         assertTrue(overflow.getMessage().contains("$[1]"));
 
         BindingException shortOverflow = assertThrows(BindingException.class,
                 () -> NodeMapper.convert(new int[]{1, Short.MAX_VALUE + 1},
-                        new TypeReference<List<Short>>() {}.getType(), false, RuntimeContext.EMPTY));
+                        new TypeReference<List<Short>>() {}.getType(), false, NodeConfig.DEFAULT));
         assertTrue(shortOverflow.getMessage().contains("$[1]"));
 
         BindingException incompatible = assertThrows(BindingException.class,
-                () -> NodeMapper.convert(new Object[]{1, true}, integers, false, RuntimeContext.EMPTY));
+                () -> NodeMapper.convert(new Object[]{1, true}, integers, false, NodeConfig.DEFAULT));
         assertTrue(incompatible.getMessage().contains("$[1]"));
     }
 
@@ -173,30 +173,30 @@ class NodeMapperIndexedConversionTest {
         Type strings = new TypeReference<List<String>>() {}.getType();
 
         assertEquals(Arrays.asList(1, 2, 3),
-                NodeMapper.convert(new byte[]{1, 2, 3}, ints, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new byte[]{1, 2, 3}, ints, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1, 2, 3),
-                NodeMapper.convert(new short[]{1, 2, 3}, ints, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new short[]{1, 2, 3}, ints, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1.25d, 2.5d),
-                NodeMapper.convert(new float[]{1.25f, 2.5f}, doubles, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new float[]{1.25f, 2.5f}, doubles, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1.25f, 2.5f),
-                NodeMapper.convert(new double[]{1.25d, 2.5d}, floats, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new double[]{1.25d, 2.5d}, floats, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(true, false, true),
-                NodeMapper.convert(new boolean[]{true, false, true}, booleans, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new boolean[]{true, false, true}, booleans, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList('A', 'B'),
-                NodeMapper.convert(new char[]{'A', 'B'}, characters, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new char[]{'A', 'B'}, characters, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList("A", "B"),
-                NodeMapper.convert(new char[]{'A', 'B'}, strings, false, RuntimeContext.EMPTY));
+                NodeMapper.convert(new char[]{'A', 'B'}, strings, false, NodeConfig.DEFAULT));
 
         // Direct primitive reads must keep indexed paths on checked numeric failures.
         BindingException overflow = assertThrows(BindingException.class,
-                () -> NodeMapper.convert(new double[]{1.0, Double.MAX_VALUE}, floats, false, RuntimeContext.EMPTY));
+                () -> NodeMapper.convert(new double[]{1.0, Double.MAX_VALUE}, floats, false, NodeConfig.DEFAULT));
         assertTrue(overflow.getMessage().contains("$[1]"));
 
         // Non-List targets still use the same generic target-conversion engine.
         assertArrayEquals(new int[]{1, 2},
-                (int[]) NodeMapper.convert(new short[]{1, 2}, int[].class, false, RuntimeContext.EMPTY));
+                (int[]) NodeMapper.convert(new short[]{1, 2}, int[].class, false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(true, false),
                 NodeMapper.convert(new boolean[]{true, false},
-                        new TypeReference<List<Boolean>>() {}.getType(), true, RuntimeContext.EMPTY));
+                        new TypeReference<List<Boolean>>() {}.getType(), true, NodeConfig.DEFAULT));
     }
 }

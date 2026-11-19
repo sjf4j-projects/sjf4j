@@ -49,8 +49,8 @@ public final class NavigatorGenerator {
         GeneratedClass generated = GeneratedClass.forInterface(context, type);
 
         // Keep the factory constructor contract uniform across compiled interfaces.
-        // Navigation currently has no RuntimeContext-dependent operations.
-        generated.enableRuntimeContext();
+        // Navigation currently has no NodeConfig-dependent operations.
+        generated.enableNodeConfig();
 
         CompiledNavigator annotation = type.getAnnotation(CompiledNavigator.class);
         boolean allowFallback = annotation != null && annotation.fallback();

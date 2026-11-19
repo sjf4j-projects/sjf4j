@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
@@ -68,7 +68,7 @@ class CompiledGsonJsonpUnifiedWriteTest {
             assertTrue(generated.contains("_writeString(g,"), backend);
             assertTrue(generated.contains("generator.nativeGenerator()"), backend);
             assertTrue(generated.contains("_writeList(generator, property0);"), backend);
-            assertTrue(generated.contains("this.context.includeNulls"), backend);
+            assertTrue(generated.contains("this.config.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(generator,"), backend);
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertFalse(generated.contains("private static void _writeModel("), backend);
@@ -79,7 +79,7 @@ class CompiledGsonJsonpUnifiedWriteTest {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Object model = modelType.getConstructor().newInstance();
                 Object normal = CompiledInstances.create(binderType);
-                Object withoutNulls = CompiledInstances.create(binderType, new RuntimeContext(false));
+                Object withoutNulls = CompiledInstances.create(binderType, new NodeConfig(false));
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
                 JsonNode full = mapper.readTree((String) write.invoke(normal, model));
                 JsonNode filtered = mapper.readTree((String) write.invoke(withoutNulls, model));

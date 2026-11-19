@@ -7,7 +7,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.PooledStringWriter;
 import org.sjf4j.binding.PooledByteArrayOutputStream;
 import org.sjf4j.annotation.node.NodeCreator;
@@ -141,7 +141,7 @@ class Jackson2BinderTest {
 
         String includingNulls = new Jackson2Binder(new JsonFactory())
                 .writeNodeAsString(value);
-        String omittingNulls = new Jackson2Binder(new JsonFactory(), new RuntimeContext(false))
+        String omittingNulls = new Jackson2Binder(new JsonFactory(), new NodeConfig(false))
                 .writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
@@ -159,9 +159,9 @@ class Jackson2BinderTest {
         tree.set("items", factory.arrayNode().addNull().add("x"));
 
         Jackson2Binder withoutNulls = new Jackson2Binder(
-                new JsonFactory(), new RuntimeContext(false));
+                new JsonFactory(), new NodeConfig(false));
         Jackson2Binder withNulls = new Jackson2Binder(
-                new JsonFactory(), RuntimeContext.EMPTY);
+                new JsonFactory(), NodeConfig.DEFAULT);
         String without =
                 "{\"nested\":{\"keep\":7},\"items\":[null,\"x\"]}";
         String with =
@@ -197,8 +197,8 @@ class Jackson2BinderTest {
 
     @Test
     void retainsSuppliedContextAndCreatesJacksonReadersAndWriters() throws Exception {
-        RuntimeContext context = new RuntimeContext(false);
-        Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), context);
+        NodeConfig config = new NodeConfig(false);
+        Jackson2Binder binder = new Jackson2Binder(new JsonFactory(), config);
         StringWriter output = new StringWriter();
 
         {

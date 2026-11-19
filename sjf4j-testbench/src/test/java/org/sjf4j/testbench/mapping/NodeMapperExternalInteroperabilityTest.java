@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import jakarta.json.Json;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.node.NodeMapper;
 
 import java.math.BigDecimal;
@@ -22,16 +22,16 @@ class NodeMapperExternalInteroperabilityTest {
 
         com.fasterxml.jackson.databind.JsonNode j2 = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(gson, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         tools.jackson.databind.JsonNode j3 = (tools.jackson.databind.JsonNode)
-                NodeMapper.convert(gson, tools.jackson.databind.JsonNode.class, false, RuntimeContext.EMPTY);
+                NodeMapper.convert(gson, tools.jackson.databind.JsonNode.class, false, NodeConfig.DEFAULT);
 
         assertEquals(0, j2.get("amount").decimalValue().compareTo(new BigDecimal("0.00120")));
         assertEquals(0, j3.get("amount").decimalValue().compareTo(new BigDecimal("0.00120")));
         assertTrue(j2.get("items").get(1).isNull());
         assertTrue(j3.get("items").get(1).isNull());
 
-        JsonElement gsonAgain = (JsonElement) NodeMapper.convert(j2, JsonElement.class, false, RuntimeContext.EMPTY);
+        JsonElement gsonAgain = (JsonElement) NodeMapper.convert(j2, JsonElement.class, false, NodeConfig.DEFAULT);
         assertEquals(0, new BigDecimal("0.00120").compareTo(
                 new BigDecimal(gsonAgain.getAsJsonObject().get("amount").getAsString())));
         assertEquals(gson.getAsJsonArray("items"), gsonAgain.getAsJsonObject().getAsJsonArray("items"));
@@ -46,14 +46,14 @@ class NodeMapperExternalInteroperabilityTest {
 
         com.fasterxml.jackson.databind.JsonNode j2 = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(jsonp, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertEquals(0, j2.get("amount").decimalValue().compareTo(new BigDecimal("0.00120")));
         assertEquals("x", j2.get("items").get(0).textValue());
 
-        Map<?, ?> raw = (Map<?, ?>) NodeMapper.convertToRaw(jsonp, RuntimeContext.EMPTY);
+        Map<?, ?> raw = (Map<?, ?>) NodeMapper.convertToRaw(jsonp, NodeConfig.DEFAULT);
         assertEquals(Arrays.asList("x", null), raw.get("items"));
         jakarta.json.JsonObject back = (jakarta.json.JsonObject)
-                NodeMapper.convert(j2, jakarta.json.JsonValue.class, false, RuntimeContext.EMPTY);
+                NodeMapper.convert(j2, jakarta.json.JsonValue.class, false, NodeConfig.DEFAULT);
         assertEquals(0, back.getJsonNumber("amount").bigDecimalValue()
                 .compareTo(new BigDecimal("0.00120")));
         assertEquals("x", back.getJsonArray("items").getString(0));
@@ -62,14 +62,14 @@ class NodeMapperExternalInteroperabilityTest {
         JsonElement gson = com.google.gson.JsonParser.parseString(
                 "{\"flag\":true,\"items\":[1,null,2]}");
         jakarta.json.JsonObject fromGson = (jakarta.json.JsonObject)
-                NodeMapper.convert(gson, jakarta.json.JsonValue.class, false, RuntimeContext.EMPTY);
+                NodeMapper.convert(gson, jakarta.json.JsonValue.class, false, NodeConfig.DEFAULT);
         assertTrue(fromGson.getBoolean("flag"));
         assertEquals(2, fromGson.getJsonArray("items").getInt(2));
         assertSame(jakarta.json.JsonValue.NULL, fromGson.getJsonArray("items").get(1));
 
         com.fasterxml.jackson.databind.JsonNode jacksonAgain = (com.fasterxml.jackson.databind.JsonNode)
                 NodeMapper.convert(fromGson, com.fasterxml.jackson.databind.JsonNode.class,
-                        false, RuntimeContext.EMPTY);
+                        false, NodeConfig.DEFAULT);
         assertTrue(jacksonAgain.get("flag").booleanValue());
         assertTrue(jacksonAgain.get("items").get(1).isNull());
     }

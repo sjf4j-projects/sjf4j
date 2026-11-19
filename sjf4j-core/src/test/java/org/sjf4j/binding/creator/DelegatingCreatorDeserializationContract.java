@@ -1,7 +1,7 @@
 package org.sjf4j.binding.creator;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class DelegatingCreatorDeserializationContract {
-    private final SimpleJsonBinder binding = new SimpleJsonBinder(RuntimeContext.EMPTY);
+    private final SimpleJsonBinder binding = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
     // Structural source: DelegatingCreatorsTest#testIntegerDelegate; NodeCreator has no delegating mode.
     @Test void delegatingIntegerNodeCreatorIsRejectedForScalar() {

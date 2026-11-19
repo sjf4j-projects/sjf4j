@@ -1,7 +1,7 @@
 package org.sjf4j.binding.beans;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 
 import java.util.List;
@@ -13,11 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /** Ordinary and root POJO contracts sourced from Jackson's default bean reads. */
 public abstract class BeanDeserializationContract {
-    protected abstract Binder<?, ?> binding(RuntimeContext context);
+    protected abstract Binder<?, ?> binding(NodeConfig config);
 
     /** Direct source: bean/BeanDeserializerVanillaTest#allKnownProperties. */
     @Test void readsAllOrdinaryPojoPropertiesAtTheRoot() {
-        Wide bean = (Wide) binding(RuntimeContext.EMPTY).readNode(
+        Wide bean = (Wide) binding(NodeConfig.DEFAULT).readNode(
                 "{\"text\":\"hello\",\"count\":42,\"enabled\":true,\"point\":{\"x\":1,\"y\":2},"
                         + "\"points\":[{\"x\":3,\"y\":4}],\"numbers\":[7,8],\"attributes\":{\"key\":\"value\"}}", Wide.class);
         assertEquals("hello", bean.getText());
@@ -31,7 +31,7 @@ public abstract class BeanDeserializationContract {
 
     /** Direct source: bean/BeanDeserializerVanillaTest#emptyObject. */
     @Test void preservesJavaDefaultsForAnEmptyRootObject() {
-        Wide bean = (Wide) binding(RuntimeContext.EMPTY).readNode("{}", Wide.class);
+        Wide bean = (Wide) binding(NodeConfig.DEFAULT).readNode("{}", Wide.class);
         assertNull(bean.getText());
         assertEquals(-1, bean.count);
         assertNull(bean.point);
@@ -39,27 +39,27 @@ public abstract class BeanDeserializationContract {
 
     /** Direct source: BeanPropertyDeserTest#testSimpleAutoDetect; focused public-field behavior. */
     @Test void bindsPublicFields() {
-        AccessorBean bean = (AccessorBean) binding(RuntimeContext.EMPTY).readNode(
+        AccessorBean bean = (AccessorBean) binding(NodeConfig.DEFAULT).readNode(
                 "{\"id\":7}", AccessorBean.class);
         assertEquals(7, bean.id);
     }
 
     /** Retained SJF4J coverage for ordinary JavaBean setter binding. */
     @Test void bindsJavaBeanSetters() {
-        AccessorBean bean = (AccessorBean) binding(RuntimeContext.EMPTY).readNode(
+        AccessorBean bean = (AccessorBean) binding(NodeConfig.DEFAULT).readNode(
                 "{\"name\":\"Ada\"}", AccessorBean.class);
         assertEquals("Ada", bean.getName());
     }
 
     /** Retained SJF4J coverage for primitive JavaBean setter binding formerly covered by FieldBinderTest. */
     @Test void bindsPrimitiveJavaBeanSetters() {
-        AgeBean bean = (AgeBean) binding(RuntimeContext.EMPTY).readNode("{\"age\":42}", AgeBean.class);
+        AgeBean bean = (AgeBean) binding(NodeConfig.DEFAULT).readNode("{\"age\":42}", AgeBean.class);
         assertEquals(42, bean.getAge());
     }
 
     /** Direct source: bean/BeanDeserializerVanillaTest#unknownPropertiesInterleaved. */
     @Test void skipsUnknownStructuredPropertiesAndContinuesBinding() {
-        Wide bean = (Wide) binding(RuntimeContext.EMPTY).readNode(
+        Wide bean = (Wide) binding(NodeConfig.DEFAULT).readNode(
                 "{\"unknown\":{\"count\":\"not-a-number\"},\"count\":3,\"alsoUnknown\":[1],\"text\":\"kept\"}", Wide.class);
         assertEquals(3, bean.count);
         assertEquals("kept", bean.getText());
@@ -67,12 +67,12 @@ public abstract class BeanDeserializationContract {
 
     /** Structural source: NullHandlingDeserTest#testNull; retained SJF4J root-null POJO behavior. */
     @Test void readsNullAtTheRootForAPojoTarget() {
-        assertNull(binding(RuntimeContext.EMPTY).readNode("null", Wide.class));
+        assertNull(binding(NodeConfig.DEFAULT).readNode("null", Wide.class));
     }
 
     /** Retained source-derived failure: BeanDeserializerTest#testAbstractFailure rejects the target, but SJF4J leaks InstantiationError outside ordinary binding exceptions. */
     @Test void rejectsAnAbstractRootPojoTarget() {
-        assertThrows(RuntimeException.class, () -> binding(RuntimeContext.EMPTY).readNode("{\"x\":3}", AbstractBean.class));
+        assertThrows(RuntimeException.class, () -> binding(NodeConfig.DEFAULT).readNode("{\"x\":3}", AbstractBean.class));
     }
 
     static class Point { public int x; public int y; }

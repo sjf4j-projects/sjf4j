@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.InternalAccess;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeValue;
 import org.sjf4j.annotation.node.RawToValue;
 import org.sjf4j.annotation.node.ValueToRaw;
@@ -36,7 +36,7 @@ class Jackson2ExternalMappingTest {
     void mapsNativeTreeToPojoAndTypedJavaContainers() {
         ObjectNode nativeTree = new com.fasterxml.jackson.databind.ObjectMapper()
                 .createObjectNode().put("name", "Ada").put("age", 32);
-        Person person = (Person) NodeMapper.convert(nativeTree, Person.class, false, RuntimeContext.EMPTY);
+        Person person = (Person) NodeMapper.convert(nativeTree, Person.class, false, NodeConfig.DEFAULT);
         assertEquals("Ada", person.name);
         assertEquals(32, person.age);
 
@@ -44,7 +44,7 @@ class Jackson2ExternalMappingTest {
                 new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode()
                         .set("items", new com.fasterxml.jackson.databind.ObjectMapper()
                                 .createArrayNode().add(1).add(2)),
-                new TypeReference<Map<String, List<Integer>>>() {}.getType(), false, RuntimeContext.EMPTY));
+                new TypeReference<Map<String, List<Integer>>>() {}.getType(), false, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList(1, 2), assertInstanceOf(List.class, typed.get("items")));
     }
 
@@ -53,7 +53,7 @@ class Jackson2ExternalMappingTest {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", Arrays.asList("a", null, 2));
         data.put("amount", new BigDecimal("0.00120"));
-        JsonNode converted = (JsonNode) NodeMapper.convert(data, JsonNode.class, false, RuntimeContext.EMPTY);
+        JsonNode converted = (JsonNode) NodeMapper.convert(data, JsonNode.class, false, NodeConfig.DEFAULT);
 
         assertTrue(converted.isObject());
         assertEquals("a", converted.get("items").get(0).textValue());
@@ -61,12 +61,12 @@ class Jackson2ExternalMappingTest {
         assertEquals(2, converted.get("items").get(2).intValue());
         assertEquals(0, converted.get("amount").decimalValue().compareTo(new BigDecimal("0.00120")));
 
-        Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(converted, RuntimeContext.EMPTY));
+        Map<?, ?> raw = assertInstanceOf(Map.class, NodeMapper.convertToRaw(converted, NodeConfig.DEFAULT));
         assertEquals(Arrays.asList("a", null, 2), raw.get("items"));
         assertEquals(0, new BigDecimal("0.00120")
                 .compareTo(new BigDecimal(raw.get("amount").toString())));
-        assertNull(NodeMapper.convert(null, JsonNode.class, false, RuntimeContext.EMPTY));
-        assertThrows(BindingException.class, () -> NodeMapper.convert(data, TextNode.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(null, JsonNode.class, false, NodeConfig.DEFAULT));
+        assertThrows(BindingException.class, () -> NodeMapper.convert(data, TextNode.class, false, NodeConfig.DEFAULT));
     }
 
     @Test
@@ -75,7 +75,7 @@ class Jackson2ExternalMappingTest {
         source.name = "Ada";
         assertNull(InternalAccess.dynamicMembers(source));
 
-        JsonNode converted = (JsonNode) NodeMapper.convert(source, JsonNode.class, false, RuntimeContext.EMPTY);
+        JsonNode converted = (JsonNode) NodeMapper.convert(source, JsonNode.class, false, NodeConfig.DEFAULT);
 
         assertEquals("Ada", converted.get("name").textValue());
         assertEquals(1, converted.size());
@@ -97,13 +97,13 @@ class Jackson2ExternalMappingTest {
     void convertsValueCodecsThroughExternalProperties() {
         ObjectNode source = new com.fasterxml.jackson.databind.ObjectMapper()
                 .createObjectNode().put("code", "hello");
-        Holder holder = (Holder) NodeMapper.convert(source, Holder.class, false, RuntimeContext.EMPTY);
+        Holder holder = (Holder) NodeMapper.convert(source, Holder.class, false, NodeConfig.DEFAULT);
         assertEquals("hello", holder.code.text);
-        assertEquals("hello", ((JsonNode) NodeMapper.convert(holder, JsonNode.class, false, RuntimeContext.EMPTY))
+        assertEquals("hello", ((JsonNode) NodeMapper.convert(holder, JsonNode.class, false, NodeConfig.DEFAULT))
                 .get("code").textValue());
 
         Code direct = (Code) NodeMapper.convert(
-                com.fasterxml.jackson.databind.node.TextNode.valueOf("world"), Code.class, false, RuntimeContext.EMPTY);
+                com.fasterxml.jackson.databind.node.TextNode.valueOf("world"), Code.class, false, NodeConfig.DEFAULT);
         assertEquals("world", direct.text);
     }
 
@@ -112,8 +112,8 @@ class Jackson2ExternalMappingTest {
         ObjectNode child = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("x", 1);
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("child", child);
-        ObjectNode shallow = (ObjectNode) NodeMapper.convert(map, JsonNode.class, false, RuntimeContext.EMPTY);
-        ObjectNode deep = (ObjectNode) NodeMapper.convert(map, JsonNode.class, true, RuntimeContext.EMPTY);
+        ObjectNode shallow = (ObjectNode) NodeMapper.convert(map, JsonNode.class, false, NodeConfig.DEFAULT);
+        ObjectNode deep = (ObjectNode) NodeMapper.convert(map, JsonNode.class, true, NodeConfig.DEFAULT);
         assertSame(child, shallow.get("child"));
         assertNotSame(child, deep.get("child"));
     }
@@ -140,11 +140,11 @@ class Jackson2ExternalMappingTest {
         array.add(mapper.createObjectNode().put("kind", "dog").put("name", "Rex").put("barks", true));
         array.add(mapper.createObjectNode().put("kind", "cat").put("name", "Mog").put("lives", 9));
         List<?> animals = assertInstanceOf(List.class, NodeMapper.convert(
-                array, new TypeReference<List<Animal>>() {}.getType(), false, RuntimeContext.EMPTY));
+                array, new TypeReference<List<Animal>>() {}.getType(), false, NodeConfig.DEFAULT));
         assertEquals("Rex", assertInstanceOf(Dog.class, animals.get(0)).name);
         assertEquals(9, assertInstanceOf(Cat.class, animals.get(1)).lives);
         assertThrows(BindingException.class, () -> NodeMapper.convert(
-                mapper.createObjectNode().put("kind", "unknown"), Animal.class, false, RuntimeContext.EMPTY));
+                mapper.createObjectNode().put("kind", "unknown"), Animal.class, false, NodeConfig.DEFAULT));
     }
 
     @NodeValue
@@ -159,9 +159,9 @@ class Jackson2ExternalMappingTest {
 
     @Test
     void decodesNativeNullThroughValueCodecWithoutChangingRootJavaNull() {
-        NullableCode decoded = (NullableCode) NodeMapper.convert(NullNode.instance, NullableCode.class, false, RuntimeContext.EMPTY);
+        NullableCode decoded = (NullableCode) NodeMapper.convert(NullNode.instance, NullableCode.class, false, NodeConfig.DEFAULT);
         assertEquals("<native-null>", decoded.text);
-        assertNull(NodeMapper.convert(null, JsonNode.class, false, RuntimeContext.EMPTY));
+        assertNull(NodeMapper.convert(null, JsonNode.class, false, NodeConfig.DEFAULT));
     }
 
 }

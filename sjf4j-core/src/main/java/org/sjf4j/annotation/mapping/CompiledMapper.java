@@ -34,8 +34,8 @@ import java.lang.annotation.Target;
  * <p>{@code CompiledMapper} is a MapStruct-like compiled structural mapper. It
  * is not a compile-time replacement for {@code NodeMapper.convert}; runtime
  * binding and private properties are outside its scope. Configured leaf
- * conversions use the immutable RuntimeContext supplied through
- * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.RuntimeContext)}.
+ * conversions use the immutable NodeConfig supplied through
+ * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.NodeConfig)}.
  * Limited type-level {@code @OneOf} dispatch is supported for create mappings:
  * discriminator-key dispatch when the target type declares
  * {@code discriminatorKey}, and

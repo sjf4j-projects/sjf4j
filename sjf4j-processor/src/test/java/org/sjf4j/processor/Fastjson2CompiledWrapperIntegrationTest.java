@@ -2,7 +2,7 @@ package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
@@ -175,8 +175,8 @@ class Fastjson2CompiledWrapperIntegrationTest {
             assertTrue(getterJson.contains("2024-01-01T10:00:00Z"), getterJson);
             assertEquals(1, getterType.getField("calls").getInt(getterBean));
 
-            RuntimeContext context = new RuntimeContext(Map.of(Instant.class, "epochMillis"), false);
-            Object configured = CompiledInstances.create(type, context);
+            NodeConfig config = new NodeConfig(Map.of(Instant.class, "epochMillis"), false);
+            Object configured = CompiledInstances.create(type, config);
             String customized = (String) type.getMethod("write", beanType).invoke(configured, bean);
             assertTrue(customized.contains("\"when\":1704103200000"), customized);
             assertFalse(customized.contains("\"absent\""), customized);

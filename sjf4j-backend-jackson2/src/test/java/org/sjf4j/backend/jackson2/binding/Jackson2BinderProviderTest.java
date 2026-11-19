@@ -3,7 +3,7 @@ package org.sjf4j.backend.jackson2.binding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -20,7 +20,7 @@ class Jackson2BinderProviderTest {
         BinderProvider provider = Jackson2BinderProvider.of(factory);
 
         Jackson2Binder binder = assertInstanceOf(Jackson2Binder.class,
-                provider.create(RuntimeContext.EMPTY));
+                provider.create(NodeConfig.DEFAULT));
 
         assertNull(binder.readNode("/* configured */ null", Object.class));
     }
@@ -30,7 +30,7 @@ class Jackson2BinderProviderTest {
         BinderProvider provider = BinderFactory.provider(Format.JSON);
 
         assertInstanceOf(Jackson2BinderProvider.class, provider);
-        assertInstanceOf(Jackson2Binder.class, provider.create(RuntimeContext.EMPTY));
+        assertInstanceOf(Jackson2Binder.class, provider.create(NodeConfig.DEFAULT));
     }
 
     @Test

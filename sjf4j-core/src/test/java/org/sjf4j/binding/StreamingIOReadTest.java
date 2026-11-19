@@ -1,7 +1,7 @@
 package org.sjf4j.binding;
 
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
@@ -39,7 +39,7 @@ class StreamingIOReadTest {
     @Test
     void adoptsRawStorageForPlainJsonNodesAndPreservesNestedRawNodes() throws Exception {
         try (SimpleJsonParser parser = new SimpleJsonParser("{\"items\":[1,{\"ok\":true}]}")) {
-            JsonObject object = (JsonObject) StreamingIO.readNode(parser, JsonObject.class, RuntimeContext.EMPTY);
+            JsonObject object = (JsonObject) StreamingIO.readNode(parser, JsonObject.class, NodeConfig.DEFAULT);
             assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(object));
             assertInstanceOf(ArrayList.class, object.getNode("items"));
             object.put("added", 2);
@@ -47,7 +47,7 @@ class StreamingIOReadTest {
         }
 
         try (SimpleJsonParser parser = new SimpleJsonParser("[1,{\"items\":[2]}]")) {
-            JsonArray array = (JsonArray) StreamingIO.readNode(parser, JsonArray.class, RuntimeContext.EMPTY);
+            JsonArray array = (JsonArray) StreamingIO.readNode(parser, JsonArray.class, NodeConfig.DEFAULT);
             assertInstanceOf(ArrayList.class, InternalAccess.dynamicElements(array));
             assertInstanceOf(LinkedHashMap.class, array.getNode(1));
             array.add(3);
@@ -58,7 +58,7 @@ class StreamingIOReadTest {
     @Test
     void readsJsonContainersInPojoPropertiesWithoutExtraWrapping() throws Exception {
         try (SimpleJsonParser parser = new SimpleJsonParser("{\"object\":{\"key\":1},\"array\":[1,2]}")) {
-            ContainerHolder holder = (ContainerHolder) StreamingIO.readNode(parser, ContainerHolder.class, RuntimeContext.EMPTY);
+            ContainerHolder holder = (ContainerHolder) StreamingIO.readNode(parser, ContainerHolder.class, NodeConfig.DEFAULT);
             assertEquals(1, holder.object.getInt("key"));
             assertEquals(2, holder.array.size());
             assertInstanceOf(LinkedHashMap.class, InternalAccess.dynamicMembers(holder.object));
@@ -87,7 +87,7 @@ class StreamingIOReadTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"items\":[1,true]}"));
             try {
-                Map<?, ?> value = (Map<?, ?>) StreamingIO.readNode(parser, Object.class, RuntimeContext.EMPTY);
+                Map<?, ?> value = (Map<?, ?>) StreamingIO.readNode(parser, Object.class, NodeConfig.DEFAULT);
                 assertEquals(List.of(1, true), value.get("items"));
             } finally {
                 parser.close();
@@ -103,7 +103,7 @@ class StreamingIOReadTest {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"first\":[1,2],\"second\":[]}"));
             try {
                 Map<?, ?> value = assertInstanceOf(Map.class,
-                        StreamingIO.readNode(parser, target.getType(), RuntimeContext.EMPTY));
+                        StreamingIO.readNode(parser, target.getType(), NodeConfig.DEFAULT));
                 assertEquals(List.of(1, 2), assertInstanceOf(List.class, value.get("first")));
                 assertEquals(List.of(), assertInstanceOf(List.class, value.get("second")));
             } finally {
@@ -117,7 +117,7 @@ class StreamingIOReadTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("[3,4]"));
             try {
-                int[] value = (int[]) StreamingIO.readNode(parser, int[].class, RuntimeContext.EMPTY);
+                int[] value = (int[]) StreamingIO.readNode(parser, int[].class, NodeConfig.DEFAULT);
                 assertEquals(2, value.length);
                 assertEquals(4, value[1]);
             } finally {
@@ -132,8 +132,8 @@ class StreamingIOReadTest {
             SimpleJsonParser number = new SimpleJsonParser(new StringReader("1"));
             SimpleJsonParser charset = new SimpleJsonParser(new StringReader("\"UTF-8\""));
             try {
-                assertEquals(SampleEnum.SECOND, StreamingIO.readNode(number, SampleEnum.class, RuntimeContext.EMPTY));
-                assertEquals(Charset.forName("UTF-8"), StreamingIO.readNode(charset, Charset.class, RuntimeContext.EMPTY));
+                assertEquals(SampleEnum.SECOND, StreamingIO.readNode(number, SampleEnum.class, NodeConfig.DEFAULT));
+                assertEquals(Charset.forName("UTF-8"), StreamingIO.readNode(charset, Charset.class, NodeConfig.DEFAULT));
             } finally {
                 charset.close();
                 number.close();
@@ -147,8 +147,8 @@ class StreamingIOReadTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, new StringWriter());
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("\"UTF-8\""));
             try {
-                StreamingIO.writeNode(generator, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
-                assertEquals(StandardCharsets.UTF_8, StreamingIO.readNode(parser, Charset.class, RuntimeContext.EMPTY));
+                StreamingIO.writeNode(generator, StandardCharsets.UTF_8, NodeConfig.DEFAULT);
+                assertEquals(StandardCharsets.UTF_8, StreamingIO.readNode(parser, Charset.class, NodeConfig.DEFAULT));
             } finally {
                 parser.close();
                 generator.close();
@@ -165,11 +165,11 @@ class StreamingIOReadTest {
             SimpleJsonParser abstractRoot = new SimpleJsonParser(new StringReader("{}"));
             SimpleJsonParser abstractField = new SimpleJsonParser(new StringReader("{\"value\":{}}"));
             try {
-                assertThrows(BindingException.class, () -> StreamingIO.readNode(negative, SampleEnum.class, RuntimeContext.EMPTY));
-                assertThrows(BindingException.class, () -> StreamingIO.readNode(outOfRange, SampleEnum.class, RuntimeContext.EMPTY));
-                assertThrows(BindingException.class, () -> StreamingIO.readNode(quoted, SampleEnum.class, RuntimeContext.EMPTY));
-                assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractRoot, AbstractValue.class, RuntimeContext.EMPTY));
-                assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractField, AbstractHolder.class, RuntimeContext.EMPTY));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(negative, SampleEnum.class, NodeConfig.DEFAULT));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(outOfRange, SampleEnum.class, NodeConfig.DEFAULT));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(quoted, SampleEnum.class, NodeConfig.DEFAULT));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractRoot, AbstractValue.class, NodeConfig.DEFAULT));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(abstractField, AbstractHolder.class, NodeConfig.DEFAULT));
             } finally {
                 abstractField.close();
                 abstractRoot.close();
@@ -189,7 +189,7 @@ class StreamingIOReadTest {
         {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("\"parent\""));
             try {
-                assertThrows(BindingException.class, () -> StreamingIO.readNode(parser, CodecChild.class, RuntimeContext.EMPTY));
+                assertThrows(BindingException.class, () -> StreamingIO.readNode(parser, CodecChild.class, NodeConfig.DEFAULT));
             } finally {
                 parser.close();
             }
@@ -203,7 +203,7 @@ class StreamingIOReadTest {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"name\":\"Ada\"}"));
             try {
                 NameHolder value = (NameHolder) StreamingIO.readNode(
-                        parser, NameHolder.class, NameHolder.class, null, RuntimeContext.EMPTY);
+                        parser, NameHolder.class, NameHolder.class, null, NodeConfig.DEFAULT);
                 assertEquals("Ada", value.name);
             } finally {
                 parser.close();
@@ -215,7 +215,7 @@ class StreamingIOReadTest {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"a\":1}"));
             try {
                 Map<?, ?> result = (Map<?, ?>) StreamingIO.readNode(
-                        parser, Map.class, Map.class, TypeInfo.NONE, RuntimeContext.EMPTY);
+                        parser, Map.class, Map.class, TypeInfo.NONE, NodeConfig.DEFAULT);
                 assertEquals(1, result.get("a"));
             } finally {
                 parser.close();
@@ -228,7 +228,7 @@ class StreamingIOReadTest {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"name\":\"Bob\"}"));
             try {
                 NameHolder value = (NameHolder) StreamingIO.readNode(
-                        parser, NameHolder.class, NameHolder.class, info, RuntimeContext.EMPTY);
+                        parser, NameHolder.class, NameHolder.class, info, NodeConfig.DEFAULT);
                 assertEquals("Bob", value.name);
             } finally {
                 parser.close();
@@ -240,7 +240,7 @@ class StreamingIOReadTest {
             SimpleJsonParser parser = new SimpleJsonParser(new StringReader("{\"name\":\"Eve\"}"));
             try {
                 assertThrows(BindingException.class, () -> StreamingIO.readNode(
-                        parser, NameHolder.class, NameHolder.class, TypeInfo.NONE, RuntimeContext.EMPTY));
+                        parser, NameHolder.class, NameHolder.class, TypeInfo.NONE, NodeConfig.DEFAULT));
             } finally {
                 parser.close();
             }

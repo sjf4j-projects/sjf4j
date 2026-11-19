@@ -10,7 +10,7 @@ import java.util.Map;
  * directly to node conversion. Default value formats are matched by exact
  * non-primitive class, rather than by assignability.
  */
-public final class RuntimeContext {
+public final class NodeConfig {
     public final boolean includeNulls;
     private final Class<?>[] valueFormatTypes;
     private final String[] valueFormats;
@@ -20,7 +20,7 @@ public final class RuntimeContext {
     private static final String[] EMPTY_VALUE_FORMATS = new String[0];
 
     /** Settings with no default value formats and null-valued members included. */
-    public static final RuntimeContext EMPTY = new RuntimeContext(true);
+    public static final NodeConfig DEFAULT = new NodeConfig(true);
 
 
     /**
@@ -28,7 +28,7 @@ public final class RuntimeContext {
      *
      * @param includeNulls whether serialization includes null-valued object members
      */
-    public RuntimeContext(boolean includeNulls) {
+    public NodeConfig(boolean includeNulls) {
         this.valueFormatTypes = EMPTY_VALUE_TYPES;
         this.valueFormats = EMPTY_VALUE_FORMATS;
         this.includeNulls = includeNulls;
@@ -38,7 +38,7 @@ public final class RuntimeContext {
      * Creates settings with default formats and null-valued members included.
      * The supplied map is copied, not retained.
      */
-    public RuntimeContext(Map<Class<?>, String> valueFormats) {
+    public NodeConfig(Map<Class<?>, String> valueFormats) {
         this(valueFormats, true);
     }
 
@@ -48,7 +48,7 @@ public final class RuntimeContext {
      *
      * @throws IllegalArgumentException if a default format uses a primitive type
      */
-    public RuntimeContext(Map<Class<?>, String> valueFormats, boolean includeNulls) {
+    public NodeConfig(Map<Class<?>, String> valueFormats, boolean includeNulls) {
         Asserts.notNull(valueFormats, "valueFormats");
         if (valueFormats.isEmpty()) {
             this.valueFormatTypes = EMPTY_VALUE_TYPES;

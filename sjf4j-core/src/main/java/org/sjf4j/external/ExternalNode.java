@@ -3,7 +3,7 @@ package org.sjf4j.external;
 import org.sjf4j.JsonType;
 import org.sjf4j.NodeKind;
 import org.sjf4j.Nodes;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.node.NodeMapper;
 import org.sjf4j.exception.NodeException;
 import org.sjf4j.node.NodeWalker;
@@ -276,25 +276,25 @@ public interface ExternalNode<N> {
      * <p>Mutable adapters use this default implementation to populate their
      * native containers; immutable adapters may override it to build the same
      * shape atomically. The source is not modified. Nested values are converted
-     * using the supplied runtime context.
+     * using the supplied runtime config.
      *
      * <p>This is a mapping capability, not a streaming binding constructor.
      * StreamingIO does not route native targets through readRaw() and this
      * method to create immutable trees.</p>
      */
-    default Object convertContainer(Class<?> clazz, Object source, RuntimeContext context) {
+    default Object convertContainer(Class<?> clazz, Object source, NodeConfig config) {
         Class<N> nativeType = nodeType();
         switch (JsonType.of(source)) {
             case OBJECT: {
                 N target = nativeType.cast(createObjectNode(clazz));
                 NodeWalker.forEachObject(source, (name, value) ->
-                        putInObject(target, name, NodeMapper.convert(value, nativeType, false, context)));
+                        putInObject(target, name, NodeMapper.convert(value, nativeType, false, config)));
                 return target;
             }
             case ARRAY: {
                 N target = nativeType.cast(createArrayNode(clazz));
                 NodeWalker.forEachArray(source, (index, value) ->
-                        addInArray(target, NodeMapper.convert(value, nativeType, false, context)));
+                        addInArray(target, NodeMapper.convert(value, nativeType, false, config)));
                 return target;
             }
             default:

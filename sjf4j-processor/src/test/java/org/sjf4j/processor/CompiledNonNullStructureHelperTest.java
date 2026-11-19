@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 
 import java.net.URLClassLoader;
 import java.util.LinkedHashMap;
@@ -52,7 +52,7 @@ class CompiledNonNullStructureHelperTest {
                 java.lang.reflect.Method writeList = binderType.getMethod("writeList", java.util.List.class);
                 java.lang.reflect.Method writeMap = binderType.getMethod("writeMap", Map.class);
                 Object all = CompiledInstances.create(binderType);
-                Object filtered = CompiledInstances.create(binderType, new RuntimeContext(false));
+                Object filtered = CompiledInstances.create(binderType, new NodeConfig(false));
 
                 for (Object binder : new Object[]{all, filtered}) {
                     assertTrue(json.readTree((String) write.invoke(binder, (Object) null)).isNull(), backend);

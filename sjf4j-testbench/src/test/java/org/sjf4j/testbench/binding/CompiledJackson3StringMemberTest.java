@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Write;
@@ -51,14 +51,14 @@ public class CompiledJackson3StringMemberTest {
         Payload value = fixture();
         for (boolean includeNulls : new boolean[]{true, false}) {
             JsonNode actual = JSON.readTree(CompiledInstances
-                    .create(Jackson3Writer.class, new RuntimeContext(includeNulls))
+                    .create(Jackson3Writer.class, new NodeConfig(includeNulls))
                     .write(value));
             verifyNullPolicy(actual, includeNulls);
 
             // Jackson2 is deliberately unchanged: both backends must have
-            // equivalent output semantics for the same RuntimeContext.
+            // equivalent output semantics for the same NodeConfig.
             JsonNode jackson2 = JSON.readTree(CompiledInstances
-                    .create(Jackson2Writer.class, new RuntimeContext(includeNulls))
+                    .create(Jackson2Writer.class, new NodeConfig(includeNulls))
                     .write(value));
             assertEquals(jackson2, actual);
         }

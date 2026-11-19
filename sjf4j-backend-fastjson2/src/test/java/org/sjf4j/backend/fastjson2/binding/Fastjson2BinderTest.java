@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.InternalAccess;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
@@ -231,7 +231,7 @@ class Fastjson2BinderTest {
 
         String includingNulls = new Fastjson2Binder().writeNodeAsString(value);
         String omittingNulls = new Fastjson2Binder(JSONFactory.createReadContext(),
-                JSONFactory.createWriteContext(), new RuntimeContext(false)).writeNodeAsString(value);
+                JSONFactory.createWriteContext(), new NodeConfig(false)).writeNodeAsString(value);
 
         assertTrue(includingNulls.contains("\"nullable\":null"));
         assertFalse(omittingNulls.contains("\"nullable\""));

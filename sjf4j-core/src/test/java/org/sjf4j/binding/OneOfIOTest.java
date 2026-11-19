@@ -3,7 +3,7 @@ package org.sjf4j.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonObject;
 import org.sjf4j.JsonType;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.node.NodeCreator;
 import org.sjf4j.annotation.node.NodeValue;
@@ -88,7 +88,7 @@ class OneOfIOTest {
 
     @Test
     void keepsPropertyLevelOneOfSeparateFromTypeLevelOneOf() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
 
         // "hound" is accepted by Animal's type annotation, not by the
         // more restrictive mapping declared on Container.pet.
@@ -108,7 +108,7 @@ class OneOfIOTest {
 
     @Test
     void mapsCurrentKeyDiscriminatorToMatchingSubtype() {
-        Container container = (Container) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        Container container = (Container) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"name\":\"Rex\",\"kind\":\"dog\",\"barks\":true}}", Container.class);
 
         Dog dog = assertInstanceOf(Dog.class, container.pet);
@@ -119,9 +119,9 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: cases without a discriminator select by JSON type. */
     @Test
     void mapsJsonTypesToTheirConfiguredTargets() {
-        JsonTypeContainer strings = (JsonTypeContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        JsonTypeContainer strings = (JsonTypeContainer) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"value\":\"text\"}", JsonTypeContainer.class);
-        JsonTypeContainer numbers = (JsonTypeContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        JsonTypeContainer numbers = (JsonTypeContainer) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"value\":12}", JsonTypeContainer.class);
 
         assertEquals("text", strings.value);
@@ -131,7 +131,7 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: a PARENT discriminator can precede its polymorphic property. */
     @Test
     void mapsParentScopeDiscriminatorBeforeTheProperty() {
-        Parent container = (Parent) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        Parent container = (Parent) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"kind\":\"cat\",\"pet\":{\"name\":\"Mog\",\"lives\":9}}", Parent.class);
 
         Cat cat = assertInstanceOf(Cat.class, container.pet);
@@ -142,7 +142,7 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: a PARENT discriminator after the property is deferred and then applied. */
     @Test
     void defersParentScopePropertyUntilItsFollowingDiscriminator() {
-        Parent container = (Parent) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        Parent container = (Parent) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"name\":\"Rex\",\"barks\":true},\"kind\":\"dog\"}", Parent.class);
 
         Dog dog = assertInstanceOf(Dog.class, container.pet);
@@ -152,7 +152,7 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: FAILBACK_NULL consumes an unmapped object without losing following fields. */
     @Test
     void fallsBackToNullForAnUnmappedDiscriminatorAndContinues() {
-        FallbackContainer container = (FallbackContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        FallbackContainer container = (FallbackContainer) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"kind\":\"lizard\",\"name\":\"Liz\"},\"after\":7}", FallbackContainer.class);
 
         assertNull(container.pet);
@@ -162,13 +162,13 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: FAIL reports an unmapped discriminator. */
     @Test
     void rejectsAnUnmappedDiscriminatorByDefault() {
-        assertThrows(BindingException.class, () -> new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        assertThrows(BindingException.class, () -> new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"kind\":\"lizard\"}}", Container.class));
     }
 
     @Test
     void mapsCurrentPathDiscriminatorToMatchingSubtype() {
-        PathContainer container = (PathContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        PathContainer container = (PathContainer) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"meta\":{\"kind\":\"cat\"},\"name\":\"Mog\",\"lives\":9}}",
                 PathContainer.class);
 
@@ -179,7 +179,7 @@ class OneOfIOTest {
 
     @Test
     void handlesMissingAndUnmatchedCurrentPathDiscriminators() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         assertThrows(BindingException.class,
                 () -> binder.readNode("{\"pet\":{\"name\":\"Mog\"}}", PathContainer.class));
         assertThrows(BindingException.class,
@@ -197,7 +197,7 @@ class OneOfIOTest {
 
     @Test
     void expandsPendingKeyFieldsAndRejectsDuplicateDiscriminators() {
-        Container container = (Container) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        Container container = (Container) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"one\":1,\"two\":2,\"three\":3,\"four\":4,\"five\":5,"
                         + "\"kind\":\"dog\",\"name\":\"Rex\",\"barks\":true}}", Container.class);
 
@@ -205,13 +205,13 @@ class OneOfIOTest {
         assertEquals("Rex", dog.name);
         assertEquals(5, dog.getInt("five"));
 
-        assertThrows(BindingException.class, () -> new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        assertThrows(BindingException.class, () -> new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"kind\":\"dog\",\"kind\":\"cat\"}}", Container.class));
     }
 
     @Test
     void appliesPropertyCodecsToFieldsBufferedBeforeTheDiscriminator() {
-        CodecContainer container = (CodecContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        CodecContainer container = (CodecContainer) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"createdAt\":1704067200000,\"kind\":\"dog\"}}", CodecContainer.class);
 
         assertEquals(Instant.ofEpochMilli(1704067200000L), container.pet.createdAt);
@@ -219,7 +219,7 @@ class OneOfIOTest {
 
     @Test
     void decodesNullValueFieldsBufferedBeforeTheDiscriminator() {
-        CodecContainer container = (CodecContainer) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        CodecContainer container = (CodecContainer) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"marker\":null,\"kind\":\"dog\"}}", CodecContainer.class);
 
         assertEquals("<null>", container.pet.marker.value);
@@ -228,9 +228,9 @@ class OneOfIOTest {
     /** Retained SJF4J semantics: pending fields, unknown dynamic fields, and arrays of a type-level OneOf all bind normally. */
     @Test
     void preservesUnknownSubtypeFieldsAndBindsOneOfContainerElements() {
-        Container container = (Container) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        Container container = (Container) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pet\":{\"extra\":3,\"name\":\"Rex\",\"kind\":\"dog\",\"barks\":true}}", Container.class);
-        AnimalList list = (AnimalList) new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+        AnimalList list = (AnimalList) new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                 "{\"pets\":[{\"kind\":\"cat\",\"name\":\"Mog\",\"lives\":9}]}", AnimalList.class);
 
         assertEquals(3, container.pet.getInt("extra"));
@@ -239,7 +239,7 @@ class OneOfIOTest {
 
     @Test
     void treatsNullAsNullRegardlessOfNoMatchPolicy() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         assertNull(binder.readNode("null", Animal.class));
         Container container = (Container) binder.readNode("{\"pet\":null}", Container.class);
         assertNull(container.pet);
@@ -252,7 +252,7 @@ class OneOfIOTest {
 
     @Test
     void readsNestedCurrentOneOfRegardlessOfFieldOrder() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         String members = "\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9},"
                 + "\"byKind\":{\"name\":\"Rex\",\"barks\":true,\"kind\":\"dog\"},"
                 + "\"pets\":[{\"kind\":\"cat\",\"lives\":4}],"
@@ -273,7 +273,7 @@ class OneOfIOTest {
 
     @Test
     void rejectsNestedParentOneOfBeforeReadingTheSubtype() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         BindingException parent = assertThrows(BindingException.class,
                 () -> binder.readNode("{\"kind\":\"nested\"}", ParentNestedBase.class));
         assertEquals(true, parent.getMessage().contains("nested PARENT @OneOf is not supported"));
@@ -281,7 +281,7 @@ class OneOfIOTest {
 
     @Test
     void readsCurrentOneOfOnCreatorParametersAndBoundFields() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         String json = "{\"pet\":{\"species\":\"cat\",\"name\":\"Mog\",\"lives\":9}}";
         CreatorMemberOneOf field = (CreatorMemberOneOf) binder.readNode(json, CreatorMemberOneOf.class);
         CreatorParameterOneOf parameter = (CreatorParameterOneOf) binder.readNode(json, CreatorParameterOneOf.class);
@@ -291,7 +291,7 @@ class OneOfIOTest {
 
     @Test
     void allowsSelfRecursiveOneOfTypesWithoutIntroducingNestedMappings() {
-        SimpleJsonBinder binder = new SimpleJsonBinder(RuntimeContext.EMPTY);
+        SimpleJsonBinder binder = new SimpleJsonBinder(NodeConfig.DEFAULT);
         String json = "{\"kind\":\"branch\",\"children\":["
                 + "{\"kind\":\"leaf\",\"value\":\"a\"},"
                 + "{\"kind\":\"branch\",\"children\":[{\"kind\":\"leaf\",\"value\":\"b\"}]}"
@@ -306,7 +306,7 @@ class OneOfIOTest {
     @Test
     void rejectsNonPojoTargetsForKeyDiscriminator() {
         BindingException error = assertThrows(BindingException.class, () ->
-                new SimpleJsonBinder(RuntimeContext.EMPTY).readNode(
+                new SimpleJsonBinder(NodeConfig.DEFAULT).readNode(
                         "{\"payload\":{\"kind\":\"map\",\"value\":7}}", MapHolder.class));
         assertTrue(error.getMessage().contains("requires a POJO subtype"));
     }

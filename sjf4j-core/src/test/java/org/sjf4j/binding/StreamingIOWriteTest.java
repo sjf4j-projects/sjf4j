@@ -3,7 +3,7 @@ package org.sjf4j.binding;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.JsonArray;
 import org.sjf4j.JsonObject;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.simple.SimpleJsonGenerator;
 import org.sjf4j.exception.BindingException;
@@ -30,7 +30,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
-                StreamingIO.writeNode(generator, map, RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, map, NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -40,7 +40,7 @@ class StreamingIOWriteTest {
         assertEquals("{\"items\":[1,2],\"node\":{\"values\":[\"a\",\"b\"]}}", output.toString());
 
         SeparatorWriter separators = new SeparatorWriter();
-        StreamingIO.writeNode(separators, new int[]{1, 2}, RuntimeContext.EMPTY);
+        StreamingIO.writeNode(separators, new int[]{1, 2}, NodeConfig.DEFAULT);
         assertEquals(0, separators.properties);
         assertEquals(1, separators.elements);
     }
@@ -51,7 +51,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
-                StreamingIO.writeNode(generator, StandardCharsets.UTF_8, RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, StandardCharsets.UTF_8, NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -79,7 +79,7 @@ class StreamingIOWriteTest {
             {
                 SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
                 try {
-                    StreamingIO.writeNode(generator, arrays[i], RuntimeContext.EMPTY);
+                    StreamingIO.writeNode(generator, arrays[i], NodeConfig.DEFAULT);
                     generator.end();
 
                 } finally {
@@ -104,7 +104,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
-                StreamingIO.writeNode(generator, holder, RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, holder, NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -127,7 +127,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, randomAccessOutput);
             try {
-                StreamingIO.writeNode(generator, List.of("a", 2), RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, List.of("a", 2), NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -140,7 +140,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, linkedOutput);
             try {
-                StreamingIO.writeNode(generator, new LinkedList<>(List.of("a", 2)), RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, new LinkedList<>(List.of("a", 2)), NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -153,7 +153,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, setOutput);
             try {
-                StreamingIO.writeNode(generator, new LinkedHashSet<>(List.of("a", 2)), RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, new LinkedHashSet<>(List.of("a", 2)), NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -169,7 +169,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, mapOutput);
             try {
-                StreamingIO.writeNode(generator, map, new RuntimeContext(false));
+                StreamingIO.writeNode(generator, map, new NodeConfig(false));
                 generator.end();
 
             } finally {
@@ -182,7 +182,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, includeNullsOutput);
             try {
-                StreamingIO.writeNode(generator, map, RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, map, NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -202,7 +202,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, output);
             try {
-                generator.writeRaw(raw, new RuntimeContext(false));
+                generator.writeRaw(raw, new NodeConfig(false));
                 generator.end();
 
             } finally {
@@ -219,7 +219,7 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, outputWithNull);
             try {
-                generator.writeRaw(withNull, RuntimeContext.EMPTY);
+                generator.writeRaw(withNull, NodeConfig.DEFAULT);
                 generator.end();
 
             } finally {
@@ -233,7 +233,7 @@ class StreamingIOWriteTest {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, rejected);
             try {
                 assertThrows(BindingException.class,
-                        () -> generator.writeRaw(new UnsupportedNode(), RuntimeContext.EMPTY));
+                        () -> generator.writeRaw(new UnsupportedNode(), NodeConfig.DEFAULT));
 
             } finally {
                 generator.close();
@@ -247,9 +247,9 @@ class StreamingIOWriteTest {
         {
             SimpleJsonGenerator generator = new SimpleJsonGenerator(null, sw);
             try {
-                StreamingIO.writeNode(generator, new UnsupportedNode(), RuntimeContext.EMPTY);
+                StreamingIO.writeNode(generator, new UnsupportedNode(), NodeConfig.DEFAULT);
     //            assertThrows(BindingException.class,
-    //                    () -> StreamingIO.writeNode(generator, new UnsupportedNode(), RuntimeContext.EMPTY));
+    //                    () -> StreamingIO.writeNode(generator, new UnsupportedNode(), NodeConfig.DEFAULT));
 
             } finally {
                 generator.close();

@@ -39,7 +39,7 @@ public final class MapperGenerator {
         }
 
         GeneratedClass generated = GeneratedClass.forInterface(context, type);
-        generated.enableRuntimeContext();
+        generated.enableNodeConfig();
 
         /*
          * --------------------------------------------------------------

@@ -35,9 +35,9 @@ public final class GeneratedClass {
     private final List<Member> fields = new ArrayList<>();
     private final List<Member> methods = new ArrayList<>();
     private final List<Member> helpers = new ArrayList<>();
-    private final List<Member> contextInitializers = new ArrayList<>();
+    private final List<Member> configInitializers = new ArrayList<>();
 
-    private boolean runtimeContextConstructor;
+    private boolean nodeConfigConstructor;
     private String backendBinderType;
 
     private boolean valid = true;
@@ -154,8 +154,8 @@ public final class GeneratedClass {
      * Gives the generated implementation immutable per-instance runtime settings.
      * The no-arg constructor preserves the default settings contract.
      */
-    public void enableRuntimeContext() {
-        runtimeContextConstructor = true;
+    public void enableNodeConfig() {
+        nodeConfigConstructor = true;
     }
 
     /** Adds a constructor accepting the concrete backend Binder for a CompiledBinder. */
@@ -163,9 +163,9 @@ public final class GeneratedClass {
         this.backendBinderType = Asserts.notNull(binderType, "binderType");
     }
 
-    /** Adds an assignment after the generated constructor's context field is set. */
-    public void addContextInitializer(Member member) {
-        contextInitializers.add(Asserts.notNull(member, "member"));
+    /** Adds an assignment after the generated constructor's config field is set. */
+    public void addConfigInitializer(Member member) {
+        configInitializers.add(Asserts.notNull(member, "member"));
     }
 
     public boolean isEmpty() {
@@ -240,8 +240,8 @@ public final class GeneratedClass {
     private void writeMembers(JavaWriter out) {
         boolean written = false;
 
-        if (runtimeContextConstructor) {
-            out.line("private final org.sjf4j.RuntimeContext context;");
+        if (nodeConfigConstructor) {
+            out.line("private final org.sjf4j.NodeConfig config;");
             written = true;
         }
 
@@ -251,29 +251,29 @@ public final class GeneratedClass {
             written = true;
         }
 
-        if (runtimeContextConstructor) {
+        if (nodeConfigConstructor) {
             if (written) out.blank();
             out.beginBlock("public " + simpleName + "()");
             out.line(backendBinderType == null
-                    ? "this(org.sjf4j.RuntimeContext.EMPTY);"
+                    ? "this(org.sjf4j.NodeConfig.DEFAULT);"
                     : "this(new " + backendBinderType + "());");
             out.endBlock();
             out.blank();
-            out.beginBlock("public " + simpleName + "(org.sjf4j.RuntimeContext context)");
+            out.beginBlock("public " + simpleName + "(org.sjf4j.NodeConfig config)");
             if (backendBinderType == null) {
-                out.line("this.context = org.sjf4j.util.Asserts.notNull(context, \"context\");");
-                for (Member initializer : contextInitializers) initializer.write(out);
+                out.line("this.config = org.sjf4j.util.Asserts.notNull(config, \"config\");");
+                for (Member initializer : configInitializers) initializer.write(out);
             } else {
                 out.line("this(new " + backendBinderType
-                        + "(org.sjf4j.util.Asserts.notNull(context, \"context\")));");
+                        + "(org.sjf4j.util.Asserts.notNull(config, \"config\")));");
             }
             out.endBlock();
             if (backendBinderType != null) {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
                 out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
-                out.line("this.context = this.binder.context();");
-                for (Member initializer : contextInitializers) initializer.write(out);
+                out.line("this.config = this.binder.config();");
+                for (Member initializer : configInitializers) initializer.write(out);
                 out.endBlock();
             }
             written = true;

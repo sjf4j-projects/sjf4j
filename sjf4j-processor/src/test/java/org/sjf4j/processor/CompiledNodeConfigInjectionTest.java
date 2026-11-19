@@ -2,7 +2,7 @@ package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.value.ValueRegistry;
 
 import java.net.URLClassLoader;
@@ -12,7 +12,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Verifies per-instance runtime configuration in generated mapper and binder implementations. */
-class CompiledRuntimeContextInjectionTest {
+class CompiledNodeConfigInjectionTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -58,12 +58,12 @@ class CompiledRuntimeContextInjectionTest {
         assertTrue(compiled.success, compiled.diagnostics());
         String mapperSource = compiled.generatedSource("fixture/Mapper_Impl.java");
         String binderSource = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(mapperSource.contains("RuntimeContext context)"), mapperSource);
+        assertTrue(mapperSource.contains("NodeConfig config)"), mapperSource);
         String outerSource = compiled.generatedSource("fixture/Outer_Impl.java");
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
         assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
-        assertTrue(binderSource.contains("RuntimeContext context)"), binderSource);
-        assertTrue(binderSource.contains("context.valueFormat("), binderSource);
+        assertTrue(binderSource.contains("NodeConfig config)"), binderSource);
+        assertTrue(binderSource.contains("config.valueFormat("), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
         assertFalse(binderSource.contains("org.sjf4j.Nodes."), binderSource);
 
@@ -78,12 +78,12 @@ class CompiledRuntimeContextInjectionTest {
             assertNotSame(defaultMapper, CompiledInstances.create(mapperInterface));
             assertNotSame(defaultBinder, CompiledInstances.create(binderInterface));
 
-            RuntimeContext context = new RuntimeContext(Map.of(tokenClass, "alternate"), false);
-            Object configuredMapper = CompiledInstances.create(mapperInterface, context);
-            Object configuredBinder = CompiledInstances.create(binderInterface, context);
+            NodeConfig config = new NodeConfig(Map.of(tokenClass, "alternate"), false);
+            Object configuredMapper = CompiledInstances.create(mapperInterface, config);
+            Object configuredBinder = CompiledInstances.create(binderInterface, config);
             assertNotSame(defaultMapper, configuredMapper);
             assertNotSame(defaultBinder, configuredBinder);
-            assertNotSame(configuredMapper, CompiledInstances.create(mapperInterface, context));
+            assertNotSame(configuredMapper, CompiledInstances.create(mapperInterface, config));
 
             Object token = tokenClass.getConstructor(String.class).newInstance("hello");
             assertEquals("d:hello", mapperInterface.getMethod("encode", tokenClass)
@@ -109,7 +109,7 @@ class CompiledRuntimeContextInjectionTest {
             Object source = sourceClass.getConstructor().newInstance();
             sourceClass.getField("token").set(source, token);
             Object defaultOuter = CompiledInstances.create(outerInterface);
-            Object alternateOuter = CompiledInstances.create(outerInterface, context);
+            Object alternateOuter = CompiledInstances.create(outerInterface, config);
             Object defaultTarget = outerInterface.getMethod("map", sourceClass)
                     .invoke(defaultOuter, source);
             Object alternateTarget = outerInterface.getMethod("map", sourceClass)
@@ -161,10 +161,10 @@ class CompiledRuntimeContextInjectionTest {
                 beanType.getField("address").set(bean,
                         loader.loadClass("fixture.Address").getConstructor().newInstance());
 
-                RuntimeContext context = new RuntimeContext(
+                NodeConfig config = new NodeConfig(
                         Map.of(java.time.Instant.class, "epochMillis"), false);
                 Object defaults = CompiledInstances.create(type);
-                Object configured = CompiledInstances.create(type, context);
+                Object configured = CompiledInstances.create(type, config);
                 String standard = (String) type.getMethod("write", beanType).invoke(defaults, bean);
                 String custom = (String) type.getMethod("write", beanType).invoke(configured, bean);
                 assertTrue(standard.contains("2024-01-01T10:00:00Z"), backend + ": " + standard);
@@ -202,21 +202,21 @@ class CompiledRuntimeContextInjectionTest {
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
         assertTrue(compiled.generatedSource("fixture/Paths_Impl.java")
-                .contains("RuntimeContext context)"));
+                .contains("NodeConfig config)"));
         assertTrue(compiled.generatedSource("fixture/Rows_Impl.java")
-                .contains("RuntimeContext context)"));
+                .contains("NodeConfig config)"));
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class pathsType = loader.loadClass("fixture.Paths");
             Class rowsType = loader.loadClass("fixture.Rows");
-            RuntimeContext context = new RuntimeContext(Map.of(), false);
+            NodeConfig config = new NodeConfig(Map.of(), false);
 
-            Object navigator = CompiledInstances.create(pathsType, context);
+            Object navigator = CompiledInstances.create(pathsType, config);
             assertNotSame(navigator, CompiledInstances.create(pathsType));
             assertEquals("Alice", pathsType.getMethod("getName", Map.class)
                     .invoke(navigator, Map.of("name", "Alice")));
 
-            Object jdbcMapper = CompiledInstances.create(rowsType, context);
+            Object jdbcMapper = CompiledInstances.create(rowsType, config);
             assertNotSame(jdbcMapper, CompiledInstances.create(rowsType));
             java.util.concurrent.atomic.AtomicBoolean advanced =
                     new java.util.concurrent.atomic.AtomicBoolean();

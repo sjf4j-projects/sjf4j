@@ -15,7 +15,7 @@ import jakarta.json.Json;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Write;
@@ -103,7 +103,7 @@ public class CompiledWriteBenchmark {
     private static final JsonpBinder JSONP_RUNTIME = new JsonpBinder();
     private static final SimpleJsonBinder SIMPLE_RUNTIME = new SimpleJsonBinder();
 
-    private static final RuntimeContext DIRECT_CONTEXT = RuntimeContext.EMPTY;
+    private static final NodeConfig DIRECT_CONTEXT = NodeConfig.DEFAULT;
     private static final URI URI_VALUE = URI.create("https://example.test/person?id=123");
     private static final User USER;
     private static final Map<String, Object> MAP;
@@ -285,7 +285,7 @@ public class CompiledWriteBenchmark {
                 new org.sjf4j.testbench.model.Friend(7L, null, 9L, true), null));
 
         for (boolean includeNulls : new boolean[]{true, false}) {
-            RuntimeContext ctx = new RuntimeContext(includeNulls);
+            NodeConfig ctx = new NodeConfig(includeNulls);
             String j2 = CompiledInstances.create(Jackson2CompiledBinder.class, ctx)
                     .writePojo(example);
             String j3 = CompiledInstances.create(Jackson3CompiledBinder.class, ctx)

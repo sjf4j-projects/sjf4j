@@ -1,6 +1,6 @@
 package org.sjf4j.backend.jackson3.binding;
 
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.util.Asserts;
 import tools.jackson.core.JsonGenerator;
@@ -32,15 +32,15 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
 
     /** Creates a binder with a default Jackson 3 factory. */
     public Jackson3Binder() {
-        this(new JsonFactory(), RuntimeContext.EMPTY);
+        this(new JsonFactory(), NodeConfig.DEFAULT);
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public Jackson3Binder(RuntimeContext context) {
-        this(new JsonFactory(), context);
+    public Jackson3Binder(NodeConfig config) {
+        this(new JsonFactory(), config);
     }
 
     /**
@@ -48,16 +48,16 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
      * @param factory the Jackson 3 factory to rebuild
      */
     public Jackson3Binder(JsonFactory factory) {
-        this(factory, RuntimeContext.EMPTY);
+        this(factory, NodeConfig.DEFAULT);
     }
 
     /**
      * Creates a binder from a supplied factory with runtime settings.
      * @param factory the Jackson 3 factory to rebuild
-     * @param context the SJF4J runtime settings
+     * @param config the SJF4J runtime settings
      */
-    public Jackson3Binder(JsonFactory factory, RuntimeContext context) {
-        super(context);
+    public Jackson3Binder(JsonFactory factory, NodeConfig config) {
+        super(config);
         Asserts.notNull(factory, "factory");
         this.factory = factory.rebuild()
                 .disable(TokenStreamFactory.Feature.CHARSET_DETECTION)

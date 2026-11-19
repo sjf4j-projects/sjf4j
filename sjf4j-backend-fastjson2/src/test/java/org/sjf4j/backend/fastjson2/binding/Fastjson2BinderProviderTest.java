@@ -4,7 +4,7 @@ import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
 import org.junit.jupiter.api.Test;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.BinderProvider;
 import org.sjf4j.binding.BinderFactory;
 import org.sjf4j.binding.Format;
@@ -23,7 +23,7 @@ class Fastjson2BinderProviderTest {
         BinderProvider provider = Fastjson2BinderProvider.of(readerContext, writerContext);
 
         Fastjson2Binder binder = assertInstanceOf(Fastjson2Binder.class,
-                provider.create(RuntimeContext.EMPTY));
+                provider.create(NodeConfig.DEFAULT));
 
         assertEquals(7, ((Value) binder.readNode("{value:7}", Value.class)).value);
     }
@@ -33,7 +33,7 @@ class Fastjson2BinderProviderTest {
         BinderProvider provider = BinderFactory.provider(Format.JSON);
 
         assertInstanceOf(Fastjson2BinderProvider.class, provider);
-        assertInstanceOf(Fastjson2Binder.class, provider.create(RuntimeContext.EMPTY));
+        assertInstanceOf(Fastjson2Binder.class, provider.create(NodeConfig.DEFAULT));
     }
 
     @Test

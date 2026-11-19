@@ -3,7 +3,7 @@ package org.sjf4j.backend.fastjson2.binding;
 import com.alibaba.fastjson2.JSONFactory;
 import com.alibaba.fastjson2.JSONReader;
 import com.alibaba.fastjson2.JSONWriter;
-import org.sjf4j.RuntimeContext;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.Binder;
 import org.sjf4j.binding.StreamingIO;
 import org.sjf4j.exception.BindingException;
@@ -31,35 +31,35 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /** Creates a binder with default Fastjson2 contexts. */
     public Fastjson2Binder() {
-        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), RuntimeContext.EMPTY);
+        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), NodeConfig.DEFAULT);
     }
 
     /**
-     * Creates a binder with default backend settings and a supplied runtime context.
-     * @param context the SJF4J runtime settings
+     * Creates a binder with default backend settings and a supplied runtime config.
+     * @param config the SJF4J runtime settings
      */
-    public Fastjson2Binder(RuntimeContext context) {
-        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), context);
+    public Fastjson2Binder(NodeConfig config) {
+        this(JSONFactory.createReadContext(), JSONFactory.createWriteContext(), config);
     }
 
     /**
      * Creates a binder with caller-supplied reader and writer contexts.
-     * @param readerContext the read context, configured in place
-     * @param writerContext the write context, configured in place
+     * @param readerContext the read config, configured in place
+     * @param writerContext the write config, configured in place
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
-        this(readerContext, writerContext, RuntimeContext.EMPTY);
+        this(readerContext, writerContext, NodeConfig.DEFAULT);
     }
 
     /**
      * Creates a binder with caller-supplied contexts and runtime settings.
-     * @param readerContext the read context, configured in place
-     * @param writerContext the write context, configured in place
-     * @param context the SJF4J runtime settings
+     * @param readerContext the read config, configured in place
+     * @param writerContext the write config, configured in place
+     * @param config the SJF4J runtime settings
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
-                           RuntimeContext context) {
-        super(context);
+                           NodeConfig config) {
+        super(config);
         this.readerContext = Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");
         this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
@@ -143,7 +143,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
     }
 
     /**
-     * Creates an in-memory writer using this binder's configured context.
+     * Creates an in-memory writer using this binder's configured config.
      * @return a writer with a Fastjson2-owned output buffer
      */
     public Fastjson2Generator createGenerator() {
@@ -210,7 +210,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
         try (JSONWriter output = JSONWriter.of(writerContext)) {
             Fastjson2Generator generator = new Fastjson2Generator(output);
             generator.start();
-            StreamingIO.writeNode(generator, node, context);
+            StreamingIO.writeNode(generator, node, config);
             generator.end();
             return output.toString();
         } catch (BindingException e) {
@@ -227,7 +227,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
         try (JSONWriter output = JSONWriter.ofUTF8(writerContext)) {
             Fastjson2Generator generator = new Fastjson2Generator(output);
             generator.start();
-            StreamingIO.writeNode(generator, node, context);
+            StreamingIO.writeNode(generator, node, config);
             generator.end();
             return output.getBytes();
         } catch (BindingException e) {
