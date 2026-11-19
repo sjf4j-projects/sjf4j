@@ -29,6 +29,16 @@ public final class ClasspathRegistries {
         public static final ValueCodec<Instant, String> ALPHA = ValueCodec.INSTANT_STR;
     }
 
+    public static final class ExternalValue {
+        public final String value;
+        public ExternalValue(String value) { this.value = value; }
+    }
+
+    @NodeRegistry
+    public interface ExternalNodes {
+        org.sjf4j.external.ExternalNode<ExternalValue> ROOT = null;
+    }
+
     @NodeRegistry
     public interface Second {
         @NodeValue(format = "beta")

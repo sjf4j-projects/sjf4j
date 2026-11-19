@@ -160,10 +160,6 @@ public final class ValueCodecResolver {
             for (Element element : holder.getEnclosedElements()) {
                 if (isCodecDeclaration(element)) declarations.add(element);
             }
-            if (declarations.isEmpty()) {
-                context.error(holder, "@NodeRegistry has no ValueCodec declarations");
-                continue;
-            }
             declarations.sort(Comparator
                     .comparing((Element element) -> !isDefaultCodec(element))
                     .thenComparing(element -> element.getSimpleName().toString())
