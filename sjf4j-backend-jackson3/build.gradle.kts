@@ -9,8 +9,8 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
     }
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
     withSourcesJar()
 }
 
@@ -31,7 +31,7 @@ dependencies {
 }
 
 tasks.named<JavaCompile>("compileJava") {
-    options.release.set(8)
+    options.release.set(17)
     options.compilerArgs.addAll(listOf(
         "-Xlint:unchecked",
         "-Xlint:deprecation"

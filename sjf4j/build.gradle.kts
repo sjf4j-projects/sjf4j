@@ -12,11 +12,7 @@ java {
 dependencies {
     api(project(":sjf4j-core"))
     api(project(":sjf4j-backend-jackson2"))
-    // Jackson 3 requires Java 17. Keep its adapter discoverable without forcing
-    // its native library onto Java 8 consumers of the aggregate.
-    api(project(":sjf4j-backend-jackson3")) {
-        exclude(group = "tools.jackson.core", module = "jackson-databind")
-    }
+    api(project(":sjf4j-backend-jackson3"))
     api(project(":sjf4j-backend-gson"))
     api(project(":sjf4j-backend-fastjson2"))
     api(project(":sjf4j-backend-snake"))
