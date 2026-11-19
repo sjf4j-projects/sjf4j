@@ -155,6 +155,32 @@ class RegistryDiscoveryTest {
     }
 
     @Test
+    void rejectsStandaloneCodecFieldOutsideRegistryWithoutCompiledConsumers() throws Exception {
+        // @NodeValue alone must trigger the processor; there is no @Compiled* or @NodeRegistry here.
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Bad.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeValue; "
+                + "import org.sjf4j.value.ValueCodec; "
+                + "public class Bad { "
+                + "@NodeValue public static final ValueCodec<Bad, String> CODEC = "
+                + "new ValueCodec.SimpleValueCodec<>(Bad.class, String.class, "
+                + "value -> \"bad\", raw -> new Bad()); "
+                + "}"), CodegenProcessor.class);
+        assertFalse(result.success, result.diagnostics());
+        assertTrue(result.diagnostics().contains(
+                "@NodeValue codec declaration requires @NodeRegistry"), result.diagnostics());
+    }
+
+    @Test
+    void standaloneNodeValueTypeIsValidWithoutCompiledConsumers() throws Exception {
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
+                "fixture/Value.java",
+                "package fixture; import org.sjf4j.annotation.node.NodeValue; "
+                + "@NodeValue public final class Value {}"), CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+    }
+
+    @Test
     void nodeRegistryMustBeInterface() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bad.java",
