@@ -6,6 +6,7 @@ import org.sjf4j.Nodes;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
 import org.sjf4j.processor.ProcessorContext;
+import org.sjf4j.processor.discovery.CompiledMetadata;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -31,12 +32,15 @@ import java.util.List;
 final class SchemaMethodGenerator {
 
     private final ProcessorContext context;
+    private final CompiledMetadata metadata;
     private final SchemaResourceResolver resources;
     private final SchemaFallbackEmitter fallbacks;
     private int methodSerial;
 
-    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated) {
+    SchemaMethodGenerator(ProcessorContext context, GeneratedClass generated,
+                          CompiledMetadata metadata) {
         this.context = context;
+        this.metadata = metadata;
         this.resources = new SchemaResourceResolver(context);
         this.fallbacks = new SchemaFallbackEmitter(generated.names());
     }
@@ -127,7 +131,7 @@ final class SchemaMethodGenerator {
                             : new SchemaCheck.Reject(
                                     SchemaCompiler.schemaDiagnostic(plan.snapshot.selectedUri, "false"));
                 } else {
-                    SchemaCompiler compiler = new SchemaCompiler(context);
+                    SchemaCompiler compiler = new SchemaCompiler(context, metadata);
                     compiled = compiler.compileRoot(parameterType, plan.snapshot);
                     if (compiled == null || compiled.hasFallback()) {
                         fallbackReason = "schema binding " + bindings.get(i).ownerName
@@ -178,7 +182,7 @@ final class SchemaMethodGenerator {
             emitted = new ArrayList<String>();
             for (int i = 0; i < directBindings.size(); i++) {
                 emitted.addAll(new SchemaEmitter(generated, "M" + methodSerial++, locals).emitRoot(
-                        directBindings.get(i), SchemaValue.of(context, parameterType), value,
+                        directBindings.get(i), SchemaValue.of(context, parameterType, metadata), value,
                         plans.get(i), strictParam, failure));
             }
         }
