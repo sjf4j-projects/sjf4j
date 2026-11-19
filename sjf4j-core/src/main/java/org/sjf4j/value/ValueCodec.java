@@ -2,6 +2,7 @@ package org.sjf4j.value;
 
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.annotation.node.NodeValue;
+import org.sjf4j.annotation.node.NodeRegistry;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.binding.StreamingGenerator;
 
@@ -58,6 +59,7 @@ import java.util.regex.Pattern;
  * registration-time check because generic type arguments are erased from
  * {@link #rawClazz()}.
  */
+@NodeRegistry
 public interface ValueCodec<V, R> {
 
     /**
