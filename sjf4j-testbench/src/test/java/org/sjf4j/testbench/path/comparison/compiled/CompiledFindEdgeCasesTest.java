@@ -71,7 +71,7 @@ class CompiledFindEdgeCasesTest {
         List<Object> descendantMixedUnionThenTitle(Map<String, Object> root);
     }
 
-    @CompiledNavigator(fallback = true)
+    @CompiledNavigator
     interface FilterPaths {
         @FindByPath("$..[?(@ > 3)]")
         List<Object> descendantGreaterThanThree(Object root);
