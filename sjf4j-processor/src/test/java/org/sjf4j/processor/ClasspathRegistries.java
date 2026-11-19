@@ -34,4 +34,15 @@ public final class ClasspathRegistries {
         @NodeValue(format = "beta")
         public static final ValueCodec<Instant, String> BETA = ValueCodec.INSTANT_STR;
     }
+
+    /** Precompiled external root and its compile-time adapter declaration. */
+    public static final class ExternalValue {
+        public final String text;
+        public ExternalValue(String text) { this.text = text; }
+    }
+
+    @NodeRegistry
+    public interface ExternalNodes {
+        org.sjf4j.external.ExternalNode<ExternalValue> EXTERNAL = null;
+    }
 }
