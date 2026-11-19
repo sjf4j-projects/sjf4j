@@ -80,21 +80,21 @@ class CompiledMapperValueCodecTest {
                 + "public class Source { public String money; }";
         String mapper = "package fixture; "
                 + "import org.sjf4j.annotation.mapping.CompiledMapper; "
-                + "import org.sjf4j.annotation.binding.BindingOptions; "
+                + ""
                 + "import org.sjf4j.processor.ClasspathRegistries; "
-                + "%s @CompiledMapper public interface Mapper { "
+                + "%s public interface Mapper { "
                 + "Target map(Source source); Source reverse(Target source); }";
 
         Map<String, String> fixture = new LinkedHashMap<>();
         fixture.put("fixture/Target.java", model);
         fixture.put("fixture/Source.java", source);
-        fixture.put("fixture/Mapper.java", String.format(mapper, ""));
+        fixture.put("fixture/Mapper.java", String.format(mapper, "@CompiledMapper"));
         NavigatorTestCompiler.Result missing =
                 NavigatorTestCompiler.compile(fixture, CodegenProcessor.class);
         assertFalse(missing.success, "Classpath codecs must require an explicit registry");
 
         fixture.put("fixture/Mapper.java", String.format(mapper,
-                "@BindingOptions(registries={ClasspathRegistries.Third.class})"));
+                "@CompiledMapper(registries={ClasspathRegistries.Third.class})"));
         NavigatorTestCompiler.Result compiled =
                 NavigatorTestCompiler.compile(fixture, CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
@@ -116,7 +116,7 @@ class CompiledMapperValueCodecTest {
         sources.put("fixture/Codecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public class Codecs { @NodeValue "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface Codecs { @NodeValue "
                 + "public static final ValueCodec<Token, String> TOKEN = "
                 + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
                 + "v -> v.text, Token::new); }");
@@ -288,7 +288,7 @@ class CompiledMapperValueCodecTest {
                 "package fixture; import java.io.Serializable; "
                 + "import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public class Codecs { @NodeValue "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface Codecs { @NodeValue "
                 + "public static final ValueCodec<Serializable,String> CODEC = "
                 + "new ValueCodec.SimpleValueCodec<>(Serializable.class, String.class, "
                 + "Object::toString, raw -> raw); }");
@@ -350,7 +350,7 @@ class CompiledMapperValueCodecTest {
         sources.put("fixture/Codecs.java",
                 "package fixture; import org.sjf4j.annotation.node.NodeValue; "
                 + "import org.sjf4j.value.ValueCodec; "
-                + "@org.sjf4j.annotation.node.ValueCodecRegistry public final class Codecs { "
+                + "@org.sjf4j.annotation.node.NodeRegistry public interface Codecs { "
                 + "@NodeValue public static final ValueCodec<Token,String> TEXT = "
                 + "new ValueCodec.SimpleValueCodec<>(Token.class, String.class, "
                 + "v -> v.text, raw -> new Token(\"text:\" + raw)); "
@@ -359,9 +359,8 @@ class CompiledMapperValueCodecTest {
                 + "v -> 7L, raw -> new Token(\"number:\" + raw)); }");
         sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
-                + "import org.sjf4j.annotation.binding.BindingOptions; "
-                + "@BindingOptions(registries={Codecs.class}) "
-                + "@CompiledMapper public interface Mapper { "
+                + ""
+                + "@CompiledMapper(registries={Codecs.class}) public interface Mapper { "
                 + "Token fromNumber(Long value); Token fromText(String value); }");
 
         NavigatorTestCompiler.Result compiled =
@@ -380,9 +379,8 @@ class CompiledMapperValueCodecTest {
 
         sources.put("fixture/Mapper.java",
                 "package fixture; import org.sjf4j.annotation.mapping.CompiledMapper; "
-                + "import org.sjf4j.annotation.binding.BindingOptions; "
-                + "@BindingOptions(registries={Codecs.class}) "
-                + "@CompiledMapper public interface Mapper { Token fromBoolean(Boolean value); }");
+                + ""
+                + "@CompiledMapper(registries={Codecs.class}) public interface Mapper { Token fromBoolean(Boolean value); }");
         NavigatorTestCompiler.Result incompatible =
                 NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
         assertFalse(incompatible.success, incompatible.diagnostics());
