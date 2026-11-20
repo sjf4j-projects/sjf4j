@@ -104,6 +104,8 @@ tasks.named<JavaCompile>("compileTestJava") {
 
 // CompiledValidator's annotation processor reads Creek schemas from jmh resources.
 tasks.named<JavaCompile>("compileJmhJava") {
+    // Experimental only: select the Jackson 3 compiled name/value fusion path.
+    options.compilerArgs.add("-Asjf4j.jackson3.fused=${providers.gradleProperty("sjf4jJackson3Fused").orElse("false").get()}")
     dependsOn(tasks.named("processJmhResources"))
     classpath += files(layout.buildDirectory.dir("resources/jmh"))
 }

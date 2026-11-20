@@ -70,7 +70,15 @@ public final class Jackson3Parser extends StreamingParser {
      */
     public JsonParser nativeParser() {
         if (prefetched) {
-            throw new IllegalStateException("cannot access native parser with pending lookahead token");
+            // Compiled fused property matching has already selected the
+            // container's start/null token. Native structural traversal must
+            // adopt it without advancing the underlying Jackson cursor.
+            JsonToken current = parser.currentToken();
+            if (current != JsonToken.START_OBJECT && current != JsonToken.START_ARRAY
+                    && current != JsonToken.VALUE_NULL) {
+                throw new IllegalStateException("cannot access native parser with pending lookahead token");
+            }
+            prefetched = false;
         }
         return parser;
     }
@@ -270,6 +278,44 @@ public final class Jackson3Parser extends StreamingParser {
             return matcher.fallback(parser.currentName());
         }
         // MATCH_ODD_TOKEN, or any other invalid matcher result.
+        throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
+    }
+
+    /**
+     * Experimental compiled-only entry point: Jackson 3.3 can match a member
+     * name and advance to its value in one optimized parser call.
+     * Normal StreamingParser.nextNameMatch() semantics remain unchanged.
+     */
+    public int nextNameMatchAndToken(NameMatcher matcher, int expectedIndex) throws IOException {
+        Jackson3NameMatcher jacksonMatcher = (Jackson3NameMatcher) matcher;
+        if (prefetched || (readerBased && expectedIndex >= 0
+                && expectedIndex < jacksonMatcher.serializedNames.length)) {
+            int index = nextNameMatch(matcher, expectedIndex);
+            if (index >= 0) {
+                parser.nextToken();
+                prefetched = true;
+            }
+            return index;
+        }
+
+        int match = parser.nextNameMatchAndToken(jacksonMatcher.matcher);
+        if (match >= 0) {
+            prefetched = true;
+            return match;
+        }
+        if (match == PropertyNameMatcher.MATCH_END_OBJECT) {
+            return NameMatcher.OBJECT_END;
+        }
+        if (match == PropertyNameMatcher.MATCH_UNKNOWN_NAME) {
+            // The native call leaves unknown names on PROPERTY_NAME. An alias
+            // resolved by SJF4J still needs its value token advanced.
+            int index = matcher.fallback(parser.currentName());
+            if (index >= 0) {
+                parser.nextToken();
+                prefetched = true;
+            }
+            return index;
+        }
         throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
     }
 

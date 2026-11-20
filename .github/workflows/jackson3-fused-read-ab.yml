@@ -1,0 +1,124 @@
+name: Jackson3 Fused POJO Read A/B (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-fused-read-ab.yml'
+      - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/Jackson3Parser.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/ReadEmitter.java'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fused-jvm-ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Run both generated implementations and verify fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-fused
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for fused in false true; do
+            echo "=== Compile fused=$fused ==="
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              "-Psjf4jJackson3Fused=$fused" > "$OUT/$fused-build.log" 2>&1 || {
+                tail -n 100 "$OUT/$fused-build.log"
+                exit 1
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -f "$JAR"
+            echo "=== Benchmark fused=$fused ==="
+            java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read' \
+              -p backend=jackson3 -p model=users,clients -p shape=pojo \
+              -p implementation=native,blackbird,compiled -p sizeKb=1,10,100 \
+              -p seed=12345,324 -t 1 -f 3 -wi 3 -i 5 -w 400ms -r 400ms \
+              -rf json -rff "$OUT/$fused.json" > "$OUT/$fused-jmh.log" 2>&1 || {
+                tail -n 100 "$OUT/$fused-jmh.log"
+                exit 1
+              }
+          done
+
+          python3 - "$OUT" <<'PY'
+          import csv, json, statistics, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          modes = ("false", "true")
+          models = ("users", "clients")
+          sizes = ("1", "10", "100")
+          seeds = ("12345", "324")
+          impls = ("native", "blackbird", "compiled")
+          data = {}
+          for mode in modes:
+              for entry in json.loads((root / f"{mode}.json").read_text()):
+                  p = entry["params"]
+                  key = (mode, p["model"], p["sizeKb"], p["seed"], p["implementation"])
+                  forks = [statistics.mean(run) for run in entry["primaryMetric"]["rawData"]]
+                  if len(forks) != 3: raise SystemExit(f"Missing fork: {key}")
+                  data[key] = statistics.mean(sorted(forks)[:2])
+          expected = {(mode, model, size, seed, impl)
+                      for mode in modes for model in models for size in sizes
+                      for seed in seeds for impl in impls}
+          if set(data) != expected:
+              raise SystemExit(f"Incomplete matrix: missing={expected-set(data)}, extra={set(data)-expected}")
+
+          def geo(vals): return statistics.geometric_mean(vals)
+          def metric(mode, model, size, impl):
+              return geo(data[(mode, model, size, seed, impl)] for seed in seeds)
+          report = ["# Jackson 3.3.0 compiled fused-name A/B", "",
+                    "Same runner and Jackson 3.3.0. Only generated compiled name/value consumption differs.",
+                    "3 JMH forks, 3 × 400ms warmup, 5 × 400ms measurement; Best 2 means; two seeds.",
+                    "Higher ratios mean Compiled has a greater advantage. Every JMH trial verifies the POJO result.",
+                    "",
+                    "| Model | Size | Compiled old → fused (µs/op) | Speedup | Native/Compiled old → fused | Blackbird/Compiled old → fused |",
+                    "| --- | --- | ---: | ---: | ---: | ---: |"]
+          rows = []
+          for model in models:
+              for size in sizes:
+                  c0, c1 = (metric(m, model, size, "compiled") for m in modes)
+                  native = metric("true", model, size, "native")
+                  blackbird = metric("true", model, size, "blackbird")
+                  n0, n1 = native/c0, native/c1
+                  b0, b1 = blackbird/c0, blackbird/c1
+                  report.append(f"| {model} | {size}KB | {c0:.3f} → {c1:.3f} | "
+                                f"{c0/c1:.3f}× | {n0:.3f}× → {n1:.3f}× | "
+                                f"{b0:.3f}× → {b1:.3f}× |")
+                  rows.append([model, size, c0, c1, c0/c1, n0, n1, b0, b1])
+          with (root / "comparison.csv").open("w",newline="") as f:
+              writer = csv.writer(f)
+              writer.writerow(["model","sizeKb","compiled_old_us","compiled_fused_us",
+                               "compiled_speedup","native_ratio_old","native_ratio_fused",
+                               "blackbird_ratio_old","blackbird_ratio_fused"])
+              writer.writerows(rows)
+          (root / "comparison.md").write_text("\n".join(report) + "\n")
+          print("\n".join(report))
+          PY
+
+      - name: Publish comparison
+        if: always()
+        run: |
+          REPORT=build/performance/jackson3-fused/comparison.md
+          if test -f "$REPORT"; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-fused-ab-${{ github.run_id }}
+          path: build/performance/jackson3-fused/
+          if-no-files-found: warn
+          retention-days: 30

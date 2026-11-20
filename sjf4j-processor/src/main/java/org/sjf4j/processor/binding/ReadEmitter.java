@@ -24,6 +24,7 @@ final class ReadEmitter {
     private final Jackson3ReadEmitter jackson3;
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
+    private final boolean fusedJackson3;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
@@ -33,6 +34,8 @@ final class ReadEmitter {
                 ? new Jackson2ReadEmitter() : null;
         this.jackson3 = backend.backend() == Backend.JACKSON3
                 ? new Jackson3ReadEmitter() : null;
+        this.fusedJackson3 = jackson3 != null && "true".equals(
+                context.processingEnvironment.getOptions().get("sjf4j.jackson3.fused"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
@@ -339,7 +342,8 @@ final class ReadEmitter {
 
             out.beginBlock("while ((nameIndex = "
                     + (nativeObject && jackson2 != null ? jackson2.nameMatchExpression(matcherFieldName(value))
-                    : "parser.nextNameMatch(" + matcherFieldName(value)
+                    : "parser." + (fusedJackson3 ? "nextNameMatchAndToken" : "nextNameMatch")
+                    + "(" + matcherFieldName(value)
                     + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
                     + ") != " + NAME_MATCHER + ".OBJECT_END)");
 
@@ -417,7 +421,8 @@ final class ReadEmitter {
             if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
             out.beginBlock("while ((nameIndex = "
                     + (nativeObject && jackson2 != null ? jackson2.nameMatchExpression(matcherFieldName(value))
-                    : "parser.nextNameMatch(" + matcherFieldName(value)
+                    : "parser." + (fusedJackson3 ? "nextNameMatchAndToken" : "nextNameMatch")
+                    + "(" + matcherFieldName(value)
                     + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
                     + ") != " + NAME_MATCHER + ".OBJECT_END)");
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
