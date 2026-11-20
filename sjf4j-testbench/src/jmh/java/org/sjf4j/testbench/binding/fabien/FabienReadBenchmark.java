@@ -36,7 +36,7 @@ public class FabienReadBenchmark {
     public static void main(String[] args) throws Exception {
         Main.main(args.length != 0 ? args : new String[]{
                 FabienReadBenchmark.class.getName() + ".read",
-                "-p", "backend=jackson2",
+                "-p", "backend=jackson3",
                 "-p", "implementation=runtime,compiled,native,blackbird",
                 "-p", "model=users,clients",
                 "-p", "shape=pojo",
