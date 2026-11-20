@@ -28,6 +28,7 @@ final class ReadEmitter {
     private final boolean directJackson3Scalars;
     private final boolean unrollJackson3Pojo;
     private final int jackson3ListCapacity;
+    private final String jackson3ListTarget;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
@@ -45,6 +46,8 @@ final class ReadEmitter {
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.unrollPojo"));
         this.jackson3ListCapacity = jackson3 == null ? 0 : Integer.parseInt(
                 context.processingEnvironment.getOptions().getOrDefault("sjf4j.jackson3.listCapacity", "0"));
+        this.jackson3ListTarget = context.processingEnvironment.getOptions().getOrDefault(
+                "sjf4j.jackson3.listTarget", "all");
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
@@ -664,8 +667,13 @@ final class ReadEmitter {
         if (nativeRead != null) nativeRead.emitArrayStart(out);
         else emitArrayStart(out);
 
+        boolean matchTarget = "all".equals(jackson3ListTarget)
+                || ("strings".equals(jackson3ListTarget)
+                    && value.elementValue().kind() == BindingValue.Kind.STRING)
+                || ("others".equals(jackson3ListTarget)
+                    && value.elementValue().kind() != BindingValue.Kind.STRING);
         out.line(value.type() + " value = new java.util.ArrayList<>("
-                + (jackson3ListCapacity > 0 ? jackson3ListCapacity : "") + ");");
+                + (jackson3ListCapacity > 0 && matchTarget ? jackson3ListCapacity : "") + ");");
         emitArrayLoopStart(out, value.elementValue());
         out.line("value.add(" + arrayElementReadExpression(value.elementValue()) + ");");
 

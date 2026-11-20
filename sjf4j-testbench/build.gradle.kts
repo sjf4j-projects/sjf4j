@@ -109,6 +109,7 @@ tasks.named<JavaCompile>("compileJmhJava") {
     options.compilerArgs.add("-Asjf4j.jackson3.directScalars=${providers.gradleProperty("sjf4jJackson3DirectScalars").orElse("false").get()}")
     options.compilerArgs.add("-Asjf4j.jackson3.unrollPojo=${providers.gradleProperty("sjf4jJackson3UnrollPojo").orElse("false").get()}")
     options.compilerArgs.add("-Asjf4j.jackson3.listCapacity=${providers.gradleProperty("sjf4jJackson3ListCapacity").orElse("0").get()}")
+    options.compilerArgs.add("-Asjf4j.jackson3.listTarget=${providers.gradleProperty("sjf4jJackson3ListTarget").orElse("all").get()}")
     dependsOn(tasks.named("processJmhResources"))
     classpath += files(layout.buildDirectory.dir("resources/jmh"))
 }

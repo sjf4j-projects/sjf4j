@@ -1,0 +1,171 @@
+name: Jackson3 List Capacity Matrix (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-list-capacity-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  list-capacity:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'perf/jackson3-fused-read-probe-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Measure seven capacity policies and control drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-list-matrix
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for spec in 0-all 8-all 16-all 32-all 48-all 32-strings 32-others; do
+            cap="${spec%%-*}"
+            target="${spec#*-}"
+            echo "=== Build $spec ==="
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              -Psjf4jJackson3Fused=true -Psjf4jJackson3DirectScalars=false \
+              -Psjf4jJackson3UnrollPojo=false \
+              "-Psjf4jJackson3ListCapacity=$cap" \
+              "-Psjf4jJackson3ListTarget=$target" \
+              > "$OUT/$spec-build.log" 2>&1 || {
+                tail -n 120 "$OUT/$spec-build.log"; exit 1
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -s "$JAR"
+            impls=compiled
+            if [[ "$spec" == "0-all" ]]; then
+              impls=native,blackbird,compiled
+              cp "$JAR" "$OUT/control-jmh.jar"
+            fi
+            echo "=== JMH $spec: $impls ==="
+            java -jar "$JAR" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
+              -p backend=jackson3 -p model=users,clients -p shape=pojo \
+              -p "implementation=$impls" -p sizeKb=1,10,100 \
+              -p seed=12345,324 -t 1 -f 3 -wi 3 -i 5 \
+              -w 400ms -r 400ms -prof gc \
+              -rf json -rff "$OUT/$spec.json" \
+              > "$OUT/$spec-jmh.log" 2>&1 || {
+                tail -n 120 "$OUT/$spec-jmh.log"; exit 1
+              }
+          done
+          echo "=== Repeat original control for drift ==="
+          java -jar "$OUT/control-jmh.jar" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
+            -p backend=jackson3 -p model=users,clients -p shape=pojo \
+            -p implementation=native,blackbird,compiled -p sizeKb=1,10,100 \
+            -p seed=12345,324 -t 1 -f 3 -wi 3 -i 5 \
+            -w 400ms -r 400ms -prof gc \
+            -rf json -rff "$OUT/control-post.json" \
+            > "$OUT/control-post-jmh.log" 2>&1 || {
+              tail -n 120 "$OUT/control-post-jmh.log"; exit 1
+            }
+
+          python3 - "$OUT" <<'PY'
+          import csv, json, statistics, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          modes = ("0-all","8-all","16-all","32-all","48-all","32-strings","32-others")
+          controls = ("0-all","control-post")
+          models, sizes, seeds = ("users","clients"), ("1","10","100"), ("12345","324")
+          impls = ("native","blackbird","compiled")
+          scores, allocations = {}, {}
+          for mode in (*modes,"control-post"):
+              for case in json.loads((root/f"{mode}.json").read_text()):
+                  p = case["params"]
+                  k = (mode,p["model"],p["sizeKb"],p["seed"],p["implementation"])
+                  forks = [statistics.mean(a) for a in case["primaryMetric"]["rawData"]]
+                  if len(forks) != 3: raise SystemExit(f"Expected three forks: {k}")
+                  scores[k] = statistics.mean(sorted(forks)[:2])
+                  alloc = case.get("secondaryMetrics",{}).get("gc.alloc.rate.norm")
+                  if alloc is None: raise SystemExit(f"Missing allocation metric: {k}")
+                  allocations[k] = float(alloc["score"])
+          expected = {(mode,model,size,seed,impl)
+                      for mode in (*modes,"control-post") for model in models
+                      for size in sizes for seed in seeds
+                      for impl in (impls if mode in controls else ("compiled",))}
+          if set(scores) != expected:
+              raise SystemExit(f"Incomplete cases: missing={expected-set(scores)}")
+          def geo(xs): return statistics.geometric_mean(xs)
+          def score(mode,model,size,impl):
+              return geo(scores[(mode,model,size,seed,impl)] for seed in seeds)
+          def allocation(mode,model,size,impl):
+              return statistics.mean(allocations[(mode,model,size,seed,impl)] for seed in seeds)
+          def baseline(model,size,impl):
+              return geo(score(mode,model,size,impl) for mode in controls)
+
+          report = ["# Jackson3 3.3.0 List Capacity Matrix", "",
+                    "Fused ON; direct scalars OFF; POJO unrolling OFF.",
+                    "One JDK 25 runner; 2 seeds x 3 forks; 3 x 400ms warmup, 5 x 400ms measurement.",
+                    "Best 2 Fork Mean; before/after baseline geometric midpoint.",
+                    "All JMH trials check correctness against the canonical POJO fixture.",
+                    "", "## Detailed results", "",
+                    "| Model | Size | Policy | Compiled us/op | Speedup | Blackbird/Compiled | Native/Compiled | B/op |",
+                    "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |"]
+          rows = []
+          for model in models:
+              for size in sizes:
+                  control = baseline(model,size,"compiled")
+                  for mode in modes:
+                      compiled = score(mode,model,size,"compiled")
+                      b = baseline(model,size,"blackbird")/compiled
+                      n = baseline(model,size,"native")/compiled
+                      mem = allocation(mode,model,size,"compiled")
+                      gain = (control/compiled-1)*100
+                      rows.append([model,size,mode,compiled,gain,b,n,mem])
+                      report.append(f"| {model} | {size}KB | {mode} | {compiled:.3f} | {gain:+.2f}% | {b:.3f}x | {n:.3f}x | {mem:.0f} |")
+          with (root/"comparison.csv").open("w",newline="") as f:
+              w = csv.writer(f)
+              w.writerow(["model","sizeKb","policy","compiled_us","speedup_pct",
+                          "blackbird_over_compiled","native_over_compiled","allocated_B_per_op"])
+              w.writerows(rows)
+          report += ["", "## Pre/post control drift", "",
+                     "| Model | Size | Impl | Before us/op | After us/op | Change |",
+                     "| --- | --- | --- | ---: | ---: | ---: |"]
+          for model in models:
+              for size in sizes:
+                  for impl in impls:
+                      a,b = (score(mode,model,size,impl) for mode in controls)
+                      report.append(f"| {model} | {size}KB | {impl} | {a:.3f} | {b:.3f} | {(b/a-1)*100:+.2f}% |")
+          report += ["", "## Overall geometric mean speedup", "",
+                     "| Policy | Change |", "| --- | ---: |"]
+          for mode in modes:
+              gains = [baseline(m,s,"compiled")/score(mode,m,s,"compiled")
+                       for m in models for s in sizes]
+              report.append(f"| {mode} | {(geo(gains)-1)*100:+.2f}% |")
+          (root/"comparison.md").write_text("\n".join(report)+"\n")
+          print("\n".join(report))
+          PY
+
+      - name: Publish results
+        if: always()
+        shell: bash
+        run: |
+          REPORT=build/performance/jackson3-list-matrix/comparison.md
+          if test -f "$REPORT"; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload full experiment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-list-capacity-matrix-${{ github.run_id }}
+          path: |
+            build/performance/jackson3-list-matrix/*.json
+            build/performance/jackson3-list-matrix/*.csv
+            build/performance/jackson3-list-matrix/*.md
+            build/performance/jackson3-list-matrix/*.txt
+            build/performance/jackson3-list-matrix/*.log
+          if-no-files-found: warn
+          retention-days: 30
