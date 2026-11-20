@@ -613,6 +613,12 @@ val graalVmHome = providers.environmentVariable("GRAALVM_HOME")
 
 val jmhJar = tasks.named<Jar>("jmhJar")
 
+jmhJar.configure {
+    manifest {
+        attributes("Multi-Release" to "true")
+    }
+}
+
 val jmhAgentOutput =
     layout.buildDirectory.dir("native/agent-output/jmhAgent")
 
