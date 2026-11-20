@@ -152,10 +152,10 @@ class ValueCodecBoundaryTest {
         }
 
         Sjf4j sjf4j = Sjf4j.builder().build();
-        assertEquals(ipv4, sjf4j.fromJson("\\"127.0.0.1\\"", InetAddress.class));
-        assertEquals(ipv6, sjf4j.fromJson("\\"::1\\"", InetAddress.class));
+        assertEquals(ipv4, sjf4j.fromJson("\"127.0.0.1\"", InetAddress.class));
+        assertEquals(ipv6, sjf4j.fromJson("\"::1\"", InetAddress.class));
         assertThrows(BindingException.class,
-                () -> sjf4j.fromJson("\\"localhost\\"", InetAddress.class));
+                () -> sjf4j.fromJson("\"localhost\"", InetAddress.class));
     }
 
     @Test
