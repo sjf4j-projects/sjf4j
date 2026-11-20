@@ -25,7 +25,7 @@ dependencies {
 
     // JMH
     jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.66")
-    jmhImplementation("org.openjdk.jmh:jmh-core:1.36")
+    jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
 

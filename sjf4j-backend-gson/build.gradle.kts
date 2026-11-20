@@ -25,7 +25,7 @@ dependencies {
 
     // JMH
     jmhImplementation("com.google.code.gson:gson:2.13.1")
-    jmhImplementation("org.openjdk.jmh:jmh-core:1.36")
+    jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
 

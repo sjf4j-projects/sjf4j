@@ -28,7 +28,7 @@ dependencies {
     // JMH
     jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")
     jmhImplementation("org.eclipse.parsson:parsson:1.1.7")
-    jmhImplementation("org.openjdk.jmh:jmh-core:1.36")
+    jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
 
