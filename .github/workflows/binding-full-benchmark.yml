@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 25
         uses: actions/setup-java@v6
@@ -52,7 +52,7 @@ jobs:
       BINDING_BACKEND: ${{ matrix.backend }}
       BINDING_SKIP_BUILD: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 25
         uses: actions/setup-java@v6

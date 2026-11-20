@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -73,7 +73,7 @@ jobs:
     env:
       JDBC_SKIP_BUILD: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -103,7 +103,7 @@ jobs:
       JDBC_EXPECT_CPU_MODEL: ${{ inputs.cpu_model || '' }}
       JDBC_CPU_SET: ${{ inputs.cpu_set || '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v6
         with:
           distribution: temurin

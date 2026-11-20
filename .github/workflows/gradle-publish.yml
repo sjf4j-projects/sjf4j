@@ -20,7 +20,7 @@ jobs:
     steps:
       # 1️⃣
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # 2️⃣
       - name: Set up JDK

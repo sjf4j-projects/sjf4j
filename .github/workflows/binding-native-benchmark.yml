@@ -41,7 +41,7 @@ jobs:
   script-check:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate shell syntax and executable bits
         shell: bash
         run: |
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up GraalVM Community 25.5
         uses: graalvm/setup-graalvm@v1
         with:
@@ -137,7 +137,7 @@ jobs:
       MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
       BACKEND: ${{ matrix.backend }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up GraalVM for compiler-stamp validation
         uses: graalvm/setup-graalvm@v1
         with:
