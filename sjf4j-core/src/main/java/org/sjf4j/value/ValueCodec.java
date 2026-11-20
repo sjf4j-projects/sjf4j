@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -287,8 +288,39 @@ public interface ValueCodec<V, R> {
     @NodeValue
     ValueCodec<InetAddress, String> INET_ADDR = new SimpleValueCodec<>(InetAddress.class, String.class,
             InetAddress::getHostAddress, raw -> {
-                try { return IpAddressUtil.parseLiteral(raw); }
-                catch (IllegalArgumentException e) {
+                try {
+                    if (raw.isEmpty() || raw.length() > 128) throw new IllegalArgumentException();
+                    if (raw.indexOf(':') >= 0) {
+                        int start = raw.charAt(0) == '[' ? 1 : 0;
+                        char first = raw.charAt(start);
+                        if (first != ':' && !(first >= '0' && first <= '9')
+                                && !(first >= 'a' && first <= 'f')
+                                && !(first >= 'A' && first <= 'F')) {
+                            throw new IllegalArgumentException();
+                        }
+                        // JDK 8+ parses colon-containing IP literals or rejects them without DNS.
+                        return InetAddress.getByName(raw);
+                    }
+                    String[] parts = raw.split("\\.", -1);
+                    if (parts.length != 4) throw new IllegalArgumentException();
+                    byte[] bytes = new byte[4];
+                    for (int i = 0; i < 4; i++) {
+                        String part = parts[i];
+                        if (part.isEmpty() || part.length() > 3
+                                || (part.length() > 1 && part.charAt(0) == '0')) {
+                            throw new IllegalArgumentException();
+                        }
+                        int value = 0;
+                        for (int j = 0; j < part.length(); j++) {
+                            char c = part.charAt(j);
+                            if (c < '0' || c > '9') throw new IllegalArgumentException();
+                            value = value * 10 + c - '0';
+                        }
+                        if (value > 255) throw new IllegalArgumentException();
+                        bytes[i] = (byte) value;
+                    }
+                    return InetAddress.getByAddress(bytes);
+                } catch (UnknownHostException | IllegalArgumentException e) {
                     throw new BindingException("invalid InetAddress '" + raw + "'", e);
                 }
             });
