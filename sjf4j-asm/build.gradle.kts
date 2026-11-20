@@ -25,7 +25,7 @@ dependencies {
 
     // test
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
-    testImplementation("org.yaml:snakeyaml:2.5")
+    testImplementation("org.yaml:snakeyaml:2.7")
 
     testCompileOnly("org.projectlombok:lombok:1.18.38")
     testAnnotationProcessor("org.projectlombok:lombok:1.18.38")

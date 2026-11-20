@@ -21,7 +21,7 @@ dependencies {
     testImplementation("org.springframework:spring-test:6.2.15")
     testImplementation("jakarta.servlet:jakarta.servlet-api:6.0.0")
     testImplementation(project(":sjf4j-backend-snake"))
-    testImplementation("org.yaml:snakeyaml:2.5")
+    testImplementation("org.yaml:snakeyaml:2.7")
     testAnnotationProcessor(project(":sjf4j-processor"))
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
