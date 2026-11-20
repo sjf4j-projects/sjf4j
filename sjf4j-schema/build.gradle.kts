@@ -25,7 +25,7 @@ dependencies {
     compileOnly("com.ibm.icu:icu4j:77.1")
 
     // test
-    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.23.0")
     testImplementation("org.yaml:snakeyaml:2.7")
     testImplementation("com.ibm.icu:icu4j:77.1")
 
@@ -37,7 +37,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // jmh
-    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.23.0")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
