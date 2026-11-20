@@ -145,7 +145,8 @@ class ValueCodecBoundaryTest {
         String[] invalid = {
                 "", "localhost", "example.com", "127.0.0.1.example.com", "127.1",
                 "01.2.3.4", "300.300.300.300", "[127.0.0.1]",
-                ":::1", "1::2::3", "1:2:3:4:5:6:7", "fe80::1%9999999999999999999"
+                ":::1", "1::2::3", "1:2:3:4:5:6:7", "foo:bar", "z::1",
+                "fe80::1%9999999999999999999"
         };
         for (String input : invalid) {
             assertThrows(BindingException.class, () -> ValueCodec.INET_ADDR.rawToValue(input), input);
