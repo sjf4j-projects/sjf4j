@@ -1,0 +1,175 @@
+name: Jackson3 Users 100KB JVM JFR Profile (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-users-jfr-profile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'perf/jackson3-fused-read-probe-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Compile fused Jackson3 JMH (direct scalars disabled)
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-users-jfr
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          ./gradlew :sjf4j-testbench:jmhJar -Psjf4jJackson3Fused=true \
+            -Psjf4jJackson3DirectScalars=false > "$OUT/build.log" 2>&1 || {
+            tail -n 100 "$OUT/build.log"
+            exit 1
+          }
+
+      - name: Profile Users 100KB with Native, Blackbird, Compiled
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-users-jfr
+          JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+          test -f "$JAR"
+          for impl in compiled blackbird native; do
+            echo "=== Profiling users/100KB/${impl} ==="
+            RECORDING="$PWD/$OUT/$impl.jfr"
+            java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read' \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              "-p" "implementation=$impl" -p sizeKb=100 -p seed=12345 \
+              -t 1 -f 1 -wi 4 -i 5 -w 1s -r 2s -prof gc \
+              -jvmArgsAppend "-XX:StartFlightRecording=filename=$RECORDING,settings=profile,dumponexit=true" \
+              -rf json -rff "$OUT/$impl.json" \
+              > "$OUT/$impl-jmh.log" 2>&1 || {
+              tail -n 80 "$OUT/$impl-jmh.log"
+              exit 1
+            }
+            if test ! -s "$RECORDING"; then
+              echo "JFR recording missing for $impl" >&2
+              exit 1
+            fi
+            jfr view hot-methods "$RECORDING" > "$OUT/$impl-hot-methods.txt" 2>&1 || true
+            jfr view allocation-by-site "$RECORDING" > "$OUT/$impl-allocation-sites.txt" 2>&1 || true
+            jfr print --events jdk.ExecutionSample --json "$RECORDING" \
+              > "$OUT/$impl-execution.json"
+          done
+
+          python3 - "$OUT" <<'PY'
+          import collections
+          import json
+          import math
+          import pathlib
+          import sys
+          root = pathlib.Path(sys.argv[1])
+          report = [
+              "# Jackson3 3.3.0 Users POJO Read (100KB) - CPU/Allocation Profile",
+              "",
+              "JDK 25, one same-runner JVM, one seed, one JMH fork per implementation.",
+              "4 × 1s warmup, 5 × 2s measurement, JFR profile (sampling affects timings).",
+              "Results are for diagnosing hot paths, **not** a replacement for A/B JMH ratios.",
+              "",
+          ]
+          scores = {}
+          for impl in ("compiled", "blackbird", "native"):
+              jmh = json.loads((root / f"{impl}.json").read_text())
+              if len(jmh) != 1:
+                  raise SystemExit(f"Expected one JMH case for {impl}")
+              metric = jmh[0]["primaryMetric"]
+              scores[impl] = float(metric["score"])
+              alloc = {}
+              for name, data in jmh[0].get("secondaryMetrics", {}).items():
+                  if "gc.alloc.rate.norm" in name:
+                      alloc[name] = float(data["score"])
+              report += [f"## {impl}: {scores[impl]:.3f} µs/op", ""]
+              for name, val in alloc.items():
+                  report.append(f"- {name}: {val:.1f} B/op")
+              trace = json.loads((root / f"{impl}-execution.json").read_text())
+              events = trace.get("recording", {}).get("events", [])
+              leaf = collections.Counter()
+              inclusive = collections.Counter()
+              categories = collections.Counter()
+              missing = 0
+              for event in events:
+                  if not event.get("type", "").endswith("ExecutionSample"):
+                      continue
+                  v = event.get("values", {})
+                  frames = (v.get("stackTrace") or {}).get("frames", [])
+                  methods = []
+                  for frame in frames:
+                      method = frame.get("method") or {}
+                      typ = method.get("type") or {}
+                      classname = (typ.get("name") or "").replace("/", ".")
+                      methodname = method.get("name") or "?"
+                      if classname:
+                          methods.append(f"{classname}.{methodname}")
+                  if not methods:
+                      missing += 1
+                      continue
+                  leaf[methods[0]] += 1
+                  for item in set(methods):
+                      inclusive[item] += 1
+                  keys = ["org.sjf4j", "tools.jackson", "java.", "jdk."]
+                  for key in keys:
+                      if any(item.startswith(key) for item in methods):
+                          categories[key] += 1
+              total = sum(leaf.values())
+              report += ["", f"ExecutionSample events: {total}, empty stacks: {missing}", "",
+                         "Inclusive package presence (can overlap):",
+                         ""]
+              for key, count in categories.most_common():
+                  report.append(f"- {key}: {count}/{total} ({(100*count/total if total else 0):.1f}%)")
+              report += ["", "### Top leaf frames", ""]
+              for item, count in leaf.most_common(25):
+                  report.append(f"- {count:5d}  {item}")
+              report += ["", "### Top inclusive application frames", ""]
+              for item, count in ((m,c) for m,c in inclusive.most_common()
+                                  if m.startswith(("org.sjf4j", "tools.jackson"))):
+                  report.append(f"- {count:5d}  {item}")
+                  if len(report) > 800:
+                      break
+              report.append("")
+          report += ["## Direct comparison", "",
+                     f"- Native / Compiled: {scores['native']/scores['compiled']:.3f}×",
+                     f"- Blackbird / Compiled: {scores['blackbird']/scores['compiled']:.3f}×",
+                     "",
+                     "See the individual .jfr recordings for detailed stack and allocation traces."]
+          (root / "profile.md").write_text("\n".join(report) + "\n")
+          print("\n".join(report))
+          PY
+
+      - name: Summarize JFR profile
+        if: always()
+        shell: bash
+        run: |
+          REPORT=build/performance/jackson3-users-jfr/profile.md
+          if test -f "$REPORT"; then
+            sed -n '1,130p' "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload JFR recordings and profiling report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-jfr-${{ github.run_id }}
+          path: |
+            build/performance/jackson3-users-jfr/*.jfr
+            build/performance/jackson3-users-jfr/*.txt
+            build/performance/jackson3-users-jfr/*.json
+            build/performance/jackson3-users-jfr/*.md
+            build/performance/jackson3-users-jfr/*.log
+          if-no-files-found: warn
+          retention-days: 14
