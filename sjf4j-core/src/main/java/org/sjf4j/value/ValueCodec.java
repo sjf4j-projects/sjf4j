@@ -12,7 +12,6 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -288,8 +287,10 @@ public interface ValueCodec<V, R> {
     @NodeValue
     ValueCodec<InetAddress, String> INET_ADDR = new SimpleValueCodec<>(InetAddress.class, String.class,
             InetAddress::getHostAddress, raw -> {
-                try { return InetAddress.getByName(raw); }
-                catch (UnknownHostException e) { throw new BindingException("invalid InetAddress '" + raw + "'", e); }
+                try { return IpAddressUtil.parseLiteral(raw); }
+                catch (IllegalArgumentException e) {
+                    throw new BindingException("invalid InetAddress '" + raw + "'", e);
+                }
             });
 
     @NodeValue(format = "iso", defaultCodec = true)
