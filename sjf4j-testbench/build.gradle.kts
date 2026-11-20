@@ -21,6 +21,12 @@ java {
     }
 }
 
+// Experimental A/B knobs; defaults preserve the current benchmark.
+val bindingJackson3Version = providers.gradleProperty("bindingJackson3Version").orElse("3.3.0").get()
+val bindingJackson3Cursor = providers.gradleProperty("bindingJackson3Cursor").orElse("native").get()
+require(bindingJackson3Version in setOf("3.2.3", "3.3.0"))
+require(bindingJackson3Cursor in setOf("legacy", "native"))
+
 configurations {
     testCompileOnly {
         extendsFrom(configurations.annotationProcessor.get())
@@ -77,8 +83,8 @@ dependencies {
     jmhImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
     jmhImplementation("com.fasterxml.jackson.module:jackson-module-blackbird:2.22.3")
     jmhImplementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.22.3")
-    jmhImplementation("tools.jackson.core:jackson-databind:3.3.0")
-    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.3.0")
+    jmhImplementation("tools.jackson.core:jackson-databind:$bindingJackson3Version")
+    jmhImplementation("tools.jackson.module:jackson-module-blackbird:$bindingJackson3Version")
     jmhImplementation("com.google.code.gson:gson:2.13.1")
     jmhImplementation("com.alibaba.fastjson2:fastjson2:2.0.66")
     jmhImplementation("jakarta.json:jakarta.json-api:2.1.3")
@@ -104,6 +110,7 @@ tasks.named<JavaCompile>("compileTestJava") {
 
 // CompiledValidator's annotation processor reads Creek schemas from jmh resources.
 tasks.named<JavaCompile>("compileJmhJava") {
+    options.compilerArgs.add("-Asjf4j.jackson3.cursor=$bindingJackson3Cursor")
     dependsOn(tasks.named("processJmhResources"))
     classpath += files(layout.buildDirectory.dir("resources/jmh"))
 }

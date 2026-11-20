@@ -35,8 +35,11 @@ final class ReadEmitter {
                 ? new Jackson3ReadEmitter() : null;
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
+        // A/B experiment only: compare legacy wrapper traversal to native Jackson 3 cursor.
+        boolean legacyJackson3Cursor = "legacy".equals(
+                context.processingEnvironment.getOptions().get("sjf4j.jackson3.cursor"));
         this.nativeRead = jackson2 != null ? jackson2
-                : jackson3 != null ? jackson3 : fastjson2;
+                : jackson3 != null && !legacyJackson3Cursor ? jackson3 : fastjson2;
     }
 
     void registerEnums(BindingValue value) {

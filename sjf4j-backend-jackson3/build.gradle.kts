@@ -15,17 +15,20 @@ java {
 }
 
 
+val bindingJackson3Version = providers.gradleProperty("bindingJackson3Version").orElse("3.3.0").get()
+require(bindingJackson3Version in setOf("3.2.3", "3.3.0"))
+
 dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
-    api("tools.jackson.core:jackson-databind:3.3.0")
+    api("tools.jackson.core:jackson-databind:$bindingJackson3Version")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // JMH
-    jmhImplementation("tools.jackson.core:jackson-databind:3.3.0")
-    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.3.0")
+    jmhImplementation("tools.jackson.core:jackson-databind:$bindingJackson3Version")
+    jmhImplementation("tools.jackson.module:jackson-module-blackbird:$bindingJackson3Version")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
