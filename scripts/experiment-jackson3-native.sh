@@ -118,6 +118,32 @@ for model in ("clients", "users"):
         pct = lambda new, old: f"{(new / old - 1) * 100:+.1f}%"
         lines.append(f"| {model} | {size} | {a:.3f} | {b:.3f} | {c:.3f} | {d:.3f} | "
                      f"{pct(c, a)} | {pct(d, b)} | {pct(d, c)} |")
+lines += ["", "## Native / Compiled (higher is better)", "",
+          "| Model | KB | 3.2.3 legacy | 3.2.3 native | 3.3.0 legacy | 3.3.0 native |",
+          "| --- | ---: | ---: | ---: | ---: | ---: |"]
+for model in ("clients", "users"):
+    for size in ("1", "10", "100"):
+        ratios = []
+        for version in versions:
+            for cursor in cursors:
+                v = data[f"{version}-{cursor}"]
+                ratios.append(v[(model, size, "native")] /
+                              v[(model, size, "compiled")])
+        lines.append(f"| {model} | {size} | " +
+                     " | ".join(f"{v:.3f}×" for v in ratios) + " |")
+lines += ["", "## Runtime / Compiled (higher is better)", "",
+          "| Model | KB | 3.2.3 legacy | 3.2.3 native | 3.3.0 legacy | 3.3.0 native |",
+          "| --- | ---: | ---: | ---: | ---: | ---: |"]
+for model in ("clients", "users"):
+    for size in ("1", "10", "100"):
+        ratios = []
+        for version in versions:
+            for cursor in cursors:
+                v = data[f"{version}-{cursor}"]
+                ratios.append(v[(model, size, "runtime")] /
+                              v[(model, size, "compiled")])
+        lines.append(f"| {model} | {size} | " +
+                     " | ".join(f"{v:.3f}×" for v in ratios) + " |")
 report = "\n".join(lines) + "\n"
 (root / "comparison.md").write_text(report)
 print(report)
