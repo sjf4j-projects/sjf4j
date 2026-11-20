@@ -1,0 +1,63 @@
+name: Jackson3 Native Image A/B (experimental)
+
+# One runner for all four variants so CPU differences do not bias the comparison.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-native-ab.yml'
+      - 'scripts/experiment-jackson3-native.sh'
+      - 'sjf4j-testbench/build.gradle.kts'
+      - 'sjf4j-backend-jackson3/**'
+      - 'sjf4j-processor/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jackson3-native-ab:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'perf/jackson3-native-cursor-ab-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up GraalVM Community 25.5
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '25.5'
+          distribution: graalvm-community
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: gradle
+
+      - name: Validate experiment script syntax
+        run: bash -n scripts/experiment-jackson3-native.sh
+
+      - name: Run four Native Image variants on the same runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/performance/binding/jackson3-native-ab
+          ./scripts/experiment-jackson3-native.sh full 2>&1 \
+            | tee build/performance/binding/jackson3-native-ab/console.log
+
+      - name: Publish comparison to job summary
+        if: always()
+        shell: bash
+        run: |
+          REPORT=build/performance/binding/jackson3-native-ab/comparison.md
+          if test -f "$REPORT"; then
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Experiment did not complete; see build logs in artifact." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload four-variant measurements and build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-native-ab-${{ github.run_id }}
+          path: build/performance/binding/jackson3-native-ab/
+          if-no-files-found: warn
+          retention-days: 30
