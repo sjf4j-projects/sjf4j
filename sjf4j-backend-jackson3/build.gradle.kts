@@ -25,7 +25,7 @@ dependencies {
 
     // JMH
     jmhImplementation("tools.jackson.core:jackson-databind:3.3.0")
-    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.2.3")
+    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.3.0")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
