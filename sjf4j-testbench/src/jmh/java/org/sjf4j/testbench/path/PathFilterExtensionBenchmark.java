@@ -1,5 +1,6 @@
 package org.sjf4j.testbench.path;
 
+import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -18,6 +19,7 @@ import org.sjf4j.annotation.path.CompiledNavigator;
 import org.sjf4j.annotation.path.FindByPath;
 import org.sjf4j.path.JsonPath;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -30,6 +32,11 @@ import java.util.concurrent.TimeUnit;
 @Fork(2)
 @Threads(1)
 public class PathFilterExtensionBenchmark {
+
+    public static void main(String[] args) throws IOException {
+        Main.main(new String[]{PathFilterExtensionBenchmark.class.getName()});
+    }
+
     record Item(String name, int score, List<String> tags) {}
     record Root(List<Item> items) {}
 
