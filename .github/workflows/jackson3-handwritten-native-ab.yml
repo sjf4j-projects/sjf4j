@@ -1,0 +1,155 @@
+name: Jackson3 Handwritten Native Cursor POJO Read A/B (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-handwritten-native-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  handwritten-native-jvm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Build fused compiled control and handwritten Jackson 3 native cursor
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-handwritten-native
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+            -Psjf4jJackson3Fused=true \
+            -Psjf4jJackson3DirectScalars=false \
+            -Psjf4jJackson3UnrollPojo=false \
+            -Psjf4jJackson3ListCapacity=0 \
+            -Psjf4jJackson3Expected=false \
+            > "$OUT/build.log" 2>&1 || {
+              tail -n 120 "$OUT/build.log"; exit 1
+            }
+      - name: Run standalone correctness and edge-case smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-handwritten-native
+          JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+          test -s "$JAR"
+          java -cp "$JAR" \
+            org.sjf4j.testbench.binding.fabien.FabienHandwrittenJackson3 \
+            | tee "$OUT/correctness.log"
+
+      - name: JMH Users 1/10/100KB handwritten vs Compiled vs Blackbird vs Native
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-handwritten-native
+          JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+          test -s "$JAR"
+          java -jar "$JAR" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
+            -p backend=jackson3 -p model=users -p shape=pojo \
+            -p implementation=compiled,handwritten,blackbird,native \
+            -p sizeKb=1,10,100 -p seed=12345,324 \
+            -t 1 -f 3 -wi 3 -i 5 -w 400ms -r 400ms \
+            -prof gc -rf json -rff "$OUT/raw.json" \
+            > "$OUT/jmh.log" 2>&1 || {
+              tail -n 120 "$OUT/jmh.log"; exit 1
+            }
+
+          python3 - "$OUT" <<'PY'
+          import csv, json, statistics, sys
+          from pathlib import Path
+          root=Path(sys.argv[1])
+          data=json.loads((root/"raw.json").read_text())
+          impls=("compiled","handwritten","blackbird","native")
+          sizes=("1","10","100")
+          seeds=("12345","324")
+          scores,allocs={},{}
+          for entry in data:
+              p=entry["params"]
+              k=(p["sizeKb"],p["seed"],p["implementation"])
+              forks=[statistics.mean(f) for f in entry["primaryMetric"]["rawData"]]
+              if len(forks)!=3: raise SystemExit(f"Expected 3 forks: {k}")
+              scores[k]=statistics.mean(sorted(forks)[:2])
+              gc=entry.get("secondaryMetrics",{}).get("gc.alloc.rate.norm")
+              if not gc: raise SystemExit(f"No GC allocation metric: {k}")
+              allocs[k]=float(gc["score"])
+          expected={(size,seed,impl) for size in sizes for seed in seeds for impl in impls}
+          if set(scores)!=expected:
+              raise SystemExit(f"Missing/extra cases: {expected-set(scores)}, {set(scores)-expected}")
+          def geo(xs): return statistics.geometric_mean(xs)
+          def score(size,impl):
+              return geo(scores[(size,seed,impl)] for seed in seeds)
+          def alloc(size,impl):
+              return statistics.mean(allocs[(size,seed,impl)] for seed in seeds)
+          report=[
+            "# Jackson3 3.3.0 handwritten native cursor A/B", "",
+            "Users POJO Read; same byte[] and model as Fabien benchmarks.",
+            "Fused Compiled enabled. No List preallocation, direct-scalar or loop-unrolling experiments.",
+            "Handwritten traverses native JsonParser with BinaryNameMatcher; no SJF4J parser wrapper.",
+            "2 seeds x 3 forks; 3 x 400ms warmup, 5 x 400ms measurement; Best 2 Fork Mean.",
+            "Each JMH trial verifies the complete deserialized object; standalone edge cases also pass.",
+            "",
+            "| Size | Compiled us/op | Handwritten us/op | Blackbird us/op | Native us/op |",
+            "| --- | ---: | ---: | ---: | ---: |",
+          ]
+          rows=[]
+          for size in sizes:
+              a,b,c,d=(score(size,impl) for impl in impls)
+              report.append(f"| {size}KB | {a:.3f} | {b:.3f} | {c:.3f} | {d:.3f} |")
+              rows.append((size,a,b,c,d))
+          report+=["", "## Important speedup ratios (larger is better)", "",
+            "| Size | Handwritten / Compiled | Compiled / Handwritten | Blackbird / Compiled | Blackbird / Handwritten | Native / Handwritten |",
+            "| --- | ---: | ---: | ---: | ---: | ---: |"]
+          for size,a,b,c,d in rows:
+              report.append(f"| {size}KB | {b/a:.3f}x | {a/b:.3f}x | {c/a:.3f}x | {c/b:.3f}x | {d/b:.3f}x |")
+          report+=["", "## Normalized allocations", "",
+            "| Size | Compiled B/op | Handwritten B/op | Blackbird B/op | Native B/op |",
+            "| --- | ---: | ---: | ---: | ---: |"]
+          for size in sizes:
+              x=[alloc(size,impl) for impl in impls]
+              report.append(f"| {size}KB | {x[0]:.0f} | {x[1]:.0f} | {x[2]:.0f} | {x[3]:.0f} |")
+          report+=["", "## Per-seed case ratios", "",
+            "| Size | Seed | Compiled us/op | Handwritten us/op | Blackbird / Handwritten |",
+            "| --- | --- | ---: | ---: | ---: |"]
+          for size in sizes:
+              for seed in seeds:
+                  c=scores[(size,seed,"compiled")]
+                  h=scores[(size,seed,"handwritten")]
+                  b=scores[(size,seed,"blackbird")]
+                  report.append(f"| {size}KB | {seed} | {c:.3f} | {h:.3f} | {b/h:.3f}x |")
+          with (root/"comparison.csv").open("w",newline="") as f:
+              w=csv.writer(f)
+              w.writerow(["sizeKB","compiled_us","handwritten_us","blackbird_us","native_us",
+                          "handwritten_over_compiled","compiled_over_handwritten",
+                          "blackbird_over_compiled","blackbird_over_handwritten","native_over_handwritten"])
+              for size,a,b,c,d in rows:
+                  w.writerow([size,a,b,c,d,b/a,a/b,c/a,c/b,d/b])
+          (root/"comparison.md").write_text("\n".join(report)+"\n")
+          print("\n".join(report))
+          PY
+
+      - name: Publish summary
+        if: always()
+        run: |
+          REPORT=build/performance/jackson3-handwritten-native/comparison.md
+          if test -f "$REPORT"; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload JMH, correctness, and comparative report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-handwritten-native
+          path: build/performance/jackson3-handwritten-native/
+          if-no-files-found: warn
+          retention-days: 30
