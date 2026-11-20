@@ -26,6 +26,7 @@ final class ReadEmitter {
     private final NativeReadEmitter nativeRead;
     private final boolean fusedJackson3;
     private final boolean directJackson3Scalars;
+    private final boolean unrollJackson3Pojo;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
@@ -39,6 +40,8 @@ final class ReadEmitter {
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.fused"));
         this.directJackson3Scalars = fusedJackson3 && "true".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.directScalars"));
+        this.unrollJackson3Pojo = fusedJackson3 && "true".equals(
+                context.processingEnvironment.getOptions().get("sjf4j.jackson3.unrollPojo"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
@@ -343,14 +346,24 @@ final class ReadEmitter {
                 out.line("int expectedNameIndex = 0;");
             }
 
-            out.beginBlock("while ((nameIndex = "
-                    + (nativeObject && jackson2 != null ? jackson2.nameMatchExpression(matcherFieldName(value))
+            String matchExpression = nativeObject && jackson2 != null
+                    ? jackson2.nameMatchExpression(matcherFieldName(value))
                     : "parser." + (fusedJackson3 ? "nextNameMatchAndToken" : "nextNameMatch")
                     + "(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
+                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")";
+            out.beginBlock("while ((nameIndex = " + matchExpression
                     + ") != " + NAME_MATCHER + ".OBJECT_END)");
 
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
+            if (unrollJackson3Pojo) {
+                for (int slot = 1; slot < 4; slot++) {
+                    out.beginBlock("if ((nameIndex = " + matchExpression
+                            + ") == " + NAME_MATCHER + ".OBJECT_END)");
+                    out.line("break;");
+                    out.endBlock();
+                    emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
+                }
+            }
         } else {
             out.line("String name;");
             out.beginBlock("while ((name = parser.nextName()) != null)");

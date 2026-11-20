@@ -1,0 +1,114 @@
+name: Jackson3 Users Unrolled POJO Read A/B (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-users-unroll-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  users-pojo-unroll:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'perf/jackson3-fused-read-probe-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Compare fused normal loop vs fused four-way unrolling
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-unroll
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for unroll in false true; do
+            echo "=== Compiling POJO loop unroll=$unroll ==="
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              -Psjf4jJackson3Fused=true -Psjf4jJackson3DirectScalars=false \
+              "-Psjf4jJackson3UnrollPojo=$unroll" > "$OUT/$unroll-build.log" 2>&1 || {
+                tail -n 100 "$OUT/$unroll-build.log"
+                exit 1
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -s "$JAR"
+            echo "=== Benchmarking POJO loop unroll=$unroll ==="
+            java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read' \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              -p implementation=native,blackbird,compiled -p sizeKb=100 \
+              -p seed=12345,324 -t 1 -f 3 -wi 3 -i 5 -w 1s -r 1s \
+              -rf json -rff "$OUT/$unroll.json" > "$OUT/$unroll-jmh.log" 2>&1 || {
+                tail -n 100 "$OUT/$unroll-jmh.log"
+                exit 1
+              }
+          done
+          python3 - "$OUT" <<'PY'
+          import csv, json, statistics, sys
+          from pathlib import Path
+          root=Path(sys.argv[1])
+          modes=("false","true")
+          seeds=("12345","324")
+          impls=("native","blackbird","compiled")
+          scores={}
+          for mode in modes:
+              data=json.loads((root/f"{mode}.json").read_text())
+              for entry in data:
+                  p=entry["params"]
+                  key=(mode,p["seed"],p["implementation"])
+                  forks=[statistics.mean(f) for f in entry["primaryMetric"]["rawData"]]
+                  if len(forks)!=3: raise SystemExit(f"Expected 3 forks: {key}")
+                  scores[key]=statistics.mean(sorted(forks)[:2])
+          expected={(m,s,i) for m in modes for s in seeds for i in impls}
+          if set(scores)!=expected: raise SystemExit(f"Incomplete benchmark matrix: {expected-set(scores)}")
+          def metric(mode,impl):
+              return statistics.geometric_mean(scores[(mode,s,impl)] for s in seeds)
+          report=["# Jackson3 Users 100KB POJO loop unrolling A/B","",
+              "Jackson 3.3.0, fused property-name matching enabled, direct scalars disabled.",
+              "All runs share a GitHub Runner. 2 seeds, 3 JMH forks; 3 × 1s warmup and 5 × 1s measurement.",
+              "Best 2 Fork Means. Higher baseline / Compiled means a Compiled advantage.",
+              "",
+              "| Metric | Normal loop | 4-way unrolled | Change |",
+              "| --- | ---: | ---: | ---: |"]
+          c0,c1=metric("false","compiled"),metric("true","compiled")
+          report.append(f"| Compiled (µs/op; lower is better) | {c0:.3f} | {c1:.3f} | {100*(c0/c1-1):+.2f}% throughput |")
+          for impl in ("native","blackbird"):
+              a,b=metric("false",impl)/c0,metric("true",impl)/c1
+              report.append(f"| {impl.capitalize()} / Compiled | {a:.3f}× | {b:.3f}× | {100*(b/a-1):+.2f}% |")
+          report+=["","## Per-seed ratios","",
+              "| Seed | Loop | Compiled (µs/op) | Blackbird/Compiled | Native/Compiled |",
+              "| --- | --- | ---: | ---: | ---: |"]
+          with (root/"comparison.csv").open("w",newline="") as f:
+              w=csv.writer(f)
+              w.writerow(["seed","unroll","compiled_us","blackbird_ratio","native_ratio"])
+              for seed in seeds:
+                  for mode in modes:
+                      c=scores[(mode,seed,"compiled")]
+                      b=scores[(mode,seed,"blackbird")]/c
+                      n=scores[(mode,seed,"native")]/c
+                      w.writerow([seed,mode,c,b,n])
+                      report.append(f"| {seed} | {mode} | {c:.3f} | {b:.3f}× | {n:.3f}× |")
+          (root/"comparison.md").write_text("\n".join(report)+"\n")
+          print("\n".join(report))
+          PY
+      - name: Publish results
+        if: always()
+        run: |
+          REPORT=build/performance/jackson3-unroll/comparison.md
+          if test -f "$REPORT"; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload full comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-unroll-${{ github.run_id }}
+          path: build/performance/jackson3-unroll/
+          if-no-files-found: warn
+          retention-days: 30
