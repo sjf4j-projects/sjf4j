@@ -21,7 +21,7 @@ dependencies {
     implementation(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
 
     // ASM — bytecode generation
-    implementation("org.ow2.asm:asm:9.7.1")
+    implementation("org.ow2.asm:asm:9.11.1")
 
     // test
     testImplementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
