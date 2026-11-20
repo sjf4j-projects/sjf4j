@@ -319,6 +319,44 @@ public final class Jackson3Parser extends StreamingParser {
         throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
     }
 
+    /**
+     * Compiled-only scalar fast paths for a value already selected by the
+     * fused field-name matcher. These consume the pending logical value
+     * without a second Jackson token advancement.
+     */
+    public String readMatchedString() throws IOException {
+        prefetched = false;
+        JsonToken token = parser.currentToken();
+        if (token == JsonToken.VALUE_STRING) return parser.getString();
+        if (token == JsonToken.VALUE_NULL) return null;
+        throw expected("string or null", token);
+    }
+
+    public int readMatchedIntValue() throws IOException {
+        prefetched = false;
+        return parser.getIntValue();
+    }
+
+    public long readMatchedLongValue() throws IOException {
+        prefetched = false;
+        return parser.getLongValue();
+    }
+
+    public boolean readMatchedBooleanValue() throws IOException {
+        prefetched = false;
+        return parser.getBooleanValue();
+    }
+
+    public double readMatchedDoubleValue() throws IOException {
+        prefetched = false;
+        return parser.getDoubleValue();
+    }
+
+    public float readMatchedFloatValue() throws IOException {
+        prefetched = false;
+        return parser.getFloatValue();
+    }
+
     /* --------------------------------------------------------------
      * String / generic number
      * -------------------------------------------------------------- */

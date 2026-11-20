@@ -106,6 +106,7 @@ tasks.named<JavaCompile>("compileTestJava") {
 tasks.named<JavaCompile>("compileJmhJava") {
     // Experimental only: select the Jackson 3 compiled name/value fusion path.
     options.compilerArgs.add("-Asjf4j.jackson3.fused=${providers.gradleProperty("sjf4jJackson3Fused").orElse("false").get()}")
+    options.compilerArgs.add("-Asjf4j.jackson3.directScalars=${providers.gradleProperty("sjf4jJackson3DirectScalars").orElse("false").get()}")
     dependsOn(tasks.named("processJmhResources"))
     classpath += files(layout.buildDirectory.dir("resources/jmh"))
 }

@@ -25,6 +25,7 @@ final class ReadEmitter {
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
     private final boolean fusedJackson3;
+    private final boolean directJackson3Scalars;
 
     ReadEmitter(ProcessorContext context, BackendSpec backend, BindingNames names) {
         this.context = context;
@@ -36,6 +37,8 @@ final class ReadEmitter {
                 ? new Jackson3ReadEmitter() : null;
         this.fusedJackson3 = jackson3 != null && "true".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.fused"));
+        this.directJackson3Scalars = fusedJackson3 && "true".equals(
+                context.processingEnvironment.getOptions().get("sjf4j.jackson3.directScalars"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
@@ -492,7 +495,12 @@ final class ReadEmitter {
             if (updateExpected && backend.usesExpectedNameMatch()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
-            emitPropertyRead(out, property, "value", "parser");
+            if (directJackson3Scalars) {
+                emitPropertyReadExpression(out, property, "value",
+                        matchedScalarExpression(property.value(), "parser"));
+            } else {
+                emitPropertyRead(out, property, "value", "parser");
+            }
             out.line("break;");
             out.dedent();
         }
@@ -723,6 +731,36 @@ final class ReadEmitter {
             case "java.lang.Number": return "readNumber";
             default: return null;
         }
+    }
+
+    /**
+     * Only matched POJO members have a value token preselected by fused
+     * name matching. Arrays and ordinary streaming readers use the existing
+     * consuming-value methods.
+     */
+    private String matchedScalarExpression(BindingValue value, String parser) {
+        if (!value.helperRequired()) {
+            switch (value.kind()) {
+                case STRING: return parser + ".readMatchedString()";
+                case BOOLEAN:
+                    if (value.primitive()) return parser + ".readMatchedBooleanValue()";
+                    break;
+                case INT:
+                    if (value.primitive()) return parser + ".readMatchedIntValue()";
+                    break;
+                case LONG:
+                    if (value.primitive()) return parser + ".readMatchedLongValue()";
+                    break;
+                case DOUBLE:
+                    if (value.primitive()) return parser + ".readMatchedDoubleValue()";
+                    break;
+                case FLOAT:
+                    if (value.primitive()) return parser + ".readMatchedFloatValue()";
+                    break;
+                default: break;
+            }
+        }
+        return readExpression(value, parser);
     }
 
     private String readExpression(BindingValue value, String parser) {
