@@ -80,7 +80,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: mapping-jmh-jar
           path: sjf4j-testbench/build/libs
@@ -112,7 +112,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: mapping-jmh-jar
           path: sjf4j-testbench/build/libs
@@ -152,7 +152,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download one-run raw results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mapping-full-all-${{ github.run_id }}-${{ github.run_attempt }}
           path: results

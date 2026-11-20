@@ -77,7 +77,7 @@ jobs:
           java-version: '25'
 
       - name: Download JMH jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: schema-jmh-jar
           path: sjf4j-testbench/build/libs
@@ -117,7 +117,7 @@ jobs:
           java-version: '25'
 
       - name: Download prebuilt JMH jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: schema-jmh-jar
           path: sjf4j-testbench/build/libs
@@ -196,7 +196,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download both result artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: schema-full-*-${{ github.run_id }}-${{ github.run_attempt }}
           path: results

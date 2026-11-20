@@ -147,7 +147,7 @@ jobs:
           cache: gradle
 
       - name: Download the shared image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: binding-native-image-${{ github.run_id }}
           path: sjf4j-testbench/build/native/nativeCompile/
@@ -209,7 +209,7 @@ jobs:
       MODE: ${{ (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[run-native-serial-smoke]')) && 'serial' || (github.event_name == 'workflow_dispatch' && inputs.mode) || 'parallel' }}
     steps:
       - name: Download results from serial or parallel backend jobs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: binding-native-${{ env.PROFILE }}-*-${{ github.run_id }}
           path: build/performance/binding/native/matrix/
