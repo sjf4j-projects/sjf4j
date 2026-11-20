@@ -1,0 +1,129 @@
+name: Jackson3 JVM A/B (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-jvm-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  jackson3-jvm-ab:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'perf/jackson3-native-cursor-ab-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Compare Jackson 3.2.3 and 3.3.0 with native cursor
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/binding/jackson3-jvm-ab
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for version in 3.2.3 3.3.0; do
+            echo "Building Jackson $version"
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              "-PbindingJackson3Version=$version" -PbindingJackson3Cursor=native \
+              > "$OUT/$version-build.log" 2>&1 || {
+                tail -n 100 "$OUT/$version-build.log"
+                exit 1
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -f "$JAR"
+            echo "Benchmarking Jackson $version"
+            java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read' \
+              -p backend=jackson3 -p model=users,clients -p shape=pojo \
+              -p implementation=native,runtime,compiled -p sizeKb=1,10,100 \
+              -p seed=12345 -t 1 -f 2 -wi 2 -i 3 -w 250ms -r 250ms \
+              -rf json -rff "$OUT/$version.json" \
+              > "$OUT/$version-jmh.log" 2>&1 || {
+                tail -n 100 "$OUT/$version-jmh.log"
+                exit 1
+              }
+          done
+
+          python3 - "$OUT" <<'PY'
+          import csv
+          import json
+          import statistics
+          import sys
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          scores = {}
+          for version in ("3.2.3", "3.3.0"):
+              raw = json.loads((root / f"{version}.json").read_text())
+              for entry in raw:
+                  p = entry["params"]
+                  key = (version, p["model"], p["sizeKb"], p["implementation"])
+                  forks = [statistics.mean(fork) for fork in entry["primaryMetric"]["rawData"]]
+                  if len(forks) != 2:
+                      raise SystemExit(f"Expected two forks: {key}, got {len(forks)}")
+                  scores[key] = statistics.mean(forks)
+          expected = {(v, m, size, impl) for v in ("3.2.3", "3.3.0")
+                      for m in ("clients", "users") for size in ("1", "10", "100")
+                      for impl in ("native", "runtime", "compiled")}
+          if set(scores) != expected:
+              raise SystemExit(f"Incomplete matrix: {expected - set(scores)}")
+
+          def ratio(ver, model, size, baseline):
+              return (scores[(ver, model, size, baseline)] /
+                      scores[(ver, model, size, "compiled")])
+
+          rows = []
+          report = [
+              "# Jackson 3 JVM Read A/B (JDK 25)",
+              "",
+              "Same runner, same native cursor; version is the only experimental variable.",
+              "JMH 2 forks, 2 × 250ms warmup, 3 × 250ms measurement.",
+              "Exploratory (not a Full baseline). Higher ratios favor Compiled.",
+              "",
+              "| Model | Size | Native/Compiled 3.2.3 → 3.3.0 | Δ | Runtime/Compiled 3.2.3 → 3.3.0 | Δ |",
+              "| --- | --- | ---: | ---: | ---: | ---: |",
+          ]
+          for model in ("clients", "users"):
+              for size in ("1", "10", "100"):
+                  n0, n1 = (ratio(v, model, size, "native") for v in ("3.2.3", "3.3.0"))
+                  r0, r1 = (ratio(v, model, size, "runtime") for v in ("3.2.3", "3.3.0"))
+                  rows.append([model, size, n0, n1, 100*(n1/n0-1),
+                               r0, r1, 100*(r1/r0-1)])
+                  report.append(f"| {model} | {size}KB | {n0:.3f}× → {n1:.3f}× | "
+                                f"{100*(n1/n0-1):+.1f}% | {r0:.3f}× → {r1:.3f}× | "
+                                f"{100*(r1/r0-1):+.1f}% |")
+          with (root / "comparison.csv").open("w", newline="") as f:
+              writer = csv.writer(f)
+              writer.writerow(["model", "sizeKb", "native_ratio_3.2.3",
+                               "native_ratio_3.3.0", "native_ratio_change_pct",
+                               "runtime_ratio_3.2.3", "runtime_ratio_3.3.0",
+                               "runtime_ratio_change_pct"])
+              writer.writerows(rows)
+          (root / "comparison.md").write_text("\n".join(report) + "\n")
+          print("\n".join(report))
+          PY
+
+      - name: Publish JVM ratios
+        if: always()
+        run: |
+          test ! -f build/performance/binding/jackson3-jvm-ab/comparison.md || \
+            cat build/performance/binding/jackson3-jvm-ab/comparison.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload JVM measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-jvm-ab-${{ github.run_id }}
+          path: build/performance/binding/jackson3-jvm-ab/
+          if-no-files-found: warn
+          retention-days: 30
