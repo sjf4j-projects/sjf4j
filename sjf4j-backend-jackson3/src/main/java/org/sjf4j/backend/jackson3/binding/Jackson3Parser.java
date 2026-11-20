@@ -319,6 +319,32 @@ public final class Jackson3Parser extends StreamingParser {
         throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
     }
 
+    /** Experimental UTF-8 expected-name match, preserving fallback semantics. */
+    public int nextNameMatchAndTokenExpected(NameMatcher matcher, int expectedIndex) throws IOException {
+        Jackson3NameMatcher jm = (Jackson3NameMatcher) matcher;
+        if (prefetched || expectedIndex < 0 || expectedIndex >= jm.serializedNames.length) {
+            return nextNameMatchAndToken(matcher, expectedIndex);
+        }
+        if (parser.nextName(jm.serializedNames[expectedIndex])) {
+            parser.nextToken();
+            prefetched = true;
+            return expectedIndex;
+        }
+        int index = parser.currentNameMatch(jm.matcher);
+        if (index == PropertyNameMatcher.MATCH_UNKNOWN_NAME) {
+            index = matcher.fallback(parser.currentName());
+        } else if (index == PropertyNameMatcher.MATCH_END_OBJECT) {
+            return NameMatcher.OBJECT_END;
+        } else if (index < 0) {
+            throw expected(JsonToken.PROPERTY_NAME.name(), parser.currentToken());
+        }
+        if (index >= 0) {
+            parser.nextToken();
+            prefetched = true;
+        }
+        return index;
+    }
+
     /**
      * Compiled-only scalar fast paths for a value already selected by the
      * fused field-name matcher. These consume the pending logical value

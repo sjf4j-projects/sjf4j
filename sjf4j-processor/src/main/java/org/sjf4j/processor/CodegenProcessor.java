@@ -29,7 +29,7 @@ import java.util.function.Consumer;
  * each annotated interface to its feature generator. Diagnostics are attached
  * to the offending interface or method through {@link ProcessorContext}.
  */
-@SupportedOptions({"sjf4j.jackson3.fused", "sjf4j.jackson3.directScalars", "sjf4j.jackson3.unrollPojo", "sjf4j.jackson3.listCapacity", "sjf4j.jackson3.listTarget"})
+@SupportedOptions({"sjf4j.jackson3.fused", "sjf4j.jackson3.directScalars", "sjf4j.jackson3.unrollPojo", "sjf4j.jackson3.listCapacity", "sjf4j.jackson3.listTarget", "sjf4j.jackson3.expected"})
 public final class CodegenProcessor extends AbstractProcessor {
 
     private ProcessorContext context;

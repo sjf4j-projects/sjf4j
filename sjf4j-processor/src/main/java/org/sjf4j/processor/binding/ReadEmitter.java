@@ -25,6 +25,7 @@ final class ReadEmitter {
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
     private final boolean fusedJackson3;
+    private final boolean expectedJackson3;
     private final boolean directJackson3Scalars;
     private final boolean unrollJackson3Pojo;
     private final int jackson3ListCapacity;
@@ -40,6 +41,8 @@ final class ReadEmitter {
                 ? new Jackson3ReadEmitter() : null;
         this.fusedJackson3 = jackson3 != null && "true".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.fused"));
+        this.expectedJackson3 = fusedJackson3 && "true".equals(
+                context.processingEnvironment.getOptions().get("sjf4j.jackson3.expected"));
         this.directJackson3Scalars = fusedJackson3 && "true".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.directScalars"));
         this.unrollJackson3Pojo = fusedJackson3 && "true".equals(
@@ -52,6 +55,10 @@ final class ReadEmitter {
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
                 : jackson3 != null ? jackson3 : fastjson2;
+    }
+
+    private boolean useExpectedNameMatch() {
+        return backend.usesExpectedNameMatch() || expectedJackson3;
     }
 
     void registerEnums(BindingValue value) {
@@ -348,15 +355,16 @@ final class ReadEmitter {
             fastjson2.emitProperties(out, value, this, false);
         } else if (backend.usesNameMatcher() && !value.properties().isEmpty()) {
             out.line("int nameIndex;");
-            if (backend.usesExpectedNameMatch()) {
+            if (useExpectedNameMatch()) {
                 out.line("int expectedNameIndex = 0;");
             }
 
             String matchExpression = nativeObject && jackson2 != null
                     ? jackson2.nameMatchExpression(matcherFieldName(value))
-                    : "parser." + (fusedJackson3 ? "nextNameMatchAndToken" : "nextNameMatch")
+                    : "parser." + (expectedJackson3 ? "nextNameMatchAndTokenExpected"
+                            : fusedJackson3 ? "nextNameMatchAndToken" : "nextNameMatch")
                     + "(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")";
+                    + (useExpectedNameMatch() ? ", expectedNameIndex" : "") + ")";
             out.beginBlock("while ((nameIndex = " + matchExpression
                     + ") != " + NAME_MATCHER + ".OBJECT_END)");
 
@@ -440,12 +448,13 @@ final class ReadEmitter {
             fastjson2.emitProperties(out, value, this, true);
         } else if (backend.usesNameMatcher() && size != 0) {
             out.line("int nameIndex;");
-            if (backend.usesExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
+            if (useExpectedNameMatch()) out.line("int expectedNameIndex = 0;");
             out.beginBlock("while ((nameIndex = "
                     + (nativeObject && jackson2 != null ? jackson2.nameMatchExpression(matcherFieldName(value))
-                    : "parser." + (fusedJackson3 ? "nextNameMatchAndToken" : "nextNameMatch")
+                    : "parser." + (expectedJackson3 ? "nextNameMatchAndTokenExpected"
+                            : fusedJackson3 ? "nextNameMatchAndToken" : "nextNameMatch")
                     + "(" + matcherFieldName(value)
-                    + (backend.usesExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
+                    + (useExpectedNameMatch() ? ", expectedNameIndex" : "") + ")")
                     + ") != " + NAME_MATCHER + ".OBJECT_END)");
             emitMatchedPojoProperty(out, value, true, consumedDiscriminator);
         } else {
@@ -511,7 +520,7 @@ final class ReadEmitter {
             int propertyIndex = index++;
             out.line("case " + propertyIndex + ":");
             out.indent();
-            if (updateExpected && backend.usesExpectedNameMatch()) {
+            if (updateExpected && useExpectedNameMatch()) {
                 out.line("expectedNameIndex = " + (propertyIndex + 1) + ";");
             }
             if (directJackson3Scalars) {
