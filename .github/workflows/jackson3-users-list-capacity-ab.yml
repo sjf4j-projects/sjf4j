@@ -1,0 +1,121 @@
+name: Jackson3 Users List Capacity A/B (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-users-list-capacity-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  users-list-growth:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'perf/jackson3-fused-read-probe-20261120'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Compare default vs preallocated Lists for Users 100KB
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-list-capacity
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for cap in 0 32; do
+            echo "=== Compile listCapacity=$cap ==="
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              -Psjf4jJackson3Fused=true -Psjf4jJackson3DirectScalars=false \
+              -Psjf4jJackson3UnrollPojo=false \
+              "-Psjf4jJackson3ListCapacity=$cap" > "$OUT/$cap-build.log" 2>&1 || {
+                tail -n 100 "$OUT/$cap-build.log"; exit 1
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -s "$JAR"
+            echo "=== Benchmark listCapacity=$cap ==="
+            java -jar "$JAR" 'org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read' \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              -p implementation=native,blackbird,compiled -p sizeKb=100 \
+              -p seed=12345,324 -t 1 -f 3 -wi 3 -i 5 -w 1s -r 1s \
+              -prof gc -rf json -rff "$OUT/$cap.json" \
+              > "$OUT/$cap-jmh.log" 2>&1 || {
+                tail -n 100 "$OUT/$cap-jmh.log"; exit 1
+              }
+          done
+          python3 - "$OUT" <<'PY'
+          import csv,json,statistics,sys
+          from pathlib import Path
+          root=Path(sys.argv[1]); caps=("0","32")
+          seeds=("12345","324"); impls=("native","blackbird","compiled")
+          scores={}; allocated={}
+          for cap in caps:
+              data=json.loads((root/f"{cap}.json").read_text())
+              for entry in data:
+                  p=entry["params"]
+                  key=(cap,p["seed"],p["implementation"])
+                  forks=[statistics.mean(f) for f in entry["primaryMetric"]["rawData"]]
+                  if len(forks)!=3: raise SystemExit(f"Expected 3 forks: {key}")
+                  scores[key]=statistics.mean(sorted(forks)[:2])
+                  allocated[key]=entry.get("secondaryMetrics",{}).get(
+                      "gc.alloc.rate.norm",{}).get("score",float("nan"))
+          expected={(c,s,i) for c in caps for s in seeds for i in impls}
+          if set(scores)!=expected: raise SystemExit(f"Missing cases: {expected-set(scores)}")
+          def geo(cap,impl):
+              return statistics.geometric_mean(scores[(cap,s,impl)] for s in seeds)
+          def alloc(cap,impl):
+              return statistics.mean(allocated[(cap,s,impl)] for s in seeds)
+          report=["# Jackson3 Users 100KB compiled List growth A/B","",
+              "Jackson 3.3.0. Fused name matches enabled; direct scalar and loop unrolling disabled.",
+              "Only compiled List initial capacity changes (0=default, 32=preallocated).",
+              "Diagnostic only: a fixed 32 is not proposed as production default.",
+              "2 seeds × 3 forks, 3 × 1s warmup, 5 × 1s measurement; Best 2 Fork Mean.",
+              "",
+              "| Metric | Default | Capacity 32 | Change |",
+              "| --- | ---: | ---: | ---: |"]
+          c0,c1=geo("0","compiled"),geo("32","compiled")
+          report.append(f"| Compiled (µs/op; lower better) | {c0:.3f} | {c1:.3f} | {100*(c0/c1-1):+.2f}% throughput |")
+          for impl in ("native","blackbird"):
+              a,b=geo("0",impl)/c0,geo("32",impl)/c1
+              report.append(f"| {impl.capitalize()} / Compiled | {a:.3f}× | {b:.3f}× | {100*(b/a-1):+.2f}% |")
+          report.append(f"| Compiled allocation (B/op) | {alloc('0','compiled'):.0f} | {alloc('32','compiled'):.0f} | {alloc('32','compiled')-alloc('0','compiled'):+.0f} B |")
+          report+=["","## By seed","",
+              "| Seed | Capacity | Compiled (µs/op) | Blackbird/Compiled | Native/Compiled |",
+              "| --- | --- | ---: | ---: | ---: |"]
+          with (root/"comparison.csv").open("w",newline="") as f:
+              w=csv.writer(f)
+              w.writerow(["seed","capacity","compiled_us","blackbird_ratio","native_ratio","compiled_alloc_bytes"])
+              for s in seeds:
+                  for cap in caps:
+                      c=scores[(cap,s,"compiled")]
+                      b=scores[(cap,s,"blackbird")]/c
+                      n=scores[(cap,s,"native")]/c
+                      w.writerow([s,cap,c,b,n,allocated[(cap,s,"compiled")]])
+                      report.append(f"| {s} | {cap} | {c:.3f} | {b:.3f}× | {n:.3f}× |")
+          (root/"comparison.md").write_text("\n".join(report)+"\n")
+          print("\n".join(report))
+          PY
+
+      - name: Publish ratios
+        if: always()
+        run: |
+          REPORT=build/performance/jackson3-list-capacity/comparison.md
+          if test -f "$REPORT"; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload comparison and GC results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-list-capacity-${{ github.run_id }}
+          path: build/performance/jackson3-list-capacity/
+          if-no-files-found: warn
+          retention-days: 30
