@@ -1,0 +1,114 @@
+name: Jackson3 Expected Name Read A/B (experimental)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-expected-name-ab.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  expected-name-ab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Run native matcher and sequential UTF8 expected-name variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-expected-name
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for expected in false true; do
+            echo "=== Building expected=$expected ==="
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              -Psjf4jJackson3Fused=true -Psjf4jJackson3DirectScalars=false \
+              -Psjf4jJackson3UnrollPojo=false -Psjf4jJackson3ListCapacity=0 \
+              "-Psjf4jJackson3Expected=$expected" > "$OUT/$expected-build.log" 2>&1 || {
+                tail -n 100 "$OUT/$expected-build.log"; exit 1
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -s "$JAR"
+            echo "=== JMH expected=$expected ==="
+            java -jar "$JAR" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
+              -p backend=jackson3 -p model=users,clients -p shape=pojo \
+              -p implementation=native,blackbird,compiled -p sizeKb=1,10,100 \
+              -p seed=12345,324 -t 1 -f 3 -wi 3 -i 5 \
+              -w 400ms -r 400ms -prof gc \
+              -rf json -rff "$OUT/$expected.json" > "$OUT/$expected-jmh.log" 2>&1 || {
+                tail -n 100 "$OUT/$expected-jmh.log"; exit 1
+              }
+          done
+          python3 - "$OUT" <<'PY'
+          import csv, json, statistics, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          models, sizes, seeds = ("users","clients"), ("1","10","100"), ("12345","324")
+          impls, modes = ("native","blackbird","compiled"), ("false","true")
+          scores, allocated = {}, {}
+          for mode in modes:
+              for entry in json.loads((root/f"{mode}.json").read_text()):
+                  p = entry["params"]
+                  k = (mode, p["model"], p["sizeKb"], p["seed"], p["implementation"])
+                  forks = [statistics.mean(f) for f in entry["primaryMetric"]["rawData"]]
+                  if len(forks)!=3: raise SystemExit(f"Expected three forks: {k}")
+                  scores[k] = statistics.mean(sorted(forks)[:2])
+                  metric = entry.get("secondaryMetrics",{}).get("gc.alloc.rate.norm")
+                  allocated[k] = metric["score"] if metric else float("nan")
+          expected_set = {(mode,m,s,seed,i) for mode in modes for m in models
+                          for s in sizes for seed in seeds for i in impls}
+          if set(scores)!=expected_set: raise SystemExit(f"Missing cases: {expected_set-set(scores)}")
+          def geo(xs): return statistics.geometric_mean(xs)
+          def val(mode,m,s,impl): return geo(scores[(mode,m,s,seed,impl)] for seed in seeds)
+          def mem(mode,m,s,impl):
+              return statistics.mean(allocated[(mode,m,s,seed,impl)] for seed in seeds)
+          report = ["# Jackson 3.3.0 UTF-8 expected name A/B", "",
+                    "Same runner. Both use fused Jackson3 field+token matching. No List preallocation.",
+                    "3 forks, 2 seeds; 3x400ms warmup, 5x400ms measurement; Best 2 Fork Mean.",
+                    "Each JMH trial checks POJO correctness.",
+                    "",
+                    "| Model | Size | Compiled old -> expected (us/op) | Speedup | Native/Compiled old -> expected | Blackbird/Compiled old -> expected | Allocated delta B/op |",
+                    "| --- | --- | --- | ---: | --- | --- | ---: |"]
+          rows=[]
+          for m in models:
+              for s in sizes:
+                  c0,c1=(val(mode,m,s,"compiled") for mode in modes)
+                  n0,n1=(val(mode,m,s,"native")/val(mode,m,s,"compiled") for mode in modes)
+                  b0,b1=(val(mode,m,s,"blackbird")/val(mode,m,s,"compiled") for mode in modes)
+                  gain=100*(c0/c1-1)
+                  alloc=mem("true",m,s,"compiled")-mem("false",m,s,"compiled")
+                  report.append(f"| {m} | {s}KB | {c0:.3f} -> {c1:.3f} | {gain:+.2f}% | {n0:.3f}x -> {n1:.3f}x | {b0:.3f}x -> {b1:.3f}x | {alloc:+.0f} |")
+                  rows.append([m,s,c0,c1,gain,n0,n1,b0,b1,alloc])
+          with (root/"comparison.csv").open("w",newline="") as f:
+              w=csv.writer(f)
+              w.writerow(["model","sizeKB","compiled_old","compiled_expected","speedup_pct","native_old",
+                          "native_expected","blackbird_old","blackbird_expected","alloc_delta"])
+              w.writerows(rows)
+          report.extend(["", "Overall geomean speedup: "
+                             + f"{100*(geo([r[2]/r[3] for r in rows])-1):+.2f}%"])
+          (root/"comparison.md").write_text("\n".join(report)+"\n")
+          print("\n".join(report))
+          PY
+      - name: Publish comparison
+        if: always()
+        run: |
+          REPORT=build/performance/jackson3-expected-name/comparison.md
+          if test -f "$REPORT"; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload raw data and comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-expected-name-ab
+          path: build/performance/jackson3-expected-name/
+          if-no-files-found: warn
+          retention-days: 30
