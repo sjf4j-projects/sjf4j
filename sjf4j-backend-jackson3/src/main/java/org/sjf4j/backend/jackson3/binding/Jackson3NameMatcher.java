@@ -37,6 +37,7 @@ public final class Jackson3NameMatcher extends NameMatcher {
         this(null, names, aliases);
     }
 
+    @SuppressWarnings("deprecation") // Jackson 3.3 deprecates the 3.2-compatible overload.
     private Jackson3NameMatcher(PropertyInfo[] properties, String[] names, String[][] aliases) {
         super(properties, names, aliases);
 
