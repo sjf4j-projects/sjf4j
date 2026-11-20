@@ -1,6 +1,7 @@
 package org.sjf4j.value;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueCodec;
 import org.sjf4j.value.PatternedValueCodec;
@@ -123,6 +124,38 @@ class ValueCodecBoundaryTest {
         Calendar decoded = ValueCodec.CALENDAR.rawToValue(raw);
         assertEquals(calendar.getTimeInMillis(), decoded.getTimeInMillis());
         assertEquals(calendar.getTimeZone().getID(), decoded.getTimeZone().getID());
+    }
+
+    @Test
+    void inetAddressCodecAcceptsNumericLiteralsWithoutDnsResolution() throws Exception {
+        InetAddress ipv4 = InetAddress.getByAddress(new byte[]{127, 0, 0, 1});
+        assertEquals(ipv4, ValueCodec.INET_ADDR.rawToValue("127.0.0.1"));
+        assertEquals(InetAddress.getByAddress(new byte[]{(byte) 192, 0, 2, 1}),
+                ValueCodec.INET_ADDR.rawToValue("::ffff:192.0.2.1"));
+
+        byte[] loopbackBytes = new byte[16];
+        loopbackBytes[15] = 1;
+        InetAddress ipv6 = InetAddress.getByAddress(loopbackBytes);
+        assertEquals(ipv6, ValueCodec.INET_ADDR.rawToValue("::1"));
+        assertEquals(ipv6, ValueCodec.INET_ADDR.rawToValue("[::1]"));
+        assertEquals(ipv6, ValueCodec.INET_ADDR.rawToValue("0:0:0:0:0:0:0:1"));
+        assertEquals("fe80:0:0:0:0:0:0:1%3",
+                ValueCodec.INET_ADDR.rawToValue("fe80::1%3").getHostAddress());
+
+        String[] invalid = {
+                "", "localhost", "example.com", "127.0.0.1.example.com", "127.1",
+                "01.2.3.4", "300.300.300.300", "[127.0.0.1]",
+                ":::1", "1::2::3", "1:2:3:4:5:6:7", "fe80::1%9999999999999999999"
+        };
+        for (String input : invalid) {
+            assertThrows(BindingException.class, () -> ValueCodec.INET_ADDR.rawToValue(input), input);
+        }
+
+        Sjf4j sjf4j = Sjf4j.builder().build();
+        assertEquals(ipv4, sjf4j.fromJson("\\"127.0.0.1\\"", InetAddress.class));
+        assertEquals(ipv6, sjf4j.fromJson("\\"::1\\"", InetAddress.class));
+        assertThrows(BindingException.class,
+                () -> sjf4j.fromJson("\\"localhost\\"", InetAddress.class));
     }
 
     @Test
