@@ -120,7 +120,7 @@ public class FabienJackson3NativeScalarBenchmark {
         StringBuilder out = new StringBuilder(prefix.length() + length + suffix.length());
         out.append(prefix);
         for (int i = 0; i < length; i++) {
-            out.append((char) ('a' + (int) ((seed + i * 7) % 26)));
+            out.append((char) ('a' + (int) ((seed + (long) i * 7) % 26)));
         }
         out.append(suffix);
         return out.toString().getBytes(StandardCharsets.UTF_8);

@@ -36,7 +36,9 @@ final class ReadEmitter {
         this.jackson3 = backend.backend() == Backend.JACKSON3
                 ? new Jackson3ReadEmitter() : null;
         this.jackson3Native = jackson3 == null ? null : new Jackson3NativeReadEmitter(names);
-        this.nativeJackson3 = jackson3Native != null && "true".equals(
+        // The verified UTF-8 native path is enabled by default. Retain an
+        // explicit opt-out for differential correctness and JMH comparisons.
+        this.nativeJackson3 = jackson3Native != null && !"false".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.nativePojo"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
@@ -95,19 +97,18 @@ final class ReadEmitter {
     }
 
     /**
-     * ReaderBasedJsonParser first materializes a String name before matching,
-     * while the existing compiled wrapper has a prepared expected-name path.
-     * Keep that faster path for String/Reader input; UTF-8 byte sources retain
-     * Jackson's native quad matcher. This choice is made at compile time.
+     * Compile-time selection only for measured UTF-8 sources: byte[] and
+     * InputStream. String/Reader and external JsonParser inputs retain their
+     * original compiled wrapper semantics.
      */
     private boolean nativeJackson3Input(BindingPlan plan) {
         javax.lang.model.type.TypeMirror input =
                 plan.method().type().getParameterTypes().get(0);
-        if ("java.lang.String".equals(input.toString())) return false;
-        javax.lang.model.element.TypeElement reader =
-                context.elements.getTypeElement("java.io.Reader");
-        return reader == null || !context.typeUtils.isAssignable(
-                input, reader.asType());
+        if ("byte[]".equals(input.toString())) return true;
+        javax.lang.model.element.TypeElement stream =
+                context.elements.getTypeElement("java.io.InputStream");
+        return stream != null && context.typeUtils.isAssignable(
+                input, stream.asType());
     }
 
     void emitNameMatcherField(JavaWriter out, BindingValue value) {

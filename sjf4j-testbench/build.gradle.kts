@@ -98,15 +98,15 @@ tasks.withType<JavaCompile>().configureEach {
 
 // Annotation processing reads schemas from the same classpath as the compiled tests.
 tasks.named<JavaCompile>("compileTestJava") {
-    // Exercise the same opt-in native code generator in focused JUnit tests.
-    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("false").get()}")
+    // Test the default native code generator; explicit false runs verify the wrapper path.
+    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("true").get()}")
     dependsOn(tasks.named("processTestResources"))
     classpath += files(layout.buildDirectory.dir("resources/test"))
 }
 
 // CompiledValidator's annotation processor reads Creek schemas from jmh resources.
 tasks.named<JavaCompile>("compileJmhJava") {
-    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("false").get()}")
+    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("true").get()}")
     dependsOn(tasks.named("processJmhResources"))
     classpath += files(layout.buildDirectory.dir("resources/jmh"))
 }
