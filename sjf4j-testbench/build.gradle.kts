@@ -98,6 +98,8 @@ tasks.withType<JavaCompile>().configureEach {
 
 // Annotation processing reads schemas from the same classpath as the compiled tests.
 tasks.named<JavaCompile>("compileTestJava") {
+    // Exercise the same opt-in native code generator in focused JUnit tests.
+    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("false").get()}")
     dependsOn(tasks.named("processTestResources"))
     classpath += files(layout.buildDirectory.dir("resources/test"))
 }
