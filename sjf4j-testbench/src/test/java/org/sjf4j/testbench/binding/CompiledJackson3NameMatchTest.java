@@ -96,7 +96,7 @@ public class CompiledJackson3NameMatchTest {
             assertEquals(3, user.details.size());
             assertNull(user.details.get(0));
             assertEquals("first", user.details.get(1).label);
-            assertEquals(3, user.details.get(1).rank);
+            assertEquals(Integer.valueOf(3), user.details.get(1).rank);
             assertNull(user.details.get(2).label);
             assertNull(user.details.get(2).rank);
         }
