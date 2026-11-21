@@ -46,14 +46,29 @@ jobs:
                 cat "$OUT/$native-smoke.log"; exit 1
               }
             cat "$OUT/$native-smoke.log"
-            if [[ "$native" == true ]]; then
-              grep -R 'nextNameMatchAndToken(' \
-                sjf4j-testbench/build/generated/sources/annotationProcessor/jmh \
-                | head -n 6 > "$OUT/generated-native.txt" || {
-                  echo "Native cursor calls absent from generated sources" >&2; exit 1
-                }
+            GENERATED_SOURCE="$(find sjf4j-testbench/build -type f \
+            -name 'FabienBindings$Jackson3_Impl.java' -print -quit)"
+          if [[ -z "$GENERATED_SOURCE" || ! -s "$GENERATED_SOURCE" ]]; then
+            echo "Generated Jackson3 benchmark binder source not found" >&2
+            find sjf4j-testbench/build -type f -name '*Jackson3*' || true
+            exit 1
+          fi
+          if [[ "$native" == true ]]; then
+            # Inspect the actual generated benchmark binder, not unrelated sources.
+            grep -n -m 6 -F 'nextNameMatchAndToken(' "$GENERATED_SOURCE" \
+              > "$OUT/generated-native.txt" || {
+                echo "Native cursor calls absent from $GENERATED_SOURCE" >&2
+                exit 1
+              }
+            if ! grep -Eq 'Native\([[:alnum:]_]+\.nativeParser\(\)\)' "$GENERATED_SOURCE"; then
+              echo "Native matcher emitted, but no read method calls the native helper" >&2
+              exit 1
             fi
-            echo "=== JMH native=$native ==="
+          elif grep -qF 'nextNameMatchAndToken(' "$GENERATED_SOURCE"; then
+            echo "Native cursor calls present when nativePojo=false" >&2
+            exit 1
+          fi
+          echo "=== JMH native=$native ==="
             java -jar "$JAR" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
               -p backend=jackson3 -p model=users,clients -p shape=pojo \
               -p implementation=compiled,blackbird,native -p sizeKb=1,10,100 \
