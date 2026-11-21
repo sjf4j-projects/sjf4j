@@ -21,9 +21,11 @@ final class Jackson3NativeReadEmitter {
     private static final String MATCHER = "tools.jackson.core.sym.PropertyNameMatcher";
 
     private final BindingNames names;
+    private final boolean coldFallback;
 
-    Jackson3NativeReadEmitter(BindingNames names) {
+    Jackson3NativeReadEmitter(BindingNames names, boolean coldFallback) {
         this.names = names;
+        this.coldFallback = coldFallback;
     }
 
     boolean supports(BindingValue value) {
@@ -83,7 +85,7 @@ final class Jackson3NativeReadEmitter {
                 throw new AssertionError("Unsupported native Jackson3 helper: " + value.kind());
         }
         out.endBlock();
-        if (value.kind() == BindingValue.Kind.POJO) {
+        if (coldFallback && value.kind() == BindingValue.Kind.POJO) {
             emitUnknown(out, value, reads);
         }
     }
@@ -95,9 +97,24 @@ final class Jackson3NativeReadEmitter {
         out.beginBlock("while ((nameIndex = parser.nextNameMatchAndToken("
                 + matcherFieldName(value) + ")) != " + MATCHER + ".MATCH_END_OBJECT)");
 
-        // As in the handwritten reader and Fastjson2's generated reader,
-        // keep alias resolution, skipping, and error handling out of the
-        // per-field hot path. The native matcher handles all primary names.
+        // Optional paired JMH control: the original in-loop path versus a
+        // separate method invoked only on an unknown or aliased name.
+        if (!coldFallback) {
+            out.beginBlock("if (nameIndex == " + MATCHER + ".MATCH_UNKNOWN_NAME)");
+            out.line("int aliasIndex = " + reads.matcherFieldName(value)
+                    + ".fallback(parser.currentName());");
+            out.beginBlock("if (aliasIndex < 0)");
+            out.line("parser.nextToken();");
+            out.line("parser.skipChildren();");
+            out.line("continue;");
+            out.endBlock();
+            out.line("nameIndex = aliasIndex;");
+            out.line("parser.nextToken();");
+            out.endBlock();
+            out.beginBlock("if (nameIndex < 0)");
+            out.line("throw new java.io.IOException(\"Unexpected property matcher result \" + nameIndex);");
+            out.endBlock();
+        }
         out.beginBlock("switch (nameIndex)");
         int index = 0;
         for (BindingProperty property : value.properties()) {
@@ -110,7 +127,11 @@ final class Jackson3NativeReadEmitter {
         }
         out.line("default:");
         out.indent();
-        out.line(unknownMethod(value) + "(parser, value, nameIndex);");
+        if (coldFallback) {
+            out.line(unknownMethod(value) + "(parser, value, nameIndex);");
+        } else {
+            out.line("throw new java.io.IOException(\"Unexpected matched property index \" + nameIndex);");
+        }
         out.line("break;");
         out.dedent();
         out.endBlock();
