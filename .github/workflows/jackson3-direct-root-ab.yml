@@ -1,4 +1,4 @@
-name: Jackson3 Direct Root Parser Short A/B
+name: Jackson3 Direct Root 100KB Paired A/B
 
 on:
   pull_request:
@@ -57,9 +57,9 @@ jobs:
               > "$OUT/smoke-$label.log"
             java -jar "$JAR" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
               -p backend=jackson3 -p model=users -p shape=pojo \
-              -p implementation=compiled,handwritten,blackbird \
-              -p sizeKb=1,10 -p seed=12345,324 \
-              -t 1 -f 2 -wi 2 -i 4 -w 250ms -r 250ms \
+              -p implementation=compiled,handwritten,blackbird,native \
+              -p sizeKb=100 -p seed=12345,324 \
+              -t 1 -f 2 -wi 2 -i 5 -w 300ms -r 300ms \
               -prof gc -rf json -rff "$OUT/raw-$label.json" \
               > "$OUT/jmh-$label.log" 2>&1 || {
                 tail -n 100 "$OUT/jmh-$label.log"; exit 1;
@@ -74,13 +74,13 @@ jobs:
           import json, statistics, sys
           from pathlib import Path
           root = Path(sys.argv[1])
-          sizes = ("1", "10")
+          sizes = ("100",)
           seeds = ("12345", "324")
-          impls = ("compiled", "handwritten", "blackbird")
+          impls = ("compiled", "handwritten", "blackbird", "native")
           results = {}
           for mode in ("wrapper", "direct"):
               entries = json.loads((root / f"raw-{mode}.json").read_text())
-              scores = {}
+              scores, allocations = {}, {}
               for row in entries:
                   p = row["params"]
                   key = (p["sizeKb"], p["seed"], p["implementation"])
@@ -88,24 +88,25 @@ jobs:
                   if len(forks) != 2:
                       raise SystemExit(f"Expected 2 forks: {mode}/{key}")
                   scores[key] = statistics.mean(forks)
+                  allocations[key] = row["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
               expected = {(size, seed, impl) for size in sizes for seed in seeds for impl in impls}
               if set(scores) != expected:
                   raise SystemExit(f"Unexpected cases in {mode}: {expected-set(scores)} / {set(scores)-expected}")
-              results[mode] = scores
+              results[mode] = (scores, allocations)
           def geo(values):
               return statistics.geometric_mean(values)
           def score(mode, size, impl):
-              return geo(results[mode][(size, seed, impl)] for seed in seeds)
+              return geo(results[mode][0][(size, seed, impl)] for seed in seeds)
           def rh(mode, size):
               return score(mode, size, "handwritten") / score(mode, size, "compiled")
           report = [
-              "# Native Compiled direct-root parser, short paired A/B", "",
+              "# Native Compiled direct-root parser, 100KB paired A/B", "",
               "Jackson3 3.3.0; JDK 25; same runner; byte[] Users POJO.",
-              "2 seeds x 2 forks, 2 x 250ms warmup, 4 x 250ms measurement.",
+              "2 seeds x 2 forks, 2 x 300ms warmup, 5 x 300ms measurement.",
               "Both generated sources and correctness smokes are included.",
               "Ratio > 1 means the direct parser is faster after normalization to Handwritten.", "",
-              "| Size | Wrapper µs/op | Direct µs/op | Hand/Wrapper | Hand/Direct | Normalized Direct Gain | Blackbird/Direct |",
-              "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+              "| Size | Wrapper µs/op | Direct µs/op | Hand/Wrapper | Hand/Direct | Normalized Direct Gain | Blackbird/Direct | Jackson Native/Direct |",
+              "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
           ]
           for size in sizes:
               x = score("wrapper",size,"compiled")
@@ -113,16 +114,23 @@ jobs:
               h0 = rh("wrapper", size)
               h1 = rh("direct", size)
               b = score("direct",size,"blackbird")/y
-              report.append(f"| {size}KB | {x:.3f} | {y:.3f} | {h0:.3f}x | {h1:.3f}x | {h1/h0:.3f}x | {b:.3f}x |")
+              n = score("direct",size,"native")/y
+              report.append(f"| {size}KB | {x:.3f} | {y:.3f} | {h0:.3f}x | {h1:.3f}x | {h1/h0:.3f}x | {b:.3f}x | {n:.3f}x |")
           report += ["", "## Per-seed normalized direct gain", "",
                      "| Size | Seed | Direct Gain |", "| --- | --- | ---: |"]
           for size in sizes:
               for seed in seeds:
-                  a=results["wrapper"]
-                  b=results["direct"]
+                  a=results["wrapper"][0]
+                  b=results["direct"][0]
                   h0=a[(size,seed,"handwritten")]/a[(size,seed,"compiled")]
                   h1=b[(size,seed,"handwritten")]/b[(size,seed,"compiled")]
                   report.append(f"| {size}KB | {seed} | {h1/h0:.3f}x |")
+          report += ["", "## Normalized allocations (B/op)", "",
+                     "| Size | Wrapper Generated | Direct Generated | Handwritten | Blackbird | Jackson Native |",
+                     "| --- | ---: | ---: | ---: | ---: | ---: |"]
+          for size in sizes:
+              alloc = lambda mode, impl: statistics.mean(results[mode][1][(size, seed, impl)] for seed in seeds)
+              report.append(f"| {size}KB | {alloc('wrapper', 'compiled'):.0f} | {alloc('direct', 'compiled'):.0f} | {alloc('direct', 'handwritten'):.0f} | {alloc('direct', 'blackbird'):.0f} | {alloc('direct', 'native'):.0f} |")
           (root / "comparison.md").write_text("\n".join(report) + "\n")
           print("\n".join(report))
           PY
@@ -135,7 +143,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson3-direct-root-short-ab
+          name: jackson3-direct-root-100kb-ab
           path: build/performance/jackson3-direct-root/
           if-no-files-found: warn
           retention-days: 30
