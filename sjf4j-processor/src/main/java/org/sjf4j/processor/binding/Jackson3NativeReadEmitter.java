@@ -10,12 +10,10 @@ import java.util.Set;
  * Native Jackson 3 cursor reads for fully static POJO trees.
  *
  * <p>Unlike the general compiled reader, the generated helper accepts Jackson's
- * JsonParser directly. By default, every descendant must be statically
- * supported before this path is selected. An opt-in hybrid mode also permits
- * one POJO to dispatch its eligible properties natively and hand unsupported
- * values back to the already-existing streaming wrapper. Nested unsupported
- * containers are delegated as whole values; the wrapper owns their cursor
- * until each value has been consumed.</p>
+ * JsonParser directly. Every descendant must be supported before this path is
+ * selected, so nested values never switch cursor ownership halfway through an
+ * object. The existing wrapper helpers remain responsible for creators,
+ * dynamic nodes, codecs, OneOf, and other advanced binding semantics.</p>
  */
 final class Jackson3NativeReadEmitter {
 
@@ -23,39 +21,18 @@ final class Jackson3NativeReadEmitter {
     private static final String MATCHER = "tools.jackson.core.sym.PropertyNameMatcher";
 
     private final BindingNames names;
-    private final boolean hybrid;
 
-    Jackson3NativeReadEmitter(BindingNames names, boolean hybrid) {
+    Jackson3NativeReadEmitter(BindingNames names) {
         this.names = names;
-        this.hybrid = hybrid;
     }
 
     boolean supports(BindingValue value) {
-        if (supportsFully(value)) return true;
-        if (!hybrid || value == null || value.kind() != BindingValue.Kind.POJO
-                || value.creator() != null || value.properties().isEmpty()) {
-            return false;
-        }
-        // Limit hybrid emission to a POJO with at least one native field.
-        // Unsupported fields (including creators, maps, and mixed lists) use
-        // the existing compiled helpers instead of partially parsing a container.
-        for (BindingProperty property : value.properties()) {
-            if (supportsFully(property.value())) return true;
-        }
-        return false;
-    }
-
-    boolean requiresWrapper(BindingValue value) {
-        return hybrid && supports(value) && !supportsFully(value);
-    }
-
-    private boolean supportsFully(BindingValue value) {
         Set<BindingValue> visiting =
                 Collections.newSetFromMap(new IdentityHashMap<BindingValue, Boolean>());
-        return supportsFully(value, visiting);
+        return supports(value, visiting);
     }
 
-    private boolean supportsFully(BindingValue value, Set<BindingValue> visiting) {
+    private boolean supports(BindingValue value, Set<BindingValue> visiting) {
         if (value == null || !visiting.add(value)) return false;
         try {
             switch (value.kind()) {
@@ -67,11 +44,11 @@ final class Jackson3NativeReadEmitter {
                 case DOUBLE:
                     return true;
                 case LIST:
-                    return supportsFully(value.elementValue(), visiting);
+                    return supports(value.elementValue(), visiting);
                 case POJO:
                     if (value.creator() != null || value.properties().isEmpty()) return false;
                     for (BindingProperty property : value.properties()) {
-                        if (!supportsFully(property.value(), visiting)) return false;
+                        if (!supports(property.value(), visiting)) return false;
                     }
                     return true;
                 default:
@@ -94,10 +71,7 @@ final class Jackson3NativeReadEmitter {
     void emitHelper(JavaWriter out, BindingValue value, ReadEmitter reads) {
         out.blank();
         out.beginBlock("private " + value.type() + " " + helperName(value)
-                + "(tools.jackson.core.JsonParser parser"
-                + (requiresWrapper(value)
-                    ? ", org.sjf4j.backend.jackson3.binding.Jackson3Parser wrapper"
-                    : "") + ") throws java.io.IOException");
+                + "(tools.jackson.core.JsonParser parser) throws java.io.IOException");
         switch (value.kind()) {
             case POJO:
                 emitPojo(out, value, reads);
@@ -139,21 +113,8 @@ final class Jackson3NativeReadEmitter {
         for (BindingProperty property : value.properties()) {
             out.line("case " + index++ + ":");
             out.indent();
-            if (requiresWrapper(value) && !supportsFully(property.value())) {
-                // Jackson3's ordinary compiled POJO/array helpers use
-                // nativeParser() and inspect the current token themselves;
-                // setting the wrapper lookahead flag would prevent that access.
-                // Scalar and Map readers instead consume through StreamingParser
-                // and must adopt the value token already selected by the fused
-                // native name matcher.
-                if (!usesNativeContainerStart(property.value())) {
-                    out.line("wrapper.reuseCurrentToken();");
-                }
-                reads.emitPropertyRead(out, property, "value", "wrapper");
-            } else {
-                reads.emitPropertyReadExpression(out, property, "value",
-                        readExpression(property.value()));
-            }
+            reads.emitPropertyReadExpression(out, property, "value",
+                    readExpression(property.value()));
             out.line("break;");
             out.dedent();
         }
@@ -164,25 +125,6 @@ final class Jackson3NativeReadEmitter {
         out.endBlock();
         out.endBlock();
         out.line("return value;");
-    }
-
-    /**
-     * Match the normal Jackson3ReadEmitter's container start strategy.
-     * These helpers borrow the native parser at its already-selected token;
-     * the wrapper-only helpers require reuseCurrentToken() instead.
-     */
-    private static boolean usesNativeContainerStart(BindingValue value) {
-        switch (value.kind()) {
-            case POJO:
-            case JOJO:
-                return !value.properties().isEmpty();
-            case ARRAY:
-            case LIST:
-            case SET:
-                return true;
-            default:
-                return false;
-        }
     }
 
     private void emitList(JavaWriter out, BindingValue value) {

@@ -35,7 +35,6 @@ jobs:
             if [[ "$enabled" == true ]]; then label=native; fi
             ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
               "-Psjf4jJackson3NativePojo=$enabled" \
-              -Psjf4jJackson3HybridPojo=false \
               > "$OUT/build-$label.log" 2>&1 || {
                 tail -n 120 "$OUT/build-$label.log"; exit 1;
               }

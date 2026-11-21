@@ -7,7 +7,6 @@ on:
       - '.github/workflows/jackson3-native-compiled-conformance.yml'
       - 'sjf4j-testbench/build.gradle.kts'
       - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/binding/CompiledJackson3NameMatchTest.java'
-      - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/binding/CompiledJackson3HybridTest.java'
       - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/**'
       - 'sjf4j-processor/src/main/java/org/sjf4j/processor/CodegenProcessor.java'
       - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/**'
@@ -31,15 +30,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for mode in false:false true:false true:true; do
-            native="${mode%%:*}"
-            hybrid="${mode##*:}"
-            echo "=== Conformance nativePojo=$native hybridPojo=$hybrid ==="
+          for native in false true; do
+            echo "=== Conformance nativePojo=$native ==="
             ./gradlew :sjf4j-testbench:test \
               --tests 'org.sjf4j.testbench.binding.CompiledJackson3NameMatchTest' \
-              --tests 'org.sjf4j.testbench.binding.CompiledJackson3HybridTest' \
-              "-Psjf4jJackson3NativePojo=$native" \
-              "-Psjf4jJackson3HybridPojo=$hybrid" --no-daemon
+              "-Psjf4jJackson3NativePojo=$native" --no-daemon
 
             GENERATED="$(find sjf4j-testbench/build/generated -type f \
               -name 'CompiledJackson3NameMatchTest$Reader_Impl.java' -print -quit)"
@@ -60,40 +55,19 @@ jobs:
               echo "Native generated path unexpectedly enabled" >&2
               exit 1
             fi
-            MIXED="$(find sjf4j-testbench/build/generated -type f \
-              -name 'CompiledJackson3HybridTest$HybridReader_Impl.java' -print -quit)"
-            test -n "$MIXED" && test -s "$MIXED" || {
-              echo "Hybrid generated binder not found" >&2
-              exit 1
-            }
-            if [[ "$native" == true && "$hybrid" == true ]]; then
-              grep -qF 'wrapper.reuseCurrentToken();' "$MIXED" || {
-                echo "Hybrid generated reader does not delegate mixed fields" >&2
-                exit 1
-              }
-              grep -qF 'nextNameMatchAndToken(' "$MIXED"
-            elif grep -qF 'wrapper.reuseCurrentToken();' "$MIXED"; then
-              echo "Hybrid cursor handoff unexpectedly enabled" >&2
-              exit 1
-            fi
-            python3 - "$GENERATED" "$MIXED" "$native" "$hybrid" <<'PY'
+            python3 - "$GENERATED" "$native" <<'PY'
           import sys
           from pathlib import Path
-          native, hybrid = (flag == "true" for flag in sys.argv[3:5])
-          for path, methods in [
-              (Path(sys.argv[1]), ("fromUtf8", "fromString", "fromReader", "fromInputStream")),
-              (Path(sys.argv[2]), ("fromUtf8", "fromString", "fromReader", "fromInputStream")),
-          ]:
-              source = path.read_text()
-              for method in methods:
-                  start = source.find(" " + method + "(")
-                  end = source.find("catch (BindingException", start) if start >= 0 else -1
-                  if start < 0 or end < 0:
-                      raise SystemExit(f"Generated method not found: {path.name}.{method}")
-                  invokes_native = "Native(parser.nativeParser()" in source[start:end]
-                  mixed = path.name.startswith("CompiledJackson3HybridTest")
-                  expected = native and (not mixed or hybrid) and method in ("fromUtf8", "fromInputStream")
-                  if invokes_native != expected:
-                      raise SystemExit(f"{path.name}.{method}: native={invokes_native} expected={expected}")
+          src=Path(sys.argv[1]).read_text()
+          native=sys.argv[2] == "true"
+          for method in ("fromUtf8","fromString","fromReader","fromInputStream"):
+              begin=src.find(" " + method + "(")
+              end=src.find("catch (BindingException",begin) if begin>=0 else -1
+              if begin<0 or end<0:
+                  raise SystemExit("Generated method not found: " + method)
+              selected="Native(parser.nativeParser()" in src[begin:end]
+              wanted=native and method in ("fromUtf8","fromInputStream")
+              if selected!=wanted:
+                  raise SystemExit(f"{method}: native={selected} expected={wanted}")
           PY
           done

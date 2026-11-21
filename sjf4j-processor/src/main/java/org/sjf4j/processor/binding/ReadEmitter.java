@@ -35,10 +35,7 @@ final class ReadEmitter {
                 ? new Jackson2ReadEmitter() : null;
         this.jackson3 = backend.backend() == Backend.JACKSON3
                 ? new Jackson3ReadEmitter() : null;
-        this.jackson3Native = jackson3 == null ? null
-                : new Jackson3NativeReadEmitter(names, "true".equals(
-                        context.processingEnvironment.getOptions()
-                                .get("sjf4j.jackson3.hybridPojo")));
+        this.jackson3Native = jackson3 == null ? null : new Jackson3NativeReadEmitter(names);
         this.nativeJackson3 = jackson3Native != null && "true".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.nativePojo"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
@@ -86,8 +83,7 @@ final class ReadEmitter {
 
         String expression = nativeJackson3 && nativeJackson3Input(plan)
                 && value.helperRequired() && jackson3Native.supports(value)
-                ? jackson3Native.helperName(value) + "(" + parser + ".nativeParser()"
-                        + (jackson3Native.requiresWrapper(value) ? ", " + parser : "") + ")"
+                ? jackson3Native.helperName(value) + "(" + parser + ".nativeParser())"
                 : readExpression(value, parser);
         out.line(plan.valueType() + " " + result + " = " + expression + ";");
 
