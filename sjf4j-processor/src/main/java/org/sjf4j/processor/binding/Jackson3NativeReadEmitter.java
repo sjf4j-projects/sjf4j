@@ -106,10 +106,8 @@ final class Jackson3NativeReadEmitter {
         out.line("parser.nextToken();");
         out.endBlock();
 
-        out.beginBlock("if (nameIndex < 0)");
-        out.line("throw new java.io.IOException(\"Unexpected property matcher result \" + nameIndex);");
-        out.endBlock();
-
+        // The switch default handles all unexpected matcher results, including
+        // negative sentinel values other than MATCH_UNKNOWN_NAME.
         out.beginBlock("switch (nameIndex)");
         int index = 0;
         for (BindingProperty property : value.properties()) {
@@ -122,7 +120,7 @@ final class Jackson3NativeReadEmitter {
         }
         out.line("default:");
         out.indent();
-        out.line("throw new java.io.IOException(\"Unexpected matched property index \" + nameIndex);");
+        out.line("throw new java.io.IOException(\"Unexpected property matcher result \" + nameIndex);");
         out.dedent();
         out.endBlock();
         out.endBlock();
