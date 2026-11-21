@@ -77,7 +77,7 @@ jobs:
               exit 1
             fi
             python3 - "$GENERATED" "$MIXED" "$native" "$hybrid" <<'PY'
-          import re, sys
+          import sys
           from pathlib import Path
           native, hybrid = (flag == "true" for flag in sys.argv[3:5])
           for path, methods in [
@@ -86,10 +86,11 @@ jobs:
           ]:
               source = path.read_text()
               for method in methods:
-                  match = re.search(r"\\b" + method + r"\\([^)]*\\)\\s*\\{(.*?)catch \\(BindingException", source, re.S)
-                  if not match:
+                  start = source.find(" " + method + "(")
+                  end = source.find("catch (BindingException", start) if start >= 0 else -1
+                  if start < 0 or end < 0:
                       raise SystemExit(f"Generated method not found: {path.name}.{method}")
-                  invokes_native = bool(re.search(r"Native\\(parser\\.nativeParser\\(\\)", match.group(1)))
+                  invokes_native = "Native(parser.nativeParser()" in source[start:end]
                   mixed = path.name.startswith("CompiledJackson3HybridTest")
                   expected = native and (not mixed or hybrid) and method in ("fromUtf8", "fromInputStream")
                   if invokes_native != expected:

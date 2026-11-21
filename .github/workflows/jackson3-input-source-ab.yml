@@ -50,13 +50,14 @@ jobs:
                 echo "Native source was not emitted" >&2; exit 1;
               }
               python3 - "$GENERATED" <<'PY'
-          import re, sys
+          import sys
           from pathlib import Path
           source=Path(sys.argv[1]).read_text()
           for method in ("fromBytes", "fromString", "fromReader"):
-              match=re.search(r"\\b" + method + r"\\([^)]*\\)\\s*\\{(.*?)catch \\(BindingException", source, re.S)
-              if not match: raise SystemExit(f"Cannot locate {method} generated body")
-              selected=bool(re.search(r"Native\\(parser\\.nativeParser\\(\\)", match.group(1)))
+              start=source.find(" " + method + "(")
+              end=source.find("catch (BindingException", start) if start >= 0 else -1
+              if start < 0 or end < 0: raise SystemExit(f"Cannot locate {method} generated body")
+              selected="Native(parser.nativeParser()" in source[start:end]
               if selected != (method == "fromBytes"):
                   raise SystemExit(f"{method} incorrect native selection: {selected}")
           PY
