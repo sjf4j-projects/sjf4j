@@ -35,7 +35,10 @@ final class ReadEmitter {
                 ? new Jackson2ReadEmitter() : null;
         this.jackson3 = backend.backend() == Backend.JACKSON3
                 ? new Jackson3ReadEmitter() : null;
-        this.jackson3Native = jackson3 == null ? null : new Jackson3NativeReadEmitter(names);
+        this.jackson3Native = jackson3 == null ? null
+                : new Jackson3NativeReadEmitter(names, !"false".equals(
+                        context.processingEnvironment.getOptions()
+                                .get("sjf4j.jackson3.nativeColdFallback")));
         this.nativeJackson3 = jackson3Native != null && "true".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.nativePojo"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
