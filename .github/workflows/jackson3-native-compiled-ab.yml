@@ -1,12 +1,6 @@
 name: Jackson3 Native Compiled A/B (experimental)
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - '.github/workflows/jackson3-native-compiled-ab.yml'
-      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/**'
-      - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/**'
   workflow_dispatch:
 
 permissions:

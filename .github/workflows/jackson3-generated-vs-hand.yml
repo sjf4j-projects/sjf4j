@@ -1,13 +1,6 @@
 name: Jackson3 Generated Native vs Handwritten (JDK 25)
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - '.github/workflows/jackson3-generated-vs-hand.yml'
-      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienBindings.java'
-      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienHandwrittenJackson3.java'
-      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/Jackson3NativeReadEmitter.java'
   workflow_dispatch:
 
 permissions:

@@ -1,11 +1,6 @@
 name: Jackson3 Input Source Compile-time Selection Paired A/B
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - '.github/workflows/jackson3-input-source-ab.yml'
-      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienJackson3InputBenchmark.java'
   workflow_dispatch:
 
 permissions:

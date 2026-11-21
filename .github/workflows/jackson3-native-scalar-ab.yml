@@ -1,13 +1,6 @@
 name: Jackson3 Native Scalar Coverage Paired A/B
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - '.github/workflows/jackson3-native-scalar-ab.yml'
-      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienJackson3NativeScalarBenchmark.java'
-      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/Jackson3NativeReadEmitter.java'
-      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/ReadEmitter.java'
   workflow_dispatch:
 
 permissions:
@@ -61,7 +54,7 @@ jobs:
             java -jar "$JAR" \
               'org.sjf4j.testbench.binding.fabien.FabienJackson3NativeScalarBenchmark.read' \
               -p implementation=compiled,native,blackbird,fastjson2 \
-              -p sizeKb=1,10 -p seed=12345,324 \
+              -p sizeKb=1,10,100 -p seed=12345,324 \
               -t 1 -f 2 -wi 2 -i 4 -w 200ms -r 200ms -foe true \
               -prof gc -rf json -rff "$OUT/raw-$mode.json" \
               > "$OUT/jmh-$mode.log" 2>&1 || {
@@ -77,7 +70,7 @@ jobs:
           from pathlib import Path
           root=Path(sys.argv[1])
           modes=("wrapper","native")
-          sizes=("1","10")
+          sizes=("1","10","100")
           seeds=("12345","324")
           implementations=("compiled","native","blackbird","fastjson2")
           times={}
@@ -102,7 +95,7 @@ jobs:
                       for seed in seeds)
           lines=["# Jackson3 native scalar/enum coverage vs wrapper A/B", "",
                  "One runner, JDK 25, Jackson 3.3.0, native byte/short/BigDecimal/BigInteger/char/Enum scalar fields, 2 seeds x 2 forks.",
-                 "2x200ms warmup, 4x200ms measurement, all implementations validated.",
+                 "1KB/10KB/100KB; 2x200ms warmup, 4x200ms measurement; all implementations validated.",
                  "Native gains normalized to within-mode Blackbird; >1 favors native.",
                  "",
                  "| Size | Wrapper Compiled µs | Native Compiled µs | Normalized gain | Blackbird / Native | Jackson Native / Native | Fastjson2 / Native | Allocated B/op wrapper → native |",
