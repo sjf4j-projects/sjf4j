@@ -1,0 +1,141 @@
+name: Jackson3 Direct Root Parser Short A/B
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-direct-root-ab.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/ReadEmitter.java'
+      - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/Jackson3Binder.java'
+      - 'sjf4j-testbench/build.gradle.kts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Two codegen variants on same runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-direct-root
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for mode in false true; do
+            label=wrapper
+            if [[ "$mode" == true ]]; then label=direct; fi
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              -Psjf4jJackson3NativePojo=true \
+              "-Psjf4jJackson3DirectRoot=$mode" \
+              > "$OUT/build-$label.log" 2>&1 || {
+                tail -n 100 "$OUT/build-$label.log"; exit 1;
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -s "$JAR"
+            GENERATED="$(find sjf4j-testbench/build/generated -type f \
+              -name 'FabienBindings$Jackson3_Impl.java' -print -quit)"
+            test -n "$GENERATED" && test -s "$GENERATED"
+            grep -qF 'nextNameMatchAndToken(' "$GENERATED"
+            if [[ "$mode" == true ]]; then
+              grep -qF 'this.binder.createNativeParser(' "$GENERATED"
+            elif grep -qF 'this.binder.createNativeParser(' "$GENERATED"; then
+              echo "Control must use Jackson3Parser wrapper" >&2; exit 1
+            fi
+            cp "$GENERATED" "$OUT/generated-$label.java"
+            java -cp "$JAR" org.sjf4j.testbench.binding.fabien.FabienJackson3NativeSmoke \
+              > "$OUT/smoke-$label.log"
+            java -jar "$JAR" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              -p implementation=compiled,handwritten,blackbird \
+              -p sizeKb=1,10 -p seed=12345,324 \
+              -t 1 -f 2 -wi 2 -i 4 -w 250ms -r 250ms \
+              -prof gc -rf json -rff "$OUT/raw-$label.json" \
+              > "$OUT/jmh-$label.log" 2>&1 || {
+                tail -n 100 "$OUT/jmh-$label.log"; exit 1;
+              }
+          done
+      - name: Report matched speed ratios
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-direct-root
+          python3 - "$OUT" <<'PY'
+          import json, statistics, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          sizes = ("1", "10")
+          seeds = ("12345", "324")
+          impls = ("compiled", "handwritten", "blackbird")
+          results = {}
+          for mode in ("wrapper", "direct"):
+              entries = json.loads((root / f"raw-{mode}.json").read_text())
+              scores = {}
+              for row in entries:
+                  p = row["params"]
+                  key = (p["sizeKb"], p["seed"], p["implementation"])
+                  forks = [statistics.mean(fork) for fork in row["primaryMetric"]["rawData"]]
+                  if len(forks) != 2:
+                      raise SystemExit(f"Expected 2 forks: {mode}/{key}")
+                  scores[key] = statistics.mean(forks)
+              expected = {(size, seed, impl) for size in sizes for seed in seeds for impl in impls}
+              if set(scores) != expected:
+                  raise SystemExit(f"Unexpected cases in {mode}: {expected-set(scores)} / {set(scores)-expected}")
+              results[mode] = scores
+          def geo(values):
+              return statistics.geometric_mean(values)
+          def score(mode, size, impl):
+              return geo(results[mode][(size, seed, impl)] for seed in seeds)
+          def rh(mode, size):
+              return score(mode, size, "handwritten") / score(mode, size, "compiled")
+          report = [
+              "# Native Compiled direct-root parser, short paired A/B", "",
+              "Jackson3 3.3.0; JDK 25; same runner; byte[] Users POJO.",
+              "2 seeds x 2 forks, 2 x 250ms warmup, 4 x 250ms measurement.",
+              "Both generated sources and correctness smokes are included.",
+              "Ratio > 1 means the direct parser is faster after normalization to Handwritten.", "",
+              "| Size | Wrapper µs/op | Direct µs/op | Hand/Wrapper | Hand/Direct | Normalized Direct Gain | Blackbird/Direct |",
+              "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+          ]
+          for size in sizes:
+              x = score("wrapper",size,"compiled")
+              y = score("direct",size,"compiled")
+              h0 = rh("wrapper", size)
+              h1 = rh("direct", size)
+              b = score("direct",size,"blackbird")/y
+              report.append(f"| {size}KB | {x:.3f} | {y:.3f} | {h0:.3f}x | {h1:.3f}x | {h1/h0:.3f}x | {b:.3f}x |")
+          report += ["", "## Per-seed normalized direct gain", "",
+                     "| Size | Seed | Direct Gain |", "| --- | --- | ---: |"]
+          for size in sizes:
+              for seed in seeds:
+                  a=results["wrapper"]
+                  b=results["direct"]
+                  h0=a[(size,seed,"handwritten")]/a[(size,seed,"compiled")]
+                  h1=b[(size,seed,"handwritten")]/b[(size,seed,"compiled")]
+                  report.append(f"| {size}KB | {seed} | {h1/h0:.3f}x |")
+          (root / "comparison.md").write_text("\n".join(report) + "\n")
+          print("\n".join(report))
+          PY
+      - name: Publish report
+        if: always()
+        run: |
+          FILE=build/performance/jackson3-direct-root/comparison.md
+          if test -s "$FILE"; then cat "$FILE" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload source and metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-direct-root-short-ab
+          path: build/performance/jackson3-direct-root/
+          if-no-files-found: warn
+          retention-days: 30

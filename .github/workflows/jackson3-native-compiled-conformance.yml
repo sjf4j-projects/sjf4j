@@ -30,11 +30,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for native in false true; do
-            echo "=== Conformance nativePojo=$native ==="
+          for combination in false:false true:false true:true; do
+            native="${combination%%:*}"
+            direct="${combination##*:}"
+            echo "=== Conformance nativePojo=$native directRoot=$direct ==="
             ./gradlew :sjf4j-testbench:test \
               --tests 'org.sjf4j.testbench.binding.CompiledJackson3NameMatchTest' \
-              "-Psjf4jJackson3NativePojo=$native" --no-daemon
+              "-Psjf4jJackson3NativePojo=$native" \
+              "-Psjf4jJackson3DirectRoot=$direct" --no-daemon
 
             GENERATED="$(find sjf4j-testbench/build/generated -type f \
               -name 'CompiledJackson3NameMatchTest$Reader_Impl.java' -print -quit)"
@@ -53,6 +56,15 @@ jobs:
               }
             elif grep -qF 'nextNameMatchAndToken(' "$GENERATED"; then
               echo "Native generated path unexpectedly enabled" >&2
+              exit 1
+            fi
+            if [[ "$direct" == true ]]; then
+              grep -qF 'this.binder.createNativeParser(' "$GENERATED" || {
+                echo "Direct-root source was not generated" >&2
+                exit 1
+              }
+            elif grep -qF 'this.binder.createNativeParser(' "$GENERATED"; then
+              echo "Direct-root source unexpectedly enabled" >&2
               exit 1
             fi
           done
