@@ -1,0 +1,151 @@
+name: Jackson3 Hybrid Native POJO Paired A/B
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-hybrid-pojo-ab.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienJackson3HybridBenchmark.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/Jackson3NativeReadEmitter.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/ReadEmitter.java'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Compare wrapper and hybrid compiled code on one runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-hybrid-pojo
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/jdk.txt"
+          lscpu > "$OUT/cpu.txt"
+          for mode in wrapper hybrid; do
+            native=false
+            hybrid=false
+            if [[ "$mode" == hybrid ]]; then
+              native=true
+              hybrid=true
+            fi
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              "-Psjf4jJackson3NativePojo=$native" \
+              "-Psjf4jJackson3HybridPojo=$hybrid" \
+              > "$OUT/build-$mode.log" 2>&1 || {
+                tail -n 120 "$OUT/build-$mode.log"; exit 1;
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -s "$JAR"
+            GENERATED="$(find sjf4j-testbench/build/generated -type f \
+              -name 'FabienJackson3HybridBenchmark$HybridReader_Impl.java' -print -quit)"
+            test -n "$GENERATED" && test -s "$GENERATED" || {
+              echo "Hybrid benchmark binder generated source not found" >&2; exit 1;
+            }
+            if [[ "$mode" == hybrid ]]; then
+              grep -qF 'nextNameMatchAndToken(' "$GENERATED" || {
+                echo "Hybrid native field matcher absent" >&2; exit 1;
+              }
+              grep -qF 'wrapper.reuseCurrentToken();' "$GENERATED" || {
+                echo "Hybrid per-field compiled fallback absent" >&2; exit 1;
+              }
+              grep -Eq 'Native\([[:alnum:]_]+\.nativeParser\(\), [[:alnum:]_]+\)' "$GENERATED" || {
+                echo "Hybrid compiled root does not invoke native helper" >&2; exit 1;
+              }
+            else
+              if grep -qF 'nextNameMatchAndToken(' "$GENERATED"; then
+                echo "Wrapper reference unexpectedly emits native matcher" >&2; exit 1;
+              fi
+            fi
+            cp "$GENERATED" "$OUT/generated-$mode.java"
+            java -jar "$JAR" \
+              'org.sjf4j.testbench.binding.fabien.FabienJackson3HybridBenchmark.read' \
+              -p implementation=compiled,native,blackbird,fastjson2 \
+              -p sizeKb=1,10 -p seed=12345,324 \
+              -t 1 -f 2 -wi 2 -i 4 -w 200ms -r 200ms \
+              -prof gc -rf json -rff "$OUT/raw-$mode.json" \
+              > "$OUT/jmh-$mode.log" 2>&1 || {
+                tail -n 100 "$OUT/jmh-$mode.log"; exit 1;
+              }
+          done
+      - name: Report paired ratios and GC allocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - build/performance/jackson3-hybrid-pojo <<'PY'
+          import json, statistics, sys
+          from pathlib import Path
+          root=Path(sys.argv[1])
+          modes=("wrapper","hybrid")
+          sizes=("1","10")
+          seeds=("12345","324")
+          implementations=("compiled","native","blackbird","fastjson2")
+          times={}
+          allocs={}
+          for mode in modes:
+              rows=json.loads((root/f"raw-{mode}.json").read_text())
+              for row in rows:
+                  p=row["params"]
+                  k=(mode,p["sizeKb"],p["seed"],p["implementation"])
+                  forks=[statistics.mean(fork) for fork in row["primaryMetric"]["rawData"]]
+                  if len(forks)!=2: raise ValueError(f"Unexpected forks: {k}")
+                  times[k]=statistics.mean(forks)
+                  allocs[k]=row["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+          expected={(m,s,seed,i) for m in modes for s in sizes for seed in seeds
+                  for i in implementations}
+          if set(times)!=expected: raise ValueError(f"Missing cases: {expected-set(times)}")
+          def score(mode,size,implementation):
+              return statistics.geometric_mean(times[(mode,size,seed,implementation)]
+                      for seed in seeds)
+          def alloc(mode,size,implementation):
+              return statistics.mean(allocs[(mode,size,seed,implementation)]
+                      for seed in seeds)
+          lines=["# Jackson3 hybrid Native/Compiled POJO A/B", "",
+                 "One runner, JDK 25, Jackson 3.3.0, 2 seeds x 2 forks.",
+                 "2x200ms warmup, 4x200ms measurement, all implementations validated.",
+                 "Hybrid gains normalized to within-mode Blackbird; >1 favors hybrid.",
+                 "",
+                 "| Size | Wrapper Compiled µs | Hybrid Compiled µs | Normalized gain | Blackbird / Hybrid | Jackson Native / Hybrid | Fastjson2 / Hybrid | Allocated B/op wrapper → hybrid |",
+                 "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |"]
+          for size in sizes:
+              cw=score("wrapper",size,"compiled")
+              ch=score("hybrid",size,"compiled")
+              bw=score("wrapper",size,"blackbird")
+              bh=score("hybrid",size,"blackbird")
+              native=score("hybrid",size,"native")
+              fast=score("hybrid",size,"fastjson2")
+              gain=(bh/ch)/(bw/cw)
+              lines.append(f"| {size}KB | {cw:.3f} | {ch:.3f} | {gain:.3f}x | {bh/ch:.3f}x | {native/ch:.3f}x | {fast/ch:.3f}x | {alloc('wrapper',size,'compiled'):.0f} → {alloc('hybrid',size,'compiled'):.0f} |")
+          lines.extend(["", "## Per-seed normalized hybrid gain", "",
+                         "| Size | Seed | Gain |", "| --- | --- | ---: |"])
+          for size in sizes:
+              for seed in seeds:
+                  bw=times[("wrapper",size,seed,"blackbird")]/times[("wrapper",size,seed,"compiled")]
+                  bh=times[("hybrid",size,seed,"blackbird")]/times[("hybrid",size,seed,"compiled")]
+                  lines.append(f"| {size}KB | {seed} | {bh/bw:.3f}x |")
+          (root/"comparison.md").write_text("\n".join(lines)+"\n")
+          print("\n".join(lines))
+          PY
+      - name: Publish result
+        if: always()
+        run: |
+          FILE=build/performance/jackson3-hybrid-pojo/comparison.md
+          if test -s "$FILE"; then cat "$FILE" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload generated sources and JMH results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-hybrid-pojo-paired
+          path: build/performance/jackson3-hybrid-pojo/
+          retention-days: 30
+          if-no-files-found: warn
