@@ -10,10 +10,12 @@ import java.util.Set;
  * Native Jackson 3 cursor reads for fully static POJO trees.
  *
  * <p>Unlike the general compiled reader, the generated helper accepts Jackson's
- * JsonParser directly. Every descendant must be supported before this path is
- * selected, so nested values never switch cursor ownership halfway through an
- * object. The existing wrapper helpers remain responsible for creators,
- * dynamic nodes, codecs, OneOf, and other advanced binding semantics.</p>
+ * JsonParser directly. By default, every descendant must be statically
+ * supported before this path is selected. An opt-in hybrid mode also permits
+ * one POJO to dispatch its eligible properties natively and hand unsupported
+ * values back to the already-existing streaming wrapper. Nested unsupported
+ * containers are delegated as whole values; the wrapper owns their cursor
+ * until each value has been consumed.</p>
  */
 final class Jackson3NativeReadEmitter {
 
@@ -21,18 +23,39 @@ final class Jackson3NativeReadEmitter {
     private static final String MATCHER = "tools.jackson.core.sym.PropertyNameMatcher";
 
     private final BindingNames names;
+    private final boolean hybrid;
 
-    Jackson3NativeReadEmitter(BindingNames names) {
+    Jackson3NativeReadEmitter(BindingNames names, boolean hybrid) {
         this.names = names;
+        this.hybrid = hybrid;
     }
 
     boolean supports(BindingValue value) {
-        Set<BindingValue> visiting =
-                Collections.newSetFromMap(new IdentityHashMap<BindingValue, Boolean>());
-        return supports(value, visiting);
+        if (supportsFully(value)) return true;
+        if (!hybrid || value == null || value.kind() != BindingValue.Kind.POJO
+                || value.creator() != null || value.properties().isEmpty()) {
+            return false;
+        }
+        // Limit hybrid emission to a POJO with at least one native field.
+        // Unsupported fields (including creators, maps, and mixed lists) use
+        // the existing compiled helpers instead of partially parsing a container.
+        for (BindingProperty property : value.properties()) {
+            if (supportsFully(property.value())) return true;
+        }
+        return false;
     }
 
-    private boolean supports(BindingValue value, Set<BindingValue> visiting) {
+    boolean requiresWrapper(BindingValue value) {
+        return hybrid && supports(value) && !supportsFully(value);
+    }
+
+    private boolean supportsFully(BindingValue value) {
+        Set<BindingValue> visiting =
+                Collections.newSetFromMap(new IdentityHashMap<BindingValue, Boolean>());
+        return supportsFully(value, visiting);
+    }
+
+    private boolean supportsFully(BindingValue value, Set<BindingValue> visiting) {
         if (value == null || !visiting.add(value)) return false;
         try {
             switch (value.kind()) {
@@ -44,11 +67,11 @@ final class Jackson3NativeReadEmitter {
                 case DOUBLE:
                     return true;
                 case LIST:
-                    return supports(value.elementValue(), visiting);
+                    return supportsFully(value.elementValue(), visiting);
                 case POJO:
                     if (value.creator() != null || value.properties().isEmpty()) return false;
                     for (BindingProperty property : value.properties()) {
-                        if (!supports(property.value(), visiting)) return false;
+                        if (!supportsFully(property.value(), visiting)) return false;
                     }
                     return true;
                 default:
@@ -71,7 +94,10 @@ final class Jackson3NativeReadEmitter {
     void emitHelper(JavaWriter out, BindingValue value, ReadEmitter reads) {
         out.blank();
         out.beginBlock("private " + value.type() + " " + helperName(value)
-                + "(tools.jackson.core.JsonParser parser) throws java.io.IOException");
+                + "(tools.jackson.core.JsonParser parser"
+                + (requiresWrapper(value)
+                    ? ", org.sjf4j.backend.jackson3.binding.Jackson3Parser wrapper"
+                    : "") + ") throws java.io.IOException");
         switch (value.kind()) {
             case POJO:
                 emitPojo(out, value, reads);
@@ -113,8 +139,15 @@ final class Jackson3NativeReadEmitter {
         for (BindingProperty property : value.properties()) {
             out.line("case " + index++ + ":");
             out.indent();
-            reads.emitPropertyReadExpression(out, property, "value",
-                    readExpression(property.value()));
+            if (requiresWrapper(value) && !supportsFully(property.value())) {
+                // A fused name match has already consumed the value token.
+                // Let the existing compiled reader consume exactly that token.
+                out.line("wrapper.reuseCurrentToken();");
+                reads.emitPropertyRead(out, property, "value", "wrapper");
+            } else {
+                reads.emitPropertyReadExpression(out, property, "value",
+                        readExpression(property.value()));
+            }
             out.line("break;");
             out.dedent();
         }

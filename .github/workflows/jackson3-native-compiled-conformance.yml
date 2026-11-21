@@ -7,6 +7,7 @@ on:
       - '.github/workflows/jackson3-native-compiled-conformance.yml'
       - 'sjf4j-testbench/build.gradle.kts'
       - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/binding/CompiledJackson3NameMatchTest.java'
+      - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/binding/CompiledJackson3HybridTest.java'
       - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/**'
       - 'sjf4j-processor/src/main/java/org/sjf4j/processor/CodegenProcessor.java'
       - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/**'
@@ -30,11 +31,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for native in false true; do
-            echo "=== Conformance nativePojo=$native ==="
+          for mode in false:false true:false true:true; do
+            native="${mode%%:*}"
+            hybrid="${mode##*:}"
+            echo "=== Conformance nativePojo=$native hybridPojo=$hybrid ==="
             ./gradlew :sjf4j-testbench:test \
               --tests 'org.sjf4j.testbench.binding.CompiledJackson3NameMatchTest' \
-              "-Psjf4jJackson3NativePojo=$native" --no-daemon
+              --tests 'org.sjf4j.testbench.binding.CompiledJackson3HybridTest' \
+              "-Psjf4jJackson3NativePojo=$native" \
+              "-Psjf4jJackson3HybridPojo=$hybrid" --no-daemon
 
             GENERATED="$(find sjf4j-testbench/build/generated -type f \
               -name 'CompiledJackson3NameMatchTest$Reader_Impl.java' -print -quit)"
@@ -53,6 +58,22 @@ jobs:
               }
             elif grep -qF 'nextNameMatchAndToken(' "$GENERATED"; then
               echo "Native generated path unexpectedly enabled" >&2
+              exit 1
+            fi
+            MIXED="$(find sjf4j-testbench/build/generated -type f \
+              -name 'CompiledJackson3HybridTest$HybridReader_Impl.java' -print -quit)"
+            test -n "$MIXED" && test -s "$MIXED" || {
+              echo "Hybrid generated binder not found" >&2
+              exit 1
+            }
+            if [[ "$native" == true && "$hybrid" == true ]]; then
+              grep -qF 'wrapper.reuseCurrentToken();' "$MIXED" || {
+                echo "Hybrid generated reader does not delegate mixed fields" >&2
+                exit 1
+              }
+              grep -qF 'nextNameMatchAndToken(' "$MIXED"
+            elif grep -qF 'wrapper.reuseCurrentToken();' "$MIXED"; then
+              echo "Hybrid cursor handoff unexpectedly enabled" >&2
               exit 1
             fi
           done
