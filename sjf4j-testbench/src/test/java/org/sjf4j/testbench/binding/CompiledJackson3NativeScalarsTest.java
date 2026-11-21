@@ -101,10 +101,10 @@ public class CompiledJackson3NativeScalarsTest {
     @Test
     void preservesNullAndMalformedValueHandling() throws Exception {
         Reader reader = CompiledInstances.create(Reader.class);
-        Order empty = reader.fromUtf8(
+        Order empty = reader.fromUtf8((
                 "{\"boxedSmall\":null,\"boxedMedium\":null,\"bigInteger\":null,"
                 + "\"amount\":null,\"number\":null,\"optionalInitial\":null,"
-                + "\"state\":null,\"amounts\":null,\"states\":null,\"detail\":null}"
+                + "\"state\":null,\"amounts\":null,\"states\":null,\"detail\":null}")
                 .getBytes(StandardCharsets.UTF_8));
         assertNull(empty.boxedSmall);
         assertNull(empty.boxedMedium);
