@@ -37,6 +37,11 @@ public final class Jackson3NameMatcher extends NameMatcher {
         this(null, names, aliases);
     }
 
+    /** Native quad matcher used by generated Jackson 3 direct-cursor reads. */
+    public PropertyNameMatcher nativeMatcher() {
+        return matcher;
+    }
+
     private Jackson3NameMatcher(PropertyInfo[] properties, String[] names, String[][] aliases) {
         super(properties, names, aliases);
 
