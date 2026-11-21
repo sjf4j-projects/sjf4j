@@ -51,14 +51,6 @@ jobs:
     - name: Compile JMH benchmarks
       run: ./gradlew :sjf4j-testbench:jmhJar
 
-    # The testbench JMH classes target Java 25. Keep the main build on JDK 17,
-    # but execute the JMH smoke checks on a compatible JVM.
-    - name: Set up JDK 25 for JMH smoke checks
-      uses: actions/setup-java@v6
-      with:
-        java-version: '25'
-        distribution: 'temurin'
-
     # This is a correctness smoke, not performance data: GitHub runners are
     # noisy. Cover both read/write of SnakeYAML native Users/Clients POJO/Map.
     - name: Smoke-check native YAML binding
