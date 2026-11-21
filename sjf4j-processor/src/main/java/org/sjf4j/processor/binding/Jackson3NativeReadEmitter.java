@@ -129,10 +129,10 @@ final class Jackson3NativeReadEmitter {
         out.indent();
         if (coldFallback) {
             out.line(unknownMethod(value) + "(parser, value, nameIndex);");
+            out.line("break;");
         } else {
             out.line("throw new java.io.IOException(\"Unexpected matched property index \" + nameIndex);");
         }
-        out.line("break;");
         out.dedent();
         out.endBlock();
         out.endBlock();
