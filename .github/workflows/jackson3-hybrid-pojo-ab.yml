@@ -72,7 +72,7 @@ jobs:
               'org.sjf4j.testbench.binding.fabien.FabienJackson3HybridBenchmark.read' \
               -p implementation=compiled,native,blackbird,fastjson2 \
               -p sizeKb=1,10 -p seed=12345,324 \
-              -t 1 -f 2 -wi 2 -i 4 -w 200ms -r 200ms \
+              -t 1 -f 2 -wi 2 -i 4 -w 200ms -r 200ms -foe true \
               -prof gc -rf json -rff "$OUT/raw-$mode.json" \
               > "$OUT/jmh-$mode.log" 2>&1 || {
                 tail -n 100 "$OUT/jmh-$mode.log"; exit 1;

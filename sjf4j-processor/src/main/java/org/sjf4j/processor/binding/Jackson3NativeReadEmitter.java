@@ -140,9 +140,15 @@ final class Jackson3NativeReadEmitter {
             out.line("case " + index++ + ":");
             out.indent();
             if (requiresWrapper(value) && !supportsFully(property.value())) {
-                // A fused name match has already consumed the value token.
-                // Let the existing compiled reader consume exactly that token.
-                out.line("wrapper.reuseCurrentToken();");
+                // Jackson3's ordinary compiled POJO/array helpers use
+                // nativeParser() and inspect the current token themselves;
+                // setting the wrapper lookahead flag would prevent that access.
+                // Scalar and Map readers instead consume through StreamingParser
+                // and must adopt the value token already selected by the fused
+                // native name matcher.
+                if (!usesNativeContainerStart(property.value())) {
+                    out.line("wrapper.reuseCurrentToken();");
+                }
                 reads.emitPropertyRead(out, property, "value", "wrapper");
             } else {
                 reads.emitPropertyReadExpression(out, property, "value",
@@ -158,6 +164,25 @@ final class Jackson3NativeReadEmitter {
         out.endBlock();
         out.endBlock();
         out.line("return value;");
+    }
+
+    /**
+     * Match the normal Jackson3ReadEmitter's container start strategy.
+     * These helpers borrow the native parser at its already-selected token;
+     * the wrapper-only helpers require reuseCurrentToken() instead.
+     */
+    private static boolean usesNativeContainerStart(BindingValue value) {
+        switch (value.kind()) {
+            case POJO:
+            case JOJO:
+                return !value.properties().isEmpty();
+            case ARRAY:
+            case LIST:
+            case SET:
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void emitList(JavaWriter out, BindingValue value) {

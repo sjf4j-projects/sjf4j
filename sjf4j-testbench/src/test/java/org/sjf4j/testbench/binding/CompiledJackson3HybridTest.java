@@ -30,6 +30,7 @@ public class CompiledJackson3HybridTest {
     public static class Detail {
         public String label;
         public int count;
+        public BigDecimal rate;
     }
 
     public static class Order {
@@ -42,6 +43,7 @@ public class CompiledJackson3HybridTest {
         public List<Integer> counts;
         public Map<String, String> attributes;
         public List<Detail> details;
+        public Detail detail;
     }
 
     @CompiledBinder(backend = Backend.JACKSON3)
@@ -60,9 +62,11 @@ public class CompiledJackson3HybridTest {
                 "{\"id\":7,\"name\":\"Ada\",\"amount\":12.50,\"status\":\"ACTIVE\","
                         + "\"shortNumber\":12,\"counts\":[1,null,3],"
                         + "\"attributes\":{\"x\":\"y\"},"
-                        + "\"details\":[{\"label\":\"child\",\"count\":2}],"
+                        + "\"details\":[{\"label\":\"child\",\"count\":2,\"rate\":1.25}],"
+                        + "\"detail\":{\"label\":\"single\",\"count\":4,\"rate\":2.75},"
                         + "\"ignored\":{\"sub\":[true,{\"deep\":null}]}}",
-                "{\"ignored\":[{\"nested\":1}],\"details\":[{\"count\":2,\"label\":\"child\"}],"
+                "{\"ignored\":[{\"nested\":1}],\"detail\":{\"rate\":2.75,\"count\":4,\"label\":\"single\"},"
+                        + "\"details\":[{\"count\":2,\"label\":\"child\",\"rate\":1.25}],"
                         + "\"attributes\":{\"x\":\"y\"},\"counts\":[1,null,3],"
                         + "\"status\":\"ACTIVE\",\"amount\":12.50,\"shortNumber\":12,"
                         + "\"旧名\":\"Ada\",\"id\":7}"
@@ -80,7 +84,7 @@ public class CompiledJackson3HybridTest {
     void nullValuesAndAfterFallbackNativeFields() throws Exception {
         String json = "{\"amount\":null,\"status\":null,\"counts\":null,"
                 + "\"shortNumber\":0,\"attributes\":null,\"id\":9,\"name\":\"after\","
-                + "\"details\":[null,{\"label\":null,\"count\":0}]}";
+                + "\"detail\":null,\"details\":[null,{\"label\":null,\"count\":0,\"rate\":null}]}";
         Order result = binder.fromUtf8(json.getBytes(StandardCharsets.UTF_8));
         assertEquals(9, result.id);
         assertEquals("after", result.name);
@@ -91,6 +95,8 @@ public class CompiledJackson3HybridTest {
         assertEquals(2, result.details.size());
         assertNull(result.details.get(0));
         assertNull(result.details.get(1).label);
+        assertNull(result.details.get(1).rate);
+        assertNull(result.detail);
         assertNull(binder.fromUtf8("null".getBytes(StandardCharsets.UTF_8)));
     }
 
@@ -103,6 +109,7 @@ public class CompiledJackson3HybridTest {
                 "{\"id\":1,\"counts\":[1,{\"x\":3}]}",
                 "{\"id\":1,\"attributes\":[1]}",
                 "{\"id\":1,\"details\":[{\"label\":false}]}",
+                "{\"id\":1,\"detail\":{\"rate\":false}}",
                 "{\"id\":1,\"amount\":1.00",
                 "{\"id\":1} false"
         }) {
@@ -124,5 +131,9 @@ public class CompiledJackson3HybridTest {
         assertEquals(1, result.details.size());
         assertEquals("child", result.details.get(0).label);
         assertEquals(2, result.details.get(0).count);
+        assertEquals(0, result.details.get(0).rate.compareTo(new BigDecimal("1.25")));
+        assertEquals("single", result.detail.label);
+        assertEquals(4, result.detail.count);
+        assertEquals(0, result.detail.rate.compareTo(new BigDecimal("2.75")));
     }
 }
