@@ -24,7 +24,6 @@ final class ReadEmitter {
     private final Jackson3ReadEmitter jackson3;
     private final Jackson3NativeReadEmitter jackson3Native;
     private final boolean nativeJackson3;
-    private final boolean directRootJackson3;
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
 
@@ -39,8 +38,6 @@ final class ReadEmitter {
         this.jackson3Native = jackson3 == null ? null : new Jackson3NativeReadEmitter(names);
         this.nativeJackson3 = jackson3Native != null && "true".equals(
                 context.processingEnvironment.getOptions().get("sjf4j.jackson3.nativePojo"));
-        this.directRootJackson3 = nativeJackson3 && "true".equals(
-                context.processingEnvironment.getOptions().get("sjf4j.jackson3.directRoot"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
@@ -70,29 +67,10 @@ final class ReadEmitter {
         NameAllocator names = methodNames(plan);
         String parser = names.newName("parser");
 
-        // The direct-root experiment is limited to byte[]: it preserves the
-        // normal wrapper path for String/Reader/InputStream and externally
-        // positioned parsers, whose cursor semantics differ.
-        boolean nativeRoot = directRootJackson3 && value.helperRequired()
-                && jackson3Native.supports(value)
-                && "byte[]".equals(plan.method().type().getParameterTypes().get(0).toString());
-        if (nativeRoot) {
-            out.beginBlock("try (tools.jackson.core.JsonParser " + parser
-                    + " = this.binder.createNativeParser(" + input + "))");
-            String result = names.newName("result");
-            out.line(plan.valueType() + " " + result + " = "
-                    + jackson3Native.helperName(value) + "(" + parser + ");");
-            out.beginBlock("if (" + parser + ".nextToken() != null)");
-            out.line("throw new java.io.IOException(\"Unexpected trailing JSON content\");");
-            out.endBlock();
-            out.line("return " + result + ";");
-            out.endBlock();
-        } else {
-            out.beginBlock("try (" + backend.parserType() + " " + parser
-                    + " = this.binder.createParser(" + input + "))");
-            emitReadBody(out, plan, value, parser, names);
-            out.endBlock();
-        }
+        out.beginBlock("try (" + backend.parserType() + " " + parser
+                + " = this.binder.createParser(" + input + "))");
+        emitReadBody(out, plan, value, parser, names);
+        out.endBlock();
 
         BindingSource.endOverride(out, plan);
     }

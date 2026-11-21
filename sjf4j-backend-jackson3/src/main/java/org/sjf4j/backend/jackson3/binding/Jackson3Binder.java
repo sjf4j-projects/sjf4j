@@ -102,15 +102,6 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
                 factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input")));
     }
 
-    /**
-     * Creates a direct Jackson cursor for opt-in compiled byte-array binding.
-     * Uses the same configured factory and read context as createParser.
-     * The caller owns and closes the returned parser.
-     */
-    public JsonParser createNativeParser(byte[] input) throws IOException {
-        return factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input"));
-    }
-
     @Override
     public Jackson3Generator createGenerator(Writer output) throws IOException {
         JsonGenerator generator = factory.createGenerator(
