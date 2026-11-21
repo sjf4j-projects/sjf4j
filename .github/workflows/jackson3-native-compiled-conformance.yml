@@ -76,4 +76,22 @@ jobs:
               echo "Hybrid cursor handoff unexpectedly enabled" >&2
               exit 1
             fi
+            python3 - "$GENERATED" "$MIXED" "$native" "$hybrid" <<'PY'
+          import re, sys
+          from pathlib import Path
+          native, hybrid = (flag == "true" for flag in sys.argv[3:5])
+          for path, methods in [
+              (Path(sys.argv[1]), ("fromUtf8", "fromString", "fromReader", "fromInputStream")),
+              (Path(sys.argv[2]), ("fromUtf8", "fromString", "fromReader", "fromInputStream")),
+          ]:
+              source = path.read_text()
+              for method in methods:
+                  match = re.search(r"\\b" + method + r"\\([^)]*\\)\\s*\\{(.*?)catch \\(BindingException", source, re.S)
+                  if not match:
+                      raise SystemExit(f"Generated method not found: {path.name}.{method}")
+                  invokes_native = bool(re.search(r"Native\\(parser\\.nativeParser\\(\\)", match.group(1)))
+                  expected = native and method in ("fromUtf8", "fromInputStream")
+                  if invokes_native != expected:
+                      raise SystemExit(f"{path.name}.{method}: native={invokes_native} expected={expected}")
+          PY
           done

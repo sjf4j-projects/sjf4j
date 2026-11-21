@@ -1,4 +1,4 @@
-name: Jackson3 Native Compiled Input Source Paired A/B
+name: Jackson3 Input Source Compile-time Selection Paired A/B
 
 on:
   pull_request:
@@ -22,7 +22,7 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: gradle
-      - name: Compare byte[], String and Reader on one runner
+      - name: Compare wrapper and input-selected Native on one runner
         shell: bash
         run: |
           set -euo pipefail
@@ -49,6 +49,17 @@ jobs:
               grep -qF 'nextNameMatchAndToken(' "$GENERATED" || {
                 echo "Native source was not emitted" >&2; exit 1;
               }
+              python3 - "$GENERATED" <<'PY'
+          import re, sys
+          from pathlib import Path
+          source=Path(sys.argv[1]).read_text()
+          for method in ("fromBytes", "fromString", "fromReader"):
+              match=re.search(r"\\b" + method + r"\\([^)]*\\)\\s*\\{(.*?)catch \\(BindingException", source, re.S)
+              if not match: raise SystemExit(f"Cannot locate {method} generated body")
+              selected=bool(re.search(r"Native\\(parser\\.nativeParser\\(\\)", match.group(1)))
+              if selected != (method == "fromBytes"):
+                  raise SystemExit(f"{method} incorrect native selection: {selected}")
+          PY
             elif grep -qF 'nextNameMatchAndToken(' "$GENERATED"; then
               echo "Control contains native source" >&2; exit 1
             fi
@@ -93,10 +104,11 @@ jobs:
           def metric(mode,source,implementation):
               perf=results[mode][0]
               return statistics.geometric_mean(perf[(source,seed,implementation)] for seed in seeds)
-          lines=["# Jackson3 Input Source native/wrapper A/B", "",
+          lines=["# Jackson3 Input Source Native selection vs wrapper A/B", "",
                  "Same runner, Jackson 3.3.0, JDK 25, Users POJO 10KB.",
                  "Two seeds, two forks, 2x250ms warmup + 4x250ms measurement.",
-                 "Gain normalized by within-mode Blackbird; >1 favors Native Compiled.",
+                 "Native is selected for byte[]; String/Reader use the original compiled wrapper.", 
+                 "Gain normalized by within-mode Blackbird; >1 favors input-selected Compiled.",
                  "",
                  "| Source | Wrapper Compiled µs | Native Compiled µs | Native gain | Blackbird / Native Compiled | Jackson Native / Native Compiled |",
                  "| --- | ---: | ---: | ---: | ---: | ---: |"]

@@ -84,7 +84,8 @@ final class ReadEmitter {
 
         out.line(parser + ".start();");
 
-        String expression = nativeJackson3 && value.helperRequired() && jackson3Native.supports(value)
+        String expression = nativeJackson3 && nativeJackson3Input(plan)
+                && value.helperRequired() && jackson3Native.supports(value)
                 ? jackson3Native.helperName(value) + "(" + parser + ".nativeParser()"
                         + (jackson3Native.requiresWrapper(value) ? ", " + parser : "") + ")"
                 : readExpression(value, parser);
@@ -92,6 +93,22 @@ final class ReadEmitter {
 
         out.line(parser + ".end();");
         out.line("return " + result + ";");
+    }
+
+    /**
+     * ReaderBasedJsonParser first materializes a String name before matching,
+     * while the existing compiled wrapper has a prepared expected-name path.
+     * Keep that faster path for String/Reader input; UTF-8 byte sources retain
+     * Jackson's native quad matcher. This choice is made at compile time.
+     */
+    private boolean nativeJackson3Input(BindingPlan plan) {
+        javax.lang.model.type.TypeMirror input =
+                plan.method().type().getParameterTypes().get(0);
+        if ("java.lang.String".equals(input.toString())) return false;
+        javax.lang.model.element.TypeElement reader =
+                context.elements.getTypeElement("java.io.Reader");
+        return reader == null || !context.typeUtils.isAssignable(
+                input, reader.asType());
     }
 
     void emitNameMatcherField(JavaWriter out, BindingValue value) {
