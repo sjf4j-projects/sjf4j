@@ -24,7 +24,7 @@ jobs:
           distribution: temurin
           java-version: '25'
           cache: gradle
-      - name: Compare wrapper and hybrid compiled code on one runner
+      - name: Compare compiled wrapper and native on one runner
         shell: bash
         run: |
           set -euo pipefail
@@ -43,9 +43,9 @@ jobs:
             JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
             test -s "$JAR"
             GENERATED="$(find sjf4j-testbench/build/generated -type f \
-              -name 'FabienJackson3NativeScalarBenchmark$HybridReader_Impl.java' -print -quit)"
+              -name 'FabienJackson3NativeScalarBenchmark$Reader_Impl.java' -print -quit)"
             test -n "$GENERATED" && test -s "$GENERATED" || {
-              echo "Hybrid benchmark binder generated source not found" >&2; exit 1;
+              echo "Native scalar benchmark binder generated source not found" >&2; exit 1;
             }
             if [[ "$mode" == native ]]; then
               grep -qF 'nextNameMatchAndToken(' "$GENERATED"
@@ -105,7 +105,7 @@ jobs:
                  "2x200ms warmup, 4x200ms measurement, all implementations validated.",
                  "Native gains normalized to within-mode Blackbird; >1 favors native.",
                  "",
-                 "| Size | Wrapper Compiled µs | Native Compiled µs | Normalized gain | Blackbird / Native | Jackson Native / Native | Fastjson2 / Native | Allocated B/op wrapper → hybrid |",
+                 "| Size | Wrapper Compiled µs | Native Compiled µs | Normalized gain | Blackbird / Native | Jackson Native / Native | Fastjson2 / Native | Allocated B/op wrapper → native |",
                  "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |"]
           for size in sizes:
               cw=score("wrapper",size,"compiled")
@@ -115,7 +115,7 @@ jobs:
               native=score("native",size,"native")
               fast=score("native",size,"fastjson2")
               gain=(bh/ch)/(bw/cw)
-              lines.append(f"| {size}KB | {cw:.3f} | {ch:.3f} | {gain:.3f}x | {bh/ch:.3f}x | {native/ch:.3f}x | {fast/ch:.3f}x | {alloc('wrapper',size,'compiled'):.0f} → {alloc('hybrid',size,'compiled'):.0f} |")
+              lines.append(f"| {size}KB | {cw:.3f} | {ch:.3f} | {gain:.3f}x | {bh/ch:.3f}x | {native/ch:.3f}x | {fast/ch:.3f}x | {alloc('wrapper',size,'compiled'):.0f} → {alloc('native',size,'compiled'):.0f} |")
           lines.extend(["", "## Per-seed normalized native gain", "",
                          "| Size | Seed | Gain |", "| --- | --- | ---: |"])
           for size in sizes:
