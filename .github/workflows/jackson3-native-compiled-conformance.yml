@@ -7,6 +7,7 @@ on:
       - '.github/workflows/jackson3-native-compiled-conformance.yml'
       - 'sjf4j-testbench/build.gradle.kts'
       - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/binding/CompiledJackson3NameMatchTest.java'
+      - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/binding/CompiledJackson3NativeScalarsTest.java'
       - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/**'
       - 'sjf4j-processor/src/main/java/org/sjf4j/processor/CodegenProcessor.java'
       - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/**'
@@ -34,6 +35,7 @@ jobs:
             echo "=== Conformance nativePojo=$native ==="
             ./gradlew :sjf4j-testbench:test \
               --tests 'org.sjf4j.testbench.binding.CompiledJackson3NameMatchTest' \
+              --tests 'org.sjf4j.testbench.binding.CompiledJackson3NativeScalarsTest' \
               "-Psjf4jJackson3NativePojo=$native" --no-daemon
 
             GENERATED="$(find sjf4j-testbench/build/generated -type f \
@@ -53,6 +55,23 @@ jobs:
               }
             elif grep -qF 'nextNameMatchAndToken(' "$GENERATED"; then
               echo "Native generated path unexpectedly enabled" >&2
+              exit 1
+            fi
+            SCALARS="$(find sjf4j-testbench/build/generated -type f \
+              -name 'CompiledJackson3NativeScalarsTest$Reader_Impl.java' -print -quit)"
+            test -n "$SCALARS" && test -s "$SCALARS" || {
+              echo "Native scalar test binder generated source not found" >&2
+              exit 1
+            }
+            if [[ "$native" == true ]]; then
+              grep -qF 'nextNameMatchAndToken(' "$SCALARS"
+              grep -qF 'getDecimalValue()' "$SCALARS"
+              grep -qF 'getBigIntegerValue()' "$SCALARS"
+              grep -qF 'Numbers.toByte(parser.getNumberValue())' "$SCALARS"
+              grep -qF 'readCharValue(parser)' "$SCALARS"
+              grep -qF 'Enum.valueOf(' "$SCALARS"
+            elif grep -qF 'nextNameMatchAndToken(' "$SCALARS"; then
+              echo "Native scalars unexpectedly enabled in wrapper mode" >&2
               exit 1
             fi
             python3 - "$GENERATED" "$native" <<'PY'

@@ -46,12 +46,15 @@ final class ReadEmitter {
 
     void registerEnums(BindingValue value) {
         if (fastjson2 != null) fastjson2.register(value);
+        if (nativeJackson3) jackson3Native.register(value);
     }
 
     void emitEnumFields(GeneratedClass generated) {
-        if (fastjson2 == null || !fastjson2.hasEnums()) return;
-        generated.addField(out -> fastjson2.emitFields(out));
-        generated.addHelper(out -> fastjson2.emitHelpers(out));
+        if (fastjson2 != null && fastjson2.hasEnums()) {
+            generated.addField(out -> fastjson2.emitFields(out));
+            generated.addHelper(out -> fastjson2.emitHelpers(out));
+        }
+        if (nativeJackson3) jackson3Native.emitEnumFields(generated);
     }
 
     boolean usesNameMatcher() {
