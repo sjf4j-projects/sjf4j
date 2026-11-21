@@ -83,6 +83,9 @@ final class Jackson3NativeReadEmitter {
                 throw new AssertionError("Unsupported native Jackson3 helper: " + value.kind());
         }
         out.endBlock();
+        if (value.kind() == BindingValue.Kind.POJO) {
+            emitUnknown(out, value, reads);
+        }
     }
 
     private void emitPojo(JavaWriter out, BindingValue value, ReadEmitter reads) {
@@ -92,24 +95,9 @@ final class Jackson3NativeReadEmitter {
         out.beginBlock("while ((nameIndex = parser.nextNameMatchAndToken("
                 + matcherFieldName(value) + ")) != " + MATCHER + ".MATCH_END_OBJECT)");
 
-        // Only primary names are part of the native quad matcher; aliases must
-        // still resolve through SJF4J's declared name metadata.
-        out.beginBlock("if (nameIndex == " + MATCHER + ".MATCH_UNKNOWN_NAME)");
-        out.line("int aliasIndex = " + reads.matcherFieldName(value)
-                + ".fallback(parser.currentName());");
-        out.beginBlock("if (aliasIndex < 0)");
-        out.line("parser.nextToken();");
-        out.line("parser.skipChildren();");
-        out.line("continue;");
-        out.endBlock();
-        out.line("nameIndex = aliasIndex;");
-        out.line("parser.nextToken();");
-        out.endBlock();
-
-        out.beginBlock("if (nameIndex < 0)");
-        out.line("throw new java.io.IOException(\"Unexpected property matcher result \" + nameIndex);");
-        out.endBlock();
-
+        // As in the handwritten reader and Fastjson2's generated reader,
+        // keep alias resolution, skipping, and error handling out of the
+        // per-field hot path. The native matcher handles all primary names.
         out.beginBlock("switch (nameIndex)");
         int index = 0;
         for (BindingProperty property : value.properties()) {
@@ -122,11 +110,48 @@ final class Jackson3NativeReadEmitter {
         }
         out.line("default:");
         out.indent();
-        out.line("throw new java.io.IOException(\"Unexpected matched property index \" + nameIndex);");
+        out.line(unknownMethod(value) + "(parser, value, nameIndex);");
+        out.line("break;");
         out.dedent();
         out.endBlock();
         out.endBlock();
         out.line("return value;");
+    }
+
+    /** Emit a cold path for aliases and unknown fields, like Fastjson2 fallback. */
+    private void emitUnknown(JavaWriter out, BindingValue value, ReadEmitter reads) {
+        out.blank();
+        out.beginBlock("private void " + unknownMethod(value)
+                + "(tools.jackson.core.JsonParser parser, " + value.type()
+                + " value, int nameIndex) throws java.io.IOException");
+        out.beginBlock("if (nameIndex != " + MATCHER + ".MATCH_UNKNOWN_NAME)");
+        out.line("throw new java.io.IOException(\"Unexpected property matcher result \" + nameIndex);");
+        out.endBlock();
+        out.line("int aliasIndex = " + reads.matcherFieldName(value)
+                + ".fallback(parser.currentName());");
+        out.line("parser.nextToken();");
+        out.beginBlock("switch (aliasIndex)");
+        int index = 0;
+        for (BindingProperty property : value.properties()) {
+            out.line("case " + index++ + ":");
+            out.indent();
+            reads.emitPropertyReadExpression(out, property, "value",
+                    readExpression(property.value()));
+            out.line("break;");
+            out.dedent();
+        }
+        out.line("default:");
+        out.indent();
+        out.line("parser.skipChildren();");
+        out.line("break;");
+        out.dedent();
+        out.endBlock();
+        out.endBlock();
+    }
+
+    private String unknownMethod(BindingValue value) {
+        return names.helper(value, "jackson3NativeUnknown",
+                value.helperName() + "NativeUnknown");
     }
 
     private void emitList(JavaWriter out, BindingValue value) {
