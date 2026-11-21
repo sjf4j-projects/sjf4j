@@ -42,7 +42,7 @@ public class FabienReadBenchmark {
                 "-p", "shape=pojo",
                 "-p", "sizeKb=1",
                 "-p", "seed=12345",
-                "-f", "1", "-wi", "3", "-i", "3",
+                "-f", "1", "-wi", "5", "-i", "5",
                 "-w", "500ms", "-r", "500ms"
         });
     }
