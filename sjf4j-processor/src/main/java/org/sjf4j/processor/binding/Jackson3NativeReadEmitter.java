@@ -1,24 +1,19 @@
 package org.sjf4j.processor.binding;
 
-import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 
-import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Set;
 
 /**
  * Native Jackson 3 cursor reads for fully static POJO trees.
  *
  * <p>Unlike the general compiled reader, the generated helper accepts Jackson's
- * JsonParser directly. Like the Fastjson2 compiled reader, supported scalars
- * and enums are read from the native cursor, with dedicated helpers for values
- * requiring special semantics. A POJO is selected only when every descendant
- * can use this single-cursor protocol; no wrapper/native token handoff occurs.
- * Creators, dynamic nodes, codecs and OneOf retain the original compiled path.</p>
+ * JsonParser directly. Every descendant must be supported before this path is
+ * selected, so nested values never switch cursor ownership halfway through an
+ * object. The existing wrapper helpers remain responsible for creators,
+ * dynamic nodes, codecs, OneOf, and other advanced binding semantics.</p>
  */
 final class Jackson3NativeReadEmitter {
 
@@ -26,99 +21,18 @@ final class Jackson3NativeReadEmitter {
     private static final String MATCHER = "tools.jackson.core.sym.PropertyNameMatcher";
 
     private final BindingNames names;
-    private final Map<String, TypeMirror> enums = new LinkedHashMap<>();
 
     Jackson3NativeReadEmitter(BindingNames names) {
         this.names = names;
     }
 
-    void register(BindingValue root) {
-        if (!supports(root)) return;
-        Set<BindingValue> visited =
-                Collections.newSetFromMap(new IdentityHashMap<BindingValue, Boolean>());
-        register(root, visited);
-    }
-
-    private void register(BindingValue value, Set<BindingValue> visited) {
-        if (value == null || !visited.add(value)
-                || value.direction() != BindingPlan.Direction.READ_FROM) return;
-        if (value.kind() == BindingValue.Kind.ENUM) {
-            enums.putIfAbsent(value.type().toString(), value.type());
-        }
-        for (BindingProperty property : value.properties()) {
-            register(property.value(), visited);
-        }
-        register(value.elementValue(), visited);
-    }
-
-    void emitEnumFields(GeneratedClass generated) {
-        if (enums.isEmpty()) return;
-        generated.addField(out -> {
-            for (TypeMirror type : enums.values()) {
-                out.line("private static final " + type + "[] " + enumValuesField(type)
-                        + " = " + type + ".values();");
-            }
-        });
-        generated.addHelper(this::emitEnumHelpers);
-    }
-
-    private String enumValuesField(TypeMirror type) {
-        return names.enumField(type, "jackson3NativeOrdinals",
-                BindingNames.fieldType(type) + "_NATIVE_ENUM_ORDINALS");
-    }
-
-    private String enumReadHelper(TypeMirror type) {
-        return names.enumHelper(type, "jackson3NativeRead",
-                "read" + BindingNames.simpleType(type) + "NativeEnum");
-    }
-
-    private void emitEnumHelpers(JavaWriter out) {
-        for (TypeMirror type : enums.values()) {
-            String ordinals = enumValuesField(type);
-            out.blank();
-            out.beginBlock("private static " + type + " " + enumReadHelper(type)
-                    + "(tools.jackson.core.JsonParser parser) throws java.io.IOException");
-            out.line(TOKEN + " token = parser.currentToken();");
-            out.beginBlock("if (token == " + TOKEN + ".VALUE_NULL)");
-            out.line("return null;");
-            out.endBlock();
-            out.beginBlock("if (token == " + TOKEN + ".VALUE_STRING)");
-            out.line("return java.lang.Enum.valueOf(" + type + ".class, parser.getString());");
-            out.endBlock();
-            out.beginBlock("if (token == " + TOKEN + ".VALUE_NUMBER_INT"
-                    + " || token == " + TOKEN + ".VALUE_NUMBER_FLOAT)");
-            out.line("int ordinal = parser.getIntValue();");
-            out.beginBlock("if (ordinal >= 0 && ordinal < " + ordinals + ".length)");
-            out.line("return " + ordinals + "[ordinal];");
-            out.endBlock();
-            out.line("throw new org.sjf4j.exception.BindingException("
-                    + "\"enum ordinal '\" + ordinal + \"' out of range for type '\""
-                    + " + " + type + ".class.getName() + \"'\");");
-            out.endBlock();
-            out.line("throw new org.sjf4j.exception.BindingException("
-                    + "\"cannot read enum '\" + " + type + ".class.getName()"
-                    + " + \"' from token '\" + token + \"'\");");
-            out.endBlock();
-        }
-    }
-
     boolean supports(BindingValue value) {
-        return supports(value, true);
-    }
-
-    /** Baseline shapes with independently measured 1/10/100KB gains. */
-    boolean supportsBaseline(BindingValue value) {
-        return supports(value, false);
-    }
-
-    private boolean supports(BindingValue value, boolean expanded) {
         Set<BindingValue> visiting =
                 Collections.newSetFromMap(new IdentityHashMap<BindingValue, Boolean>());
-        return supports(value, visiting, expanded);
+        return supports(value, visiting);
     }
 
-    private boolean supports(BindingValue value, Set<BindingValue> visiting,
-                             boolean expanded) {
+    private boolean supports(BindingValue value, Set<BindingValue> visiting) {
         if (value == null || !visiting.add(value)) return false;
         try {
             switch (value.kind()) {
@@ -129,20 +43,12 @@ final class Jackson3NativeReadEmitter {
                 case FLOAT:
                 case DOUBLE:
                     return true;
-                case CHARACTER:
-                case BYTE:
-                case SHORT:
-                case NUMBER:
-                case BIG_INTEGER:
-                case BIG_DECIMAL:
-                case ENUM:
-                    return expanded;
                 case LIST:
-                    return supports(value.elementValue(), visiting, expanded);
+                    return supports(value.elementValue(), visiting);
                 case POJO:
                     if (value.creator() != null || value.properties().isEmpty()) return false;
                     for (BindingProperty property : value.properties()) {
-                        if (!supports(property.value(), visiting, expanded)) return false;
+                        if (!supports(property.value(), visiting)) return false;
                     }
                     return true;
                 default:
@@ -252,24 +158,9 @@ final class Jackson3NativeReadEmitter {
             return helperName(value) + "(parser)";
         }
         String nullCheck = "parser.currentToken() == " + TOKEN + ".VALUE_NULL";
-        String numbers = "org.sjf4j.util.Numbers.";
-        String nativeSupport = "org.sjf4j.backend.jackson3.binding.Jackson3NativeReadSupport.";
         switch (value.kind()) {
             case STRING:
                 return "org.sjf4j.backend.jackson3.binding.Jackson3NativeReadSupport.readString(parser)";
-            case CHARACTER:
-                return nativeSupport + (value.primitive()
-                        ? "readCharValue(parser)" : "readChar(parser)");
-            case BYTE:
-                return value.primitive()
-                        ? numbers + "toByte(parser.getNumberValue())"
-                        : "(" + nullCheck + " ? null : "
-                        + numbers + "toByte(parser.getNumberValue()))";
-            case SHORT:
-                return value.primitive()
-                        ? numbers + "toShort(parser.getNumberValue())"
-                        : "(" + nullCheck + " ? null : "
-                        + numbers + "toShort(parser.getNumberValue()))";
             case BOOLEAN:
                 return value.primitive() ? "parser.getBooleanValue()"
                         : "(" + nullCheck + " ? null : parser.getBooleanValue())";
@@ -285,14 +176,6 @@ final class Jackson3NativeReadEmitter {
             case DOUBLE:
                 return value.primitive() ? "parser.getDoubleValue()"
                         : "(" + nullCheck + " ? null : parser.getDoubleValue())";
-            case NUMBER:
-                return "(" + nullCheck + " ? null : parser.getNumberValue())";
-            case BIG_INTEGER:
-                return "(" + nullCheck + " ? null : parser.getBigIntegerValue())";
-            case BIG_DECIMAL:
-                return "(" + nullCheck + " ? null : parser.getDecimalValue())";
-            case ENUM:
-                return enumReadHelper(value.type()) + "(parser)";
             default:
                 throw new AssertionError("Unsupported native Jackson3 scalar: " + value.kind());
         }

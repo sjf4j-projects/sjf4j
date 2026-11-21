@@ -23,8 +23,6 @@ final class ReadEmitter {
     private final Jackson2ReadEmitter jackson2;
     private final Jackson3ReadEmitter jackson3;
     private final Jackson3NativeReadEmitter jackson3Native;
-    private final boolean nativeJackson3;
-    private final boolean extendedJackson3Native;
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
 
@@ -37,13 +35,6 @@ final class ReadEmitter {
         this.jackson3 = backend.backend() == Backend.JACKSON3
                 ? new Jackson3ReadEmitter() : null;
         this.jackson3Native = jackson3 == null ? null : new Jackson3NativeReadEmitter(names);
-        // Default (auto): only use the 1/10/100KB-verified native shapes.
-        // true: include additional native scalar/Enum support (experimental).
-        // false: use the original compiled wrapper for differential testing.
-        String nativeMode =
-                context.processingEnvironment.getOptions().get("sjf4j.jackson3.nativePojo");
-        this.nativeJackson3 = jackson3Native != null && !"false".equals(nativeMode);
-        this.extendedJackson3Native = jackson3Native != null && "true".equals(nativeMode);
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
@@ -52,15 +43,12 @@ final class ReadEmitter {
 
     void registerEnums(BindingValue value) {
         if (fastjson2 != null) fastjson2.register(value);
-        if (extendedJackson3Native) jackson3Native.register(value);
     }
 
     void emitEnumFields(GeneratedClass generated) {
-        if (fastjson2 != null && fastjson2.hasEnums()) {
-            generated.addField(out -> fastjson2.emitFields(out));
-            generated.addHelper(out -> fastjson2.emitHelpers(out));
-        }
-        if (extendedJackson3Native) jackson3Native.emitEnumFields(generated);
+        if (fastjson2 == null || !fastjson2.hasEnums()) return;
+        generated.addField(out -> fastjson2.emitFields(out));
+        generated.addHelper(out -> fastjson2.emitHelpers(out));
     }
 
     boolean usesNameMatcher() {
@@ -116,9 +104,7 @@ final class ReadEmitter {
     }
 
     private boolean supportsJackson3Native(BindingValue value) {
-        return nativeJackson3 && (extendedJackson3Native
-                ? jackson3Native.supports(value)
-                : jackson3Native.supportsBaseline(value));
+        return jackson3Native != null && jackson3Native.supports(value);
     }
 
     void emitNameMatcherField(JavaWriter out, BindingValue value) {

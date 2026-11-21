@@ -14,7 +14,6 @@ import org.sjf4j.processor.path.NavigatorGenerator;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedOptions;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -29,7 +28,6 @@ import java.util.function.Consumer;
  * each annotated interface to its feature generator. Diagnostics are attached
  * to the offending interface or method through {@link ProcessorContext}.
  */
-@SupportedOptions("sjf4j.jackson3.nativePojo")
 public final class CodegenProcessor extends AbstractProcessor {
 
     private ProcessorContext context;

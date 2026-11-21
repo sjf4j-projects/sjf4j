@@ -34,13 +34,6 @@ public final class FabienBindings {
     }
 
     public static Reader reader(String backend, String implementation, String model, String shape) {
-        if ("handwritten".equals(implementation)) {
-            if (!"jackson3".equals(backend) || !"users".equals(model) || !"pojo".equals(shape)) {
-                throw new IllegalArgumentException(
-                        "Handwritten reader only supports Jackson3 Users POJO");
-            }
-            return FabienHandwrittenJackson3::readUsers;
-        }
         if ("runtime".equals(implementation)) {
             Binder<?, ?> binder = runtime(backend);
             Class<?> target = "map".equals(shape) ? Map.class

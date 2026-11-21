@@ -98,15 +98,12 @@ tasks.withType<JavaCompile>().configureEach {
 
 // Annotation processing reads schemas from the same classpath as the compiled tests.
 tasks.named<JavaCompile>("compileTestJava") {
-    // Default auto tests verified Native shapes; true enables extended types, false uses Wrapper.
-    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("auto").get()}")
     dependsOn(tasks.named("processTestResources"))
     classpath += files(layout.buildDirectory.dir("resources/test"))
 }
 
 // CompiledValidator's annotation processor reads Creek schemas from jmh resources.
 tasks.named<JavaCompile>("compileJmhJava") {
-    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("auto").get()}")
     dependsOn(tasks.named("processJmhResources"))
     classpath += files(layout.buildDirectory.dir("resources/jmh"))
 }
