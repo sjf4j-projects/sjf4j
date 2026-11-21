@@ -22,6 +22,8 @@ final class ReadEmitter {
     private final BindingNames names;
     private final Jackson2ReadEmitter jackson2;
     private final Jackson3ReadEmitter jackson3;
+    private final Jackson3NativeReadEmitter jackson3Native;
+    private final boolean nativeJackson3;
     private final Fastjson2ReadEmitter fastjson2;
     private final NativeReadEmitter nativeRead;
 
@@ -33,6 +35,9 @@ final class ReadEmitter {
                 ? new Jackson2ReadEmitter() : null;
         this.jackson3 = backend.backend() == Backend.JACKSON3
                 ? new Jackson3ReadEmitter() : null;
+        this.jackson3Native = jackson3 == null ? null : new Jackson3NativeReadEmitter(names);
+        this.nativeJackson3 = jackson3Native != null && "true".equals(
+                context.processingEnvironment.getOptions().get("sjf4j.jackson3.nativePojo"));
         this.fastjson2 = backend.backend() == Backend.FASTJSON2
                 ? new Fastjson2ReadEmitter(names) : null;
         this.nativeRead = jackson2 != null ? jackson2
@@ -76,7 +81,10 @@ final class ReadEmitter {
 
         out.line(parser + ".start();");
 
-        out.line(plan.valueType() + " " + result + " = " + readExpression(value, parser) + ";");
+        String expression = nativeJackson3 && value.helperRequired() && jackson3Native.supports(value)
+                ? jackson3Native.helperName(value) + "(" + parser + ".nativeParser())"
+                : readExpression(value, parser);
+        out.line(plan.valueType() + " " + result + " = " + expression + ";");
 
         out.line(parser + ".end();");
         out.line("return " + result + ";");
@@ -115,6 +123,12 @@ final class ReadEmitter {
         }
         line.append("});");
         out.line(line.toString());
+        if (nativeJackson3 && jackson3Native.supports(value)) {
+            out.line("private static final tools.jackson.core.sym.PropertyNameMatcher "
+                    + jackson3Native.matcherFieldName(value) + " = "
+                    + "((org.sjf4j.backend.jackson3.binding.Jackson3NameMatcher) "
+                    + matcherFieldName(value) + ").nativeMatcher();");
+        }
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
@@ -154,6 +168,9 @@ final class ReadEmitter {
         }
 
         out.endBlock();
+        if (nativeJackson3 && jackson3Native.supports(value)) {
+            jackson3Native.emitHelper(out, value, this);
+        }
         if (fastjson2 != null && value.creator() == null
                 && (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO)
                 && !value.properties().isEmpty()) {

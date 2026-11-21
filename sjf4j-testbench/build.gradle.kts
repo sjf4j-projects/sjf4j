@@ -104,6 +104,7 @@ tasks.named<JavaCompile>("compileTestJava") {
 
 // CompiledValidator's annotation processor reads Creek schemas from jmh resources.
 tasks.named<JavaCompile>("compileJmhJava") {
+    options.compilerArgs.add("-Asjf4j.jackson3.nativePojo=${providers.gradleProperty("sjf4jJackson3NativePojo").orElse("false").get()}")
     dependsOn(tasks.named("processJmhResources"))
     classpath += files(layout.buildDirectory.dir("resources/jmh"))
 }
