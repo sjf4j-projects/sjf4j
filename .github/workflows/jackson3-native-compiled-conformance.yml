@@ -1,0 +1,58 @@
+name: Jackson3 Native Compiled Conformance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-native-compiled-conformance.yml'
+      - 'sjf4j-testbench/build.gradle.kts'
+      - 'sjf4j-testbench/src/test/java/org/sjf4j/testbench/binding/CompiledJackson3NameMatchTest.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/**'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/CodegenProcessor.java'
+      - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Verify generated native/non-native Jackson3 binders
+        shell: bash
+        run: |
+          set -euo pipefail
+          for native in false true; do
+            echo "=== Conformance nativePojo=$native ==="
+            ./gradlew :sjf4j-testbench:test \
+              --tests 'org.sjf4j.testbench.binding.CompiledJackson3NameMatchTest' \
+              "-Psjf4jJackson3NativePojo=$native" --no-daemon
+
+            GENERATED="$(find sjf4j-testbench/build/generated -type f \
+              -name 'CompiledJackson3NameMatchTest$Reader_Impl.java' -print -quit)"
+            test -n "$GENERATED" && test -s "$GENERATED" || {
+              echo "Generated JUnit binder not found" >&2
+              exit 1
+            }
+            if [[ "$native" == true ]]; then
+              grep -qF 'nextNameMatchAndToken(' "$GENERATED" || {
+                echo "Native generated binder has no fused matcher" >&2
+                exit 1
+              }
+              grep -Eq 'Native\([[:alnum:]_]+\.nativeParser\(\)\)' "$GENERATED" || {
+                echo "Native generated binder never calls a native helper" >&2
+                exit 1
+              }
+            elif grep -qF 'nextNameMatchAndToken(' "$GENERATED"; then
+              echo "Native generated path unexpectedly enabled" >&2
+              exit 1
+            fi
+          done
