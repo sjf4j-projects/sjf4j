@@ -103,35 +103,46 @@ final class Jackson3NativeReadEmitter {
     }
 
     boolean supports(BindingValue value) {
-        Set<BindingValue> visiting =
-                Collections.newSetFromMap(new IdentityHashMap<BindingValue, Boolean>());
-        return supports(value, visiting);
+        return supports(value, true);
     }
 
-    private boolean supports(BindingValue value, Set<BindingValue> visiting) {
+    /** Baseline shapes with independently measured 1/10/100KB gains. */
+    boolean supportsBaseline(BindingValue value) {
+        return supports(value, false);
+    }
+
+    private boolean supports(BindingValue value, boolean expanded) {
+        Set<BindingValue> visiting =
+                Collections.newSetFromMap(new IdentityHashMap<BindingValue, Boolean>());
+        return supports(value, visiting, expanded);
+    }
+
+    private boolean supports(BindingValue value, Set<BindingValue> visiting,
+                             boolean expanded) {
         if (value == null || !visiting.add(value)) return false;
         try {
             switch (value.kind()) {
                 case STRING:
-                case CHARACTER:
                 case BOOLEAN:
-                case BYTE:
-                case SHORT:
                 case INT:
                 case LONG:
                 case FLOAT:
                 case DOUBLE:
+                    return true;
+                case CHARACTER:
+                case BYTE:
+                case SHORT:
                 case NUMBER:
                 case BIG_INTEGER:
                 case BIG_DECIMAL:
                 case ENUM:
-                    return true;
+                    return expanded;
                 case LIST:
-                    return supports(value.elementValue(), visiting);
+                    return supports(value.elementValue(), visiting, expanded);
                 case POJO:
                     if (value.creator() != null || value.properties().isEmpty()) return false;
                     for (BindingProperty property : value.properties()) {
-                        if (!supports(property.value(), visiting)) return false;
+                        if (!supports(property.value(), visiting, expanded)) return false;
                     }
                     return true;
                 default:
