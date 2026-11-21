@@ -1,0 +1,170 @@
+name: Jackson3 Native Cold Fallback Paired A/B
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/jackson3-native-cold-fallback-ab.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/Jackson3NativeReadEmitter.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/ReadEmitter.java'
+      - 'sjf4j-testbench/build.gradle.kts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  paired:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Paired inline vs cold generated reads on one runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-native-cold-fallback
+          mkdir -p "$OUT"
+          java -version 2> "$OUT/java.txt"
+          lscpu > "$OUT/cpu.txt"
+
+          for mode in false true; do
+            label=inline
+            if [[ "$mode" == true ]]; then label=cold; fi
+            echo "=== Running nativeColdFallback=$mode ($label) ==="
+            ./gradlew :sjf4j-testbench:jmhJar --rerun-tasks \
+              -Psjf4jJackson3NativePojo=true \
+              "-Psjf4jJackson3NativeColdFallback=$mode" \
+              > "$OUT/build-$label.log" 2>&1 || {
+                tail -n 120 "$OUT/build-$label.log"; exit 1;
+              }
+            JAR="$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)"
+            test -s "$JAR"
+            GENERATED="$(find sjf4j-testbench/build/generated -type f \
+              -name 'FabienBindings$Jackson3_Impl.java' -print -quit)"
+            test -n "$GENERATED" && test -s "$GENERATED"
+            grep -qF 'nextNameMatchAndToken(' "$GENERATED"
+            if [[ "$mode" == true ]]; then
+              grep -qF 'NativeUnknown(' "$GENERATED" || {
+                echo "Cold fallback was not generated" >&2; exit 1;
+              }
+            else
+              if grep -qF 'NativeUnknown(' "$GENERATED"; then
+                echo "Unexpected cold fallback method in inline control" >&2; exit 1;
+              fi
+            fi
+            cp "$GENERATED" "$OUT/generated-$label.java"
+            java -cp "$JAR" org.sjf4j.testbench.binding.fabien.FabienHandwrittenJackson3 \
+              > "$OUT/smoke-$label.log"
+            java -cp "$JAR" org.sjf4j.testbench.binding.fabien.FabienJackson3NativeSmoke \
+              >> "$OUT/smoke-$label.log"
+            java -jar "$JAR" org.sjf4j.testbench.binding.fabien.FabienReadBenchmark.read \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              -p implementation=compiled,handwritten,blackbird \
+              -p sizeKb=1,10,100 -p seed=12345,324 \
+              -t 1 -f 3 -wi 3 -i 5 -w 400ms -r 400ms \
+              -prof gc -rf json -rff "$OUT/raw-$label.json" \
+              > "$OUT/jmh-$label.log" 2>&1 || {
+                tail -n 120 "$OUT/jmh-$label.log"; exit 1;
+              }
+          done
+
+      - name: Compare results normalized by same-run handwritten baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=build/performance/jackson3-native-cold-fallback
+          python3 - "$OUT" <<'PY'
+          import json, statistics, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          impls = ("compiled", "handwritten", "blackbird")
+          sizes = ("1", "10", "100")
+          seeds = ("12345", "324")
+          by_mode = {}
+          for mode in ("inline", "cold"):
+              entries = json.loads((root / f"raw-{mode}.json").read_text())
+              scores, mean3, allocs = {}, {}, {}
+              for entry in entries:
+                  p = entry["params"]
+                  key = (p["sizeKb"], p["seed"], p["implementation"])
+                  forks = [statistics.mean(fork) for fork in entry["primaryMetric"]["rawData"]]
+                  if len(forks) != 3:
+                      raise SystemExit(f"Expected 3 forks for {mode} {key}")
+                  scores[key] = statistics.mean(sorted(forks)[:2])
+                  mean3[key] = statistics.mean(forks)
+                  allocs[key] = entry["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+              expected = {(size, seed, impl) for size in sizes for seed in seeds for impl in impls}
+              if set(scores) != expected:
+                  raise SystemExit(f"Unexpected {mode} cases: missing={expected-set(scores)}, extra={set(scores)-expected}")
+              by_mode[mode] = (scores, mean3, allocs)
+          def geo(xs):
+              return statistics.geometric_mean(xs)
+          def score(mode, size, impl, all_forks=False):
+              data = by_mode[mode][1 if all_forks else 0]
+              return geo(data[(size, seed, impl)] for seed in seeds)
+          def ratio_to_hand(mode, size, all_forks=False):
+              return score(mode, size, "handwritten", all_forks) / score(mode, size, "compiled", all_forks)
+          report = [
+              "# Jackson3 native unknown-name fallback paired A/B", "",
+              "Same runner, same repository, same JDK 25, distinct generated binders.",
+              "Users POJO byte[]; 2 seeds, 3 forks, best 2 forks averaged per seed.",
+              "Control = original inline unknown/alias branch; Candidate = separate cold fallback helper.",
+              "Within-build Handwritten and Blackbird controls to reduce run-order/thermal sensitivity.",
+              "**Ratio >1 means the candidate (cold) is faster than inline after normalizing to Handwritten.**", "",
+              "| Size | Inline us/op | Cold us/op | Hand/Inline | Hand/Cold | Normalized cold gain | Blackbird/Cold |",
+              "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+          ]
+          for size in sizes:
+              x = score("inline", size, "compiled")
+              y = score("cold", size, "compiled")
+              rh0 = ratio_to_hand("inline", size)
+              rh1 = ratio_to_hand("cold", size)
+              gain = rh1 / rh0
+              bb = score("cold", size, "blackbird") / y
+              report.append(f"| {size}KB | {x:.3f} | {y:.3f} | {rh0:.3f}x | {rh1:.3f}x | {gain:.3f}x | {bb:.3f}x |")
+          report += ["", "## Sensitivity: all three forks", "",
+                     "| Size | Hand/Inline | Hand/Cold | Normalized cold gain |",
+                     "| --- | ---: | ---: | ---: |"]
+          for size in sizes:
+              a = ratio_to_hand("inline", size, True)
+              b = ratio_to_hand("cold", size, True)
+              report.append(f"| {size}KB | {a:.3f}x | {b:.3f}x | {b/a:.3f}x |")
+          report += ["", "## Per-seed normalized cold gain", "",
+                     "| Size | Seed | Normalized cold gain |", "| --- | --- | ---: |"]
+          for size in sizes:
+              for seed in seeds:
+                  z = []
+                  for mode in ("inline", "cold"):
+                      d = by_mode[mode][0]
+                      z.append(d[(size, seed, "handwritten")] / d[(size, seed, "compiled")])
+                  report.append(f"| {size}KB | {seed} | {z[1]/z[0]:.3f}x |")
+          report += ["", "## Compiled allocations (B/op)", "",
+                     "| Size | Inline | Cold |", "| --- | ---: | ---: |"]
+          for size in sizes:
+              row = [statistics.mean(by_mode[m][2][(size, seed, "compiled")]
+                       for seed in seeds) for m in ("inline", "cold")]
+              report.append(f"| {size}KB | {row[0]:.0f} | {row[1]:.0f} |")
+          (root / "comparison.md").write_text("\n".join(report) + "\n")
+          print("\n".join(report))
+          PY
+
+      - name: Publish comparison
+        if: always()
+        run: |
+          REPORT=build/performance/jackson3-native-cold-fallback/comparison.md
+          if test -s "$REPORT"; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Upload both generated implementations and JMH data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-native-cold-fallback-paired
+          path: build/performance/jackson3-native-cold-fallback/
+          if-no-files-found: warn
+          retention-days: 30
