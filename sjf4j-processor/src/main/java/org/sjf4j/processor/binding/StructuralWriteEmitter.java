@@ -157,7 +157,7 @@ final class StructuralWriteEmitter {
      * The nested scope prevents collisions with the owner's local variables.
      */
     void emitInlinePojoList(JavaWriter out, BindingValue value, String expression) {
-        out.beginBlock("{");
+        out.beginBlock("");
         out.line(value.type() + " inlineList = " + expression + ";");
         emitListBody(out, value, "inlineList");
         out.endBlock();
