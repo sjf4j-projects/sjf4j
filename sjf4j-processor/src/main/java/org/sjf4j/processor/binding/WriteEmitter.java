@@ -432,17 +432,26 @@ final class WriteEmitter {
                     + " name, String value"
                     + (staticMember ? ", boolean includeNulls" : "")
                     + ") throws java.io.IOException");
-            out.beginBlock("if (value == null)");
-            out.beginBlock("if (" + (staticMember ? "includeNulls" : "this.config.includeNulls") + ")");
-            out.line("g." + nameMethod + "(name);");
-            out.line("g.writeNull();");
-            out.endBlock();
-            out.endBlock(" else {");
-            out.indent();
-            out.line("g." + nameMethod + "(name);");
-            out.line("g.writeString(value);");
-            out.endBlock();
-            out.endBlock();
+            if (staticMember) {
+                // Jackson3 writeString(null) emits JSON null. Keep includeNulls
+                // as an explicit parameter while avoiding a duplicated null branch.
+                out.beginBlock("if (includeNulls || value != null)");
+                out.line("g." + nameMethod + "(name);");
+                out.line("g.writeString(value);");
+                out.endBlock();
+            } else {
+                out.beginBlock("if (value == null)");
+                out.beginBlock("if (this.config.includeNulls)");
+                out.line("g." + nameMethod + "(name);");
+                out.line("g.writeNull();");
+                out.endBlock();
+                out.endBlock(" else {");
+                out.indent();
+                out.line("g." + nameMethod + "(name);");
+                out.line("g.writeString(value);");
+                out.endBlock();
+                out.endBlock();
+            }
         }
     }
 
