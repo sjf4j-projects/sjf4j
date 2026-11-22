@@ -1,4 +1,4 @@
-name: Experiment / handwritten Users Write and fixed includeNulls
+name: Experiment / Fastjson2 handwritten native String List
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   benchmark:
-    name: Handwritten Users Write / Jackson3 + Fastjson2
+    name: Fastjson2 handwritten String List A/B
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -26,7 +26,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
       - name: Build hand-written JMH experiment
         run: ./gradlew :sjf4j-testbench:jmhJar
-      - name: Run Fastjson2 and Jackson3 on same runner, verifying outputs before each trial
+      - name: Benchmark Fastjson2 native String List API and null specialization
         shell: bash
         run: |
           set -euo pipefail
@@ -38,11 +38,8 @@ jobs:
             -p sizeKb=1,10,100 -p seed=12345,324 -t 1 -f 2 -wi 3 -i 3 -w 400ms -r 400ms \
             -prof gc -rf json )
           java -jar "$jar" "${common[@]}" \
-            -p backend=fastjson2 -p implementation=native,compiled,manual-runtime,manual-fixed \
+            -p backend=fastjson2 -p implementation=native,compiled,manual-runtime,manual-fixed,manual-fixed-native-list \
             -rff results/fastjson2.json 2>&1 | tee results/fastjson2.log
-          java -jar "$jar" "${common[@]}" \
-            -p backend=jackson3 -p implementation=native,blackbird,compiled,manual-runtime,manual-fixed \
-            -rff results/jackson3.json 2>&1 | tee results/jackson3.log
       - name: Report comparison and overhead
         if: success()
         shell: bash
@@ -50,30 +47,27 @@ jobs:
           python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
           import json
           from pathlib import Path
-          print('## Fabien Users POJO Write — handwritten vs native vs compiled')
+          print('## Fastjson2 Users POJO Write — native String List optimization')
           print()
-          print('All results from the same JDK25 runner, same benchmark source, 2 forks, 3x400ms warmup + 3x400ms measurement. Each implementation checked for output equivalence during JMH setup.')
-          print('Fixed: unconditional nullable String property writes (compile-time includeNulls=true); runtime: property checks with NodeConfig.DEFAULT.includeNulls. Both use preencoded field names and backend native writer.')
+          print('Same JDK25 Runner, 2 forks, both seeds. JSON output equivalence checked in JMH Setup.')
+          print('Manual fixed vs manual fixed native List differ only in `tags` serialization: explicit loop vs JSONWriterUTF8.writeString(List<String>).')
           print('Lower µs/op is better.')
           print()
-          print('| Backend | KB | Seed | Native | Blackbird | Compiled | Hand runtime | Hand fixed | Native/Compiled | Native/Hand fixed | Hand runtime/Hand fixed | Compiled/Hand fixed |')
-          print('|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
-          for backend in ['fastjson2','jackson3']:
-              rows=json.loads(Path(f'results/{backend}.json').read_text())
-              for size in ['1','10','100']:
-                  for seed in ['12345','324']:
-                      d={r['params']['implementation']:r['primaryMetric']['score'] for r in rows if r['params']['sizeKb']==size and r['params']['seed']==seed}
-                      expected=4 if backend=='fastjson2' else 5
-                      assert len(d)==expected,(backend,size,seed,d)
-                      n,c,h,hr=d['native'],d['compiled'],d['manual-fixed'],d['manual-runtime']
-                      bb=d.get('blackbird',float('nan'))
-                      print(f'| {backend} | {size} | {seed} | {n:.3f} | {bb:.3f} | {c:.3f} | {hr:.3f} | {h:.3f} | {n/c:.3f}x | {n/h:.3f}x | {hr/h:.3f}x | {c/h:.3f}x |')
+          print('| KB | Seed | Native | Compiled | Hand runtime | Hand fixed loop | Hand fixed native List | List speedup | Native/native List | Compiled/native List |')
+          print('|---:|---|---:|---:|---:|---:|---:|---:|---:|')
+          rows=json.loads(Path('results/fastjson2.json').read_text())
+          for size in ['1','10','100']:
+              for seed in ['12345','324']:
+                  d={r['params']['implementation']:r['primaryMetric']['score'] for r in rows if r['params']['sizeKb']==size and r['params']['seed']==seed}
+                  assert len(d)==5,(size,seed,d)
+                  n,c,hr,h,hl=(d[x] for x in ['native','compiled','manual-runtime','manual-fixed','manual-fixed-native-list'])
+                  print(f'| {size} | {seed} | {n:.3f} | {c:.3f} | {hr:.3f} | {h:.3f} | {hl:.3f} | {h/hl:.3f}x | {n/hl:.3f}x | {c/hl:.3f}x |')
           PY
       - name: Upload benchmark JSON, logs and runner information
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: handwritten-users-write-fixed-null-policy
+          name: fastjson2-manual-native-list-ab
           path: results/
           retention-days: 7
           if-no-files-found: warn
