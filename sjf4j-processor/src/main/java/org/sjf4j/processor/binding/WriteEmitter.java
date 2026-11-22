@@ -418,6 +418,42 @@ final class WriteEmitter {
         out.endBlock();
 
         if (isJackson()) {
+            // This setting is read only by the annotation processor. It is
+            // strictly a diagnostic experiment; without it, generated code is
+            // byte-for-byte identical to the production String member path.
+            String j3StringMode = backend.backend() == Backend.JACKSON3
+                    ? System.getenv("SJF4J_EXPERIMENT_J3_STRING_DISPATCH") : null;
+            if ("trampoline".equals(j3StringMode)) {
+                out.beginBlock("private static void __sjf4jJ3WriteString(" +
+                        "tools.jackson.core.JsonGenerator g, String value) throws java.io.IOException");
+                out.line("g.writeString(value);");
+                out.endBlock();
+            } else if ("methodhandle".equals(j3StringMode)) {
+                out.line("private static final java.lang.invoke.MethodHandle "
+                        + "__sjf4jJ3StringHandle = __sjf4jJ3LookupStringHandle();");
+                out.beginBlock("private static java.lang.invoke.MethodHandle __sjf4jJ3LookupStringHandle()");
+                out.beginBlock("try");
+                out.line("return java.lang.invoke.MethodHandles.publicLookup().findVirtual("
+                        + "tools.jackson.core.JsonGenerator.class, " 
+                        + "\"writeString\", java.lang.invoke.MethodType.methodType(void.class, String.class));");
+                out.endBlock(" catch (ReflectiveOperationException failure) {");
+                out.indent();
+                out.line("throw new ExceptionInInitializerError(failure);");
+                out.endBlock();
+                out.endBlock();
+                out.beginBlock("private static void __sjf4jJ3WriteString(" +
+                        "tools.jackson.core.JsonGenerator g, String value) throws java.io.IOException");
+                out.beginBlock("try");
+                out.line("__sjf4jJ3StringHandle.invokeExact(g, value);");
+                out.endBlock(" catch (Throwable failure) {");
+                out.indent();
+                out.line("if (failure instanceof java.io.IOException) throw (java.io.IOException) failure;");
+                out.line("if (failure instanceof RuntimeException) throw (RuntimeException) failure;");
+                out.line("if (failure instanceof Error) throw (Error) failure;");
+                out.line("throw new java.io.IOException(failure);");
+                out.endBlock();
+                out.endBlock();
+            }
             String nameType = backend.backend() == Backend.JACKSON2
                     ? "com.fasterxml.jackson.core.SerializableString"
                     : "tools.jackson.core.io.SerializedString";
@@ -440,7 +476,9 @@ final class WriteEmitter {
             out.endBlock(" else {");
             out.indent();
             out.line("g." + nameMethod + "(name);");
-            out.line("g.writeString(value);");
+            out.line(("trampoline".equals(j3StringMode)
+                    || "methodhandle".equals(j3StringMode))
+                    ? "__sjf4jJ3WriteString(g, value);" : "g.writeString(value);");
             out.endBlock();
             out.endBlock();
         }
