@@ -1,0 +1,79 @@
+name: Experiment / handwritten Users Write and fixed includeNulls
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-handwritten-users-write.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienManualUsersWriter.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienManualUsersBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Handwritten Users Write / Jackson3 + Fastjson2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build hand-written JMH experiment
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Run Fastjson2 and Jackson3 on same runner, verifying outputs before each trial
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          { echo "Commit: $GITHUB_SHA"; lscpu; java -version 2>&1; } > results/environment.txt
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -n "$jar"
+          common=( 'org.sjf4j.testbench.binding.fabien.FabienManualUsersBenchmark.write' \
+            -p sizeKb=1,10,100 -p seed=12345,324 -t 1 -f 2 -wi 3 -i 3 -w 400ms -r 400ms \
+            -prof gc -rf json )
+          java -jar "$jar" "${common[@]}" \
+            -p backend=fastjson2 -p implementation=native,compiled,manual-runtime,manual-fixed \
+            -rff results/fastjson2.json 2>&1 | tee results/fastjson2.log
+          java -jar "$jar" "${common[@]}" \
+            -p backend=jackson3 -p implementation=native,blackbird,compiled,manual-runtime,manual-fixed \
+            -rff results/jackson3.json 2>&1 | tee results/jackson3.log
+      - name: Report comparison and overhead
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          print('## Fabien Users POJO Write — handwritten vs native vs compiled')
+          print()
+          print('All results from the same JDK25 runner, same benchmark source, 2 forks, 3x400ms warmup + 3x400ms measurement. Each implementation checked for output equivalence during JMH setup.')
+          print('Fixed: unconditional nullable String property writes (compile-time includeNulls=true); runtime: property checks with NodeConfig.DEFAULT.includeNulls. Both use preencoded field names and backend native writer.')
+          print('Lower µs/op is better.')
+          print()
+          print('| Backend | KB | Seed | Native | Blackbird | Compiled | Hand runtime | Hand fixed | Native/Compiled | Native/Hand fixed | Hand runtime/Hand fixed | Compiled/Hand fixed |')
+          print('|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+          for backend in ['fastjson2','jackson3']:
+              rows=json.loads(Path(f'results/{backend}.json').read_text())
+              for size in ['1','10','100']:
+                  for seed in ['12345','324']:
+                      d={r['params']['implementation']:r['primaryMetric']['score'] for r in rows if r['params']['sizeKb']==size and r['params']['seed']==seed}
+                      expected=4 if backend=='fastjson2' else 5
+                      assert len(d)==expected,(backend,size,seed,d)
+                      n,c,h,hr=d['native'],d['compiled'],d['manual-fixed'],d['manual-runtime']
+                      bb=d.get('blackbird',float('nan'))
+                      print(f'| {backend} | {size} | {seed} | {n:.3f} | {bb:.3f} | {c:.3f} | {hr:.3f} | {h:.3f} | {n/c:.3f}x | {n/h:.3f}x | {hr/h:.3f}x | {c/h:.3f}x |')
+          PY
+      - name: Upload benchmark JSON, logs and runner information
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: handwritten-users-write-fixed-null-policy
+          path: results/
+          retention-days: 7
+          if-no-files-found: warn
