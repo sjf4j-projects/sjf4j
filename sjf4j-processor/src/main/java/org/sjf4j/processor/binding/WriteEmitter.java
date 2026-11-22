@@ -439,6 +439,7 @@ final class WriteEmitter {
                 out.line("g." + nameMethod + "(name);");
                 out.line("g.writeString(value);");
                 out.endBlock();
+                out.endBlock();
             } else {
                 out.beginBlock("if (value == null)");
                 out.beginBlock("if (this.config.includeNulls)");
