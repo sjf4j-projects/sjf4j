@@ -1,0 +1,229 @@
+name: Experiment / Jackson3 Users member vs String leaf inlining
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-member-leaf-split-ab.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/WriteEmitter.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/JacksonWriteEmitter.java'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Compile three actual annotation-processed JMH jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/generated results/xml
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          for mode in direct shared-leaf name-split; do
+            if [[ "$mode" == direct ]]; then
+              env -u SJF4J_EXPERIMENT_J3_MEMBER_SPLIT ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            else
+              SJF4J_EXPERIMENT_J3_MEMBER_SPLIT="$mode" ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            fi
+            jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+            test -s "$jar"
+            cp "$jar" "results/$mode-jmh.jar"
+            find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' \
+              -exec cp {} "results/generated/$mode.java" \;
+            test -s "results/generated/$mode.java"
+            sha256sum "results/$mode-jmh.jar" >> results/jars.sha256
+          done
+
+      - name: Verify generated tree traversal and output lifecycle are unchanged
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          modes=('direct','shared-leaf','name-split')
+          source={m:Path(f'results/generated/{m}.java').read_text() for m in modes}
+          def body(s,signature):
+              start=s.index(signature)
+              brace=s.index('{',start)
+              depth=0
+              for i in range(brace,len(s)):
+                  if s[i]=='{':depth+=1
+                  elif s[i]=='}':
+                      depth-=1
+                      if depth==0:return s[start:i+1]
+              raise AssertionError('unclosed generated helper '+signature)
+          for sig in ('public byte[] writeUsers(', 'private void _writeUsers(', 'private static void _writeString('):
+              b=body(source['direct'],sig)
+              for m in modes[1:]:
+                  assert b==body(source[m],sig),(m,sig)
+          original=body(source['direct'],'private void _writeUser(')
+          assert original==body(source['shared-leaf'],'private void _writeUser(')
+          split=body(source['name-split'],'private void _writeUser(')
+          pattern=r'if \((_writeStringMember\([^;\n]+\))\) \{\s*_writeString\(g, ([^)]*)\);\s*\}'
+          normalized,n=re.subn(pattern,lambda m:m.group(1)+';',split)
+          assert n >= 10,('expected rewritten String-member call sites, got',n)
+          assert normalized==original,'name-split changed non-String Users traversal or ordering'
+          call='private static void _writeStringMember('
+          assert 'g.writeString(value);' in body(source['direct'],call)
+          assert '_writeString(g, value);' in body(source['shared-leaf'],call)
+          assert 'g.writeString(value);' not in body(source['shared-leaf'],call)
+          named=body(source['name-split'],'private static boolean _writeStringMember(')
+          assert 'return false;' in named and 'return true;' in named
+          assert 'g.writeString(value);' not in named
+          print(f'PASS: same output buffer and Users traversal; only String-member leaf boundary changed; {n} rewritten field calls')
+          PY
+
+      - name: Strict JSON-equivalence smoke for every APT variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for mode in direct shared-leaf name-split; do
+            java -jar "results/$mode-jmh.jar" "$bench" \
+              -p backend=jackson3 -p implementation=compiled \
+              -p model=users -p shape=pojo -p sizeKb=1 -p seed=12345,324 \
+              -f 1 -wi 1 -i 1 -w 100ms -r 100ms -t 1 \
+              -rf json -rff "results/$mode-smoke.json" \
+              > "results/$mode-smoke.log" 2>&1 || {
+                tail -120 "results/$mode-smoke.log"; exit 1;
+              }
+          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for mode in ('direct','shared-leaf','name-split'):
+              rows=json.loads(Path('results/'+mode+'-smoke.json').read_text())
+              assert len(rows)==2,(mode,len(rows))
+              assert all(r['primaryMetric']['score']>0 for r in rows)
+          print('PASS: all three real APT implementations serialize JSON identical to Native')
+          PY
+
+      - name: Benchmark 1/10/100KB, two seeds, same runner with allocation metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          common=( -p backend=jackson3 -p model=users -p shape=pojo \
+            -p sizeKb=1,10,100 -p seed=12345,324 \
+            -f 2 -t 1 -wi 3 -i 4 -w 400ms -r 400ms -prof gc -rf json )
+          for mode in direct shared-leaf name-split; do
+            impl=compiled
+            if [[ "$mode" == direct ]]; then impl=native,blackbird,compiled; fi
+            java -jar "results/$mode-jmh.jar" "$bench" "${common[@]}" \
+              -p implementation="$impl" -rff "results/$mode.json" \
+              > "results/$mode.log" 2>&1 || {
+                tail -125 "results/$mode.log"; exit 1;
+              }
+          done
+
+      - name: Capture real C2 inline graph for 1KB variants in separate diagnostic forks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for mode in direct shared-leaf name-split; do
+            xml="$PWD/results/xml/$mode.xml"
+            java -jar "results/$mode-jmh.jar" "$bench" \
+              -p backend=jackson3 -p implementation=compiled \
+              -p model=users -p shape=pojo -p sizeKb=1 -p seed=12345 \
+              -f 1 -t 1 -wi 5 -i 2 -w 400ms -r 400ms \
+              -jvmArgsAppend "-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$xml" \
+              -rf json -rff "results/$mode-diagnostic.json" \
+              > "results/$mode-diagnostic.log" 2>&1 || {
+                tail -120 "results/$mode-diagnostic.log"; exit 1;
+              }
+            test -s "$xml"
+          done
+
+      - name: Report performance and actual generated helper inline decisions
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,statistics,xml.etree.ElementTree as ET
+          from pathlib import Path
+          root=Path('results')
+          modes=('direct','shared-leaf','name-split')
+          table={}
+          for m in modes:
+              data=json.loads((root/(m+'.json')).read_text())
+              assert len(data)==(18 if m=='direct' else 6),(m,len(data))
+              table[m]={(x['params']['sizeKb'],x['params']['seed'],x['params']['implementation']):x for x in data}
+          val=lambda r:r['primaryMetric']['score']
+          alloc=lambda r:r['secondaryMetrics']['gc.alloc.rate.norm']['score']
+          print('## Jackson3 native member vs String-leaf split (actual APT JMH)')
+          print('JDK25 single Runner; 2 forks, 3x400ms warmup + 4x400ms measurement, GC profiler. JSON checked for each implementation.')
+          print('**Baseline/Candidate >1** means candidate faster. Source assertions verify identical root output lifecycle and Users traversal.')
+          print()
+          print('| KB | seed | Native µs | BB µs | Direct µs | Shared-leaf µs | Name-split µs | Direct/Shared-leaf | Direct/Name-split | BB/Shared-leaf | BB/Name-split | Alloc Δ Shared B/op | Alloc Δ Split B/op |')
+          print('|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+          for kb in ('1','10','100'):
+              for seed in ('12345','324'):
+                  key=(kb,seed,'compiled')
+                  d={m:table[m][key] for m in modes}
+                  baseline=val(d['direct'])
+                  bb=val(table['direct'][(kb,seed,'blackbird')])
+                  values=[val(table['direct'][(kb,seed,'native')]),bb]+[val(d[m]) for m in modes]
+                  factors=[baseline/val(d[m]) for m in modes[1:]]
+                  bbratios=[bb/val(d[m]) for m in modes[1:]]
+                  deltas=[alloc(d[m])-alloc(d['direct']) for m in modes[1:]]
+                  print(f'| {kb} | {seed} | '+' | '.join(f'{v:.3f}' for v in values)+
+                        ' | '+' | '.join(f'{v:.3f}x' for v in factors+bbratios)+
+                        ' | '+' | '.join(f'{v:+.0f}' for v in deltas)+' |')
+          print()
+          print('### Actual C2 _writeUser inlining, 1KB diagnostic forks')
+          print('| Mode | _writeUser C2 nmethod bytes | member helper inlined / rejected | String leaf inlined / rejected | Native writeString inlined / rejected |')
+          print('|---|---:|---|---|---|')
+          for mode in modes:
+              tree=ET.parse(root/'xml'/(mode+'.xml'))
+              nm={n.get('compile_id'):n for n in tree.iter('nmethod') if n.get('compiler')=='c2'}
+              tasks=[t for t in tree.iter('task') if 'FabienBindings$Jackson3_Impl _writeUser ' in t.get('method','') and t.get('compile_id') in nm]
+              assert tasks,(mode,'no compiled _writeUser')
+              task=tasks[-1]
+              methods={n.get('id'):n.get('name') for n in task.iter('method')}
+              target={'_writeStringMember':[0,0],'_writeString':[0,0],'writeString':[0,0]}
+              for parent in task.iter('parse'):
+                  nodes=list(parent)
+                  for i,n in enumerate(nodes):
+                      if n.tag!='call':continue
+                      name=methods.get(n.get('method'))
+                      if name not in target:continue
+                      d=next((x for x in nodes[i+1:i+5] if x.tag in ('inline_success','inline_fail')),None)
+                      if d is not None:target[name][0 if d.tag=='inline_success' else 1]+=1
+              stats=[f'{target[name][0]}/{target[name][1]}' for name in target]
+              print(f"| {mode} | {nm[task.get('compile_id')].get('size')} | "+' | '.join(stats)+' |')
+          print()
+          print('### 1KB fork means (µs/op)')
+          for mode in modes:
+              for seed in ('12345','324'):
+                  x=table[mode][('1',seed,'compiled')]['primaryMetric']
+                  forks=[statistics.mean(f) for f in x.get('rawData',[]) if f]
+                  print(f'- {mode}, seed {seed}: '+', '.join(f'{v:.3f}' for v in forks))
+          PY
+
+      - name: Upload true APT sources, JMH JSON and C2 XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-apt-member-split-leaf
+          path: |
+            results/environment.txt
+            results/jars.sha256
+            results/summary.md
+            results/generated/
+            results/*.json
+            results/*.log
+            results/xml/*.xml
+          retention-days: 14
+          if-no-files-found: warn
