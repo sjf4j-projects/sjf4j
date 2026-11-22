@@ -78,6 +78,31 @@ jobs:
           print('PASS: Users POJO traversal and bytes output lifecycle identical; only native String call dispatch differs')
           PY
 
+      - name: Preflight strict JMH JSON equivalence and nonempty result for each generated variant
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for mode in direct trampoline methodhandle; do
+            java -jar "results/$mode-jmh.jar" "$benchmark" \
+              -p backend=jackson3 -p implementation=compiled \
+              -p model=users -p shape=pojo -p sizeKb=1 -p seed=12345 \
+              -f 1 -t 1 -wi 1 -i 1 -w 100ms -r 100ms \
+              -rf json -rff "results/$mode-smoke.json" \
+              > "results/$mode-smoke.log" 2>&1 || {
+                tail -130 "results/$mode-smoke.log"; exit 1;
+              }
+          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for mode in ('direct','trampoline','methodhandle'):
+              data=json.loads(Path(f'results/{mode}-smoke.json').read_text())
+              assert len(data)==1,(mode,len(data))
+              assert data[0]['primaryMetric']['score']>0,mode
+          print('All 3 APT-generated implementations passed JMH JSON equivalence')
+          PY
+
       - name: Benchmark Users POJO Write all sizes and both seeds
         shell: bash
         run: |
