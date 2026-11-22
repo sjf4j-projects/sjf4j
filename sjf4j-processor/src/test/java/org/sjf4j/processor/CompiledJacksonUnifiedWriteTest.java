@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Jackson structural helpers keep the same writer/value signature for mixed graphs. */
+/** Jackson structural helpers preserve native writes and fallback behavior for mixed graphs. */
 class CompiledJacksonUnifiedWriteTest {
 
     @Test
@@ -77,8 +77,13 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("if (value == null)"), backend);
             assertTrue(generated.contains("g.writeString(value);"), backend);
             assertTrue(generated.contains("_writeStringMember(g,"), backend);
-            assertTrue(generated.contains("_writeList(generator, property0);"), backend);
-            assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
+            if ("JACKSON3".equals(backend)) {
+                assertTrue(generated.contains("_writeList(generator, g, property0);"), backend);
+                assertTrue(generated.contains("_writeMap(generator, g, property2);"), backend);
+            } else {
+                assertTrue(generated.contains("_writeList(generator, property0);"), backend);
+                assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
+            }
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertTrue(generated.contains("this.config.includeNulls"), backend);
