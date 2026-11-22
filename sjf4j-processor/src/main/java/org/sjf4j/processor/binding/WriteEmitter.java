@@ -247,7 +247,9 @@ final class WriteEmitter {
                 || backend.backend() == Backend.JSONP;
 
         String sinkType = chars ? "org.sjf4j.binding.PooledStringWriter"
-                : "org.sjf4j.binding.PooledByteArrayOutputStream";
+                : backend.backend() == Backend.JACKSON3
+                    ? "tools.jackson.core.util.ByteArrayBuilder"
+                    : "org.sjf4j.binding.PooledByteArrayOutputStream";
         out.line(sinkType + " " + output + " = new " + sinkType + "();");
         out.beginBlock("try");
         out.beginBlock("try (" + backend.generatorType() + " " + generator
@@ -262,7 +264,7 @@ final class WriteEmitter {
         }
         out.endBlock();
         out.beginBlock("finally");
-        out.line(output + ".recycle();");
+        out.line(output + (backend.backend() == Backend.JACKSON3 ? ".release();" : ".recycle();"));
         out.endBlock();
     }
 
