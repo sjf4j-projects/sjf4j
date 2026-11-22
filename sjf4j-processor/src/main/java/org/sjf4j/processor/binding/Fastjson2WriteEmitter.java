@@ -4,6 +4,9 @@ import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
@@ -81,6 +84,24 @@ final class Fastjson2WriteEmitter {
             if (c < 0x20 || c > 0x7E || c == '"' || c == '\\') return false;
         }
         return true;
+    }
+
+    /** Emits native-endian packed raw-name operands at annotation processing time.
+     * Diagnostic only: platform endianness portability must be addressed before release.
+     */
+    private static String packedNameLiteral(String name, int part) {
+        int length = name.length();
+        byte[] raw = ("\"" + name + "\":").getBytes(StandardCharsets.US_ASCII);
+        int offset = length == 8 || length == 16 ? 1 : 0;
+        ByteBuffer packed = ByteBuffer.allocate(16).order(ByteOrder.nativeOrder());
+        packed.put(raw, offset, Math.min(16, raw.length - offset));
+        if (part == 0) {
+            return "0x" + String.format("%016x", packed.getLong(0)) + "L";
+        }
+        if (length == 9) {
+            return "0x" + String.format("%08x", packed.getInt(8));
+        }
+        return "0x" + String.format("%016x", packed.getLong(8)) + "L";
     }
 
     /** Emits Fastjson2 code through one buffer shared by native and codec writes. */
@@ -201,9 +222,8 @@ final class Fastjson2WriteEmitter {
             String field = WriteEmitter.compiledNameField(owner, index);
             if (fixedRawName(property.name())) {
                 int length = property.name().length();
-                String args = field + ".rawName0";
-                if (length == 9) args += ", (int) " + field + ".rawName1";
-                else if (length > 9) args += ", " + field + ".rawName1";
+                String args = packedNameLiteral(property.name(), 0);
+                if (length >= 9) args += ", " + packedNameLiteral(property.name(), 1);
                 out.line("nativeGenerator.writeName" + length + "Raw(" + args + ");");
             } else {
                 emitFastjsonName(out, fastjsonNameExpr(field, mode));
