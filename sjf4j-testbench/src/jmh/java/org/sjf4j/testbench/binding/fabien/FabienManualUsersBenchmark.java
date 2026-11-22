@@ -21,7 +21,7 @@ public class FabienManualUsersBenchmark {
     @Param({"jackson3", "fastjson2"})
     public String backend;
 
-    @Param({"native", "blackbird", "compiled", "manual-runtime", "manual-fixed"})
+    @Param({"native", "blackbird", "compiled", "manual-runtime", "manual-fixed", "manual-fixed-native-list"})
     public String implementation;
 
     @Param({"1", "10", "100"})
@@ -39,7 +39,10 @@ public class FabienManualUsersBenchmark {
                 FabienFixtures.create(backend, "users", "pojo", sizeKb, seed);
         users = (Users) fixture.value;
 
-        if ("manual-fixed".equals(implementation)) {
+        if ("manual-fixed-native-list".equals(implementation)) {
+            if (!"fastjson2".equals(backend)) throw new IllegalArgumentException(backend);
+            writer = node -> FabienManualUsersWriter.fastjsonFixedNativeList((Users) node);
+        } else if ("manual-fixed".equals(implementation)) {
             writer = "jackson3".equals(backend)
                     ? node -> FabienManualUsersWriter.jacksonFixed((Users) node)
                     : node -> FabienManualUsersWriter.fastjsonFixed((Users) node);
