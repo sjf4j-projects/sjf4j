@@ -246,9 +246,23 @@ final class WriteEmitter {
                 || backend.backend() == Backend.SIMPLE
                 || backend.backend() == Backend.JSONP;
 
+        // Diagnostic-only: compare the same Users @CompiledBinder against
+        // Jackson3 ObjectMapper's actual BufferRecycler + ByteArrayBuilder.
+        // The flag is read exclusively at annotation-processing time.
+        boolean useJacksonRecycler = backend.backend() == Backend.JACKSON3
+                && "org.sjf4j.testbench.model.fabien.Users".equals(value.type().toString())
+                && "true".equals(System.getenv("SJF4J_EXPERIMENT_JACKSON3_RECYCLER"));
         String sinkType = chars ? "org.sjf4j.binding.PooledStringWriter"
+                : useJacksonRecycler ? "tools.jackson.core.util.ByteArrayBuilder"
                 : "org.sjf4j.binding.PooledByteArrayOutputStream";
-        out.line(sinkType + " " + output + " = new " + sinkType + "();");
+        if (useJacksonRecycler) {
+            out.line("tools.jackson.core.util.BufferRecycler recycler = "
+                    + "this.binder.acquireOutputRecyclerForBenchmark();");
+            out.beginBlock("try");
+            out.line(sinkType + " " + output + " = new " + sinkType + "(recycler);");
+        } else {
+            out.line(sinkType + " " + output + " = new " + sinkType + "();");
+        }
         out.beginBlock("try");
         out.beginBlock("try (" + backend.generatorType() + " " + generator
                 + " = this.binder.createGenerator(" + output + "))");
@@ -258,12 +272,19 @@ final class WriteEmitter {
             out.line("return " + output
                     + ".toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);");
         } else {
-            out.line("return " + output + ".toByteArray();");
+            out.line("return " + output
+                    + (useJacksonRecycler ? ".getClearAndRelease();" : ".toByteArray();"));
         }
         out.endBlock();
         out.beginBlock("finally");
-        out.line(output + ".recycle();");
+        out.line(output + (useJacksonRecycler ? ".release();" : ".recycle();"));
         out.endBlock();
+        if (useJacksonRecycler) {
+            out.endBlock();
+            out.beginBlock("finally");
+            out.line("recycler.releaseToPool();");
+            out.endBlock();
+        }
     }
 
     private void emitStreamMethod(JavaWriter out, BindingValue value, String source,
