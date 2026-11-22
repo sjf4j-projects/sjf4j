@@ -34,10 +34,23 @@ final class StructuralWriteEmitter {
         // Jackson writes delimiters automatically. Backends with explicit
         // separators may override these compile-time hooks; counters are then
         // generated only for those backends.
+        default boolean supportsFixedUsersPolicy() { return false; }
         default boolean explicitObjectSeparators() { return false; }
         default boolean explicitArraySeparators() { return false; }
         default void beforeObjectMember(JavaWriter out, String ordinal) {}
         default void beforeArrayElement(JavaWriter out, String ordinal) {}
+    }
+
+    // Diagnostic experiment only, enabled only by the benchmark CI environment.
+    // No change to public annotation semantics or normal processor builds.
+    private static final String EXPERIMENT_USERS_NULLS =
+            System.getenv("SJF4J_EXPERIMENT_FIXED_USERS_NULLS");
+
+    static String fixedUsersMode(BindingValue owner) {
+        if (!"include".equals(EXPERIMENT_USERS_NULLS)
+                && !"omit".equals(EXPERIMENT_USERS_NULLS)) return null;
+        return owner.type().toString().startsWith("org.sjf4j.testbench.model.fabien.Users")
+                ? EXPERIMENT_USERS_NULLS : null;
     }
 
     private final Operations ops;
@@ -49,6 +62,7 @@ final class StructuralWriteEmitter {
     }
 
     void emitPojo(JavaWriter out, BindingValue value) {
+        String fixedMode = ops.supportsFixedUsersPolicy() ? fixedUsersMode(value) : null;
         ops.startObject(out);
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         int index = 0;
@@ -57,6 +71,45 @@ final class StructuralWriteEmitter {
             boolean stringMember = child.kind() == BindingValue.Kind.STRING
                     && ops.supportsStringMember();
             String expr = WriteEmitter.propertyExpression(property, "value");
+            if (fixedMode != null && !child.primitive()) {
+                // Keep the existing generator, names and helper graph; change only
+                // the source-level null policy for Users POJO object members.
+                String propertyVar = "property" + index;
+                out.line(child.type() + " " + propertyVar + " = " + expr + ";");
+                expr = propertyVar;
+                if (stringMember) {
+                    // Jackson3 retains the exact String-member helper architecture.
+                    ops.writeStringMember(out, value, index, expr);
+                } else if ("include".equals(fixedMode) && child.kind() == BindingValue.Kind.STRING) {
+                    // Native Fastjson2 writeString(null) emits JSON null.
+                    emitPropertyName(out, value, index);
+                    ops.writeNonNullValue(out, child, expr);
+                } else if ("omit".equals(fixedMode)) {
+                    out.beginBlock("if (" + propertyVar + " != null)");
+                    emitPropertyName(out, value, index);
+                    ops.writeNonNullValue(out, child, expr);
+                    out.endBlock();
+                } else if (child.helperRequired()) {
+                    // Native emitValue already writes null for nullable containers.
+                    emitPropertyName(out, value, index);
+                    ops.writeValue(out, child, expr);
+                } else if (nonNullScalar(child)) {
+                    // Preserve boxed-scalar null emission without NodeConfig.
+                    out.beginBlock("if (" + propertyVar + " == null)");
+                    emitPropertyName(out, value, index);
+                    ops.writeNull(out);
+                    out.endBlock(" else {");
+                    out.indent();
+                    emitPropertyName(out, value, index);
+                    ops.writeNonNullValue(out, child, expr);
+                    out.endBlock();
+                } else {
+                    emitPropertyName(out, value, index);
+                    ops.writeValue(out, child, expr);
+                }
+                index++;
+                continue;
+            }
             if (!child.primitive()) {
                 // Evaluate a getter once, including when null properties are omitted.
                 String propertyVar = "property" + index;
