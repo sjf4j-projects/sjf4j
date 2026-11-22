@@ -181,6 +181,13 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
 
     @Override
     public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+        // Experimental Jackson3-only inlining of List<POJO> members.
+        // No change to root lists, scalar lists, or Jackson2.
+        if (!jackson2() && value.kind() == BindingValue.Kind.LIST
+                && value.elementValue().kind() == BindingValue.Kind.POJO) {
+            structures.emitInlinePojoList(out, value, expression);
+            return;
+        }
         if (value.helperRequired()) {
             out.line(value.helperName() + "(generator, " + expression + ");");
             return;
