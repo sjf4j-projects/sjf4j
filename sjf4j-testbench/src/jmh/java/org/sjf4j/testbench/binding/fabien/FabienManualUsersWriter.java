@@ -790,7 +790,6 @@ w.writeString(item);
                 w.writeString(v_favoriteFruit);
             }
             w.writeEndObject();
-        }
             }
         }
         w.writeEndArray();
@@ -873,7 +872,6 @@ w.writeString(item);
             w.writeName(J_FAVORITEFRUIT);
             w.writeString(item.getFavoriteFruit());
             w.writeEndObject();
-        }
             }
         }
         w.writeEndArray();
@@ -999,7 +997,6 @@ w.writeString(item);
                 w.writeString(v_favoriteFruit);
             }
             w.endObject();
-        }
             }
         }
         w.endArray();
@@ -1080,7 +1077,6 @@ w.writeString(item);
             w.writeName13Raw(F_FAVORITEFRUIT.rawName0, F_FAVORITEFRUIT.rawName1);
             w.writeString(item.getFavoriteFruit());
             w.endObject();
-        }
             }
         }
         w.endArray();
