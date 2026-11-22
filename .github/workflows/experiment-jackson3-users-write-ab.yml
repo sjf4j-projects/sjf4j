@@ -53,8 +53,18 @@ jobs:
           if old not in source:
               raise RuntimeError('Expected 3.3-only read matcher expression not found')
           p.write_text(source.replace(old, new))
+          # The 3.3-only native POJO read emitter uses JsonParser.nextNameMatchAndToken(),
+          # which does not exist in 3.2.3. Remove only this READ optimization
+          # from the common experimental source; Users Write is unaffected.
+          p = Path('sjf4j-processor/src/main/java/org/sjf4j/processor/binding/ReadEmitter.java')
+          old = 'this.jackson3Native = jackson3 == null ? null : new Jackson3NativeReadEmitter(names);'
+          new = 'this.jackson3Native = null;'
+          source = p.read_text()
+          if old not in source:
+              raise RuntimeError('Expected 3.3-only native read emitter initialization not found')
+          p.write_text(source.replace(old, new))
           PY
-          # This read-only compatibility change is identical for both runs,
+          # These READ-only compatibility changes are identical for both runs,
           # and has no effect on the measured Users Write path.
       - name: Run both versions sequentially with identical source and JMH settings
         shell: bash
@@ -76,7 +86,7 @@ jobs:
             java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' \
               -p backend=jackson3 -p implementation=native,blackbird,compiled \
               -p model=users -p shape=pojo -p sizeKb=1,10,100 \
-              -p seed=12345,324 -t 1 -f 3 -wi 3 -i 4 -w 500ms -r 500ms \
+              -p seed=12345,324 -t 1 -f 2 -wi 3 -i 3 -w 500ms -r 500ms \
               -prof gc -rf json -rff "results/users-write-$v.json" \
               2>&1 | tee "results/jmh-$v.log"
           done
@@ -97,7 +107,7 @@ jobs:
                               r['params']['implementation']): r['primaryMetric']['score'] for r in rows}
           print('## Jackson3 Users POJO Write: 3.2.3 vs 3.3.0')
           print()
-          print('Same commit and hosted runner, same JDK 25; JMH 3 forks, 3x500ms warmup, 4x500ms measurement, GC profiler.')
+          print('Same commit and hosted runner, same JDK 25; JMH 2 forks, 3x500ms warmup, 3x500ms measurement, GC profiler.')
           print('Lower µs/op is faster; ratios above 1 mean SJF4J Compiled is faster.')
           print()
           print('| Size | Seed | Version | Native µs | Blackbird µs | Compiled µs | Native/Compiled | Blackbird/Compiled |')
