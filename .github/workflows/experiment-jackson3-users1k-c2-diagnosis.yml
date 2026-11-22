@@ -1,0 +1,157 @@
+name: Experiment / Jackson3 Users 1KB C2 diagnosis
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users1k-c2-diagnosis.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Users 1KB native vs Blackbird vs Compiled / tiered C1 C2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build unchanged JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/xml
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          cp "$jar" results/benchmark.jar
+          { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > results/environment.txt
+          sha256sum results/benchmark.jar > results/jar.sha256
+
+      - name: Same-JAR throughput by tier, Users 1KB only, both seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for tier in default c1 c2; do
+            flags=()
+            forks=2
+            if [[ "$tier" == c1 ]]; then
+              flags=(-jvmArgsAppend '-XX:TieredStopAtLevel=1')
+              forks=1
+            elif [[ "$tier" == c2 ]]; then
+              flags=(-jvmArgsAppend '-XX:-TieredCompilation')
+            fi
+            java -jar results/benchmark.jar "$bench" \
+              -p backend=jackson3 -p model=users -p shape=pojo -p sizeKb=1 \
+              -p seed=12345,324 -p implementation=native,blackbird,compiled \
+              -f "$forks" -t 1 -wi 4 -i 5 -w 450ms -r 450ms -prof gc \
+              "${flags[@]}" -rf json -rff "results/$tier.json" \
+              > "results/$tier.log" 2>&1 || { tail -110 "results/$tier.log"; exit 1; }
+          done
+
+      - name: Capture C2 LogCompilation per implementation (diagnostic forks)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for impl in native blackbird compiled; do
+            xml="$PWD/results/xml/$impl.xml"
+            flags="-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$xml"
+            java -jar results/benchmark.jar "$bench" \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              -p sizeKb=1 -p seed=12345 -p implementation="$impl" \
+              -f 1 -t 1 -wi 5 -i 2 -w 450ms -r 450ms \
+              -jvmArgsAppend "$flags" \
+              -rf json -rff "results/$impl-diagnostic.json" \
+              > "results/$impl-diagnostic.log" 2>&1 || {
+                tail -110 "results/$impl-diagnostic.log"; exit 1;
+              }
+            test -s "$xml" || { echo "Missing C2 XML: $xml"; exit 1; }
+          done
+
+      - name: Summarize ratios, allocation, C2 inline evidence
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json, xml.etree.ElementTree as ET
+          from pathlib import Path
+          root=Path("results")
+          print("## Jackson3 Users POJO Write 1KB / Native Blackbird Compiled")
+          print("Same generated classes, same JMH jar and same JDK25 host. All three implementations checked by existing JMH setup.")
+          print("Default/C2 only: 2 forks × 4×450ms warmup × 5×450ms measurement. C1: 1 fork, diagnostic only.")
+          print()
+          print("| JIT tier | Seed | Native μs/op | Blackbird μs/op | Compiled μs/op | Blackbird/Compiled | Native/Compiled | Compiled B/op | BB B/op |")
+          print("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
+          allrows={}
+          for mode in ("default","c1","c2"):
+              rows=json.loads((root/(mode+".json")).read_text())
+              assert len(rows)==6,(mode,len(rows))
+              allrows[mode]={(r["params"]["seed"],r["params"]["implementation"]):r for r in rows}
+              for seed in ("12345","324"):
+                  n,b,c=[allrows[mode][(seed,k)] for k in ("native","blackbird","compiled")]
+                  v=lambda r:r["primaryMetric"]["score"]
+                  a=lambda r:r["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
+                  print(f"| {mode} | {seed} | {v(n):.3f} | {v(b):.3f} | {v(c):.3f} | {v(b)/v(c):.3f}× | {v(n)/v(c):.3f}× | {a(c):.0f} | {a(b):.0f} |")
+          print()
+          print("Ratios <1 mean Compiled is slower. Compare **ratios within each JIT mode**, not absolute timings across distinct fork/JIT modes.")
+          print()
+          print("### C2 LogCompilation of hottest relevant methods (diagnostic forks)")
+          print("Only method identifiers and nmethod sizes are shown here; complete per-implementation HotSpot XML artifacts are retained.")
+          words=("FabienBindings$Jackson3_Impl","ObjectMapper","UTF8JsonGenerator","ByteArrayBuilder","Jackson3Binder","PooledByteArrayOutputStream","_writeStringMember")
+          for impl in ("compiled","blackbird","native"):
+              xml=root/"xml"/(impl+".xml")
+              tree=ET.parse(xml)
+              tasks=[]
+              for task in tree.iter("task"):
+                  m=task.get("method","")
+                  if any(w in m for w in words) and (not task.get("level") or task.get("level")=="4"):
+                      tasks.append((task.get("compile_id"),m))
+              nmethods={x.get("compile_id"):x.get("size") for x in tree.iter("nmethod")}
+              latest={}
+              for cid,m in tasks:
+                  if cid in nmethods:
+                      latest[m]=nmethods[cid]
+              print(f"**{impl}**: {len(tasks)} relevant C2 compilation tasks, {len(latest)} methods with nmethod size")
+              for m,size in list(latest.items())[:32]:
+                  print(f"- `{m}`: {size} bytes")
+              if impl=="compiled":
+                  targets=[x for x in tree.iter("task") if "FabienBindings$Jackson3_Impl _writeUser " in x.get("method","") and (not x.get("level") or x.get("level")=="4")]
+                  if targets:
+                      task=targets[-1]
+                      methods={x.get("id"):x.get("name") for x in task.iter("method")}
+                      decisions=[]
+                      for parent in task.iter("parse"):
+                          nodes=list(parent)
+                          for i,node in enumerate(nodes):
+                              if node.tag!="call":continue
+                              name=methods.get(node.get("method"),"")
+                              if not any(x in name for x in ("_writeStringMember","writeString","nativeGenerator","getId","getName","writeName")):continue
+                              decision=next((x for x in nodes[i+1:i+5] if x.tag in ("inline_success","inline_fail")),None)
+                              decisions.append((name,decision.tag if decision is not None else "unknown",decision.get("reason","") if decision is not None else ""))
+                      print("#### _writeUser inner C2 inlining decisions (name / result / reason)")
+                      for name,status,reason in decisions[:60]:
+                          print(f"- {name}: {status} {reason}")
+                  else:print("No standalone C2 _writeUser task found; it may have been compiled as part of another root.")
+          PY
+
+      - name: Upload measurement, diagnostic XML and generated build identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users1k-c2-profile
+          path: |
+            results/environment.txt
+            results/jar.sha256
+            results/summary.md
+            results/*.json
+            results/*.log
+            results/xml/*.xml
+          retention-days: 14
+          if-no-files-found: warn
