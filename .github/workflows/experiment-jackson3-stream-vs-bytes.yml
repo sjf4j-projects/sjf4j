@@ -1,0 +1,78 @@
+name: Experiment / Jackson3 Users Write byte[] vs stream
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-stream-vs-bytes.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienStreamWriteBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Jackson3 Users Write output lifecycle A/B
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Build diagnostic JMH jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Benchmark byte[] output and reusable no-copy output stream
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          { echo "Commit: $GITHUB_SHA"; lscpu; java -version 2>&1; } > results/environment.txt
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -n "$jar"
+          options=( -p implementation=native,blackbird,compiled -p sizeKb=1,10,100 -p seed=12345,324 -t 1 -f 2 -wi 3 -i 3 -w 400ms -r 400ms -prof gc -rf json )
+          java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' \
+            "${options[@]}" -p backend=jackson3 -p model=users -p shape=pojo \
+            -rff results/bytes.json 2>&1 | tee results/bytes.log
+          java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.FabienStreamWriteBenchmark.stream' \
+            "${options[@]}" -rff results/stream.json 2>&1 | tee results/stream.log
+      - name: Summarize two output modes and ratios
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          data={m:json.loads(Path(f'results/{m}.json').read_text()) for m in ['bytes','stream']}
+          for m in data:
+              assert len(data[m])==18,(m,len(data[m]))
+          def row(m,sz,seed,impl):
+              found=[r for r in data[m] if r['params']['sizeKb']==sz and r['params']['seed']==seed and r['params']['implementation']==impl]
+              assert len(found)==1,(m,sz,seed,impl,len(found))
+              return found[0]
+          print('## Jackson3 Users POJO Write — output lifecycle isolation')
+          print()
+          print('Identical JDK25 runner/JMH jar, both seeds, 2 forks, 3x400ms warmup, 3x400ms measurement.')
+          print('`bytes`: full new byte[] result. `stream`: reusable counting OutputStream with no byte[] materialization; verified equivalent JSON in JMH setup. Stream does count output bytes rather than copy.')
+          print()
+          print('| Size | Seed | Output | Native (µs) | Blackbird (µs) | Compiled (µs) | Native/Compiled | Blackbird/Compiled | Compiled B/op |')
+          print('|---|---|---|---:|---:|---:|---:|---:|---:|')
+          for size in ['1','10','100']:
+              for seed in ['12345','324']:
+                  for m in ['bytes','stream']:
+                      n,b,c=(row(m,size,seed,impl) for impl in ['native','blackbird','compiled'])
+                      ns,bs,cs=(x['primaryMetric']['score'] for x in [n,b,c])
+                      gc=c['secondaryMetrics'].get('gc.alloc.rate.norm',{}).get('score',float('nan'))
+                      print(f'| {size}KB | {seed} | {m} | {ns:.3f} | {bs:.3f} | {cs:.3f} | {ns/cs:.3f}x | {bs/cs:.3f}x | {gc:.0f} |')
+          PY
+      - name: Upload JMH details
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-write-stream-vs-bytes
+          path: results/
+          retention-days: 7
+          if-no-files-found: warn
