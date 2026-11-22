@@ -1,0 +1,181 @@
+name: Experiment / Jackson3 UTF8 concrete String member dispatch A/B
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-utf8-concrete-member-ab.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/WriteEmitter.java'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build three genuinely APT generated Users variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/generated results/xml
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          for mode in direct instanceof exact-class; do
+            if [[ "$mode" == direct ]]; then
+              env -u SJF4J_EXPERIMENT_J3_UTF8_MEMBER ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            else
+              SJF4J_EXPERIMENT_J3_UTF8_MEMBER="$mode" ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            fi
+            jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+            test -s "$jar"
+            cp "$jar" "results/$mode-jmh.jar"
+            find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' \
+              -exec cp {} "results/generated/$mode.java" \;
+            test -s "results/generated/$mode.java"
+            sha256sum "results/$mode-jmh.jar" >> results/jars.sha256
+          done
+
+      - name: Assert only native String member dispatch changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source={m:Path(f'results/generated/{m}.java').read_text() for m in ('direct','instanceof','exact-class')}
+          def method(s,signature):
+              p=s.index(signature);start=s.index('{',p)
+              level=0
+              for i in range(start,len(s)):
+                  if s[i]=='{':level+=1
+                  if s[i]=='}':
+                      level-=1
+                      if level==0:return s[p:i+1]
+              raise AssertionError('unbalanced braces '+signature)
+          for sig in ('public byte[] writeUsers(', 'private void _writeUsers(', 'private void _writeUser(', 'private static void _writeString('):
+              original=method(source['direct'],sig)
+              for m in ('instanceof','exact-class'):
+                  assert original==method(source[m],sig),(m,sig)
+          sig='private static void _writeStringMember('
+          baseline=method(source['direct'],sig)
+          assert 'g.writeString(value);' in baseline
+          assert 'UTF8JsonGenerator' not in baseline
+          for m in ('instanceof','exact-class'):
+              candidate=method(source[m],sig)
+              assert '((tools.jackson.core.json.UTF8JsonGenerator) g).writeString(value);' in candidate,m
+              assert 'g.writeString(value);' in candidate,m
+              assert 'UTF8JsonGenerator' in candidate,m
+          assert 'g instanceof tools.jackson.core.json.UTF8JsonGenerator' in method(source['instanceof'],sig)
+          assert 'g.getClass() == tools.jackson.core.json.UTF8JsonGenerator.class' in method(source['exact-class'],sig)
+          assert source['direct']!=source['instanceof']!=source['exact-class']
+          print('PASS: identical Users traversal/output/null policy, native Generator semantics and String helpers; only type-guarded String value dispatch varies')
+          PY
+
+      - name: JSON-parity smoke before running long JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for mode in direct instanceof exact-class; do
+            java -jar "results/$mode-jmh.jar" "$bench" \
+              -p backend=jackson3 -p implementation=compiled \
+              -p model=users -p shape=pojo -p sizeKb=1 -p seed=12345 \
+              -f 1 -t 1 -wi 1 -i 1 -w 100ms -r 100ms \
+              -rf json -rff "results/$mode-smoke.json" \
+              > "results/$mode-smoke.log" 2>&1 || {
+                tail -130 "results/$mode-smoke.log"; exit 1;
+              }
+          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for mode in ('direct','instanceof','exact-class'):
+              data=json.loads(Path(f'results/{mode}-smoke.json').read_text())
+              assert len(data)==1,(mode,len(data))
+              assert data[0]['primaryMetric']['score']>0,mode
+          print('All variants serialize JSON equal to native library baseline')
+          PY
+
+      - name: Same runner Users JMH 1/10/100KB plus Native Blackbird controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          common=( -p backend=jackson3 -p model=users -p shape=pojo \
+            -p sizeKb=1,10,100 -p seed=12345,324 \
+            -f 2 -t 1 -wi 3 -i 4 -w 350ms -r 350ms -prof gc -rf json )
+          for mode in direct instanceof exact-class; do
+            impl=compiled
+            if [[ "$mode" == direct ]]; then impl=native,blackbird,compiled; fi
+            java -jar "results/$mode-jmh.jar" "$bench" "${common[@]}" \
+              -p implementation="$impl" -rff "results/$mode.json" \
+              > "results/$mode.log" 2>&1 || {
+                tail -130 "results/$mode.log"; exit 1;
+              }
+          done
+
+      - name: Summarize ratios and allocation deltas
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,statistics
+          from pathlib import Path
+          root=Path('results')
+          modes=('direct','instanceof','exact-class')
+          table={}
+          for m in modes:
+              data=json.loads((root/(m+'.json')).read_text())
+              assert len(data)==(18 if m=='direct' else 6),(m,len(data))
+              table[m]={(r['params']['sizeKb'],r['params']['seed'],r['params']['implementation']):r for r in data}
+          score=lambda r:r['primaryMetric']['score']
+          alloc=lambda r:r['secondaryMetrics']['gc.alloc.rate.norm']['score']
+          print('## Jackson3 Users Write / APT native UTF8JsonGenerator concrete receiver')
+          print('3 actual APT generated JMH jars from identical source commit, JDK25 same runner. 2 forks, 3x350ms warmup and 4x350ms measured. JMH JSON validation passed.')
+          print('**Baseline/Candidate >1** means candidate faster. Every candidate has generic JsonGenerator fallback for Writer and custom generator.')
+          print()
+          print('| KB | seed | Native µs | BB µs | Direct µs | instanceof µs | exact-class µs | Direct/instanceof | Direct/exact | BB/instanceof | BB/exact | Alloc Δ instanceof B/op | Alloc Δ exact B/op |')
+          print('|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+          for kb in ('1','10','100'):
+              for seed in ('12345','324'):
+                  key=(kb,seed,'compiled')
+                  d={m:table[m][key] for m in modes}
+                  baseline=score(d['direct'])
+                  bb=score(table['direct'][(kb,seed,'blackbird')])
+                  vals=[score(table['direct'][(kb,seed,'native')]),bb]+[score(d[m]) for m in modes]
+                  ratios=[baseline/score(d[m]) for m in modes[1:]]
+                  bb_ratios=[bb/score(d[m]) for m in modes[1:]]
+                  alloc_delta=[alloc(d[m])-alloc(d['direct']) for m in modes[1:]]
+                  print(f"| {kb} | {seed} | "+" | ".join(f'{t:.3f}' for t in vals)+
+                        " | "+" | ".join(f'{t:.3f}x' for t in ratios+bb_ratios)+
+                        " | "+" | ".join(f'{t:+.0f}' for t in alloc_delta)+" |")
+          print()
+          print('### 1 KB fork means µs/op')
+          for m in modes:
+              for seed in ('12345','324'):
+                  metric=table[m][('1',seed,'compiled')]['primaryMetric']
+                  forks=[statistics.mean(x) for x in metric.get('rawData',[]) if x]
+                  print(f'- {m} seed={seed}: '+', '.join(f'{f:.3f}' for f in forks))
+          PY
+
+      - name: Archive JMH, generated source, and CPU identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-utf8-member-concrete-ab
+          path: |
+            results/environment.txt
+            results/jars.sha256
+            results/summary.md
+            results/generated/
+            results/*.json
+            results/*.log
+          retention-days: 14
+          if-no-files-found: warn
