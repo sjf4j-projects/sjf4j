@@ -245,7 +245,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                         + expression + ", this.config);");
                 return;
             case STRING:
-                out.line(writes.stringHelper() + "(" + nativeGenerator + ", " + expression + ");");
+                if (jackson2()) {
+                    out.line(writes.stringHelper() + "(" + nativeGenerator + ", " + expression + ");");
+                } else {
+                    // Jackson 3 writes JSON null directly for a null String.
+                    out.line(nativeGenerator + ".writeString(" + expression + ");");
+                }
                 return;
             case NUMBER:
                 out.line(generator + ".writeNumber(" + expression + ");");
