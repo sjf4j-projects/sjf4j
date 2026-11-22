@@ -1,0 +1,74 @@
+name: Experiment / longer paired backend JMH for POJO helper receiver
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-dual-backend-instance-confirm.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Confirm manual POJO instance vs static JMH A/B
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build JMH
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Longer targeted JMH / both native backends
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          { echo "SHA: $GITHUB_SHA"; lscpu; java -version 2>&1; } > results/environment.txt
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -n "$jar"
+          common=( 'org.sjf4j.testbench.binding.fabien.FabienManualUsersBenchmark.write' \
+            -p seed=12345,324 -t 1 -f 3 -wi 3 -i 5 -w 400ms -r 400ms -prof gc -rf json )
+          java -jar "$jar" "${common[@]}" -p backend=jackson3 -p sizeKb=100 \
+            -p implementation=blackbird,compiled,manual-member-runtime,manual-member-instance-runtime \
+            -rff results/jackson3.json 2>&1 | tee results/jackson3.log
+          java -jar "$jar" "${common[@]}" -p backend=fastjson2 -p sizeKb=10,100 \
+            -p implementation=native,compiled,manual-runtime,manual-instance-runtime \
+            -rff results/fastjson2.json 2>&1 | tee results/fastjson2.log
+      - name: Generate fork-aware comparisons
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          print('## Targeted JMH confirmation: static/instance handwritten POJO')
+          print()
+          print('3 forks; 3x400ms warmup and 5x400ms measurement per fork. Same JDK25 runner; all cases verify equivalent JSON before measurement.')
+          print('Static/instance >1 means instance faster. Raw per-fork measurement samples and GC in artifact.')
+          print()
+          print('| Backend | KB | Seed | Native or BB | Compiled | Hand static | Hand instance | Static/Instance | Compiled/Instance |')
+          print('|---|---|---|---:|---:|---:|---:|---:|---:|')
+          for backend in ('jackson3','fastjson2'):
+              rows=json.loads(Path(f'results/{backend}.json').read_text())
+              assert len(rows)==(8 if backend=='jackson3' else 16),(backend,len(rows))
+              for kb in (['100'] if backend=='jackson3' else ['10','100']):
+                  for seed in ['12345','324']:
+                      match={r['params']['implementation']:r for r in rows if r['params']['sizeKb']==kb and r['params']['seed']==seed}
+                      a,b=('manual-member-runtime','manual-member-instance-runtime') if backend=='jackson3' else ('manual-runtime','manual-instance-runtime')
+                      baseline='blackbird' if backend=='jackson3' else 'native'
+                      score=lambda i:match[i]['primaryMetric']['score']
+                      print(f'| {backend} | {kb} KB | {seed} | {score(baseline):.3f} | {score("compiled"):.3f} | {score(a):.3f} | {score(b):.3f} | {score(a)/score(b):.3f}x | {score("compiled")/score(b):.3f}x |')
+          PY
+      - name: Upload full JMH records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-backend-instance-static-confirm
+          path: results/
+          retention-days: 7
+          if-no-files-found: warn
