@@ -42,7 +42,7 @@ jobs:
           test -s results/generated-dynamic/jackson3.java
           test -s results/generated-dynamic/fastjson2.java
           sha256sum results/dynamic-jmh.jar >> results/jars.sha256
-      - name: Measure baseline Users Compiled and native/Blackbird controls
+      - name: Measure baseline Users Compiled and native/Blackbird controls (include policy)
         shell: bash
         run: |
           set -euo pipefail
@@ -53,9 +53,6 @@ jobs:
             java -jar results/dynamic-jmh.jar "${common[@]}" -p implementation=compiled -p nullPolicy=include \
               -p nullDensity=none,half,all -rff "results/$backend-dynamic-include.json" \
               > "results/$backend-dynamic-include.log" 2>&1
-            java -jar results/dynamic-jmh.jar "${common[@]}" -p implementation=compiled -p nullPolicy=omit \
-              -p nullDensity=none,half,all -rff "results/$backend-dynamic-omit.json" \
-              > "results/$backend-dynamic-omit.log" 2>&1
             native=blackbird
             if [[ "$backend" == fastjson2 ]]; then native=native; fi
             java -jar results/dynamic-jmh.jar "${common[@]}" -p implementation="$native" -p nullPolicy=include \
@@ -126,6 +123,8 @@ jobs:
           find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' -exec cp {} results/generated-fixed-omit/jackson3.java \;
           find sjf4j-testbench/build/generated -name 'FabienBindings$Fastjson2_Impl.java' -exec cp {} results/generated-fixed-omit/fastjson2.java \;
           sha256sum results/fixed-omit-jmh.jar >> results/jars.sha256
+          test -s results/generated-fixed-omit/jackson3.java
+          test -s results/generated-fixed-omit/fastjson2.java
       - name: Validate fixed-omit Users behavior across null distributions
         shell: bash
         run: |
@@ -162,9 +161,8 @@ jobs:
               dynamic=load(f'results/{backend}-dynamic-include.json')
               fixed=load(f'results/{backend}-fixed-include.json')
               native=load(f'results/{backend}-native.json')
-              omit=load(f'results/{backend}-dynamic-omit.json')
               smoke=load(f'results/{backend}-fixed-omit-smoke.json')
-              assert len(dynamic)==len(fixed)==len(omit)==len(smoke)==18,(backend,len(dynamic),len(fixed),len(omit),len(smoke))
+              assert len(dynamic)==len(fixed)==len(smoke)==18,(backend,len(dynamic),len(fixed),len(smoke))
               assert len(native)==6,(backend,len(native))
               def score(row):return row['primaryMetric']['score']
               def alloc(row):return row['secondaryMetrics']['gc.alloc.rate.norm']['score']
