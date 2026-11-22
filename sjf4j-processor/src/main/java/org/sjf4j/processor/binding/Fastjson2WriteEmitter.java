@@ -228,6 +228,20 @@ final class Fastjson2WriteEmitter {
 
         @Override
         public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
+            // EXPERIMENT: delegate statically known arrays to native UTF-8
+            // batch encoders, rather than starting an array and writing
+            // every element through the generic structural generator.
+            if (mode == FastjsonMode.UTF8 && value.kind() == BindingValue.Kind.ARRAY) {
+                BindingValue element = value.elementValue();
+                if (element.kind() == BindingValue.Kind.STRING) {
+                    out.line("nativeGenerator.writeString(" + expression + ");");
+                    return;
+                }
+                if (element.kind() == BindingValue.Kind.LONG && element.primitive()) {
+                    out.line("nativeGenerator.writeInt64(" + expression + ");");
+                    return;
+                }
+            }
             if (value.helperRequired()) {
                 out.line(fastjsonHelperName(value, mode) + "(generator, " + expression + ");");
                 return;
