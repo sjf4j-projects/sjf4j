@@ -53,8 +53,8 @@ public class FabienStreamWriteBenchmark {
                 FabienFixtures.create("jackson3", "users", "pojo", sizeKb, seed);
         users = (Users) fixture.value;
         switch (implementation) {
-            case "native": writer = NATIVE::writeValue; break;
-            case "blackbird": writer = BLACKBIRD::writeValue; break;
+            case "native": writer = (value, out) -> NATIVE.writeValue(out, value); break;
+            case "blackbird": writer = (value, out) -> BLACKBIRD.writeValue(out, value); break;
             case "compiled": {
                 Jackson3Stream compiled = CompiledInstances.create(Jackson3Stream.class);
                 writer = compiled::writeUsers;
