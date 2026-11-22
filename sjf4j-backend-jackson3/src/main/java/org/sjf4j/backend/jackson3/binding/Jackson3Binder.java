@@ -11,6 +11,7 @@ import tools.jackson.core.StreamReadFeature;
 import tools.jackson.core.StreamWriteFeature;
 import tools.jackson.core.TokenStreamFactory;
 import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.util.BufferRecycler;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -100,6 +101,15 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
     public Jackson3Parser createParser(byte[] input) throws IOException {
         return new Jackson3Parser(
                 factory.createParser(READ_CONTEXT, Asserts.notNull(input, "input")));
+    }
+
+    /**
+     * Diagnostic-only hook for comparing Jackson's native recycled
+     * ByteArrayBuilder lifecycle against SJF4J's pooled output stream.
+     * Always acquire from this binder's configured factory (not a second pool).
+     */
+    public BufferRecycler acquireOutputRecyclerForBenchmark() {
+        return factory._getBufferRecycler();
     }
 
     @Override
