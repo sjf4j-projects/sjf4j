@@ -70,11 +70,11 @@ jobs:
           assert 'UTF8JsonGenerator' not in baseline
           for m in ('instanceof','exact-class'):
               candidate=method(source[m],sig)
-              assert '((tools.jackson.core.json.UTF8JsonGenerator) g).writeString(value);' in candidate,m
+              assert '((UTF8JsonGenerator) g).writeString(value);' in candidate,m
               assert 'g.writeString(value);' in candidate,m
               assert 'UTF8JsonGenerator' in candidate,m
-          assert 'g instanceof tools.jackson.core.json.UTF8JsonGenerator' in method(source['instanceof'],sig)
-          assert 'g.getClass() == tools.jackson.core.json.UTF8JsonGenerator.class' in method(source['exact-class'],sig)
+          assert 'g instanceof UTF8JsonGenerator' in method(source['instanceof'],sig)
+          assert 'g.getClass() == UTF8JsonGenerator.class' in method(source['exact-class'],sig)
           assert source['direct']!=source['instanceof']!=source['exact-class']
           print('PASS: identical Users traversal/output/null policy, native Generator semantics and String helpers; only type-guarded String value dispatch varies')
           PY
