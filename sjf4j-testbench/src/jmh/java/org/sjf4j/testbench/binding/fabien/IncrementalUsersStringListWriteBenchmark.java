@@ -85,7 +85,7 @@ public class IncrementalUsersStringListWriteBenchmark {
         else if ("blackbird".equals(implementation)) writer = BLACKBIRD::writeValueAsBytes;
         else if ("compiled".equals(implementation)) {
             Compiled binder = CompiledInstances.create(Compiled.class);
-            if ("root".equals(shape)) writer = node -> binder.root((List<String>) node);
+            if ("root".equals(shape)) writer = node -> binder.root(tags);
             else writer = node -> binder.property((TagsOnly) node);
         } else throw new IllegalArgumentException("implementation: " + implementation);
 
