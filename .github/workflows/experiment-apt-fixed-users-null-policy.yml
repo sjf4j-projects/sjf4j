@@ -85,7 +85,7 @@ jobs:
               # The generated class also contains unrelated read/other-model methods.
               # Check User POJO method bodies specifically, not whole-file config refs.
               def user_helpers(source):
-                  starts=list(re.finditer(r'private void (_write\\w+)\\([^\\n]*\\bUsers\\.(?:User|Friend) value\\)',source))
+                  starts=list(re.finditer(r'private void (_write\w+)\([^\n]*\bUsers\.(?:User|Friend) value\)',source))
                   bodies=[]
                   for m in starts:
                       start=source.find('{',m.end())
