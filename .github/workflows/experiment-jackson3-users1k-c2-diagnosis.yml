@@ -1,4 +1,4 @@
-name: Experiment / Jackson3 native write inlining ablation
+name: Experiment / Jackson3 Users 1KB type-profile isolation
 
 on:
   pull_request:
@@ -9,10 +9,10 @@ permissions:
   contents: read
 
 jobs:
-  ablation:
-    name: Jackson3 Users native numeric / object-start inline suppression
+  diagnose:
+    name: Jackson3 Users 1KB / Tiered C2 type profile controls
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: JDK 25
@@ -22,7 +22,7 @@ jobs:
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
 
-      - name: Build unchanged Users JMH jar
+      - name: Build original JMH jar once
         shell: bash
         run: |
           set -euo pipefail
@@ -34,55 +34,45 @@ jobs:
           { echo "Commit: $GITHUB_SHA"; java -version 2>&1; lscpu; } > results/environment.txt
           sha256sum results/benchmark.jar > results/jar.sha256
 
-      - name: Paired default-JIT JMH for 1/10/100KB Users
+      - name: JMH type-profile A/B, same host, same jar, two seeds
         shell: bash
         run: |
           set -euo pipefail
           bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
-          number='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::writeNumber'
-          start='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::writeStartObject'
-          for mode in default no-number no-start no-both; do
+          for mode in default no-use-type-profile no-c1-type-profile c2-only; do
             flags=()
             case "$mode" in
-              no-number) flags=(-jvmArgsAppend "$number");;
-              no-start) flags=(-jvmArgsAppend "$start");;
-              no-both) flags=(-jvmArgsAppend "$number $start");;
+              no-use-type-profile) flags=(-jvmArgsAppend '-XX:-UseTypeProfile');;
+              no-c1-type-profile) flags=(-jvmArgsAppend '-XX:TypeProfileLevel=0');;
+              c2-only) flags=(-jvmArgsAppend '-XX:-TieredCompilation');;
             esac
-            impl=compiled
-            if [[ "$mode" == default ]]; then impl=native,blackbird,compiled; fi
             java -jar results/benchmark.jar "$bench" \
               -p backend=jackson3 -p model=users -p shape=pojo \
-              -p sizeKb=1,10,100 -p seed=12345,324 -p implementation="$impl" \
-              -f 2 -t 1 -wi 3 -i 4 -w 350ms -r 350ms -prof gc \
+              -p sizeKb=1 -p seed=12345,324 \
+              -p implementation=native,blackbird,compiled \
+              -f 2 -t 1 -wi 4 -i 5 -w 400ms -r 400ms -prof gc \
               "${flags[@]}" -rf json -rff "results/$mode.json" \
               > "results/$mode.log" 2>&1 || {
                 tail -110 "results/$mode.log"; exit 1;
               }
-            if [[ "$mode" != default ]]; then
-              grep -qF 'CompileCommand: dontinline' "results/$mode.log" || {
-                echo "JVM did not acknowledge $mode directive"; exit 1;
-              }
-            fi
           done
 
-      - name: Capture 1KB C2 code shape per mode without disturbing timed JMH
+      - name: Compare generated C2 code under each profile mode
         shell: bash
         run: |
           set -euo pipefail
           bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
-          number='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::writeNumber'
-          start='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::writeStartObject'
-          for mode in default no-number no-start no-both; do
+          for mode in default no-use-type-profile no-c1-type-profile c2-only; do
             flags="-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$PWD/results/xml/$mode.xml"
             case "$mode" in
-              no-number) flags="$flags $number";;
-              no-start) flags="$flags $start";;
-              no-both) flags="$flags $number $start";;
+              no-use-type-profile) flags="$flags -XX:-UseTypeProfile";;
+              no-c1-type-profile) flags="$flags -XX:TypeProfileLevel=0";;
+              c2-only) flags="$flags -XX:-TieredCompilation";;
             esac
             java -jar results/benchmark.jar "$bench" \
               -p backend=jackson3 -p model=users -p shape=pojo \
               -p sizeKb=1 -p seed=12345 -p implementation=compiled \
-              -f 1 -t 1 -wi 5 -i 2 -w 400ms -r 400ms \
+              -f 1 -t 1 -wi 5 -i 2 -w 450ms -r 450ms \
               -jvmArgsAppend "$flags" \
               -rf json -rff "results/$mode-diagnostic.json" \
               > "results/$mode-diagnostic.log" 2>&1 || {
@@ -91,62 +81,51 @@ jobs:
             test -s "results/xml/$mode.xml"
           done
 
-      - name: Summarize paired ratios and C2 native call evidence
+      - name: Summarize ratios, memory and C2 method shapes
         shell: bash
         run: |
           python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
-          import json,xml.etree.ElementTree as ET
+          import json, xml.etree.ElementTree as ET
           from pathlib import Path
           root=Path('results')
-          data={}
-          for mode in ('default','no-number','no-start','no-both'):
+          print('## Jackson3 Users 1KB: isolate C1 type-profile collection vs C2 type-profile consumption')
+          print('Same JDK25 runner and unchanged JMH jar, Native/Blackbird/Compiled, both seeds, 2 forks; 4×400ms warmup and 5×400ms measured. JMH verifies JSON output.')
+          print()
+          print('| JIT mode | Seed | Native µs | Blackbird µs | Compiled µs | Blackbird/Compiled | Compiled alloc B/op |')
+          print('|---|---:|---:|---:|---:|---:|---:|')
+          for mode in ('default','no-use-type-profile','no-c1-type-profile','c2-only'):
               rows=json.loads((root/(mode+'.json')).read_text())
-              expected=18 if mode=='default' else 6
-              assert len(rows)==expected,(mode,len(rows))
-              data[mode]={(x['params']['sizeKb'],x['params']['seed'],x['params']['implementation']):x for x in rows}
-          print('## Jackson3 Users POJO Write: native writeNumber/writeStartObject inlining ablation')
-          print('Unmodified same JMH jar, one JDK25 runner, default tiered compiler, 2 forks, 3x350ms warmup+4x350ms measured, GC profiler.')
-          print('**Baseline / Variant > 1** means suppressing that Jackson native inline makes Compiled faster.')
-          print()
-          print('| KB | Seed | Baseline µs/op | No number µs/op | No start µs/op | No both µs/op | Baseline/No number | Baseline/No start | Baseline/No both | Alloc delta No both B/op | BB / Baseline |')
-          print('|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
-          for kb in ('1','10','100'):
+              assert len(rows)==6,(mode,len(rows))
+              data={(x['params']['seed'],x['params']['implementation']):x for x in rows}
               for seed in ('12345','324'):
-                  key=(kb,seed,'compiled')
-                  d={mode:data[mode][key] for mode in data}
-                  v=lambda mode:d[mode]['primaryMetric']['score']
-                  alloc=lambda mode:d[mode]['secondaryMetrics']['gc.alloc.rate.norm']['score']
-                  bb=data['default'][(kb,seed,'blackbird')]['primaryMetric']['score']
-                  print(f"| {kb} | {seed} | {v('default'):.3f} | {v('no-number'):.3f} | {v('no-start'):.3f} | {v('no-both'):.3f} | {v('default')/v('no-number'):.3f}x | {v('default')/v('no-start'):.3f}x | {v('default')/v('no-both'):.3f}x | {alloc('no-both')-alloc('default'):+.0f} | {bb/v('default'):.3f}x |")
+                  n,b,c=[data[(seed,x)]['primaryMetric']['score'] for x in ('native','blackbird','compiled')]
+                  gc=data[(seed,'compiled')]['secondaryMetrics']['gc.alloc.rate.norm']['score']
+                  print(f'| {mode} | {seed} | {n:.3f} | {b:.3f} | {c:.3f} | {b/c:.3f}x | {gc:.0f} |')
           print()
-          print('### C2 _writeUser code size and inline choices (separate non-measured diagnostic forks)')
-          print('| Mode | C2 nmethod bytes | writeNumber inline success/fail | writeStartObject inline success/fail | _writeStringMember inline success/fail |')
-          print('|---|---:|---|---|---|')
-          for mode in ('default','no-number','no-start','no-both'):
-              tree=ET.parse(root/'xml'/(mode+'.xml'))
-              nm={x.get('compile_id'):x for x in tree.iter('nmethod') if x.get('compiler')=='c2'}
-              matches=[x for x in tree.iter('task') if 'FabienBindings$Jackson3_Impl _writeUser ' in x.get('method','') and x.get('compile_id') in nm]
-              assert matches,(mode,'no C2 _writeUser task')
-              task=matches[-1]
-              methods={x.get('id'):x.get('name') for x in task.iter('method')}
-              stat={x:[0,0] for x in ('writeNumber','writeStartObject','_writeStringMember')}
-              for parent in task.iter('parse'):
-                  children=list(parent)
-                  for i,node in enumerate(children):
-                      if node.tag!='call':continue
-                      method=methods.get(node.get('method'),'')
-                      if method not in stat:continue
-                      decision=next((x for x in children[i+1:i+5] if x.tag in ('inline_success','inline_fail')),None)
-                      if decision is not None:stat[method][0 if decision.tag=='inline_success' else 1]+=1
-              print(f"| {mode} | {nm[task.get('compile_id')].get('size')} | {stat['writeNumber'][0]}/{stat['writeNumber'][1]} | {stat['writeStartObject'][0]}/{stat['writeStartObject'][1]} | {stat['_writeStringMember'][0]}/{stat['_writeStringMember'][1]} |")
-          print('CompileCommand flags were confirmed by HotSpot startup logs; full XML, per-fork JSON and logs archived.')
+          print('### C2 size of generated writeUsers, _writeUser and _writeStringMember (diagnostic, separately compiled forks)')
+          print('| Mode | writeUsers | _writeUser | _writeStringMember |')
+          print('|---|---:|---:|---:|')
+          for mode in ('default','no-use-type-profile','no-c1-type-profile','c2-only'):
+              t=ET.parse(root/'xml'/(mode+'.xml'))
+              nm={x.get('compile_id'):x for x in t.iter('nmethod') if x.get('compiler')=='c2'}
+              sizes={}
+              for task in t.iter('task'):
+                  m=task.get('method','')
+                  if 'FabienBindings$Jackson3_Impl ' not in m:continue
+                  sub=m.split('FabienBindings$Jackson3_Impl ',1)[1].split(' ',1)[0]
+                  if sub not in ('writeUsers','_writeUser','_writeStringMember'):continue
+                  n=nm.get(task.get('compile_id'))
+                  if n is not None:sizes[sub]=int(n.get('size'))
+              print(f"| {mode} | {sizes.get('writeUsers','—')} | {sizes.get('_writeUser','—')} | {sizes.get('_writeStringMember','—')} |")
+          print()
+          print('Do not assume disabling an application-wide JVM option is a viable library optimization; this is a causal diagnostic only.')
           PY
 
-      - name: Upload raw JMH, JIT XML and CPU environment
+      - name: Upload benchmark results and HotSpot XML
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jackson3-users-native-inline-ablation
+          name: jackson3-users1k-type-profile-ab
           path: |
             results/environment.txt
             results/jar.sha256
