@@ -1,0 +1,168 @@
+name: Experiment / Jackson3 Users root and pool C2 boundaries
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users-root-jit-ablation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ablation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build unchanged JMH once
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/xml
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          cp "$jar" results/jmh.jar
+          sha256sum results/jmh.jar > results/jar.sha256
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+
+      - name: Isolate per-method JIT inlining without any Java source changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          factory='-XX:CompileCommand=dontinline,org.sjf4j.backend.jackson3.binding.Jackson3Binder::createGenerator'
+          pool='-XX:CompileCommand=dontinline,tools.jackson.core.util.RecyclerPool::acquireAndLinkPooled'
+          flush='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::_flushBuffer'
+          for mode in default no-factory no-pool no-flush no-factory-flush; do
+            flags=()
+            impl='compiled'
+            case "$mode" in
+              default) impl='native,blackbird,compiled';;
+              no-factory) flags=(-jvmArgsAppend "$factory");;
+              no-pool) flags=(-jvmArgsAppend "$pool");;
+              no-flush) flags=(-jvmArgsAppend "$flush");;
+              no-factory-flush) flags=(-jvmArgsAppend "$factory $flush");;
+            esac
+            java -jar results/jmh.jar "$bench" \
+              -p backend=jackson3 -p implementation="$impl" \
+              -p model=users -p shape=pojo -p sizeKb=1,10,100 \
+              -p seed=12345,324 \
+              -f 2 -t 1 -wi 3 -i 4 -w 350ms -r 350ms -prof gc \
+              "${flags[@]}" -rf json -rff "results/$mode.json" \
+              > "results/$mode.log" 2>&1 || {
+                tail -120 "results/$mode.log"; exit 1;
+              }
+            if [[ "$mode" != default ]]; then
+              grep -qF 'CompileCommand: dontinline' "results/$mode.log" || {
+                echo "JVM did not recognize $mode directive"; exit 1;
+              }
+            fi
+          done
+
+      - name: C2 LogCompilation confirmation, isolated diagnostic forks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          factory='-XX:CompileCommand=dontinline,org.sjf4j.backend.jackson3.binding.Jackson3Binder::createGenerator'
+          pool='-XX:CompileCommand=dontinline,tools.jackson.core.util.RecyclerPool::acquireAndLinkPooled'
+          flush='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::_flushBuffer'
+          for mode in default no-factory no-pool no-flush no-factory-flush; do
+            flags="-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$PWD/results/xml/$mode.xml"
+            case "$mode" in
+              no-factory) flags="$flags $factory";;
+              no-pool) flags="$flags $pool";;
+              no-flush) flags="$flags $flush";;
+              no-factory-flush) flags="$flags $factory $flush";;
+            esac
+            java -jar results/jmh.jar "$bench" \
+              -p backend=jackson3 -p implementation=compiled \
+              -p model=users -p shape=pojo -p sizeKb=1 -p seed=12345 \
+              -f 1 -t 1 -wi 5 -i 2 -w 400ms -r 400ms \
+              -jvmArgsAppend "$flags" -rf json -rff "results/$mode-diagnostic.json" \
+              > "results/$mode-diagnostic.log" 2>&1 || {
+                tail -120 "results/$mode-diagnostic.log"; exit 1;
+              }
+            test -s "results/xml/$mode.xml"
+          done
+
+      - name: Report paired JMH with C2 decisions
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,xml.etree.ElementTree as ET
+          from pathlib import Path
+          root=Path('results')
+          modes=('default','no-factory','no-pool','no-flush','no-factory-flush')
+          rows={}
+          for mode in modes:
+              data=json.loads((root/(mode+'.json')).read_text())
+              expected=18 if mode=='default' else 6
+              assert len(data)==expected,(mode,len(data))
+              rows[mode]={(r['params']['sizeKb'],r['params']['seed'],r['params']['implementation']):r for r in data}
+          print('## Jackson3 Users Write: C2 per-method root/pool/flush inline ablation')
+          print('Same JDK25 host, same JMH jar, no production code or generated code changes.')
+          print('2 forks, 3x350ms warmup, 4x350ms measurement, GC profiler, setup JSON parity.')
+          print('Baseline / candidate >1 means candidate faster. No-method source modifications.')
+          print()
+          print('| KB | seed | baseline µs | no-factory µs | no-pool µs | no-flush µs | no-factory-flush µs | baseline/no-factory | baseline/no-pool | baseline/no-flush | baseline/no-factory-flush | alloc Δ (both) B/op | BB / baseline |')
+          print('|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+          score=lambda row:row['primaryMetric']['score']
+          alloc=lambda row:row['secondaryMetrics']['gc.alloc.rate.norm']['score']
+          for kb in ('1','10','100'):
+              for seed in ('12345','324'):
+                  key=(kb,seed,'compiled')
+                  vals={mode:rows[mode][key] for mode in modes}
+                  base=score(vals['default'])
+                  bb=score(rows['default'][(kb,seed,'blackbird')])
+                  times=[score(vals[mode]) for mode in modes]
+                  factors=[base/score(vals[mode]) for mode in modes[1:]]
+                  print(f"| {kb} | {seed} | "+" | ".join(f'{v:.3f}' for v in times)+
+                        " | "+" | ".join(f'{v:.3f}x' for v in factors)+
+                        f" | {alloc(vals['no-factory-flush'])-alloc(vals['default']):+.0f} | {bb/base:.3f}x |")
+          print()
+          print('### Generated root writeUsers C2 nmethod and relevant inline outcomes')
+          print('| Mode | root C2 code B | Inline createGenerator | Inline acquireAndLinkPooled | Inline _flushBuffer |')
+          print('|---|---:|---|---|---|')
+          def info(task,methods,term):
+              found=[]
+              for parent in task.iter('parse'):
+                  nodes=list(parent)
+                  for i,node in enumerate(nodes):
+                      if node.tag!='call' or term!=methods.get(node.get('method')):continue
+                      nxt=next((x for x in nodes[i+1:i+6] if x.tag in ('inline_success','inline_fail')),None)
+                      found.append((nxt.tag+':'+nxt.get('reason','') if nxt is not None else 'unknown'))
+              return '; '.join(sorted(set(found))) if found else 'not present'
+          for mode in modes:
+              tree=ET.parse(root/'xml'/(mode+'.xml'))
+              nm={x.get('compile_id'):x for x in tree.iter('nmethod') if x.get('compiler')=='c2'}
+              tasks=[t for t in tree.iter('task') if 'FabienBindings$Jackson3_Impl writeUsers ' in t.get('method','') and t.get('compile_id') in nm]
+              assert tasks,(mode,'missing root C2 task')
+              task=tasks[-1]
+              methods={x.get('id'):x.get('name') for x in task.iter('method')}
+              vals=[info(task,methods,n) for n in ('createGenerator','acquireAndLinkPooled','_flushBuffer')]
+              print('| '+mode+' | '+nm[task.get('compile_id')].get('size')+' | '+' | '.join(vals)+' |')
+          PY
+
+      - name: Upload JMH JSON, XML and environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-root-pool-compiler-ablation
+          path: |
+            results/environment.txt
+            results/jar.sha256
+            results/summary.md
+            results/*.json
+            results/*.log
+            results/xml/*.xml
+          retention-days: 14
+          if-no-files-found: warn
