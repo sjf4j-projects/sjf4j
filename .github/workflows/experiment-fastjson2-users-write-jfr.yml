@@ -46,7 +46,7 @@ jobs:
                   -p backend=fastjson2 -p implementation="$implementation" \
                   -p model=users -p shape=pojo -p sizeKb="$kb" -p seed="$seed" \
                   -t 1 -f 1 -wi 3 -i 6 -w 1s -r 1s \
-                  -prof "jfr:dir=$output,configName=profile" \
+                  -prof "jfr:dir=$output" \
                   -rf json -rff "$output/jmh.json" > "$output/jmh.log" 2>&1
                 find "$output" -name '*.jfr' -type f -print | sort > "$output/recordings.txt"
                 test -s "$output/recordings.txt"
