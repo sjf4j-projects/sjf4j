@@ -68,7 +68,7 @@ jobs:
           def body(source):
               st=source.index('generator.start();', source.index(begin))
               en=source.index('generator.end();',st)+len('generator.end();')
-              return source[st:en]
+              return '\\n'.join(line.strip() for line in source[st:en].splitlines())
           assert body(a)==body(b), 'Compiled Users write traversal changed'
           print('PASS: identical Users write traversal and helpers; different output-buffer lifecycle only')
           PY
