@@ -1,0 +1,111 @@
+name: Experiment / Jackson3 Users Friend count ablation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users-friends-ab.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/IncrementalUsersFriendWriteBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  ablate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build annotated Users Writer and JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/generated
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          echo "$jar" > results/jar-path.txt
+          find sjf4j-testbench/build/generated -name '*IncrementalUsersWriteBenchmark*Compiled_Impl.java' -exec cp {} results/generated/ \;
+          grep -R -q '_writeFriend' results/generated/
+          grep -R -q '_writeEntry09' results/generated/
+
+      - name: A/B identical Stage09 compiled code, change only friend count in fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar=$(cat results/jar-path.txt)
+          java -jar "$jar" \
+            'org.sjf4j.testbench.binding.fabien.IncrementalUsersFriendWriteBenchmark.write' \
+            -p friends=none,one,all \
+            -p implementation=native,blackbird,compiled \
+            -p seed=12345,324 -p sizeKb=1 \
+            -f 3 -t 1 -wi 4 -i 5 -w 500ms -r 500ms -prof gc -rf json \
+            -rff results/friends-ab.json > results/friends-ab.log 2>&1 || {
+              tail -120 results/friends-ab.log; exit 1;
+            }
+          grep 'Users friends setup:' results/friends-ab.log | sort -u > results/friends-counts.txt
+          cat results/friends-counts.txt
+
+      - name: Reconfirm stage08 no friends code and stage09 fully populated control
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar=$(cat results/jar-path.txt)
+          java -jar "$jar" \
+            'org.sjf4j.testbench.binding.fabien.IncrementalUsersWriteBenchmark.write' \
+            -p stage=8,9 -p implementation=native,blackbird,compiled \
+            -p seed=12345,324 -p sizeKb=1 \
+            -f 2 -t 1 -wi 3 -i 4 -w 500ms -r 500ms -prof gc -rf json \
+            -rff results/stage-control.json > results/stage-control.log 2>&1 || {
+              tail -120 results/stage-control.log; exit 1;
+            }
+
+      - name: Report ratios and allocations by friends count
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Jackson3 Users Write — same compiled method, different friends count'
+            echo
+            echo 'The three friend-count modes use the exact same Stage09 POJO type and APT generated writer.'
+            echo
+            if [[ -f results/friends-ab.json ]]; then
+              python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows=json.loads(Path('results/friends-ab.json').read_text())
+          print('| Friends | Seed | Native / Compiled | Blackbird / Compiled | Compiled μs/op | Compiled B/op | Blackbird B/op |')
+          print('| --- | ---: | ---: | ---: | ---: | ---: | ---: |')
+          for mode in ('none','one','all'):
+              for seed in ('12345','324'):
+                  matched={r['params']['implementation']:r for r in rows
+                           if r['params']['friends']==mode and r['params']['seed']==seed}
+                  if len(matched)!=3: raise SystemExit(f'Missing JMH result {mode}/{seed}: {matched}')
+                  s={k:v['primaryMetric']['score'] for k,v in matched.items()}
+                  alloc={k:v['secondaryMetrics']['gc.alloc.rate.norm']['score'] for k,v in matched.items()}
+                  print(f"| {mode} | {seed} | {s['native']/s['compiled']:.3f}x | {s['blackbird']/s['compiled']:.3f}x | {s['compiled']:.4f} | {alloc['compiled']:.0f} | {alloc['blackbird']:.0f} |")
+          PY
+            fi
+            echo
+            if [[ -f results/friends-counts.txt ]]; then
+              echo '### Observed per-fork friend counts'
+              echo '~~~'
+              head -18 results/friends-counts.txt
+              echo '~~~'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Archive all raw measurements and unchanged compiled source
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-friends-ab-${{ github.run_id }}
+          path: results/
+          if-no-files-found: warn
+          retention-days: 14
