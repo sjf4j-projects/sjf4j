@@ -10,7 +10,6 @@ import org.sjf4j.testbench.model.fabien.Users;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -92,11 +91,12 @@ public class FabienFixedConfigUsersBenchmark {
     private static void stripNullObjectMembers(JsonNode node) {
         if (node.isObject()) {
             ArrayList<String> nullNames = new ArrayList<>();
-            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            Iterator<String> fields = node.fieldNames();
             while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
-                if (field.getValue().isNull()) nullNames.add(field.getKey());
-                else stripNullObjectMembers(field.getValue());
+                String field = fields.next();
+                JsonNode child = node.get(field);
+                if (child.isNull()) nullNames.add(field);
+                else stripNullObjectMembers(child);
             }
             ObjectNode object = (ObjectNode) node;
             for (String name : nullNames) object.remove(name);
