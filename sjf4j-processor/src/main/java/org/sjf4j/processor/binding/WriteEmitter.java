@@ -427,7 +427,14 @@ final class WriteEmitter {
             // of the generated instance. The explicit flag preserves context
             // semantics while avoiding excessive C2 inlining in large POJOs.
             boolean staticMember = backend.backend() == Backend.JACKSON3;
-            out.beginBlock((staticMember ? "private static void " : "private void ")
+            // Experiment is read by APT only; normal builds are unchanged.
+            String splitMode = staticMember
+                    ? System.getenv("SJF4J_EXPERIMENT_J3_MEMBER_SPLIT") : null;
+            boolean nameSplit = "name-split".equals(splitMode);
+            boolean sharedLeaf = "shared-leaf".equals(splitMode);
+            out.beginBlock((staticMember
+                    ? (nameSplit ? "private static boolean " : "private static void ")
+                    : "private void ")
                     + stringMemberHelper() + "(" + generator + " g, " + nameType
                     + " name, String value"
                     + (staticMember ? ", boolean includeNulls" : "")
@@ -437,10 +444,19 @@ final class WriteEmitter {
             out.line("g." + nameMethod + "(name);");
             out.line("g.writeNull();");
             out.endBlock();
+            if (nameSplit) {
+                out.line("return false;");
+            }
             out.endBlock(" else {");
             out.indent();
             out.line("g." + nameMethod + "(name);");
-            out.line("g.writeString(value);");
+            if (nameSplit) {
+                out.line("return true;");
+            } else if (sharedLeaf) {
+                out.line(stringHelper() + "(g, value);");
+            } else {
+                out.line("g.writeString(value);");
+            }
             out.endBlock();
             out.endBlock();
         }
