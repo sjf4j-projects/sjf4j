@@ -153,6 +153,9 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     }
 
     @Override
+    public boolean inlineListProperty() { return backend.backend() == Backend.JACKSON3; }
+
+    @Override
     public boolean supportsStringMember() { return true; }
 
     @Override
