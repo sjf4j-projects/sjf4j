@@ -1,0 +1,154 @@
+name: Experiment / Jackson3 Users 1KB type-profile CPU differential JFR
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users-typeprofile-jfr.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  jfr-diff:
+    name: JFR CPU sampling default vs no-type-profile, Compiled and Blackbird
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Compile unchanged Full Users JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/jfr results/jfr-json
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          cp "$jar" results/benchmark.jar
+          sha256sum results/benchmark.jar > results/jar.sha256
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+
+      - name: Profile 1KB native writing under default and disabled UseTypeProfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for mode in default no-type-profile; do
+            for impl in blackbird compiled; do
+              flags=()
+              if [[ "$mode" == no-type-profile ]]; then
+                flags=(-jvmArgsAppend '-XX:-UseTypeProfile')
+              fi
+              mkdir -p "results/jfr/$mode-$impl"
+              java -jar results/benchmark.jar "$bench" \
+                -p backend=jackson3 -p model=users -p shape=pojo -p sizeKb=1 \
+                -p seed=12345,324 -p implementation="$impl" \
+                -f 1 -t 1 -wi 4 -i 8 -w 1s -r 1s \
+                -prof "jfr:dir=results/jfr/$mode-$impl,configName=profile" \
+                "${flags[@]}" -rf json -rff "results/$mode-$impl.json" \
+                > "results/$mode-$impl.log" 2>&1 || {
+                  tail -130 "results/$mode-$impl.log"; exit 1;
+                }
+              find "results/jfr/$mode-$impl" -name '*.jfr' -size +0c -print \
+                | sort >> results/recordings.txt
+            done
+          done
+          count=$(find results/jfr -name '*.jfr' -size +0c | wc -l)
+          echo "JFR recordings: $count"
+          test "$count" -ge 8 || { echo 'Expected at least 8 JFR recordings'; exit 1; }
+
+      - name: Analyze execution samples and call-stack paths
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,subprocess,collections
+          from pathlib import Path
+          root=Path('results')
+          modes=('default','no-type-profile')
+          impls=('blackbird','compiled')
+          print('## Jackson3 Users 1KB: CPU JFR / default vs -XX:-UseTypeProfile')
+          print('Same Java source, same JMH jar and runner, 1 fork, 4x1s warmup + 8x1s measurement, two seeds.')
+          print('JFR profiling perturbs absolute JMH timing. Focus on differences in CPU sample distribution; do NOT treat sample fractions as direct nanosecond costs.')
+          print()
+          print('| JVM mode | implementation | seed | JMH µs/op |')
+          print('|---|---|---:|---:|')
+          for mode in modes:
+              for impl in impls:
+                  rows=json.loads((root/(mode+'-'+impl+'.json')).read_text())
+                  assert len(rows)==2,(mode,impl,len(rows))
+                  for row in rows:
+                      print(f"| {mode} | {impl} | {row['params']['seed']} | {row['primaryMetric']['score']:.3f} |")
+          print()
+          def frame_name(f):
+              method=f.get('method') or {}
+              typ=method.get('type') or {}
+              return (typ.get('name') or '')+'.'+(method.get('name') or '?')
+          aggregate={}
+          for mode in modes:
+              for impl in impls:
+                  selfc=collections.Counter()
+                  inclusive=collections.Counter()
+                  sample_total=0
+                  recs=sorted((root/'jfr'/(mode+'-'+impl)).rglob('*.jfr'))
+                  for rec in recs:
+                      p=subprocess.run(['jfr','print','--json','--events','jdk.ExecutionSample','--stack-depth','96',str(rec)],
+                                       stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,check=True)
+                      obj=json.loads(p.stdout)
+                      for event in obj.get('recording',{}).get('events',[]):
+                          stack=event.get('values',{}).get('stackTrace') or {}
+                          frames=stack.get('frames') or []
+                          if not frames:continue
+                          names=[frame_name(f) for f in frames]
+                          if not any('FabienWriteBenchmark' in n or 'FabienBindings' in n or 'ObjectMapper' in n
+                                     for n in names):continue
+                          sample_total+=1
+                          selfc[names[0]]+=1
+                          inclusive.update(set(names))
+                  aggregate[(mode,impl)]=(sample_total,selfc,inclusive)
+                  out={'total_samples':sample_total,'self':selfc.most_common(100),
+                       'inclusive':inclusive.most_common(100)}
+                  (root/'jfr-json'/(mode+'-'+impl+'.json')).write_text(json.dumps(out,indent=2))
+                  print(f"### {mode} / {impl} ({sample_total} worker-path CPU samples)")
+                  print('| self frame | samples | share |')
+                  print('|---|---:|---:|')
+                  for name,count in selfc.most_common(18):
+                      print(f'| `{name}` | {count} | {count/max(sample_total,1)*100:.1f}% |')
+                  print()
+          print('### Compiled profile-on vs profile-off changes, self CPU samples')
+          a=aggregate[('default','compiled')]
+          b=aggregate[('no-type-profile','compiled')]
+          keys=set(a[1])|set(b[1])
+          changes=[]
+          for key in keys:
+              x=a[1][key]/max(a[0],1)
+              y=b[1][key]/max(b[0],1)
+              if a[1][key]+b[1][key]<5:continue
+              changes.append((abs(x-y),key,x,y,a[1][key],b[1][key]))
+          for _,key,x,y,xc,yc in sorted(changes,reverse=True)[:25]:
+              print(f'- {key}: default {x*100:.1f}% ({xc}), no-profile {y*100:.1f}% ({yc}), Δ {(y-x)*100:+.1f} percentage points')
+          print()
+          print('Full raw JFR recordings and 100-row per-mode sample summaries are in the downloadable artifact.')
+          PY
+
+      - name: Upload raw JFR, per-implementation JSON and aggregate CPU analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users1kb-typeprofile-jfr-diff
+          path: |
+            results/environment.txt
+            results/jar.sha256
+            results/summary.md
+            results/recordings.txt
+            results/*.json
+            results/*.log
+            results/jfr-json/
+            results/jfr/
+          retention-days: 14
+          if-no-files-found: warn
