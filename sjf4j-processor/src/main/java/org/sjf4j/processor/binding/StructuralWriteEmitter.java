@@ -22,6 +22,7 @@ final class StructuralWriteEmitter {
         void writeNull(JavaWriter out);
         void writePropertyName(JavaWriter out, BindingValue owner, int index);
         default boolean supportsStringMember() { return false; }
+        default boolean inlineListProperty() { return false; }
         default void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                        String expression) { throw new UnsupportedOperationException(); }
         void writeDynamicName(JavaWriter out, String expression);
@@ -71,7 +72,12 @@ final class StructuralWriteEmitter {
                     out.endBlock(" else {");
                     out.indent();
                     emitPropertyName(out, value, index);
-                    ops.writeNonNullValue(out, child, expr);
+                    if (child.kind() == BindingValue.Kind.LIST && ops.inlineListProperty()) {
+                        // Experimental Jackson3: inline list traversal, retain element helper.
+                        emitList(out, child, expr);
+                    } else {
+                        ops.writeNonNullValue(out, child, expr);
+                    }
                     out.endBlock();
                     index++;
                     continue;
@@ -148,21 +154,25 @@ final class StructuralWriteEmitter {
 
     /** Random-access and sequential lists use the same element emission. */
     void emitList(JavaWriter out, BindingValue value) {
+        emitList(out, value, "value");
+    }
+
+    private void emitList(JavaWriter out, BindingValue value, String expression) {
         ops.startArray(out);
         out.beginBlock("if (value instanceof java.util.RandomAccess)");
         out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
         if (ops.explicitArraySeparators()) ops.beforeArrayElement(out, "i");
         if (value.elementValue().helperRequired()) {
-            out.line(value.elementValue().type() + " element = value.get(i);");
+            out.line(value.elementValue().type() + " element = " + expression + ".get(i);");
             ops.writeValue(out, value.elementValue(), "element");
         } else {
-            ops.writeValue(out, value.elementValue(), "value.get(i)");
+            ops.writeValue(out, value.elementValue(), expression + ".get(i)");
         }
         out.endBlock();
         out.endBlock(" else {");
         out.indent();
         if (ops.explicitArraySeparators()) out.line("int elementCount = 0;");
-        out.beginBlock("for (" + value.elementValue().type() + " element : value)");
+        out.beginBlock("for (" + value.elementValue().type() + " element : " + expression + ")");
         if (ops.explicitArraySeparators()) {
             ops.beforeArrayElement(out, "elementCount++");
         }
