@@ -158,9 +158,20 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                   String expression) {
-        out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
+        String call = writes.stringMemberHelper() + "(g, "
+                + WriteEmitter.compiledNameField(owner, index)
                 + ".serializedName, " + expression
-                + (jackson2() ? "" : ", this.config.includeNulls") + ");");
+                + (jackson2() ? "" : ", this.config.includeNulls") + ")";
+        // Diagnostic APT shape: member helper only handles name and null,
+        // while native String encoding stays inside the existing String leaf.
+        if (!jackson2() && "name-split".equals(
+                System.getenv("SJF4J_EXPERIMENT_J3_MEMBER_SPLIT"))) {
+            out.beginBlock("if (" + call + ")");
+            out.line(writes.stringHelper() + "(g, " + expression + ");");
+            out.endBlock();
+        } else {
+            out.line(call + ";");
+        }
     }
 
     @Override
