@@ -11,6 +11,7 @@ import tools.jackson.core.StreamReadFeature;
 import tools.jackson.core.StreamWriteFeature;
 import tools.jackson.core.TokenStreamFactory;
 import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.util.JsonRecyclerPools;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,7 +33,7 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
 
     /** Creates a binder with a default Jackson 3 factory. */
     public Jackson3Binder() {
-        this(new JsonFactory(), NodeConfig.DEFAULT);
+        this(defaultFactory(), NodeConfig.DEFAULT);
     }
 
     /**
@@ -40,7 +41,7 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
      * @param config the SJF4J node configuration
      */
     public Jackson3Binder(NodeConfig config) {
-        this(new JsonFactory(), config);
+        this(defaultFactory(), config);
     }
 
     /**
@@ -63,6 +64,13 @@ public final class Jackson3Binder extends Binder<Jackson3Parser, Jackson3Generat
                 .disable(TokenStreamFactory.Feature.CHARSET_DETECTION)
                 .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
                 .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+                .build();
+    }
+
+    private static JsonFactory defaultFactory() {
+        // Isolate the JDK 25 default deque recycler overhead for a controlled A/B.
+        return JsonFactory.builder()
+                .recyclerPool(JsonRecyclerPools.threadLocalPool())
                 .build();
     }
 
