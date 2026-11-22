@@ -273,6 +273,9 @@ final class Fastjson2WriteEmitter {
         }
 
         @Override
+        public boolean supportsFixedUsersPolicy() { return true; }
+
+        @Override
         public boolean explicitArraySeparators() { return true; }
 
         @Override
