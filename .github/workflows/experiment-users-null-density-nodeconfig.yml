@@ -37,9 +37,9 @@ jobs:
           common=( 'org.sjf4j.testbench.binding.fabien.FabienManualUsersBenchmark.write'
             -p sizeKb=1,10,100 -p seed=12345,324 -p nullDensity=none,half,all
             -t 1 -f 2 -wi 3 -i 4 -w 350ms -r 350ms -prof gc -rf json )
-          # Jackson3 matches SJF4J's already-selected String-member helper mode.
+          # Jackson3 compares both the selected String-member helper and a fully inline, branchless writeName/writeString mode.
           java -jar "$jar" "${common[@]}" -p backend=jackson3 \
-            -p implementation=manual-member-runtime,manual-member-static-config,manual-member-fixed \
+            -p implementation=manual-member-runtime,manual-member-static-config,manual-member-fixed,manual-fixed \
             -rff results/jackson3.json > results/jackson3.log 2>&1
           # Fastjson2 retains the already-selected inline String field mode.
           java -jar "$jar" "${common[@]}" -p backend=fastjson2 \
@@ -57,11 +57,11 @@ jobs:
           print("All variants use includeNulls=true. Null density applies only to fixture objects: none=no null fields, half=alternating nullable String fields null, all=all nullable members (including lists) null.")
           print("Ratios are dynamic mean latency / candidate mean latency: >1 means candidate faster. Allocations are fixed-vs-dynamic byte/op.")
           print()
-          print("| Backend | KB | Nulls | Seed | Dynamic µs/op | Static µs/op | Fixed µs/op | Dynamic/Static | Dynamic/Fixed | Fixed−Dynamic B/op |")
-          print("| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |")
+          print("| Backend | KB | Nulls | Seed | Dynamic µs/op | Static µs/op | Fixed µs/op | Direct µs/op | Dynamic/Static | Dynamic/Fixed | Dynamic/Direct | Fixed−Dynamic B/op |")
+          print("| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
           for backend in ("jackson3", "fastjson2"):
               rows=json.loads(Path(f"results/{backend}.json").read_text())
-              assert len(rows)==54, (backend,len(rows))
+              assert len(rows)==(72 if backend=='jackson3' else 54), (backend,len(rows))
               dynamic="manual-member-runtime" if backend=="jackson3" else "manual-runtime"
               static="manual-member-static-config" if backend=="jackson3" else "manual-static-config"
               fixed="manual-member-fixed" if backend=="jackson3" else "manual-fixed"
@@ -69,10 +69,11 @@ jobs:
                   for nulls in ("none","half","all"):
                       for seed in ("12345","324"):
                           d={r["params"]["implementation"]:r for r in rows if r["params"]["sizeKb"]==kb and r["params"]["seed"]==seed and r["params"]["nullDensity"]==nulls}
-                          assert len(d)==3,(backend,kb,nulls,seed,len(d))
+                          assert len(d)==(4 if backend=="jackson3" else 3),(backend,kb,nulls,seed,len(d))
                           score=lambda k:d[k]["primaryMetric"]["score"]
                           mem=lambda k:d[k]["secondaryMetrics"]["gc.alloc.rate.norm"]["score"]
-                          print(f"| {backend} | {kb} | {nulls} | {seed} | {score(dynamic):.3f} | {score(static):.3f} | {score(fixed):.3f} | {score(dynamic)/score(static):.3f}x | {score(dynamic)/score(fixed):.3f}x | {mem(fixed)-mem(dynamic):+.0f} |")
+                          direct = "manual-fixed"
+                          print(f"| {backend} | {kb} | {nulls} | {seed} | {score(dynamic):.3f} | {score(static):.3f} | {score(fixed):.3f} | {score(direct):.3f} | {score(dynamic)/score(static):.3f}x | {score(dynamic)/score(fixed):.3f}x | {score(dynamic)/score(direct):.3f}x | {mem(fixed)-mem(dynamic):+.0f} |")
           PY
       - name: Upload data and failure logs
         if: always()
