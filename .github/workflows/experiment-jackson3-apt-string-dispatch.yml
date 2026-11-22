@@ -1,0 +1,157 @@
+name: Experiment / Jackson3 generated String member call shapes
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-apt-string-dispatch.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/WriteEmitter.java'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build all three actual APT Users compiled binders
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/generated
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          for mode in direct trampoline methodhandle; do
+            if [[ "$mode" == direct ]]; then
+              env -u SJF4J_EXPERIMENT_J3_STRING_DISPATCH ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            else
+              SJF4J_EXPERIMENT_J3_STRING_DISPATCH="$mode" ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            fi
+            jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+            test -s "$jar"
+            cp "$jar" "results/$mode-jmh.jar"
+            find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' \
+              -exec cp {} "results/generated/$mode.java" \;
+            test -s "results/generated/$mode.java"
+            sha256sum "results/$mode-jmh.jar" >> results/jars.sha256
+          done
+
+      - name: Verify same Users POJO traversal, actual member-only dispatch change
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source={m:Path(f'results/generated/{m}.java').read_text() for m in ('direct','trampoline','methodhandle')}
+          def method(s,signature):
+              p=s.index(signature);start=s.index('{',p)
+              level=0
+              for i in range(start,len(s)):
+                  if s[i]=='{':level+=1
+                  if s[i]=='}':
+                      level-=1
+                      if level==0:return s[p:i+1]
+              raise AssertionError('unbalanced braces '+signature)
+          for sig in ('public byte[] writeUsers(', 'private void _writeUsers(', 'private void _writeUser('):
+              body=method(source['direct'],sig)
+              for m in ('trampoline','methodhandle'):
+                  assert body==method(source[m],sig),(m,sig)
+          signature='private static void _writeStringMember('
+          baseline=method(source['direct'],signature)
+          assert 'g.writeString(value);' in baseline
+          assert '__sjf4jJ3WriteString' not in baseline
+          for m in ('trampoline','methodhandle'):
+              body=method(source[m],signature)
+              assert '__sjf4jJ3WriteString(g, value);' in body,m
+              assert 'g.writeString(value);' not in body,m
+              assert 'private static void __sjf4jJ3WriteString(' in source[m],m
+          assert '__sjf4jJ3StringHandle.invokeExact(g, value);' in source['methodhandle']
+          assert '__sjf4jJ3StringHandle' not in source['trampoline']
+          print('PASS: Users POJO traversal and bytes output lifecycle identical; only native String call dispatch differs')
+          PY
+
+      - name: Benchmark Users POJO Write all sizes and both seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          common=( -p backend=jackson3 -p model=users -p shape=pojo \
+            -p sizeKb=1,10,100 -p seed=12345,324 \
+            -f 2 -t 1 -wi 3 -i 4 -w 350ms -r 350ms -prof gc -rf json )
+          for mode in direct trampoline methodhandle; do
+            impl=compiled
+            if [[ "$mode" == direct ]]; then impl=native,blackbird,compiled; fi
+            java -jar "results/$mode-jmh.jar" "$benchmark" "${common[@]}" \
+              -p implementation="$impl" -rff "results/$mode.json" \
+              > "results/$mode.log" 2>&1 || {
+                tail -110 "results/$mode.log"; exit 1;
+              }
+          done
+
+      - name: Compare real generated binder performance
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,statistics
+          from pathlib import Path
+          root=Path('results')
+          modes=('direct','trampoline','methodhandle')
+          table={}
+          for m in modes:
+              data=json.loads((root/(m+'.json')).read_text())
+              assert len(data)==(18 if m=='direct' else 6),(m,len(data))
+              table[m]={(x['params']['sizeKb'],x['params']['seed'],x['params']['implementation']):x for x in data}
+          score=lambda r:r['primaryMetric']['score']
+          alloc=lambda r:r['secondaryMetrics']['gc.alloc.rate.norm']['score']
+          print('## Jackson3 Users POJO Write / actual APT codegen: direct vs trampoline vs MethodHandle')
+          print('Three independently built JMH Jars from the same PR source; annotation-processing env only differs.')
+          print('Same JDK25 runner, 2 forks × 3x350ms warmup + 4x350ms measure, GC profiler; output JSON parity checked during JMH setup.')
+          print('**Direct / candidate >1** means candidate faster. Unlike JVM flags, these candidates would not affect Jackson calls from other libraries.')
+          print()
+          print('| KB | Seed | Native µs | BB µs | Direct µs | Trampoline µs | MH µs | Direct/Trampoline | Direct/MH | BB/Trampoline | BB/MH | Alloc Δ trampoline B/op | Alloc Δ MH B/op |')
+          print('|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+          for kb in ('1','10','100'):
+              for seed in ('12345','324'):
+                  key=(kb,seed,'compiled')
+                  d={m:table[m][key] for m in modes}
+                  baseline=score(d['direct'])
+                  native=score(table['direct'][(kb,seed,'native')])
+                  bb=score(table['direct'][(kb,seed,'blackbird')])
+                  values=[native,bb]+[score(d[m]) for m in modes]
+                  ratios=[baseline/score(d[m]) for m in modes[1:]]
+                  bbratios=[bb/score(d[m]) for m in modes[1:]]
+                  deltas=[alloc(d[m])-alloc(d['direct']) for m in modes[1:]]
+                  print(f"| {kb} | {seed} | "+" | ".join(f'{x:.3f}' for x in values)+
+                        " | "+" | ".join(f'{x:.3f}x' for x in ratios+bbratios)+
+                        " | "+" | ".join(f'{x:+.0f}' for x in deltas)+" |")
+          print()
+          print('### 1KB Compiled fork means µs/op (not just averages)')
+          for mode in modes:
+              for seed in ('12345','324'):
+                  r=table[mode][('1',seed,'compiled')]
+                  means=[statistics.mean(x) for x in r['primaryMetric'].get('rawData',[]) if x]
+                  print(f'- {mode}, seed {seed}: '+', '.join(f'{x:.3f}' for x in means))
+          PY
+
+      - name: Upload raw output, generated sources and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-apt-native-string-dispatch
+          path: |
+            results/environment.txt
+            results/jars.sha256
+            results/summary.md
+            results/generated/
+            results/*.json
+            results/*.log
+          retention-days: 14
+          if-no-files-found: warn
