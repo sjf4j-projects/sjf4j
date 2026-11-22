@@ -1,0 +1,170 @@
+name: Experiment / Jackson3 Users native String hot path C2 ablation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users-string-c2-ablation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ablation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build unchanged Users JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/xml
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          cp "$jar" results/benchmark.jar
+          sha256sum results/benchmark.jar > results/jar.sha256
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+
+      - name: JMH A/B Jackson native String / Latin1 C2 boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          native='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::writeString'
+          segment='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::_writeStringSegment'
+          latin='-XX:CompileCommand=dontinline,java.lang.StringLatin1::charAt'
+          for mode in default no-native-string no-segment no-latin1 no-native-and-segment; do
+            args=()
+            impl=compiled
+            case "$mode" in
+              default) impl=native,blackbird,compiled;;
+              no-native-string) args=(-jvmArgsAppend "$native");;
+              no-segment) args=(-jvmArgsAppend "$segment");;
+              no-latin1) args=(-jvmArgsAppend "$latin");;
+              no-native-and-segment) args=(-jvmArgsAppend "$native $segment");;
+            esac
+            java -jar results/benchmark.jar "$benchmark" \
+              -p backend=jackson3 -p implementation="$impl" \
+              -p model=users -p shape=pojo -p sizeKb=1,10,100 -p seed=12345,324 \
+              -f 2 -t 1 -wi 3 -i 4 -w 350ms -r 350ms -prof gc \
+              "${args[@]}" -rf json -rff "results/$mode.json" \
+              > "results/$mode.log" 2>&1 || {
+                tail -110 "results/$mode.log"; exit 1;
+              }
+            if [[ "$mode" != default ]]; then
+              grep -qF 'CompileCommand: dontinline' "results/$mode.log" || {
+                echo "No JVM confirmation for $mode"; exit 1;
+              }
+            fi
+          done
+
+      - name: HotSpot C2 LogCompilation separately from timed measurements
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          native='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::writeString'
+          segment='-XX:CompileCommand=dontinline,tools.jackson.core.json.UTF8JsonGenerator::_writeStringSegment'
+          latin='-XX:CompileCommand=dontinline,java.lang.StringLatin1::charAt'
+          for mode in default no-native-string no-segment no-latin1 no-native-and-segment; do
+            flags="-XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$PWD/results/xml/$mode.xml"
+            case "$mode" in
+              no-native-string) flags="$flags $native";;
+              no-segment) flags="$flags $segment";;
+              no-latin1) flags="$flags $latin";;
+              no-native-and-segment) flags="$flags $native $segment";;
+            esac
+            java -jar results/benchmark.jar "$benchmark" \
+              -p backend=jackson3 -p implementation=compiled \
+              -p model=users -p shape=pojo -p sizeKb=1 -p seed=12345 \
+              -f 1 -t 1 -wi 5 -i 2 -w 400ms -r 400ms \
+              -jvmArgsAppend "$flags" -rf json -rff "results/$mode-diagnostic.json" \
+              > "results/$mode-diagnostic.log" 2>&1 || {
+                tail -110 "results/$mode-diagnostic.log"; exit 1;
+              }
+            test -s "results/xml/$mode.xml"
+          done
+
+      - name: Summarize results and verify C2 decisions
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,xml.etree.ElementTree as ET
+          from pathlib import Path
+          root=Path('results')
+          modes=('default','no-native-string','no-segment','no-latin1','no-native-and-segment')
+          rows={}
+          for mode in modes:
+              data=json.loads((root/(mode+'.json')).read_text())
+              assert len(data)==(18 if mode=='default' else 6),(mode,len(data))
+              rows[mode]={(x['params']['sizeKb'],x['params']['seed'],x['params']['implementation']):x for x in data}
+          val=lambda x:x['primaryMetric']['score']
+          alloc=lambda x:x['secondaryMetrics']['gc.alloc.rate.norm']['score']
+          print('## Jackson3 Users Write — UTF8JsonGenerator String / Latin1 C2 inline boundaries')
+          print('Same JDK25 runner, one unchanged JMH jar, 2 forks, 3x350ms warmup, 4x350ms measure. JMH setup verifies identical JSON output.')
+          print('Baseline / candidate >1: candidate faster. C2 XML captured separately, does not perturb timed measurements.')
+          print()
+          print('| KB | seed | baseline µs | no-native-string µs | no-segment µs | no-latin1 µs | no-native-and-segment µs | base / no-native | base / no-segment | base / no-latin1 | base / no-both | alloc Δ no-both B/op | BB / baseline |')
+          print('|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|')
+          for kb in ('1','10','100'):
+              for seed in ('12345','324'):
+                  key=(kb,seed,'compiled')
+                  d={mode:rows[mode][key] for mode in modes}
+                  base=val(d['default'])
+                  values=[val(d[m]) for m in modes]
+                  ratios=[base/val(d[m]) for m in modes[1:]]
+                  bb=val(rows['default'][(kb,seed,'blackbird')])
+                  print(f"| {kb} | {seed} | "+" | ".join(f'{t:.3f}' for t in values)+
+                        " | "+" | ".join(f'{t:.3f}x' for t in ratios)+
+                        f" | {alloc(d['no-native-and-segment'])-alloc(d['default']):+.0f} | {bb/base:.3f}x |")
+          print()
+          print('### HotSpot C2 _writeStringMember and native writeString inline outcomes')
+          print('| mode | member C2 B | UTF8 writeString C2 B | member→writeString | native→segment |')
+          print('|---|---:|---:|---|---|')
+          for mode in modes:
+              tree=ET.parse(root/'xml'/(mode+'.xml'))
+              nm={n.get('compile_id'):n for n in tree.iter('nmethod') if n.get('compiler')=='c2'}
+              def task_for(pattern):
+                  hits=[t for t in tree.iter('task') if pattern in t.get('method','') and t.get('compile_id') in nm]
+                  return hits[-1] if hits else None
+              member=task_for('FabienBindings$Jackson3_Impl _writeStringMember ')
+              native=task_for('UTF8JsonGenerator writeString ')
+              assert member is not None,(mode,'no C2 string member')
+              def inline(target,called):
+                  if target is None:return 'no standalone C2 task'
+                  methods={x.get('id'):x.get('name') for x in target.iter('method')}
+                  vals=[]
+                  for parent in target.iter('parse'):
+                      nodes=list(parent)
+                      for i,node in enumerate(nodes):
+                          if node.tag!='call' or methods.get(node.get('method'))!=called:continue
+                          decision=next((x for x in nodes[i+1:i+6] if x.tag in ('inline_success','inline_fail')),None)
+                          if decision is not None:vals.append(decision.tag+':'+decision.get('reason',''))
+                  return '; '.join(sorted(set(vals))) if vals else 'not recorded'
+              print(f"| {mode} | {nm[member.get('compile_id')].get('size')} | "+
+                    (nm[native.get('compile_id')].get('size') if native is not None else '—')+
+                    f" | {inline(member,'writeString')} | {inline(native,'_writeStringSegment')} |")
+          PY
+
+      - name: Upload raw JMH and JIT diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-native-string-c2-inline-ab
+          path: |
+            results/environment.txt
+            results/jar.sha256
+            results/summary.md
+            results/*.json
+            results/*.log
+            results/xml/*.xml
+          retention-days: 14
+          if-no-files-found: warn
