@@ -15,7 +15,9 @@ import java.io.IOException;
 final class FabienManualUsersWriter {
     private static final Jackson3Binder J_BINDER = new Jackson3Binder();
     private static final Fastjson2Binder F_BINDER = new Fastjson2Binder();
-    private static final NodeConfig DEFAULT_CONFIG = NodeConfig.DEFAULT;
+    // Deliberately non-constant: otherwise C2 can constant-fold the runtime variant
+    // and make it indistinguishable from the compile-time-fixed experiment.
+    private static volatile NodeConfig runtimeConfig = NodeConfig.DEFAULT;
 
     private static final SerializedString J_USERS = new SerializedString("users");
     private static final SerializedString J_ID = new SerializedString("id");
@@ -81,7 +83,7 @@ final class FabienManualUsersWriter {
         try {
             try (Jackson3Generator gen = J_BINDER.createGenerator(output)) {
                 gen.start();
-                jusersRuntime(gen.nativeGenerator(), value, DEFAULT_CONFIG);
+                jusersRuntime(gen.nativeGenerator(), value, runtimeConfig);
                 gen.end();
             }
             return output.toByteArray();
@@ -98,7 +100,7 @@ final class FabienManualUsersWriter {
     static byte[] fastjsonRuntime(Users value) throws IOException {
         try (Fastjson2Generator gen = F_BINDER.createGeneratorUtf8()) {
             gen.start();
-            fusersRuntime(gen.nativeGenerator(), value, DEFAULT_CONFIG);
+            fusersRuntime(gen.nativeGenerator(), value, runtimeConfig);
             gen.end();
             return gen.toBytes();
         }
