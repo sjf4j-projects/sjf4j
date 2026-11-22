@@ -52,7 +52,14 @@ jobs:
           source = p.read_text()
           if old not in source:
               raise RuntimeError('Expected 3.3-only read matcher expression not found')
-          p.write_text(source.replace(old, new))
+          source = source.replace(old, new)
+          # 3.3 deprecates the one-argument overload; the project enforces -Werror.
+          # Suppress this diagnostic only on the unused Read matcher constructor.
+          ctor = '    private Jackson3NameMatcher(PropertyInfo[] properties, String[] names, String[][] aliases) {'
+          if ctor not in source:
+              raise RuntimeError('Expected read matcher constructor not found')
+          source = source.replace(ctor, '    @SuppressWarnings("deprecation")\n' + ctor)
+          p.write_text(source)
           # The 3.3-only native POJO read emitter uses JsonParser.nextNameMatchAndToken(),
           # which does not exist in 3.2.3. Remove only this READ optimization
           # from the common experimental source; Users Write is unaffected.
