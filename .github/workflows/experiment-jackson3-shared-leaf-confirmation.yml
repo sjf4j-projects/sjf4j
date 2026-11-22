@@ -1,0 +1,152 @@
+name: Experiment / Jackson3 shared String leaf independent confirmation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-shared-leaf-confirmation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  confirmation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build candidate first, then original source (reverse prior benchmark order)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/generated
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          for mode in shared-leaf direct; do
+            if [[ "$mode" == direct ]]; then
+              env -u SJF4J_EXPERIMENT_J3_MEMBER_SPLIT ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            else
+              SJF4J_EXPERIMENT_J3_MEMBER_SPLIT=shared-leaf ./gradlew --no-daemon \
+                :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+            fi
+            jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+            test -s "$jar"
+            cp "$jar" "results/$mode-jmh.jar"
+            find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' \
+              -exec cp {} "results/generated/$mode.java" \;
+            test -s "results/generated/$mode.java"
+            sha256sum "results/$mode-jmh.jar" >> results/jars.sha256
+          done
+
+      - name: Require unchanged generated POJO root and member call sites
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('results/generated/direct.java').read_text()
+          b=Path('results/generated/shared-leaf.java').read_text()
+          def method(s,signature):
+              st=s.index(signature);left=s.index('{',st)
+              nesting=0
+              for i in range(left,len(s)):
+                  if s[i]=='{':nesting+=1
+                  elif s[i]=='}':
+                      nesting-=1
+                      if nesting==0:return s[st:i+1]
+              raise AssertionError(signature)
+          for signature in ('public byte[] writeUsers(', 'private void _writeUsers(', 'private void _writeUser(', 'private static void _writeString('):
+              assert method(a,signature)==method(b,signature),signature
+          name='private static void _writeStringMember('
+          assert 'g.writeString(value);' in method(a,name)
+          assert '_writeString(g, value);' in method(b,name)
+          assert 'g.writeString(value);' not in method(b,name)
+          print('PASS: all generated POJO traversal, compiled names, root and output buffer lifecycle unchanged')
+          PY
+
+      - name: Reverse-order paired JMH, three seeds and three forks, GC allocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          args=( -p backend=jackson3 -p model=users -p shape=pojo \
+            -p sizeKb=1,10,100 -p seed=12345,324,43201 \
+            -f 3 -t 1 -wi 4 -i 5 -w 400ms -r 400ms -prof gc -rf json )
+          for mode in shared-leaf direct; do
+            java -jar "results/$mode-jmh.jar" "$bench" "${args[@]}" \
+              -p implementation=compiled \
+              -rff "results/$mode.json" > "results/$mode.log" 2>&1 || {
+                tail -110 "results/$mode.log"; exit 1;
+              }
+          done
+
+      - name: Blackbird and Native control (10KB, 3 seeds) on same original JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          java -jar results/direct-jmh.jar \
+            'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' \
+            -p backend=jackson3 -p model=users -p shape=pojo -p sizeKb=10 \
+            -p seed=12345,324,43201 -p implementation=native,blackbird \
+            -f 2 -t 1 -wi 3 -i 4 -w 350ms -r 350ms -prof gc \
+            -rf json -rff results/controls.json > results/controls.log 2>&1 || {
+              tail -100 results/controls.log; exit 1;
+            }
+
+      - name: Compare paired per-seed and per-fork scores against prior run
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json,statistics
+          from pathlib import Path
+          root=Path('results')
+          def load(name):
+              rows=json.loads((root/(name+'.json')).read_text())
+              return {(r['params']['sizeKb'],r['params']['seed'],r['params']['implementation']):r for r in rows}
+          data={m:load(m) for m in ('direct','shared-leaf')}
+          controls=load('controls')
+          assert len(data['direct'])==9 and len(data['shared-leaf'])==9,(len(data['direct']),len(data['shared-leaf']))
+          assert len(controls)==6,len(controls)
+          score=lambda row:row['primaryMetric']['score']
+          alloc=lambda row:row['secondaryMetrics']['gc.alloc.rate.norm']['score']
+          print('## Jackson3 shared String-leaf actual APT 3-fork confirmation')
+          print('New independent GitHub runner, JDK25, same PR source, REVERSED build/measurement order (candidate first, baseline second).')
+          print('3 seeds including new 43201; 3 forks × 4x400ms warmup + 5x400ms measured; full GC allocation. JSON equivalence verified during each JMH setup.')
+          print('**Direct/Shared >1** = candidate faster. Compare within this run, not absolute times across different hosted CPUs.')
+          print()
+          print('| KB | seed | Direct µs | Shared µs | Direct/Shared | Δ Shared alloc B/op | Direct fork means | Shared fork means | BB/Shared (10KB) |')
+          print('|---:|---:|---:|---:|---:|---:|---|---|---:|')
+          for size in ('1','10','100'):
+              for seed in ('12345','324','43201'):
+                  key=(size,seed,'compiled')
+                  a=data['direct'][key];b=data['shared-leaf'][key]
+                  fmt=lambda x:', '.join(f'{statistics.mean(f):.3f}' for f in x['primaryMetric'].get('rawData',[]) if f)
+                  bb=score(controls[('10',seed,'blackbird')])/score(b) if size=='10' else None
+                  print(f"| {size} | {seed} | {score(a):.3f} | {score(b):.3f} | {score(a)/score(b):.3f}x | {alloc(b)-alloc(a):+.0f} | {fmt(a)} | {fmt(b)} | {f'{bb:.3f}x' if bb is not None else '—'} |")
+          print()
+          print('### Confirmation decision')
+          vals=[score(data['direct'][('10',seed,'compiled')])/score(data['shared-leaf'][('10',seed,'compiled')]) for seed in ('12345','324','43201')]
+          print('10KB speedup ratios:',', '.join(f'{x:.4f}x' for x in vals))
+          print('10KB candidate shows speedup across all 3 seeds:',all(v>1.02 for v in vals))
+          print('Regressions (ratio below 0.97) in 1/100KB:',[(s,seed) for s in ('1','100') for seed in ('12345','324','43201') if score(data['direct'][(s,seed,'compiled')])/score(data['shared-leaf'][(s,seed,'compiled')])<0.97])
+          PY
+
+      - name: Upload original JMH JSON, exact generated sources and CPU details
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-shared-leaf-independent-confirmation
+          path: |
+            results/environment.txt
+            results/jars.sha256
+            results/summary.md
+            results/generated/
+            results/*.json
+            results/*.log
+          retention-days: 14
+          if-no-files-found: warn
