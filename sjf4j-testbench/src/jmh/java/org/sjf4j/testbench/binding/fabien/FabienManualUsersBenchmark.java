@@ -30,6 +30,9 @@ public class FabienManualUsersBenchmark {
     @Param({"12345", "324"})
     public long seed;
 
+    @Param({"none", "half", "all"})
+    public String nullDensity;
+
     private Users users;
     private FabienBindings.Writer writer;
 
@@ -38,6 +41,7 @@ public class FabienManualUsersBenchmark {
         FabienFixtures.Fixture fixture =
                 FabienFixtures.create(backend, "users", "pojo", sizeKb, seed);
         users = (Users) fixture.value;
+        introduceNullFields();
 
         if ("manual-static-config".equals(implementation)) {
             writer = node -> FabienManualUsersWriter.fastjsonStaticConfig((Users) node);
@@ -69,6 +73,42 @@ public class FabienManualUsersBenchmark {
 
         FabienFixtures.verifyOutput(backend + "/" + implementation,
                 fixture, writer.write(users));
+    }
+
+    // Deliberately mutate only the JMH setup fixture, never production model
+    // code. Every implementation uses this same object, verified on setup.
+    private void introduceNullFields() {
+        if ("none".equals(nullDensity)) return;
+        boolean all = "all".equals(nullDensity);
+        for (Users.User user : users.getUsers()) {
+            if (all || shouldNull(0)) user.setId(null);
+            if (all || shouldNull(1)) user.setGuid(null);
+            if (all || shouldNull(2)) user.setBalance(null);
+            if (all || shouldNull(3)) user.setPicture(null);
+            if (all || shouldNull(4)) user.setEyeColor(null);
+            if (all || shouldNull(5)) user.setName(null);
+            if (all || shouldNull(6)) user.setGender(null);
+            if (all || shouldNull(7)) user.setCompany(null);
+            if (all || shouldNull(8)) user.setEmail(null);
+            if (all || shouldNull(9)) user.setPhone(null);
+            if (all || shouldNull(10)) user.setAddress(null);
+            if (all || shouldNull(11)) user.setAbout(null);
+            if (all || shouldNull(12)) user.setRegistered(null);
+            if (all || shouldNull(13)) user.setGreeting(null);
+            if (all || shouldNull(14)) user.setFavoriteFruit(null);
+            if (all) {
+                user.setTags(null);
+                user.setFriends(null);
+            } else if (user.getFriends() != null) {
+                for (Users.Friend friend : user.getFriends()) {
+                    friend.setId(null);
+                }
+            }
+        }
+    }
+
+    private boolean shouldNull(int fieldIndex) {
+        return "half".equals(nullDensity) && (fieldIndex & 1) == 0;
     }
 
     @Benchmark
