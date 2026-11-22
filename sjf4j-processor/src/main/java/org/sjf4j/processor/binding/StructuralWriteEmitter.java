@@ -159,8 +159,8 @@ final class StructuralWriteEmitter {
 
     private void emitList(JavaWriter out, BindingValue value, String expression) {
         ops.startArray(out);
-        out.beginBlock("if (value instanceof java.util.RandomAccess)");
-        out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
+        out.beginBlock("if (" + expression + " instanceof java.util.RandomAccess)");
+        out.beginBlock("for (int i = 0, n = " + expression + ".size(); i < n; i++)");
         if (ops.explicitArraySeparators()) ops.beforeArrayElement(out, "i");
         if (value.elementValue().helperRequired()) {
             out.line(value.elementValue().type() + " element = " + expression + ".get(i);");
