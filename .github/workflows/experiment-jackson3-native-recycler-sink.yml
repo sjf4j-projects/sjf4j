@@ -1,0 +1,135 @@
+name: Experiment / Jackson3 native Recycler ByteArrayBuilder Users Write
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-native-recycler-sink.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/WriteEmitter.java'
+      - 'sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/Jackson3Binder.java'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: Jackson3 Users native recycler output A/B
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build baseline APT JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/source-baseline results/source-recycler
+          { lscpu; java -version 2>&1; git rev-parse HEAD; } > results/environment.txt
+          env -u SJF4J_EXPERIMENT_JACKSON3_RECYCLER ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          cp "$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)" results/baseline-jmh.jar
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' -exec cp {} results/source-baseline/jackson3.java \;
+          test -s results/source-baseline/jackson3.java
+          sha256sum results/baseline-jmh.jar >> results/jars.sha256
+
+      - name: Build native-recycler APT JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          SJF4J_EXPERIMENT_JACKSON3_RECYCLER=true ./gradlew --no-daemon \
+            :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+          cp "$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)" results/recycler-jmh.jar
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' -exec cp {} results/source-recycler/jackson3.java \;
+          test -s results/source-recycler/jackson3.java
+          sha256sum results/recycler-jmh.jar >> results/jars.sha256
+
+      - name: Verify only Users output lifecycle changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('results/source-baseline/jackson3.java').read_text()
+          b=Path('results/source-recycler/jackson3.java').read_text()
+          assert a != b, 'Experiment did not alter generated code'
+          assert 'PooledByteArrayOutputStream output' in a
+          assert 'this.binder.acquireOutputRecyclerForBenchmark()' not in a
+          assert 'this.binder.acquireOutputRecyclerForBenchmark()' in b
+          assert 'new ByteArrayBuilder(recycler)' in b
+          assert '.getClearAndRelease()' in b
+          assert 'recycler.releaseToPool()' in b
+          start='private static void _writeString('
+          assert start in a and start in b
+          assert a[a.index(start):]==b[b.index(start):], 'Generated String/POJO helpers changed'
+          begin='public byte[] writeUsers('
+          def body(source):
+              st=source.index('generator.start();', source.index(begin))
+              en=source.index('generator.end();',st)+len('generator.end();')
+              return source[st:en]
+          assert body(a)==body(b), 'Compiled Users write traversal changed'
+          print('PASS: identical Users write traversal and helpers; different output-buffer lifecycle only')
+          PY
+
+      - name: Benchmark Users POJO Write on the same runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          benchmark='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          common=( -p backend=jackson3 -p model=users -p shape=pojo \
+            -p sizeKb=1,10,100 -p seed=12345,324 \
+            -t 1 -f 2 -wi 3 -i 4 -w 350ms -r 350ms -prof gc -rf json )
+          java -jar results/baseline-jmh.jar "$benchmark" "${common[@]}" \
+            -p implementation=native,blackbird,compiled \
+            -rff results/baseline.json > results/baseline.log 2>&1
+          java -jar results/recycler-jmh.jar "$benchmark" "${common[@]}" \
+            -p implementation=compiled \
+            -rff results/recycler.json > results/recycler.log 2>&1
+
+      - name: Report paired JMH and memory results
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          base=json.loads(Path('results/baseline.json').read_text())
+          cand=json.loads(Path('results/recycler.json').read_text())
+          assert len(base)==18 and len(cand)==6, (len(base),len(cand))
+          def index(rows):
+              return {(r['params']['sizeKb'],r['params']['seed'],r['params']['implementation']):r for r in rows}
+          b=index(base); c=index(cand)
+          def value(row):return row['primaryMetric']['score']
+          def alloc(row):return row['secondaryMetrics']['gc.alloc.rate.norm']['score']
+          print('## Jackson3 Users Write — exact factory BufferRecycler + ByteArrayBuilder vs SJF4J pooled sink')
+          print()
+          print('JDK25, same runner, both candidates built from the identical PR source, APT mode switched only for Users bytes output.')
+          print('2 forks, 3 x 350ms warmup, 4 x 350ms measurement, GC allocation profiler; JMH setup verifies JSON output for all implementations.')
+          print('**Baseline / Recycler** > 1 means native recycler faster. **BB / Recycler** > 1 means candidate faster than Blackbird.')
+          print()
+          print('| KB | Seed | Native µs | Blackbird µs | Baseline compiled µs | Recycler compiled µs | Baseline / Recycler | BB / Recycler | Alloc delta B/op |')
+          print('|---:|---:|---:|---:|---:|---:|---:|---:|')
+          for size in ('1','10','100'):
+              for seed in ('12345','324'):
+                  native=b[(size,seed,'native')]
+                  bb=b[(size,seed,'blackbird')]
+                  old=b[(size,seed,'compiled')]
+                  new=c[(size,seed,'compiled')]
+                  print(f"| {size} | {seed} | {value(native):.3f} | {value(bb):.3f} | {value(old):.3f} | {value(new):.3f} | {value(old)/value(new):.3f}x | {value(bb)/value(new):.3f}x | {alloc(new)-alloc(old):+.0f} |")
+          PY
+
+      - name: Upload source diff, detailed JMH JSON and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-native-recycler-users-sink
+          path: |
+            results/environment.txt
+            results/jars.sha256
+            results/summary.md
+            results/source-*/
+            results/*.json
+            results/*.log
+          retention-days: 14
+          if-no-files-found: warn
