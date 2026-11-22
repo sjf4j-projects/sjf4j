@@ -1,13 +1,16 @@
 package org.sjf4j.testbench.binding.fabien;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.openjdk.jmh.annotations.*;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.NodeConfig;
 import org.sjf4j.testbench.model.fabien.Users;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -25,9 +28,6 @@ import java.util.concurrent.TimeUnit;
 public class FabienFixedConfigUsersBenchmark {
 
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final ObjectMapper NON_NULL_JSON = new ObjectMapper()
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
-
     @Param({"jackson3", "fastjson2"})
     public String backend;
 
@@ -80,11 +80,29 @@ public class FabienFixedConfigUsersBenchmark {
         }
 
         byte[] output = writer.write(users);
-        JsonNode expected = ("omit".equals(nullPolicy) ? NON_NULL_JSON : JSON).valueToTree(users);
+        JsonNode expected = JSON.valueToTree(users);
+        if ("omit".equals(nullPolicy)) stripNullObjectMembers(expected);
         JsonNode actual = JSON.readTree(output);
         FabienFixtures.verify(
                 backend + "/" + implementation + "/" + nullPolicy + "/" + nullDensity,
                 expected, actual);
+    }
+
+    /** Remove only object properties with null values; retain null array elements. */
+    private static void stripNullObjectMembers(JsonNode node) {
+        if (node.isObject()) {
+            ArrayList<String> nullNames = new ArrayList<>();
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                if (field.getValue().isNull()) nullNames.add(field.getKey());
+                else stripNullObjectMembers(field.getValue());
+            }
+            ObjectNode object = (ObjectNode) node;
+            for (String name : nullNames) object.remove(name);
+        } else if (node.isArray()) {
+            for (JsonNode element : node) stripNullObjectMembers(element);
+        }
     }
 
     private void introduceNulls() {
