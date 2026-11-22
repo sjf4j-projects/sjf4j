@@ -156,11 +156,17 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     public boolean supportsStringMember() { return true; }
 
     @Override
+    public boolean supportsFixedUsersPolicy() { return !jackson2(); }
+
+    @Override
     public void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                   String expression) {
+        String mode = !jackson2() ? StructuralWriteEmitter.fixedUsersMode(owner) : null;
+        String nullFlag = mode == null ? "this.config.includeNulls"
+                : ("include".equals(mode) ? "true" : "false");
         out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
                 + ".serializedName, " + expression
-                + (jackson2() ? "" : ", this.config.includeNulls") + ");");
+                + (jackson2() ? "" : ", " + nullFlag) + ");");
     }
 
     @Override
