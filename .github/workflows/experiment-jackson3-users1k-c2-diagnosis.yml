@@ -76,6 +76,26 @@ jobs:
             test -s "$xml" || { echo "Missing C2 XML: $xml"; exit 1; }
           done
 
+      - name: Capture C2-only LogCompilation for direct comparison
+        shell: bash
+        run: |
+          set -euo pipefail
+          bench='org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write'
+          for impl in blackbird compiled; do
+            xml="$PWD/results/xml/$impl-c2.xml"
+            flags="-XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+LogCompilation -XX:LogFile=$xml"
+            java -jar results/benchmark.jar "$bench" \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              -p sizeKb=1 -p seed=12345 -p implementation="$impl" \
+              -f 1 -t 1 -wi 5 -i 2 -w 450ms -r 450ms \
+              -jvmArgsAppend "$flags" \
+              -rf json -rff "results/$impl-c2-diagnostic.json" \
+              > "results/$impl-c2-diagnostic.log" 2>&1 || {
+                tail -110 "results/$impl-c2-diagnostic.log"; exit 1;
+              }
+            test -s "$xml" || { echo "Missing C2-only XML: $xml"; exit 1; }
+          done
+
       - name: Summarize ratios, allocation, C2 inline evidence
         shell: bash
         run: |
@@ -139,6 +159,49 @@ jobs:
                       for name,status,reason in decisions[:60]:
                           print(f"- {name}: {status} {reason}")
                   else:print("No standalone C2 _writeUser task found; it may have been compiled as part of another root.")
+          print()
+          print("### Tiered-vs-C2-only nmethod comparison")
+          for impl in ("compiled","blackbird"):
+              snapshots={}
+              for tier,filename in (("tiered",impl+".xml"),("c2-only",impl+"-c2.xml")):
+                  tree=ET.parse(root/"xml"/filename)
+                  nm={n.get("compile_id"):n.get("size") for n in tree.iter("nmethod")}
+                  candidates=[]
+                  for task in tree.iter("task"):
+                      method=task.get("method","")
+                      if impl=="compiled":
+                          hit=("FabienBindings$Jackson3_Impl _writeUser " in method or
+                               "FabienBindings$Jackson3_Impl writeUsers " in method or
+                               "FabienBindings$Jackson3_Impl _writeStringMember " in method)
+                      else:
+                          hit=("ObjectMapper writeValueAsBytes " in method or
+                               "ObjectMapper _configAndWriteValue " in method)
+                      if hit and task.get("compile_id") in nm:
+                          names={node.get("id"):node.get("name") for node in task.iter("method")}
+                          inline=[]
+                          for parent in task.iter("parse"):
+                              children=list(parent)
+                              for i,node in enumerate(children):
+                                  if node.tag!="call":continue
+                                  sub=names.get(node.get("method"),"")
+                                  if not any(t in sub for t in ("_writeStringMember","writeString","_writeUser","_writeUsers","writeName","getId")):continue
+                                  decision=next((x for x in children[i+1:i+5] if x.tag in ("inline_success","inline_fail")),None)
+                                  inline.append((sub,decision.tag if decision is not None else "unknown",
+                                                 decision.get("reason","") if decision is not None else ""))
+                          candidates.append((method,int(nm[task.get("compile_id")]),inline))
+                  snapshots[tier]=candidates
+              print(f"**{impl}**")
+              for tier,methods in snapshots.items():
+                  print(f"- {tier}:")
+                  for method,size,inline in methods[-8:]:
+                      success=sum(v=="inline_success" for _,v,_ in inline)
+                      failed=sum(v=="inline_fail" for _,v,_ in inline)
+                      print(f"  - {method.split(' (')[0].split('.')[-1]}: {size} bytes, {success} relevant inlines / {failed} inline failures")
+                      failures={}
+                      for name,status,reason in inline:
+                          if status=="inline_fail":failures[(name,reason)]=failures.get((name,reason),0)+1
+                      for (name,reason),count in sorted(failures.items(),key=lambda x:-x[1])[:7]:
+                          print(f"    - {count}x {name}: {reason}")
           PY
 
       - name: Upload measurement, diagnostic XML and generated build identity
