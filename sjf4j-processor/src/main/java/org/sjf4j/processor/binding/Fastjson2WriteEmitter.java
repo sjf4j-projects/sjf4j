@@ -129,7 +129,7 @@ final class Fastjson2WriteEmitter {
             out.endBlock(" else {");
             out.indent();
             out.line(fastjsonHelperName(value, mode) + "("
-                    + generator + ", " + source + ");");
+                    + generator + ", " + nativeGenerator + ", " + source + ");");
             out.endBlock();
         } else {
             emitNativeValue(out, value, source, mode, nativeGenerator, generator, names.newName("item"));
@@ -229,7 +229,7 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
             if (value.helperRequired()) {
-                out.line(fastjsonHelperName(value, mode) + "(generator, " + expression + ");");
+                out.line(fastjsonHelperName(value, mode) + "(generator, nativeGenerator, " + expression + ");");
                 return;
             }
             switch (value.kind()) {
@@ -287,8 +287,8 @@ final class Fastjson2WriteEmitter {
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
         out.beginBlock("private void " + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator generator, "
+                + "com.alibaba.fastjson2.JSONWriter nativeGenerator, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter nativeGenerator = generator.nativeGenerator();");
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
@@ -363,7 +363,7 @@ final class Fastjson2WriteEmitter {
             out.line(nativeGenerator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(fastjsonHelperName(value, mode) + "(" + generator + ", " + expression + ");");
+            out.line(fastjsonHelperName(value, mode) + "(" + generator + ", " + nativeGenerator + ", " + expression + ");");
             out.endBlock();
             return;
         }
