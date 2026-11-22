@@ -435,7 +435,7 @@ final class WriteEmitter {
                 out.beginBlock("try");
                 out.line("return java.lang.invoke.MethodHandles.publicLookup().findVirtual("
                         + "tools.jackson.core.JsonGenerator.class, " 
-                        + "\"writeString\", java.lang.invoke.MethodType.methodType(void.class, String.class));");
+                        + "\"writeString\", java.lang.invoke.MethodType.methodType(tools.jackson.core.JsonGenerator.class, String.class));");
                 out.endBlock(" catch (ReflectiveOperationException failure) {");
                 out.indent();
                 out.line("throw new ExceptionInInitializerError(failure);");
@@ -444,7 +444,8 @@ final class WriteEmitter {
                 out.beginBlock("private static void __sjf4jJ3WriteString(" +
                         "tools.jackson.core.JsonGenerator g, String value) throws java.io.IOException");
                 out.beginBlock("try");
-                out.line("__sjf4jJ3StringHandle.invokeExact(g, value);");
+                out.line("tools.jackson.core.JsonGenerator ignored = (tools.jackson.core.JsonGenerator) "
+                        + "__sjf4jJ3StringHandle.invokeExact(g, value);");
                 out.endBlock(" catch (Throwable failure) {");
                 out.indent();
                 out.line("if (failure instanceof java.io.IOException) throw (java.io.IOException) failure;");
