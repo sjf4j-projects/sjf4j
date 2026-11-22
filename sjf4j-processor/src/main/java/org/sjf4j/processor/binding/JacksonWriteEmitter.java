@@ -66,11 +66,15 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String generator, NameAllocator names) {
         if (value.helperRequired()) {
+            if (!jackson2()) {
+                out.line(generatorType() + " g = " + generator + ".nativeGenerator();");
+            }
             out.beginBlock("if (" + expression + " == null)");
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(value.helperName() + "(" + generator
+                    + (jackson2() ? ", " : ", g, ") + expression + ");");
             out.endBlock();
             return;
         }
@@ -85,9 +89,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      */
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
-                + backend.generatorType() + " generator, " + value.type()
-                + " value) throws java.io.IOException");
-        out.line(generatorType() + " g = generator.nativeGenerator();");
+                + backend.generatorType() + " generator, "
+                + (jackson2() ? "" : generatorType() + " g, ")
+                + value.type() + " value) throws java.io.IOException");
+        if (jackson2()) {
+            out.line(generatorType() + " g = generator.nativeGenerator();");
+        }
 
         if (value.kind() == BindingValue.Kind.ONE_OF) {
             structures.emitOneOf(out, value);
@@ -182,7 +189,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(generator, " + expression + ");");
+            out.line(value.helperName() + "(generator, "
+                    + (jackson2() ? "" : "g, ") + expression + ");");
             return;
         }
         switch (value.kind()) {
@@ -232,7 +240,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(child.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(child.helperName() + "(" + generator + ", "
+                    + (jackson2() ? "" : nativeGenerator + ", ") + expression + ");");
             out.endBlock();
             return;
         }
