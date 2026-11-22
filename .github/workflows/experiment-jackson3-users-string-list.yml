@@ -1,0 +1,81 @@
+name: Experiment / Jackson3 Users List String Write
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users-string-list.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/IncrementalUsersStringListWriteBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  list-string:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build JMH and compiled List String writer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/generated
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          echo "$jar" > results/jar-path.txt
+          find sjf4j-testbench/build/generated -name '*IncrementalUsersStringListWriteBenchmark*Compiled_Impl.java' -exec cp {} results/generated/ \;
+          find results/generated -name '*.java' | grep -q .
+      - name: Measure bare List String and tags-only POJO
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar=$(cat results/jar-path.txt)
+          java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.IncrementalUsersStringListWriteBenchmark.write' \
+            -p shape=root,property -p count=1,10,100,1000 \
+            -p implementation=native,blackbird,compiled -p seed=12345,324 \
+            -f 3 -t 1 -wi 3 -i 4 -w 400ms -r 400ms -prof gc -rf json \
+            -rff results/list-string.json > results/list-string.log 2>&1 || {
+              tail -120 results/list-string.log; exit 1;
+            }
+      - name: Report relative performance
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## Jackson3 Users List<String> Write'
+            echo 'Root List<String> vs one-field tags POJO, Users fixture strings, same byte[] semantics.'
+            echo
+            if [[ -f results/list-string.json ]]; then
+              python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows=json.loads(Path('results/list-string.json').read_text())
+          print('| Shape | Elements | Seed | Native / Compiled | Blackbird / Compiled | Compiled B/op | Blackbird B/op |')
+          print('| --- | ---: | ---: | ---: | ---: | ---: | ---: |')
+          for shape in ('root','property'):
+              for count in ('1','10','100','1000'):
+                  for seed in ('12345','324'):
+                      m={r['params']['implementation']:r for r in rows
+                         if r['params']['shape']==shape and r['params']['count']==count and r['params']['seed']==seed}
+                      if len(m)!=3: raise SystemExit(f'Missing {shape}/{count}/{seed}: {m}')
+                      s={k:v['primaryMetric']['score'] for k,v in m.items()}
+                      alloc={k:v['secondaryMetrics']['gc.alloc.rate.norm']['score'] for k,v in m.items()}
+                      print(f"| {shape} | {count} | {seed} | {s['native']/s['compiled']:.3f}x | {s['blackbird']/s['compiled']:.3f}x | {alloc['compiled']:.0f} | {alloc['blackbird']:.0f} |")
+          PY
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload raw JMH and APT sources
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-list-string-${{ github.run_id }}
+          path: results/
+          retention-days: 14
+          if-no-files-found: warn
