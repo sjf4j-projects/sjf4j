@@ -41,6 +41,21 @@ jobs:
               }
           }
           GROOVY
+      - name: Make read-only name-matcher constructor compatible with both Jackson versions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('sjf4j-backend-jackson3/src/main/java/org/sjf4j/backend/jackson3/binding/Jackson3NameMatcher.java')
+          old = 'BinaryNameMatcher.construct(Arrays.asList(propertyNames), false)'
+          new = 'BinaryNameMatcher.construct(Arrays.asList(propertyNames))'
+          source = p.read_text()
+          if old not in source:
+              raise RuntimeError('Expected 3.3-only read matcher expression not found')
+          p.write_text(source.replace(old, new))
+          PY
+          # This read-only compatibility change is identical for both runs,
+          # and has no effect on the measured Users Write path.
       - name: Run both versions sequentially with identical source and JMH settings
         shell: bash
         run: |
