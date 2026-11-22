@@ -1,0 +1,192 @@
+name: Experiment / APT-fixed Users null policy vs current Compiled
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-apt-fixed-users-null-policy.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/StructuralWriteEmitter.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/JacksonWriteEmitter.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/Fastjson2WriteEmitter.java'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/FabienFixedConfigUsersBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: APT / original dynamic vs fixed-include and fixed-omit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Environment
+        shell: bash
+        run: |
+          mkdir -p results
+          { lscpu; java -version 2>&1; git rev-parse HEAD; } > results/environment.txt
+      - name: Build original dynamic APT JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          env -u SJF4J_EXPERIMENT_FIXED_USERS_NULLS ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          mkdir -p results/generated-dynamic
+          cp "$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)" results/dynamic-jmh.jar
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' -exec cp {} results/generated-dynamic/jackson3.java \;
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Fastjson2_Impl.java' -exec cp {} results/generated-dynamic/fastjson2.java \;
+          test -s results/generated-dynamic/jackson3.java
+          test -s results/generated-dynamic/fastjson2.java
+          sha256sum results/dynamic-jmh.jar >> results/jars.sha256
+      - name: Measure baseline Users Compiled and native/Blackbird controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          for backend in jackson3 fastjson2; do
+            common=( 'org.sjf4j.testbench.binding.fabien.FabienFixedConfigUsersBenchmark.write'
+              -p backend="$backend" -p sizeKb=1,10,100 -p seed=12345,324
+              -t 1 -f 2 -wi 3 -i 4 -w 350ms -r 350ms -prof gc -rf json )
+            java -jar results/dynamic-jmh.jar "${common[@]}" -p implementation=compiled -p nullPolicy=include \
+              -p nullDensity=none,half,all -rff "results/$backend-dynamic-include.json" \
+              > "results/$backend-dynamic-include.log" 2>&1
+            java -jar results/dynamic-jmh.jar "${common[@]}" -p implementation=compiled -p nullPolicy=omit \
+              -p nullDensity=none,half,all -rff "results/$backend-dynamic-omit.json" \
+              > "results/$backend-dynamic-omit.log" 2>&1
+            native=blackbird
+            if [[ "$backend" == fastjson2 ]]; then native=native; fi
+            java -jar results/dynamic-jmh.jar "${common[@]}" -p implementation="$native" -p nullPolicy=include \
+              -p nullDensity=none -rff "results/$backend-native.json" \
+              > "results/$backend-native.log" 2>&1
+          done
+      - name: Build fixed-include APT JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          SJF4J_EXPERIMENT_FIXED_USERS_NULLS=include ./gradlew --no-daemon \
+            :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+          cp "$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)" results/fixed-include-jmh.jar
+          mkdir -p results/generated-fixed-include
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' -exec cp {} results/generated-fixed-include/jackson3.java \;
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Fastjson2_Impl.java' -exec cp {} results/generated-fixed-include/fastjson2.java \;
+          test -s results/generated-fixed-include/jackson3.java
+          test -s results/generated-fixed-include/fastjson2.java
+          sha256sum results/fixed-include-jmh.jar >> results/jars.sha256
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for backend in ('jackson3', 'fastjson2'):
+              baseline=Path(f'results/generated-dynamic/{backend}.java').read_text()
+              candidate=Path(f'results/generated-fixed-include/{backend}.java').read_text()
+              assert baseline != candidate, f'No generated code change: {backend}'
+              # The generated class also contains unrelated read/other-model methods.
+              # Check User POJO method bodies specifically, not whole-file config refs.
+              def user_helpers(source):
+                  starts=list(re.finditer(r'private void (_write\\w+)\\([^\\n]*\\bUsers\\.(?:User|Friend) value\\)',source))
+                  bodies=[]
+                  for m in starts:
+                      start=source.find('{',m.end())
+                      depth=0
+                      for i in range(start,len(source)):
+                          if source[i]=='{': depth+=1
+                          if source[i]=='}':
+                              depth-=1
+                              if depth==0:
+                                  bodies.append(source[start:i+1]);break
+                  return bodies
+              before=user_helpers(baseline); after=user_helpers(candidate)
+              assert before and len(before)==len(after),(backend,len(before),len(after))
+              assert any('this.config.includeNulls' in x for x in before),backend
+              assert all('this.config.includeNulls' not in x for x in after),backend
+              print(backend, 'Users write helpers', len(after), 'contain zero runtime null-policy reads')
+          PY
+      - name: Measure fixed-include Users Compiled
+        shell: bash
+        run: |
+          set -euo pipefail
+          for backend in jackson3 fastjson2; do
+            java -jar results/fixed-include-jmh.jar \
+              'org.sjf4j.testbench.binding.fabien.FabienFixedConfigUsersBenchmark.write' \
+              -p backend="$backend" -p implementation=compiled -p nullPolicy=include \
+              -p sizeKb=1,10,100 -p seed=12345,324 -p nullDensity=none,half,all \
+              -t 1 -f 2 -wi 3 -i 4 -w 350ms -r 350ms -prof gc -rf json \
+              -rff "results/$backend-fixed-include.json" > "results/$backend-fixed-include.log" 2>&1
+          done
+      - name: Build fixed-omit APT JMH jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          SJF4J_EXPERIMENT_FIXED_USERS_NULLS=omit ./gradlew --no-daemon \
+            :sjf4j-testbench:clean :sjf4j-testbench:jmhJar
+          cp "$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)" results/fixed-omit-jmh.jar
+          mkdir -p results/generated-fixed-omit
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Jackson3_Impl.java' -exec cp {} results/generated-fixed-omit/jackson3.java \;
+          find sjf4j-testbench/build/generated -name 'FabienBindings$Fastjson2_Impl.java' -exec cp {} results/generated-fixed-omit/fastjson2.java \;
+          sha256sum results/fixed-omit-jmh.jar >> results/jars.sha256
+      - name: Validate fixed-omit Users behavior across null distributions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for backend in jackson3 fastjson2; do
+            java -jar results/fixed-omit-jmh.jar \
+              'org.sjf4j.testbench.binding.fabien.FabienFixedConfigUsersBenchmark.write' \
+              -p backend="$backend" -p implementation=compiled -p nullPolicy=omit \
+              -p sizeKb=1,10,100 -p seed=12345,324 -p nullDensity=none,half,all \
+              -t 1 -f 1 -wi 1 -i 1 -w 100ms -r 100ms -rf json \
+              -rff "results/$backend-fixed-omit-smoke.json" > "results/$backend-fixed-omit-smoke.log" 2>&1
+          done
+      - name: Compare paired results
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          print('## Actual APT Users POJO Write: dynamic vs compile-time include')
+          print('JDK25 same runner, 2 forks, 3x350ms warmup + 4x350ms measured, seeds 12345/324.')
+          print('All JMH fixtures checked JSON object-member presence and absence against Jackson reference; fixed-omit also smoke-tested at all sizes/null densities.')
+          print('Ratios dynamic/fixed >1 indicate fixed is faster. Native/Compiled baseline controls for none null only.')
+          print('| Backend | KB | Nulls | Seed | Dynamic µs/op | Fixed µs/op | Dynamic/Fixed | Alloc delta B/op | Native or BB / Dynamic |')
+          print('|---|---:|---|---:|---:|---:|---:|---:|---:|')
+          def load(path):
+              result={}
+              for row in json.loads(Path(path).read_text()):
+                  p=row['params']
+                  key=(p['sizeKb'],p['nullDensity'],p['seed'])
+                  result[key]=row
+              return result
+          for backend in ('jackson3','fastjson2'):
+              dynamic=load(f'results/{backend}-dynamic-include.json')
+              fixed=load(f'results/{backend}-fixed-include.json')
+              native=load(f'results/{backend}-native.json')
+              omit=load(f'results/{backend}-dynamic-omit.json')
+              smoke=load(f'results/{backend}-fixed-omit-smoke.json')
+              assert len(dynamic)==len(fixed)==len(omit)==len(smoke)==18,(backend,len(dynamic),len(fixed),len(omit),len(smoke))
+              assert len(native)==6,(backend,len(native))
+              def score(row):return row['primaryMetric']['score']
+              def alloc(row):return row['secondaryMetrics']['gc.alloc.rate.norm']['score']
+              for kb in ('1','10','100'):
+                  for nulls in ('none','half','all'):
+                      for seed in ('12345','324'):
+                          key=(kb,nulls,seed)
+                          a,b=dynamic[key],fixed[key]
+                          control = f"{score(native[(kb,'none',seed)])/score(dynamic[(kb,'none',seed)]):.3f}x" if nulls=='none' else '—'
+                          print(f"| {backend} | {kb} | {nulls} | {seed} | {score(a):.3f} | {score(b):.3f} | {score(a)/score(b):.3f}x | {alloc(b)-alloc(a):+.0f} | {control} |")
+          PY
+      - name: Upload sources, JMH data and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-users-fixed-policy-diagnostic
+          path: |
+            results/environment.txt
+            results/jars.sha256
+            results/summary.md
+            results/generated-*/
+            results/*.json
+            results/*.log
+          retention-days: 14
+          if-no-files-found: warn
