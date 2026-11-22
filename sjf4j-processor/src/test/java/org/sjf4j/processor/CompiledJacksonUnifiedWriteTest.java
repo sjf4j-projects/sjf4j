@@ -63,7 +63,12 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("instanceof RandomAccess"), backend);
             assertTrue(generated.contains("generator.nativeGenerator()"), backend);
             assertTrue(generated.contains("private void _write"), backend);
-            assertTrue(generated.contains("_writeString(g,"), backend);
+            if ("JACKSON3".equals(backend)) {
+                assertTrue(generated.contains("g.writeString(value.get(i));")
+                        || generated.contains("g.writeString(element);"), backend);
+            } else {
+                assertTrue(generated.contains("_writeString(g,"), backend);
+            }
             if ("JACKSON3".equals(backend)) {
                 assertTrue(generated.contains("private static void _writeStringMember("), backend);
                 assertTrue(generated.contains("boolean includeNulls)"), backend);
