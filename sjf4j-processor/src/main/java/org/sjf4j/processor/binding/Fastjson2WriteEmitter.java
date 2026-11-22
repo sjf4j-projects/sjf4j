@@ -129,10 +129,11 @@ final class Fastjson2WriteEmitter {
             out.endBlock(" else {");
             out.indent();
             out.line(fastjsonHelperName(value, mode) + "("
-                    + generator + ", " + source + ");");
+                    + generator + ", " + source + ", this.config.includeNulls);");
             out.endBlock();
         } else {
-            emitNativeValue(out, value, source, mode, nativeGenerator, generator, names.newName("item"));
+            emitNativeValue(out, value, source, mode, nativeGenerator, generator,
+                    names.newName("item"), "this.config.includeNulls");
         }
 
         switch (output) {
@@ -196,6 +197,9 @@ final class Fastjson2WriteEmitter {
         // writeNameRaw/writeNameXRaw and writeName(String) insert object-member
         // separators themselves. Adding writeComma() here would corrupt JSON.
         @Override
+        public String nullPolicyExpression() { return "includeNulls"; }
+
+        @Override
         public void writePropertyName(JavaWriter out, BindingValue owner, int index) {
             BindingProperty property = owner.properties().get(index);
             String field = WriteEmitter.compiledNameField(owner, index);
@@ -229,7 +233,8 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
             if (value.helperRequired()) {
-                out.line(fastjsonHelperName(value, mode) + "(generator, " + expression + ");");
+                out.line(fastjsonHelperName(value, mode)
+                        + "(generator, " + expression + ", includeNulls);");
                 return;
             }
             switch (value.kind()) {
@@ -287,7 +292,7 @@ final class Fastjson2WriteEmitter {
     private void emitNativeHelper(JavaWriter out, BindingValue value, FastjsonMode mode) {
         out.beginBlock("private void " + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator generator, "
-                + value.type() + " value) throws java.io.IOException");
+                + value.type() + " value, boolean includeNulls) throws java.io.IOException");
         out.line("com.alibaba.fastjson2.JSONWriter nativeGenerator = generator.nativeGenerator();");
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
@@ -353,17 +358,20 @@ final class Fastjson2WriteEmitter {
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
             String expression, FastjsonMode mode) {
-        emitNativeValue(out, value, expression, mode, "nativeGenerator", "generator", "item");
+        emitNativeValue(out, value, expression, mode,
+                "nativeGenerator", "generator", "item", "includeNulls");
     }
 
     private void emitNativeValue(JavaWriter out, BindingValue value,
-            String expression, FastjsonMode mode, String nativeGenerator, String generator, String item) {
+            String expression, FastjsonMode mode, String nativeGenerator, String generator,
+            String item, String nullPolicyExpr) {
         if (value.helperRequired()) {
             out.beginBlock("if (" + expression + " == null)");
             out.line(nativeGenerator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(fastjsonHelperName(value, mode) + "(" + generator + ", " + expression + ");");
+            out.line(fastjsonHelperName(value, mode) + "(" + generator
+                    + ", " + expression + ", " + nullPolicyExpr + ");");
             out.endBlock();
             return;
         }
