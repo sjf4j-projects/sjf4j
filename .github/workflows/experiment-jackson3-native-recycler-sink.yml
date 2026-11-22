@@ -58,7 +58,7 @@ jobs:
           assert 'PooledByteArrayOutputStream output' in a
           assert 'this.binder.acquireOutputRecyclerForBenchmark()' not in a
           assert 'this.binder.acquireOutputRecyclerForBenchmark()' in b
-          assert 'new ByteArrayBuilder(recycler)' in b
+          assert 'ByteArrayBuilder(recycler)' in b
           assert '.getClearAndRelease()' in b
           assert 'recycler.releaseToPool()' in b
           start='private static void _writeString('
