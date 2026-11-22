@@ -582,4 +582,88 @@ w.writeString(item);
         }
         w.endArray();
     }
+
+    /** Isolates Fastjson2 JSONWriterUTF8.writeString(List<String>) only for tags. */
+    static byte[] fastjsonFixedNativeList(Users value) throws IOException {
+        try (Fastjson2Generator gen = F_BINDER.createGeneratorUtf8()) {
+            gen.start();
+            fusersFixedNativeList(gen.nativeGenerator(), value);
+            gen.end();
+            return gen.toBytes();
+        }
+    }
+
+    private static void fusersFixedNativeList(com.alibaba.fastjson2.JSONWriter w, Users value) throws java.io.IOException {
+        if (value == null) { w.writeNull(); return; }
+        w.startObject();
+        w.writeName5Raw(F_USERS.rawName0);
+        fuserListFixedNativeList(w, value.getUsers());
+        w.endObject();
+    }
+
+
+    private static void fuserListFixedNativeList(com.alibaba.fastjson2.JSONWriter w, java.util.List<Users.User> values) throws java.io.IOException {
+        if (values == null) { w.writeNull(); return; }
+        w.startArray();
+        for (int i = 0, n = values.size(); i < n; i++) {
+            if (i != 0) w.writeComma();
+            Users.User item = values.get(i);
+            fuserFixedNativeList(w, item);
+        }
+        w.endArray();
+    }
+
+
+    private static void fuserFixedNativeList(com.alibaba.fastjson2.JSONWriter w, Users.User value) throws java.io.IOException {
+        if (value == null) { w.writeNull(); return; }
+        w.startObject();
+        w.writeName2Raw(F_ID.rawName0);
+        w.writeString(value.getId());
+        w.writeName5Raw(F_INDEX.rawName0);
+        w.writeInt32(value.getIndex());
+        w.writeName4Raw(F_GUID.rawName0);
+        w.writeString(value.getGuid());
+        w.writeName8Raw(F_ISACTIVE.rawName0);
+        w.writeBool(value.getIsActive());
+        w.writeName7Raw(F_BALANCE.rawName0);
+        w.writeString(value.getBalance());
+        w.writeName7Raw(F_PICTURE.rawName0);
+        w.writeString(value.getPicture());
+        w.writeName3Raw(F_AGE.rawName0);
+        w.writeInt32(value.getAge());
+        w.writeName8Raw(F_EYECOLOR.rawName0);
+        w.writeString(value.getEyeColor());
+        w.writeName4Raw(F_NAME.rawName0);
+        w.writeString(value.getName());
+        w.writeName6Raw(F_GENDER.rawName0);
+        w.writeString(value.getGender());
+        w.writeName7Raw(F_COMPANY.rawName0);
+        w.writeString(value.getCompany());
+        w.writeName5Raw(F_EMAIL.rawName0);
+        w.writeString(value.getEmail());
+        w.writeName5Raw(F_PHONE.rawName0);
+        w.writeString(value.getPhone());
+        w.writeName7Raw(F_ADDRESS.rawName0);
+        w.writeString(value.getAddress());
+        w.writeName5Raw(F_ABOUT.rawName0);
+        w.writeString(value.getAbout());
+        w.writeName10Raw(F_REGISTERED.rawName0, F_REGISTERED.rawName1);
+        w.writeString(value.getRegistered());
+        w.writeName8Raw(F_LATITUDE.rawName0);
+        w.writeDouble(value.getLatitude());
+        w.writeName9Raw(F_LONGITUDE.rawName0, (int) F_LONGITUDE.rawName1);
+        w.writeDouble(value.getLongitude());
+        w.writeName4Raw(F_TAGS.rawName0);
+        java.util.List<String> tags = value.getTags();
+        if (tags == null) w.writeNull();
+        else w.writeString(tags);
+        w.writeName7Raw(F_FRIENDS.rawName0);
+        ffriendsFixed(w, value.getFriends());
+        w.writeName8Raw(F_GREETING.rawName0);
+        w.writeString(value.getGreeting());
+        w.writeName13Raw(F_FAVORITEFRUIT.rawName0, F_FAVORITEFRUIT.rawName1);
+        w.writeString(value.getFavoriteFruit());
+        w.endObject();
+    }
+
 }
