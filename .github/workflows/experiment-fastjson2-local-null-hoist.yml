@@ -1,0 +1,137 @@
+name: Experiment / Fastjson2 local runtime includeNulls hoisting A/B
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-fastjson2-local-null-hoist.yml'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/StructuralWriteEmitter.java'
+      - 'sjf4j-processor/src/main/java/org/sjf4j/processor/binding/Fastjson2WriteEmitter.java'
+      - 'sjf4j-processor/src/test/java/org/sjf4j/processor/CompiledNullableScalarWriteTest.java'
+      - 'sjf4j-processor/src/test/java/org/sjf4j/processor/CompiledFastjson2UnifiedWriteTest.java'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  compare:
+    name: Local null policy A/B / Fastjson2 + Jackson3
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Restore unchanged Full baseline JMH jar
+        uses: actions/download-artifact@v8
+        with:
+          name: binding-full-jmh-jar
+          run-id: 44917024751
+          github-token: ${{ github.token }}
+          path: baseline
+      - name: Build candidate JMH Jar
+        run: ./gradlew :sjf4j-testbench:jmhJar
+      - name: Validate compiled null-policy and mixed backend feature semantics
+        run: ./gradlew :sjf4j-processor:test --tests org.sjf4j.processor.CompiledNullableScalarWriteTest --tests org.sjf4j.processor.CompiledFastjson2UnifiedWriteTest
+      - name: Capture original and candidate generated helper bytecode
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/bytecode results/generated
+          base=$(find baseline -name '*-jmh.jar' -print -quit)
+          cand=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          for label in baseline candidate; do
+            if [[ "$label" == baseline ]]; then jarfile="$base"; else jarfile="$cand"; fi
+            jar tf "$jarfile" | grep -E 'FabienBindings.*Fastjson2.*Impl.class' > "results/bytecode/$label.classes" || true
+            while IFS= read -r f; do
+              cls=${f%.class}; cls=${cls//\//.}
+              javap -p -c -classpath "$jarfile" "$cls" > "results/bytecode/$label.txt"
+            done < "results/bytecode/$label.classes"
+          done
+          find sjf4j-testbench/build -type f -name '*Fastjson2*Impl.java' -exec cp {} results/generated/ \; || true
+          echo 'Bytecode and emitted Java (when build preserves it) are saved as evidence.' > results/bytecode/README.txt
+      - name: Benchmark both backends on same JDK25 runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          { echo 'Baseline source 501caabe3a197e37498b0854d3dbf98c24ce2790'; echo "Candidate $GITHUB_SHA"; lscpu; java -version 2>&1; } > results/environment.txt
+          base=$(find baseline -name '*-jmh.jar' -print -quit)
+          cand=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -n "$base" && test -n "$cand"
+          sha256sum "$base" "$cand" > results/jars.sha256
+          common=( 'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' -p shape=pojo \
+            -p sizeKb=1,10,100 -p seed=12345,324 -t 1 -f 2 -wi 3 -i 4 -w 400ms -r 400ms -prof gc -rf json )
+          java -jar "$base" "${common[@]}" -p backend=fastjson2 -p model=users,clients \
+            -p implementation=native,compiled -rff results/fastjson2-baseline.json 2>&1 | tee results/fastjson2-baseline.log
+          java -jar "$cand" "${common[@]}" -p backend=fastjson2 -p model=users,clients \
+            -p implementation=compiled -rff results/fastjson2-candidate.json 2>&1 | tee results/fastjson2-candidate.log
+          java -jar "$base" "${common[@]}" -p backend=jackson3 -p model=users \
+            -p implementation=native,blackbird,compiled -rff results/jackson3-baseline.json 2>&1 | tee results/jackson3-baseline.log
+          java -jar "$cand" "${common[@]}" -p backend=jackson3 -p model=users \
+            -p implementation=compiled -rff results/jackson3-candidate.json 2>&1 | tee results/jackson3-candidate.log
+      - name: Summarize candidate generated code impact
+        if: success()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/summary.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          print('## Fastjson2 helper-local includeNulls')
+          print('Same JDK25 runner, exact original full JMH jar vs candidate; 2 forks, 3x400ms warmup, 4x400ms measurement. Jackson3 generated code remains unchanged; Fastjson2 keeps the exact same helper parameters and call graph.')
+          print('All JMH candidates validate JSON output at trial setup. Lower µs/op better; old/candidate >1 means faster candidate.')
+          print()
+          print('| Backend | Model | KB | Seed | Native | Blackbird | Original Compiled | Candidate Compiled | Old/Candidate | Native/Candidate | Blackbird/Candidate | Candidate B/op |')
+          print('|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|')
+          for backend, models in [('fastjson2',['users','clients']),('jackson3',['users'])]:
+              old=json.loads(Path(f'results/{backend}-baseline.json').read_text())
+              new=json.loads(Path(f'results/{backend}-candidate.json').read_text())
+              exp=12*len(models)
+              assert len(old)==(2 if backend=='fastjson2' else 3)*6*len(models),(backend,len(old))
+              assert len(new)==6*len(models),(backend,len(new))
+              for model in models:
+                  for kb in ['1','10','100']:
+                      for seed in ['12345','324']:
+                          def metric(rows,impl):
+                              result=[r for r in rows if r['params']['model']==model and r['params']['sizeKb']==kb and r['params']['seed']==seed and r['params']['implementation']==impl]
+                              assert len(result)==1,(backend,model,kb,seed,impl,len(result))
+                              return result[0]
+                          n=metric(old,'native')['primaryMetric']['score']
+                          b=metric(old,'blackbird')['primaryMetric']['score'] if backend=='jackson3' else float('nan')
+                          o=metric(old,'compiled')['primaryMetric']['score']
+                          cand=metric(new,'compiled')
+                          c=cand['primaryMetric']['score']
+                          mem=cand['secondaryMetrics']['gc.alloc.rate.norm']['score']
+                          print(f'| {backend} | {model} | {kb}KB | {seed} | {n:.3f} | {b:.3f} | {o:.3f} | {c:.3f} | {o/c:.3f}x | {n/c:.3f}x | {b/c:.3f}x | {mem:.0f} |')
+          PY
+      - name: Diagnose C2 inlining (separate from timed A/B)
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=$(find baseline -name '*-jmh.jar' -print -quit)
+          cand=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          for label in baseline candidate; do
+            if [[ "$label" == baseline ]]; then jarfile="$base"; else jarfile="$cand"; fi
+            java -jar "$jarfile" org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write \
+              -p backend=fastjson2 -p implementation=compiled -p model=users \
+              -p shape=pojo -p sizeKb=100 -p seed=12345 -t 1 -f 1 \
+              -wi 3 -i 3 -w 350ms -r 350ms \
+              -jvmArgsAppend '-XX:+UnlockDiagnosticVMOptions -XX:+PrintCompilation -XX:+PrintInlining' \
+              > "results/jit-$label.raw.log" 2>&1
+            grep -Ei 'FabienBindings.*Fastjson2|_write.*Utf8|writeUsers|too big|hot method too big|callee is too large|already compiled into a big method' \
+              "results/jit-$label.raw.log" > "results/jit-$label-filtered.log" || true
+            rm "results/jit-$label.raw.log"
+          done
+      - name: Upload raw JMH, GC and validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-local-null-hoist-ab
+          path: results/
+          retention-days: 7
+          if-no-files-found: warn
