@@ -193,6 +193,9 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writeNull(JavaWriter out) { out.line("nativeGenerator.writeNull();"); }
 
+        @Override
+        public String nullPolicyExpression() { return "includeNulls"; }
+
         // writeNameRaw/writeNameXRaw and writeName(String) insert object-member
         // separators themselves. Adding writeComma() here would corrupt JSON.
         @Override
@@ -289,6 +292,12 @@ final class Fastjson2WriteEmitter {
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator generator, "
                 + value.type() + " value) throws java.io.IOException");
         out.line("com.alibaba.fastjson2.JSONWriter nativeGenerator = generator.nativeGenerator();");
+        // A/B: one runtime config read per helper; keep the original signature and call graph.
+        if (value.kind() == BindingValue.Kind.POJO
+                || value.kind() == BindingValue.Kind.JOJO
+                || value.kind() == BindingValue.Kind.MAP) {
+            out.line("boolean includeNulls = this.config.includeNulls;");
+        }
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
