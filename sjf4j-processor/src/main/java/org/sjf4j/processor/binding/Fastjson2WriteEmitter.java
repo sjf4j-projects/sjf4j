@@ -211,6 +211,22 @@ final class Fastjson2WriteEmitter {
         }
 
         @Override
+        public boolean supportsStringMember() {
+            // EXPERIMENT: skip the duplicated null/non-null name code in
+            // Fastjson2 Compiled UTF-8 POJO writers.
+            return mode == FastjsonMode.UTF8;
+        }
+
+        @Override
+        public void writeStringMember(JavaWriter out, BindingValue owner, int index,
+                                      String expression) {
+            out.beginBlock("if (" + expression + " != null || this.config.includeNulls)");
+            writePropertyName(out, owner, index);
+            out.line("nativeGenerator.writeString(" + expression + ");");
+            out.endBlock();
+        }
+
+        @Override
         public void writeDynamicName(JavaWriter out, String expression) {
             out.line("nativeGenerator.writeName(" + expression + ");");
             out.line("nativeGenerator.writeColon();");
