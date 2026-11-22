@@ -148,21 +148,37 @@ final class StructuralWriteEmitter {
 
     /** Random-access and sequential lists use the same element emission. */
     void emitList(JavaWriter out, BindingValue value) {
+        emitListBody(out, value, "value");
+    }
+
+    /**
+     * Experimental: expand a non-null POJO-list member directly into its owner.
+     * Keep the same traversal and element helpers as the regular list writer.
+     * The nested scope prevents collisions with the owner's local variables.
+     */
+    void emitInlinePojoList(JavaWriter out, BindingValue value, String expression) {
+        out.beginBlock("{");
+        out.line(value.type() + " inlineList = " + expression + ";");
+        emitListBody(out, value, "inlineList");
+        out.endBlock();
+    }
+
+    private void emitListBody(JavaWriter out, BindingValue value, String list) {
         ops.startArray(out);
-        out.beginBlock("if (value instanceof java.util.RandomAccess)");
-        out.beginBlock("for (int i = 0, n = value.size(); i < n; i++)");
+        out.beginBlock("if (" + list + " instanceof java.util.RandomAccess)");
+        out.beginBlock("for (int i = 0, n = " + list + ".size(); i < n; i++)");
         if (ops.explicitArraySeparators()) ops.beforeArrayElement(out, "i");
         if (value.elementValue().helperRequired()) {
-            out.line(value.elementValue().type() + " element = value.get(i);");
+            out.line(value.elementValue().type() + " element = " + list + ".get(i);");
             ops.writeValue(out, value.elementValue(), "element");
         } else {
-            ops.writeValue(out, value.elementValue(), "value.get(i)");
+            ops.writeValue(out, value.elementValue(), list + ".get(i)");
         }
         out.endBlock();
         out.endBlock(" else {");
         out.indent();
         if (ops.explicitArraySeparators()) out.line("int elementCount = 0;");
-        out.beginBlock("for (" + value.elementValue().type() + " element : value)");
+        out.beginBlock("for (" + value.elementValue().type() + " element : " + list + ")");
         if (ops.explicitArraySeparators()) {
             ops.beforeArrayElement(out, "elementCount++");
         }
