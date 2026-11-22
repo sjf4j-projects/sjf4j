@@ -81,9 +81,17 @@ final class StructuralWriteEmitter {
                     // Jackson3 retains the exact String-member helper architecture.
                     ops.writeStringMember(out, value, index, expr);
                 } else if ("include".equals(fixedMode) && child.kind() == BindingValue.Kind.STRING) {
-                    // Native Fastjson2 writeString(null) emits JSON null.
+                    // Keep the original backend writeNull() vs writeString(value)
+                    // dispatch. Only remove the inner config.includeNulls branch:
+                    // Fastjson2 writeString(null) has different allocation behavior.
+                    out.beginBlock("if (" + propertyVar + " == null)");
+                    emitPropertyName(out, value, index);
+                    ops.writeNull(out);
+                    out.endBlock(" else {");
+                    out.indent();
                     emitPropertyName(out, value, index);
                     ops.writeNonNullValue(out, child, expr);
+                    out.endBlock();
                 } else if ("omit".equals(fixedMode)) {
                     out.beginBlock("if (" + propertyVar + " != null)");
                     emitPropertyName(out, value, index);
