@@ -427,6 +427,10 @@ final class WriteEmitter {
             // of the generated instance. The explicit flag preserves context
             // semantics while avoiding excessive C2 inlining in large POJOs.
             boolean staticMember = backend.backend() == Backend.JACKSON3;
+            // Diagnostic-only APT switch. The normal generated binder remains unchanged.
+            // The guard preserves compatibility with Writer-based and custom generators.
+            String j3Utf8MemberMode = staticMember
+                    ? System.getenv("SJF4J_EXPERIMENT_J3_UTF8_MEMBER") : null;
             out.beginBlock((staticMember ? "private static void " : "private void ")
                     + stringMemberHelper() + "(" + generator + " g, " + nameType
                     + " name, String value"
@@ -440,7 +444,21 @@ final class WriteEmitter {
             out.endBlock(" else {");
             out.indent();
             out.line("g." + nameMethod + "(name);");
-            out.line("g.writeString(value);");
+            if ("instanceof".equals(j3Utf8MemberMode)
+                    || "exact-class".equals(j3Utf8MemberMode)) {
+                String nativeType = "tools.jackson.core.json.UTF8JsonGenerator";
+                String condition = "instanceof".equals(j3Utf8MemberMode)
+                        ? "g instanceof " + nativeType
+                        : "g.getClass() == " + nativeType + ".class";
+                out.beginBlock("if (" + condition + ")");
+                out.line("((" + nativeType + ") g).writeString(value);");
+                out.endBlock(" else {");
+                out.indent();
+                out.line("g.writeString(value);");
+                out.endBlock();
+            } else {
+                out.line("g.writeString(value);");
+            }
             out.endBlock();
             out.endBlock();
         }
