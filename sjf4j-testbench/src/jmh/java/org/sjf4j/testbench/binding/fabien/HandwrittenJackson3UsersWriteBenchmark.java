@@ -69,15 +69,21 @@ public class HandwrittenJackson3UsersWriteBenchmark {
     public void setup() throws Exception {
         value = FabienDataGenerator.users(Math.multiplyExact(sizeKb, 1000), seed);
         switch (implementation) {
-            case "native":
-                writer = value -> FabienBindings.writer("jackson3", "native", "users", "pojo").write(value);
+            case "native": {
+                FabienBindings.Writer nativeWriter = FabienBindings.writer("jackson3", "native", "users", "pojo");
+                writer = v -> nativeWriter.write(v);
                 break;
-            case "blackbird":
-                writer = value -> FabienBindings.writer("jackson3", "blackbird", "users", "pojo").write(value);
+            }
+            case "blackbird": {
+                FabienBindings.Writer blackbirdWriter = FabienBindings.writer("jackson3", "blackbird", "users", "pojo");
+                writer = v -> blackbirdWriter.write(v);
                 break;
-            case "compiled":
-                writer = value -> FabienBindings.writer("jackson3", "compiled", "users", "pojo").write(value);
+            }
+            case "compiled": {
+                FabienBindings.Writer compiledWriter = FabienBindings.writer("jackson3", "compiled", "users", "pojo");
+                writer = v -> compiledWriter.write(v);
                 break;
+            }
             case "holderHelperWrapped": writer = HandwrittenJackson3UsersWriteBenchmark::holderHelperWrapped; break;
             case "holderHelperRaw": writer = HandwrittenJackson3UsersWriteBenchmark::holderHelperRaw; break;
             case "serializedHelperWrapped": writer = HandwrittenJackson3UsersWriteBenchmark::serializedHelperWrapped; break;
