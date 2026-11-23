@@ -57,7 +57,10 @@ class CompiledBinderConformanceTest {
         assertTrue(generated.contains("catch (BindingException failure2)"), backend);
         assertTrue(generated.contains("failed to read node as 'fixture.Bean'"), backend);
         assertTrue(generated.contains("failed to write node type '"), backend);
-        assertTrue(generated.contains("Asserts.notNull(config, \"config\")"), backend);
+        assertTrue(generated.contains("public Binder_Impl(org.sjf4j.NodeConfig config)"), backend);
+        assertTrue(generated.contains("this(new "), backend);
+        assertTrue(generated.contains("this.config = new org.sjf4j.NodeConfig("), backend);
+        assertFalse(generated.contains("this.config = this.binder.config()"), backend);
         assertFalse(generated.contains("Objects.requireNonNull"), backend);
         if (!"FASTJSON2".equals(backend)) {
             assertTrue(generated.contains("PooledStringWriter"), backend);
