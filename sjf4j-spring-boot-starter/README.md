@@ -30,7 +30,10 @@ collects **all** indexes from the classpath (including dependency JARs),
 de-duplicates them, and registers lazy singleton BeanDefinitions through `sjf4j-spring`. Spring creates
 instances through `CompiledInstances.create(type, context)`: it uses an
 application-provided `NodeConfig` when one exists, or
-`NodeConfig.DEFAULT` otherwise. Explicit user Beans of the same type win.
+`NodeConfig.DEFAULT` otherwise. `@CompiledBinder` keeps this injection
+signature for compatibility but ignores the supplied `NodeConfig`; its
+null-property policy is fixed by `@CompiledBinder` / `@Write` annotations.
+Explicit user Beans of the same type win.
 
 Interfaces can be injected, looked up by type through `getBean()`, obtained
 through `ObjectProvider`, or injected as a collection. Standard Spring
