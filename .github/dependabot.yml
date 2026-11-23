@@ -1,19 +1,42 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 
 updates:
   - package-ecosystem: "gradle"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    # Avoid newly released versions; security updates use a separate cadence.
+    cooldown:
+      default-days: 30
+    ignore:
+      # Schedule major upgrades deliberately, rather than via Dependabot.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Jackson 3.1.x is the compatibility baseline: patch upgrades only.
+      - dependency-name: "tools.jackson.core:*"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "tools.jackson.module:*"
+        update-types: ["version-update:semver-minor"]
+    groups:
+      java-patch:
+        patterns: ["*"]
+        update-types: ["patch"]
+      java-minor:
+        patterns: ["*"]
+        update-types: ["minor"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 30
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      actions-maintenance:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
