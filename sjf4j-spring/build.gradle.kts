@@ -13,7 +13,7 @@ java {
 
 dependencies {
     api(project(":sjf4j-core"))
-    api("org.springframework:spring-context:6.2.15")
+    api("org.springframework:spring-context:7.1.0")
 
     testImplementation(project(":sjf4j-schema"))
     // Test-only Spring MVC integration example; no new runtime dependencies.
