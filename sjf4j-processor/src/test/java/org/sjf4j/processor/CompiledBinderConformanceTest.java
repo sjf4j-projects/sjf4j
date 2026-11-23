@@ -57,10 +57,6 @@ class CompiledBinderConformanceTest {
         assertTrue(generated.contains("catch (BindingException failure2)"), backend);
         assertTrue(generated.contains("failed to read node as 'fixture.Bean'"), backend);
         assertTrue(generated.contains("failed to write node type '"), backend);
-        assertTrue(generated.contains("NodeConfig config)"), backend);
-        assertTrue(generated.contains("this(new "), backend);
-        assertTrue(generated.contains("this.config = new org.sjf4j.NodeConfig("), backend);
-        assertFalse(generated.contains("this.config = this.binder.config()"), backend);
         assertFalse(generated.contains("Objects.requireNonNull"), backend);
         if (!"FASTJSON2".equals(backend)) {
             assertTrue(generated.contains("PooledStringWriter"), backend);
@@ -75,6 +71,10 @@ class CompiledBinderConformanceTest {
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> implementation = Class.forName("fixture.Binder_Impl", true, loader);
+            // Compatibility constructor remains available, but cannot change
+            // the policy or default formats of a generated CompiledBinder.
+            assertNotNull(implementation.getConstructor(org.sjf4j.NodeConfig.class), backend);
+
             Class<?> beanType = Class.forName("fixture.Bean", true, loader);
             java.util.Set<String> helperNames = new java.util.HashSet<>();
             for (java.lang.reflect.Method method : implementation.getDeclaredMethods()) {
