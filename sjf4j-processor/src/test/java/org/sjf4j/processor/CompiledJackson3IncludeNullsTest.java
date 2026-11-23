@@ -70,6 +70,34 @@ class CompiledJackson3IncludeNullsTest {
         }
     }
 
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void rootParameterNamedIncludeNullsDoesNotCollideWithPolicyLocal() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Model.java",
+                "package fixture; public class Model { public String missing; }");
+        sources.put("fixture/Binder.java",
+                "package fixture; import org.sjf4j.annotation.binding.*; "
+                + "@CompiledBinder(backend=Backend.JACKSON3) "
+                + "public interface Binder { "
+                + "@Write String write(Model includeNulls) throws java.io.IOException; }");
+        NavigatorTestCompiler.Result result =
+                NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Binder_Impl.java");
+        assertTrue(generated.contains("boolean includeNulls2 = this.config.includeNulls;"),
+                generated);
+        assertTrue(generated.contains(", includeNulls2);"), generated);
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> modelType = loader.loadClass("fixture.Model");
+            Class binderType = loader.loadClass("fixture.Binder");
+            Object model = modelType.getConstructor().newInstance();
+            Object binder = CompiledInstances.create(binderType, new NodeConfig(false));
+            String output = (String) binderType.getMethod("write", modelType).invoke(binder, model);
+            assertFalse(new ObjectMapper().readTree(output).has("missing"));
+        }
+    }
+
     private static int count(String value, String target) {
         int count = 0;
         int from = 0;
