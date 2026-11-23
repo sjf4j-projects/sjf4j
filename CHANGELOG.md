@@ -8,10 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [1.5.2] - 2026.11.23
+
+### Added
+- Added Spring Framework integration and a Spring Boot starter for compiled components.
+- Added compiled JSONPath filters and `@NodeRegistry` discovery for value codecs and external nodes.
+
 ### Changed
-- JSONPath `match()` and `search()` now use JDK `Pattern` directly; removed `IRegexpUtil`. Regex syntax follows Java semantics rather than strict RFC 9485.
+- Optimized compiled binding with Jackson 3 native reads and annotation-driven `includeNulls`; improved compiled JDBC codec paths.
+- Exposed backend libraries as `api` dependencies; aligned Jackson 3 to 3.1.x and CI to JDK 25.
+- JSONPath `match()` and `search()` now use JDK `Pattern` instead of RFC 9485 regex.
 
+### Fixed
+- Prevented DNS lookups in the built-in `InetAddress` codec and improved JDBC date/time codecs.
+- Improved compiled binding fallbacks and registry validation.
 
+### Breaking Changes
+- Renamed `RuntimeContext` to `NodeConfig`.
+- Generated `@CompiledBinder` implementations ignore injected `NodeConfig` (compatibility constructors remain); null policy is fixed by annotations.
+- `@NodeRegistry` now requires interface fields; removed registry-directory options from `@CompiledValidator`.
 
 
 ## [1.5.1] - 2026.11.13
