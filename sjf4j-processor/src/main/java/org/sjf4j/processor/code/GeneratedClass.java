@@ -166,8 +166,8 @@ public final class GeneratedClass {
 
     /**
      * Generated Binders retain their legacy NodeConfig constructor but ignore
-     * its argument: runtime compiled semantics come from annotations instead.
-     * The injected backend Binder still supplies native parser/writer settings.
+     * its argument. The generated class declares its own compile-time-selected
+     * static configuration, independent of the concrete backend Binder.
      */
     public void useCompiledBinderConfig(boolean includeNulls) {
         compiledBinderIncludeNulls = includeNulls;
@@ -251,7 +251,14 @@ public final class GeneratedClass {
         boolean written = false;
 
         if (nodeConfigConstructor) {
-            out.line("private final org.sjf4j.NodeConfig config;");
+            if (compiledBinderIncludeNulls == null) {
+                out.line("private final org.sjf4j.NodeConfig config;");
+            } else {
+                out.line("private static final org.sjf4j.NodeConfig config = "
+                        + (compiledBinderIncludeNulls
+                        ? "org.sjf4j.NodeConfig.DEFAULT;"
+                        : "new org.sjf4j.NodeConfig(false);"));
+            }
             written = true;
         }
 
@@ -281,10 +288,9 @@ public final class GeneratedClass {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
                 out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
-                out.line(compiledBinderIncludeNulls == null
-                        ? "this.config = this.binder.config();"
-                        : "this.config = new org.sjf4j.NodeConfig("
-                                + compiledBinderIncludeNulls + ");");
+                if (compiledBinderIncludeNulls == null) {
+                    out.line("this.config = this.binder.config();");
+                }
                 for (Member initializer : configInitializers) initializer.write(out);
                 out.endBlock();
             }

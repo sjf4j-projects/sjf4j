@@ -42,16 +42,17 @@ public final class BindingGenerator {
         generated.enableBackendBinder(backend.binderType());
         boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
         generated.useCompiledBinderConfig(binderIncludeNulls);
-        // The NodeConfig constructor is retained but intentionally ignored.
-        // Only annotation-built configs reach compiled operations and fallbacks.
+        // Emit static policy constants directly in the generated source.
+        // They never read the retained NodeConfig injection argument or a
+        // concrete backend Binder's config. Reuse the class-wide default.
         String includeConfig = generated.names().field("writeConfigIncludeNulls");
         String omitConfig = generated.names().field("writeConfigOmitNulls");
-        generated.addField(out -> out.line("private final org.sjf4j.NodeConfig " + includeConfig + ";"));
-        generated.addField(out -> out.line("private final org.sjf4j.NodeConfig " + omitConfig + ";"));
-        generated.addConfigInitializer(out -> {
-            out.line("this." + includeConfig + " = this.config.withIncludeNulls(true);");
-            out.line("this." + omitConfig + " = this.config.withIncludeNulls(false);");
-        });
+        generated.addField(out -> out.line("private static final org.sjf4j.NodeConfig "
+                + includeConfig + " = " + (binderIncludeNulls
+                ? "config" : "org.sjf4j.NodeConfig.DEFAULT") + ";"));
+        generated.addField(out -> out.line("private static final org.sjf4j.NodeConfig "
+                + omitConfig + " = " + (binderIncludeNulls
+                ? "new org.sjf4j.NodeConfig(false)" : "config") + ";"));
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
 

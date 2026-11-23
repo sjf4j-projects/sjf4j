@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The annotation determines the null policy for every backend, including
- * Runtime fallback. Injected NodeConfig supplies value formats, not this flag.
+ * Runtime fallback. Injected NodeConfig is ignored by compiled binders.
  */
 class CompiledIncludeNullsAnnotationTest {
 
@@ -62,11 +62,19 @@ class CompiledIncludeNullsAnnotationTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains("this.config.includeNulls"), backend);
-            assertTrue(generated.contains("withIncludeNulls(true)"), backend);
-            assertTrue(generated.contains("withIncludeNulls(false)"), backend);
+            assertFalse(generated.contains("withIncludeNulls("), backend);
+            assertFalse(generated.contains("this.config ="), backend);
+            assertTrue(generated.contains("private static final org.sjf4j.NodeConfig config = "), backend);
+            assertTrue(generated.contains("private static final org.sjf4j.NodeConfig writeConfigIncludeNulls"), backend);
+            assertTrue(generated.contains("private static final org.sjf4j.NodeConfig writeConfigOmitNulls"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
+                Class<?> implType = loader.loadClass("fixture.Binder_Impl");
+                java.lang.reflect.Field configField = implType.getDeclaredField("config");
+                assertTrue(java.lang.reflect.Modifier.isStatic(configField.getModifiers()), backend);
+                assertTrue(java.lang.reflect.Modifier.isFinal(configField.getModifiers()), backend);
+                assertNotNull(implType.getConstructor(NodeConfig.class), backend);
                 Class modelType = loader.loadClass("fixture.Model");
                 Object model = modelType.getConstructor().newInstance();
                 Object injectedTrue = CompiledInstances.create(binderType, new NodeConfig(true));
@@ -179,13 +187,4 @@ class CompiledIncludeNullsAnnotationTest {
         }
     }
 
-    @Test
-    void withIncludeNullsPreservesDefaultValueFormats() {
-        NodeConfig config = new NodeConfig(Map.of(java.util.UUID.class, "custom"), true);
-        NodeConfig omitted = config.withIncludeNulls(false);
-        assertTrue(config.includeNulls);
-        assertFalse(omitted.includeNulls);
-        assertEquals("custom", omitted.valueFormat(java.util.UUID.class));
-        assertNull(omitted.valueFormat(String.class));
-    }
 }
