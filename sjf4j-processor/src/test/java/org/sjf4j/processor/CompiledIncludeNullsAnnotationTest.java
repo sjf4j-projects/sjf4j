@@ -124,6 +124,61 @@ class CompiledIncludeNullsAnnotationTest {
         assertEquals(Arrays.asList(null, "x"), unknown.get("items"));
     }
 
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void valueCodecRawMapFallbackInheritsPerMethodNullPolicy() throws Exception {
+        for (String backend : new String[]{
+                "SIMPLE", "JACKSON2", "JACKSON3", "FASTJSON2", "GSON", "JSONP", "SNAKE"}) {
+            String format = backend.equals("SNAKE") ? ",format=Format.YAML" : "";
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Token.java",
+                    "package fixture; public final class Token { public String id = \"x\"; }");
+            sources.put("fixture/Codecs.java",
+                    "package fixture; import org.sjf4j.annotation.node.*;"
+                    + "import org.sjf4j.value.ValueCodec; import java.util.*;"
+                    + "@NodeRegistry public interface Codecs {"
+                    + " @NodeValue ValueCodec<Token, Map> TOKEN = "
+                    + "new ValueCodec.SimpleValueCodec<>(Token.class, Map.class,"
+                    + "v -> { Map<String,Object> data = new LinkedHashMap<>();"
+                    + "data.put(\"present\", v.id); data.put(\"missing\", null);"
+                    + "data.put(\"items\", Arrays.asList(null, \"last\")); return data; },"
+                    + "raw -> new Token());"
+                    + "}");
+            sources.put("fixture/Binder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + format
+                    + ",registries={Codecs.class},includeNulls=false)"
+                    + "public interface Binder {"
+                    + " @Write String omit(Token token);"
+                    + " @Write(includeNulls=true) String include(Token token);"
+                    + "}");
+            NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            String generated = compiled.generatedSource("fixture/Binder_Impl.java");
+            assertFalse(generated.contains(".writeRaw(rawValue, this.config)"), backend);
+            assertTrue(generated.contains("writeConfigOmitNulls"), backend);
+            assertTrue(generated.contains("writeConfigIncludeNulls"), backend);
+
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                org.sjf4j.value.ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
+                Class binderType = loader.loadClass("fixture.Binder");
+                Class<?> tokenType = loader.loadClass("fixture.Token");
+                Object token = tokenType.getConstructor().newInstance();
+                Object binder = CompiledInstances.create(binderType, new NodeConfig(true));
+                Map<String, Object> omitted = decode(backend, (String) binderType
+                        .getMethod("omit", tokenType).invoke(binder, token));
+                Map<String, Object> included = decode(backend, (String) binderType
+                        .getMethod("include", tokenType).invoke(binder, token));
+                assertFalse(omitted.containsKey("missing"), backend);
+                assertTrue(included.containsKey("missing"), backend);
+                assertEquals("x", omitted.get("present"), backend);
+                assertEquals(Arrays.asList(null, "last"), omitted.get("items"), backend);
+                assertEquals(omitted.get("items"), included.get("items"), backend);
+            }
+        }
+    }
+
     @Test
     void withIncludeNullsPreservesDefaultValueFormats() {
         NodeConfig config = new NodeConfig(Map.of(java.util.UUID.class, "custom"), true);
