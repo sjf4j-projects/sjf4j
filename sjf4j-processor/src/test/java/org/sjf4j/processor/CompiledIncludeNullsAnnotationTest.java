@@ -64,9 +64,6 @@ class CompiledIncludeNullsAnnotationTest {
             assertFalse(generated.contains("this.config.includeNulls"), backend);
             assertFalse(generated.contains("withIncludeNulls("), backend);
             assertFalse(generated.contains("this.config ="), backend);
-            assertTrue(generated.contains("private static final org.sjf4j.NodeConfig config = "), backend);
-            assertTrue(generated.contains("private static final org.sjf4j.NodeConfig writeConfigIncludeNulls"), backend);
-            assertTrue(generated.contains("private static final org.sjf4j.NodeConfig writeConfigOmitNulls"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
@@ -81,6 +78,11 @@ class CompiledIncludeNullsAnnotationTest {
                 configField.setAccessible(true);
                 includeField.setAccessible(true);
                 omitField.setAccessible(true);
+                for (java.lang.reflect.Field field : Arrays.asList(configField, includeField, omitField)) {
+                    assertEquals(NodeConfig.class, field.getType(), backend);
+                    assertTrue(java.lang.reflect.Modifier.isStatic(field.getModifiers()), backend);
+                    assertTrue(java.lang.reflect.Modifier.isFinal(field.getModifiers()), backend);
+                }
                 assertSame(NodeConfig.DEFAULT, includeField.get(null), backend);
                 assertSame(configField.get(null), omitField.get(null), backend);
                 assertFalse(((NodeConfig) configField.get(null)).includeNulls, backend);
