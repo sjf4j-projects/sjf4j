@@ -53,7 +53,8 @@ class CompiledCodecRawIOTest {
             assertTrue(generated.contains("rawClazz == Long.class")
                             || generated.contains("rawClazz == java.lang.Long.class"),
                     backend + ": explicit Instant Long optimization missing");
-            assertTrue(generated.contains(".writeRaw(rawValue, org.sjf4j.NodeConfig.DEFAULT)"),
+            assertTrue(generated.contains(".writeRaw(rawValue, NodeConfig.DEFAULT)")
+                            || generated.contains(".writeRaw(rawValue, org.sjf4j.NodeConfig.DEFAULT)"),
                     backend + ": runtime raw-type fallback missing");
             assertTrue(generated.contains(".streamParser.read("),
                     backend + ": compiled streaming codec read path missing");
