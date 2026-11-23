@@ -18,6 +18,9 @@ final class WriteEmitter {
 
     private final BackendSpec backend;
     private final BindingNames names;
+    private final String includeConfig;
+    private final String omitConfig;
+    private boolean includeNulls = true;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
     private final OtherNativeWriteEmitter other;
@@ -25,10 +28,12 @@ final class WriteEmitter {
 
     private final Map<String, BindingValue> enumFields = new LinkedHashMap<>();
 
-    WriteEmitter(BackendSpec backend, BindingNames names) {
+    WriteEmitter(BackendSpec backend, BindingNames names, String includeConfig, String omitConfig) {
         this.backend = backend;
         this.names = names;
-        this.streaming = new StreamingWriteEmitter(backend, names);
+        this.includeConfig = includeConfig;
+        this.omitConfig = omitConfig;
+        this.streaming = new StreamingWriteEmitter(backend, names, this);
         switch (backend.backend()) {
             case FASTJSON2:
                 fastjson2 = new Fastjson2WriteEmitter(this);
@@ -45,7 +50,7 @@ final class WriteEmitter {
             case JSONP:
                 fastjson2 = null;
                 jackson = null;
-                other = new OtherNativeWriteEmitter(backend, names);
+                other = new OtherNativeWriteEmitter(backend, names, this);
                 break;
             default:
                 fastjson2 = null;
@@ -89,6 +94,14 @@ final class WriteEmitter {
 
     BindingNames naming() {
         return names;
+    }
+
+    boolean includeNulls() {
+        return includeNulls;
+    }
+
+    String runtimeConfig() {
+        return "this." + (includeNulls ? includeConfig : omitConfig);
     }
 
     boolean hasEnumFields() { return !enumFields.isEmpty(); }
@@ -135,53 +148,9 @@ final class WriteEmitter {
 
     void emitMethod(JavaWriter out, BindingCompiler.CompiledMethod compiled) {
         BindingPlan plan = compiled.plan();
+        includeNulls = plan.includeNulls();
         BindingSource.beginOverride(out, plan.method());
         String source = BindingSource.parameterName(plan, 0);
-
-        // Only the streaming-only backends retain whole-root fallback rules.
-        // JSON native backends compile structural nodes and fall back locally.
-        if (!usesSharedStructure()) {
-            // Preserve streaming-only null-policy and dynamic-root semantics.
-            out.beginBlock("if (!this.config.includeNulls)");
-            switch (plan.writeOutput()) {
-                case STRING:
-                    out.line("return this.binder.writeNodeAsString(" + source + ");");
-                    break;
-                case BYTES:
-                    out.line("return this.binder.writeNodeAsBytes(" + source + ");");
-                    break;
-                case WRITER:
-                case OUTPUT_STREAM:
-                    out.line("this.binder.writeNode("
-                            + BindingSource.parameterName(plan, 1) + ", " + source + ");");
-                    out.line("return;");
-                    break;
-                default:
-                    throw new AssertionError(plan.writeOutput());
-            }
-            out.endBlock();
-
-            if (streaming.shouldFallbackRoot(compiled.value())) {
-                switch (plan.writeOutput()) {
-                    case STRING:
-                        out.line("return this.binder.writeNodeAsString(" + source + ");");
-                        break;
-                    case BYTES:
-                        out.line("return this.binder.writeNodeAsBytes(" + source + ");");
-                        break;
-                    case WRITER:
-                    case OUTPUT_STREAM:
-                        out.line("this.binder.writeNode("
-                                + BindingSource.parameterName(plan, 1)
-                                + ", " + source + ");");
-                        break;
-                    default:
-                        throw new AssertionError(plan.writeOutput());
-                }
-                BindingSource.endOverride(out, plan);
-                return;
-            }
-        }
 
         NameAllocator names = methodNames(plan);
 
@@ -280,7 +249,12 @@ final class WriteEmitter {
                                String generator, NameAllocator names) {
         out.line(generator + ".start();");
 
-        if (isJackson()) {
+        // Streaming-only backends retain their whole-root fallback, but now
+        // use the annotation-fixed policy instead of the injected Binder state.
+        if (!usesSharedStructure() && (!includeNulls || streaming.shouldFallbackRoot(value))) {
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(" + generator + ", "
+                    + source + ", " + runtimeConfig() + ");");
+        } else if (isJackson()) {
             jackson.emitRoot(out, value, source, generator, names);
         } else if (isGsonOrJsonp()) {
             other.emitRoot(out, value, source, generator, names);
@@ -292,6 +266,7 @@ final class WriteEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
+        includeNulls = value.writeIncludeNulls();
         if (isJackson()) {
             jackson.emitHelper(out, value);
             return;
@@ -327,12 +302,16 @@ final class WriteEmitter {
     }
 
     String stringMemberHelper() {
-        return names.sharedHelper("writeStringMember");
+        return names.sharedHelper(includeNulls ? "writeStringMemberIncludeNulls"
+                : "writeStringMemberOmitNulls");
     }
 
     void prepareStringHelpers() {
         stringHelper();
-        if (isJackson()) stringMemberHelper();
+        if (isJackson()) {
+            names.sharedHelper("writeStringMemberIncludeNulls");
+            names.sharedHelper("writeStringMemberOmitNulls");
+        }
     }
 
     boolean needsStringHelper(BindingValue value) {
@@ -423,26 +402,19 @@ final class WriteEmitter {
                     : "tools.jackson.core.io.SerializedString";
             String nameMethod = backend.backend() == Backend.JACKSON2
                     ? "writeFieldName" : "writeName";
-            // Keep the frequently called Jackson3 member helper independent
-            // of the generated instance. The explicit flag preserves context
-            // semantics while avoiding excessive C2 inlining in large POJOs.
-            boolean staticMember = backend.backend() == Backend.JACKSON3;
-            out.beginBlock((staticMember ? "private static void " : "private void ")
-                    + stringMemberHelper() + "(" + generator + " g, " + nameType
-                    + " name, String value"
-                    + (staticMember ? ", boolean includeNulls" : "")
-                    + ") throws java.io.IOException");
-            out.beginBlock("if (value == null)");
-            out.beginBlock("if (" + (staticMember ? "includeNulls" : "this.config.includeNulls") + ")");
-            out.line("g." + nameMethod + "(name);");
-            out.line("g.writeNull();");
-            out.endBlock();
-            out.endBlock(" else {");
-            out.indent();
-            out.line("g." + nameMethod + "(name);");
-            out.line("g.writeString(value);");
-            out.endBlock();
-            out.endBlock();
+            // Each @Write policy has its own helper; no runtime flag is
+            // passed into the hot path, including Jackson3.
+            for (boolean include : new boolean[]{true, false}) {
+                String helper = names.sharedHelper(include ? "writeStringMemberIncludeNulls"
+                        : "writeStringMemberOmitNulls");
+                out.beginBlock("private static void " + helper + "(" + generator
+                        + " g, " + nameType + " name, String value) throws java.io.IOException");
+                if (!include) out.beginBlock("if (value != null)");
+                out.line("g." + nameMethod + "(name);");
+                out.line("g.writeString(value);");
+                if (!include) out.endBlock();
+                out.endBlock();
+            }
         }
     }
 
