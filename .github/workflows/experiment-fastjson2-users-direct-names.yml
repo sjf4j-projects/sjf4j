@@ -1,0 +1,101 @@
+name: Experiment / Fastjson2 Users direct packed-name fields
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-fastjson2-users-direct-names.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/HandwrittenFastjson2UsersNameBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        sizeKb: [1, 10, 100]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build handwritten Fastjson2 Users JMH
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          echo "$jar" > results/jar-path.txt
+
+      - name: Compare compiled-name wrapper with direct primitive packed names
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar=$(cat results/jar-path.txt)
+          java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.HandwrittenFastjson2UsersNameBenchmark.write' \
+            -p implementation=holder,direct,compiled,native \
+            -p sizeKb=${{ matrix.sizeKb }} -p seed=12345,324 \
+            -f 4 -t 1 -wi 4 -i 5 -w 400ms -r 400ms -prof gc \
+            -rf json -rff results/fastjson2-names.json \
+            > results/fastjson2-names.log 2>&1 || {
+              tail -150 results/fastjson2-names.log
+              exit 1
+            }
+
+      - name: Summarize ratios and per-fork measurements
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/ratios.md >> "$GITHUB_STEP_SUMMARY"
+          import json,math,statistics
+          from pathlib import Path
+          p=Path('results/fastjson2-names.json')
+          print('## Fastjson2 handwritten Users packed-name field experiment: ${{ matrix.sizeKb }} KB')
+          if not p.exists():
+              print('No JMH JSON available. See logs.')
+              raise SystemExit(0)
+          data=json.loads(p.read_text())
+          print('| Seed | Holder (us/op) | Direct static fields (us/op) | Holder / Direct | Approx. 95% interval | Native / Compiled |')
+          print('| ---: | ---: | ---: | ---: | ---: | ---: |')
+          for seed in ('12345','324'):
+              rows={r['params']['implementation']:r for r in data if r['params']['seed']==seed}
+              if set(rows)!={'holder','direct','compiled','native'}:
+                  raise SystemExit(f'Missing implementations {seed}: {list(rows)}')
+              h=rows['holder']['primaryMetric']; d=rows['direct']['primaryMetric']
+              hf=[statistics.mean(f) for f in h['rawData']]
+              df=[statistics.mean(f) for f in d['rawData']]
+              if len(hf)!=4 or len(df)!=4:
+                  raise SystemExit(f'Expected four independent forks: {len(hf)} and {len(df)}')
+              hm=statistics.mean(hf); dm=statistics.mean(df); ratio=hm/dm
+              # Approximate log-ratio interval using t(3)=3.182, conservative.
+              se=math.sqrt((statistics.stdev(hf)/hm/math.sqrt(4))**2
+                          +(statistics.stdev(df)/dm/math.sqrt(4))**2)
+              low=math.exp(math.log(ratio)-3.182*se)
+              high=math.exp(math.log(ratio)+3.182*se)
+              baseline=rows['native']['primaryMetric']['score']/rows['compiled']['primaryMetric']['score']
+              print(f'| {seed} | {hm:.4f} | {dm:.4f} | {ratio:.3f}x | {low:.3f}–{high:.3f}x | {baseline:.3f}x |')
+              print()
+              print(f'Seed {seed} fork means (us/op):')
+              print('| Fork | Holder | Direct fields |')
+              print('| ---: | ---: | ---: |')
+              for i,(x,y) in enumerate(zip(hf,df),1):
+                  print(f'| {i} | {x:.4f} | {y:.4f} |')
+              print()
+          PY
+
+      - name: Archive raw JMH data and environment
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fastjson2-users-direct-names-${{ matrix.sizeKb }}kb-${{ github.run_id }}
+          path: results/
+          retention-days: 14
