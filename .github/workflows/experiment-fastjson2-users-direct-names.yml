@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           jar=$(cat results/jar-path.txt)
           java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.HandwrittenFastjson2UsersNameBenchmark.write' \
-            -p implementation=holder,direct,compiled,native \
+            -p implementation=holder,direct,literal,compiled,native \
             -p sizeKb=${{ matrix.sizeKb }} -p seed=12345,324 \
             -f 4 -t 1 -wi 4 -i 5 -w 400ms -r 400ms -prof gc \
             -rf json -rff results/fastjson2-names.json \
@@ -64,31 +64,32 @@ jobs:
               print('No JMH JSON available. See logs.')
               raise SystemExit(0)
           data=json.loads(p.read_text())
-          print('| Seed | Holder (us/op) | Direct static fields (us/op) | Holder / Direct | Approx. 95% interval | Native / Compiled |')
-          print('| ---: | ---: | ---: | ---: | ---: | ---: |')
+          print('| Seed | Holder (us/op) | Computed static (us/op) | Literal static (us/op) | Holder / Computed | Holder / Literal | Approx. 95% interval (literal) | Native / Compiled |')
+          print('| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |')
           for seed in ('12345','324'):
               rows={r['params']['implementation']:r for r in data if r['params']['seed']==seed}
-              if set(rows)!={'holder','direct','compiled','native'}:
+              if set(rows)!={'holder','direct','literal','compiled','native'}:
                   raise SystemExit(f'Missing implementations {seed}: {list(rows)}')
-              h=rows['holder']['primaryMetric']; d=rows['direct']['primaryMetric']
+              h=rows['holder']['primaryMetric']; d=rows['direct']['primaryMetric']; lit=rows['literal']['primaryMetric']
               hf=[statistics.mean(f) for f in h['rawData']]
               df=[statistics.mean(f) for f in d['rawData']]
-              if len(hf)!=4 or len(df)!=4:
+              lf=[statistics.mean(f) for f in lit['rawData']]
+              if len(hf)!=4 or len(df)!=4 or len(lf)!=4:
                   raise SystemExit(f'Expected four independent forks: {len(hf)} and {len(df)}')
-              hm=statistics.mean(hf); dm=statistics.mean(df); ratio=hm/dm
+              hm=statistics.mean(hf); dm=statistics.mean(df); lm=statistics.mean(lf); ratio=hm/lm
               # Approximate log-ratio interval using t(3)=3.182, conservative.
               se=math.sqrt((statistics.stdev(hf)/hm/math.sqrt(4))**2
-                          +(statistics.stdev(df)/dm/math.sqrt(4))**2)
+                          +(statistics.stdev(lf)/lm/math.sqrt(4))**2)
               low=math.exp(math.log(ratio)-3.182*se)
               high=math.exp(math.log(ratio)+3.182*se)
               baseline=rows['native']['primaryMetric']['score']/rows['compiled']['primaryMetric']['score']
-              print(f'| {seed} | {hm:.4f} | {dm:.4f} | {ratio:.3f}x | {low:.3f}–{high:.3f}x | {baseline:.3f}x |')
+              print(f'| {seed} | {hm:.4f} | {dm:.4f} | {lm:.4f} | {hm/dm:.3f}x | {ratio:.3f}x | {low:.3f}–{high:.3f}x | {baseline:.3f}x |')
               print()
               print(f'Seed {seed} fork means (us/op):')
-              print('| Fork | Holder | Direct fields |')
-              print('| ---: | ---: | ---: |')
-              for i,(x,y) in enumerate(zip(hf,df),1):
-                  print(f'| {i} | {x:.4f} | {y:.4f} |')
+              print('| Fork | Holder | Computed fields | Literal constants |')
+              print('| ---: | ---: | ---: | ---: |')
+              for i,(x,y,z) in enumerate(zip(hf,df,lf),1):
+                  print(f'| {i} | {x:.4f} | {y:.4f} | {z:.4f} |')
               print()
           PY
 
