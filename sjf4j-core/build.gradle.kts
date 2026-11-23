@@ -20,7 +20,7 @@ configurations {
 }
 
 dependencies {
-    compileOnly("tools.jackson.core:jackson-databind:3.3.0")
+    compileOnly("tools.jackson.core:jackson-databind:3.1.8")
     compileOnly("com.fasterxml.jackson.core:jackson-databind:2.22.3")
     compileOnly("com.google.code.gson:gson:2.13.1")
     compileOnly("com.alibaba.fastjson2:fastjson2:2.0.66")
