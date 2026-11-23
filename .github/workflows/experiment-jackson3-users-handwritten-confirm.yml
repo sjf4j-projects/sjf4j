@@ -1,0 +1,111 @@
+name: Experiment / Jackson3 Users SerializedString repeat confirmation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users-handwritten-confirm.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/HandwrittenJackson3UsersWriteBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  confirm:
+    strategy:
+      fail-fast: false
+      matrix:
+        sizeKb: [1, 10, 100]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build handwritten testbench
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          echo "$jar" > results/jar-path.txt
+
+      - name: Repeat A/B across six JVM forks and two seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar=$(cat results/jar-path.txt)
+          java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.HandwrittenJackson3UsersWriteBenchmark.write' \
+            -p implementation=holderHelperWrapped,serializedHelperWrapped,blackbird,compiled \
+            -p sizeKb=${{ matrix.sizeKb }} -p seed=12345,324 \
+            -f 6 -t 1 -wi 5 -i 6 -w 400ms -r 400ms -prof gc \
+            -rf json -rff results/confirmation.json \
+            > results/confirmation.log 2>&1 || {
+              tail -120 results/confirmation.log
+              exit 1
+            }
+
+      - name: Summarize per-fork measurements, ratios and uncertainty
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/ratios.md >> "$GITHUB_STEP_SUMMARY"
+          import json,math,statistics
+          from pathlib import Path
+          p=Path('results/confirmation.json')
+          if not p.exists():
+              print('No JMH result; inspect build or benchmark logs.')
+              raise SystemExit(0)
+          rows=json.loads(p.read_text())
+          seeds=('12345','324')
+          print('## Handwritten Jackson3 Users SerializedString confirmation (KB: ${{ matrix.sizeKb }})')
+          print()
+          print('Ratio = holder Helper Wrapped / direct SerializedString Helper Wrapped; >1 means direct SerializedString is faster.')
+          print('Two seeds, six independent JMH forks per case. Full fresh byte[] write and JSON parity checks.')
+          print()
+          print('| Seed | Holder (us/op) | SerializedString (us/op) | Speed ratio | Approx. 95% interval | Blackbird / Compiled |')
+          print('| ---: | ---: | ---: | ---: | ---: | ---: |')
+          for seed in seeds:
+              d={r['params']['implementation']:r for r in rows if r['params']['seed']==seed}
+              if set(d)!={'holderHelperWrapped','serializedHelperWrapped','blackbird','compiled'}:
+                  raise SystemExit(f'Missing case(s) for seed {seed}: {list(d)}')
+              h=d['holderHelperWrapped']['primaryMetric']
+              s=d['serializedHelperWrapped']['primaryMetric']
+              b=d['blackbird']['primaryMetric']
+              c=d['compiled']['primaryMetric']
+              hf=[statistics.mean(fork) for fork in h['rawData']]
+              sf=[statistics.mean(fork) for fork in s['rawData']]
+              if len(hf)!=6 or len(sf)!=6:
+                  raise SystemExit(f'Expected six forks, got {len(hf)} and {len(sf)}')
+              hm=statistics.mean(hf)
+              sm=statistics.mean(sf)
+              ratio=hm/sm
+              # Approximate, deliberately conservative delta-method interval using t(5)=2.571.
+              err=math.sqrt((statistics.stdev(hf)/hm/math.sqrt(6))**2
+                            +(statistics.stdev(sf)/sm/math.sqrt(6))**2)
+              low=math.exp(math.log(ratio)-2.571*err)
+              high=math.exp(math.log(ratio)+2.571*err)
+              print(f'| {seed} | {hm:.4f} | {sm:.4f} | {ratio:.3f}x | {low:.3f}–{high:.3f}x | {b["score"]/c["score"]:.3f}x |')
+              print()
+              print(f'### Seed {seed} fork means (us/op)')
+              print('| Fork | Holder | SerializedString |')
+              print('| ---: | ---: | ---: |')
+              for i,(a,z) in enumerate(zip(hf,sf),1):
+                  print(f'| {i} | {a:.4f} | {z:.4f} |')
+              print()
+          print('Intervals are approximate and are not a substitute for cross-run replication on different machines.')
+          PY
+
+      - name: Archive raw JMH and environments
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-serialized-confirm-${{ matrix.sizeKb }}kb-${{ github.run_id }}
+          path: results/
+          retention-days: 14
