@@ -17,15 +17,15 @@ java {
 
 dependencies {
     api(project.findProject(":sjf4j-core")?.let { project(":sjf4j-core") } ?: "org.sjf4j:sjf4j-core:$version")
-    api("tools.jackson.core:jackson-databind:3.3.0")
+    api("tools.jackson.core:jackson-databind:3.1.8")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // JMH
-    jmhImplementation("tools.jackson.core:jackson-databind:3.3.0")
-    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.3.0")
+    jmhImplementation("tools.jackson.core:jackson-databind:3.1.8")
+    jmhImplementation("tools.jackson.module:jackson-module-blackbird:3.1.8")
     jmhImplementation("org.openjdk.jmh:jmh-core:1.37")
     jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.36")
 }
