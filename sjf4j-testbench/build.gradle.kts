@@ -9,7 +9,7 @@ import java.util.zip.ZipInputStream
 plugins {
     id("java-library")
     id("jacoco")
-    id("me.champeau.jmh") version "0.7.2"
+    id("me.champeau.jmh") version "0.7.4"
     id("org.graalvm.buildtools.native") version "1.1.12"
 }
 
