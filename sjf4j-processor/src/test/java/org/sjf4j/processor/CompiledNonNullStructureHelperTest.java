@@ -36,8 +36,10 @@ class CompiledNonNullStructureHelperTest {
                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + " public interface Binder {"
                     + " @Write String write(Model value) throws java.io.IOException;"
+                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException;"
                     + " @Write String writeList(List<List<String>> value) throws java.io.IOException;"
                     + " @Write String writeMap(Map<String,List<String>> value) throws java.io.IOException;"
+                    + " @Write(includeNulls=false) String writeMapOmit(Map<String,List<String>> value) throws java.io.IOException;"
                     + "}");
 
             NavigatorTestCompiler.Result compiled =
@@ -51,6 +53,8 @@ class CompiledNonNullStructureHelperTest {
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
                 java.lang.reflect.Method writeList = binderType.getMethod("writeList", java.util.List.class);
                 java.lang.reflect.Method writeMap = binderType.getMethod("writeMap", Map.class);
+                java.lang.reflect.Method writeOmit = binderType.getMethod("writeOmit", modelType);
+                java.lang.reflect.Method writeMapOmit = binderType.getMethod("writeMapOmit", Map.class);
                 Object all = CompiledInstances.create(binderType);
                 Object filtered = CompiledInstances.create(binderType, new NodeConfig(false));
 
@@ -58,7 +62,8 @@ class CompiledNonNullStructureHelperTest {
                     assertTrue(json.readTree((String) write.invoke(binder, (Object) null)).isNull(), backend);
                     assertTrue(json.readTree((String) writeList.invoke(binder, (Object) null)).isNull(), backend);
                     assertTrue(json.readTree((String) writeMap.invoke(binder, (Object) null)).isNull(), backend);
-                    JsonNode result = json.readTree((String) write.invoke(binder, model));
+                    JsonNode result = json.readTree((String) (binder == all ? write : writeOmit)
+                            .invoke(binder, model));
                     assertTrue(result.path("names").get(1).isNull(), backend);
                     assertTrue(result.path("groups").path("present").get(1).isNull(), backend);
                     if (binder == all) {
@@ -82,7 +87,8 @@ class CompiledNonNullStructureHelperTest {
                     Map<String, java.util.List<String>> map = new LinkedHashMap<>();
                     map.put("yes", java.util.Arrays.asList("a", null));
                     map.put("no", null);
-                    JsonNode mapped = json.readTree((String) writeMap.invoke(binder, map));
+                    JsonNode mapped = json.readTree((String) (binder == all ? writeMap : writeMapOmit)
+                            .invoke(binder, map));
                     assertTrue(mapped.path("yes").get(1).isNull(), backend);
                     assertEquals(binder == all, mapped.has("no"), backend);
                 }

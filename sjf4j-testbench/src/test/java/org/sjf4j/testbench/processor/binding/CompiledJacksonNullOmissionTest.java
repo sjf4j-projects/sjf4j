@@ -31,20 +31,24 @@ public class CompiledJacksonNullOmissionTest {
 
     private static final ObjectMapper JACKSON = new ObjectMapper();
 
-    @CompiledBinder(backend = Backend.JACKSON2)
+    @CompiledBinder(backend = Backend.JACKSON2, includeNulls = false)
     public interface Jackson2Compiled {
         @Write String writePojo(TestBean value) throws IOException;
+        @Write(includeNulls = true) String writePojoInclude(TestBean value) throws IOException;
         @Write byte[] writePojoUtf8(TestBean value) throws IOException;
+        @Write(includeNulls = true) byte[] writePojoUtf8Include(TestBean value) throws IOException;
         @Write void writePojo(TestBean value, Writer output) throws IOException;
         @Write void writePojo(TestBean value, OutputStream output) throws IOException;
         @Write String writeList(List<TestBean> value) throws IOException;
         @Write String writeMap(Map<String, TestBean> value) throws IOException;
     }
 
-    @CompiledBinder(backend = Backend.JACKSON3)
+    @CompiledBinder(backend = Backend.JACKSON3, includeNulls = false)
     public interface Jackson3Compiled {
         @Write String writePojo(TestBean value) throws IOException;
+        @Write(includeNulls = true) String writePojoInclude(TestBean value) throws IOException;
         @Write byte[] writePojoUtf8(TestBean value) throws IOException;
+        @Write(includeNulls = true) byte[] writePojoUtf8Include(TestBean value) throws IOException;
         @Write String writeList(List<TestBean> value) throws IOException;
         @Write String writeMap(Map<String, TestBean> value) throws IOException;
     }
@@ -118,9 +122,9 @@ public class CompiledJacksonNullOmissionTest {
         equivalent(runtime.writeNodeAsString(bean), omitting.writePojo(bean));
         equivalent(runtime.writeNodeAsString(bean),
                 new String(omitting.writePojoUtf8(bean), StandardCharsets.UTF_8));
-        equivalent(JACKSON.writeValueAsString(bean), including.writePojo(bean));
+        equivalent(JACKSON.writeValueAsString(bean), including.writePojoInclude(bean));
         equivalent(JACKSON.writeValueAsString(bean),
-                new String(including.writePojoUtf8(bean), StandardCharsets.UTF_8));
+                new String(including.writePojoUtf8Include(bean), StandardCharsets.UTF_8));
 
         List<TestBean> list = Arrays.asList(bean, null, new TestBean(6, "ok",
                 Arrays.asList((String) null), null, null));
@@ -152,7 +156,7 @@ public class CompiledJacksonNullOmissionTest {
         equivalent(runtime.writeNodeAsString(bean), omitting.writePojo(bean));
         equivalent(runtime.writeNodeAsString(bean),
                 new String(omitting.writePojoUtf8(bean), StandardCharsets.UTF_8));
-        equivalent(JACKSON.writeValueAsString(bean), including.writePojo(bean));
+        equivalent(JACKSON.writeValueAsString(bean), including.writePojoInclude(bean));
         List<TestBean> list = Arrays.asList(bean, null, sample());
         equivalent(runtime.writeNodeAsString(list), omitting.writeList(list));
         equivalent(runtime.writeNodeAsString(sampleMap()), omitting.writeMap(sampleMap()));
