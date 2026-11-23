@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added compiled JSONPath filters and `@NodeRegistry` discovery for value codecs and external nodes.
 
 ### Changed
-- Optimized compiled binding with Jackson 3 native reads and annotation-driven `includeNulls`; improved compiled JDBC codec paths.
 - Exposed backend libraries as `api` dependencies; aligned Jackson 3 to 3.1.x and CI to JDK 25.
 - JSONPath `match()` and `search()` now use JDK `Pattern` instead of RFC 9485 regex.
 

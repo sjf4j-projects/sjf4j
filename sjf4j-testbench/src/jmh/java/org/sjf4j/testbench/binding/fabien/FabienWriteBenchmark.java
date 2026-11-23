@@ -35,13 +35,13 @@ public class FabienWriteBenchmark {
     public static void main(String[] args) throws Exception {
         Main.main(args.length != 0 ? args : new String[]{
                 FabienWriteBenchmark.class.getName() + ".write",
-                "-p", "backend=jackson2",
+                "-p", "backend=jackson3",
                 "-p", "implementation=runtime,compiled,native,blackbird",
                 "-p", "model=users,clients",
                 "-p", "shape=pojo",
                 "-p", "sizeKb=1",
                 "-p", "seed=12345",
-                "-f", "1", "-wi", "3", "-i", "3",
+                "-f", "1", "-wi", "5", "-i", "5",
                 "-w", "500ms", "-r", "500ms"
         });
     }
