@@ -95,7 +95,9 @@ final class BackendSpec {
             case JACKSON2:
                 return "org.sjf4j.backend.jackson2.binding.Jackson2CompiledName";
             case JACKSON3:
-                // Compiled write helpers use Jackson 3\'s native prepared names directly.\n                // Jackson3CompiledName remains available for the runtime API.\n                return "tools.jackson.core.io.SerializedString";
+                // Compiled write helpers use Jackson 3's native prepared names directly.
+                // Jackson3CompiledName remains available for the runtime API.
+                return "tools.jackson.core.io.SerializedString";
             case FASTJSON2:
                 return "org.sjf4j.backend.fastjson2.binding.Fastjson2CompiledName";
             case SIMPLE:
