@@ -52,6 +52,7 @@ final class BindingCompiler {
     private final CompiledMetadata metadata;
     private final Backend backend;
     private final StandardCreatorResolver creators;
+    private boolean writeIncludeNulls;
 
     private final TypeMirror stringType;
     private final TypeMirror arrayListType;
@@ -79,6 +80,7 @@ final class BindingCompiler {
     }
 
     CompiledMethod compile(BindingPlan plan, GeneratedClass generated) {
+        writeIncludeNulls = plan.includeNulls();
         BindingValue value = compileValue(plan.direction(), plan.valueType(),
                 plan.method().declaration(), generated);
 
@@ -108,6 +110,8 @@ final class BindingCompiler {
         TypeMirror type = context.types.concrete(inputType);
         String key = direction.name() + ':' + type.toString()
                 + ':' + valueFormat + ':' + valuePattern
+                + (direction == BindingPlan.Direction.WRITE_TO
+                        ? ":includeNulls:" + writeIncludeNulls : "")
                 // The mapped OneOf constant-inlining plan must not be reused
                 // for direct @Write bindings of the same POJO type.
                 + (inlineOneOfSubtypes.contains(type.toString()) ? ":oneOfInline" : "");
@@ -142,7 +146,7 @@ final class BindingCompiler {
         }
 
         BindingValue value = new BindingValue(direction, type, kind,
-                type.getKind().isPrimitive());
+                type.getKind().isPrimitive(), writeIncludeNulls);
 
         /*
          * Cache the placeholder before recursively compiling children so

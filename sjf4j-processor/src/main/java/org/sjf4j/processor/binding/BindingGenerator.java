@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -39,14 +40,25 @@ public final class BindingGenerator {
 
         generated.enableNodeConfig();
         generated.enableBackendBinder(backend.binderType());
+        // Preserve injected value-format settings, but never inherit its
+        // null policy. Runtime fallbacks receive the annotation-fixed variant.
+        String includeConfig = generated.names().field("writeConfigIncludeNulls");
+        String omitConfig = generated.names().field("writeConfigOmitNulls");
+        generated.addField(out -> out.line("private final org.sjf4j.NodeConfig " + includeConfig + ";"));
+        generated.addField(out -> out.line("private final org.sjf4j.NodeConfig " + omitConfig + ";"));
+        generated.addConfigInitializer(out -> {
+            out.line("this." + includeConfig + " = this.config.withIncludeNulls(true);");
+            out.line("this." + omitConfig + " = this.config.withIncludeNulls(false);");
+        });
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
 
         List<ResolvedMethod> resolvedMethods = context.methods.abstractMethods(type);
         List<BindingPlan> plans = new ArrayList<BindingPlan>(resolvedMethods.size());
 
+        boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
         for (ResolvedMethod resolved : resolvedMethods) {
-            BindingPlan plan = methodGenerator.analyze(resolved, generated);
+            BindingPlan plan = methodGenerator.analyze(resolved, generated, binderIncludeNulls);
 
             if (plan != null) {
                 plans.add(plan);
@@ -70,7 +82,8 @@ public final class BindingGenerator {
 
         if (!generated.isValid()) return;
 
-        BindingEmitter emitter = new BindingEmitter(context, backend, new BindingNames(generated.names()));
+        BindingEmitter emitter = new BindingEmitter(context, backend,
+                new BindingNames(generated.names()), includeConfig, omitConfig);
 
         for (BindingCompiler.CompiledMethod method : compiled) {
             emitter.emitMethod(method, generated);

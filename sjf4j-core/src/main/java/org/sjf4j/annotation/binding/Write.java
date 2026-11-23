@@ -18,4 +18,11 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface Write {
+    /**
+     * Whether null-valued object members are written. When omitted, inherits
+     * {@link CompiledBinder#includeNulls()}; an explicitly supplied value
+     * overrides that default even when it is {@code true}.
+     * Null array elements and root nulls are always written.
+     */
+    boolean includeNulls() default true;
 }

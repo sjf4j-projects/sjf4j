@@ -85,6 +85,22 @@ public final class NodeConfig {
     }
 
     /**
+     * Returns a configuration with the same value-format registrations and the
+     * specified null-property policy. The internal immutable format tables may
+     * safely be shared between configurations.
+     */
+    public NodeConfig withIncludeNulls(boolean includeNulls) {
+        if (this.includeNulls == includeNulls) return this;
+        return new NodeConfig(includeNulls, valueFormatTypes, valueFormats);
+    }
+
+    private NodeConfig(boolean includeNulls, Class<?>[] valueFormatTypes, String[] valueFormats) {
+        this.includeNulls = includeNulls;
+        this.valueFormatTypes = valueFormatTypes;
+        this.valueFormats = valueFormats;
+    }
+
+    /**
      * Copies default value formats into the target map, overwriting matching keys.
      */
     public void copyValueFormatsTo(Map<Class<?>, String> target) {
