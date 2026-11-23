@@ -53,7 +53,7 @@ jobs:
           python3 -m py_compile scripts/analyze-jdbc-mapping-benchmark.py
       - name: Compile generated mappers, testbench and JMH
         run: ./gradlew :sjf4j-testbench:test :sjf4j-testbench:jmhJar
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jdbc-mapping-jmh
           path: sjf4j-testbench/build/libs/*-jmh.jar
@@ -86,7 +86,7 @@ jobs:
         run: ./scripts/benchmark-jdbc-mapping.sh smoke "${{ matrix.group }}"
       - name: Upload diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jdbc-smoke-${{ matrix.group }}-${{ github.run_id }}
           path: build/performance/jdbc-mapping/${{ matrix.group }}/
@@ -138,7 +138,7 @@ jobs:
           cat build/performance/jdbc-mapping/report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload raw results, metadata, logs and report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jdbc-mapping-full-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/performance/jdbc-mapping/

@@ -54,7 +54,7 @@ jobs:
       - name: Compile JMH jar and both generated mapper implementations
         run: ./gradlew :sjf4j-testbench:jmhJar
       - name: Upload JMH jar
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mapping-jmh-jar
           path: sjf4j-testbench/build/libs/*-jmh.jar
@@ -88,7 +88,7 @@ jobs:
         run: ./scripts/benchmark-mapping.sh smoke "${{ matrix.group }}"
       - name: Upload smoke diagnostics on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mapping-smoke-${{ matrix.group }}-${{ github.run_id }}
           path: build/performance/mapping/${{ matrix.group }}/
@@ -136,7 +136,7 @@ jobs:
         run: ./scripts/benchmark-mapping.sh full all
       - name: Upload all raw results and diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mapping-full-all-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/performance/mapping/
@@ -168,7 +168,7 @@ jobs:
           cat results/report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload combined result artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mapping-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
           path: results/

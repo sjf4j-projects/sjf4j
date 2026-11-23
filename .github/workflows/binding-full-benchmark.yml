@@ -31,7 +31,7 @@ jobs:
         run: ./gradlew :sjf4j-testbench:jmhJar
 
       - name: Upload JMH jar for backend jobs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binding-full-jmh-jar
           path: sjf4j-testbench/build/libs/*-jmh.jar
@@ -151,7 +151,7 @@ jobs:
 
       - name: Upload per-backend results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binding-full-${{ matrix.backend }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/performance/binding/
@@ -174,7 +174,7 @@ jobs:
 
       - name: Upload one combined archive for analysis
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binding-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
           path: results/

@@ -41,7 +41,7 @@ jobs:
         run: ./gradlew :sjf4j-testbench:jmhJar
 
       - name: Upload JMH jar
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: path-jmh-jar
           path: sjf4j-testbench/build/libs/*-jmh.jar
@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload diagnostic log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: path-smoke-${{ matrix.shape }}-${{ github.run_id }}
           path: build/performance/path/
@@ -165,7 +165,7 @@ jobs:
 
       - name: Upload raw results and diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: path-full-${{ matrix.shape }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/performance/path/${{ matrix.shape }}/
@@ -200,7 +200,7 @@ jobs:
 
       - name: Upload combined artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: path-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
           path: results/

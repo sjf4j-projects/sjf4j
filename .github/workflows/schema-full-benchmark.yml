@@ -47,7 +47,7 @@ jobs:
           grep -q 'org.sjf4j.backend.jackson2.external.Jackson2ExternalProvider' <<< "$providers"
 
       - name: Upload JMH jar
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: schema-jmh-jar
           path: sjf4j-testbench/build/libs/*-jmh.jar
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload smoke diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: schema-smoke-${{ matrix.group }}-${{ github.run_id }}
           path: build/performance/schema/
@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload raw results and diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: schema-full-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/performance/schema/${{ matrix.group }}/
@@ -212,7 +212,7 @@ jobs:
 
       - name: Upload combined artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: schema-full-combined-${{ github.run_id }}-${{ github.run_attempt }}
           path: results/
