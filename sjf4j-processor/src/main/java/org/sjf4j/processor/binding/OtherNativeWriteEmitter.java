@@ -226,7 +226,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), this.names);
+                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), this.names, writes.runtimeConfig());
                 return;
             case RUNTIME:
                 writeRuntimeValue(out, expression);

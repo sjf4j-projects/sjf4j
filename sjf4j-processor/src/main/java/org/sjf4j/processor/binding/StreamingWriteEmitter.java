@@ -178,7 +178,7 @@ final class StreamingWriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, generator, null, backend.backend(), names);
+                CodecWriteEmitter.emit(out, value, expression, generator, null, backend.backend(), names, writes.runtimeConfig());
                 return;
             case STRING:
                 out.line(generator + ".writeString(" + expression + ");");
