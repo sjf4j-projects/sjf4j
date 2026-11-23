@@ -101,7 +101,8 @@ final class WriteEmitter {
     }
 
     String runtimeConfig() {
-        return "this." + (includeNulls ? includeConfig : omitConfig);
+        // Static final configuration selected while generating this method.
+        return includeNulls ? includeConfig : omitConfig;
     }
 
     boolean hasEnumFields() { return !enumFields.isEmpty(); }

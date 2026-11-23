@@ -44,7 +44,7 @@ class CompiledWriteRoutingBoundaryTest {
                         backend + ": helper must not reacquire the generator");
             }
             // JsonObject and JsonArray are still dynamic: do not compile their contents.
-            assertTrue(generated.contains("StreamingIO.writeNode(generator, value, this.writeConfigIncludeNulls"),
+            assertTrue(generated.contains("StreamingIO.writeNode(generator, value, writeConfigIncludeNulls"),
                     backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
