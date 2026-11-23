@@ -65,16 +65,9 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("generator.nativeGenerator()"), backend);
             assertTrue(generated.contains("private void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
-            if ("JACKSON3".equals(backend)) {
-                assertTrue(generated.contains("private static void _writeStringMember("), backend);
-                assertTrue(generated.contains("boolean includeNulls)"), backend);
-                assertTrue(generated.contains("if (includeNulls)"), backend);
-                assertTrue(generated.contains(", this.config.includeNulls);"), backend);
-            } else {
-                assertTrue(generated.contains("private void _writeStringMember("), backend);
-                assertFalse(generated.contains("this.config.includeNulls"), backend);
-                assertFalse(generated.contains("boolean includeNulls)"), backend);
-            }
+            assertTrue(generated.contains("private static void _writeStringMemberIncludeNulls("), backend);
+            assertTrue(generated.contains("private static void _writeStringMemberOmitNulls("), backend);
+            assertFalse(generated.contains("boolean includeNulls)"), backend);
             assertTrue(generated.contains("if (value == null)"), backend);
             assertTrue(generated.contains("g.writeString(value);"), backend);
             assertTrue(generated.contains("_writeStringMemberIncludeNulls(g,"), backend);

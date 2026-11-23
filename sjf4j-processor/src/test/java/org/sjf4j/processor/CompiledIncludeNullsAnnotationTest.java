@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.simple.SimpleJsonBinder;
-import org.sjf4j.binding.simple.SimpleYamlBinder;
+import org.sjf4j.backend.snake.binding.SnakeBinder;
 
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -109,7 +109,7 @@ class CompiledIncludeNullsAnnotationTest {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> decode(String backend, String text) {
         return backend.equals("SNAKE")
-                ? (Map<String, Object>) new SimpleYamlBinder(NodeConfig.DEFAULT).readNode(text, Map.class)
+                ? (Map<String, Object>) new SnakeBinder().readNode(text, Map.class)
                 : (Map<String, Object>) new SimpleJsonBinder().readNode(text, Map.class);
     }
 

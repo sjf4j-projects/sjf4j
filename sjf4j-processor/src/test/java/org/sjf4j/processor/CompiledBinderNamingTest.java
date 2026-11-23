@@ -29,7 +29,7 @@ class CompiledBinderNamingTest {
                             + " default void _writeBean() {}"
                             + " default void _writeBeanUtf16() {}"
                             + " default void _writeString() {}"
-                            + " default void _writeStringMember() {}"
+                            + " default void _writeStringMemberIncludeNulls() {}"
                             + " }");
             sources.put("fixture/Binder.java",
                     "package fixture; import org.sjf4j.annotation.binding.*;"
@@ -61,7 +61,8 @@ class CompiledBinderNamingTest {
                 assertTrue(generated.contains("BEAN_NAME2"), backend);
             }
             if ("JACKSON2".equals(backend)) {
-                assertTrue(generated.contains("_writeStringMember2("), backend);
+                assertTrue(generated.contains("_writeStringMemberIncludeNulls2("), backend);
+                assertTrue(generated.contains("_writeStringMemberOmitNulls("), backend);
             }
             if ("FASTJSON2".equals(backend)) {
                 assertTrue(generated.contains("_readStatusEnum("), backend);
