@@ -768,7 +768,7 @@ final class BindingCompiler {
                 }
                 if (!included) {
                     BindingValue stringValue = new BindingValue(BindingPlan.Direction.WRITE_TO,
-                            stringType, BindingValue.Kind.STRING, false);
+                            stringType, BindingValue.Kind.STRING, false, value.writeIncludeNulls());
                     constants.add(new BindingProperty(name, (String) field.getConstantValue(),
                             stringValue));
                 }
@@ -792,7 +792,8 @@ final class BindingCompiler {
                                             TypeMirror propertyType, OneOf annotation,
                                             ExecutableElement method, GeneratedClass generated) {
         TypeMirror type = context.types.concrete(propertyType);
-        BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF, false);
+        BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF,
+                false, owner.writeIncludeNulls());
         result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
         if (owner.direction() == BindingPlan.Direction.READ_FROM) {
             result.oneOfMember(context.typeUtils.erasure(owner.type()).toString(), property);
@@ -1033,7 +1034,8 @@ final class BindingCompiler {
                                               OneOf annotation, int index,
                                               ExecutableElement method, GeneratedClass generated) {
         TypeMirror type = context.types.concrete(argType);
-        BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF, false);
+        BindingValue result = new BindingValue(owner.direction(), type, BindingValue.Kind.ONE_OF,
+                false, owner.writeIncludeNulls());
         result.helperName(names.helperMethod(helperSuggestion(owner.direction(), type)));
         result.oneOfCreator(context.typeUtils.erasure(owner.type()).toString(), index);
         if (!compileOneOfRead(result, annotation, method, generated)) return null;
