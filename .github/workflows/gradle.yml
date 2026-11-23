@@ -38,7 +38,7 @@ jobs:
 
       - name: Upload coverage
         if: ${{ always() && hashFiles('sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml') != '' && env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ env.CODECOV_TOKEN }}
           files: sjf4j-testbench/build/reports/jacoco/test/jacocoTestReport.xml
