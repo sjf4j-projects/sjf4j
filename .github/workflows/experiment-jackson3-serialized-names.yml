@@ -36,7 +36,7 @@ jobs:
           test -s "$jar"
           echo "$jar" > results/jar-path.txt
           find sjf4j-testbench/build/generated -name '*FabienBindings*Jackson3_Impl.java' -exec cp {} results/generated/ \; || true
-          if ! grep -R -q 'private static final tools.jackson.core.io.SerializedString ' results/generated; then
+          if ! grep -R -q 'private static final SerializedString ' results/generated; then
             echo 'Direct prepared fields not found in generated Jackson3 Fabien binder'
             find sjf4j-testbench/build/generated -name '*Jackson3_Impl.java' | head -30
             exit 1
