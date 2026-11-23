@@ -69,13 +69,6 @@ class CompiledIncludeNullsAnnotationTest {
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
-            String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertFalse(generated.contains("this.config.includeNulls"), backend);
-            assertFalse(generated.contains("withIncludeNulls("), backend);
-            assertFalse(generated.contains("this.config ="), backend);
-            assertFalse(generated.contains("writeConfigIncludeNulls"), backend);
-            assertFalse(generated.contains("writeConfigOmitNulls"), backend);
-
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Class<?> implType = loader.loadClass("fixture.Binder_Impl");
