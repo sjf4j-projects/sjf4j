@@ -34,7 +34,8 @@ class Jackson3PreparedNameWriteTest {
         assertTrue(compiled.success, compiled.diagnostics());
 
         String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(generated.contains("private static final tools.jackson.core.io.SerializedString "));
+        assertTrue(generated.contains("import tools.jackson.core.io.SerializedString;"));
+        assertTrue(generated.contains("private static final SerializedString "));
         assertFalse(generated.contains("Jackson3CompiledName"));
         assertFalse(generated.contains(".serializedName"));
         assertTrue(generated.contains("_writeStringMember(g, "));
