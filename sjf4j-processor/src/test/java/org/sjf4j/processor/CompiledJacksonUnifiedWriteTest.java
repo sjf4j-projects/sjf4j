@@ -68,7 +68,10 @@ class CompiledJacksonUnifiedWriteTest {
                 assertTrue(generated.contains("private static void _writeStringMember("), backend);
                 assertTrue(generated.contains("boolean includeNulls)"), backend);
                 assertTrue(generated.contains("if (includeNulls)"), backend);
-                assertTrue(generated.contains(", this.config.includeNulls);"), backend);
+                assertTrue(generated.contains("boolean includeNulls = this.config.includeNulls;"), backend);
+                assertTrue(generated.contains(", includeNulls);"), backend);
+                assertFalse(generated.contains("if (this.config.includeNulls)"), backend);
+                assertFalse(generated.contains("|| this.config.includeNulls"), backend);
             } else {
                 assertTrue(generated.contains("private void _writeStringMember("), backend);
                 assertTrue(generated.contains("if (this.config.includeNulls)"), backend);
@@ -77,8 +80,13 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("if (value == null)"), backend);
             assertTrue(generated.contains("g.writeString(value);"), backend);
             assertTrue(generated.contains("_writeStringMember(g,"), backend);
-            assertTrue(generated.contains("_writeList(generator, property0);"), backend);
-            assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
+            if ("JACKSON3".equals(backend)) {
+                assertTrue(generated.contains("_writeList(generator, property0, includeNulls);"), backend);
+                assertTrue(generated.contains("_writeMap(generator, property2, includeNulls);"), backend);
+            } else {
+                assertTrue(generated.contains("_writeList(generator, property0);"), backend);
+                assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
+            }
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
             assertTrue(generated.contains("this.config.includeNulls"), backend);
