@@ -40,8 +40,10 @@ public final class BindingGenerator {
 
         generated.enableNodeConfig();
         generated.enableBackendBinder(backend.binderType());
-        // Preserve injected value-format settings, but never inherit its
-        // null policy. Runtime fallbacks receive the annotation-fixed variant.
+        boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
+        generated.useCompiledBinderConfig(binderIncludeNulls);
+        // The NodeConfig constructor is retained but intentionally ignored.
+        // Only annotation-built configs reach compiled operations and fallbacks.
         String includeConfig = generated.names().field("writeConfigIncludeNulls");
         String omitConfig = generated.names().field("writeConfigOmitNulls");
         generated.addField(out -> out.line("private final org.sjf4j.NodeConfig " + includeConfig + ";"));
@@ -56,7 +58,6 @@ public final class BindingGenerator {
         List<ResolvedMethod> resolvedMethods = context.methods.abstractMethods(type);
         List<BindingPlan> plans = new ArrayList<BindingPlan>(resolvedMethods.size());
 
-        boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
         for (ResolvedMethod resolved : resolvedMethods) {
             BindingPlan plan = methodGenerator.analyze(resolved, generated, binderIncludeNulls);
 

@@ -39,6 +39,7 @@ public final class GeneratedClass {
 
     private boolean nodeConfigConstructor;
     private String backendBinderType;
+    private Boolean compiledBinderIncludeNulls;
 
     private boolean valid = true;
 
@@ -163,6 +164,15 @@ public final class GeneratedClass {
         this.backendBinderType = Asserts.notNull(binderType, "binderType");
     }
 
+    /**
+     * Generated Binders retain their legacy NodeConfig constructor but ignore
+     * its argument: runtime compiled semantics come from annotations instead.
+     * The injected backend Binder still supplies native parser/writer settings.
+     */
+    public void useCompiledBinderConfig(boolean includeNulls) {
+        compiledBinderIncludeNulls = includeNulls;
+    }
+
     /** Adds an assignment after the generated constructor's config field is set. */
     public void addConfigInitializer(Member member) {
         configInitializers.add(Asserts.notNull(member, "member"));
@@ -264,15 +274,17 @@ public final class GeneratedClass {
                 out.line("this.config = org.sjf4j.util.Asserts.notNull(config, \"config\");");
                 for (Member initializer : configInitializers) initializer.write(out);
             } else {
-                out.line("this(new " + backendBinderType
-                        + "(org.sjf4j.util.Asserts.notNull(config, \"config\")));");
+                out.line("this(new " + backendBinderType + "());");
             }
             out.endBlock();
             if (backendBinderType != null) {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
                 out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
-                out.line("this.config = this.binder.config();");
+                out.line(compiledBinderIncludeNulls == null
+                        ? "this.config = this.binder.config();"
+                        : "this.config = new org.sjf4j.NodeConfig("
+                                + compiledBinderIncludeNulls + ");");
                 for (Member initializer : configInitializers) initializer.write(out);
                 out.endBlock();
             }

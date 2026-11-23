@@ -26,10 +26,12 @@ import java.lang.annotation.Target;
  *
  * <p>Generated implementations have the {@code _Impl} suffix and can be
  * created through {@link org.sjf4j.CompiledInstances#create(Class)}
- * or created with runtime value-format settings using
- * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.NodeConfig)}.
- * A preconfigured backend Binder can also be injected using
- * {@code CompiledInstances.create(UserJson.class, jackson2Binder)}.</p>
+ * or through the retained compatibility overload
+ * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.NodeConfig)};
+ * generated binders ignore that overload's NodeConfig argument. A concrete
+ * backend Binder can still be injected using
+ * {@code CompiledInstances.create(UserJson.class, jackson2Binder)} to customize
+ * native parser and generator settings, not compiled binding semantics.</p>
  */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
@@ -51,8 +53,8 @@ public @interface CompiledBinder {
 
     /**
      * Default null-property policy for generated {@link Write} operations.
-     * This policy is fixed at compilation and overrides any injected
-     * {@link org.sjf4j.NodeConfig} setting.
+     * This policy is fixed at compilation. An injected
+     * {@link org.sjf4j.NodeConfig} does not configure generated bindings.
      */
     boolean includeNulls() default true;
 
