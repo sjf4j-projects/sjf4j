@@ -52,6 +52,6 @@ public final class Jackson3NameMatcher extends NameMatcher {
             propertyNames[i] = name;
             serializedNames[i] = new SerializedString(name);
         }
-        matcher = BinaryNameMatcher.construct(Arrays.asList(propertyNames), false);
+        matcher = BinaryNameMatcher.construct(Arrays.asList(propertyNames));
     }
 }

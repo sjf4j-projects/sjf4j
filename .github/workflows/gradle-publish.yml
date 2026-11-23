@@ -1,55 +1,42 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-# This workflow will build a package using Gradle and then publish it to GitHub packages when a release is created
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#Publishing-using-gradle
-
 name: Publish Release to Maven Central
-
-permissions:
-  contents: read
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-
     steps:
-      # 1️⃣
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # 2️⃣
-      - name: Set up JDK
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '25'
           cache: gradle
 
-#      # 3️⃣
-#      - name: Set version from release tag
-#        run: |
-#          env
-#          echo "version=${GITHUB_REF_NAME#v}" >> gradle.properties
+      - name: Import signing key
+        env:
+          SIGNING_SECRET_KEY: ${{ secrets.SIGNING_SECRET_KEY }}
+        run: printf '%s' "$SIGNING_SECRET_KEY" | base64 --decode > "$GITHUB_WORKSPACE/secring.gpg"
 
-      # 4️⃣
-      - name: Import GPG private key
+      - name: Configure Maven Central and signing credentials
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          SIGNING_KEY_ID: ${{ secrets.SIGNING_KEY_ID }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
-          echo "${{ secrets.SIGNING_SECRET_KEY }}" | base64 --decode > $GITHUB_WORKSPACE/secring.gpg
+          {
+            printf 'mavenCentralUsername=%s\n' "$OSSRH_USERNAME"
+            printf 'mavenCentralPassword=%s\n' "$OSSRH_PASSWORD"
+            printf 'signing.keyId=%s\n' "$SIGNING_KEY_ID"
+            printf 'signing.password=%s\n' "$SIGNING_PASSWORD"
+            printf 'signing.secretKeyRingFile=%s/secring.gpg\n' "$GITHUB_WORKSPACE"
+          } >> gradle.properties
 
-      # 5️⃣
-      - name: Configure Gradle credentials
-        run: |
-          echo "mavenCentralUsername=${{ secrets.OSSRH_USERNAME }}" >> gradle.properties && \
-          echo "mavenCentralPassword=${{ secrets.OSSRH_PASSWORD }}" >> gradle.properties && \
-          echo "signing.keyId=${{ secrets.SIGNING_KEY_ID }}" >> gradle.properties && \
-          echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> gradle.properties && \
-          echo "signing.secretKeyRingFile=$GITHUB_WORKSPACE/secring.gpg" >> gradle.properties
-
-      # 6️⃣
       - name: Publish to Maven Central
         run: ./gradlew publishToMavenCentral --no-daemon
