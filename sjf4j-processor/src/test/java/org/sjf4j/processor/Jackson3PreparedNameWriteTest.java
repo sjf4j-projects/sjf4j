@@ -20,14 +20,7 @@ class Jackson3PreparedNameWriteTest {
     @SuppressWarnings({"rawtypes", "unchecked"})
     void generatedNativeNamesWorkForStringsNonStringsAndUtf8Bytes() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
-        sources.put("fixture/Model.java",
-                "package fixture; import org.sjf4j.annotation.node.NodeProperty; "
-                + "public class Model { "
-                + " @NodeProperty(value="quote\"name") public String quoted = "line\n雪";"
-                + " @NodeProperty(value=\"中文字段\") public int count = 42;"
-                + " public String nullable = null;"
-                + " public java.util.List<String> tags = java.util.Arrays.asList(\"a\", null, \"b\");"
-                + " }");
+        sources.put("fixture/Model.java", "package fixture; import org.sjf4j.annotation.node.NodeProperty; public class Model { @NodeProperty(value=\"quote\\\"name\") public String quoted = \"line\\n雪\"; @NodeProperty(value=\"中文字段\") public int count = 42; public String nullable = null; public java.util.List<String> tags = java.util.Arrays.asList(\"a\", null, \"b\"); }");
         sources.put("fixture/Binder.java",
                 "package fixture; import org.sjf4j.annotation.binding.*; "
                 + "@CompiledBinder(backend=Backend.JACKSON3) "
