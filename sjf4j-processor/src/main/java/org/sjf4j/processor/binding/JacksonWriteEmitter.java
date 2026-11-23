@@ -61,8 +61,12 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
         return backend.backend() == Backend.JACKSON3;
     }
 
+    private String helperNullPolicyArg(String name) {
+        return cachedNullPolicy() ? ", " + name : "";
+    }
+
     private String helperNullPolicyArg() {
-        return cachedNullPolicy() ? ", includeNulls" : "";
+        return helperNullPolicyArg("includeNulls");
     }
 
     @Override
@@ -79,8 +83,10 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     /** Writes a root scalar or delegates a root structural value. */
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String generator, NameAllocator names) {
-        if (cachedNullPolicy() && value.helperRequired()) {
-            out.line("boolean includeNulls = this.config.includeNulls;");
+        String policy = cachedNullPolicy() && value.helperRequired()
+                ? names.newName("includeNulls") : null;
+        if (policy != null) {
+            out.line("boolean " + policy + " = this.config.includeNulls;");
         }
         if (value.helperRequired()) {
             out.beginBlock("if (" + expression + " == null)");
@@ -88,7 +94,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             out.endBlock(" else {");
             out.indent();
             out.line(value.helperName() + "(" + generator + ", " + expression
-                    + helperNullPolicyArg() + ");");
+                    + helperNullPolicyArg(policy) + ");");
             out.endBlock();
             return;
         }
