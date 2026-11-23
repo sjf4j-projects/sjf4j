@@ -39,12 +39,13 @@ class CompiledNullableScalarWriteTest {
                     + "@CompiledBinder(backend=Backend." + backend + ")"
                     + " public interface Binder {"
                     + " @Write String write(Model value) throws java.io.IOException;"
+                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException;"
                     + "}"
             ), CodegenProcessor.class);
 
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
-            assertTrue(generated.contains("if (this.config.includeNulls)"), backend);
+            assertFalse(generated.contains("this.config.includeNulls"), backend);
             assertFalse(generated.matches("(?s).*\\bitem = property\\d+;.*"), backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -55,8 +56,10 @@ class CompiledNullableScalarWriteTest {
 
                 JsonNode all = json.readTree((String) write.invoke(
                         CompiledInstances.create(binderType), model));
-                JsonNode filtered = json.readTree((String) write.invoke(
-                        CompiledInstances.create(binderType, new NodeConfig(false)), model));
+                assertEquals(all, json.readTree((String) write.invoke(
+                        CompiledInstances.create(binderType, new NodeConfig(false)), model)), backend);
+                JsonNode filtered = json.readTree((String) binderType.getMethod("writeOmit", modelType).invoke(
+                        CompiledInstances.create(binderType, new NodeConfig(true)), model));
                 for (JsonNode node : new JsonNode[]{all, filtered}) {
                     assertEquals("12.34", node.path("decimal").decimalValue().toPlainString(), backend);
                     assertEquals(42, node.path("count").intValue(), backend);

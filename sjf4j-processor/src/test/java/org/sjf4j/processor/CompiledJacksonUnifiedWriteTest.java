@@ -52,6 +52,7 @@ class CompiledJacksonUnifiedWriteTest {
                     + "@CompiledBinder(backend=Backend." + backend + ") "
                     + "public interface Binder { "
                     + " @Write String write(Model value) throws java.io.IOException; "
+                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException; "
                     + " @Write String writeList(java.util.List<String> value) throws java.io.IOException; "
                     + "}");
 
@@ -71,17 +72,17 @@ class CompiledJacksonUnifiedWriteTest {
                 assertTrue(generated.contains(", this.config.includeNulls);"), backend);
             } else {
                 assertTrue(generated.contains("private void _writeStringMember("), backend);
-                assertTrue(generated.contains("if (this.config.includeNulls)"), backend);
+                assertFalse(generated.contains("this.config.includeNulls"), backend);
                 assertFalse(generated.contains("boolean includeNulls)"), backend);
             }
             assertTrue(generated.contains("if (value == null)"), backend);
             assertTrue(generated.contains("g.writeString(value);"), backend);
-            assertTrue(generated.contains("_writeStringMember(g,"), backend);
+            assertTrue(generated.contains("_writeStringMemberIncludeNulls(g,"), backend);
             assertTrue(generated.contains("_writeList(generator, property0);"), backend);
             assertTrue(generated.contains("_writeMap(generator, property2);"), backend);
             // StructuralWriteEmitter is an APT-only abstraction, never a runtime dependency.
             assertFalse(generated.contains("StructuralWriteEmitter"), backend);
-            assertTrue(generated.contains("this.config.includeNulls"), backend);
+            assertFalse(generated.contains("this.config.includeNulls"), backend);
             assertTrue(generated.contains("StreamingIO.writeNode(generator,"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
@@ -98,7 +99,9 @@ class CompiledJacksonUnifiedWriteTest {
                 assertEquals(arrayList, linkedList, backend);
                 assertTrue(arrayList.get(1).isNull(), backend);
                 JsonNode full = json.readTree((String) write.invoke(normal, model));
-                JsonNode filtered = json.readTree((String) write.invoke(withoutNulls, model));
+                assertEquals(full, json.readTree((String) write.invoke(withoutNulls, model)), backend);
+                JsonNode filtered = json.readTree((String) binderType
+                        .getMethod("writeOmit", modelType).invoke(withoutNulls, model));
 
                 assertEquals("felix", full.path("animals").get(0).path("name").asText(), backend);
                 assertEquals("cat", full.path("animals").get(0).path("kind").asText(), backend);
