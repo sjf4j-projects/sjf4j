@@ -381,6 +381,8 @@ class CompiledBinderConformanceTest {
         assertTrue(generated.contains("parser.readCurrentString()"), generated);
         assertTrue(generated.contains("parser.reuseCurrentToken();"), generated);
         assertTrue(generated.contains("parser.nextNameMatch("), generated);
+        assertFalse(generated.contains("nextNameMatchAndToken("), generated);
+        assertTrue(generated.contains("if (nameIndex >= 0)"), generated);
         assertFalse(generated.contains("while (!parser.nextIfArrayEnd())"), generated);
     }
 
