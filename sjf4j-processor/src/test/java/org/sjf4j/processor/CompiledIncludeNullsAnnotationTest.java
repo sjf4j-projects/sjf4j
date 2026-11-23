@@ -109,7 +109,7 @@ class CompiledIncludeNullsAnnotationTest {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> decode(String backend, String text) {
         return backend.equals("SNAKE")
-                ? (Map<String, Object>) new SimpleYamlBinder().readNode(text, Map.class)
+                ? (Map<String, Object>) new SimpleYamlBinder(NodeConfig.DEFAULT).readNode(text, Map.class)
                 : (Map<String, Object>) new SimpleJsonBinder().readNode(text, Map.class);
     }
 
