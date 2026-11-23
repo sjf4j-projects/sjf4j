@@ -30,6 +30,8 @@ final class StructuralWriteEmitter {
         /** Writes a scalar property whose value has already passed a null check. */
         void writeNonNullValue(JavaWriter out, BindingValue value, String expression);
         void writeRuntimeValue(JavaWriter out, String expression);
+        /** Binding-local null policy for the generated structural fast path. */
+        default String includeNullsExpression() { return "this.config.includeNulls"; }
 
         // Jackson writes delimiters automatically. Backends with explicit
         // separators may override these compile-time hooks; counters are then
@@ -64,7 +66,7 @@ final class StructuralWriteEmitter {
                 expr = propertyVar;
                 if (!stringMember && (nonNullScalar(child) || child.helperRequired())) {
                     out.beginBlock("if (" + propertyVar + " == null)");
-                    out.beginBlock("if (this.config.includeNulls)");
+                    out.beginBlock("if (" + ops.includeNullsExpression() + ")");
                     emitPropertyName(out, value, index);
                     ops.writeNull(out);
                     out.endBlock();
@@ -77,7 +79,7 @@ final class StructuralWriteEmitter {
                     continue;
                 }
                 if (!stringMember) {
-                    out.beginBlock("if (" + propertyVar + " != null || this.config.includeNulls)");
+                    out.beginBlock("if (" + propertyVar + " != null || " + ops.includeNullsExpression() + ")");
                 }
             }
 
@@ -98,7 +100,7 @@ final class StructuralWriteEmitter {
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
                     + "value.dynamicMembers().entrySet())");
             out.line("Object dynamicValue = entry.getValue();");
-            out.beginBlock("if (dynamicValue != null || this.config.includeNulls)");
+            out.beginBlock("if (dynamicValue != null || " + ops.includeNullsExpression() + ")");
             if (ops.explicitObjectSeparators()) {
                 ops.beforeObjectMember(out, "memberCount++");
             }
@@ -189,7 +191,7 @@ final class StructuralWriteEmitter {
         if (ops.explicitObjectSeparators()) out.line("int memberCount = 0;");
         out.beginBlock("for (java.util.Map.Entry<?, ?> entry : value.entrySet())");
         out.line("Object mapValue = entry.getValue();");
-        out.beginBlock("if (mapValue != null || this.config.includeNulls)");
+        out.beginBlock("if (mapValue != null || " + ops.includeNullsExpression() + ")");
         if (ops.explicitObjectSeparators()) {
             ops.beforeObjectMember(out, "memberCount++");
         }
