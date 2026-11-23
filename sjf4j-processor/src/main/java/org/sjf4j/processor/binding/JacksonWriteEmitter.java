@@ -56,6 +56,20 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
         return backend.backend() == Backend.JACKSON2;
     }
 
+    /** Jackson3 snapshots the binder's immutable policy once per write call. */
+    private boolean cachedNullPolicy() {
+        return backend.backend() == Backend.JACKSON3;
+    }
+
+    private String helperNullPolicyArg() {
+        return cachedNullPolicy() ? ", includeNulls" : "";
+    }
+
+    @Override
+    public String includeNullsExpression() {
+        return cachedNullPolicy() ? "includeNulls" : "this.config.includeNulls";
+    }
+
     private String generatorType() {
         return jackson2()
                 ? "com.fasterxml.jackson.core.JsonGenerator"
@@ -65,12 +79,16 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     /** Writes a root scalar or delegates a root structural value. */
     void emitRoot(JavaWriter out, BindingValue value, String expression,
                   String generator, NameAllocator names) {
+        if (cachedNullPolicy() && value.helperRequired()) {
+            out.line("boolean includeNulls = this.config.includeNulls;");
+        }
         if (value.helperRequired()) {
             out.beginBlock("if (" + expression + " == null)");
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(value.helperName() + "(" + generator + ", " + expression
+                    + helperNullPolicyArg() + ");");
             out.endBlock();
             return;
         }
@@ -86,7 +104,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     void emitHelper(JavaWriter out, BindingValue value) {
         out.beginBlock("private void " + value.helperName() + "("
                 + backend.generatorType() + " generator, " + value.type()
-                + " value) throws java.io.IOException");
+                + " value" + (cachedNullPolicy() ? ", boolean includeNulls" : "")
+                + ") throws java.io.IOException");
         out.line(generatorType() + " g = generator.nativeGenerator();");
 
         if (value.kind() == BindingValue.Kind.ONE_OF) {
@@ -160,7 +179,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
                                   String expression) {
         out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
                 + ".serializedName, " + expression
-                + (jackson2() ? "" : ", this.config.includeNulls") + ");");
+                + (jackson2() ? "" : ", includeNulls") + ");");
     }
 
     @Override
@@ -182,7 +201,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(generator, " + expression + ");");
+            out.line(value.helperName() + "(generator, " + expression
+                    + helperNullPolicyArg() + ");");
             return;
         }
         switch (value.kind()) {
@@ -232,7 +252,8 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(child.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(child.helperName() + "(" + generator + ", " + expression
+                    + helperNullPolicyArg() + ");");
             out.endBlock();
             return;
         }
