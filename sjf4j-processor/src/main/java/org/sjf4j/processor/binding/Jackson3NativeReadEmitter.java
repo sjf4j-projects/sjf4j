@@ -89,8 +89,13 @@ final class Jackson3NativeReadEmitter {
         emitContainerStart(out, "START_OBJECT");
         out.line(value.type() + " value = new " + value.type() + "();");
         out.line("int nameIndex;");
-        out.beginBlock("while ((nameIndex = parser.nextNameMatchAndToken("
+        out.beginBlock("while ((nameIndex = parser.nextNameMatch("
                 + matcherFieldName(value) + ")) != " + MATCHER + ".MATCH_END_OBJECT)");
+        // nextNameMatchAndToken was introduced in Jackson 3.3. Reproduce its
+        // successful-match semantics using the Jackson 3.1 API.
+        out.beginBlock("if (nameIndex >= 0)");
+        out.line("parser.nextToken();");
+        out.endBlock();
 
         // Only primary names are part of the native quad matcher; aliases must
         // still resolve through SJF4J's declared name metadata.
