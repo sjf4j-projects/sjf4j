@@ -17,7 +17,7 @@ dependencies {
 
     testImplementation(project(":sjf4j-schema"))
     // Test-only Spring MVC integration example; no new runtime dependencies.
-    testImplementation("org.springframework:spring-webmvc:6.2.15")
+    testImplementation("org.springframework:spring-webmvc:7.1.0")
     testImplementation("org.springframework:spring-test:6.2.15")
     testImplementation("jakarta.servlet:jakarta.servlet-api:6.0.0")
     testImplementation(project(":sjf4j-backend-snake"))
