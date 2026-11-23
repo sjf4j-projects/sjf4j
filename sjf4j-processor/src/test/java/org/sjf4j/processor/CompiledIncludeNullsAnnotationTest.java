@@ -56,6 +56,15 @@ class CompiledIncludeNullsAnnotationTest {
                     + " @Write String writeAny(Object value);"
                     + " @Write(includeNulls=true) String writeAnyInclude(Object value);"
                     + "}");
+            // The inverse precedence is also important: an include-by-default
+            // interface must be able to omit null members on one @Write.
+            sources.put("fixture/DefaultBinder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + format + ")"
+                    + "public interface DefaultBinder {"
+                    + " @Write String write(Object value);"
+                    + " @Write(includeNulls=false) String writeOmit(Object value);"
+                    + "}");
 
             NavigatorTestCompiler.Result compiled =
                     NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
@@ -84,6 +93,22 @@ class CompiledIncludeNullsAnnotationTest {
                 Object model = modelType.getConstructor().newInstance();
                 Object injectedTrue = CompiledInstances.create(binderType, new NodeConfig(true));
                 Object injectedFalse = CompiledInstances.create(binderType, new NodeConfig(false));
+
+                Class defaultBinderType = loader.loadClass("fixture.DefaultBinder");
+                Class<?> defaultImpl = loader.loadClass("fixture.DefaultBinder_Impl");
+                assertEquals(1, Arrays.stream(defaultImpl.getDeclaredFields())
+                        .filter(field -> field.getType() == NodeConfig.class).count(), backend);
+                Object includeDefault = CompiledInstances.create(defaultBinderType, new NodeConfig(false));
+                Map<String, Object> testDynamic = new LinkedHashMap<>();
+                testDynamic.put("missing", null);
+                testDynamic.put("present", Arrays.asList("a", null, "b"));
+                Map<String, Object> includeDefaultResult = decode(backend, (String) defaultBinderType
+                        .getMethod("write", Object.class).invoke(includeDefault, testDynamic));
+                Map<String, Object> omitOverrideResult = decode(backend, (String) defaultBinderType
+                        .getMethod("writeOmit", Object.class).invoke(includeDefault, testDynamic));
+                assertTrue(includeDefaultResult.containsKey("missing"), backend);
+                assertFalse(omitOverrideResult.containsKey("missing"), backend);
+                assertEquals(Arrays.asList("a", null, "b"), omitOverrideResult.get("present"), backend);
 
                 for (Object binder : Arrays.asList(injectedTrue, injectedFalse)) {
                     Map<String, Object> omitted = decode(backend, (String) binderType
