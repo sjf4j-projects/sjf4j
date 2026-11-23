@@ -50,6 +50,7 @@ class CompiledFastjson2UnifiedWriteTest {
                 + "@CompiledBinder(backend=Backend.FASTJSON2) "
                 + "public interface Binder { "
                 + " @Write String write(Model value) throws java.io.IOException; "
+                    + " @Write(includeNulls=false) String writeOmit(Model value) throws java.io.IOException; "
                 + " @Write byte[] writeBytes(Model value) throws java.io.IOException; "
                 + " @Write void writeToStream(Model value, java.io.OutputStream out) throws java.io.IOException; "
                 + " @Write void writeToWriter(Model value, java.io.Writer out) throws java.io.IOException; "
@@ -66,7 +67,7 @@ class CompiledFastjson2UnifiedWriteTest {
         assertTrue(generated.contains("_writeModelUtf8(generator,"), generated);
         assertTrue(generated.contains("_writeModelUtf16(generator,"), generated);
         assertTrue(generated.contains("writeName") && generated.contains("Raw("), generated);
-        assertTrue(generated.contains("this.config.includeNulls"), generated);
+        assertFalse(generated.contains("this.config.includeNulls"), generated);
         assertTrue(generated.contains("StreamingIO.writeNode(generator,"), generated);
         assertFalse(generated.contains("StructuralWriteEmitter"), generated);
         // A OneOf/codec/dynamic descendant must not force its parent to Runtime.
@@ -97,7 +98,9 @@ class CompiledFastjson2UnifiedWriteTest {
             assertEquals(json.readTree(output), json.readTree(writer.toString()));
 
             JsonNode full = json.readTree(output);
-            JsonNode filtered = json.readTree((String) write.invoke(withoutNulls, model));
+            assertEquals(full, json.readTree((String) write.invoke(withoutNulls, model)));
+            JsonNode filtered = json.readTree((String) binderType
+                    .getMethod("writeOmit", modelType).invoke(withoutNulls, model));
             assertEquals("felix", full.path("animals").get(0).path("name").asText());
             assertEquals("cat", full.path("animals").get(0).path("kind").asText());
             assertTrue(full.path("animals").get(1).isNull());

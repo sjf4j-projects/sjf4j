@@ -11,12 +11,12 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Verifies per-instance runtime configuration in generated mapper and binder implementations. */
+/** Runtime configuration remains injectable for mappers; compiled binders ignore it. */
 class CompiledNodeConfigInjectionTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void createKeepsFormatsAndInstancesIsolated() throws Exception {
+    void compiledBindersIgnoreInjectedFormatsWhileMappersRemainConfigurable() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Token.java",
                 "package fixture; public final class Token { "
@@ -98,10 +98,10 @@ class CompiledNodeConfigInjectionTest {
 
             assertEquals("\"d:hello\"", binderInterface.getMethod("write", tokenClass)
                     .invoke(defaultBinder, token));
-            assertEquals("\"a:hello\"", binderInterface.getMethod("write", tokenClass)
+            assertEquals("\"d:hello\"", binderInterface.getMethod("write", tokenClass)
                     .invoke(configuredBinder, token));
             assertEquals("hello", tokenClass.getField("value").get(
-                    binderInterface.getMethod("read", String.class).invoke(configuredBinder, "\"a:hello\"")));
+                    binderInterface.getMethod("read", String.class).invoke(configuredBinder, "\"d:hello\"")));
 
             Class outerInterface = loader.loadClass("fixture.Outer");
             Class<?> sourceClass = loader.loadClass("fixture.Source");
@@ -124,14 +124,14 @@ class CompiledNodeConfigInjectionTest {
             String configuredJson = (String) binderInterface.getMethod("writeBean", beanClass)
                     .invoke(configuredBinder, bean);
             assertTrue(defaultJson.contains("\"empty\":null"), defaultJson);
-            assertFalse(configuredJson.contains("\"empty\""), configuredJson);
+            assertTrue(configuredJson.contains("\"empty\":null"), configuredJson);
             assertTrue(configuredJson.contains("\"name\":\"x\""), configuredJson);
         }
     }
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
-    void allJsonBackendsUseInjectedDefaultCodecFormatAndNullPolicy() throws Exception {
+    void allJsonBackendsIgnoreInjectedDefaultCodecFormatAndNullPolicy() throws Exception {
         String[] backends = {"SIMPLE", "JACKSON2", "JACKSON3", "GSON", "FASTJSON2", "JSONP"};
         for (String backend : backends) {
             NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
@@ -170,9 +170,9 @@ class CompiledNodeConfigInjectionTest {
                 assertTrue(standard.contains("2024-01-01T10:00:00Z"), backend + ": " + standard);
                 assertTrue(standard.contains("\"street\":\"Main\""), backend + ": " + standard);
                 assertTrue(standard.contains("\"empty\":null"), backend + ": " + standard);
-                assertTrue(custom.contains("1704103200000"), backend + ": " + custom);
+                assertTrue(custom.contains("2024-01-01T10:00:00Z"), backend + ": " + custom);
                 assertTrue(custom.contains("\"street\":\"Main\""), backend + ": " + custom);
-                assertFalse(custom.contains("\"empty\""), backend + ": " + custom);
+                assertTrue(custom.contains("\"empty\":null"), backend + ": " + custom);
 
                 Object decoded = type.getMethod("read", String.class).invoke(configured, custom);
                 assertEquals(java.time.Instant.parse("2024-01-01T10:00:00Z"),

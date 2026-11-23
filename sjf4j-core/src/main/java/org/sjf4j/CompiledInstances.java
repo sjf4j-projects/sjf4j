@@ -32,7 +32,12 @@ public final class CompiledInstances {
         return create(type, NodeConfig.DEFAULT);
     }
 
-    /** Creates an independent compiled implementation with the supplied settings. */
+    /**
+     * Creates an independent compiled implementation with supplied settings.
+     * For @CompiledBinder implementations this overload is retained for
+     * compatibility; the generated Binder ignores its NodeConfig argument
+     * and builds its own configuration from annotations.
+     */
     public static <T> T create(Class<T> type, NodeConfig config) {
         return _instantiate(type, NodeConfig.class, Asserts.notNull(config, "config"));
     }
@@ -40,6 +45,8 @@ public final class CompiledInstances {
     /**
      * Creates a CompiledBinder with an already configured backend Binder.
      * The Binder type must match the interface's compile-time selected backend.
+     * Native backend parser/generator customization is preserved, but
+     * the injected Binder's NodeConfig does not alter compiled binding semantics.
      */
     public static <T, B> T create(Class<T> type, B backendBinder) {
         Asserts.notNull(backendBinder, "backendBinder");

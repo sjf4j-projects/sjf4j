@@ -18,10 +18,12 @@ final class StreamingWriteEmitter {
 
     private final BackendSpec backend;
     private final BindingNames names;
+    private final WriteEmitter writes;
 
-    StreamingWriteEmitter(BackendSpec backend, BindingNames names) {
+    StreamingWriteEmitter(BackendSpec backend, BindingNames names, WriteEmitter writes) {
         this.backend = backend;
         this.names = names;
+        this.writes = writes;
     }
 
     boolean shouldFallbackRoot(BindingValue value) {
@@ -43,7 +45,7 @@ final class StreamingWriteEmitter {
                 break;
             case JSON_OBJECT:
             case JSON_ARRAY:
-                out.line(STREAMING_IO + ".writeNode(generator, value, this.config);");
+                out.line(STREAMING_IO + ".writeNode(generator, value, " + writes.runtimeConfig() + ");");
                 break;
             case LIST:
             case SET:
@@ -80,7 +82,7 @@ final class StreamingWriteEmitter {
             String expression = "(" + type + ") value";
             if (subtype.cachedPojo) {
                 out.line(STREAMING_IO + ".writePojo(generator, value, " + metadata
-                        + ", this.config);");
+                        + ", " + writes.runtimeConfig() + ");");
             } else {
                 writeValue(out, subtype.compiled, "generator", expression);
             }
@@ -88,7 +90,7 @@ final class StreamingWriteEmitter {
             out.endBlock();
         }
         // Unknown classes and subtypes with inaccessible fields retain Runtime semantics.
-        out.line(STREAMING_IO + ".writeNode(generator, value, this.config);");
+        out.line(STREAMING_IO + ".writeNode(generator, value, " + writes.runtimeConfig() + ");");
     }
 
     private void emitPojo(JavaWriter out, BindingValue value) {
@@ -117,7 +119,7 @@ final class StreamingWriteEmitter {
             out.beginBlock("for (java.util.Map.Entry<String, Object> entry : "
                     + "value.dynamicMembers().entrySet())");
             out.line("generator.writeName(entry.getKey(), count++ > 0);");
-            out.line(STREAMING_IO + ".writeNode(generator, entry.getValue(), this.config);");
+            out.line(STREAMING_IO + ".writeNode(generator, entry.getValue(), " + writes.runtimeConfig() + ");");
             out.endBlock();
         }
 
@@ -166,7 +168,7 @@ final class StreamingWriteEmitter {
             // helper. A mixed compiled parent can still reach them.
             if (!requiresWriteHelper(value)) {
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
-                        + expression + ", this.config);");
+                        + expression + ", " + writes.runtimeConfig() + ");");
                 return;
             }
             // All remaining helpers use the same (generator, value) convention.
@@ -176,7 +178,7 @@ final class StreamingWriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, generator, null, backend.backend(), names);
+                CodecWriteEmitter.emit(out, value, expression, generator, null, backend.backend(), names, writes.runtimeConfig());
                 return;
             case STRING:
                 out.line(generator + ".writeString(" + expression + ");");
@@ -240,7 +242,7 @@ final class StreamingWriteEmitter {
 
             case RUNTIME:
                 out.line(STREAMING_IO + ".writeNode(" + generator + ", "
-                        + expression + ", this.config);");
+                        + expression + ", " + writes.runtimeConfig() + ");");
                 return;
 
             default:

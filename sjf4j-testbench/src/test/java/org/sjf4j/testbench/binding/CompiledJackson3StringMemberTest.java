@@ -39,27 +39,31 @@ public class CompiledJackson3StringMemberTest {
     @CompiledBinder(backend = Backend.JACKSON3)
     public interface Jackson3Writer {
         @Write byte[] write(Payload value) throws IOException;
+        @Write(includeNulls = false) byte[] writeOmit(Payload value) throws IOException;
     }
 
     @CompiledBinder(backend = Backend.JACKSON2)
     public interface Jackson2Writer {
         @Write byte[] write(Payload value) throws IOException;
+        @Write(includeNulls = false) byte[] writeOmit(Payload value) throws IOException;
     }
 
     @Test
     void jackson3StaticStringMemberPreservesNullPolicy() throws Exception {
         Payload value = fixture();
         for (boolean includeNulls : new boolean[]{true, false}) {
-            JsonNode actual = JSON.readTree(CompiledInstances
-                    .create(Jackson3Writer.class, new NodeConfig(includeNulls))
-                    .write(value));
+            Jackson3Writer writer3 = CompiledInstances.create(
+                    Jackson3Writer.class, new NodeConfig(!includeNulls));
+            JsonNode actual = JSON.readTree(includeNulls
+                    ? writer3.write(value) : writer3.writeOmit(value));
             verifyNullPolicy(actual, includeNulls);
 
             // Jackson2 is deliberately unchanged: both backends must have
             // equivalent output semantics for the same NodeConfig.
-            JsonNode jackson2 = JSON.readTree(CompiledInstances
-                    .create(Jackson2Writer.class, new NodeConfig(includeNulls))
-                    .write(value));
+            Jackson2Writer writer2 = CompiledInstances.create(
+                    Jackson2Writer.class, new NodeConfig(!includeNulls));
+            JsonNode jackson2 = JSON.readTree(includeNulls
+                    ? writer2.write(value) : writer2.writeOmit(value));
             assertEquals(jackson2, actual);
         }
     }
@@ -70,8 +74,8 @@ public class CompiledJackson3StringMemberTest {
         List<Method> helpers = Arrays.stream(writer.getClass().getDeclaredMethods())
                 .filter(m -> m.getName().startsWith("_writeStringMember"))
                 .toList();
-        assertEquals(1, helpers.size());
-        assertTrue(Modifier.isStatic(helpers.get(0).getModifiers()));
+        assertEquals(2, helpers.size());
+        assertTrue(helpers.stream().allMatch(m -> Modifier.isStatic(m.getModifiers())));
     }
 
     private static Payload fixture() {

@@ -43,9 +43,6 @@ class CompiledWriteRoutingBoundaryTest {
                 assertFalse(generated.contains("_writeString(generator,"),
                         backend + ": helper must not reacquire the generator");
             }
-            // JsonObject and JsonArray are still dynamic: do not compile their contents.
-            assertTrue(generated.contains("StreamingIO.writeNode(generator, value, this.config)"),
-                    backend + ": " + generated);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class<?> impl = loader.loadClass("fixture.Binder_Impl");

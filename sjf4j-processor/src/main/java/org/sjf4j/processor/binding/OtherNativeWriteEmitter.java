@@ -15,11 +15,13 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     private final BackendSpec backend;
     private final BindingNames names;
+    private final WriteEmitter writes;
     private final StructuralWriteEmitter structures;
 
-    OtherNativeWriteEmitter(BackendSpec backend, BindingNames names) {
+    OtherNativeWriteEmitter(BackendSpec backend, BindingNames names, WriteEmitter writes) {
         this.backend = backend;
         this.names = names;
+        this.writes = writes;
         this.structures = new StructuralWriteEmitter(this, names);
     }
 
@@ -107,6 +109,12 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
     }
 
     @Override
+    public boolean includeNulls() { return writes.includeNulls(); }
+
+    @Override
+    public String runtimeConfig() { return writes.runtimeConfig(); }
+
+    @Override
     public void startObject(JavaWriter out) {
         out.line("g." + (gson() ? "beginObject" : "writeStartObject") + "();");
     }
@@ -148,7 +156,8 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
 
     @Override
     public void writeRuntimeValue(JavaWriter out, String expression) {
-            out.line(STREAMING_IO + ".writeNode(generator, " + expression + ", this.config);");
+        out.line(STREAMING_IO + ".writeNode(generator, " + expression
+                + ", " + writes.runtimeConfig() + ");");
     }
 
     @Override
@@ -217,7 +226,7 @@ final class OtherNativeWriteEmitter implements StructuralWriteEmitter.Operations
         }
         switch (child.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), this.names);
+                CodecWriteEmitter.emit(out, child, expression, "generator", null, backend.backend(), this.names, writes.runtimeConfig());
                 return;
             case RUNTIME:
                 writeRuntimeValue(out, expression);

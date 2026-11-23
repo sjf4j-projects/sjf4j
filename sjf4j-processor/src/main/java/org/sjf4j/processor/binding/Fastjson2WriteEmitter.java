@@ -99,23 +99,26 @@ final class Fastjson2WriteEmitter {
                 + generator + " = this.binder." + create + ")");
         out.line("com.alibaba.fastjson2.JSONWriter " + nativeGenerator + " = " + generator + ".nativeGenerator();");
 
-        // Raw field-name optimizations require compatible Fastjson2 features.
+        // Raw field-name shortcuts depend on writer features. The fallback
+        // must use the annotation-fixed config, not binder.writeNodeAsXxx(),
+        // because a caller-injected Binder may use a different null policy.
         out.beginBlock("if (!org.sjf4j.backend.fastjson2.binding.Fastjson2Binder."
                 + (utf8 ? "supportsRawUtf8Names(" : "supportsRawUtf16Names(")
                 + nativeGenerator + "))");
+        out.line(generator + ".start();");
+        out.line("org.sjf4j.binding.StreamingIO.writeNode(" + generator + ", "
+                + source + ", " + writes.runtimeConfig() + ");");
+        out.line(generator + ".end();");
         switch (output) {
             case STRING:
-                out.line("return this.binder.writeNodeAsString(" + source + ");");
+                out.line("return " + generator + ".toString();");
                 break;
             case BYTES:
-                out.line("return this.binder.writeNodeAsBytes(" + source + ");");
+                out.line("return " + generator + ".toBytes();");
                 break;
             case WRITER:
-                out.line(target + ".write(this.binder.writeNodeAsString(" + source + "));");
-                out.line("return;");
-                break;
             case OUTPUT_STREAM:
-                out.line(target + ".write(this.binder.writeNodeAsBytes(" + source + "));");
+                out.line(nativeGenerator + ".flushTo(" + target + ");");
                 out.line("return;");
                 break;
             default:
@@ -177,6 +180,12 @@ final class Fastjson2WriteEmitter {
         ModeOperations(FastjsonMode mode) {
             this.mode = mode;
         }
+
+        @Override
+        public boolean includeNulls() { return writes.includeNulls(); }
+
+        @Override
+        public String runtimeConfig() { return writes.runtimeConfig(); }
 
         @Override
         public void startObject(JavaWriter out) { out.line("nativeGenerator.startObject();"); }
@@ -269,7 +278,7 @@ final class Fastjson2WriteEmitter {
         @Override
         public void writeRuntimeValue(JavaWriter out, String expression) {
             out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, "
-                    + expression + ", this.config);");
+                    + expression + ", " + writes.runtimeConfig() + ");");
         }
 
         @Override
@@ -292,7 +301,8 @@ final class Fastjson2WriteEmitter {
 
         if (value.kind() == BindingValue.Kind.JSON_OBJECT
                 || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, this.config);");
+            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, "
+                    + writes.runtimeConfig() + ");");
         } else {
             StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode), writes.naming());
              switch (value.kind()) {
@@ -370,13 +380,13 @@ final class Fastjson2WriteEmitter {
 
         switch (value.kind()) {
             case VALUE_CODEC:
-                CodecWriteEmitter.emit(out, value, expression, generator, nativeGenerator, Backend.FASTJSON2, writes.naming());
+                CodecWriteEmitter.emit(out, value, expression, generator, nativeGenerator, Backend.FASTJSON2, writes.naming(), writes.runtimeConfig());
                 return;
             case RUNTIME:
             case JSON_OBJECT:
             case JSON_ARRAY:
                 out.line("org.sjf4j.binding.StreamingIO.writeNode("
-                        + generator + ", " + expression + ", this.config);");
+                        + generator + ", " + expression + ", " + writes.runtimeConfig() + ");");
                 return;
             case NUMBER:
                 out.line(generator + ".writeNumber(" + expression + ");");

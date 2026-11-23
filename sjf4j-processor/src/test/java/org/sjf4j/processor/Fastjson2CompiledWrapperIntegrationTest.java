@@ -178,8 +178,8 @@ class Fastjson2CompiledWrapperIntegrationTest {
             NodeConfig config = new NodeConfig(Map.of(Instant.class, "epochMillis"), false);
             Object configured = CompiledInstances.create(type, config);
             String customized = (String) type.getMethod("write", beanType).invoke(configured, bean);
-            assertTrue(customized.contains("\"when\":1704103200000"), customized);
-            assertFalse(customized.contains("\"absent\""), customized);
+            assertTrue(customized.contains("2024-01-01T10:00:00Z"), customized);
+            assertTrue(customized.contains("\"absent\":null"), customized);
         }
     }
 }

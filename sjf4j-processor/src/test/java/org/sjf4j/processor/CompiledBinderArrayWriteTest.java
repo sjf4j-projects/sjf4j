@@ -53,8 +53,14 @@ class CompiledBinderArrayWriteTest {
 
             String generated = result.generatedSource("fixture/Binder_Impl.java");
             assertTrue(generated.contains("value.length"), backend + ": expected native array loops");
-            assertFalse(generated.contains("StreamingIO.writeNode("),
-                    backend + ": statically typed arrays should not use runtime traversal");
+            if ("FASTJSON2".equals(backend)) {
+                // The raw-name feature guard retains an unused runtime fallback
+                // branch, while the typed-array hot path remains fully compiled.
+                assertTrue(generated.contains("supportsRawUtf8Names("), backend);
+            } else {
+                assertFalse(generated.contains("StreamingIO.writeNode("),
+                        backend + ": statically typed arrays should not use runtime traversal");
+            }
 
             try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
                 Class<?> binderType = loader.loadClass("fixture.Binder");

@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.processor.ProcessorContext;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.method.ResolvedMethod;
@@ -39,6 +40,11 @@ public final class BindingGenerator {
 
         generated.enableNodeConfig();
         generated.enableBackendBinder(backend.binderType());
+        boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
+        // Compiled binders keep a single static config for null omission.
+        // Null-including writes use NodeConfig.DEFAULT directly. Neither
+        // path depends on the injected NodeConfig or backend Binder config.
+        generated.useCompiledBinderConfig();
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
 
@@ -46,7 +52,7 @@ public final class BindingGenerator {
         List<BindingPlan> plans = new ArrayList<BindingPlan>(resolvedMethods.size());
 
         for (ResolvedMethod resolved : resolvedMethods) {
-            BindingPlan plan = methodGenerator.analyze(resolved, generated);
+            BindingPlan plan = methodGenerator.analyze(resolved, generated, binderIncludeNulls);
 
             if (plan != null) {
                 plans.add(plan);
@@ -70,7 +76,8 @@ public final class BindingGenerator {
 
         if (!generated.isValid()) return;
 
-        BindingEmitter emitter = new BindingEmitter(context, backend, new BindingNames(generated.names()));
+        BindingEmitter emitter = new BindingEmitter(context, backend,
+                new BindingNames(generated.names()));
 
         for (BindingCompiler.CompiledMethod method : compiled) {
             emitter.emitMethod(method, generated);
