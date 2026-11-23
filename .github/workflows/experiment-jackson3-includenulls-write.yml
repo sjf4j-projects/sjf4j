@@ -1,0 +1,103 @@
+name: Experiment / Jackson3 Compiled includeNulls one-read Users Write
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-includenulls-write.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Compile baseline and optimized generated binders on same machine
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$PWD"
+          mkdir -p results
+          BASE_SHA=501caabe3a197e37498b0854d3dbf98c24ce2790
+          printf 'baseline=%s\noptimized=%s\n' "$BASE_SHA" "$(git rev-parse HEAD)" > results/commits.txt
+          { java -version 2>&1; lscpu; } > results/environment.txt
+          git worktree add --detach "$ROOT/../baseline" "$BASE_SHA"
+          ( cd "$ROOT/../baseline" && ./gradlew --no-daemon :sjf4j-testbench:jmhJar )
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          BASE_JAR=$(find "$ROOT/../baseline/sjf4j-testbench/build/libs" -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          NEW_JAR=$(find "$ROOT/sjf4j-testbench/build/libs" -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$BASE_JAR"
+          test -s "$NEW_JAR"
+          printf '%s\n%s\n' "$BASE_JAR" "$NEW_JAR" > results/jars.txt
+          grep -R -q 'boolean includeNulls = this.config.includeNulls;' "$ROOT/sjf4j-testbench/build/generated/sources/annotationProcessor/java/jmh"
+
+      - name: JMH Users Write Blackbird vs Compiled per implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          OLD_JAR=$(sed -n '1p' results/jars.txt)
+          NEW_JAR=$(sed -n '2p' results/jars.txt)
+          for revision in baseline optimized; do
+            if [[ "$revision" == baseline ]]; then jar="$OLD_JAR"; else jar="$NEW_JAR"; fi
+            java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.FabienWriteBenchmark.write' \
+              -p backend=jackson3 -p model=users -p shape=pojo \
+              -p implementation=blackbird,compiled \
+              -p sizeKb=1,10,100 -p seed=12345,324 \
+              -f 3 -t 1 -wi 4 -i 5 -w 500ms -r 500ms -prof gc \
+              -rf json -rff "results/$revision.json" \
+              > "results/$revision.log" 2>&1 || {
+                tail -110 "results/$revision.log"
+                exit 1
+              }
+          done
+
+      - name: Compare Blackbird / Compiled only
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/ratios.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          print('## Jackson3 Users Write: Blackbird / Compiled')
+          print('Ratios greater than 1 mean Compiled is faster.')
+          old=Path('results/baseline.json')
+          new=Path('results/optimized.json')
+          if not old.exists() or not new.exists():
+              print('Benchmark results incomplete; see artifact logs.')
+              raise SystemExit(0)
+          old_rows=json.loads(old.read_text())
+          new_rows=json.loads(new.read_text())
+          print('| Users size | Seed | Baseline Blackbird / Compiled | Optimized Blackbird / Compiled |')
+          print('| ---: | ---: | ---: | ---: |')
+          for size in ('1','10','100'):
+              for seed in ('12345','324'):
+                  vals=[]
+                  for rows in (old_rows,new_rows):
+                      d={r['params']['implementation']:r['primaryMetric']['score']
+                         for r in rows
+                         if r['params']['sizeKb']==size and r['params']['seed']==seed}
+                      if set(d)!={'blackbird','compiled'}:
+                          raise SystemExit(f'Missing case: {size}/{seed}: {d}')
+                      vals.append(d['blackbird']/d['compiled'])
+                  print(f'| {size}KB | {seed} | {vals[0]:.3f} | {vals[1]:.3f} |')
+          print()
+          print('Both versions built and benchmarked on one GitHub runner; three JVM forks per case. JMH raw JSON contains per-fork measurements and error estimates.')
+          PY
+
+      - name: Archive generated Users Write A/B data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-includenulls-users-ab-${{ github.run_id }}
+          path: results/
+          retention-days: 14
