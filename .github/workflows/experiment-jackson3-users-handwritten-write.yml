@@ -1,0 +1,98 @@
+name: Experiment / Jackson3 Users handwritten write paths
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/experiment-jackson3-users-handwritten-write.yml'
+      - 'sjf4j-testbench/src/jmh/java/org/sjf4j/testbench/binding/fabien/HandwrittenJackson3UsersWriteBenchmark.java'
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build JMH testbench
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          { git rev-parse HEAD; java -version 2>&1; lscpu; } > results/environment.txt
+          ./gradlew --no-daemon :sjf4j-testbench:jmhJar
+          jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
+          test -s "$jar"
+          echo "$jar" > results/jar-path.txt
+          jar tf "$jar" | grep -q 'HandwrittenJackson3UsersWriteBenchmark'
+
+      - name: Handwritten Users Write JMH - independent ablations and native baselines
+        shell: bash
+        run: |
+          set -euo pipefail
+          jar=$(cat results/jar-path.txt)
+          java -jar "$jar" 'org.sjf4j.testbench.binding.fabien.HandwrittenJackson3UsersWriteBenchmark.write' \
+            -p implementation=native,blackbird,compiled,holderHelperWrapped,holderHelperRaw,serializedHelperWrapped,holderInlineWrapped,serializedInlineWrapped,serializedInlineRaw \
+            -p sizeKb=1,10,100 -p seed=12345,324 \
+            -f 2 -t 1 -wi 3 -i 4 -w 500ms -r 500ms -prof gc \
+            -rf json -rff results/handwritten-users.json \
+            > results/handwritten-users.log 2>&1 || { tail -120 results/handwritten-users.log; exit 1; }
+
+      - name: Compare each experiment against common baseline
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY' | tee results/ratios.md >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          p=Path('results/handwritten-users.json')
+          print('## Jackson3 Users Write / handwritten source')
+          print()
+          if not p.exists():
+              print('No JMH result. See build or benchmark logs.')
+              raise SystemExit(0)
+          rows=json.loads(p.read_text())
+          groups={}
+          for r in rows:
+              params=r['params']
+              key=(int(params['sizeKb']),params['seed'])
+              groups.setdefault(key,{})[params['implementation']]=r['primaryMetric']['score']
+          implementations=['native','blackbird','compiled','holderHelperWrapped',
+                           'holderHelperRaw','serializedHelperWrapped','holderInlineWrapped',
+                           'serializedInlineWrapped','serializedInlineRaw']
+          print('### Full write time in us/op (lower is better)')
+          print('| KB | Seed | '+ ' | '.join(implementations) + ' |')
+          print('| ---: | ---: | '+' | '.join(['---:']*len(implementations))+' |')
+          for key,measures in sorted(groups.items()):
+              if set(measures)!=set(implementations):
+                  raise SystemExit(f'Missing implementations {key}: {measures}')
+              print('| '+str(key[0])+' | '+key[1]+' | '+' | '.join(f'{measures[name]:.3f}' for name in implementations)+' |')
+          print()
+          print('### Controlled ablations: baseline / variant (greater than 1 = improvement)')
+          print('| KB | Seed | Direct generator | Direct SerializedString names | Inline string members | Names + inline | All three | Blackbird / Compiled |')
+          print('| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |')
+          for key,values in sorted(groups.items()):
+              baseline=values['holderHelperWrapped']
+              variants=['holderHelperRaw','serializedHelperWrapped','holderInlineWrapped',
+                        'serializedInlineWrapped','serializedInlineRaw']
+              ratios=[baseline/values[v] for v in variants]
+              print('| '+str(key[0])+' | '+key[1]+' | '+' | '.join(f'{r:.3f}' for r in ratios)
+                    +f" | {values['blackbird']/values['compiled']:.3f} |")
+          print()
+          print('NOTE: 1.0 is parity. The native generator path already uses UTF-8; direct generator means removing the SJF4J wrapper, not changing encoding.')
+          PY
+
+      - name: Upload JMH raw data and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jackson3-users-handwritten-${{ github.run_id }}
+          path: results/
+          retention-days: 14
