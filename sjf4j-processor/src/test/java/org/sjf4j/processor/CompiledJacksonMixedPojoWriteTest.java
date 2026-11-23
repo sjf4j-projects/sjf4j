@@ -59,7 +59,12 @@ class CompiledJacksonMixedPojoWriteTest {
                 assertTrue(generated.contains("g.writeString(CHOICE_ENUM")
                         && generated.contains(".ordinal()]);"), backend);
                 assertTrue(generated.contains("_writeCat"), backend);
-                assertTrue(generated.contains(".serializedName);"), backend);
+                if ("JACKSON2".equals(backend)) {
+                    assertTrue(generated.contains(".serializedName);"), backend);
+                } else {
+                    assertFalse(generated.contains(".serializedName);"), backend);
+                    assertTrue(generated.contains("private static final SerializedString "), backend);
+                }
             }
             // Both the streamed and the native/mixed paths read the getter once.
             assertEquals(1, count(generated, "value.getChoice()"),
