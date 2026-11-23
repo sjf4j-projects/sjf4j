@@ -17,7 +17,12 @@ public final class Jackson3NativeReadSupport {
     private Jackson3NativeReadSupport() {
     }
 
-    /** Reads an already-selected JSON string or null without advancing. */
+    /**
+     * Reads an already-selected JSON string or null without advancing.
+     * @param parser the parser positioned on the value
+     * @return the string value, or null for JSON null
+     * @throws IOException if the current token is not a string or null, or reading fails
+     */
     public static String readString(JsonParser parser) throws IOException {
         JsonToken token = parser.currentToken();
         if (token == JsonToken.VALUE_STRING) {

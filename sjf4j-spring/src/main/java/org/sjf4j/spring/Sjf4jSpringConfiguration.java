@@ -7,6 +7,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 public class Sjf4jSpringConfiguration {
 
+    /**
+     * Creates the registrar for compiled bean definitions.
+     * @return the compiled bean definition registrar
+     */
     @Bean
     public static CompiledBeanDefinitionRegistrar sjf4jCompiledBeanDefinitionRegistrar() {
         return new CompiledBeanDefinitionRegistrar();

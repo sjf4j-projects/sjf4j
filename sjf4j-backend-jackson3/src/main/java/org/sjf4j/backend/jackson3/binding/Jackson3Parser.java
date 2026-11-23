@@ -67,6 +67,7 @@ public final class Jackson3Parser extends StreamingParser {
     /**
      * Access the native Jackson 3 cursor for compiled structural traversal.
      * A pending lookahead token must be consumed before switching cursors.
+     * @return the native Jackson parser
      */
     public JsonParser nativeParser() {
         if (prefetched) {
@@ -368,6 +369,8 @@ public final class Jackson3Parser extends StreamingParser {
     /**
      * Read the native array element already selected by nextToken(), without
      * advancing or changing the wrapper's lookahead state.
+     * @return the string value, or null for JSON null
+     * @throws IOException if the current token is not a string or null, or reading fails
      */
     public String readCurrentString() throws IOException {
         JsonToken token = parser.currentToken();
