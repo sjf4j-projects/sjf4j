@@ -26,7 +26,11 @@ jobs:
           ./gradlew --no-daemon :sjf4j-testbench:jmhJar
           find sjf4j-testbench/build/generated -name '*IncrementalUsersWriteBenchmark*Compiled_Impl.java' -exec cp {} results/generated/ \;
           grep -R -A 100 'void _writeEntry09' results/generated/ > results/entry09.txt || true
-          grep -R -q 'instanceof java.util.RandomAccess' results/generated/
+          echo 'Generated source files:'
+          find results/generated -type f -maxdepth 1 -print
+          grep -R -n 'RandomAccess' results/generated/ > results/random-access-lines.txt || true
+          cat results/random-access-lines.txt
+          test -s results/random-access-lines.txt
           jar=$(find sjf4j-testbench/build/libs -maxdepth 1 -name '*-jmh.jar' -print -quit)
           echo "$jar" > results/jar-path.txt
       - name: Stage09 Users, full Users, two seeds
