@@ -41,18 +41,10 @@ public final class BindingGenerator {
         generated.enableNodeConfig();
         generated.enableBackendBinder(backend.binderType());
         boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
-        generated.useCompiledBinderConfig(binderIncludeNulls);
-        // Emit static policy constants directly in the generated source.
-        // They never read the retained NodeConfig injection argument or a
-        // concrete backend Binder's config. Reuse the class-wide default.
-        String includeConfig = generated.names().field("writeConfigIncludeNulls");
-        String omitConfig = generated.names().field("writeConfigOmitNulls");
-        generated.addField(out -> out.line("private static final org.sjf4j.NodeConfig "
-                + includeConfig + " = " + (binderIncludeNulls
-                ? "config" : "org.sjf4j.NodeConfig.DEFAULT") + ";"));
-        generated.addField(out -> out.line("private static final org.sjf4j.NodeConfig "
-                + omitConfig + " = " + (binderIncludeNulls
-                ? "new org.sjf4j.NodeConfig(false)" : "config") + ";"));
+        // Compiled binders keep a single static config for null omission.
+        // Null-including writes use NodeConfig.DEFAULT directly. Neither
+        // path depends on the injected NodeConfig or backend Binder config.
+        generated.useCompiledBinderConfig();
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
 
@@ -85,7 +77,7 @@ public final class BindingGenerator {
         if (!generated.isValid()) return;
 
         BindingEmitter emitter = new BindingEmitter(context, backend,
-                new BindingNames(generated.names()), includeConfig, omitConfig);
+                new BindingNames(generated.names()));
 
         for (BindingCompiler.CompiledMethod method : compiled) {
             emitter.emitMethod(method, generated);

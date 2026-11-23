@@ -64,6 +64,8 @@ class CompiledIncludeNullsAnnotationTest {
             assertFalse(generated.contains("this.config.includeNulls"), backend);
             assertFalse(generated.contains("withIncludeNulls("), backend);
             assertFalse(generated.contains("this.config ="), backend);
+            assertFalse(generated.contains("writeConfigIncludeNulls"), backend);
+            assertFalse(generated.contains("writeConfigOmitNulls"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
@@ -71,21 +73,12 @@ class CompiledIncludeNullsAnnotationTest {
                 java.lang.reflect.Field configField = implType.getDeclaredField("config");
                 assertTrue(java.lang.reflect.Modifier.isStatic(configField.getModifiers()), backend);
                 assertTrue(java.lang.reflect.Modifier.isFinal(configField.getModifiers()), backend);
-                java.lang.reflect.Field includeField =
-                        implType.getDeclaredField("writeConfigIncludeNulls");
-                java.lang.reflect.Field omitField =
-                        implType.getDeclaredField("writeConfigOmitNulls");
                 configField.setAccessible(true);
-                includeField.setAccessible(true);
-                omitField.setAccessible(true);
-                for (java.lang.reflect.Field field : Arrays.asList(configField, includeField, omitField)) {
-                    assertEquals(NodeConfig.class, field.getType(), backend);
-                    assertTrue(java.lang.reflect.Modifier.isStatic(field.getModifiers()), backend);
-                    assertTrue(java.lang.reflect.Modifier.isFinal(field.getModifiers()), backend);
-                }
-                assertSame(NodeConfig.DEFAULT, includeField.get(null), backend);
-                assertSame(configField.get(null), omitField.get(null), backend);
+                assertEquals(NodeConfig.class, configField.getType(), backend);
                 assertFalse(((NodeConfig) configField.get(null)).includeNulls, backend);
+                assertNotSame(NodeConfig.DEFAULT, configField.get(null), backend);
+                assertEquals(1, Arrays.stream(implType.getDeclaredFields())
+                        .filter(field -> field.getType() == NodeConfig.class).count(), backend);
                 assertNotNull(implType.getConstructor(NodeConfig.class), backend);
                 Class modelType = loader.loadClass("fixture.Model");
                 Object model = modelType.getConstructor().newInstance();
@@ -177,8 +170,9 @@ class CompiledIncludeNullsAnnotationTest {
             assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
             String generated = compiled.generatedSource("fixture/Binder_Impl.java");
             assertFalse(generated.contains(".writeRaw(rawValue, this.config)"), backend);
-            assertTrue(generated.contains("writeConfigOmitNulls"), backend);
-            assertTrue(generated.contains("writeConfigIncludeNulls"), backend);
+            assertFalse(generated.contains("writeConfigOmitNulls"), backend);
+            assertFalse(generated.contains("writeConfigIncludeNulls"), backend);
+            assertTrue(generated.contains("NodeConfig.DEFAULT"), backend);
 
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 org.sjf4j.value.ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));

@@ -18,8 +18,6 @@ final class WriteEmitter {
 
     private final BackendSpec backend;
     private final BindingNames names;
-    private final String includeConfig;
-    private final String omitConfig;
     private boolean includeNulls = true;
     private final Fastjson2WriteEmitter fastjson2;
     private final JacksonWriteEmitter jackson;
@@ -28,11 +26,9 @@ final class WriteEmitter {
 
     private final Map<String, BindingValue> enumFields = new LinkedHashMap<>();
 
-    WriteEmitter(BackendSpec backend, BindingNames names, String includeConfig, String omitConfig) {
+    WriteEmitter(BackendSpec backend, BindingNames names) {
         this.backend = backend;
         this.names = names;
-        this.includeConfig = includeConfig;
-        this.omitConfig = omitConfig;
         this.streaming = new StreamingWriteEmitter(backend, names, this);
         switch (backend.backend()) {
             case FASTJSON2:
@@ -101,8 +97,10 @@ final class WriteEmitter {
     }
 
     String runtimeConfig() {
-        // Static final configuration selected while generating this method.
-        return includeNulls ? includeConfig : omitConfig;
+        // Both expressions are immutable class-level constants. The only
+        // generated config is dedicated to null omission; null inclusion
+        // reuses the shared default without another field or allocation.
+        return includeNulls ? "org.sjf4j.NodeConfig.DEFAULT" : "config";
     }
 
     boolean hasEnumFields() { return !enumFields.isEmpty(); }

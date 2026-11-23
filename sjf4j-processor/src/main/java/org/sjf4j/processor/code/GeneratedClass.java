@@ -39,7 +39,7 @@ public final class GeneratedClass {
 
     private boolean nodeConfigConstructor;
     private String backendBinderType;
-    private Boolean compiledBinderIncludeNulls;
+    private boolean compiledBinderConfig;
 
     private boolean valid = true;
 
@@ -165,12 +165,12 @@ public final class GeneratedClass {
     }
 
     /**
-     * Generated Binders retain their legacy NodeConfig constructor but ignore
-     * its argument. The generated class declares its own compile-time-selected
-     * static configuration, independent of the concrete backend Binder.
+     * Compiled Binders retain the NodeConfig injection constructor but ignore
+     * its argument. One static config handles null omission; null inclusion
+     * uses NodeConfig.DEFAULT. This does not affect other compiled APIs.
      */
-    public void useCompiledBinderConfig(boolean includeNulls) {
-        compiledBinderIncludeNulls = includeNulls;
+    public void useCompiledBinderConfig() {
+        compiledBinderConfig = true;
     }
 
     /** Adds an assignment after the generated constructor's config field is set. */
@@ -251,13 +251,11 @@ public final class GeneratedClass {
         boolean written = false;
 
         if (nodeConfigConstructor) {
-            if (compiledBinderIncludeNulls == null) {
+            if (!compiledBinderConfig) {
                 out.line("private final org.sjf4j.NodeConfig config;");
             } else {
                 out.line("private static final org.sjf4j.NodeConfig config = "
-                        + (compiledBinderIncludeNulls
-                        ? "org.sjf4j.NodeConfig.DEFAULT;"
-                        : "new org.sjf4j.NodeConfig(false);"));
+                        + "new org.sjf4j.NodeConfig(false);");
             }
             written = true;
         }
@@ -288,7 +286,7 @@ public final class GeneratedClass {
                 out.blank();
                 out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
                 out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
-                if (compiledBinderIncludeNulls == null) {
+                if (!compiledBinderConfig) {
                     out.line("this.config = this.binder.config();");
                 }
                 for (Member initializer : configInitializers) initializer.write(out);
