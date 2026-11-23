@@ -92,16 +92,18 @@ class CompiledCodecRawIOTest {
                 assertEquals(instant.toEpochMilli(), normalJson.path("epoch").asLong(), backend);
                 JsonNode configuredJson = mapper.readTree(differentFormat);
                 assertEquals(uuid.toString(), configuredJson.path("id").asText(), backend);
-                assertEquals(instant.toEpochMilli(), configuredJson.path("when").asLong(), backend);
+                assertEquals(instant.toString(), configuredJson.path("when").asText(), backend);
                 assertEquals(instant.toEpochMilli(), configuredJson.path("epoch").asLong(), backend);
                 assertEquals("tail", configuredJson.path("suffix").asText(), backend);
 
                 assertTrue(generated.contains(".multiples"),
                         backend + ": generated multi-shape read dispatch missing");
-                // Input shape wins; the configured format only selects within
-                // the matching shape, never forces a different raw type.
+                // Even without an injected default format, input JSON shape can
+                // select the registered numeric codec.
+                String epochJson = normal.replace("\"when\":\"" + instant + "\"",
+                        "\"when\":" + instant.toEpochMilli());
                 Object defaultReadsEpoch = binderType.getMethod("read", String.class)
-                        .invoke(defaults, differentFormat);
+                        .invoke(defaults, epochJson);
                 Object epochReadsIso = binderType.getMethod("read", String.class)
                         .invoke(configured, normal);
                 assertEquals(instant, beanType.getField("when").get(defaultReadsEpoch), backend);

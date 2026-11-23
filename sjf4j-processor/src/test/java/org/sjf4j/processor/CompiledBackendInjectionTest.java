@@ -105,7 +105,7 @@ class CompiledBackendInjectionTest {
 
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
-    void injectedBinderControlsCompiledNullAndValueFormatSemantics() throws Exception {
+    void injectedBinderCannotOverrideCompiledNullAndValueFormatSemantics() throws Exception {
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Bean.java",
                 "package fixture; import java.time.Instant; "
@@ -131,7 +131,7 @@ class CompiledBackendInjectionTest {
 
             Object byBackend = CompiledInstances.create(binderType, backend);
             Object byContext = CompiledInstances.create(binderType, config);
-            String expected = "{\"present\":\"ok\",\"when\":1234}";
+            String expected = "{\"present\":\"ok\",\"empty\":null,\"when\":\"1970-01-01T00:00:01.234Z\"}";
             assertEquals(expected, binderType.getMethod("write", beanType).invoke(byBackend, bean));
             assertEquals(expected, binderType.getMethod("write", beanType).invoke(byContext, bean));
             Object decoded = binderType.getMethod("read", String.class).invoke(byBackend, expected);
