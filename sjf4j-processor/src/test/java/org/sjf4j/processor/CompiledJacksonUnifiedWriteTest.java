@@ -65,7 +65,8 @@ class CompiledJacksonUnifiedWriteTest {
             assertTrue(generated.contains("private void _write"), backend);
             assertTrue(generated.contains("_writeString(g,"), backend);
             if ("JACKSON3".equals(backend)) {
-                assertTrue(generated.contains("private static final tools.jackson.core.io.SerializedString "),
+                assertTrue(generated.contains("import tools.jackson.core.io.SerializedString;"), backend);
+                assertTrue(generated.contains("private static final SerializedString "),
                         "Jackson3 should prepare native field names directly");
                 assertFalse(generated.contains("org.sjf4j.backend.jackson3.binding.Jackson3CompiledName"),
                         "Compiled Jackson3 must not allocate the runtime name wrapper");
@@ -76,7 +77,8 @@ class CompiledJacksonUnifiedWriteTest {
                 assertTrue(generated.contains("if (includeNulls)"), backend);
                 assertTrue(generated.contains(", this.config.includeNulls);"), backend);
             } else {
-                assertTrue(generated.contains("private static final org.sjf4j.backend.jackson2.binding.Jackson2CompiledName "),
+                assertTrue(generated.contains("import org.sjf4j.backend.jackson2.binding.Jackson2CompiledName;"), backend);
+                assertTrue(generated.contains("private static final Jackson2CompiledName "),
                         "Jackson2 prepared names are unchanged");
                 assertTrue(generated.contains(".serializedName"), backend);
                 assertTrue(generated.contains("private void _writeStringMember("), backend);
