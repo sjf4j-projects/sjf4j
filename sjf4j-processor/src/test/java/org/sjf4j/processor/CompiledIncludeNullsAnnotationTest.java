@@ -74,6 +74,16 @@ class CompiledIncludeNullsAnnotationTest {
                 java.lang.reflect.Field configField = implType.getDeclaredField("config");
                 assertTrue(java.lang.reflect.Modifier.isStatic(configField.getModifiers()), backend);
                 assertTrue(java.lang.reflect.Modifier.isFinal(configField.getModifiers()), backend);
+                java.lang.reflect.Field includeField =
+                        implType.getDeclaredField("writeConfigIncludeNulls");
+                java.lang.reflect.Field omitField =
+                        implType.getDeclaredField("writeConfigOmitNulls");
+                configField.setAccessible(true);
+                includeField.setAccessible(true);
+                omitField.setAccessible(true);
+                assertSame(NodeConfig.DEFAULT, includeField.get(null), backend);
+                assertSame(configField.get(null), omitField.get(null), backend);
+                assertFalse(((NodeConfig) configField.get(null)).includeNulls, backend);
                 assertNotNull(implType.getConstructor(NodeConfig.class), backend);
                 Class modelType = loader.loadClass("fixture.Model");
                 Object model = modelType.getConstructor().newInstance();
