@@ -3,7 +3,7 @@ import org.gradle.api.attributes.java.TargetJvmVersion
 plugins {
     id("java-library")
     id("jacoco")
-    id("me.champeau.jmh") version "0.7.2"
+    id("me.champeau.jmh") version "0.7.4"
     id("com.vanniktech.maven.publish")
 }
 
