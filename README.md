@@ -48,7 +48,7 @@ dependencies {
 }
 ```
 
-Replace `{version}` with the latest [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j)](https://central.sonatype.com/search?q=sjf4j).
+Replace `{version}` with the latest [![Maven Central](https://img.shields.io/maven-central/v/org.sjf4j/sjf4j-core)](https://central.sonatype.com/search?q=sjf4j).
 For Maven and other modules, see the [Installation](https://sjf4j.org/docs/installation).
 
 **Start with an ordinary Java class:**
