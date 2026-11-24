@@ -1,0 +1,37 @@
+name: SpotBugs
+
+on:
+  workflow_dispatch:
+  # Validate changes to this workflow before merging; ordinary PRs do not run it.
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/spotbugs.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17 and 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            25
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Analyze production and generated classes
+        run: ./gradlew spotbugsAll --continue --max-workers=2
+      - name: Upload SpotBugs reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-reports
+          path: '**/build/reports/spotbugs/'
+          if-no-files-found: error
