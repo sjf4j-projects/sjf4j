@@ -59,6 +59,7 @@ class CompiledNodeConfigInjectionTest {
         String mapperSource = compiled.generatedSource("fixture/Mapper_Impl.java");
         String binderSource = compiled.generatedSource("fixture/Binder_Impl.java");
         assertTrue(mapperSource.contains("NodeConfig config)"), mapperSource);
+        assertTrue(mapperSource.contains("private final NodeConfig config;"), mapperSource);
         String outerSource = compiled.generatedSource("fixture/Outer_Impl.java");
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
         assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
@@ -201,10 +202,11 @@ class CompiledNodeConfigInjectionTest {
                 + "Row read(ResultSet rs); }"
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
-        assertTrue(compiled.generatedSource("fixture/Paths_Impl.java")
-                .contains("NodeConfig config)"));
-        assertTrue(compiled.generatedSource("fixture/Rows_Impl.java")
-                .contains("NodeConfig config)"));
+        for (String name : new String[] {"Paths", "Rows"}) {
+            String generated = compiled.generatedSource("fixture/" + name + "_Impl.java");
+            assertTrue(generated.contains("NodeConfig config)"), generated);
+            assertFalse(generated.contains("private final NodeConfig config;"), generated);
+        }
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class pathsType = loader.loadClass("fixture.Paths");

@@ -12,6 +12,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompiledBinderNamingTest {
 
     @Test
+    void retainsOnlyReachableStringHelpersForEachWritePolicy() throws Exception {
+        for (String backend : new String[] {"JACKSON2", "JACKSON3"}) {
+            for (boolean include : new boolean[] {true, false}) {
+                Map<String, String> sources = new LinkedHashMap<>();
+                sources.put("fixture/Bean.java",
+                        "package fixture; public class Bean { public String name; }");
+                sources.put("fixture/Binder.java",
+                        "package fixture; import org.sjf4j.annotation.binding.*; "
+                                + "@CompiledBinder(backend=Backend." + backend + ") "
+                                + "public interface Binder { @Write(includeNulls=" + include
+                                + ") String write(Bean value) throws java.io.IOException; }");
+                NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                        sources, CodegenProcessor.class);
+                assertTrue(result.success, result.diagnostics());
+                String generated = result.generatedSource("fixture/Binder_Impl.java");
+                String used = include ? "IncludeNulls" : "OmitNulls";
+                String unused = include ? "OmitNulls" : "IncludeNulls";
+                assertTrue(generated.contains("private static void _writeStringMember" + used + "("), generated);
+                assertFalse(generated.contains("private static void _writeStringMember" + unused + "("), generated);
+                assertFalse(generated.contains("private static void _writeString("), generated);
+            }
+        }
+    }
+
+    @Test
     void inheritsMemberNamesWithoutConflictingWithGeneratedHelpers() throws Exception {
         for (String backend : new String[]{"JACKSON2", "FASTJSON2", "GSON", "JSONP"}) {
             Map<String, String> sources = new LinkedHashMap<>();
