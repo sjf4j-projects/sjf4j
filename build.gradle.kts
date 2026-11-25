@@ -93,13 +93,14 @@ fun readSpotBugsCounts(report: File): LongArray {
 }
 
 val spotbugsScans = mutableListOf<TaskProvider<SpotBugsTask>>()
-val spotbugsSummaryFile = layout.buildDirectory.file("reports/spotbugs/summary.md")
+val spotbugsSummaryFile = layout.buildDirectory.file("reports/spotbugs/summary.txt")
 
 // Finalize the independent preparation task, not the aggregate task: the latter
 // can be skipped entirely if a scan dependency fails.
 val spotbugsPrepare = tasks.register("spotbugsPrepare") {
     doLast {
         Files.deleteIfExists(spotbugsSummaryFile.get().asFile.toPath())
+        Files.deleteIfExists(layout.buildDirectory.file("reports/spotbugs/summary.md").get().asFile.toPath())
     }
 }
 
@@ -111,17 +112,26 @@ val spotbugsSummary = tasks.register("spotbugsSummary") {
         var parsed = 0
         var noSource = 0
         var incomplete = 0
+        val scans = spotbugsScans.map { it.get() }.sortedBy { it.path }
+        val taskWidth = maxOf("TOTAL".length, "Task".length, scans.maxOfOrNull { it.path.length } ?: 0)
         val summary = buildString {
-            appendLine("# SpotBugs summary")
+            fun row(name: String, values: List<String>, status: String = "") {
+                appendLine(name.padEnd(taskWidth) + "  " +
+                        values.zip(listOf(10, 7, 9, 7, 6, 7, 7))
+                            .joinToString("  ") { (value, width) -> value.padStart(width) } +
+                        "  " + status)
+            }
+            val empty = List(7) { "-" }
+            appendLine("SpotBugs summary")
             appendLine()
-            appendLine("| Task | Findings | P1 | P2 | P3 | Other | Errors | Missing classes | Status |")
-            appendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |")
-            for (scan in spotbugsScans.sortedBy { it.get().path }) {
-                val task = scan.get()
+            row("Task", listOf("Findings", "P1", "P2", "P3", "Other", "Errors", "Missing"), "Status")
+            appendLine("-".repeat(taskWidth + 80))
+            for (task in scans) {
                 val state = task.state
                 if (state.noSource) {
                     noSource++
-                    appendLine("| ${task.path} | — | — | — | — | — | — | — | NO-SOURCE |")
+                    row(task.path, empty, "NO-SOURCE")
+                    appendLine("    HTML: unavailable (no source)")
                     continue
                 }
                 try {
@@ -131,18 +141,28 @@ val spotbugsSummary = tasks.register("spotbugsSummary") {
                     }
                     val report = task.reports.getByName("xml").outputLocation.get().asFile
                     val counts = readSpotBugsCounts(report)
+                    val html = task.reports.getByName("html")
+                    val htmlFile = html.outputLocation.get().asFile
+                    val htmlAddress = if (html.required.get() && htmlFile.isFile && htmlFile.length() > 0) {
+                        htmlFile.toURI().toASCIIString()
+                    } else {
+                        "unavailable"
+                    }
                     counts.forEachIndexed { i, count -> totals[i] += count }
                     parsed++
                     val findings = counts.take(4).sum()
                     val status = if (counts[4] > 0 || counts[5] > 0) "Analysis diagnostics" else "Parsed"
-                    appendLine("| ${task.path} | $findings | ${counts.joinToString(" | ")} | $status |")
+                    row(task.path, listOf(findings.toString()) + counts.map { it.toString() }, status)
+                    appendLine("    HTML: $htmlAddress")
                 } catch (e: Exception) {
                     incomplete++
                     logger.warn("Cannot summarize ${task.path}: ${e.message}")
-                    appendLine("| ${task.path} | — | — | — | — | — | — | — | Missing/invalid report |")
+                    row(task.path, empty, "Missing/invalid report")
+                    appendLine("    HTML: unavailable (scan/report incomplete)")
                 }
             }
-            appendLine("| **Total (parsed reports)** | **${totals.take(4).sum()}** | ${totals.joinToString(" | ")} | |")
+            appendLine("-".repeat(taskWidth + 80))
+            row("TOTAL", listOf(totals.take(4).sum().toString()) + totals.map { it.toString() })
             appendLine()
             appendLine("Reports parsed: $parsed; no source: $noSource; incomplete: $incomplete.")
             appendLine("Totals include parsed XML reports only. P1/P2/P3 are SpotBugs priorities, not security severity.")
