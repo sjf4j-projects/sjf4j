@@ -62,8 +62,8 @@ class CompiledMapperNullGuardTest {
             Class<?> target = loader.loadClass("fixture.Target");
             Object mapper = impl.getConstructor().newInstance();
             java.lang.reflect.Method nested = impl.getMethod("nested", source);
-            Object empty = source.getConstructor(List.class).newInstance((Object) null);
-            Object full = source.getConstructor(List.class).newInstance(List.of(7));
+            Object empty = source.getConstructor(List.class, String.class).newInstance(null, null);
+            Object full = source.getConstructor(List.class, String.class).newInstance(List.of(7), null);
             assertEquals(target.getConstructor(List.class, String.class).newInstance(null, null),
                     nested.invoke(mapper, empty));
             assertEquals(target.getConstructor(List.class, String.class).newInstance(List.of(7L), null),
@@ -80,7 +80,7 @@ class CompiledMapperNullGuardTest {
     private static NavigatorTestCompiler.Result compile() throws Exception {
         NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Source.java",
-                "package fixture; import java.util.List; public record Source(List<Integer> values) {}",
+                "package fixture; import java.util.List; public record Source(List<Integer> values, String label) {}",
                 "fixture/Other.java",
                 "package fixture; public record Other(String label) {}",
                 "fixture/Target.java",
@@ -91,7 +91,7 @@ class CompiledMapperNullGuardTest {
                         + "List<Long> list(List<Integer> source); "
                         + "Map<String,Long> map(Map<String,Integer> source); "
                         + "void update(Map<String,Long> target, Map<String,Integer> source); "
-                        + "@Mapping(target=\"label\", ignore=true) Target nested(Source source); "
+                        + "Target nested(Source source); "
                         + "@Mapping(target=\"values\", source=\"source:values\") "
                         + "@Mapping(target=\"label\", source=\"other:label\") "
                         + "Target multi(Source source, Other other); }"
