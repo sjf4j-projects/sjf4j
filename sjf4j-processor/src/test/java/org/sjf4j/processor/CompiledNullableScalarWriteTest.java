@@ -57,9 +57,9 @@ class CompiledNullableScalarWriteTest {
                 JsonNode all = json.readTree((String) write.invoke(
                         CompiledInstances.create(binderType), model));
                 assertEquals(all, json.readTree((String) write.invoke(
-                        CompiledInstances.create(binderType, new NodeConfig(false)), model)), backend);
+                        CompiledTestBinders.create(binderType, backend, new NodeConfig(false)), model)), backend);
                 JsonNode filtered = json.readTree((String) binderType.getMethod("writeOmit", modelType).invoke(
-                        CompiledInstances.create(binderType, new NodeConfig(true)), model));
+                        CompiledTestBinders.create(binderType, backend, new NodeConfig(true)), model));
                 for (JsonNode node : new JsonNode[]{all, filtered}) {
                     assertEquals("12.34", node.path("decimal").decimalValue().toPlainString(), backend);
                     assertEquals(42, node.path("count").intValue(), backend);

@@ -77,8 +77,7 @@ class CompiledCodecRawIOTest {
                 beanType.getField("epoch").set(bean, instant);
 
                 Object defaults = CompiledInstances.create(binderType);
-                Object configured = CompiledInstances.create(binderType,
-                        new NodeConfig(Map.of(Instant.class, "epochMillis")));
+                Object configured = CompiledTestBinders.create(binderType, backend, new NodeConfig(Map.of(Instant.class, "epochMillis")));
                 String normal = (String) binderType.getMethod("write", beanType)
                         .invoke(defaults, bean);
                 String differentFormat = (String) binderType.getMethod("write", beanType)

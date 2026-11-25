@@ -130,10 +130,10 @@ class CompiledBackendInjectionTest {
             assertSame(config, backend.config());
 
             Object byBackend = CompiledInstances.create(binderType, backend);
-            Object byContext = CompiledInstances.create(binderType, config);
+            Object byDefault = CompiledInstances.create(binderType);
             String expected = "{\"present\":\"ok\",\"empty\":null,\"when\":\"1970-01-01T00:00:01.234Z\"}";
             assertEquals(expected, binderType.getMethod("write", beanType).invoke(byBackend, bean));
-            assertEquals(expected, binderType.getMethod("write", beanType).invoke(byContext, bean));
+            assertEquals(expected, binderType.getMethod("write", beanType).invoke(byDefault, bean));
             Object decoded = binderType.getMethod("read", String.class).invoke(byBackend, expected);
             assertEquals(java.time.Instant.ofEpochMilli(1234),
                     beanType.getField("when").get(decoded));

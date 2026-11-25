@@ -176,7 +176,7 @@ class Fastjson2CompiledWrapperIntegrationTest {
             assertEquals(1, getterType.getField("calls").getInt(getterBean));
 
             NodeConfig config = new NodeConfig(Map.of(Instant.class, "epochMillis"), false);
-            Object configured = CompiledInstances.create(type, config);
+            Object configured = CompiledTestBinders.create(type, "FASTJSON2", config);
             String customized = (String) type.getMethod("write", beanType).invoke(configured, bean);
             assertTrue(customized.contains("2024-01-01T10:00:00Z"), customized);
             assertTrue(customized.contains("\"absent\":null"), customized);

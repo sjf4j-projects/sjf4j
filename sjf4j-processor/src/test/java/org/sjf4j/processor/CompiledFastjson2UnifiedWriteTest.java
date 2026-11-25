@@ -78,7 +78,7 @@ class CompiledFastjson2UnifiedWriteTest {
             Class binderType = loader.loadClass("fixture.Binder");
             Object model = modelType.getConstructor().newInstance();
             Object normal = CompiledInstances.create(binderType);
-            Object withoutNulls = CompiledInstances.create(binderType, new NodeConfig(false));
+            Object withoutNulls = CompiledTestBinders.create(binderType, "FASTJSON2", new NodeConfig(false));
             java.lang.reflect.Method write = binderType.getMethod("write", modelType);
             java.lang.reflect.Method writeBytes = binderType.getMethod("writeBytes", modelType);
             ObjectMapper json = new ObjectMapper();
