@@ -95,9 +95,17 @@ fun readSpotBugsCounts(report: File): LongArray {
 val spotbugsScans = mutableListOf<TaskProvider<SpotBugsTask>>()
 val spotbugsSummaryFile = layout.buildDirectory.file("reports/spotbugs/summary.md")
 
-val spotbugsAll = tasks.register("spotbugsAll") {
+// Finalize the independent preparation task, not the aggregate task: the latter
+// can be skipped entirely if a scan dependency fails.
+val spotbugsPrepare = tasks.register("spotbugsPrepare") {
+    doLast {
+        Files.deleteIfExists(spotbugsSummaryFile.get().asFile.toPath())
+    }
+}
+
+val spotbugsSummary = tasks.register("spotbugsSummary") {
     group = "verification"
-    description = "Run independent SpotBugs analysis across SJF4J and summarize reports"
+    description = "Summarize SpotBugs reports from the current build"
     doLast {
         val totals = LongArray(6)
         var parsed = 0
@@ -147,6 +155,26 @@ val spotbugsAll = tasks.register("spotbugsAll") {
     }
 }
 
+spotbugsPrepare.configure { finalizedBy(spotbugsSummary) }
+
+val spotbugsAll = tasks.register("spotbugsAll") {
+    group = "verification"
+    description = "Run independent SpotBugs analysis across SJF4J and summarize reports"
+    dependsOn(spotbugsPrepare)
+    mustRunAfter(spotbugsSummary)
+}
+
+// Order preparation before compilation as well as scanning, so an early
+// dependency failure cannot leave a previous summary or skip its finalizer.
+// This is only an ordering constraint: ordinary builds do not run preparation.
+allprojects {
+    tasks.configureEach {
+        if (path != ":spotbugsPrepare") {
+            mustRunAfter(spotbugsPrepare)
+        }
+    }
+}
+
 subprojects {
     plugins.withId("java") {
         if (name != "sjf4j") { // Aggregate module has no classes of its own.
@@ -191,6 +219,7 @@ subprojects {
                 }
                 spotbugsScans.add(scan)
                 spotbugsAll.configure { dependsOn(scan) }
+                spotbugsSummary.configure { mustRunAfter(scan) }
             }
         }
     }

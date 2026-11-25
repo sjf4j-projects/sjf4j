@@ -30,8 +30,12 @@ as well as bug instances. Reports are written to each module's
 at `build/reports/spotbugs/summary.md` in the root project. It lists the
 finding totals by SpotBugs priority (P1/P2/P3/other), analysis errors, and
 missing classes. Source sets with no classes are marked `NO-SOURCE`; missing
-or invalid XML reports are marked incomplete and excluded from totals.
-The summary is diagnostic, not a new publication gate.
+or invalid XML reports and scans that did not complete are marked incomplete
+and excluded from totals. A preparation task clears the previous summary,
+and its finalizer writes the current summary even if a compilation or scan
+task fails. Use `--continue` to collect as many independent reports as possible.
+The summary is diagnostic, not a new publication gate; task failures still
+fail the build.
 
 On GitHub Actions, select **SpotBugs → Run workflow** and download
 `spotbugs-reports`. The aggregate summary also appears in the workflow job
