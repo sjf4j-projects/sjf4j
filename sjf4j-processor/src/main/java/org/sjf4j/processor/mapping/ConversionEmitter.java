@@ -237,7 +237,7 @@ public final class ConversionEmitter
                 String previous = emittingShared;
                 emittingShared = helper.signature;
                 try {
-                    String result = emitStructural(out, locals, helper.conversion, "source");
+                    String result = emitStructural(out, locals, helper.conversion, "source", false);
                     out.line("return " + result + ";");
                 } finally {
                     emittingShared = previous;
@@ -297,7 +297,7 @@ public final class ConversionEmitter
         StringWriter source = new StringWriter();
         try (JavaWriter out = new JavaWriter(source, "", "_Signature")) {
             NameAllocator locals = new NameAllocator().reserve("source");
-            String result = emitStructural(out, locals, conversion, "source");
+            String result = emitStructural(out, locals, conversion, "source", false);
             out.line("return " + result + ";");
         } catch (IOException e) {
             throw new IllegalStateException("Cannot render structural conversion signature", e);
@@ -330,25 +330,27 @@ public final class ConversionEmitter
     @Override
     public String emit(JavaWriter out, NameAllocator names, MappingPlan plan,
                        ConverterResolver.Conversion conversion, String source,
-                       TypeMirror sourceType, TypeMirror targetType, GeneratedClass generated) {
+                       TypeMirror sourceType, TypeMirror targetType, boolean sourceKnownNonNull,
+                       GeneratedClass generated) {
         ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
 
         if (resolved == null) throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
 
-        return emit(out, names, resolved, source);
+        return emit(out, names, resolved, source, sourceKnownNonNull);
     }
 
     @Override
     public void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
                               ConverterResolver.Conversion conversion, String source, TypeMirror sourceType,
-                              TypeMirror targetType, String target, String policy, GeneratedClass generated) {
+                              TypeMirror targetType, String target, String policy, boolean sourceKnownNonNull,
+                              GeneratedClass generated) {
         ConversionCompiler.CompiledConversion resolved = compiled.get(conversion);
 
         if (resolved == null) throw new IllegalStateException("conversion was not prepared: " + sourceType + " -> " + targetType);
 
         if (resolved.kind() != ConversionCompiler.CompiledConversion.Kind.MAP) throw new IllegalArgumentException("root map update requires a map conversion");
 
-        out.beginBlock("if (" + source + " != null)");
+        if (!sourceKnownNonNull) out.beginBlock("if (" + source + " != null)");
         String entry = names.newName("entry");
 
         if (types.isCompileTimeUnknown(resolved.sourceKeyType()) &&
@@ -393,7 +395,7 @@ public final class ConversionEmitter
 
         out.dedent();
         out.line("}");
-        out.endBlock();
+        if (!sourceKnownNonNull) out.endBlock();
     }
 
     /*
@@ -404,6 +406,13 @@ public final class ConversionEmitter
 
     private String emit(JavaWriter out, NameAllocator names,
                         ConversionCompiler.CompiledConversion conversion, String source) {
+        // Nested values and shared helpers retain their independent null contract.
+        return emit(out, names, conversion, source, false);
+    }
+
+    private String emit(JavaWriter out, NameAllocator names,
+                        ConversionCompiler.CompiledConversion conversion, String source,
+                        boolean sourceKnownNonNull) {
 
         if (conversion.kind() == ConversionCompiler.CompiledConversion.Kind.STRUCTURAL) {
             String signature = signatures.get(conversion);
@@ -447,13 +456,13 @@ public final class ConversionEmitter
                 return emitNodeMapperTo(out, names, conversion.targetType(), source, "oneOf");
 
             case CONTAINER:
-                return emitContainer(out, names, conversion, source);
+                return emitContainer(out, names, conversion, source, sourceKnownNonNull);
 
             case MAP:
-                return emitMap(out, names, conversion, source);
+                return emitMap(out, names, conversion, source, sourceKnownNonNull);
 
             case STRUCTURAL:
-                return emitStructural(out, names, conversion, source);
+                return emitStructural(out, names, conversion, source, sourceKnownNonNull);
 
             default:
                 throw new AssertionError(conversion.kind());
@@ -659,7 +668,8 @@ public final class ConversionEmitter
      */
 
     private String emitContainer(JavaWriter out, NameAllocator names,
-                                 ConversionCompiler.CompiledConversion conversion, String source) {
+                                 ConversionCompiler.CompiledConversion conversion, String source,
+                                 boolean sourceKnownNonNull) {
         TypeMirror sourceType = conversion.sourceType();
         TypeMirror targetType = conversion.targetType();
         NodeKind sourceKind = types.nodeKind(sourceType);
@@ -667,18 +677,21 @@ public final class ConversionEmitter
         String result = names.newName("converted");
         String targetLocalType = localType(targetType);
 
-        out.line(targetLocalType + " " + result + " = null;");
-        out.beginBlock("if (" + source + " != null)");
+        if (!sourceKnownNonNull) {
+            out.line(targetLocalType + " " + result + " = null;");
+            out.beginBlock("if (" + source + " != null)");
+        }
 
         String size = names.newName("size");
         out.line("int " + size + " = " + sizeExpression(source, sourceKind) + ";");
 
+        String assignment = (sourceKnownNonNull ? targetLocalType + " " : "") + result + " = ";
         if (targetKind == NodeKind.ARRAY_ARRAY) {
             TypeMirror component = ((ArrayType) types.concrete(targetType)).getComponentType();
-            out.line(result + " = new " + component + "[" + size + "];");
+            out.line(assignment + "new " + component + "[" + size + "];");
 
         } else {
-            out.line(result + " = " + newContainerExpression(targetType, targetKind, size) + ";");
+            out.line(assignment + newContainerExpression(targetType, targetKind, size) + ";");
         }
 
         if (sourceKind == NodeKind.ARRAY_SET) {
@@ -696,7 +709,7 @@ public final class ConversionEmitter
             emitIndexedContainerLoop(out, names, conversion, source, result, sourceKind, targetKind, size);
         }
 
-        out.endBlock();
+        if (!sourceKnownNonNull) out.endBlock();
 
         return result;
     }
@@ -770,14 +783,18 @@ public final class ConversionEmitter
      */
 
     private String emitMap(JavaWriter out, NameAllocator names,
-                           ConversionCompiler.CompiledConversion conversion, String source) {
+                           ConversionCompiler.CompiledConversion conversion, String source,
+                           boolean sourceKnownNonNull) {
         String result = names.newName("converted");
 
-        out.line(localType(conversion.targetType()) + " " + result + " = null;");
-        out.beginBlock("if (" + source + " != null)");
+        String targetType = localType(conversion.targetType());
+        if (!sourceKnownNonNull) {
+            out.line(targetType + " " + result + " = null;");
+            out.beginBlock("if (" + source + " != null)");
+        }
         // Unlike an unsized LinkedHashMap, this avoids repeated table growth for large maps.
         // Keep user-supplied concrete Map implementations on their existing constructor path.
-        out.line(result + " = " + newMapExpression(conversion.targetType(), source) + ";");
+        out.line((sourceKnownNonNull ? targetType + " " : "") + result + " = " + newMapExpression(conversion.targetType(), source) + ";");
 
         String entry = names.newName("entry");
         if (types.isCompileTimeUnknown(conversion.sourceKeyType()) &&
@@ -810,7 +827,7 @@ public final class ConversionEmitter
         out.dedent();
         out.line("}");
 
-        out.endBlock();
+        if (!sourceKnownNonNull) out.endBlock();
 
         return result;
     }
@@ -822,12 +839,13 @@ public final class ConversionEmitter
      */
 
     private String emitStructural(JavaWriter out, NameAllocator names,
-                                  ConversionCompiler.CompiledConversion conversion, String source) {
+                                  ConversionCompiler.CompiledConversion conversion, String source,
+                                  boolean sourceKnownNonNull) {
         ConversionCompiler.DynamicObjectPlan dynamic = conversion.dynamicObject();
 
-        if (conversion.creation() != null) return emitTypedObject(out, names, conversion, source);
+        if (conversion.creation() != null) return emitTypedObject(out, names, conversion, source, sourceKnownNonNull);
 
-        if (dynamic != null) return emitDynamicObject(out, names, conversion, dynamic, source);
+        if (dynamic != null) return emitDynamicObject(out, names, conversion, dynamic, source, sourceKnownNonNull);
 
         throw new IllegalStateException("structural conversion has neither creator nor dynamic plan");
     }
@@ -839,12 +857,13 @@ public final class ConversionEmitter
      */
 
     private String emitTypedObject(JavaWriter out, NameAllocator names,
-                                   ConversionCompiler.CompiledConversion conversion, String source) {
+                                   ConversionCompiler.CompiledConversion conversion, String source,
+                                   boolean sourceKnownNonNull) {
         String result = names.newName("converted");
         TypeMirror workingType = conversion.workingTargetType();
 
-        out.line(localType(workingType) + " " + result + " = null;");
-        out.beginBlock("if (" + source + " != null)");
+        out.line(localType(workingType) + " " + result + (sourceKnownNonNull ? ";" : " = null;"));
+        if (!sourceKnownNonNull) out.beginBlock("if (" + source + " != null)");
         boolean runtimeSource = types.nodeKind(conversion.sourceType()) == NodeKind.COMPILE_TIME_UNKNOWN;
 
         if (runtimeSource) {
@@ -890,7 +909,7 @@ public final class ConversionEmitter
             out.endBlock();
         }
 
-        out.endBlock();
+        if (!sourceKnownNonNull) out.endBlock();
 
         return result;
     }
@@ -931,11 +950,16 @@ public final class ConversionEmitter
 
     private String emitDynamicObject(JavaWriter out, NameAllocator names,
                                      ConversionCompiler.CompiledConversion conversion,
-                                     ConversionCompiler.DynamicObjectPlan dynamic, String source) {
+                                     ConversionCompiler.DynamicObjectPlan dynamic, String source,
+                                     boolean sourceKnownNonNull) {
         String result = names.newName("converted");
-        out.line(localType(conversion.targetType()) + " " + result + " = null;");
-        out.beginBlock("if (" + source + " != null)");
-        out.line(result + " = " + newObjectExpression(conversion.targetType()) + ";");
+        String targetType = localType(conversion.targetType());
+        if (!sourceKnownNonNull) {
+            out.line(targetType + " " + result + " = null;");
+            out.beginBlock("if (" + source + " != null)");
+        }
+        out.line((sourceKnownNonNull ? targetType + " " : "") + result
+                + " = " + newObjectExpression(conversion.targetType()) + ";");
 
         if (dynamic.kind() == ConversionCompiler.DynamicObjectPlan.Kind.STATIC_PROPERTIES) {
             for (ConversionCompiler.DynamicProperty property : dynamic.properties()) {
@@ -949,7 +973,7 @@ public final class ConversionEmitter
             emitDynamicMembers(out, names, dynamic, source, result);
         }
 
-        out.endBlock();
+        if (!sourceKnownNonNull) out.endBlock();
 
         return result;
     }

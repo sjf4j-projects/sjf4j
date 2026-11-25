@@ -82,11 +82,12 @@ public final class MappingEmitter {
                           GeneratedClass generated) {
         MappingCompiler.Read source = compiled.rootSource();
         String sourceValue = emitRead(out, names, source, rootKnownNonNull(compiled.plan()));
+        boolean sourceKnownNonNull = readKnownNonNull(compiled.plan(), source);
 
         if (compiled.plan().create()) {
 
             String value = conversions.emit(out, names, compiled.plan(), compiled.rootConversion(),
-                    sourceValue, source.type(), compiled.plan().targetType(), generated);
+                    sourceValue, source.type(), compiled.plan().targetType(), sourceKnownNonNull, generated);
             out.line("return " + value + ";");
 
         } else {
@@ -113,6 +114,7 @@ public final class MappingEmitter {
                                 source.type(),
                                 compiled.plan()
                                         .targetType(),
+                                sourceKnownNonNull,
                                 generated);
 
                 emitArrayContentsUpdate(
@@ -150,6 +152,7 @@ public final class MappingEmitter {
                                 compiled.plan(),
                                 "objects",
                                 "PUT"),
+                        sourceKnownNonNull,
                         generated);
             }
 
@@ -442,6 +445,7 @@ public final class MappingEmitter {
                             mapped.read()
                                     .type(),
                             destination.type(),
+                            true,
                             generated);
 
             emitNodeWrite(
@@ -467,6 +471,7 @@ public final class MappingEmitter {
                 destination.type(),
                 existing,
                 policy,
+                true,
                 generated);
 
         out.endBlock();
@@ -495,10 +500,8 @@ public final class MappingEmitter {
                             .getSimpleName()
                             .toString();
 
-            out.beginBlock(
-                    "if (" +
-                            source +
-                            " != null)");
+            boolean guard = !rootKnownNonNull(compiled.plan());
+            if (guard) out.beginBlock("if (" + source + " != null)");
 
             switch (dynamic.kind()) {
                 case OBJECT_MAP:
@@ -545,7 +548,7 @@ public final class MappingEmitter {
                                     dynamic.kind());
             }
 
-            out.endBlock();
+            if (guard) out.endBlock();
         }
     }
 
@@ -1112,7 +1115,7 @@ public final class MappingEmitter {
                     out.beginBlock("if (" + read.root().getSimpleName() + " != null)");
                     String source = emitRead(out, names, read, true, primitiveDirect);
                     String expression = conversions.emit(out, names, plan,
-                            value.conversion(), source, read.type(), value.type(), generated);
+                            value.conversion(), source, read.type(), value.type(), read.rootValue(), generated);
                     out.line(converted + " = " + expression + ";");
                     out.endBlock();
                     return converted;
@@ -1135,14 +1138,14 @@ public final class MappingEmitter {
                     out.line(localType(value.type()) + " " + converted + " = null;");
                     out.beginBlock("if (" + reached + ")");
                     String expression = conversions.emit(out, names, plan,
-                            value.conversion(), source, read.type(), value.type(), generated);
+                            value.conversion(), source, read.type(), value.type(), false, generated);
                     out.line(converted + " = " + expression + ";");
                     out.endBlock();
                     return converted;
                 }
 
                 return conversions.emit(out, names, plan, value.conversion(),
-                        source, read.type(), value.type(), generated);
+                        source, read.type(), value.type(), readKnownNonNull(plan, read), generated);
             }
 
             case COMPUTE:
@@ -1530,6 +1533,11 @@ public final class MappingEmitter {
         }
 
         return current;
+    }
+
+    /** The root guard proves only the root itself, never a property or indexed read. */
+    private boolean readKnownNonNull(MappingPlan plan, MappingCompiler.Read read) {
+        return read.rootValue() && (read.rootType().getKind().isPrimitive() || rootKnownNonNull(plan));
     }
 
     private boolean rootKnownNonNull(
@@ -3044,10 +3052,12 @@ public final class MappingEmitter {
 
         String emit(JavaWriter out, NameAllocator names, MappingPlan plan,
                     ConverterResolver.Conversion conversion, String source,
-                    TypeMirror sourceType, TypeMirror targetType, GeneratedClass generated);
+                    TypeMirror sourceType, TypeMirror targetType, boolean sourceKnownNonNull,
+                    GeneratedClass generated);
 
         void emitMapUpdate(JavaWriter out, NameAllocator names, MappingPlan plan,
                            ConverterResolver.Conversion conversion, String source, TypeMirror sourceType,
-                           TypeMirror targetType, String target, String policy, GeneratedClass generated);
+                           TypeMirror targetType, String target, String policy, boolean sourceKnownNonNull,
+                           GeneratedClass generated);
     }
 }
