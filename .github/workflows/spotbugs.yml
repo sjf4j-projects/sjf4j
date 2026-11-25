@@ -1,5 +1,7 @@
 name: SpotBugs
 
+# Temporary verification of merged correctness fixes; do not merge this PR.
+
 on:
   workflow_dispatch:
   # Validate changes to the analysis configuration; ordinary code PRs do not run it.
