@@ -28,12 +28,16 @@ final class SchemaValue {
     final boolean uriType;
 
     private SchemaValue(TypeMirror type, Shape shape, boolean enumType) {
+        this(type, shape, enumType, type == null || !type.getKind().isPrimitive());
+    }
+
+    private SchemaValue(TypeMirror type, Shape shape, boolean enumType, boolean nullable) {
         this.type = type;
         this.shape = shape;
         this.enumType = enumType;
         this.uuidType = type != null && "java.util.UUID".equals(type.toString());
         this.uriType = type != null && "java.net.URI".equals(type.toString());
-        this.nullable = type == null || !type.getKind().isPrimitive();
+        this.nullable = nullable;
     }
 
     static SchemaValue of(ProcessorContext context, TypeMirror type, CompiledMetadata metadata) {
@@ -87,6 +91,17 @@ final class SchemaValue {
             }
         }
         return new SchemaValue(type, Shape.OTHER, false);
+    }
+
+    /** Refines only this expression, not its Java type or its children. */
+    SchemaValue nonNull() {
+        return nullable ? new SchemaValue(type, shape, enumType, false) : this;
+    }
+
+    /** Shared reference helpers must accept callers with different null facts. */
+    SchemaValue declaredNullability() {
+        return !nullable && (type == null || !type.getKind().isPrimitive())
+                ? new SchemaValue(type, shape, enumType, true) : this;
     }
 
     boolean isArrayLike() {

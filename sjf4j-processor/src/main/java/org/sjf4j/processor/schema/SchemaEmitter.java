@@ -250,7 +250,7 @@ final class SchemaEmitter {
                 for (SchemaCheck.DependentSchema dependency : check.dependentSchemas) {
                     statements.add("if (" + names + ".contains(" + literal(dependency.trigger) + ")) {");
                     List<String> nested = new ArrayList<String>();
-                    emitValue(nested, plan, dependency.check, check.elementValue, variable,
+                    emitValue(nested, plan, dependency.check, check.elementValue.nonNull(), variable,
                             prefix + "DEPENDENT_SCHEMA_" + branch++, strictFormat, 0, onFailure);
                     for (String statement : nested) statements.add("    " + statement);
                     statements.add("}");
@@ -414,24 +414,19 @@ final class SchemaEmitter {
                         : "org.sjf4j.JsonType.of(" + expression
                           + ") == org.sjf4j.JsonType." + guard.jsonType;
                 List<String> guarded = new ArrayList<String>();
-                emitValue(guarded, plan, guard.child, guard.value, expression,
-                        planName + "_", strictFormat, depth, onFailure);
-                if (knownShape && value.nullable) {
-                    // The enclosing guard already proves non-null. Remove only
-                    // direct checks on this exact expression, never a nested
-                    // property's own null assertion.
-                    guarded.removeIf(line -> line.startsWith("if (" + expression + " == null) "));
-                    if (guard.child.kind == SchemaCheck.Kind.OBJECT
-                            && guarded.size() >= 2
-                            && guarded.get(0).equals("if (" + expression + " != null) {")
-                            && "}".equals(guarded.get(guarded.size() - 1))) {
-                        List<String> unwrapped = new ArrayList<String>();
-                        for (int i = 1; i < guarded.size() - 1; i++) {
-                            String line = guarded.get(i);
-                            unwrapped.add(line.startsWith("    ") ? line.substring(4) : line);
-                        }
-                        guarded = unwrapped;
-                    }
+                // A successful shape guard proves non-null even for dynamic
+                // values. Object and array checks can also reuse this exact
+                // applicability test; scalar raw-shape checks remain separate.
+                SchemaValue subject = guard.value.nonNull();
+                if (guard.child.kind == SchemaCheck.Kind.OBJECT) {
+                    guarded.addAll(emit((SchemaCheck.ObjectCheck) guard.child, expression,
+                            plan, strictFormat, planName + "__", onFailure));
+                } else if (guard.child.kind == SchemaCheck.Kind.ARRAY) {
+                    emitArray(guarded, plan, (SchemaCheck.ArrayCheck) guard.child, subject,
+                            expression, planName + "_", strictFormat, depth, onFailure, true);
+                } else {
+                    emitValue(guarded, plan, guard.child, subject, expression,
+                            planName + "_", strictFormat, depth, onFailure);
                 }
                 if (guarded.isEmpty()) return;
                 if ("true".equals(condition)) {
@@ -455,7 +450,7 @@ final class SchemaEmitter {
                     NameAllocator parentLocals = locals;
             locals = generated.names().helperLocals("value", "strictFormat");
                     try {
-                        emitValue(body, plan, reference.target, value, "value", method,
+                        emitValue(body, plan, reference.target, value.declaredNullability(), "value", method,
                                 "strictFormat", 0, "return false;");
                     } finally {
                         locals = parentLocals;
@@ -495,7 +490,7 @@ final class SchemaEmitter {
                 return;
             case ARRAY:
                 emitArray(lines, plan, (SchemaCheck.ArrayCheck) check, value, expression,
-                        planName, strictFormat, depth, onFailure);
+                        planName, strictFormat, depth, onFailure, false);
                 return;
             case ONE_OF:
                 emitOneOf(lines, plan, (SchemaCheck.OneOfCheck) check, value, expression,
@@ -552,11 +547,14 @@ final class SchemaEmitter {
             case LITERAL:
                 emitLiteral(lines, (SchemaCheck.LiteralCheck) check, value, expression, onFailure);
                 return;
-            case ALL:
+            case ALL: {
+                SchemaValue currentValue = value;
                 for (SchemaCheck child : ((SchemaCheck.AllCheck) check).checks) {
-                    emitValue(lines, plan, child, value, expression, planName, strictFormat, depth, onFailure);
+                    emitValue(lines, plan, child, currentValue, expression, planName, strictFormat, depth, onFailure);
+                    if (child.rejectsNull()) currentValue = currentValue.nonNull();
                 }
                 return;
+            }
             default:
                 throw new IllegalStateException("unsupported compiled value kind: " + check.kind);
         }
@@ -689,9 +687,9 @@ final class SchemaEmitter {
             if ("null".equals(type)) {
                 branch = value.nullable ? expression + " == null" : "false";
                 if (value.shape == SchemaValue.Shape.DYNAMIC || value.shape == SchemaValue.Shape.OTHER) {
-                    String dynamicNull = expression + " != null && org.sjf4j.JsonType.of("
-                            + expression + ") == org.sjf4j.JsonType.NULL";
-                    branch = "false".equals(branch) ? dynamicNull : "(" + branch + " || (" + dynamicNull + "))";
+                    // The logical type resolver handles Java null as well as
+                    // external JSON null values.
+                    branch = "org.sjf4j.JsonType.of(" + expression + ") == org.sjf4j.JsonType.NULL";
                 }
             } else {
                 String name = "integer".equals(type) ? "NUMBER" : type.toUpperCase(Locale.ROOT);
@@ -768,7 +766,8 @@ final class SchemaEmitter {
         for (SchemaCheck.OneOfCheck.Subtype subtype : check.subtypes) {
             String simpleType = subtype.type.substring(subtype.type.lastIndexOf('.') + 1);
             String typed = locals.newName(Character.toLowerCase(simpleType.charAt(0)) + simpleType.substring(1));
-            lines.add((n == 0 ? "if" : "else if") + " (" + expression + " != null && "
+            lines.add((n == 0 ? "if" : "else if") + " ("
+                    + (value.nullable ? expression + " != null && " : "")
                     + expression + ".getClass() == " + subtype.type + ".class) {");
             lines.add("    " + subtype.type + " " + typed
                     + " = (" + subtype.type + ") " + expression + ";");
@@ -777,7 +776,7 @@ final class SchemaEmitter {
                 lines.add("    if (" + literal(subtype.discriminatorValue)
                         + ".equals(" + accessor + ")) {");
                 SchemaCheck branch = subtype.check.branches.get(subtype.guardedBranch);
-                String matches = branchPredicate(plan, branch, subtype.value, typed, strictFormat);
+                String matches = branchPredicate(plan, branch, subtype.value.nonNull(), typed, strictFormat);
                 lines.add("        if (!(" + matches + ")) " + fail(onFailure, check.diagnostic));
                 lines.add("    } else {");
             }
@@ -785,11 +784,11 @@ final class SchemaEmitter {
                 // The discriminator matched path remains direct. Only its
                 // exceptional mismatch path uses a boolean helper, keeping
                 // repeated oneOf counters out of the diagnostic method.
-                String matches = branchPredicate(plan, subtype.check, subtype.value, typed, strictFormat);
+                String matches = branchPredicate(plan, subtype.check, subtype.value.nonNull(), typed, strictFormat);
                 lines.add("        if (!" + matches + ") " + fail(onFailure, check.diagnostic));
             } else {
                 List<String> candidateLines = new ArrayList<String>();
-                emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value, typed,
+                emitGenericOneOf(candidateLines, plan, subtype.check, subtype.value.nonNull(), typed,
                         name + "_subtype", strictFormat, onFailure);
                 for (String source : candidateLines) {
                     lines.add((subtype.guardedBranch >= 0 ? "        " : "    ") + source);
@@ -846,8 +845,9 @@ final class SchemaEmitter {
                 text = temp;
             }
         } else {
-            lines.add("if (" + expression + " == null || org.sjf4j.JsonType.rawOf("
-                    + expression + ".getClass()) != org.sjf4j.JsonType.STRING) " + fail(onFailure, check.typeDiagnostic));
+            lines.add("if (" + (value.nullable ? expression + " == null || " : "")
+                    + "org.sjf4j.JsonType.rawOf(" + expression
+                    + ".getClass()) != org.sjf4j.JsonType.STRING) " + fail(onFailure, check.typeDiagnostic));
             temp = locals.newName("text");
             lines.add("String " + temp + " = org.sjf4j.Nodes.toString(" + expression + ");");
             text = temp;
@@ -899,8 +899,9 @@ final class SchemaEmitter {
         if (value.shape == SchemaValue.Shape.NUMBER) {
             if (value.nullable) lines.add("if (" + expression + " == null) " + fail(onFailure, check.typeDiagnostic));
         } else {
-            lines.add("if (" + expression + " == null || org.sjf4j.JsonType.rawOf("
-                    + expression + ".getClass()) != org.sjf4j.JsonType.NUMBER) " + fail(onFailure, check.typeDiagnostic));
+            lines.add("if (" + (value.nullable ? expression + " == null || " : "")
+                    + "org.sjf4j.JsonType.rawOf(" + expression
+                    + ".getClass()) != org.sjf4j.JsonType.NUMBER) " + fail(onFailure, check.typeDiagnostic));
             number = locals.newName("number");
             lines.add("Number " + number + " = org.sjf4j.Nodes.toNumber(" + expression + ");");
         }
@@ -976,11 +977,11 @@ final class SchemaEmitter {
     private void emitArray(List<String> lines, SchemaFallbackEmitter.Plan plan,
                            SchemaCheck.ArrayCheck check, SchemaValue value, String expression,
                            String planName, String strictFormat, int depth,
-                           String onFailure) {
+                           String onFailure, boolean shapeGuarded) {
         boolean knownCollection = value.shape == SchemaValue.Shape.COLLECTION;
         boolean knownArray = value.shape == SchemaValue.Shape.ARRAY;
         String subject = expression;
-        if (value.shape == SchemaValue.Shape.DYNAMIC) {
+        if (value.shape == SchemaValue.Shape.DYNAMIC && !shapeGuarded) {
             lines.add("if (org.sjf4j.JsonType.of(" + subject
                     + ") != org.sjf4j.JsonType.ARRAY) " + fail(onFailure, check.typeDiagnostic));
         } else if (value.nullable) {
