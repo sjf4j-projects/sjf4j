@@ -46,6 +46,11 @@ abstract class SchemaCheck {
         return kind == Kind.FALLBACK;
     }
 
+    /** True only when successful validation proves the Java subject is non-null. */
+    boolean rejectsNull() {
+        return false;
+    }
+
     /** A statically bound reference edge. Deferred binding allows recursive schemas. */
     static final class ReferenceCheck extends SchemaCheck {
         final String uri;
@@ -167,6 +172,10 @@ abstract class SchemaCheck {
             super(Kind.TYPE, diagnostic);
             this.types = Collections.unmodifiableList(new ArrayList<String>(types));
         }
+
+        @Override boolean rejectsNull() {
+            return !types.contains("null");
+        }
     }
 
     /**
@@ -211,6 +220,11 @@ abstract class SchemaCheck {
         }
         @Override boolean hasFallback() {
             for (SchemaCheck check : checks) if (check.hasFallback()) return true;
+            return false;
+        }
+
+        @Override boolean rejectsNull() {
+            for (SchemaCheck check : checks) if (check.rejectsNull()) return true;
             return false;
         }
     }
