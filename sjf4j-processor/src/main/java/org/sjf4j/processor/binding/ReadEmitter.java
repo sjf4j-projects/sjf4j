@@ -185,14 +185,19 @@ final class ReadEmitter {
         }
 
         out.endBlock();
+    }
+
+    void registerHelpers(GeneratedClass generated, BindingValue value) {
+        generated.addHelper(value.helperName(), out -> emitHelper(out, value));
         if (supportsJackson3Native(value)) {
-            jackson3Native.emitHelper(out, value, this);
+            generated.addHelper(jackson3Native.helperName(value),
+                    out -> jackson3Native.emitHelper(out, value, this));
         }
         if (fastjson2 != null && value.creator() == null
                 && (value.kind() == BindingValue.Kind.POJO || value.kind() == BindingValue.Kind.JOJO)
                 && !value.properties().isEmpty()) {
-            out.blank();
-            fastjson2.emitFallback(out, value, this);
+            generated.addHelper(fastjson2.fallbackMethod(value),
+                    out -> fastjson2.emitFallback(out, value, this));
         }
     }
 

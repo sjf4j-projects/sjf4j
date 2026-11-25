@@ -50,8 +50,9 @@ class CompiledBinderNamingTest {
             } else {
                 assertTrue(generated.contains("_writeBean2("), backend);
             }
-            if (!"FASTJSON2".equals(backend)) {
-                assertTrue(generated.contains("_writeString2("), backend);
+            // Only helpers actually used by this graph should survive.
+            if ("JACKSON2".equals(backend)) {
+                assertFalse(generated.contains("private static void _writeString2("), backend);
             }
             assertFalse(generated.contains("_readBean_names"), backend);
             assertFalse(generated.contains("_writeBean_name_"), backend);
@@ -62,7 +63,7 @@ class CompiledBinderNamingTest {
             }
             if ("JACKSON2".equals(backend)) {
                 assertTrue(generated.contains("_writeStringMemberIncludeNulls2("), backend);
-                assertTrue(generated.contains("_writeStringMemberOmitNulls("), backend);
+                assertFalse(generated.contains("private static void _writeStringMemberOmitNulls("), backend);
             }
             if ("FASTJSON2".equals(backend)) {
                 assertTrue(generated.contains("_readStatusEnum("), backend);
