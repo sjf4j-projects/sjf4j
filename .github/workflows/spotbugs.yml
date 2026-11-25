@@ -23,7 +23,7 @@ jobs:
           - revision: before
             sha: 134064399433460a88ac2bc5229641081083cb9b
           - revision: after
-            sha: f34ce9e8be9d76078f1760b49fdc2051c80fd108
+            sha: ea893cb367493a560eee98e740ced921a7d526ec
     name: SpotBugs / ${{ matrix.revision }}
     steps:
       - uses: actions/checkout@v4
