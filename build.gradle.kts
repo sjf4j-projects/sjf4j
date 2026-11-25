@@ -29,7 +29,7 @@ subprojects {
             dependsOn(":sjf4j-testbench:officialPublishGate")
         }
         tasks.withType<PublishToMavenLocal>().configureEach {
-            dependsOn(":sjf4j-testbench:officialPublishGate")
+            dependsOn(":sjf4j-testbench:officialPublishGate", ":spotbugsAll")
         }
         tasks.matching {
             it.name == "publish" || it.name == "publishToMavenLocal" ||
@@ -41,7 +41,7 @@ subprojects {
     }
 }
 
-// Use the base plugin so SpotBugs is never wired into check/build/publish.
+// Use the base plugin to keep SpotBugs out of check/build and remote publishing.
 // Scan all source sets, including test/JMH and actual APT outputs.
 val spotbugsAll = tasks.register("spotbugsAll") {
     group = "verification"
