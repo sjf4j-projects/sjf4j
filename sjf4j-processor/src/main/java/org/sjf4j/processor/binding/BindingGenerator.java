@@ -38,13 +38,8 @@ public final class BindingGenerator {
 
         if (backend == null || !generated.isValid()) return;
 
-        generated.enableNodeConfig();
         generated.enableBackendBinder(backend.binderType());
         boolean binderIncludeNulls = type.getAnnotation(CompiledBinder.class).includeNulls();
-        // Compiled binders keep a single static config for null omission.
-        // Null-including writes use NodeConfig.DEFAULT directly. Neither
-        // path depends on the injected NodeConfig or backend Binder config.
-        generated.useCompiledBinderConfig();
         generated.addField(out ->
                 out.line("private final " + backend.binderType() + " binder;"));
 
