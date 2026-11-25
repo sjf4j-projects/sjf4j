@@ -9,8 +9,14 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Represents one generated implementation class.
@@ -34,7 +40,7 @@ public final class GeneratedClass {
 
     private final List<Member> fields = new ArrayList<>();
     private final List<Member> methods = new ArrayList<>();
-    private final List<Member> helpers = new ArrayList<>();
+    private final List<Helper> helpers = new ArrayList<>();
     private final List<Member> constructorInitializers = new ArrayList<>();
 
     private String backendBinderType;
@@ -146,7 +152,16 @@ public final class GeneratedClass {
     }
 
     public void addHelper(Member member) {
-        helpers.add(Asserts.notNull(member, "member"));
+        helpers.add(new Helper(null, Asserts.notNull(member, "member")));
+    }
+
+    /**
+     * Registers one private helper with its allocated name. Only helpers
+     * reachable from retained members are emitted. Unnamed member groups
+     * remain roots; this is opt-in, not general Java dead-code elimination.
+     */
+    public void addHelper(String name, Member member) {
+        helpers.add(new Helper(Asserts.notNull(name, "name"), Asserts.notNull(member, "member")));
     }
 
     /** Adds a constructor accepting the concrete backend Binder for a CompiledBinder. */
@@ -229,15 +244,38 @@ public final class GeneratedClass {
     }
 
     private void writeMembers(JavaWriter out) {
-        boolean written = false;
-
-        if (!fields.isEmpty()) {
-            if (written) out.blank();
-            writeGroup(out, fields);
-            written = true;
+        boolean selective = false;
+        for (Helper helper : helpers) {
+            if (helper.name != null) {
+                selective = true;
+                break;
+            }
+        }
+        if (!selective) {
+            writeRoots(out);
+            for (Helper helper : helpers) {
+                out.blank();
+                helper.member.write(out);
+            }
+            return;
         }
 
-        if (written) out.blank();
+        // Emit each member once, in its original order. Emitters may allocate
+        // names or maintain backend-specific state while writing source.
+        List<String> roots = out.capture(() -> writeRoots(out));
+        out.append(roots);
+        for (List<String> source : reachableHelpers(out, roots)) {
+            out.blank();
+            out.append(source);
+        }
+    }
+
+    private void writeRoots(JavaWriter out) {
+        if (!fields.isEmpty()) {
+            writeGroup(out, fields);
+            out.blank();
+        }
+
         out.beginBlock("public " + simpleName + "()");
         if (backendBinderType == null) {
             for (Member initializer : constructorInitializers) initializer.write(out);
@@ -252,23 +290,49 @@ public final class GeneratedClass {
             for (Member initializer : constructorInitializers) initializer.write(out);
             out.endBlock();
         }
-        written = true;
 
         if (!methods.isEmpty()) {
-            if (written) {
-                out.blank();
-            }
-
+            out.blank();
             writeGroup(out, methods);
-            written = true;
         }
+    }
 
-        if (!helpers.isEmpty()) {
-            if (written) {
-                out.blank();
+    private List<List<String>> reachableHelpers(JavaWriter out, List<String> roots) {
+        List<List<String>> source = new ArrayList<>(helpers.size());
+        Map<String, Integer> byName = new HashMap<>();
+        Set<Integer> reachable = new HashSet<>();
+        Deque<String> pending = new ArrayDeque<>(out.identifiers(roots));
+        for (int i = 0; i < helpers.size(); i++) {
+            Helper helper = helpers.get(i);
+            List<String> body = out.capture(() -> helper.member.write(out));
+            source.add(body);
+            if (helper.name == null) {
+                reachable.add(i);
+                pending.addAll(out.identifiers(body));
+            } else if (byName.put(helper.name, i) != null) {
+                throw new IllegalStateException("Duplicate generated helper " + helper.name);
             }
+        }
+        while (!pending.isEmpty()) {
+            Integer index = byName.get(pending.removeFirst());
+            if (index != null && reachable.add(index)) {
+                pending.addAll(out.identifiers(source.get(index)));
+            }
+        }
+        List<List<String>> result = new ArrayList<>();
+        for (int i = 0; i < source.size(); i++) {
+            if (reachable.contains(i)) result.add(source.get(i));
+        }
+        return result;
+    }
 
-            writeGroup(out, helpers);
+    private static final class Helper {
+        final String name;
+        final Member member;
+
+        Helper(String name, Member member) {
+            this.name = name;
+            this.member = member;
         }
     }
 

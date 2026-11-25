@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.property.PropertyAccess;
 
@@ -261,14 +262,22 @@ final class WriteEmitter {
         out.line(generator + ".end();");
     }
 
-    void emitHelper(JavaWriter out, BindingValue value) {
+    void registerHelpers(GeneratedClass generated, BindingValue value) {
+        if (fastjson2 != null) {
+            fastjson2.registerHelpers(generated, value);
+        } else {
+            generated.addHelper(value.helperName(), out -> emitHelper(out, value));
+        }
+    }
+
+    void selectWritePolicy(BindingValue value) {
         includeNulls = value.writeIncludeNulls();
+    }
+
+    private void emitHelper(JavaWriter out, BindingValue value) {
+        selectWritePolicy(value);
         if (isJackson()) {
             jackson.emitHelper(out, value);
-            return;
-        }
-        if (backend.backend() == Backend.FASTJSON2) {
-            fastjson2.emitHelper(out, value);
             return;
         }
         if (isGsonOrJsonp()) {
@@ -348,7 +357,18 @@ final class WriteEmitter {
         }
     }
 
-    void emitStringHelper(JavaWriter out) {
+    void registerStringHelpers(GeneratedClass generated) {
+        generated.addHelper(stringHelper(), this::emitStringHelper);
+        if (isJackson()) {
+            for (boolean include : new boolean[]{true, false}) {
+                String helper = names.sharedHelper(include ? "writeStringMemberIncludeNulls"
+                        : "writeStringMemberOmitNulls");
+                generated.addHelper(helper, out -> emitStringMemberHelper(out, helper, include));
+            }
+        }
+    }
+
+    private void emitStringHelper(JavaWriter out) {
         String generator;
         String writeString;
         String writeNull;
@@ -392,26 +412,22 @@ final class WriteEmitter {
         out.endBlock();
         out.endBlock();
 
-        if (isJackson()) {
-            String nameType = backend.backend() == Backend.JACKSON2
-                    ? "com.fasterxml.jackson.core.SerializableString"
-                    : "tools.jackson.core.io.SerializedString";
-            String nameMethod = backend.backend() == Backend.JACKSON2
-                    ? "writeFieldName" : "writeName";
-            // Each @Write policy has its own helper; no runtime flag is
-            // passed into the hot path, including Jackson3.
-            for (boolean include : new boolean[]{true, false}) {
-                String helper = names.sharedHelper(include ? "writeStringMemberIncludeNulls"
-                        : "writeStringMemberOmitNulls");
-                out.beginBlock("private static void " + helper + "(" + generator
-                        + " g, " + nameType + " name, String value) throws java.io.IOException");
-                if (!include) out.beginBlock("if (value != null)");
-                out.line("g." + nameMethod + "(name);");
-                out.line("g.writeString(value);");
-                if (!include) out.endBlock();
-                out.endBlock();
-            }
-        }
+    }
+
+    private void emitStringMemberHelper(JavaWriter out, String helper, boolean include) {
+        boolean jackson2 = backend.backend() == Backend.JACKSON2;
+        String generator = jackson2 ? "com.fasterxml.jackson.core.JsonGenerator"
+                : "tools.jackson.core.JsonGenerator";
+        String nameType = jackson2 ? "com.fasterxml.jackson.core.SerializableString"
+                : "tools.jackson.core.io.SerializedString";
+        String nameMethod = jackson2 ? "writeFieldName" : "writeName";
+        out.beginBlock("private static void " + helper + "(" + generator
+                + " g, " + nameType + " name, String value) throws java.io.IOException");
+        if (!include) out.beginBlock("if (value != null)");
+        out.line("g." + nameMethod + "(name);");
+        out.line("g.writeString(value);");
+        if (!include) out.endBlock();
+        out.endBlock();
     }
 
     static String propertyExpression(BindingProperty property, String owner) {

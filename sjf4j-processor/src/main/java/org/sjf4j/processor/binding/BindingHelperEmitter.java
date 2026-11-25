@@ -69,11 +69,13 @@ final class BindingHelperEmitter {
                         + discriminator + " = new "
                         + "org.sjf4j.backend.jackson2.binding.Jackson2NameMatcher("
                         + JavaWriter.stringLiteral(value.oneOfKey()) + ");"));
-        generated.addHelper(out -> reads.emitOneOfReadHelper(out, value));
+        generated.addHelper(value.helperName(), out -> reads.emitOneOfReadHelper(out, value));
         for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
             BindingValue compiled = value.oneOfSubtypes().get(i).compiled;
             int index = i;
-            generated.addHelper(out -> reads.emitOneOfSubtypeContent(out, value, compiled, index));
+            String helper = names.helper(value, "subtypeContent:" + index,
+                    "read" + BindingNames.simpleType(value.oneOfSubtypes().get(index).type) + "Content");
+            generated.addHelper(helper, out -> reads.emitOneOfSubtypeContent(out, value, compiled, index));
         }
     }
 
@@ -138,7 +140,7 @@ final class BindingHelperEmitter {
         }
         // Register the Fastjson2 fallback helper before source emission.
         reads.prepareHelperNames(value);
-        generated.addHelper(out -> reads.emitHelper(out, value));
+        reads.registerHelpers(generated, value);
     }
 
     private void emitWriteHelper(BindingValue value, GeneratedClass generated) {
@@ -148,6 +150,6 @@ final class BindingHelperEmitter {
             writes.prepareCompiledNames(value);
             generated.addField(out -> writes.emitCompiledNames(out, value));
         }
-        generated.addHelper(out -> writes.emitHelper(out, value));
+        writes.registerHelpers(generated, value);
     }
 }

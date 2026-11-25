@@ -12,6 +12,54 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompiledBinderNamingTest {
 
     @Test
+    void retainsOnlyReachableStringHelpersForEachWritePolicy() throws Exception {
+        for (String backend : new String[] {"JACKSON2", "JACKSON3"}) {
+            for (boolean include : new boolean[] {true, false}) {
+                Map<String, String> sources = new LinkedHashMap<>();
+                sources.put("fixture/Bean.java",
+                        "package fixture; public class Bean { public String name; }");
+                sources.put("fixture/Binder.java",
+                        "package fixture; import org.sjf4j.annotation.binding.*; "
+                                + "@CompiledBinder(backend=Backend." + backend + ") "
+                                + "public interface Binder { @Write(includeNulls=" + include
+                                + ") String write(Bean value) throws java.io.IOException; }");
+                NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(
+                        sources, CodegenProcessor.class);
+                assertTrue(result.success, result.diagnostics());
+                String generated = result.generatedSource("fixture/Binder_Impl.java");
+                String used = include ? "IncludeNulls" : "OmitNulls";
+                String unused = include ? "OmitNulls" : "IncludeNulls";
+                assertTrue(generated.contains("private static void _writeStringMember" + used + "("), generated);
+                assertFalse(generated.contains("private static void _writeStringMember" + unused + "("), generated);
+                assertFalse(generated.contains("private static void _writeString("), generated);
+            }
+        }
+    }
+
+    @Test
+    void retainsTransitiveHelpersForMixedWritePolicies() throws Exception {
+        for (String backend : new String[] {"JACKSON2", "JACKSON3"}) {
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Bean.java",
+                    "package fixture; public class Bean { public Child child; }");
+            sources.put("fixture/Child.java",
+                    "package fixture; public class Child { public String name; }");
+            sources.put("fixture/Binder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*; "
+                            + "@CompiledBinder(backend=Backend." + backend + ") "
+                            + "public interface Binder { "
+                            + "@Write(includeNulls=true) String including(Bean value) throws java.io.IOException; "
+                            + "@Write(includeNulls=false) String omitting(Bean value) throws java.io.IOException; }");
+            NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(result.success, result.diagnostics());
+            String generated = result.generatedSource("fixture/Binder_Impl.java");
+            assertTrue(generated.contains("private static void _writeStringMemberIncludeNulls("), generated);
+            assertTrue(generated.contains("private static void _writeStringMemberOmitNulls("), generated);
+            assertFalse(generated.contains("private static void _writeString("), generated);
+        }
+    }
+
+    @Test
     void inheritsMemberNamesWithoutConflictingWithGeneratedHelpers() throws Exception {
         for (String backend : new String[]{"JACKSON2", "FASTJSON2", "GSON", "JSONP"}) {
             Map<String, String> sources = new LinkedHashMap<>();
@@ -50,8 +98,9 @@ class CompiledBinderNamingTest {
             } else {
                 assertTrue(generated.contains("_writeBean2("), backend);
             }
-            if (!"FASTJSON2".equals(backend)) {
-                assertTrue(generated.contains("_writeString2("), backend);
+            // Only helpers actually used by this graph should survive.
+            if ("JACKSON2".equals(backend)) {
+                assertFalse(generated.contains("private static void _writeString2("), backend);
             }
             assertFalse(generated.contains("_readBean_names"), backend);
             assertFalse(generated.contains("_writeBean_name_"), backend);
@@ -62,7 +111,7 @@ class CompiledBinderNamingTest {
             }
             if ("JACKSON2".equals(backend)) {
                 assertTrue(generated.contains("_writeStringMemberIncludeNulls2("), backend);
-                assertTrue(generated.contains("_writeStringMemberOmitNulls("), backend);
+                assertFalse(generated.contains("private static void _writeStringMemberOmitNulls("), backend);
             }
             if ("FASTJSON2".equals(backend)) {
                 assertTrue(generated.contains("_readStatusEnum("), backend);

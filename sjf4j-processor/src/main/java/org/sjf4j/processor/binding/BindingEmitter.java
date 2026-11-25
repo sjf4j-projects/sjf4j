@@ -40,7 +40,7 @@ final class BindingEmitter {
             writes.registerWriteOutput(method.plan().writeOutput());
             if (!stringHelperEmitted && writes.needsStringHelper(method.value())) {
                 writes.prepareStringHelpers();
-                generated.addHelper(out -> writes.emitStringHelper(out));
+                writes.registerStringHelpers(generated);
                 stringHelperEmitted = true;
             }
         }

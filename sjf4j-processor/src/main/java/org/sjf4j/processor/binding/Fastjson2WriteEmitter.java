@@ -2,6 +2,7 @@ package org.sjf4j.processor.binding;
 
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.processor.code.JavaWriter;
+import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.NameAllocator;
 
 import java.util.EnumSet;
@@ -447,9 +448,12 @@ final class Fastjson2WriteEmitter {
         }
     }
 
-    void emitHelper(JavaWriter out, BindingValue value) {
+    void registerHelpers(GeneratedClass generated, BindingValue value) {
         for (FastjsonMode mode : fastjsonModes) {
-            emitNativeHelper(out, value, mode);
+            generated.addHelper(fastjsonHelperName(value, mode), out -> {
+                writes.selectWritePolicy(value);
+                emitNativeHelper(out, value, mode);
+            });
         }
     }
 }

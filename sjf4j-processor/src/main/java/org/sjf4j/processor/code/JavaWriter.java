@@ -8,10 +8,12 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -77,6 +79,43 @@ public final class JavaWriter implements Closeable {
      */
     public void blank() {
         lines.add("");
+    }
+
+    /** Captures a member once, relative to its own indentation. */
+    List<String> capture(Runnable emit) {
+        int start = lines.size();
+        int previousIndent = indent;
+        indent = 0;
+        try {
+            emit.run();
+            if (indent != 0) throw new IllegalStateException("Unbalanced generated member");
+            return new ArrayList<>(lines.subList(start, lines.size()));
+        } finally {
+            lines.subList(start, lines.size()).clear();
+            indent = previousIndent;
+        }
+    }
+
+    void append(List<String> source) {
+        for (String line : source) {
+            if (line.isEmpty()) blank();
+            else line(line);
+        }
+    }
+
+    /** Conservative identifier references, excluding literals and comments. */
+    Set<String> identifiers(List<String> source) {
+        Set<String> result = new HashSet<>();
+        for (String line : source) {
+            String code = codeOnly(line);
+            for (int i = 0; i < code.length();) {
+                int start = i++;
+                if (!Character.isJavaIdentifierStart(code.charAt(start))) continue;
+                while (i < code.length() && Character.isJavaIdentifierPart(code.charAt(i))) i++;
+                result.add(code.substring(start, i));
+            }
+        }
+        return result;
     }
 
     /*
