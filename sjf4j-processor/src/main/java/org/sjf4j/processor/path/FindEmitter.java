@@ -69,7 +69,7 @@ final class FindEmitter {
                         " = new org.sjf4j.node.NodeWalker.Access();");
             }
             emitStep(out, names, plan.traversal, rootName, rootName, result,
-                    filters, descendants, access);
+                    filters, descendants, access, true, null);
             out.line("return " + result + ";");
             out.endBlock();
         });
@@ -138,7 +138,7 @@ final class FindEmitter {
             out.endBlock();
             out.beginBlock("else");
             emitStep(out, names, selector, "current", "root", "result",
-                    filters, descendants, "access", shape);
+                    filters, descendants, "access", true, shape);
             out.endBlock();
         } else if (selector.kind == FindPlan.Kind.FILTER
                 || selector.kind == FindPlan.Kind.UNION) {
@@ -146,11 +146,11 @@ final class FindEmitter {
             // A direct scalar filter retains the ordinary selection behavior.
             out.beginBlock("if (" + shape + ".isObject() || " + shape + ".isArray())");
             emitStep(out, names, selector, "current", "root", "result",
-                    filters, descendants, "access", shape);
+                    filters, descendants, "access", true, shape);
             out.endBlock();
         } else {
             emitStep(out, names, selector, "current", "root", "result",
-                    filters, descendants, "access", shape);
+                    filters, descendants, "access", true, shape);
         }
         out.beginBlock("if (" + shape + ".isObject())");
         out.beginBlock("org.sjf4j.node.NodeWalker.forEachObject(current, (key, child) ->");
@@ -210,14 +210,14 @@ final class FindEmitter {
                           String owner, String root, String result,
                           Map<FindPlan.Step, String> filters,
                           Map<FindPlan.Step, String> descendants, String accessVar) {
-        emitStep(out, names, step, owner, root, result, filters, descendants, accessVar, null);
+        emitStep(out, names, step, owner, root, result, filters, descendants, accessVar, false, null);
     }
 
     private void emitStep(JavaWriter out, NameAllocator names, FindPlan.Step step,
                           String owner, String root, String result,
                           Map<FindPlan.Step, String> filters,
                           Map<FindPlan.Step, String> descendants, String accessVar,
-                          String knownShape) {
+                          boolean ownerKnownNonNull, String knownShape) {
         switch (step.kind) {
             case COLLECT: {
                 String value = owner;
@@ -233,7 +233,7 @@ final class FindEmitter {
             case UNION:
                 for (FindPlan.Step alternative : step.alternatives) {
                     emitStep(out, names, alternative, owner, root, result,
-                            filters, descendants, accessVar, knownShape);
+                            filters, descendants, accessVar, ownerKnownNonNull, knownShape);
                 }
                 return;
             case DESCENDANT:
@@ -244,7 +244,7 @@ final class FindEmitter {
                 break;
         }
 
-        boolean guarded = knownShape == null && !step.ownerType.getKind().isPrimitive();
+        boolean guarded = !ownerKnownNonNull && !step.ownerType.getKind().isPrimitive();
         if (guarded) out.beginBlock("if (" + owner + " != null)");
 
         switch (step.kind) {
@@ -397,8 +397,9 @@ final class FindEmitter {
                 out.beginBlock("else");
                 out.beginBlock("if (" + filters.get(step) +
                         "(" + root + ", " + owner + ", " + accessVar + "))");
+                // Scalar filtering keeps the same already-guarded owner.
                 emitStep(out, names, step.next, owner, root, result,
-                        filters, descendants, accessVar);
+                        filters, descendants, accessVar, true, null);
                 out.endBlock();
                 out.endBlock();
             }
@@ -409,7 +410,7 @@ final class FindEmitter {
             out.beginBlock("if (" + filters.get(step) +
                     "(" + root + ", " + owner + ", " + accessVar + "))");
             emitStep(out, names, step.next, owner, root, result,
-                    filters, descendants, accessVar);
+                    filters, descendants, accessVar, true, null);
             out.endBlock();
             return;
         }
