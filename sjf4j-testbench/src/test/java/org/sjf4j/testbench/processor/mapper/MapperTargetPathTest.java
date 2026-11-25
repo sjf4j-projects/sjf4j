@@ -80,10 +80,29 @@ public class MapperTargetPathTest {
         assertEquals("AdaX", target.profile.name);
     }
 
+    @Test
+    public void mixedTargetPathModesPreserveDeclarationOrder() {
+        TargetPathMapper mapper = CompiledInstances.create(TargetPathMapper.class);
+        MissingTarget target = new MissingTarget();
+        mapper.mixedUpdate(target, new Source("Ada", "X"));
+        assertNull(target.profile.name); // the first conditional write was skipped
+        assertEquals("X", target.profile.value);
+        assertEquals("AdaX", target.profile.computed);
+
+        Profile existing = target.profile;
+        mapper.mixedUpdate(target, new Source("Grace", "Y"));
+        assertEquals(existing, target.profile);
+        assertEquals("Grace", target.profile.name);
+        assertEquals("Y", target.profile.value);
+        assertEquals("GraceY", target.profile.computed);
+    }
+
     public record Source(String name, String value) {}
 
     public static final class Profile {
         public String name;
+        public String value;
+        public String computed;
     }
 
     public static final class InitializedTarget {
@@ -129,6 +148,11 @@ public class MapperTargetPathTest {
 
         @MappingIfParentPresent(target = "$.profile.name", source = "name")
         void ifParentPresent(MissingTarget target, Source source);
+
+        @MappingIfParentPresent(target = "$.profile.name", source = "name")
+        @EnsureMapping(target = "$.profile.value", source = "value")
+        @Mapping(target = "$.profile.computed", sources = {"name", "value"}, compute = "(name, value) -> name + value")
+        void mixedUpdate(MissingTarget target, Source source);
 
         @EnsureMapping(target = "$.a.b.c.name", source = "name")
         DeepTarget ensureDeep(Source source);
