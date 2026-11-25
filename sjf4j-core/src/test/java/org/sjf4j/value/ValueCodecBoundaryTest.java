@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.sjf4j.Sjf4j;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.value.ValueCodec;
-import org.sjf4j.value.PatternedValueCodec;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -60,16 +59,16 @@ class ValueCodecBoundaryTest {
         assertStringCodec(ValueCodec.INSTANT_STR, instant, instant.toString(), Instant.class);
 
         LocalDate localDate = LocalDate.parse("2024-01-01");
-        assertStringCodec(PatternedValueCodec.LOCAL_DATE, localDate, localDate.toString(), LocalDate.class);
+        assertStringCodec(ValueCodec.LOCAL_DATE, localDate, localDate.toString(), LocalDate.class);
 
         LocalDateTime localDateTime = LocalDateTime.parse("2024-01-01T10:00:00");
-        assertStringCodec(PatternedValueCodec.LOCAL_DATE_TIME, localDateTime, localDateTime.toString(), LocalDateTime.class);
+        assertStringCodec(ValueCodec.LOCAL_DATE_TIME, localDateTime, localDateTime.toString(), LocalDateTime.class);
 
         OffsetDateTime offsetDateTime = OffsetDateTime.parse("2024-01-01T10:00:00+08:00");
-        assertStringCodec(PatternedValueCodec.OFFSET_DATE_TIME, offsetDateTime, offsetDateTime.toString(), OffsetDateTime.class);
+        assertStringCodec(ValueCodec.OFFSET_DATE_TIME, offsetDateTime, offsetDateTime.toString(), OffsetDateTime.class);
 
         ZonedDateTime zonedDateTime = ZonedDateTime.parse("2024-01-01T10:00:00+08:00[Asia/Shanghai]");
-        assertStringCodec(PatternedValueCodec.ZONED_DATE_TIME, zonedDateTime, zonedDateTime.toString(), ZonedDateTime.class);
+        assertStringCodec(ValueCodec.ZONED_DATE_TIME, zonedDateTime, zonedDateTime.toString(), ZonedDateTime.class);
 
         Duration duration = Duration.parse("PT10S");
         assertStringCodec(ValueCodec.DURATION, duration, duration.toString(), Duration.class);

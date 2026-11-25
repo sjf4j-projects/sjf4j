@@ -61,7 +61,7 @@ class AnnotatedValueCodecTest {
         assertEquals("iso", ValueRegistry.resolve(Instant.class).stringInfos[0].valueFormat);
         assertEquals("epochMillis", ValueRegistry.resolve(Instant.class).numberInfos[0].valueFormat);
         assertEquals(Long.class, TypeRegistry.requireRegisteredValueInfo(Instant.class, "epochMillis").rawClazz);
-        assertSame(PatternedValueCodec.LOCAL_DATE,
+        assertSame(ValueCodec.LOCAL_DATE,
                 TypeRegistry.requireRegisteredValueInfo(LocalDate.class, null).codec);
     }
 

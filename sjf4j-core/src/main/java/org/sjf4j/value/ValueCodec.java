@@ -332,25 +332,42 @@ public interface ValueCodec<V, R> {
             new SimpleValueCodec<>(java.sql.Timestamp.class, Long.class,
                     java.sql.Timestamp::getTime, java.sql.Timestamp::new);
 
-    // Retain the historical PatternedValueCodec fields as aliases; register
-    // all built-in value types from this single declaration surface.
+    // Declare and register all built-in temporal codecs in this interface.
     @NodeValue(format = "iso", defaultCodec = true)
-    ValueCodec<LocalDate, String> LOCAL_DATE = PatternedValueCodec.LOCAL_DATE;
+    ValueCodec<LocalDate, String> LOCAL_DATE = new PatternedValueCodec.TemporalValueCodec<>(LocalDate.class,
+            null, LocalDate::toString, LocalDate::format,
+            FastLocalDate::parse, LocalDate::parse,
+            StreamingParser::readLocalDate, StreamingGenerator::writeLocalDate);
 
     @NodeValue(format = "iso", defaultCodec = true)
-    ValueCodec<LocalTime, String> LOCAL_TIME = PatternedValueCodec.LOCAL_TIME;
+    ValueCodec<LocalTime, String> LOCAL_TIME = new PatternedValueCodec.TemporalValueCodec<>(LocalTime.class,
+            null, LocalTime::toString, LocalTime::format,
+            FastLocalTime::parse, LocalTime::parse,
+            StreamingParser::readLocalTime, StreamingGenerator::writeLocalTime);
 
     @NodeValue(format = "iso", defaultCodec = true)
-    ValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = PatternedValueCodec.LOCAL_DATE_TIME;
+    ValueCodec<LocalDateTime, String> LOCAL_DATE_TIME = new PatternedValueCodec.TemporalValueCodec<>(LocalDateTime.class,
+            null, LocalDateTime::toString, LocalDateTime::format,
+            FastLocalDateTime::parse, LocalDateTime::parse,
+            StreamingParser::readLocalDateTime, StreamingGenerator::writeLocalDateTime);
 
     @NodeValue(format = "iso", defaultCodec = true)
-    ValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = PatternedValueCodec.OFFSET_DATE_TIME;
+    ValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME = new PatternedValueCodec.TemporalValueCodec<>(OffsetDateTime.class,
+            null, OffsetDateTime::toString, OffsetDateTime::format,
+            FastOffsetDateTime::parse, OffsetDateTime::parse,
+            StreamingParser::readOffsetDateTime, StreamingGenerator::writeOffsetDateTime);
 
     @NodeValue(format = "iso", defaultCodec = true)
-    ValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = PatternedValueCodec.ZONED_DATE_TIME;
+    ValueCodec<ZonedDateTime, String> ZONED_DATE_TIME = new PatternedValueCodec.TemporalValueCodec<>(ZonedDateTime.class,
+            null, ZonedDateTime::toString, ZonedDateTime::format,
+            ZonedDateTime::parse, ZonedDateTime::parse,
+            StreamingParser::readZonedDateTime, StreamingGenerator::writeZonedDateTime);
 
     @NodeValue(format = "iso", defaultCodec = true)
-    ValueCodec<OffsetTime, String> OFFSET_TIME = PatternedValueCodec.OFFSET_TIME;
+    ValueCodec<OffsetTime, String> OFFSET_TIME = new PatternedValueCodec.TemporalValueCodec<>(OffsetTime.class,
+            null, OffsetTime::toString, OffsetTime::format,
+            FastOffsetTime::parse, OffsetTime::parse,
+            StreamingParser::readOffsetTime, StreamingGenerator::writeOffsetTime);
 
     // ──────────────────────────────────────────────────────────────
     //  Complex codecs → private static methods + method reference
