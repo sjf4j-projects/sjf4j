@@ -209,7 +209,7 @@ final class OfficialCaseReport {
                 output.resolve("details.json").toFile(), details);
 
         System.out.printf(
-                "Official Compiled [%s]: %d/%d passed, %d failed, %d compile-blocked, "
+                "JSON Schema Compiled [REQUIRED] [%s]: %d/%d passed, %d failed, %d compile-blocked, "
                         + "%d execution errors; groups direct=%d fallback=%d blocked=%d; "
                         + "%d of %d assertions accounted for%n",
                 selection, passed, expectedTests, failed, compileErrors, executionErrors,

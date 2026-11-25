@@ -2,18 +2,26 @@ package org.sjf4j.testbench.schema.official;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.sjf4j.schema.SchemaDialect;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class OfficialRuntimeSuiteLayoutTest {
     @TempDir
     Path suiteDir;
 
     @Test
+    @ResourceLock(Resources.SYSTEM_OUT)
     void optionalSuiteIncludesTaggedAndDirectoryCasesAndReportsFailures() throws Exception {
         Files.writeString(suiteDir.resolve("format.json"), """
                 {
@@ -63,8 +71,22 @@ final class OfficialRuntimeSuiteLayoutTest {
                 }
                 """);
 
-        OfficialRuntimeTest.TestSuiteReport result = OfficialRuntimeTest.runOptionalTestDir(
-                SchemaDialect.DRAFT_2020_12, suiteDir);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        OfficialRuntimeTest.TestSuiteReport result;
+        try (PrintStream captured = new PrintStream(output, true, StandardCharsets.UTF_8)) {
+            System.setOut(captured);
+            try {
+                result = OfficialRuntimeTest.runOptionalTestDir(SchemaDialect.DRAFT_2020_12, suiteDir);
+                assertThrows(IllegalStateException.class, () -> OfficialRuntimeTest.runTestDir(
+                        SchemaDialect.DRAFT_2020_12, suiteDir, false, null, null, null));
+            } finally {
+                System.setOut(original);
+            }
+        }
+        String log = output.toString(StandardCharsets.UTF_8);
+        assertTrue(log.contains("JSON Schema Runtime [OPTIONAL] [DRAFT_2020_12]"));
+        assertTrue(log.contains("JSON Schema Runtime [REQUIRED] [DRAFT_2020_12]"));
 
         assertEquals(3, result.selectedGroups);
         assertEquals(4, result.total);

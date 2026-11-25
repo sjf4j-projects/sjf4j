@@ -141,7 +141,7 @@ public final class OfficialRuntimeTest {
                 }
             }
         }
-        printSuiteReport(suite);
+        printSuiteReport(suite, "REQUIRED");
         if (suite.error > 0 || suite.failed > 0 || suite.total != suite.passed + suite.failed + suite.error) {
             throw new IllegalStateException("JSON Schema Official validation failed for " + suite.dialect
                     + " in " + suite.directory + ": " + suite.failed + " failed and "
@@ -180,7 +180,7 @@ public final class OfficialRuntimeTest {
                 runTestFile(dialect, file, false, suite, null, null, Selection.OPTIONAL_DIRECTORY);
             }
         }
-        printSuiteReport(suite);
+        printSuiteReport(suite, "OPTIONAL");
         if (suite.total == 0) {
             throw new IllegalStateException("Official optional suite matched no cases for " + dialect);
         }
@@ -345,9 +345,9 @@ public final class OfficialRuntimeTest {
         }
     }
 
-    private static void printSuiteReport(TestSuiteReport suite) {
+    private static void printSuiteReport(TestSuiteReport suite, String suiteType) {
         System.out.println("================================");
-        System.out.println(" JSON Schema Test Summary [" + suite.dialect + "]");
+        System.out.println(" JSON Schema Runtime [" + suiteType + "] [" + suite.dialect + "]");
         System.out.println("================================");
         System.out.println("Directory: " + suite.directory);
         System.out.println("Groups   : " + suite.sourceGroups + " source, " + suite.selectedGroups
@@ -356,7 +356,7 @@ public final class OfficialRuntimeTest {
         System.out.println("Total    : " + suite.total);
         System.out.println("Passed   : " + suite.passed);
         System.out.println("Failed   : " + suite.failed);
-        if (suite.error > 0) System.out.println("Error    : " + suite.error);
+        System.out.println("Errors   : " + suite.error);
         System.out.println("================================\n");
     }
 }

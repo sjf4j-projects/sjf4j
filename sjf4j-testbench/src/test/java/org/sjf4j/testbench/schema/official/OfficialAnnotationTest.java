@@ -154,7 +154,7 @@ public final class OfficialAnnotationTest {
                         + completedFiles.getOrDefault(dialect, 0) + "/" + sourceFileCount);
             }
             report.requireComplete(dialect.toString());
-            System.out.println("Official Annotation " + dialect
+            System.out.println("JSON Schema Annotation [REQUIRED] [" + dialect + "]"
                     + ": files=" + sourceFileCount
                     + ", groups=" + report.eligibleGroups + " compatible/"
                     + report.skippedGroups + " skipped/"
@@ -217,7 +217,7 @@ public final class OfficialAnnotationTest {
         }
         total.requireComplete("Official Annotation Suite (" + dialect + ")");
         System.out.println("========================================");
-        System.out.println("Official Annotation Suite Summary (" + dialect + ")");
+        System.out.println("JSON Schema Annotation [REQUIRED] [" + dialect + "]");
         System.out.println("Groups: " + total.eligibleGroups + " compatible, "
                 + total.skippedGroups + " incompatible, " + total.sourceGroups + " selected");
         System.out.println("Total: " + total.total + "  Passed: " + total.passed

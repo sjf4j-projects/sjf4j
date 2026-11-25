@@ -243,6 +243,9 @@ val officialRuntimeTest by tasks.registering(Test::class) {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     include("**/OfficialRuntimeTest.class")
+    testLogging {
+        showStandardStreams = true
+    }
     systemProperty("sjf4j.schema.officialTestRoot", officialSchemaSuiteDir.get().asFile.absolutePath)
     jvmArgs("-Xshare:off")
     inputs.dir(officialSchemaSuiteDir)
