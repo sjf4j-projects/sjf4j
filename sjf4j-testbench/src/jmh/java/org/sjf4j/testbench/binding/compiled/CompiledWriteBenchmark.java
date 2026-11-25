@@ -275,6 +275,17 @@ public class CompiledWriteBenchmark {
         return n;
     }
 
+    // Validation-only binders: do not alter the measured generated implementations.
+    @CompiledBinder(backend = Backend.JACKSON2, includeNulls = false)
+    public interface Jackson2OmitNulls {
+        @Write String writePojo(User value) throws IOException;
+    }
+
+    @CompiledBinder(backend = Backend.JACKSON3, includeNulls = false)
+    public interface Jackson3OmitNulls {
+        @Write String writePojo(User value) throws IOException;
+    }
+
     private static void verifyNullPolicyParity() throws IOException {
         User example = new User();
         example.setUsername("present");
@@ -286,10 +297,10 @@ public class CompiledWriteBenchmark {
 
         for (boolean includeNulls : new boolean[]{true, false}) {
             NodeConfig ctx = new NodeConfig(includeNulls);
-            String j2 = CompiledInstances.create(Jackson2CompiledBinder.class, ctx)
-                    .writePojo(example);
-            String j3 = CompiledInstances.create(Jackson3CompiledBinder.class, ctx)
-                    .writePojo(example);
+            String j2 = includeNulls ? JACKSON2_COMPILED.writePojo(example)
+                    : CompiledInstances.create(Jackson2OmitNulls.class).writePojo(example);
+            String j3 = includeNulls ? JACKSON3_COMPILED.writePojo(example)
+                    : CompiledInstances.create(Jackson3OmitNulls.class).writePojo(example);
 
             java.io.StringWriter out2 = new java.io.StringWriter();
             try (JsonGenerator g = JACKSON2_DIRECT_FACTORY.createGenerator(out2)) {

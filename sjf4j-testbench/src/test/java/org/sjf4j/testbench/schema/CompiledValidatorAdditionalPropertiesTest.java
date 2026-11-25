@@ -3,7 +3,6 @@ package org.sjf4j.testbench.schema;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.JsonObject;
-import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.annotation.schema.CompiledValidator;
 import org.sjf4j.annotation.schema.ValidJsonSchema;
@@ -117,25 +116,16 @@ public class CompiledValidatorAdditionalPropertiesTest {
     }
 
     @Test
-    void dynamicPropertyCodecUsesCompiledNodeConfig() {
+    void dynamicPropertyCodecUsesDefaultFormat() {
         Instant when = Instant.ofEpochMilli(2_000);
-        Checks defaults = CompiledInstances.create(Checks.class);
-        Checks epoch = CompiledInstances.create(Checks.class,
-                new NodeConfig(Map.of(Instant.class, "epochMillis")));
+        Checks checks = CompiledInstances.create(Checks.class);
+        assertFalse(checks.dynamicNumber(Map.of("when", when)));
+        assertFalse(checks.dynamicNumberJsonObject(JsonObject.of("when", when)));
+        assertFalse(checks.dynamicAnyOf(Map.of("when", when, "flag", "not boolean")));
 
-        assertFalse(defaults.dynamicNumber(Map.of("when", when)));
-        assertTrue(epoch.dynamicNumber(Map.of("when", when)));
-        assertFalse(defaults.dynamicNumberJsonObject(JsonObject.of("when", when)));
-        assertTrue(epoch.dynamicNumberJsonObject(JsonObject.of("when", when)));
-        Map<String, Object> branch = Map.of("when", when, "flag", "not boolean");
-        assertFalse(defaults.dynamicAnyOf(branch));
-        assertTrue(epoch.dynamicAnyOf(branch));
-
-        // The explicitly declared format overrides the runtime default.
-        assertTrue(defaults.codecAdditional(new CodecBean()));
-        assertTrue(epoch.codecAdditional(new CodecBean()));
-        assertTrue(defaults.codecPattern(new CodecBean()));
-        assertTrue(epoch.codecPattern(new CodecBean()));
+        // Explicitly declared property formats still override the default.
+        assertTrue(checks.codecAdditional(new CodecBean()));
+        assertTrue(checks.codecPattern(new CodecBean()));
     }
 
     @Test
