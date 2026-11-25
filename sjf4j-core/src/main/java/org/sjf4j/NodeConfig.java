@@ -21,6 +21,9 @@ public final class NodeConfig {
     /** Settings with no default value formats and null-valued members included. */
     public static final NodeConfig DEFAULT = new NodeConfig(true);
 
+    /** Default value formats with null-valued object members omitted. */
+    public static final NodeConfig OMIT_NULLS = new NodeConfig(false);
+
 
     /**
      * Creates settings without default value formats.

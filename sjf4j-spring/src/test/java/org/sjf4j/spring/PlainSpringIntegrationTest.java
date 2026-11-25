@@ -50,7 +50,7 @@ class PlainSpringIntegrationTest {
     }
 
     @Test
-    void usesApplicationNodeConfigWhenAvailable() {
+    void registersCompiledBeansAlongsideRuntimeNodeConfig() {
         try (AnnotationConfigApplicationContext context =
                 new AnnotationConfigApplicationContext(RuntimeConfig.class)) {
 

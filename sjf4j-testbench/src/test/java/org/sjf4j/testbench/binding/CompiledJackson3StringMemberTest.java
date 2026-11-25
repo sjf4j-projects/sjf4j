@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.sjf4j.CompiledInstances;
 import org.sjf4j.NodeConfig;
+import org.sjf4j.backend.jackson2.binding.Jackson2Binder;
+import org.sjf4j.backend.jackson3.binding.Jackson3Binder;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.annotation.binding.CompiledBinder;
 import org.sjf4j.annotation.binding.Write;
@@ -53,15 +55,15 @@ public class CompiledJackson3StringMemberTest {
         Payload value = fixture();
         for (boolean includeNulls : new boolean[]{true, false}) {
             Jackson3Writer writer3 = CompiledInstances.create(
-                    Jackson3Writer.class, new NodeConfig(!includeNulls));
+                    Jackson3Writer.class, new Jackson3Binder(new NodeConfig(!includeNulls)));
             JsonNode actual = JSON.readTree(includeNulls
                     ? writer3.write(value) : writer3.writeOmit(value));
             verifyNullPolicy(actual, includeNulls);
 
             // Jackson2 is deliberately unchanged: both backends must have
-            // equivalent output semantics for the same NodeConfig.
+            // equivalent output semantics for the same native backend configuration.
             Jackson2Writer writer2 = CompiledInstances.create(
-                    Jackson2Writer.class, new NodeConfig(!includeNulls));
+                    Jackson2Writer.class, new Jackson2Binder(new NodeConfig(!includeNulls)));
             JsonNode jackson2 = JSON.readTree(includeNulls
                     ? writer2.write(value) : writer2.writeOmit(value));
             assertEquals(jackson2, actual);

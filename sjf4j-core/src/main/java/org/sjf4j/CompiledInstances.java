@@ -24,47 +24,30 @@ public final class CompiledInstances {
 
     private CompiledInstances() {}
 
-    /**
-     * Creates a new compiled implementation with its default settings.
-     * The returned instance is not cached.
-     */
+    /** Creates an independent compiled implementation using compile-time settings. */
     public static <T> T create(Class<T> type) {
-        return create(type, NodeConfig.DEFAULT);
+        return _instantiate(type, new Class<?>[0]);
     }
 
     /**
-     * Creates an independent compiled implementation with supplied settings.
-     * For @CompiledBinder implementations this overload is retained for
-     * compatibility; the generated Binder ignores its NodeConfig argument
-     * and builds its own configuration from annotations.
+     * Creates a CompiledBinder with a concrete backend Binder.
+     * Native parser/generator customization is preserved; compiled binding
+     * semantics (including fallback) are independent of the Binder's NodeConfig.
      */
-    public static <T> T create(Class<T> type, NodeConfig config) {
-        return _instantiate(type, NodeConfig.class, Asserts.notNull(config, "config"));
-    }
-
-    /**
-     * Creates a CompiledBinder with an already configured backend Binder.
-     * The Binder type must match the interface's compile-time selected backend.
-     * Native backend parser/generator customization is preserved, but
-     * the injected Binder's NodeConfig does not alter compiled binding semantics.
-     */
-    public static <T, B> T create(Class<T> type, B backendBinder) {
+    public static <T> T create(Class<T> type, Binder backendBinder) {
         Asserts.notNull(backendBinder, "backendBinder");
-        if (!(backendBinder instanceof Binder)) {
-            throw new IllegalArgumentException("expected SJF4J Binder, but was '"
-                    + backendBinder.getClass().getName() + "'");
-        }
-        return _instantiate(type, backendBinder.getClass(), backendBinder);
+        return _instantiate(type, new Class<?>[] {backendBinder.getClass()}, backendBinder);
     }
 
-    private static <T> T _instantiate(Class<T> type, Class<?> parameterType, Object argument) {
+    private static <T> T _instantiate(Class<T> type, Class<?>[] parameterTypes, Object... arguments) {
         Asserts.notNull(type, "type");
         Class<?> implClass = _implementationClass(type);
         try {
-            return type.cast(implClass.getConstructor(parameterType).newInstance(argument));
+            return type.cast(implClass.getConstructor(parameterTypes).newInstance(arguments));
         } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException("no constructor accepting '" + parameterType.getName()
-                    + "' in generated implementation '" + implClass.getName() + "'", e);
+            String signature = parameterTypes.length == 0 ? "no arguments" : parameterTypes[0].getName();
+            throw new IllegalArgumentException("no constructor accepting " + signature
+                    + " in generated implementation '" + implClass.getName() + "'", e);
         } catch (ReflectiveOperationException e) {
             throw new NodeException("failed to instantiate generated implementation '"
                     + implClass.getName() + "' for interface '" + type.getName() + "'", e);

@@ -9,12 +9,12 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
 import java.io.IOException;
 import java.io.Writer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -41,11 +41,9 @@ public final class GeneratedClass {
     private final List<Member> fields = new ArrayList<>();
     private final List<Member> methods = new ArrayList<>();
     private final List<Helper> helpers = new ArrayList<>();
-    private final List<Member> configInitializers = new ArrayList<>();
+    private final List<Member> constructorInitializers = new ArrayList<>();
 
-    private boolean nodeConfigConstructor;
     private String backendBinderType;
-    private boolean compiledBinderConfig;
 
     private boolean valid = true;
 
@@ -166,31 +164,14 @@ public final class GeneratedClass {
         helpers.add(new Helper(Asserts.notNull(name, "name"), Asserts.notNull(member, "member")));
     }
 
-    /**
-     * Gives the generated implementation immutable per-instance runtime settings.
-     * The no-arg constructor preserves the default settings contract.
-     */
-    public void enableNodeConfig() {
-        nodeConfigConstructor = true;
-    }
-
     /** Adds a constructor accepting the concrete backend Binder for a CompiledBinder. */
     public void enableBackendBinder(String binderType) {
         this.backendBinderType = Asserts.notNull(binderType, "binderType");
     }
 
-    /**
-     * Compiled Binders retain the NodeConfig injection constructor but ignore
-     * its argument. One static config handles null omission; null inclusion
-     * uses NodeConfig.DEFAULT. This does not affect other compiled APIs.
-     */
-    public void useCompiledBinderConfig() {
-        compiledBinderConfig = true;
-    }
-
-    /** Adds an assignment after the generated constructor's config field is set. */
-    public void addConfigInitializer(Member member) {
-        configInitializers.add(Asserts.notNull(member, "member"));
+    /** Adds an assignment to the generated constructor. */
+    public void addConstructorInitializer(Member member) {
+        constructorInitializers.add(Asserts.notNull(member, "member"));
     }
 
     public boolean isEmpty() {
@@ -263,97 +244,64 @@ public final class GeneratedClass {
     }
 
     private void writeMembers(JavaWriter out) {
-        // Render once, in the original emission order. Some emitters allocate
-        // names or update backend-specific state while emitting members.
-        List<List<String>> fieldSource = captureGroup(out, fields);
-        List<List<String>> initializerSource = captureGroup(out, configInitializers);
-        List<List<String>> methodSource = captureGroup(out, methods);
-        List<List<String>> helperSource = reachableHelpers(out, fieldSource, initializerSource, methodSource);
-
-        boolean configUsed = false;
-        for (List<List<String>> group : java.util.Arrays.asList(
-                fieldSource, initializerSource, methodSource, helperSource)) {
-            for (List<String> member : group) {
-                // Instance field reads use this.config. A bare config in a
-                // static validator helper or constructor is its parameter.
-                // Binder's annotation-fixed static field may also be unqualified.
-                if (compiledBinderConfig ? out.identifiers(member).contains("config")
-                        : out.referencesInstanceConfig(member)) configUsed = true;
+        boolean selective = false;
+        for (Helper helper : helpers) {
+            if (helper.name != null) {
+                selective = true;
+                break;
             }
         }
-        boolean written = false;
-
-        if (nodeConfigConstructor && configUsed) {
-            if (!compiledBinderConfig) {
-                out.line("private final org.sjf4j.NodeConfig config;");
-            } else {
-                out.line("private static final org.sjf4j.NodeConfig config = "
-                        + "new org.sjf4j.NodeConfig(false);");
+        if (!selective) {
+            writeRoots(out);
+            for (Helper helper : helpers) {
+                out.blank();
+                helper.member.write(out);
             }
-            written = true;
+            return;
         }
 
-        if (!fields.isEmpty()) {
-            if (written) out.blank();
-            writeGroup(out, fieldSource);
-            written = true;
-        }
-
-        if (nodeConfigConstructor) {
-            if (written) out.blank();
-            out.beginBlock("public " + simpleName + "()");
-            out.line(backendBinderType == null
-                    ? "this(org.sjf4j.NodeConfig.DEFAULT);"
-                    : "this(new " + backendBinderType + "());");
-            out.endBlock();
+        // Emit each member once, in its original order. Emitters may allocate
+        // names or maintain backend-specific state while writing source.
+        List<String> roots = out.capture(() -> writeRoots(out));
+        out.append(roots);
+        for (List<String> source : reachableHelpers(out, roots)) {
             out.blank();
-            out.beginBlock("public " + simpleName + "(org.sjf4j.NodeConfig config)");
-            if (backendBinderType == null) {
-                out.line((configUsed ? "this.config = " : "")
-                        + "org.sjf4j.util.Asserts.notNull(config, \"config\");");
-                for (List<String> initializer : initializerSource) out.append(initializer);
-            } else {
-                out.line("this(new " + backendBinderType + "());");
-            }
-            out.endBlock();
-            if (backendBinderType != null) {
-                out.blank();
-                out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
-                out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
-                if (!compiledBinderConfig && configUsed) {
-                    out.line("this.config = this.binder.config();");
-                }
-                for (List<String> initializer : initializerSource) out.append(initializer);
-                out.endBlock();
-            }
-            written = true;
-        }
-
-        if (!methods.isEmpty()) {
-            if (written) {
-                out.blank();
-            }
-
-            writeGroup(out, methodSource);
-            written = true;
-        }
-
-        if (!helperSource.isEmpty()) {
-            if (written) out.blank();
-            writeGroup(out, helperSource);
+            out.append(source);
         }
     }
 
-    private List<List<String>> reachableHelpers(JavaWriter out, List<List<String>> fieldSource,
-                                                List<List<String>> initializerSource,
-                                                List<List<String>> methodSource) {
-        List<List<String>> source = new ArrayList<>();
+    private void writeRoots(JavaWriter out) {
+        if (!fields.isEmpty()) {
+            writeGroup(out, fields);
+            out.blank();
+        }
+
+        out.beginBlock("public " + simpleName + "()");
+        if (backendBinderType == null) {
+            for (Member initializer : constructorInitializers) initializer.write(out);
+        } else {
+            out.line("this(new " + backendBinderType + "());");
+        }
+        out.endBlock();
+        if (backendBinderType != null) {
+            out.blank();
+            out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
+            out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
+            for (Member initializer : constructorInitializers) initializer.write(out);
+            out.endBlock();
+        }
+
+        if (!methods.isEmpty()) {
+            out.blank();
+            writeGroup(out, methods);
+        }
+    }
+
+    private List<List<String>> reachableHelpers(JavaWriter out, List<String> roots) {
+        List<List<String>> source = new ArrayList<>(helpers.size());
         Map<String, Integer> byName = new HashMap<>();
         Set<Integer> reachable = new HashSet<>();
-        Deque<String> pending = new ArrayDeque<>();
-        for (List<List<String>> group : java.util.Arrays.asList(fieldSource, initializerSource, methodSource)) {
-            for (List<String> member : group) pending.addAll(out.identifiers(member));
-        }
+        Deque<String> pending = new ArrayDeque<>(out.identifiers(roots));
         for (int i = 0; i < helpers.size(); i++) {
             Helper helper = helpers.get(i);
             List<String> body = out.capture(() -> helper.member.write(out));
@@ -367,26 +315,15 @@ public final class GeneratedClass {
         }
         while (!pending.isEmpty()) {
             Integer index = byName.get(pending.removeFirst());
-            if (index != null && reachable.add(index)) pending.addAll(out.identifiers(source.get(index)));
+            if (index != null && reachable.add(index)) {
+                pending.addAll(out.identifiers(source.get(index)));
+            }
         }
         List<List<String>> result = new ArrayList<>();
         for (int i = 0; i < source.size(); i++) {
             if (reachable.contains(i)) result.add(source.get(i));
         }
         return result;
-    }
-
-    private static List<List<String>> captureGroup(JavaWriter out, List<Member> members) {
-        List<List<String>> source = new ArrayList<>(members.size());
-        for (Member member : members) source.add(out.capture(() -> member.write(out)));
-        return source;
-    }
-
-    private static void writeGroup(JavaWriter out, List<List<String>> members) {
-        for (int i = 0; i < members.size(); i++) {
-            if (i > 0) out.blank();
-            out.append(members.get(i));
-        }
     }
 
     private static final class Helper {
@@ -396,6 +333,16 @@ public final class GeneratedClass {
         Helper(String name, Member member) {
             this.name = name;
             this.member = member;
+        }
+    }
+
+    private static void writeGroup(JavaWriter out, List<Member> members) {
+        for (int i = 0; i < members.size(); i++) {
+            if (i > 0) {
+                out.blank();
+            }
+
+            members.get(i).write(out);
         }
     }
 

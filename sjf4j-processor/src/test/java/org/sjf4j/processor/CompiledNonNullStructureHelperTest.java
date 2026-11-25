@@ -56,7 +56,7 @@ class CompiledNonNullStructureHelperTest {
                 java.lang.reflect.Method writeOmit = binderType.getMethod("writeOmit", modelType);
                 java.lang.reflect.Method writeMapOmit = binderType.getMethod("writeMapOmit", Map.class);
                 Object all = CompiledInstances.create(binderType);
-                Object filtered = CompiledInstances.create(binderType, new NodeConfig(false));
+                Object filtered = CompiledTestBinders.create(binderType, backend, new NodeConfig(false));
 
                 for (Object binder : new Object[]{all, filtered}) {
                     assertTrue(json.readTree((String) write.invoke(binder, (Object) null)).isNull(), backend);

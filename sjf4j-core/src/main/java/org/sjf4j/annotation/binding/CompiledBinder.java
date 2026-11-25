@@ -25,11 +25,8 @@ import java.lang.annotation.Target;
  * }</pre>
  *
  * <p>Generated implementations have the {@code _Impl} suffix and can be
- * created through {@link org.sjf4j.CompiledInstances#create(Class)}
- * or through the retained compatibility overload
- * {@link org.sjf4j.CompiledInstances#create(Class, org.sjf4j.NodeConfig)};
- * generated binders ignore that overload's NodeConfig argument. A concrete
- * backend Binder can still be injected using
+ * created through {@link org.sjf4j.CompiledInstances#create(Class)}.
+ * A concrete backend Binder can still be injected using
  * {@code CompiledInstances.create(UserJson.class, jackson2Binder)} to customize
  * native parser and generator settings, not compiled binding semantics.</p>
  */
@@ -53,8 +50,7 @@ public @interface CompiledBinder {
 
     /**
      * Default null-property policy for generated {@link Write} operations.
-     * This policy is fixed at compilation. An injected
-     * {@link org.sjf4j.NodeConfig} does not configure generated bindings.
+     * This policy is fixed at compilation, including runtime fallback.
      */
     boolean includeNulls() default true;
 

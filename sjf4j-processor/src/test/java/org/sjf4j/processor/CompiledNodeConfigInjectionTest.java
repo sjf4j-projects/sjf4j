@@ -11,12 +11,12 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Runtime configuration remains injectable for mappers; compiled binders ignore it. */
+/** Compiled implementations use fixed semantics, independently of runtime and backend configuration. */
 class CompiledNodeConfigInjectionTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void compiledBindersIgnoreInjectedFormatsWhileMappersRemainConfigurable() throws Exception {
+    void compiledMappersAndBindersUseFixedValueFormats() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Token.java",
                 "package fixture; public final class Token { "
@@ -58,13 +58,13 @@ class CompiledNodeConfigInjectionTest {
         assertTrue(compiled.success, compiled.diagnostics());
         String mapperSource = compiled.generatedSource("fixture/Mapper_Impl.java");
         String binderSource = compiled.generatedSource("fixture/Binder_Impl.java");
-        assertTrue(mapperSource.contains("NodeConfig config)"), mapperSource);
-        assertTrue(mapperSource.contains("private final NodeConfig config;"), mapperSource);
+        assertFalse(mapperSource.contains("NodeConfig config)"), mapperSource);
+        assertTrue(mapperSource.contains("NodeConfig.DEFAULT"), mapperSource);
         String outerSource = compiled.generatedSource("fixture/Outer_Impl.java");
         assertTrue(outerSource.contains("CompiledInstances.create("), outerSource);
         assertFalse(outerSource.contains("CompiledInstances.global("), outerSource);
-        assertTrue(binderSource.contains("NodeConfig config)"), binderSource);
-        assertTrue(binderSource.contains("config.valueFormat("), binderSource);
+        assertFalse(binderSource.contains("NodeConfig config)"), binderSource);
+        assertFalse(binderSource.contains("config.valueFormat("), binderSource);
         assertFalse(mapperSource.contains("org.sjf4j.Nodes."), mapperSource);
         assertFalse(binderSource.contains("org.sjf4j.Nodes."), binderSource);
 
@@ -80,22 +80,22 @@ class CompiledNodeConfigInjectionTest {
             assertNotSame(defaultBinder, CompiledInstances.create(binderInterface));
 
             NodeConfig config = new NodeConfig(Map.of(tokenClass, "alternate"), false);
-            Object configuredMapper = CompiledInstances.create(mapperInterface, config);
-            Object configuredBinder = CompiledInstances.create(binderInterface, config);
-            assertNotSame(defaultMapper, configuredMapper);
+            Object anotherMapper = CompiledInstances.create(mapperInterface);
+            Object configuredBinder = CompiledTestBinders.create(binderInterface, "SIMPLE", config);
+            assertNotSame(defaultMapper, anotherMapper);
             assertNotSame(defaultBinder, configuredBinder);
-            assertNotSame(configuredMapper, CompiledInstances.create(mapperInterface, config));
+            assertNotSame(anotherMapper, CompiledInstances.create(mapperInterface));
 
             Object token = tokenClass.getConstructor(String.class).newInstance("hello");
             assertEquals("d:hello", mapperInterface.getMethod("encode", tokenClass)
                     .invoke(defaultMapper, token));
-            assertEquals("a:hello", mapperInterface.getMethod("encode", tokenClass)
-                    .invoke(configuredMapper, token));
+            assertEquals("d:hello", mapperInterface.getMethod("encode", tokenClass)
+                    .invoke(anotherMapper, token));
 
             assertEquals("hello", tokenClass.getField("value").get(
                     mapperInterface.getMethod("decode", String.class).invoke(defaultMapper, "d:hello")));
             assertEquals("hello", tokenClass.getField("value").get(
-                    mapperInterface.getMethod("decode", String.class).invoke(configuredMapper, "a:hello")));
+                    mapperInterface.getMethod("decode", String.class).invoke(anotherMapper, "d:hello")));
 
             assertEquals("\"d:hello\"", binderInterface.getMethod("write", tokenClass)
                     .invoke(defaultBinder, token));
@@ -110,13 +110,13 @@ class CompiledNodeConfigInjectionTest {
             Object source = sourceClass.getConstructor().newInstance();
             sourceClass.getField("token").set(source, token);
             Object defaultOuter = CompiledInstances.create(outerInterface);
-            Object alternateOuter = CompiledInstances.create(outerInterface, config);
+            Object anotherOuter = CompiledInstances.create(outerInterface);
             Object defaultTarget = outerInterface.getMethod("map", sourceClass)
                     .invoke(defaultOuter, source);
             Object alternateTarget = outerInterface.getMethod("map", sourceClass)
-                    .invoke(alternateOuter, source);
+                    .invoke(anotherOuter, source);
             assertEquals("d:hello", targetClass.getField("token").get(defaultTarget));
-            assertEquals("a:hello", targetClass.getField("token").get(alternateTarget));
+            assertEquals("d:hello", targetClass.getField("token").get(alternateTarget));
 
             Class<?> beanClass = loader.loadClass("fixture.Bean");
             Object bean = beanClass.getConstructor().newInstance();
@@ -165,7 +165,7 @@ class CompiledNodeConfigInjectionTest {
                 NodeConfig config = new NodeConfig(
                         Map.of(java.time.Instant.class, "epochMillis"), false);
                 Object defaults = CompiledInstances.create(type);
-                Object configured = CompiledInstances.create(type, config);
+                Object configured = CompiledTestBinders.create(type, backend, config);
                 String standard = (String) type.getMethod("write", beanType).invoke(defaults, bean);
                 String custom = (String) type.getMethod("write", beanType).invoke(configured, bean);
                 assertTrue(standard.contains("2024-01-01T10:00:00Z"), backend + ": " + standard);
@@ -184,7 +184,7 @@ class CompiledNodeConfigInjectionTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void navigatorAndJdbcMapperSupportConfiguredInstances() throws Exception {
+    void navigatorAndJdbcMapperSupportIndependentInstances() throws Exception {
         NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(Map.of(
                 "fixture/Paths.java",
                 "package fixture; import java.util.Map; "
@@ -202,23 +202,20 @@ class CompiledNodeConfigInjectionTest {
                 + "Row read(ResultSet rs); }"
         ), CodegenProcessor.class);
         assertTrue(compiled.success, compiled.diagnostics());
-        for (String name : new String[] {"Paths", "Rows"}) {
-            String generated = compiled.generatedSource("fixture/" + name + "_Impl.java");
-            assertTrue(generated.contains("NodeConfig config)"), generated);
-            assertFalse(generated.contains("private final NodeConfig config;"), generated);
-        }
+        assertFalse(compiled.generatedSource("fixture/Paths_Impl.java")
+                .contains("NodeConfig config)"));
+        assertFalse(compiled.generatedSource("fixture/Rows_Impl.java")
+                .contains("NodeConfig config)"));
 
         try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
             Class pathsType = loader.loadClass("fixture.Paths");
             Class rowsType = loader.loadClass("fixture.Rows");
-            NodeConfig config = new NodeConfig(Map.of(), false);
-
-            Object navigator = CompiledInstances.create(pathsType, config);
+            Object navigator = CompiledInstances.create(pathsType);
             assertNotSame(navigator, CompiledInstances.create(pathsType));
             assertEquals("Alice", pathsType.getMethod("getName", Map.class)
                     .invoke(navigator, Map.of("name", "Alice")));
 
-            Object jdbcMapper = CompiledInstances.create(rowsType, config);
+            Object jdbcMapper = CompiledInstances.create(rowsType);
             assertNotSame(jdbcMapper, CompiledInstances.create(rowsType));
             java.util.concurrent.atomic.AtomicBoolean advanced =
                     new java.util.concurrent.atomic.AtomicBoolean();
@@ -253,7 +250,7 @@ class CompiledNodeConfigInjectionTest {
     }
 
     @Test
-    void createRejectsNullConfiguration() {
+    void createRejectsNullBackend() {
         assertThrows(NullPointerException.class,
                 () -> CompiledInstances.create(Runnable.class, null));
     }

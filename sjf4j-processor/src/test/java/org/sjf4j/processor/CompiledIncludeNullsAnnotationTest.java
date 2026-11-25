@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * The annotation determines the null policy for every backend, including
- * Runtime fallback. Injected NodeConfig is ignored by compiled binders.
+ * Runtime fallback. Concrete backend configuration is ignored by compiled binders.
  */
 class CompiledIncludeNullsAnnotationTest {
 
@@ -72,26 +72,20 @@ class CompiledIncludeNullsAnnotationTest {
             try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Class<?> implType = loader.loadClass("fixture.Binder_Impl");
-                java.lang.reflect.Field configField = implType.getDeclaredField("config");
-                assertTrue(java.lang.reflect.Modifier.isStatic(configField.getModifiers()), backend);
-                assertTrue(java.lang.reflect.Modifier.isFinal(configField.getModifiers()), backend);
-                configField.setAccessible(true);
-                assertEquals(NodeConfig.class, configField.getType(), backend);
-                assertFalse(((NodeConfig) configField.get(null)).includeNulls, backend);
-                assertNotSame(NodeConfig.DEFAULT, configField.get(null), backend);
-                assertEquals(1, Arrays.stream(implType.getDeclaredFields())
+                assertEquals(0, Arrays.stream(implType.getDeclaredFields())
                         .filter(field -> field.getType() == NodeConfig.class).count(), backend);
-                assertNotNull(implType.getConstructor(NodeConfig.class), backend);
+                assertThrows(NoSuchMethodException.class, () -> implType.getConstructor(NodeConfig.class), backend);
+                assertNotNull(implType.getConstructor(), backend);
                 Class modelType = loader.loadClass("fixture.Model");
                 Object model = modelType.getConstructor().newInstance();
-                Object injectedTrue = CompiledInstances.create(binderType, new NodeConfig(true));
-                Object injectedFalse = CompiledInstances.create(binderType, new NodeConfig(false));
+                Object injectedTrue = CompiledTestBinders.create(binderType, backend, new NodeConfig(true));
+                Object injectedFalse = CompiledTestBinders.create(binderType, backend, new NodeConfig(false));
 
                 Class defaultBinderType = loader.loadClass("fixture.DefaultBinder");
                 Class<?> defaultImpl = loader.loadClass("fixture.DefaultBinder_Impl");
-                assertEquals(1, Arrays.stream(defaultImpl.getDeclaredFields())
+                assertEquals(0, Arrays.stream(defaultImpl.getDeclaredFields())
                         .filter(field -> field.getType() == NodeConfig.class).count(), backend);
-                Object includeDefault = CompiledInstances.create(defaultBinderType, new NodeConfig(false));
+                Object includeDefault = CompiledTestBinders.create(defaultBinderType, backend, new NodeConfig(false));
                 Map<String, Object> testDynamic = new LinkedHashMap<>();
                 testDynamic.put("missing", null);
                 testDynamic.put("present", Arrays.asList("a", null, "b"));
@@ -197,7 +191,7 @@ class CompiledIncludeNullsAnnotationTest {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Class<?> tokenType = loader.loadClass("fixture.Token");
                 Object token = tokenType.getConstructor().newInstance();
-                Object binder = CompiledInstances.create(binderType, new NodeConfig(true));
+                Object binder = CompiledTestBinders.create(binderType, backend, new NodeConfig(true));
                 Map<String, Object> omitted = decode(backend, (String) binderType
                         .getMethod("omit", tokenType).invoke(binder, token));
                 Map<String, Object> included = decode(backend, (String) binderType

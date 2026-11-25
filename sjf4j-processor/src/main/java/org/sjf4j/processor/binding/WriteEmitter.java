@@ -98,10 +98,7 @@ final class WriteEmitter {
     }
 
     String runtimeConfig() {
-        // Both expressions are immutable class-level constants. The only
-        // generated config is dedicated to null omission; null inclusion
-        // reuses the shared default without another field or allocation.
-        return includeNulls ? "org.sjf4j.NodeConfig.DEFAULT" : "config";
+        return includeNulls ? "org.sjf4j.NodeConfig.DEFAULT" : "org.sjf4j.NodeConfig.OMIT_NULLS";
     }
 
     boolean hasEnumFields() { return !enumFields.isEmpty(); }
