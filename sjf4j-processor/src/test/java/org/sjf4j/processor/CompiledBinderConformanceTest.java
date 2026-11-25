@@ -819,8 +819,10 @@ class CompiledBinderConformanceTest {
             assertFalse(stringMethods.contains("_writeSampleUtf8"), stringMethods.toString());
             assertTrue(bytesMethods.contains("_writeSampleUtf8"), bytesMethods.toString());
             assertFalse(bytesMethods.contains("_writeSampleUtf16"), bytesMethods.toString());
-            assertTrue(stringMethods.contains("_writeString"), stringMethods.toString());
-            assertTrue(bytesMethods.contains("_writeString"), bytesMethods.toString());
+            // String members use the fused native writer and do not need a
+            // standalone nullable-string helper in either encoding.
+            assertFalse(stringMethods.contains("_writeString"), stringMethods.toString());
+            assertFalse(bytesMethods.contains("_writeString"), bytesMethods.toString());
             assertFalse(stringMethods.contains("_writeSampleSafe"), stringMethods.toString());
             assertFalse(bytesMethods.contains("_writeSampleSafe"), bytesMethods.toString());
             assertFalse(stringMethods.contains("_writeMember"), stringMethods.toString());
