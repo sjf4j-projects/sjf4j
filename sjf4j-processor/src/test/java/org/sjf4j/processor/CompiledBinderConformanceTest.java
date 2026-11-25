@@ -71,9 +71,9 @@ class CompiledBinderConformanceTest {
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> implementation = Class.forName("fixture.Binder_Impl", true, loader);
-            // Compatibility constructor remains available, but cannot change
-            // the policy or default formats of a generated CompiledBinder.
-            assertNotNull(implementation.getConstructor(org.sjf4j.NodeConfig.class), backend);
+            assertNotNull(implementation.getConstructor(), backend);
+            assertThrows(NoSuchMethodException.class,
+                    () -> implementation.getConstructor(org.sjf4j.NodeConfig.class), backend);
 
             Class<?> beanType = Class.forName("fixture.Bean", true, loader);
             java.util.Set<String> helperNames = new java.util.HashSet<>();

@@ -52,8 +52,8 @@ class CompiledValueCodecDiscoveryTest {
             assertTrue(generated.contains("requireRegisteredValueInfo"), backend + ": " + generated);
             assertTrue(generated.contains("selectForRead("),
                     backend + ": automatic read Codec registration missing");
-            assertTrue(generated.contains("config.valueFormat("),
-                    backend + ": Context-dependent Codec initialization missing");
+            assertFalse(generated.contains("config.valueFormat("),
+                    backend + ": codec initialization must not depend on injected configuration");
             assertTrue(generated.contains("epochMillis"), backend + ": " + generated);
             assertTrue(generated.contains("yyyy/MM/dd"), backend + ": " + generated);
 
