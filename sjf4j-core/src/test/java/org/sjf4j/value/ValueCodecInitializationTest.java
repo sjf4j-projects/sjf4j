@@ -8,7 +8,7 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ValueCodecInitializationTest {
 
@@ -45,7 +45,7 @@ class ValueCodecInitializationTest {
                 for (String field : TEMPORAL_FIELDS) {
                     Object codec = value.getField(field).get(null);
                     assertNotNull(codec, first + ": " + field);
-                    assertSame(codec, patterned.getField(field).get(null), first + ": " + field);
+                    assertTrue(patterned.isInstance(codec), first + ": " + field);
                 }
                 Object date = value.getField("LOCAL_DATE").get(null);
                 LocalDate expected = LocalDate.of(2026, 11, 25);

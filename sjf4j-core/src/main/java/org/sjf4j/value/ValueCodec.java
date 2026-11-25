@@ -332,9 +332,7 @@ public interface ValueCodec<V, R> {
             new SimpleValueCodec<>(java.sql.Timestamp.class, Long.class,
                     java.sql.Timestamp::getTime, java.sql.Timestamp::new);
 
-    // Own the temporal instances here. Reading fields on the child interface
-    // during initialization can observe their default null values when the
-    // child interface is initialized first. Its historical fields are aliases.
+    // Declare and register all built-in temporal codecs in this interface.
     @NodeValue(format = "iso", defaultCodec = true)
     ValueCodec<LocalDate, String> LOCAL_DATE = new PatternedValueCodec.TemporalValueCodec<>(LocalDate.class,
             null, LocalDate::toString, LocalDate::format,

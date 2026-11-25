@@ -1,11 +1,5 @@
 package org.sjf4j.value;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.OffsetDateTime;
-import java.time.OffsetTime;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -96,28 +90,4 @@ public interface PatternedValueCodec<V, R> extends ValueCodec<V, R> {
                     toString, format, parse, parseWith, null, null);
         }
     }
-
-
-    // ──────────────────────────────────────────────────────────────
-    //  Historical aliases to the built-in temporal codec instances
-    // ──────────────────────────────────────────────────────────────
-
-    PatternedValueCodec<LocalDate, String> LOCAL_DATE =
-            (PatternedValueCodec<LocalDate, String>) ValueCodec.LOCAL_DATE;
-
-    PatternedValueCodec<LocalTime, String> LOCAL_TIME =
-            (PatternedValueCodec<LocalTime, String>) ValueCodec.LOCAL_TIME;
-
-    PatternedValueCodec<LocalDateTime, String> LOCAL_DATE_TIME =
-            (PatternedValueCodec<LocalDateTime, String>) ValueCodec.LOCAL_DATE_TIME;
-
-    PatternedValueCodec<OffsetDateTime, String> OFFSET_DATE_TIME =
-            (PatternedValueCodec<OffsetDateTime, String>) ValueCodec.OFFSET_DATE_TIME;
-
-    PatternedValueCodec<ZonedDateTime, String> ZONED_DATE_TIME =
-            (PatternedValueCodec<ZonedDateTime, String>) ValueCodec.ZONED_DATE_TIME;
-
-    PatternedValueCodec<OffsetTime, String> OFFSET_TIME =
-            (PatternedValueCodec<OffsetTime, String>) ValueCodec.OFFSET_TIME;
-
 }
