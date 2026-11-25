@@ -1,3 +1,7 @@
+import java.io.File
+import java.nio.file.Files
+import javax.xml.stream.XMLInputFactory
+import javax.xml.stream.XMLStreamConstants
 import com.github.spotbugs.snom.Confidence
 import com.github.spotbugs.snom.Effort
 import com.github.spotbugs.snom.SpotBugsExtension
@@ -43,9 +47,104 @@ subprojects {
 
 // Use the base plugin to keep SpotBugs out of check/build and remote publishing.
 // Scan all source sets, including test/JMH and actual APT outputs.
+// Read only top-level findings and analysis diagnostics. Streaming avoids
+// building another large in-memory XML tree for generated testbench classes.
+fun readSpotBugsCounts(report: File): LongArray {
+    // P1, P2, P3, other priorities, analysis errors, missing classes.
+    val counts = LongArray(6)
+    val factory = XMLInputFactory.newFactory().apply {
+        setProperty(XMLInputFactory.SUPPORT_DTD, false)
+        setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false)
+    }
+    var depth = 0
+    var diagnostics = false
+    report.inputStream().buffered().use { input ->
+        val reader = factory.createXMLStreamReader(input)
+        try {
+            while (reader.hasNext()) {
+                when (reader.next()) {
+                    XMLStreamConstants.START_ELEMENT -> {
+                        depth++
+                        if (depth == 1) {
+                            require(reader.localName == "BugCollection") { "Not a SpotBugs report" }
+                        } else if (depth == 2) {
+                            when (reader.localName) {
+                                "BugInstance" -> {
+                                    val priority = reader.getAttributeValue(null, "priority").toInt()
+                                    counts[if (priority in 1..3) priority - 1 else 3]++
+                                }
+                                "Errors" -> {
+                                    counts[4] = reader.getAttributeValue(null, "errors").toLong()
+                                    counts[5] = reader.getAttributeValue(null, "missingClasses").toLong()
+                                    diagnostics = true
+                                }
+                            }
+                        }
+                    }
+                    XMLStreamConstants.END_ELEMENT -> depth--
+                }
+            }
+            require(diagnostics) { "Missing analysis diagnostics" }
+        } finally {
+            reader.close()
+        }
+    }
+    return counts
+}
+
+val spotbugsScans = mutableListOf<TaskProvider<SpotBugsTask>>()
+val spotbugsSummaryFile = layout.buildDirectory.file("reports/spotbugs/summary.md")
+
 val spotbugsAll = tasks.register("spotbugsAll") {
     group = "verification"
-    description = "Run independent SpotBugs analysis across SJF4J"
+    description = "Run independent SpotBugs analysis across SJF4J and summarize reports"
+    doLast {
+        val totals = LongArray(6)
+        var parsed = 0
+        var noSource = 0
+        var incomplete = 0
+        val summary = buildString {
+            appendLine("# SpotBugs summary")
+            appendLine()
+            appendLine("| Task | Findings | P1 | P2 | P3 | Other | Errors | Missing classes | Status |")
+            appendLine("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |")
+            for (scan in spotbugsScans.sortedBy { it.get().path }) {
+                val task = scan.get()
+                val state = task.state
+                if (state.noSource) {
+                    noSource++
+                    appendLine("| ${task.path} | — | — | — | — | — | — | — | NO-SOURCE |")
+                    continue
+                }
+                try {
+                    require(state.executed && state.failure == null &&
+                            (!state.skipped || state.upToDate || state.skipMessage == "FROM-CACHE")) {
+                        "Scan did not complete"
+                    }
+                    val report = task.reports.getByName("xml").outputLocation.get().asFile
+                    val counts = readSpotBugsCounts(report)
+                    counts.forEachIndexed { i, count -> totals[i] += count }
+                    parsed++
+                    val findings = counts.take(4).sum()
+                    val status = if (counts[4] > 0 || counts[5] > 0) "Analysis diagnostics" else "Parsed"
+                    appendLine("| ${task.path} | $findings | ${counts.joinToString(" | ")} | $status |")
+                } catch (e: Exception) {
+                    incomplete++
+                    logger.warn("Cannot summarize ${task.path}: ${e.message}")
+                    appendLine("| ${task.path} | — | — | — | — | — | — | — | Missing/invalid report |")
+                }
+            }
+            appendLine("| **Total (parsed reports)** | **${totals.take(4).sum()}** | ${totals.joinToString(" | ")} | |")
+            appendLine()
+            appendLine("Reports parsed: $parsed; no source: $noSource; incomplete: $incomplete.")
+            appendLine("Totals include parsed XML reports only. P1/P2/P3 are SpotBugs priorities, not security severity.")
+            appendLine("Analysis diagnostics and incomplete reports require review; check the individual task logs.")
+        }
+        val output = spotbugsSummaryFile.get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(summary)
+        logger.lifecycle("\n$summary\nSummary: ${output.absolutePath}")
+    }
 }
 
 subprojects {
@@ -73,6 +172,12 @@ subprojects {
                     classDirs.setFrom(sourceSet.output)
                     auxClassPaths.setFrom(sourceSet.compileClasspath)
                     launcher.set(analysisLauncher)
+                    // A failed rerun must not leave old reports to be counted as current.
+                    doFirst {
+                        reports.filter { it.required.get() }.forEach {
+                            Files.deleteIfExists(it.outputLocation.get().asFile.toPath())
+                        }
+                    }
                     reports {
                         maybeCreate("xml").apply {
                             required.set(true)
@@ -84,6 +189,7 @@ subprojects {
                         }
                     }
                 }
+                spotbugsScans.add(scan)
                 spotbugsAll.configure { dependsOn(scan) }
             }
         }
