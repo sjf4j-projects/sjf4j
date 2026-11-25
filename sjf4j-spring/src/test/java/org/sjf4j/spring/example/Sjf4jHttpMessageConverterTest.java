@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-class MyHttpMessageConverterTest {
+class Sjf4jHttpMessageConverterTest {
 
     @RestController
     static class UserController {
@@ -41,7 +41,7 @@ class MyHttpMessageConverterTest {
     }
 
 
-    private final MyHttpMessageConverter converter = new MyHttpMessageConverter(NodeConfig.DEFAULT);
+    private final Sjf4jHttpMessageConverter converter = new Sjf4jHttpMessageConverter(NodeConfig.DEFAULT);
 
     @Test
     void handlesJsonRequestAndResponseInSpringMvc() throws Exception {
