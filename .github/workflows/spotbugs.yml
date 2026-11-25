@@ -2,9 +2,9 @@ name: SpotBugs
 
 on:
   workflow_dispatch:
-  # Validate changes to the analysis configuration; ordinary code PRs do not run it.
+  # Temporary stacked verification for PR #419; do not merge.
   pull_request:
-    branches: [main]
+    branches: [fix/generated-member-reachability]
     paths:
       - '.github/workflows/spotbugs.yml'
       - 'build.gradle.kts'
@@ -16,8 +16,19 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - revision: before
+            sha: 39ce8c63a4f869eff4462ce51cfa2a5b929a4c1d
+          - revision: after
+            sha: cc25445f02157a577bf7406ad9cf010b005f4e83
+    name: SpotBugs / ${{ matrix.revision }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.sha }}
       - name: Set up JDK 25
         uses: actions/setup-java@v6
         with:
@@ -46,7 +57,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: spotbugs-reports
+          name: spotbugs-reports-${{ matrix.revision }}
           path: |
             build/reports/spotbugs/
             **/build/reports/spotbugs/
