@@ -50,6 +50,4 @@ jobs:
           path: |
             build/reports/spotbugs/
             **/build/reports/spotbugs/
-            sjf4j-testbench/build/generated/sources/annotationProcessor/java/test/**/MapperNestedGraphTest*GraphMapper_Impl.java
-            sjf4j-testbench/build/generated/sources/annotationProcessor/java/test/**/MapperObjectTest*JojoMapper_Impl.java
           if-no-files-found: error
