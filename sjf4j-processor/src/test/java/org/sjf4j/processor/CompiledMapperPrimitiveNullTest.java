@@ -162,6 +162,53 @@ class CompiledMapperPrimitiveNullTest {
         }
     }
 
+    @Test
+    void nestedIntegralWideningUsesPrimitiveAssignments() throws Exception {
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("fixture/Item.java",
+                "package fixture; public record Item(byte b, short s, int i) {}");
+        sources.put("fixture/ItemDto.java",
+                "package fixture; public record ItemDto(short b, int s, long i) {}");
+        sources.put("fixture/Source.java",
+                "package fixture; public record Source(Item item) {}");
+        sources.put("fixture/Target.java",
+                "package fixture; public record Target(ItemDto item) {}");
+        sources.put("fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.*; "
+                + "@CompiledMapper public interface Mapper { Target map(Source source); }");
+        NavigatorTestCompiler.Result compilation = NavigatorTestCompiler.compile(
+                sources, CodegenProcessor.class, "-Xlint:cast", "-Xlint:unchecked", "-Werror");
+        assertTrue(compilation.success, compilation.diagnostics());
+        String generated = compilation.generatedSource("fixture/Mapper_Impl.java");
+        assertFalse(generated.contains("Numbers.to("), generated);
+        assertTrue(generated.contains("short converted"), generated);
+        assertTrue(generated.contains("int converted"), generated);
+        assertTrue(generated.contains("long converted"), generated);
+
+        try (URLClassLoader loader = compilation.classLoader(getClass().getClassLoader())) {
+            Class<?> item = loader.loadClass("fixture.Item");
+            Class<?> dto = loader.loadClass("fixture.ItemDto");
+            Class<?> source = loader.loadClass("fixture.Source");
+            Class<?> target = loader.loadClass("fixture.Target");
+            Class<?> mapper = loader.loadClass("fixture.Mapper_Impl");
+            Object instance = mapper.getConstructor().newInstance();
+            Method map = mapper.getMethod("map", source);
+            for (int sign : new int[] {-1, 1}) {
+                byte b = sign < 0 ? Byte.MIN_VALUE : Byte.MAX_VALUE;
+                short s = sign < 0 ? Short.MIN_VALUE : Short.MAX_VALUE;
+                int i = sign < 0 ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+                Object input = item.getConstructor(byte.class, short.class, int.class)
+                        .newInstance(b, s, i);
+                Object expected = dto.getConstructor(short.class, int.class, long.class)
+                        .newInstance((short) b, (int) s, (long) i);
+                assertEquals(target.getConstructor(dto).newInstance(expected),
+                        map.invoke(instance, source.getConstructor(item).newInstance(input)));
+            }
+            assertEquals(target.getConstructor(dto).newInstance(new Object[] {null}),
+                    map.invoke(instance, source.getConstructor(item).newInstance(new Object[] {null})));
+        }
+    }
+
     private static NavigatorTestCompiler.Result compileFixture() throws Exception {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put("fixture/Profile.java",

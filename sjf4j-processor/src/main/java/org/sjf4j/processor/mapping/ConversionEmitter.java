@@ -877,9 +877,8 @@ public final class ConversionEmitter
         }
 
         for (ConversionCompiler.StructuralProperty property : conversion.properties()) {
-            String raw = emitAccessRead(out, names, source, property.name(),
-                        property.source(), property.conversion());
-            String value = emit(out, names, property.conversion(), raw);
+            String value = emitStructuralValue(out, names, source, property.name(),
+                    property.source(), property.conversion());
             emitAccessWrite(out, result, property.name(), property.target(), value);
         }
 
@@ -903,9 +902,8 @@ public final class ConversionEmitter
         List<String> values = new ArrayList<>(arguments.size());
 
         for (ConversionCompiler.StructuralArgument argument : arguments) {
-            String raw = emitAccessRead(out, names, source, argument.name(),
-                    argument.source(), argument.conversion());
-            values.add(emit(out, names, argument.conversion(), raw));
+            values.add(emitStructuralValue(out, names, source, argument.name(),
+                    argument.source(), argument.conversion()));
         }
 
         StringBuilder expression = new StringBuilder();
@@ -1103,6 +1101,39 @@ public final class ConversionEmitter
      * Access
      * --------------------------------------------------------------
      */
+
+    // Structural reads occur inside a non-null owner guard. A declared
+    // primitive property cannot yield null. Integral widening is lossless and
+    // needs neither boxing nor the range checks used by narrowing conversions.
+    private String emitStructuralValue(JavaWriter out, NameAllocator names, String owner,
+                                       String name, NodeAccess access,
+                                       ConversionCompiler.CompiledConversion conversion) {
+        TypeKind source = access.readType().getKind();
+        TypeKind target = conversion.targetType().getKind();
+        if (access.kind() == NodeAccess.Kind.PROPERTY
+                && conversion.kind() == ConversionCompiler.CompiledConversion.Kind.SCALAR
+                && isIntegralWidening(source, target)) {
+            String result = names.newName("converted");
+            out.line(conversion.targetType() + " " + result + " = "
+                    + accessReadExpression(owner, name, access) + ";");
+            return result;
+        }
+        String raw = emitAccessRead(out, names, owner, name, access, conversion);
+        return emit(out, names, conversion, raw);
+    }
+
+    private boolean isIntegralWidening(TypeKind source, TypeKind target) {
+        switch (source) {
+            case BYTE:
+                return target == TypeKind.SHORT || target == TypeKind.INT || target == TypeKind.LONG;
+            case SHORT:
+                return target == TypeKind.INT || target == TypeKind.LONG;
+            case INT:
+                return target == TypeKind.LONG;
+            default:
+                return false;
+        }
+    }
 
     private String emitAccessRead(JavaWriter out, NameAllocator names, String owner,
                                   String name, NodeAccess access,
