@@ -15,8 +15,10 @@ With JDK 25 and the project's configured compilation toolchains available:
 
 The aggregate task scans all Java source sets (main, test, JMH and any
 additional source sets) of every non-aggregate module. Annotation-processor
-outputs in those source sets are included; no generated-code exclusions or
-existing-issue baseline are configured. Fixtures compiled dynamically during
+outputs in those source sets are included, except for JMH's own harness
+classes under `jmh_generated` in the JMH source set. Handwritten benchmarks
+and SJF4J-generated implementations remain included. No existing-issue
+baseline is configured. Fixtures compiled dynamically during
 test execution are not part of this scan.
 
 SpotBugs 4.10.5 runs with JDK 25 using the 6.5.13 Gradle base plugin.
@@ -41,5 +43,5 @@ fail the build.
 
 On GitHub Actions, select **SpotBugs → Run workflow** and download
 `spotbugs-reports`. The aggregate summary also appears in the workflow job
-summary. The workflow runs on pull requests that change the workflow itself
-to verify the integration.
+summary. The workflow runs on pull requests that change the workflow or root build
+configuration to verify the integration.
