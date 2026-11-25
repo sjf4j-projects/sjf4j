@@ -3,7 +3,7 @@
 SpotBugs is an independent, diagnostic bytecode analysis task. It is not part
 of the ordinary `build`, `check` or publishing tasks.
 
-With JDK 17 and 25 installed:
+With JDK 25 and the project's configured compilation toolchains available:
 
 ```bash
 ./gradlew spotbugsAll --continue --max-workers=2
@@ -11,8 +11,8 @@ With JDK 17 and 25 installed:
 ./gradlew :sjf4j-testbench:spotbugsTest :sjf4j-testbench:spotbugsJmh --continue
 ```
 
-The aggregate task scans the main source set of every non-aggregate module,
-plus the test and JMH source sets of `sjf4j-testbench`. Annotation-processor
+The aggregate task scans all Java source sets (main, test, JMH and any
+additional source sets) of every non-aggregate module. Annotation-processor
 outputs in those source sets are included; no generated-code exclusions or
 existing-issue baseline are configured. Fixtures compiled dynamically during
 test execution are not part of this scan.

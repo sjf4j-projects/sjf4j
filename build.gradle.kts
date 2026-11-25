@@ -42,7 +42,7 @@ subprojects {
 }
 
 // Use the base plugin so SpotBugs is never wired into check/build/publish.
-// Scan production classes and the actual APT outputs in testbench test/JMH.
+// Scan all source sets, including test/JMH and actual APT outputs.
 val spotbugsAll = tasks.register("spotbugsAll") {
     group = "verification"
     description = "Run independent SpotBugs analysis across SJF4J"
@@ -63,31 +63,28 @@ subprojects {
             val analysisLauncher = extensions.getByType<JavaToolchainService>().launcherFor {
                 languageVersion.set(JavaLanguageVersion.of(25))
             }
-            val scanTestbench = name == "sjf4j-testbench"
             extensions.getByType<JavaPluginExtension>().sourceSets.configureEach {
                 val sourceSet = this
-                if (name == "main" || (scanTestbench && name in setOf("test", "jmh"))) {
-                    val scan = tasks.register<SpotBugsTask>(getTaskName("spotbugs", null)) {
-                        group = "verification"
-                        description = "Analyze ${sourceSet.name} bytecode with SpotBugs"
-                        dependsOn(sourceSet.classesTaskName)
-                        sourceDirs.setFrom(sourceSet.allSource.sourceDirectories)
-                        classDirs.setFrom(sourceSet.output)
-                        auxClassPaths.setFrom(sourceSet.compileClasspath)
-                        launcher.set(analysisLauncher)
-                        reports {
-                            maybeCreate("xml").apply {
-                                required.set(true)
-                                outputLocation.set(layout.buildDirectory.file("reports/spotbugs/${sourceSet.name}.xml"))
-                            }
-                            maybeCreate("html").apply {
-                                required.set(true)
-                                outputLocation.set(layout.buildDirectory.file("reports/spotbugs/${sourceSet.name}.html"))
-                            }
+                val scan = tasks.register<SpotBugsTask>(getTaskName("spotbugs", null)) {
+                    group = "verification"
+                    description = "Analyze ${sourceSet.name} bytecode with SpotBugs"
+                    dependsOn(sourceSet.classesTaskName)
+                    sourceDirs.setFrom(sourceSet.allSource.sourceDirectories)
+                    classDirs.setFrom(sourceSet.output)
+                    auxClassPaths.setFrom(sourceSet.compileClasspath)
+                    launcher.set(analysisLauncher)
+                    reports {
+                        maybeCreate("xml").apply {
+                            required.set(true)
+                            outputLocation.set(layout.buildDirectory.file("reports/spotbugs/${sourceSet.name}.xml"))
+                        }
+                        maybeCreate("html").apply {
+                            required.set(true)
+                            outputLocation.set(layout.buildDirectory.file("reports/spotbugs/${sourceSet.name}.html"))
                         }
                     }
-                    spotbugsAll.configure { dependsOn(scan) }
                 }
+                spotbugsAll.configure { dependsOn(scan) }
             }
         }
     }
