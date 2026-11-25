@@ -1,8 +1,15 @@
+import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
+import com.github.spotbugs.snom.SpotBugsExtension
+import com.github.spotbugs.snom.SpotBugsTask
+import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.api.publish.maven.tasks.PublishToMavenLocal
 import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 
 plugins {
     id("com.vanniktech.maven.publish") version "0.35.0" apply false
+    id("com.github.spotbugs-base") version "6.5.13" apply false
 }
 
 // Treat Java compilation warnings as errors across all modules, including
@@ -22,7 +29,7 @@ subprojects {
             dependsOn(":sjf4j-testbench:officialPublishGate")
         }
         tasks.withType<PublishToMavenLocal>().configureEach {
-            dependsOn(":sjf4j-testbench:officialPublishGate")
+            dependsOn(":sjf4j-testbench:officialPublishGate", ":spotbugsAll")
         }
         tasks.matching {
             it.name == "publish" || it.name == "publishToMavenLocal" ||
@@ -30,6 +37,55 @@ subprojects {
                 it.name.startsWith("publishAllPublicationsTo")
         }.configureEach {
             dependsOn(":sjf4j-testbench:officialPublishGate")
+        }
+    }
+}
+
+// Use the base plugin to keep SpotBugs out of check/build and remote publishing.
+// Scan all source sets, including test/JMH and actual APT outputs.
+val spotbugsAll = tasks.register("spotbugsAll") {
+    group = "verification"
+    description = "Run independent SpotBugs analysis across SJF4J"
+}
+
+subprojects {
+    plugins.withId("java") {
+        if (name != "sjf4j") { // Aggregate module has no classes of its own.
+            apply(plugin = "com.github.spotbugs-base")
+            extensions.configure<SpotBugsExtension> {
+                toolVersion.set("4.10.5")
+                effort.set(Effort.DEFAULT)
+                reportLevel.set(Confidence.LOW)
+                ignoreFailures.set(true)
+                maxHeapSize.set("2g")
+            }
+
+            val analysisLauncher = extensions.getByType<JavaToolchainService>().launcherFor {
+                languageVersion.set(JavaLanguageVersion.of(25))
+            }
+            extensions.getByType<JavaPluginExtension>().sourceSets.configureEach {
+                val sourceSet = this
+                val scan = tasks.register<SpotBugsTask>(getTaskName("spotbugs", null)) {
+                    group = "verification"
+                    description = "Analyze ${sourceSet.name} bytecode with SpotBugs"
+                    dependsOn(sourceSet.classesTaskName)
+                    sourceDirs.setFrom(sourceSet.allSource.sourceDirectories)
+                    classDirs.setFrom(sourceSet.output)
+                    auxClassPaths.setFrom(sourceSet.compileClasspath)
+                    launcher.set(analysisLauncher)
+                    reports {
+                        maybeCreate("xml").apply {
+                            required.set(true)
+                            outputLocation.set(layout.buildDirectory.file("reports/spotbugs/${sourceSet.name}.xml"))
+                        }
+                        maybeCreate("html").apply {
+                            required.set(true)
+                            outputLocation.set(layout.buildDirectory.file("reports/spotbugs/${sourceSet.name}.html"))
+                        }
+                    }
+                }
+                spotbugsAll.configure { dependsOn(scan) }
+            }
         }
     }
 }
