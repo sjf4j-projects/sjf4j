@@ -2,6 +2,7 @@ package org.sjf4j.processor;
 
 import org.junit.jupiter.api.Test;
 
+import java.net.URLClassLoader;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,7 +48,16 @@ class CompiledValidatorContractProcessorTest {
         assertTrue(result.success, result.diagnostics());
         String generated = result.generatedSource("fixture/Check_Impl.java");
         assertFalse(generated.contains(".isValid("), generated);
-        assertTrue(generated.contains("== null"), generated);
+        // Applicability can be expressed as a positive non-null guard.
+        // Verify the contract instead of requiring a particular branch polarity.
+        try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
+            Class<?> model = loader.loadClass("fixture.Model");
+            Class<?> impl = loader.loadClass("fixture.Check_Impl");
+            Object validator = impl.getConstructor().newInstance();
+            java.lang.reflect.Method valid = impl.getMethod("valid", model);
+            assertEquals(Boolean.TRUE, valid.invoke(validator, (Object) null));
+            assertEquals(Boolean.FALSE, valid.invoke(validator, model.getConstructor().newInstance()));
+        }
     }
 
     @Test
