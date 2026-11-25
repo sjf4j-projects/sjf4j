@@ -114,9 +114,9 @@ public class CompiledJacksonNullOmissionTest {
     public void jackson2CompiledRespectsBothPolicies() throws IOException {
         TestBean bean = sample();
         Jackson2Compiled including = CompiledInstances.create(Jackson2Compiled.class,
-                new NodeConfig(true));
+                new Jackson2Binder(new NodeConfig(true)));
         Jackson2Compiled omitting = CompiledInstances.create(Jackson2Compiled.class,
-                new NodeConfig(false));
+                new Jackson2Binder(new NodeConfig(false)));
         Jackson2Binder runtime = new Jackson2Binder(new JsonFactory(), new NodeConfig(false));
 
         equivalent(runtime.writeNodeAsString(bean), omitting.writePojo(bean));
@@ -147,9 +147,9 @@ public class CompiledJacksonNullOmissionTest {
     public void jackson3CompiledRespectsBothPolicies() throws IOException {
         TestBean bean = sample();
         Jackson3Compiled including = CompiledInstances.create(Jackson3Compiled.class,
-                new NodeConfig(true));
+                new Jackson3Binder(new NodeConfig(true)));
         Jackson3Compiled omitting = CompiledInstances.create(Jackson3Compiled.class,
-                new NodeConfig(false));
+                new Jackson3Binder(new NodeConfig(false)));
         Jackson3Binder runtime = new Jackson3Binder(
                 new tools.jackson.core.json.JsonFactory(), new NodeConfig(false));
 

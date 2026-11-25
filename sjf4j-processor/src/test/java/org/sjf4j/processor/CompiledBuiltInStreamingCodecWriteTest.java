@@ -100,8 +100,7 @@ class CompiledBuiltInStreamingCodecWriteTest {
                 assertEquals(zonedDateTime.toString(), normal.path("zonedDateTime").asText(), backend);
                 assertEquals("2024/02/03 04:05:06", normal.path("patterned").asText(), backend);
 
-                Object configured = CompiledInstances.create(binderType,
-                        new NodeConfig(Map.of(Instant.class, "epochMillis")));
+                Object configured = CompiledTestBinders.create(binderType, backend, new NodeConfig(Map.of(Instant.class, "epochMillis")));
                 JsonNode alternate = mapper.readTree((String) binderType.getMethod("write", beanType)
                         .invoke(configured, bean));
                 assertEquals(instant.toString(), alternate.path("instant").asText(), backend);

@@ -80,7 +80,7 @@ class CompiledGsonJsonpUnifiedWriteTest {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Object model = modelType.getConstructor().newInstance();
                 Object normal = CompiledInstances.create(binderType);
-                Object withoutNulls = CompiledInstances.create(binderType, new NodeConfig(false));
+                Object withoutNulls = CompiledTestBinders.create(binderType, backend, new NodeConfig(false));
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
                 JsonNode full = mapper.readTree((String) write.invoke(normal, model));
                 assertEquals(full, mapper.readTree((String) write.invoke(withoutNulls, model)), backend);

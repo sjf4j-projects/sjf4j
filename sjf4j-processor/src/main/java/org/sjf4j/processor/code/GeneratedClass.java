@@ -35,11 +35,9 @@ public final class GeneratedClass {
     private final List<Member> fields = new ArrayList<>();
     private final List<Member> methods = new ArrayList<>();
     private final List<Member> helpers = new ArrayList<>();
-    private final List<Member> configInitializers = new ArrayList<>();
+    private final List<Member> constructorInitializers = new ArrayList<>();
 
-    private boolean nodeConfigConstructor;
     private String backendBinderType;
-    private boolean compiledBinderConfig;
 
     private boolean valid = true;
 
@@ -151,31 +149,14 @@ public final class GeneratedClass {
         helpers.add(Asserts.notNull(member, "member"));
     }
 
-    /**
-     * Gives the generated implementation immutable per-instance runtime settings.
-     * The no-arg constructor preserves the default settings contract.
-     */
-    public void enableNodeConfig() {
-        nodeConfigConstructor = true;
-    }
-
     /** Adds a constructor accepting the concrete backend Binder for a CompiledBinder. */
     public void enableBackendBinder(String binderType) {
         this.backendBinderType = Asserts.notNull(binderType, "binderType");
     }
 
-    /**
-     * Compiled Binders retain the NodeConfig injection constructor but ignore
-     * its argument. One static config handles null omission; null inclusion
-     * uses NodeConfig.DEFAULT. This does not affect other compiled APIs.
-     */
-    public void useCompiledBinderConfig() {
-        compiledBinderConfig = true;
-    }
-
-    /** Adds an assignment after the generated constructor's config field is set. */
-    public void addConfigInitializer(Member member) {
-        configInitializers.add(Asserts.notNull(member, "member"));
+    /** Adds an assignment to the generated constructor. */
+    public void addConstructorInitializer(Member member) {
+        constructorInitializers.add(Asserts.notNull(member, "member"));
     }
 
     public boolean isEmpty() {
@@ -250,50 +231,28 @@ public final class GeneratedClass {
     private void writeMembers(JavaWriter out) {
         boolean written = false;
 
-        if (nodeConfigConstructor) {
-            if (!compiledBinderConfig) {
-                out.line("private final org.sjf4j.NodeConfig config;");
-            } else {
-                out.line("private static final org.sjf4j.NodeConfig config = "
-                        + "new org.sjf4j.NodeConfig(false);");
-            }
-            written = true;
-        }
-
         if (!fields.isEmpty()) {
             if (written) out.blank();
             writeGroup(out, fields);
             written = true;
         }
 
-        if (nodeConfigConstructor) {
-            if (written) out.blank();
-            out.beginBlock("public " + simpleName + "()");
-            out.line(backendBinderType == null
-                    ? "this(org.sjf4j.NodeConfig.DEFAULT);"
-                    : "this(new " + backendBinderType + "());");
-            out.endBlock();
-            out.blank();
-            out.beginBlock("public " + simpleName + "(org.sjf4j.NodeConfig config)");
-            if (backendBinderType == null) {
-                out.line("this.config = org.sjf4j.util.Asserts.notNull(config, \"config\");");
-                for (Member initializer : configInitializers) initializer.write(out);
-            } else {
-                out.line("this(new " + backendBinderType + "());");
-            }
-            out.endBlock();
-            if (backendBinderType != null) {
-                out.blank();
-                out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
-                out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
-                if (!compiledBinderConfig) {
-                    out.line("this.config = this.binder.config();");
-                }
-                for (Member initializer : configInitializers) initializer.write(out);
-                out.endBlock();
-            }
-            written = true;
+        if (written) out.blank();
+        out.beginBlock("public " + simpleName + "()");
+        if (backendBinderType == null) {
+            for (Member initializer : constructorInitializers) initializer.write(out);
+        } else {
+            out.line("this(new " + backendBinderType + "());");
         }
+        out.endBlock();
+        if (backendBinderType != null) {
+            out.blank();
+            out.beginBlock("public " + simpleName + "(" + backendBinderType + " backendBinder)");
+            out.line("this.binder = org.sjf4j.util.Asserts.notNull(backendBinder, \"backendBinder\");");
+            for (Member initializer : constructorInitializers) initializer.write(out);
+            out.endBlock();
+        }
+        written = true;
 
         if (!methods.isEmpty()) {
             if (written) {

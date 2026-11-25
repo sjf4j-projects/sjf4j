@@ -83,7 +83,7 @@ class CompiledJacksonUnifiedWriteTest {
                 Class binderType = loader.loadClass("fixture.Binder");
                 Object model = modelType.getConstructor().newInstance();
                 Object normal = CompiledInstances.create(binderType);
-                Object withoutNulls = CompiledInstances.create(binderType, new NodeConfig(false));
+                Object withoutNulls = CompiledTestBinders.create(binderType, backend, new NodeConfig(false));
                 java.lang.reflect.Method write = binderType.getMethod("write", modelType);
                 java.lang.reflect.Method writeList = binderType.getMethod("writeList", java.util.List.class);
                 java.util.List<String> words = java.util.Arrays.asList("one", null, "two");

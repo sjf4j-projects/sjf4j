@@ -28,11 +28,9 @@ The annotation processor writes `META-INF/sjf4j/compiled.interfaces` containing 
 binary names of successfully generated interfaces. At startup, the starter
 collects **all** indexes from the classpath (including dependency JARs),
 de-duplicates them, and registers lazy singleton BeanDefinitions through `sjf4j-spring`. Spring creates
-instances through `CompiledInstances.create(type, context)`: it uses an
-application-provided `NodeConfig` when one exists, or
-`NodeConfig.DEFAULT` otherwise. `@CompiledBinder` keeps this injection
-signature for compatibility but ignores the supplied `NodeConfig`; its
-null-property policy is fixed by `@CompiledBinder` / `@Write` annotations.
+instances through `CompiledInstances.create(type)`. Compiled instances use
+compile-time settings independently of runtime `NodeConfig` Beans.
+Binder null-property policy is fixed by `@CompiledBinder` / `@Write` annotations.
 Explicit user Beans of the same type win.
 
 Interfaces can be injected, looked up by type through `getBean()`, obtained
