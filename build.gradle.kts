@@ -218,6 +218,14 @@ subprojects {
                     dependsOn(sourceSet.classesTaskName)
                     sourceDirs.setFrom(sourceSet.allSource.sourceDirectories)
                     classDirs.setFrom(sourceSet.output)
+                    // JMH generates harness classes independently of SJF4J.
+                    // Keep benchmark sources and all SJF4J-generated classes.
+                    if (sourceSet.name == "jmh") {
+                        classes = classDirs.asFileTree.matching {
+                            include("**/*.class")
+                            exclude("**/jmh_generated/**")
+                        }
+                    }
                     auxClassPaths.setFrom(sourceSet.compileClasspath)
                     launcher.set(analysisLauncher)
                     // A failed rerun must not leave old reports to be counted as current.

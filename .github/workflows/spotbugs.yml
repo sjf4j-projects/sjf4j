@@ -2,11 +2,12 @@ name: SpotBugs
 
 on:
   workflow_dispatch:
-  # Validate changes to this workflow before merging; ordinary PRs do not run it.
+  # Validate changes to the analysis configuration; ordinary code PRs do not run it.
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/spotbugs.yml'
+      - 'build.gradle.kts'
 
 permissions:
   contents: read
