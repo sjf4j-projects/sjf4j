@@ -59,8 +59,7 @@ public final class OfficialRuntimeTest {
         int matched = 0;
         for (SchemaDialect dialect : dialects) {
             TestSuiteReport report = runTestDir(dialect, dir, false, file, group, test);
-            matched += report.required.totals().total() + report.supportedOptional.totals().total()
-                    + report.optional.totals().total();
+            matched += report.required.totals().total() + report.optional.totals().total();
         }
         if (matched == 0) {
             throw new IllegalArgumentException("No compatible official validation tests matched the selection");
@@ -133,14 +132,13 @@ public final class OfficialRuntimeTest {
             if (!Files.isRegularFile(file)) {
                 throw new IllegalArgumentException("Official test file not found: " + file);
             }
-            runTestFile(file, strict, suite, groupIndex, testIndex,
-                    dir.relativize(file).startsWith("optional"));
+            runTestFile(file, strict, suite, groupIndex, testIndex);
         } else {
             try (Stream<Path> paths = Files.list(dir)) {
                 for (Path file : paths.filter(Files::isRegularFile)
                         .filter(p -> p.getFileName().toString().endsWith(".json"))
                         .sorted().toList()) {
-                    runTestFile(file, strict, suite, groupIndex, testIndex, false);
+                    runTestFile(file, strict, suite, groupIndex, testIndex);
                 }
             }
             Path optional = dir.resolve("optional");
@@ -150,7 +148,7 @@ public final class OfficialRuntimeTest {
                     for (Path file : paths.filter(Files::isRegularFile)
                             .filter(p -> p.getFileName().toString().endsWith(".json"))
                             .sorted().toList()) {
-                        runTestFile(file, strict, suite, groupIndex, testIndex, true);
+                        runTestFile(file, strict, suite, groupIndex, testIndex);
                     }
                 } catch (Exception e) {
                     suite.optional.file("optional/").recordInputError("Cannot read optional directory", e);
@@ -158,39 +156,36 @@ public final class OfficialRuntimeTest {
             }
         }
         printSuiteReport(suite);
-        requirePassed(suite, "REQUIRED", suite.required.totals());
-        requirePassed(suite, "SUPPORTED_OPTIONAL", suite.supportedOptional.totals());
+        requirePassed(suite, suite.required.totals());
         return suite;
     }
 
-    private static void requirePassed(TestSuiteReport suite, String name, Counts required) {
+    private static void requirePassed(TestSuiteReport suite, Counts required) {
         if (required.error() > 0 || required.failed() > 0
                 || required.total() != required.passed() + required.failed() + required.error()) {
-            throw new IllegalStateException("JSON Schema " + name + " validation failed for " + suite.dialect
+            throw new IllegalStateException("JSON Schema REQUIRED validation failed for " + suite.dialect
                     + " in " + suite.directory + ": " + required.failed() + " failed and "
                     + required.error() + " errors, " + required.total() + " selected");
         }
     }
 
     private static void runTestFile(Path file, boolean strict, TestSuiteReport suite,
-                                    Integer groupFilter, Integer testFilter, boolean optionalDirectory) {
+                                    Integer groupFilter, Integer testFilter) {
         String fileName = suite.directory.relativize(file).toString().replace('\\', '/');
         // An unreadable root fixture may contain required cases; fail closed.
-        CategoryReport defaultCategory = OfficialTestPolicy.FORMAT_VOCABULARY.equals(fileName)
-                ? suite.supportedOptional : optionalDirectory ? suite.optional : suite.required;
+        CategoryReport category = OfficialTestPolicy.isRequired(fileName) ? suite.required : suite.optional;
         JsonArray groups;
         try {
             JsonObject source = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
             groups = source.getJsonArray("tests");
             if (groups == null) throw new IllegalArgumentException("Missing root tests array: " + file);
         } catch (Exception e) {
-            defaultCategory.file(fileName).recordInputError(fileName + " invalid test file", e);
+            category.file(fileName).recordInputError(fileName + " invalid test file", e);
             return;
         }
         for (int i = 0; i < groups.size(); i++) {
             if (groupFilter != null && groupFilter != i) continue;
             suite.sourceGroups++;
-            CategoryReport category = defaultCategory;
             try {
                 JsonObject group = groups.getJsonObject(i);
                 String compatibility = group.getString("compatibility");
@@ -199,7 +194,6 @@ public final class OfficialRuntimeTest {
                     continue;
                 }
                 boolean assertion = OfficialTestPolicy.formatAssertion(group.getJsonArray("tags"));
-                if (OfficialTestPolicy.supportedOptional(fileName, assertion)) category = suite.supportedOptional;
                 // Vocabulary tests must assert without the override, exercising the schema's own dialect.
                 boolean strictFormat = strict || assertion;
                 JsonArray tests = group.getJsonArray("tests");
@@ -270,7 +264,6 @@ public final class OfficialRuntimeTest {
         final Path directory;
         int sourceGroups, incompatibleGroups;
         final CategoryReport required = new CategoryReport();
-        final CategoryReport supportedOptional = new CategoryReport();
         final CategoryReport optional = new CategoryReport();
 
         TestSuiteReport(SchemaDialect dialect, Path directory) {
@@ -322,26 +315,24 @@ public final class OfficialRuntimeTest {
     }
 
     private static void printSuiteReport(TestSuiteReport suite) {
-        System.out.println("======================================================================");
+        System.out.println("==========================================================");
         System.out.println(" JSON Schema Runtime [" + suite.dialect + "]");
-        System.out.println("======================================================================");
+        System.out.println("==========================================================");
         System.out.println("Directory: " + suite.directory);
         System.out.println("Groups   : " + suite.sourceGroups + " source, "
                 + suite.incompatibleGroups + " incompatible");
-        System.out.printf("%-19s %8s %8s %8s %8s %8s%n",
+        System.out.printf("%-10s %8s %8s %8s %8s %8s%n",
                 "Suite", "Groups", "Total", "Passed", "Failed", "Errors");
         printCategory("REQUIRED", suite.required);
-        printCategory("SUPPORTED_OPTIONAL", suite.supportedOptional);
         printCategory("OPTIONAL", suite.optional);
-        System.out.println("======================================================================");
+        System.out.println("==========================================================");
         printFailures("REQUIRED", suite.required);
-        printFailures("SUPPORTED_OPTIONAL", suite.supportedOptional);
         printFailures("OPTIONAL", suite.optional);
     }
 
     private static void printCategory(String name, CategoryReport category) {
         Counts counts = category.totals();
-        System.out.printf("%-19s %8d %8d %8d %8d %8d%n", name, category.selectedGroups,
+        System.out.printf("%-10s %8d %8d %8d %8d %8d%n", name, category.selectedGroups,
                 counts.total(), counts.passed(), counts.failed(), counts.error());
     }
 

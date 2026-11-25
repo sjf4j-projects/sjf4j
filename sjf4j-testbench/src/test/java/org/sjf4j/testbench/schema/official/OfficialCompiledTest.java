@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Required and supported optional official Draft-07, 2019-09, and 2020-12 instances,
+ * SJF4J-required official Draft-07, 2019-09, and 2020-12 instances,
  * bound to schemas at annotation-processing time rather than a runtime-only plan.
  *
  * <p>Compilation failures are reported per group and do not prevent other
@@ -285,7 +285,7 @@ public final class OfficialCompiledTest {
         Set<String> indexedKeys = new LinkedHashSet<>();
         for (OfficialCaseRunner.Spec spec : allSpecs) indexedKeys.add(spec.key());
         assertEquals(expectedKeys, indexedKeys,
-                "Official compiled manifest must include exactly every compatible required and supported optional group");
+                "Official compiled manifest must include exactly every compatible SJF4J-required group");
         jsonFiles.removeIf(p -> !byFile.containsKey(officialDir.relativize(p).toString().replace('\\', '/')));
         if (specs.isEmpty()) {
             throw new IllegalArgumentException("No official cases matched: draft="
