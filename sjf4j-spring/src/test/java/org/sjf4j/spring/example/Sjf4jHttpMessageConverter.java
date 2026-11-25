@@ -32,17 +32,17 @@ import java.util.Objects;
  *
  * <p>This is a test example, not an SJF4J public API.
  */
-public final class MyHttpMessageConverter extends AbstractGenericHttpMessageConverter<Object> {
+public final class Sjf4jHttpMessageConverter extends AbstractGenericHttpMessageConverter<Object> {
 
     private final Binder<?, ?> json;
     private final Binder<?, ?> yaml;
 
-    public MyHttpMessageConverter(NodeConfig config) {
+    public Sjf4jHttpMessageConverter(NodeConfig config) {
         this(BinderFactory.jsonProvider().create(config),
                 BinderFactory.yamlProvider().create(config));
     }
 
-    public MyHttpMessageConverter(Binder<?, ?> json, Binder<?, ?> yaml) {
+    public Sjf4jHttpMessageConverter(Binder<?, ?> json, Binder<?, ?> yaml) {
         super(MediaType.APPLICATION_JSON,
                 MediaType.parseMediaType("application/*+json"),
                 MediaType.parseMediaType("application/yaml"));
