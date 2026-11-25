@@ -303,7 +303,7 @@ final class SchemaEmitter {
                     statements.add("        " + covered + " = true;");
                     if (pattern.check.kind != SchemaCheck.Kind.PASS) {
                         String element = locals.newName("element");
-                        statements.add("        Object " + element + " = " + "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + key + ")" + ";");
+                        statements.add("        Object " + element + " = " + "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + key + ", " + DEFAULT_CONFIG + ")" + ";");
                         InstancePath previousPath = instancePath;
                         instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                         List<String> children = new ArrayList<String>();
@@ -321,7 +321,7 @@ final class SchemaEmitter {
                         && check.additionalPropertiesCheck.kind != SchemaCheck.Kind.PASS) {
                     String element = locals.newName("additional");
                     statements.add("    if (!" + covered + ") {");
-                    statements.add("        Object " + element + " = " + "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + key + ")" + ";");
+                    statements.add("        Object " + element + " = " + "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + key + ", " + DEFAULT_CONFIG + ")" + ";");
                     InstancePath previousPath = instancePath;
                     instancePath = namePath(key, null, DIAGNOSTIC_FAILURE.equals(onFailure));
                     List<String> children = new ArrayList<String>();
@@ -339,7 +339,7 @@ final class SchemaEmitter {
         for (SchemaCheck.PropertyCheck property : check.properties) {
             String local = locals.newName(property.name);
             String access = check.dynamic
-                    ? "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + literal(property.name) + ")"
+                    ? "org.sjf4j.schema.SchemaSupport.scalarValueInObject(" + variable + ", " + literal(property.name) + ", " + DEFAULT_CONFIG + ")"
                     : check.jsonObject
                     ? variable + ".getNode(" + literal(property.name) + ")"
                     : variable + "." + property.staticAccess;
@@ -453,13 +453,13 @@ final class SchemaEmitter {
                     final String parameterType = value.type == null ? "Object" : value.type.toString();
                     List<String> body = new ArrayList<String>();
                     NameAllocator parentLocals = locals;
-                                        locals = generated.names().helperLocals("value", "strictFormat");
-                                        try {
+            locals = generated.names().helperLocals("value", "strictFormat");
+                    try {
                         emitValue(body, plan, reference.target, value, "value", method,
                                 "strictFormat", 0, "return false;");
                     } finally {
                         locals = parentLocals;
-                                            }
+                    }
                     final boolean alwaysRejects = !body.isEmpty()
                             && "return false;".equals(body.get(body.size() - 1));
                     generated.addHelper(out -> {
@@ -655,13 +655,13 @@ final class SchemaEmitter {
         List<String> body = new ArrayList<String>();
         // A nested boolean helper owns an independent method-level namespace.
         NameAllocator parentLocals = locals;
-                locals = generated.names().helperLocals("value", "strictFormat");
-                try {
+        locals = generated.names().helperLocals("value", "strictFormat");
+        try {
             emitValue(body, plan, branch, value, "value", helper, "strictFormat", 0,
                     "return false;");
         } finally {
             locals = parentLocals;
-                    }
+        }
         boolean alwaysRejects = !body.isEmpty()
                 && "return false;".equals(body.get(body.size() - 1));
         String parameterType = value.type == null ? "Object" : value.type.toString();

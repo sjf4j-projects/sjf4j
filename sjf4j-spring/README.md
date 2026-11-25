@@ -39,10 +39,8 @@ public class UserService {
 The annotation processor writes `META-INF/sjf4j/compiled.interfaces`. The
 Spring integration collects these indexes across classpath JARs and registers
 lazy singleton Beans. An explicitly registered Bean of the same interface
-takes priority. A user-provided `NodeConfig` Bean is used when available,
-otherwise `NodeConfig.DEFAULT` is used. For `@CompiledBinder`, the
-injection entry point is retained for compatibility but the `NodeConfig`
-value is ignored: `@CompiledBinder.includeNulls` and per-method
+takes priority. Compiled instances use compile-time settings, independently of
+runtime `NodeConfig` Beans. `@CompiledBinder.includeNulls` and per-method
 `@Write.includeNulls` determine compiled and fallback output.
 
 Spring must discover your application configuration and service (for example,
