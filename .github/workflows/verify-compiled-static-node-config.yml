@@ -1,4 +1,4 @@
-name: Compiled NodeConfig A-B verification
+name: Compiled NodeConfig targeted A-B-A retest
 on:
   pull_request:
     branches: [refactor/compiled-static-node-config]
@@ -35,15 +35,14 @@ jobs:
           if-no-files-found: error
           retention-days: 7
   compare:
-    name: Same-runner A-B / ${{ matrix.group }}
+    name: Same-runner A-B-A / ${{ matrix.group }}
     needs: build
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     strategy:
       fail-fast: false
-      max-parallel: 8
       matrix:
-        group: [jackson2, jackson3, fastjson2, gson, jsonp, simple, snake, mapper-pojo, mapper-json, jdbc, schema]
+        group: [jackson2-write, schema-pojo]
     env:
       GROUP: ${{ matrix.group }}
     steps:
@@ -59,88 +58,98 @@ jobs:
         with:
           name: jmh-after
           path: after
-      - name: Record hardware and run identical selected Full JMH cases
+      - name: Run baseline, candidate, baseline on the same runner
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p results
-          { lscpu; java -version 2>&1; } > results/hardware.txt
+          { lscpu; java -version 2>&1; } | tee results/hardware.txt
           params=()
           case "$GROUP" in
-            jackson2|jackson3|fastjson2|gson|jsonp|simple|snake)
-              selector='^org\.sjf4j\.testbench\.binding\.fabien\.Fabien(ReadBenchmark\.read|WriteBenchmark\.write)$'
-              case "$GROUP" in
-                jackson2|jackson3) modes=compiled,native,blackbird ;;
-                fastjson2|gson|snake) modes=compiled,native ;;
-                jsonp|simple) modes=compiled,runtime ;;
-              esac
-              params=(-p "backend=$GROUP" -p "implementation=$modes" -p model=users -p shape=pojo -p sizeKb=10,100 -p seed=12345,324)
+            jackson2-write)
+              selector='^org\.sjf4j\.testbench\.binding\.fabien\.FabienWriteBenchmark\.write$'
+              params=(-p backend=jackson2 -p implementation=compiled,native,blackbird -p model=users -p shape=pojo -p sizeKb=100 -p seed=12345,324)
               ;;
-            mapper-pojo)
-              selector='^org\.sjf4j\.testbench\.mapping\.MappingFullBenchmark\.pojo_(direct|flat|profile|nested|update)_(compiled|mapstruct)$'
-              ;;
-            mapper-json)
-              selector='^org\.sjf4j\.testbench\.mapping\.MappingFullBenchmark\.json_(map|object)_(mapstruct|cast|strict)$'
-              ;;
-            jdbc)
-              selector='^org\.sjf4j\.testbench\.mapping\.JdbcFullBenchmark\.(pojo|record|map)_(row|list)_(compiled|spring)$'
-              params=(-p rows=1000)
-              ;;
-            schema)
-              selector='^org\.sjf4j\.testbench\.schema\.CreekSchemaBenchmark\.(pojo_isValid_(runtime|compiled)|map_isValid_(runtime|compiled)|jsonNode_isValid_(runtime|networknt)|roundtrip_(jackson|compiled|isValid_runtime|isValid_compiled))$'
+            schema-pojo)
+              selector='^org\.sjf4j\.testbench\.schema\.CreekSchemaBenchmark\.pojo_isValid_(compiled|runtime)$'
+              params=(-tu ns)
               ;;
             *) exit 1 ;;
           esac
-          for revision in before after; do
+          for pass in before-1 after before-2; do
+            revision=before
+            if [[ "$pass" == after ]]; then revision=after; fi
             jar=$(find "$revision" -name '*-jmh.jar' -print -quit)
             test -n "$jar"
-            java -jar "$jar" "$selector" "${params[@]}" -t 1 -f 3 -wi 5 -i 5 -w 1s -r 1s -prof gc -foe true -rf json -rff "results/$revision.json" | tee "results/$revision.log"
+            java -jar "$jar" "$selector" "${params[@]}" -t 1 -f 3 -wi 5 -i 5 -w 1s -r 1s -prof gc -foe true -rf json -rff "results/$pass.json" | tee "results/$pass.log"
           done
-      - name: Compare Best 2 ratios
+      - name: Compare Best 2 ratios and individual forks
         shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY' > results/comparison.md
           import json
-          from statistics import mean
           from pathlib import Path
+          from statistics import mean
 
-          def key(row):
-              return row['benchmark'].split('.')[-2] + '.' + row['benchmark'].split('.')[-1], tuple(sorted(row.get('params', {}).items()))
+          passes = ('before-1', 'after', 'before-2')
+          def load(name):
+              rows = json.loads(Path(f'results/{name}.json').read_text())
+              result = {}
+              for row in rows:
+                  key = (row['benchmark'].split('.')[-1], tuple(sorted(row.get('params', {}).items())))
+                  metric = row['primaryMetric']
+                  assert row['mode'] == 'avgt'
+                  data = metric['rawData']
+                  assert len(data) == 3 and all(len(f) == 5 for f in data), key
+                  forks = [mean(f) for f in data]
+                  result[key] = (mean(sorted(forks)[:2]), forks, metric['scoreUnit'],
+                                 row['secondaryMetrics']['gc.alloc.rate.norm']['score'])
+              assert len(result) == len(rows) and result
+              return result
 
-          def score(row):
-              forks = row['primaryMetric']['rawData']
-              assert len(forks) == 3 and all(len(f) == 5 for f in forks), row['benchmark']
-              return mean(sorted(mean(f) for f in forks)[:2])
-
-          before = {key(row): score(row) for row in json.loads(Path('results/before.json').read_text())}
-          after = {key(row): score(row) for row in json.loads(Path('results/after.json').read_text())}
-          assert before and before.keys() == after.keys(), 'Incomplete or mismatched benchmark cases'
-          print('Best 2 mean, same runner, baseline / candidate (>1 is faster).')
+          a, b, a2 = (load(name) for name in passes)
+          assert a.keys() == b.keys() == a2.keys()
+          print('Same-runner A/B/A, Best 2 fork means; both baseline/candidate ratios >1 indicate improvement.')
           print()
-          print('| Case | Parameters | Before / After |')
-          print('|---|---|---:|')
-          for k in sorted(before):
-              label, params = k
-              print(f"| {label} | {', '.join(f'{a}={b}' for a,b in params)} | {before[k]/after[k]:.3f} |")
+          print('| Case | Parameters | A1 | B | A2 | A1/B | A2/B | A1/A2 | Unit |')
+          print('|---|---|---:|---:|---:|---:|---:|---:|---|')
+          for key in sorted(a):
+              label, params = key
+              x, y, z = (r[key][0] for r in (a, b, a2))
+              assert a[key][2] == b[key][2] == a2[key][2]
+              print(f"| {label} | {', '.join(f'{k}={v}' for k,v in params)} | {x:.6f} | {y:.6f} | {z:.6f} | {x/y:.3f} | {z/y:.3f} | {x/z:.3f} | {a[key][2]} |")
           print()
-          print('| Binding case | Parameters | Ratio | Before | After |')
-          print('|---|---|---|---:|---:|')
-          for k in sorted(before):
-              label, params = k
+          print('| Case | Parameters | Competitor / Compiled | A1 | B | A2 |')
+          print('|---|---|---|---:|---:|---:|')
+          for key in sorted(a):
+              label, params = key
               p = dict(params)
               mode = p.get('implementation')
-              if mode not in ('blackbird', 'native', 'runtime'):
+              if mode in ('native', 'blackbird'):
+                  p['implementation'] = 'compiled'
+                  other = (label, tuple(sorted(p.items())))
+                  desc = ', '.join(f'{k}={v}' for k,v in params if k != 'implementation')
+              elif label == 'pojo_isValid_runtime':
+                  mode = 'runtime'
+                  other = ('pojo_isValid_compiled', params)
+                  desc = 'POJO'
+              else:
                   continue
-              p['implementation'] = 'compiled'
-              other = (label, tuple(sorted(p.items())))
-              if other in before:
-                  print(f"| {label} | {', '.join(f'{a}={b}' for a,b in params if a != 'implementation')} | {mode}/compiled | {before[k]/before[other]:.3f} | {after[k]/after[other]:.3f} |")
+              ratios = [r[key][0]/r[other][0] for r in (a,b,a2)]
+              print(f"| {label} | {desc} | {mode}/compiled | " + ' | '.join(f'{v:.3f}' for v in ratios) + ' |')
+          print()
+          print('| Case | Parameters | Pass | Fork means | Allocation B/op |')
+          print('|---|---|---|---|---:|')
+          for key in sorted(a):
+              for name, r in zip(passes, (a,b,a2)):
+                  print(f"| {key[0]} | {', '.join(f'{k}={v}' for k,v in key[1])} | {name} | " + ', '.join(f'{v:.6f}' for v in r[key][1]) + f' | {r[key][3]:.3f} |')
           PY
-          cat results/comparison.md >> "$GITHUB_STEP_SUMMARY"
+          tee -a "$GITHUB_STEP_SUMMARY" < results/comparison.md
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: comparison-${{ matrix.group }}
+          name: retest-${{ matrix.group }}
           path: results/
           if-no-files-found: warn
           retention-days: 14
