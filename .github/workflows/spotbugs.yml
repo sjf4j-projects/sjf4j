@@ -30,8 +30,14 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [[ -f build/reports/spotbugs/summary.md ]]; then
-            cat build/reports/spotbugs/summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f build/reports/spotbugs/summary.txt ]]; then
+            {
+              echo '### SpotBugs summary'
+              echo
+              echo '~~~text'
+              cat build/reports/spotbugs/summary.txt
+              echo '~~~'
+            } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "SpotBugs aggregate summary was not produced; check the analysis logs." >> "$GITHUB_STEP_SUMMARY"
           fi

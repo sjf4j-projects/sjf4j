@@ -26,8 +26,10 @@ as well as bug instances. Reports are written to each module's
 `build/reports/spotbugs/` directory as XML and HTML. Each analyzer has a
 4 GB heap limit.
 
-`spotbugsAll` prints a per-task table and saves the aggregate Markdown report
-at `build/reports/spotbugs/summary.md` in the root project. It lists the
+`spotbugsAll` prints an aligned plain-text table and saves it at
+`build/reports/spotbugs/summary.txt` in the root project. Each completed task
+includes a local HTML report URI (on CI, locate the same report in the
+`spotbugs-reports` artifact). It lists the
 finding totals by SpotBugs priority (P1/P2/P3/other), analysis errors, and
 missing classes. Source sets with no classes are marked `NO-SOURCE`; missing
 or invalid XML reports and scans that did not complete are marked incomplete
