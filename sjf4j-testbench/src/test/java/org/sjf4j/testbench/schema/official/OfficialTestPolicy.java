@@ -21,7 +21,8 @@ final class OfficialTestPolicy {
         return assertion;
     }
 
-    static boolean supportedOptional(String file, boolean assertion) {
-        return FORMAT_VOCABULARY.equals(file) || (!file.contains("/") && assertion);
+    /** SJF4J gates all root cases, including supported format assertions, and the vocabulary fixture. */
+    static boolean isRequired(String file) {
+        return !file.startsWith("optional/") || FORMAT_VOCABULARY.equals(file);
     }
 }

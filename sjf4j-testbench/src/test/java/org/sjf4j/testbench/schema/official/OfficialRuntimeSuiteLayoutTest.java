@@ -104,10 +104,8 @@ final class OfficialRuntimeSuiteLayoutTest {
 
         assertEquals(6, result.sourceGroups);
         assertEquals(1, result.incompatibleGroups);
-        assertEquals(2, result.required.selectedGroups);
-        assertEquals(new OfficialRuntimeTest.Counts(2, 2, 0, 0), result.required.totals());
-        assertEquals(1, result.supportedOptional.selectedGroups);
-        assertEquals(new OfficialRuntimeTest.Counts(1, 1, 0, 0), result.supportedOptional.totals());
+        assertEquals(3, result.required.selectedGroups);
+        assertEquals(new OfficialRuntimeTest.Counts(3, 3, 0, 0), result.required.totals());
         assertEquals(2, result.optional.selectedGroups);
         assertEquals(new OfficialRuntimeTest.Counts(4, 2, 1, 1), result.optional.totals());
         assertEquals(1, result.optional.file("optional/content.json").failed);
@@ -121,7 +119,7 @@ final class OfficialRuntimeSuiteLayoutTest {
 
     @Test
     @ResourceLock(Resources.SYSTEM_OUT)
-    void requiredFailureStillGatesAfterReportingBothCategories() throws Exception {
+    void requiredFailuresAndErrorsAreReportedTogether() throws Exception {
         Files.writeString(suiteDir.resolve("mixed.json"), """
                 {"tests": [
                     {"tags": ["format-assertion"], "schema": true},
@@ -136,14 +134,13 @@ final class OfficialRuntimeSuiteLayoutTest {
                 IllegalStateException failure = assertThrows(IllegalStateException.class,
                         () -> OfficialRuntimeTest.runTestDir(SchemaDialect.DRAFT_2020_12,
                                 suiteDir, false, null, null, null));
-                assertTrue(failure.getMessage().contains("1 failed and 0 errors"));
+                assertTrue(failure.getMessage().contains("1 failed and 1 errors"));
             } finally {
                 System.setOut(original);
             }
         }
         String log = output.toString(StandardCharsets.UTF_8);
         assertTrue(log.contains("[REQUIRED] mixed.json"));
-        assertTrue(log.contains("[SUPPORTED_OPTIONAL] mixed.json"));
         assertTrue(log.contains("group#1"));
         assertTrue(log.contains("group#0"));
     }
@@ -161,7 +158,7 @@ final class OfficialRuntimeSuiteLayoutTest {
         IllegalStateException failure = assertThrows(IllegalStateException.class,
                 () -> OfficialRuntimeTest.runTestDir(SchemaDialect.DRAFT_2020_12,
                         suiteDir, false, null, null, null));
-        assertTrue(failure.getMessage().contains("SUPPORTED_OPTIONAL"));
+        assertTrue(failure.getMessage().contains("REQUIRED"));
         assertTrue(failure.getMessage().contains("1 failed and 0 errors"));
     }
 
@@ -236,21 +233,19 @@ final class OfficialRuntimeSuiteLayoutTest {
         OfficialRuntimeTest.TestSuiteReport d7 = OfficialRuntimeTest.runTestDir(
                 SchemaDialect.DRAFT_07, suiteDir, false, null, null, null);
         assertEquals(5, d7.sourceGroups);
-        assertEquals(1, d7.required.selectedGroups);
+        assertEquals(2, d7.required.selectedGroups);
         assertEquals(3, d7.incompatibleGroups);
-        assertEquals(1, d7.supportedOptional.selectedGroups);
-        assertEquals(new OfficialRuntimeTest.Counts(2, 2, 0, 0), d7.required.totals());
-        assertEquals(new OfficialRuntimeTest.Counts(1, 1, 0, 0), d7.supportedOptional.totals());
+        assertEquals(new OfficialRuntimeTest.Counts(3, 3, 0, 0), d7.required.totals());
 
         OfficialRuntimeTest.TestSuiteReport d19 = OfficialRuntimeTest.runTestDir(
                 SchemaDialect.DRAFT_2019_09, suiteDir, false, null, null, null);
-        assertEquals(2, d19.required.selectedGroups);
-        assertEquals(new OfficialRuntimeTest.Counts(4, 4, 0, 0), d19.required.totals());
+        assertEquals(3, d19.required.selectedGroups);
+        assertEquals(new OfficialRuntimeTest.Counts(5, 5, 0, 0), d19.required.totals());
 
         OfficialRuntimeTest.TestSuiteReport d20 = OfficialRuntimeTest.runTestDir(
                 SchemaDialect.DRAFT_2020_12, suiteDir, false, null, null, null);
-        assertEquals(3, d20.required.selectedGroups);
-        assertEquals(new OfficialRuntimeTest.Counts(5, 5, 0, 0), d20.required.totals());
+        assertEquals(4, d20.required.selectedGroups);
+        assertEquals(new OfficialRuntimeTest.Counts(6, 6, 0, 0), d20.required.totals());
 
         // Standalone group indices retain their positions in the upstream file.
         OfficialRuntimeTest.TestSuiteReport selected = OfficialRuntimeTest.runTestDir(

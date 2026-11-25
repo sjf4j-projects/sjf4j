@@ -172,7 +172,7 @@ final class OfficialCaseReport {
         }
 
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("suite", "Official Validation Suite (required and supported optional)");
+        summary.put("suite", "Official Validation Suite (SJF4J required cases)");
         summary.put("selection", selection);
         summary.put("revision", revision);
         summary.put("expectedFiles", expectedFiles);
@@ -209,7 +209,7 @@ final class OfficialCaseReport {
                 output.resolve("details.json").toFile(), details);
 
         System.out.printf(
-                "JSON Schema Compiled [REQUIRED + SUPPORTED_OPTIONAL] [%s]: %d/%d passed, %d failed, %d compile-blocked, "
+                "JSON Schema Compiled [REQUIRED] [%s]: %d/%d passed, %d failed, %d compile-blocked, "
                         + "%d execution errors; groups direct=%d fallback=%d blocked=%d; "
                         + "%d of %d assertions accounted for%n",
                 selection, passed, expectedTests, failed, compileErrors, executionErrors,
