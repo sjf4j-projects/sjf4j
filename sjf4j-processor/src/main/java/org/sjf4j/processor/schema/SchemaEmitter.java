@@ -548,10 +548,10 @@ final class SchemaEmitter {
                 emitLiteral(lines, (SchemaCheck.LiteralCheck) check, value, expression, onFailure);
                 return;
             case ALL: {
-                SchemaValue subject = value;
+                SchemaValue currentValue = value;
                 for (SchemaCheck child : ((SchemaCheck.AllCheck) check).checks) {
-                    emitValue(lines, plan, child, subject, expression, planName, strictFormat, depth, onFailure);
-                    if (child.rejectsNull()) subject = subject.nonNull();
+                    emitValue(lines, plan, child, currentValue, expression, planName, strictFormat, depth, onFailure);
+                    if (child.rejectsNull()) currentValue = currentValue.nonNull();
                 }
                 return;
             }
