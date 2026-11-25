@@ -57,7 +57,7 @@ subprojects {
                 effort.set(Effort.DEFAULT)
                 reportLevel.set(Confidence.LOW)
                 ignoreFailures.set(true)
-                maxHeapSize.set("2g")
+                maxHeapSize.set("4g")
             }
 
             val analysisLauncher = extensions.getByType<JavaToolchainService>().launcherFor {
