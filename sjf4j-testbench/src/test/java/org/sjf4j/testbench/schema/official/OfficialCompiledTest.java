@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * All non-optional official Draft-07, 2019-09, and 2020-12 instances,
+ * Required and supported optional official Draft-07, 2019-09, and 2020-12 instances,
  * bound to schemas at annotation-processing time rather than a runtime-only plan.
  *
  * <p>Compilation failures are reported per group and do not prevent other
@@ -73,6 +73,8 @@ public final class OfficialCompiledTest {
                     10, 11, 12, 14, 15, 16, 17, 19, 20, 22, 24, 25, 26, 27,
                     28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 41, 42);
             fallback(groups, "vocabulary.json", 2, 3);
+            // Custom metaschema vocabulary interpretation is currently runtime-only.
+            fallback(groups, OfficialTestPolicy.FORMAT_VOCABULARY, 0, 1);
             return Collections.unmodifiableSet(groups);
         }
         throw new IllegalArgumentException("Unsupported official draft: " + draft);
@@ -146,7 +148,8 @@ public final class OfficialCompiledTest {
         if (args.length > 1) {
             instance.mainFile = args[1];
             if (!instance.mainFile.endsWith(".json")
-                    || instance.mainFile.contains("/") || instance.mainFile.contains("\\")) {
+                    || (instance.mainFile.contains("/") && !OfficialTestPolicy.FORMAT_VOCABULARY.equals(instance.mainFile))
+                    || instance.mainFile.contains("\\")) {
                 throw new IllegalArgumentException("Expected an official file ending in .json: "
                         + instance.mainFile);
             }
@@ -196,18 +199,6 @@ public final class OfficialCompiledTest {
                 children.forEach(child -> executeMainNode(child, counts, label));
             }
         }
-    }
-
-    private static boolean requiredTags(JsonArray tags) {
-        if (tags == null) return true;
-        for (int i = 0; i < tags.size(); i++) {
-            Object tag = tags.get(i);
-            if ("format-assertion".equals(tag)) return false;
-            if (!"format-annotation".equals(tag)) {
-                throw new IllegalArgumentException("Unknown official validation tag: " + tag);
-            }
-        }
-        return true;
     }
 
     private static Path localBuildPath(String suffix) {
@@ -262,6 +253,11 @@ public final class OfficialCompiledTest {
                     .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                     .toList());
         }
+        Path vocabularyFile = officialDir.resolve(OfficialTestPolicy.FORMAT_VOCABULARY);
+        if (!Files.isRegularFile(vocabularyFile)) {
+            throw new IllegalStateException("Missing supported vocabulary fixture: " + vocabularyFile);
+        }
+        jsonFiles.add(vocabularyFile);
         // Independent accounting of the upstream compatible groups: never accept
         // a stale or truncated generated manifest when the official suite changes.
         org.sjf4j.schema.SchemaDialect dialect = "draft7".equals(draft)
@@ -273,13 +269,13 @@ public final class OfficialCompiledTest {
         Set<String> expectedFiles = new LinkedHashSet<>();
         int expectedAssertions = 0;
         for (Path file : jsonFiles) {
-            String fileName = file.getFileName().toString();
+            String fileName = officialDir.relativize(file).toString().replace('\\', '/');
             JsonArray groups = Sjf4j.global()
                     .fromJson(Files.readAllBytes(file), JsonObject.class).getJsonArray("tests");
             for (int i = 0; i < groups.size(); i++) {
                 JsonObject group = groups.getJsonObject(i);
-                if (!OfficialCompatibility.matches(group.getString("compatibility"), dialect)
-                        || !requiredTags(group.getJsonArray("tags"))) continue;
+                if (!OfficialCompatibility.matches(group.getString("compatibility"), dialect)) continue;
+                OfficialTestPolicy.formatAssertion(group.getJsonArray("tags"));
                 String key = fileName + "#" + i;
                 expectedKeys.add(key);
                 expectedFiles.add(fileName);
@@ -289,8 +285,8 @@ public final class OfficialCompiledTest {
         Set<String> indexedKeys = new LinkedHashSet<>();
         for (OfficialCaseRunner.Spec spec : allSpecs) indexedKeys.add(spec.key());
         assertEquals(expectedKeys, indexedKeys,
-                "Official compiled manifest must include exactly every compatible required group");
-        jsonFiles.removeIf(p -> !byFile.containsKey(p.getFileName().toString()));
+                "Official compiled manifest must include exactly every compatible required and supported optional group");
+        jsonFiles.removeIf(p -> !byFile.containsKey(officialDir.relativize(p).toString().replace('\\', '/')));
         if (specs.isEmpty()) {
             throw new IllegalArgumentException("No official cases matched: draft="
                     + draft + ", file=" + mainFile + ", group=" + mainGroup);
@@ -310,7 +306,7 @@ public final class OfficialCompiledTest {
         Map<String, Integer> selectedCounts = new LinkedHashMap<>();
         int assertions = 0;
         for (Path file : jsonFiles) {
-            String fileName = file.getFileName().toString();
+            String fileName = officialDir.relativize(file).toString().replace('\\', '/');
             JsonArray groups = Sjf4j.global()
                     .fromJson(Files.readAllBytes(file), JsonObject.class).getJsonArray("tests");
             List<OfficialCaseRunner.Spec> fileSpecs = byFile.get(fileName);
@@ -353,6 +349,7 @@ public final class OfficialCompiledTest {
                             fileName + " #" + i + ": generated schema differs from upstream");
                 }
 
+                boolean strictFormat = OfficialTestPolicy.formatAssertion(group.getJsonArray("tags"));
                 String groupDescription = group.getString("description", "");
                 JsonArray examples = group.getJsonArray("tests");
                 assertEquals(examples.size(), spec.tests, spec.key() + ": test count changed");
@@ -393,7 +390,7 @@ public final class OfficialCompiledTest {
                         }
                         final boolean actual;
                         try {
-                            actual = runner.validate(spec, data);
+                            actual = runner.validate(spec, data, strictFormat);
                         } catch (Throwable e) {
                             report.record(spec, groupDescription, testIndex, description, expected,
                                     null, "EXEC_ERROR", mode, directError, e.toString());
