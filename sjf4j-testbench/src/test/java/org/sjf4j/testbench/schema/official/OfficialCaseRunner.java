@@ -73,7 +73,7 @@ final class OfficialCaseRunner implements AutoCloseable {
 
     @FunctionalInterface
     private interface Invoker {
-        boolean validate(Object value) throws Exception;
+        boolean validate(Object value, boolean strictFormat) throws Exception;
     }
 
     private static final class Outcome {
@@ -192,12 +192,12 @@ final class OfficialCaseRunner implements AutoCloseable {
         return directFailures.get(spec.key());
     }
 
-    boolean validate(Spec spec, Object data) throws Exception {
+    boolean validate(Spec spec, Object data, boolean strictFormat) throws Exception {
         Outcome outcome = outcomes.get(spec.key());
         if (outcome == null || outcome.invoker == null) {
             throw new IllegalStateException("Case not compiled: " + spec.key());
         }
-        return outcome.invoker.validate(data);
+        return outcome.invoker.validate(data, strictFormat);
     }
 
     private void compileBatch(List<Spec> batch, boolean direct,
@@ -268,10 +268,10 @@ final class OfficialCaseRunner implements AutoCloseable {
                         + (spec.fallback && !direct ? "Fallback" : ""), true, loader);
                 @SuppressWarnings({"rawtypes", "unchecked"})
                 Object validator = CompiledInstances.create((Class) type);
-                Method method = type.getMethod("valid", Object.class);
-                destination.put(spec.key(), new Outcome(value -> {
+                Method method = type.getMethod("valid", Object.class, boolean.class);
+                destination.put(spec.key(), new Outcome((value, strictFormat) -> {
                     try {
-                        return (Boolean) method.invoke(validator, value);
+                        return (Boolean) method.invoke(validator, value, strictFormat);
                     } catch (InvocationTargetException e) {
                         Throwable cause = e.getCause();
                         if (cause instanceof Error) throw (Error) cause;

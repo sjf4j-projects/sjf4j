@@ -332,6 +332,9 @@ val generateOfficialCompiledCases by tasks.registering {
             .filter { it.isFile && it.extension == "json" }
             .sortedBy { it.name }
         require(files.isNotEmpty()) { "No official Validation files at $input" }
+        val selectedFiles = files + input.resolve("optional/format-assertion.json").also {
+            require(it.isFile) { "Missing supported format-assertion vocabulary fixture: $it" }
+        }
 
         for (draft in officialCompiledDrafts) {
             val dialectVersion = when (draft) {
@@ -355,12 +358,13 @@ val generateOfficialCompiledCases by tasks.registering {
             var fileCount = 0
             var groupCount = 0
             var testCount = 0
-            for (file in files) {
+            for (file in selectedFiles) {
+                val relativeFile = file.relativeTo(input).invariantSeparatorsPath
                 val suite = JsonSlurper().parse(file) as? Map<*, *>
                     ?: throw GradleException("Invalid official Validation file: $file")
                 val groups = suite["tests"] as? List<*>
                     ?: throw GradleException("Missing official tests array: $file")
-                val stem = file.nameWithoutExtension
+                val stem = relativeFile.removeSuffix(".json")
                 val classStem = stem.split(Regex("[^a-zA-Z0-9]+"))
                     .filter { it.isNotEmpty() }
                     .joinToString("") { it.replaceFirstChar { c -> c.uppercaseChar() } }
@@ -376,7 +380,6 @@ val generateOfficialCompiledCases by tasks.registering {
                         require(tags.all { it == "format-assertion" || it == "format-annotation" }) {
                             "Unknown official tags: $file #$groupIndex"
                         }
-                        if (tags.contains("format-assertion")) continue
                     }
                     require(item.containsKey("schema")) { "Missing schema: $file #$groupIndex" }
                     val tests = item["tests"] as? List<*>
@@ -436,12 +439,12 @@ val generateOfficialCompiledCases by tasks.registering {
                             "@CompiledValidator(fallback = $allowFallback)",
                             "public interface $variant {",
                             "    @ValidJsonSchema(ref = \"classpath:/official/$draft/$schemaPath\"$externalAttribute)",
-                            "    boolean valid(Object value);",
+                            "    boolean valid(Object value, boolean strictFormat);",
                             "}"
                         ).joinToString("\n", postfix = "\n")
                         javaDir.resolve("$variant.java").writeText(source, Charsets.UTF_8)
                     }
-                    manifest.append(file.name).append('\t').append(groupIndex)
+                    manifest.append(relativeFile).append('\t').append(groupIndex)
                         .append('\t').append(className).append('\t').append(tests.size).append('\n')
                     selectedInFile++
                     groupCount++

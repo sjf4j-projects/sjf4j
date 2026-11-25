@@ -59,7 +59,8 @@ public final class OfficialRuntimeTest {
         int matched = 0;
         for (SchemaDialect dialect : dialects) {
             TestSuiteReport report = runTestDir(dialect, dir, false, file, group, test);
-            matched += report.required.totals().total() + report.optional.totals().total();
+            matched += report.required.totals().total() + report.supportedOptional.totals().total()
+                    + report.optional.totals().total();
         }
         if (matched == 0) {
             throw new IllegalArgumentException("No compatible official validation tests matched the selection");
@@ -157,21 +158,26 @@ public final class OfficialRuntimeTest {
             }
         }
         printSuiteReport(suite);
-        Counts required = suite.required.totals();
+        requirePassed(suite, "REQUIRED", suite.required.totals());
+        requirePassed(suite, "SUPPORTED_OPTIONAL", suite.supportedOptional.totals());
+        return suite;
+    }
+
+    private static void requirePassed(TestSuiteReport suite, String name, Counts required) {
         if (required.error() > 0 || required.failed() > 0
                 || required.total() != required.passed() + required.failed() + required.error()) {
-            throw new IllegalStateException("JSON Schema REQUIRED validation failed for " + suite.dialect
+            throw new IllegalStateException("JSON Schema " + name + " validation failed for " + suite.dialect
                     + " in " + suite.directory + ": " + required.failed() + " failed and "
                     + required.error() + " errors, " + required.total() + " selected");
         }
-        return suite;
     }
 
     private static void runTestFile(Path file, boolean strict, TestSuiteReport suite,
                                     Integer groupFilter, Integer testFilter, boolean optionalDirectory) {
         String fileName = suite.directory.relativize(file).toString().replace('\\', '/');
         // An unreadable root fixture may contain required cases; fail closed.
-        CategoryReport defaultCategory = optionalDirectory ? suite.optional : suite.required;
+        CategoryReport defaultCategory = OfficialTestPolicy.FORMAT_VOCABULARY.equals(fileName)
+                ? suite.supportedOptional : optionalDirectory ? suite.optional : suite.required;
         JsonArray groups;
         try {
             JsonObject source = Sjf4j.global().fromJson(Files.readAllBytes(file), JsonObject.class);
@@ -192,9 +198,10 @@ public final class OfficialRuntimeTest {
                     suite.incompatibleGroups++;
                     continue;
                 }
-                boolean assertion = hasFormatAssertion(group.getJsonArray("tags"));
-                if (assertion) category = suite.optional;
-                boolean strictFormat = strict || assertion || fileName.equals("optional/format-assertion.json");
+                boolean assertion = OfficialTestPolicy.formatAssertion(group.getJsonArray("tags"));
+                if (OfficialTestPolicy.supportedOptional(fileName, assertion)) category = suite.supportedOptional;
+                // Vocabulary tests must assert without the override, exercising the schema's own dialect.
+                boolean strictFormat = strict || assertion;
                 JsonArray tests = group.getJsonArray("tests");
                 if (tests == null || tests.size() == 0) {
                     throw new IllegalArgumentException("Missing tests in " + fileName + " group#" + i);
@@ -258,24 +265,12 @@ public final class OfficialRuntimeTest {
         }
     }
 
-    private static boolean hasFormatAssertion(JsonArray tags) {
-        if (tags == null) return false;
-        boolean assertion = false;
-        for (int i = 0; i < tags.size(); i++) {
-            Object tag = tags.get(i);
-            if ("format-assertion".equals(tag)) assertion = true;
-            else if (!"format-annotation".equals(tag)) {
-                throw new IllegalArgumentException("Unknown official validation tag: " + tag);
-            }
-        }
-        return assertion;
-    }
-
     static final class TestSuiteReport {
         final SchemaDialect dialect;
         final Path directory;
         int sourceGroups, incompatibleGroups;
         final CategoryReport required = new CategoryReport();
+        final CategoryReport supportedOptional = new CategoryReport();
         final CategoryReport optional = new CategoryReport();
 
         TestSuiteReport(SchemaDialect dialect, Path directory) {
@@ -327,24 +322,26 @@ public final class OfficialRuntimeTest {
     }
 
     private static void printSuiteReport(TestSuiteReport suite) {
-        System.out.println("==========================================================");
+        System.out.println("======================================================================");
         System.out.println(" JSON Schema Runtime [" + suite.dialect + "]");
-        System.out.println("==========================================================");
+        System.out.println("======================================================================");
         System.out.println("Directory: " + suite.directory);
         System.out.println("Groups   : " + suite.sourceGroups + " source, "
                 + suite.incompatibleGroups + " incompatible");
-        System.out.printf("%-10s %8s %8s %8s %8s %8s%n",
+        System.out.printf("%-19s %8s %8s %8s %8s %8s%n",
                 "Suite", "Groups", "Total", "Passed", "Failed", "Errors");
         printCategory("REQUIRED", suite.required);
+        printCategory("SUPPORTED_OPTIONAL", suite.supportedOptional);
         printCategory("OPTIONAL", suite.optional);
-        System.out.println("==========================================================");
+        System.out.println("======================================================================");
         printFailures("REQUIRED", suite.required);
+        printFailures("SUPPORTED_OPTIONAL", suite.supportedOptional);
         printFailures("OPTIONAL", suite.optional);
     }
 
     private static void printCategory(String name, CategoryReport category) {
         Counts counts = category.totals();
-        System.out.printf("%-10s %8d %8d %8d %8d %8d%n", name, category.selectedGroups,
+        System.out.printf("%-19s %8d %8d %8d %8d %8d%n", name, category.selectedGroups,
                 counts.total(), counts.passed(), counts.failed(), counts.error());
     }
 

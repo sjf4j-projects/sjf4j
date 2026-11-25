@@ -106,8 +106,10 @@ final class OfficialRuntimeSuiteLayoutTest {
         assertEquals(1, result.incompatibleGroups);
         assertEquals(2, result.required.selectedGroups);
         assertEquals(new OfficialRuntimeTest.Counts(2, 2, 0, 0), result.required.totals());
-        assertEquals(3, result.optional.selectedGroups);
-        assertEquals(new OfficialRuntimeTest.Counts(5, 3, 1, 1), result.optional.totals());
+        assertEquals(1, result.supportedOptional.selectedGroups);
+        assertEquals(new OfficialRuntimeTest.Counts(1, 1, 0, 0), result.supportedOptional.totals());
+        assertEquals(2, result.optional.selectedGroups);
+        assertEquals(new OfficialRuntimeTest.Counts(4, 2, 1, 1), result.optional.totals());
         assertEquals(1, result.optional.file("optional/content.json").failed);
 
         // Optional files can be selected by their relative path for debugging.
@@ -141,9 +143,42 @@ final class OfficialRuntimeSuiteLayoutTest {
         }
         String log = output.toString(StandardCharsets.UTF_8);
         assertTrue(log.contains("[REQUIRED] mixed.json"));
-        assertTrue(log.contains("[OPTIONAL] mixed.json"));
+        assertTrue(log.contains("[SUPPORTED_OPTIONAL] mixed.json"));
         assertTrue(log.contains("group#1"));
         assertTrue(log.contains("group#0"));
+    }
+
+    @Test
+    void supportedFormatAssertionFailureGatesEvenIfRequiredPasses() throws Exception {
+        Files.writeString(suiteDir.resolve("format.json"), """
+                {"tests": [
+                    {"tags": ["format-annotation"], "schema": {"format": "ipv4"},
+                     "tests": [{"data": "bad-ip", "valid": true}]},
+                    {"tags": ["format-assertion"], "schema": {"format": "ipv4"},
+                     "tests": [{"data": "bad-ip", "valid": true}]}
+                ]}
+                """);
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> OfficialRuntimeTest.runTestDir(SchemaDialect.DRAFT_2020_12,
+                        suiteDir, false, null, null, null));
+        assertTrue(failure.getMessage().contains("SUPPORTED_OPTIONAL"));
+        assertTrue(failure.getMessage().contains("1 failed and 0 errors"));
+    }
+
+    @Test
+    void optionalVocabularyFileIsGatingButOtherOptionalFilesStayDiagnostic() throws Exception {
+        Path optional = Files.createDirectories(suiteDir.resolve("optional"));
+        String fixture = """
+                {"tests": [{"schema": false, "tests": [{"data": 1, "valid": true}]}]}
+                """;
+        Files.writeString(optional.resolve("format-assertion.json"), fixture);
+        Files.writeString(optional.resolve("format-time.json"), fixture);
+        assertThrows(IllegalStateException.class,
+                () -> OfficialRuntimeTest.runTestDir(SchemaDialect.DRAFT_2020_12,
+                        suiteDir, false, "optional/format-assertion.json", null, null));
+        OfficialRuntimeTest.TestSuiteReport report = OfficialRuntimeTest.runTestDir(
+                SchemaDialect.DRAFT_2020_12, suiteDir, false, "optional/format-time.json", null, null);
+        assertEquals(new OfficialRuntimeTest.Counts(1, 0, 1, 0), report.optional.totals());
     }
 
     @Test
@@ -203,9 +238,9 @@ final class OfficialRuntimeSuiteLayoutTest {
         assertEquals(5, d7.sourceGroups);
         assertEquals(1, d7.required.selectedGroups);
         assertEquals(3, d7.incompatibleGroups);
-        assertEquals(1, d7.optional.selectedGroups);
+        assertEquals(1, d7.supportedOptional.selectedGroups);
         assertEquals(new OfficialRuntimeTest.Counts(2, 2, 0, 0), d7.required.totals());
-        assertEquals(new OfficialRuntimeTest.Counts(1, 1, 0, 0), d7.optional.totals());
+        assertEquals(new OfficialRuntimeTest.Counts(1, 1, 0, 0), d7.supportedOptional.totals());
 
         OfficialRuntimeTest.TestSuiteReport d19 = OfficialRuntimeTest.runTestDir(
                 SchemaDialect.DRAFT_2019_09, suiteDir, false, null, null, null);
