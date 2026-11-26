@@ -135,6 +135,55 @@ class CompiledExactNumbersAnnotationTest {
         }
     }
 
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void exactPolicyReachesCodecsAndPolymorphicFallback() throws Exception {
+        for (String backend : BACKENDS) {
+            String format = backend.equals("SNAKE") ? ",format=Format.YAML" : "";
+            Map<String, String> sources = new LinkedHashMap<>();
+            sources.put("fixture/Wrapped.java",
+                    "package fixture; public final class Wrapped { public final Number n;"
+                    + " public Wrapped(Number n) { this.n=n; } }");
+            sources.put("fixture/Codecs.java",
+                    "package fixture; import org.sjf4j.annotation.node.*; import org.sjf4j.value.ValueCodec;"
+                    + " @NodeRegistry public interface Codecs {"
+                    + " @NodeValue ValueCodec<Wrapped,Number> WRAPPED = new ValueCodec.SimpleValueCodec<>("
+                    + " Wrapped.class, Number.class, v -> v.n, Wrapped::new); }");
+            sources.put("fixture/Animal.java",
+                    "package fixture; import org.sjf4j.annotation.node.*;"
+                    + " @OneOf(discriminatorKey=\"kind\",cases={@OneOfCase(type=Dog.class,when=\"dog\")})"
+                    + " public interface Animal {}");
+            sources.put("fixture/Dog.java",
+                    "package fixture; public class Dog implements Animal { public String kind;"
+                    + " public Number n; public Object raw; }");
+            sources.put("fixture/Binder.java",
+                    "package fixture; import org.sjf4j.annotation.binding.*;"
+                    + "@CompiledBinder(backend=Backend." + backend + format
+                    + ",exactNumbers=true,registries={Codecs.class}) public interface Binder {"
+                    + " @Read Wrapped codec(String json); @Read(exactNumbers=false) Wrapped ordinaryCodec(String json);"
+                    + " @Read Animal animal(String json); @Read(exactNumbers=false) Animal ordinaryAnimal(String json); }");
+            NavigatorTestCompiler.Result compiled = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+            assertTrue(compiled.success, backend + ": " + compiled.diagnostics());
+            try (URLClassLoader loader = compiled.classLoader(getClass().getClassLoader())) {
+                org.sjf4j.value.ValueRegistry.registerAnnotated(loader.loadClass("fixture.Codecs"));
+                Class type = loader.loadClass("fixture.Binder");
+                Object binder = CompiledTestBinders.create(type, backend, NodeConfig.DEFAULT);
+                Object wrapped = type.getMethod("codec", String.class).invoke(binder, DECIMAL);
+                checkNumber(wrapped.getClass().getField("n").get(wrapped), true);
+                Object ordinary = type.getMethod("ordinaryCodec", String.class).invoke(binder, DECIMAL);
+                checkNumber(ordinary.getClass().getField("n").get(ordinary), false);
+                for (boolean exact : new boolean[]{true, false}) {
+                    // Values on both sides of the discriminator must use the same policy.
+                    String json = "{\"n\":" + DECIMAL + ",\"kind\":\"dog\",\"raw\":" + DECIMAL + "}";
+                    Object animal = type.getMethod(exact ? "animal" : "ordinaryAnimal", String.class)
+                            .invoke(binder, json);
+                    checkNumber(animal.getClass().getField("n").get(animal), exact);
+                    checkNumber(animal.getClass().getField("raw").get(animal), exact);
+                }
+            }
+        }
+    }
+
     private static void checkModel(Object model, boolean exact) throws Exception {
         Class<?> type = model.getClass();
         checkNumber(type.getField("number").get(model), exact);

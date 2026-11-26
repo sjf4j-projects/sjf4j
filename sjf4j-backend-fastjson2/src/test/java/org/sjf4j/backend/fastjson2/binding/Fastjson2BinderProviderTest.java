@@ -61,6 +61,23 @@ class Fastjson2BinderProviderTest {
     }
 
     @Test
+    void compiledPolicySelectionPreservesNativeSettingsAndSourceBinder() {
+        JSONReader.Context context = JSONFactory.createReadContext(JSONReader.Feature.AllowUnQuotedFieldNames);
+        long features = context.getFeatures();
+        Fastjson2Binder original = new Fastjson2Binder(context, JSONFactory.createWriteContext());
+        Fastjson2Binder exact = original.forCompiledRead(true);
+        Fastjson2Binder ordinary = exact.forCompiledRead(false);
+        org.junit.jupiter.api.Assertions.assertSame(original, original.forCompiledRead(false));
+        org.junit.jupiter.api.Assertions.assertSame(exact, exact.forCompiledRead(true));
+        assertEquals(7, ((Value) exact.readNode("{value:7}", Value.class)).value);
+        assertEquals(7, ((Value) ordinary.readNode("{value:7}", Value.class)).value);
+        assertInstanceOf(Double.class, original.readNode("1.25e+3", Number.class));
+        assertInstanceOf(Double.class, ordinary.readNode("1.25e+3", Number.class));
+        assertInstanceOf(java.math.BigDecimal.class, exact.readNode("1.25e+3", Number.class));
+        assertEquals(features, context.getFeatures());
+    }
+
+    @Test
     void isDiscoveredAsTheDefaultJsonBinderProvider() {
         BinderProvider provider = BinderFactory.provider(Format.JSON);
 

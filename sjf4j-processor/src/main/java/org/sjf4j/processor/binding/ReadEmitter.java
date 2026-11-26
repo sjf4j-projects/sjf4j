@@ -877,15 +877,15 @@ final class ReadEmitter {
         }
     }
 
+    private String readConfig(BindingValue value) {
+        return value.readExactNumbers() ? "org.sjf4j.NodeConfig.EXACT_NUMBERS" : "org.sjf4j.NodeConfig.DEFAULT";
+    }
+
     /**
      * Raw JSON containers have parameterized Map<String, Object>/List<Object>
      * return types. Avoid redundant casts when those types are already
      * assignable, but keep casts for concrete targets such as LinkedHashMap.
      */
-    private String readConfig(BindingValue value) {
-        return value.readExactNumbers() ? "org.sjf4j.NodeConfig.EXACT_NUMBERS" : "org.sjf4j.NodeConfig.DEFAULT";
-    }
-
     private String rawReadExpression(BindingValue value, String parser, boolean map) {
         String expression = parser + (map ? ".readRawObject(" + readConfig(value) + ")" : ".readRawArray(" + readConfig(value) + ")");
         TypeElement container = context.elements.getTypeElement(
