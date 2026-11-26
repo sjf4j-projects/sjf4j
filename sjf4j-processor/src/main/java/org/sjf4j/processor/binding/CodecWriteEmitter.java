@@ -11,12 +11,27 @@ final class CodecWriteEmitter {
     static void emit(JavaWriter out, BindingValue value, String expression,
                      String generator, String nativeWriter, Backend backend, BindingNames names,
                      String runtimeConfig) {
+        emit(out, value, expression, generator, nativeWriter, backend, names, runtimeConfig, false);
+    }
+
+    static boolean needsNativeWriter(BindingValue value, Backend backend, boolean knownNonNull) {
+        if (backend != Backend.JACKSON2 && backend != Backend.JACKSON3
+                && backend != Backend.FASTJSON2) return false;
+        return !knownNonNull || (value.codecRawType() != null
+                && nativeWrite(value.codecRawType().toString(), backend, true) != null);
+    }
+
+    static void emit(JavaWriter out, BindingValue value, String expression,
+                     String generator, String nativeWriter, Backend backend, BindingNames names,
+                     String runtimeConfig, boolean knownNonNull) {
         out.beginBlock("");
         out.line(value.type() + " codecValue = " + expression + ";");
-        out.beginBlock("if (codecValue == null)");
-        out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
-        out.endBlock(" else {");
-        out.indent();
+        if (!knownNonNull) {
+            out.beginBlock("if (codecValue == null)");
+            out.line((nativeWriter == null ? generator : nativeWriter) + ".writeNull();");
+            out.endBlock(" else {");
+            out.indent();
+        }
 
         String info = names.field(value, "valueInfo", BindingNames.lowerType(value.type()) + "ValueInfo");
         out.beginBlock("if (" + info + ".streamGenerator != null)");
@@ -53,7 +68,7 @@ final class CodecWriteEmitter {
             out.endBlock();
         }
         out.endBlock();
-        out.endBlock();
+        if (!knownNonNull) out.endBlock();
         out.endBlock();
     }
 

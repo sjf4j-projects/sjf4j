@@ -51,3 +51,5 @@ jobs:
             build/reports/spotbugs/
             **/build/reports/spotbugs/
           if-no-files-found: error
+
+# Verify native write generation changes with the full independent scan.

@@ -243,6 +243,16 @@ final class Fastjson2WriteEmitter {
                 return;
             }
             switch (value.kind()) {
+                case VALUE_CODEC:
+                    CodecWriteEmitter.emit(out, value, expression, "generator", "nativeGenerator",
+                            Backend.FASTJSON2, writes.naming(), writes.runtimeConfig(), true);
+                    return;
+                case RUNTIME:
+                    writeRuntimeValue(out, expression);
+                    return;
+                case NUMBER:
+                    out.line("generator.writeNumber(" + expression + ");");
+                    return;
                 case STRING:
                     out.line("nativeGenerator.writeString(" + expression + ");");
                     return;
@@ -298,38 +308,11 @@ final class Fastjson2WriteEmitter {
         out.beginBlock("private void " + fastjsonHelperName(value, mode)
                 + "(org.sjf4j.backend.fastjson2.binding.Fastjson2Generator generator, "
                 + value.type() + " value) throws java.io.IOException");
-        out.line("com.alibaba.fastjson2.JSONWriter nativeGenerator = generator.nativeGenerator();");
-
-        if (value.kind() == BindingValue.Kind.JSON_OBJECT
-                || value.kind() == BindingValue.Kind.JSON_ARRAY) {
-            out.line("org.sjf4j.binding.StreamingIO.writeNode(generator, value, "
-                    + writes.runtimeConfig() + ");");
-        } else {
-            StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode), writes.naming());
-             switch (value.kind()) {
-                case POJO:
-                case JOJO:
-                    structure.emitPojo(out, value);
-                    break;
-                case ARRAY:
-                    structure.emitArray(out, value);
-                    break;
-                case LIST:
-                    structure.emitList(out, value);
-                    break;
-                case SET:
-                    structure.emitSet(out, value);
-                    break;
-                case MAP:
-                    structure.emitMap(out, value);
-                    break;
-                case ONE_OF:
-                    structure.emitOneOf(out, value);
-                    break;
-                default:
-                    throw new AssertionError(value.kind());
-            }
+        if (StructuralWriteEmitter.needsNativeGenerator(value, Backend.FASTJSON2)) {
+            out.line("com.alibaba.fastjson2.JSONWriter nativeGenerator = generator.nativeGenerator();");
         }
+        StructuralWriteEmitter structure = new StructuralWriteEmitter(new ModeOperations(mode), writes.naming());
+        structure.emitHelperBody(out, value);
         out.endBlock();
     }
 
