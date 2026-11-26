@@ -59,60 +59,46 @@ public final class Jackson2Binder extends Binder<Jackson2Parser, Jackson2Generat
         this.factory.disable(JsonGenerator.Feature.AUTO_CLOSE_TARGET);
     }
 
+    private Jackson2Binder(Jackson2Binder source, NodeConfig config) {
+        super(config);
+        this.factory = source.factory;
+    }
+
+    /** Returns a binder with the requested numeric policy, retaining native settings. */
+    public Jackson2Binder withExactNumbers(boolean exactNumbers) {
+        return config.exactNumbers == exactNumbers ? this
+                : new Jackson2Binder(this, numberConfig(exactNumbers));
+    }
+
     /**
      * Creates a streaming reader that wraps the supplied Jackson parser.
      * @param parser the Jackson 2 parser
      * @return a SJF4J streaming reader
      */
     public Jackson2Parser createParser(JsonParser parser) {
-        return createParser(parser, config.exactNumbers);
-    }
-
-    /** Wraps a native reader with an explicit generic numeric policy. */
-    public Jackson2Parser createParser(JsonParser parser, boolean exactNumbers) {
-        return new Jackson2Parser(Asserts.notNull(parser, "parser"), exactNumbers);
+        return new Jackson2Parser(Asserts.notNull(parser, "parser"), config.exactNumbers);
     }
 
     @Override
     public Jackson2Parser createParser(Reader input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public Jackson2Parser createParser(Reader input, boolean exactNumbers) throws IOException {
-        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")), exactNumbers);
+        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")), config.exactNumbers);
     }
 
     @Override
     public Jackson2Parser createParser(InputStream input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public Jackson2Parser createParser(InputStream input, boolean exactNumbers) throws IOException {
-        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")), exactNumbers);
+        return new Jackson2Parser(factory.createParser(Asserts.notNull(input, "input")), config.exactNumbers);
     }
 
     @Override
     public Jackson2Parser createParser(String input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public Jackson2Parser createParser(String input, boolean exactNumbers) throws IOException {
         Asserts.notNull(input, "input");
-        return new Jackson2Parser(factory.createParser(input), exactNumbers);
+        return new Jackson2Parser(factory.createParser(input), config.exactNumbers);
     }
 
     @Override
     public Jackson2Parser createParser(byte[] input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public Jackson2Parser createParser(byte[] input, boolean exactNumbers) throws IOException {
         Asserts.notNull(input, "input");
-        return new Jackson2Parser(factory.createParser(input), exactNumbers);
+        return new Jackson2Parser(factory.createParser(input), config.exactNumbers);
     }
 
 

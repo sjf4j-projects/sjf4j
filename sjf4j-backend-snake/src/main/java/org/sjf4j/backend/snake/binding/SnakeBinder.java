@@ -47,15 +47,16 @@ public final class SnakeBinder extends Binder<SnakeParser, SnakeGenerator> {
         this.dumperOptions = Asserts.notNull(dumperOptions, "dumperOptions");
     }
 
-    @Override
-    public SnakeParser createParser(Reader input) throws IOException {
-        return createParser(input, config.exactNumbers);
+    /** Returns a binder with the requested numeric policy, retaining native settings. */
+    public SnakeBinder withExactNumbers(boolean exactNumbers) {
+        return config.exactNumbers == exactNumbers ? this
+                : new SnakeBinder(loaderOptions, dumperOptions, numberConfig(exactNumbers));
     }
 
     @Override
-    public SnakeParser createParser(Reader input, boolean exactNumbers) throws IOException {
+    public SnakeParser createParser(Reader input) throws IOException {
         Asserts.notNull(input, "input");
-        return new SnakeParser(new ParserImpl(new StreamReader(input), loaderOptions), exactNumbers);
+        return new SnakeParser(new ParserImpl(new StreamReader(input), loaderOptions), config.exactNumbers);
     }
 
     @Override

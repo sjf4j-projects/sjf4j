@@ -58,51 +58,37 @@ public final class GsonBinder extends Binder<GsonParser, GsonGenerator> {
         this.gson = Asserts.notNull(gson, "gson");
     }
 
+    /** Returns a binder with the requested numeric policy, retaining native settings. */
+    public GsonBinder withExactNumbers(boolean exactNumbers) {
+        return config.exactNumbers == exactNumbers ? this
+                : new GsonBinder(gson, numberConfig(exactNumbers));
+    }
+
     /**
      * Creates a streaming reader that wraps the supplied Gson reader.
      * @param reader the Gson reader
      * @return a SJF4J streaming reader
      */
     public GsonParser createParser(JsonReader reader) {
-        return createParser(reader, config.exactNumbers);
-    }
-
-    /** Wraps a native reader with an explicit generic numeric policy. */
-    public GsonParser createParser(JsonReader reader, boolean exactNumbers) {
-        return new GsonParser(Asserts.notNull(reader, "reader"), exactNumbers);
+        return new GsonParser(Asserts.notNull(reader, "reader"), config.exactNumbers);
     }
 
     @Override
     public GsonParser createParser(Reader input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public GsonParser createParser(Reader input, boolean exactNumbers) throws IOException {
         Asserts.notNull(input, "input");
-        return new GsonParser(gson.newJsonReader(input), exactNumbers);
+        return new GsonParser(gson.newJsonReader(input), config.exactNumbers);
     }
 
     @Override
     public GsonParser createParser(InputStream input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public GsonParser createParser(InputStream input, boolean exactNumbers) throws IOException {
         Asserts.notNull(input, "input");
-        return createParser(new InputStreamReader(input, StandardCharsets.UTF_8), exactNumbers);
+        return createParser(new InputStreamReader(input, StandardCharsets.UTF_8));
     }
 
     @Override
     public GsonParser createParser(byte[] input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public GsonParser createParser(byte[] input, boolean exactNumbers) throws IOException {
         Asserts.notNull(input, "input");
-        return createParser(new ByteArrayInputStream(input), exactNumbers);
+        return createParser(new ByteArrayInputStream(input));
     }
 
     /**

@@ -57,31 +57,27 @@ public final class JsonpBinder extends Binder<JsonpParser, JsonpGenerator> {
         this.provider = Asserts.notNull(provider, "provider");
     }
 
+    /** Returns a binder with the requested numeric policy, retaining native settings. */
+    public JsonpBinder withExactNumbers(boolean exactNumbers) {
+        return config.exactNumbers == exactNumbers ? this
+                : new JsonpBinder(provider, numberConfig(exactNumbers));
+    }
+
     /**
      * Creates a streaming reader that wraps the supplied JSON-P parser.
      * @param parser the JSON-P parser
      * @return a SJF4J streaming reader
      */
     public JsonpParser createParser(JsonParser parser) {
-        return createParser(parser, config.exactNumbers);
-    }
-
-    /** Wraps a native reader with an explicit generic numeric policy. */
-    public JsonpParser createParser(JsonParser parser, boolean exactNumbers) {
-        return new JsonpParser(Asserts.notNull(parser, "parser"), exactNumbers);
+        return new JsonpParser(Asserts.notNull(parser, "parser"), config.exactNumbers);
     }
 
     @Override
     public JsonpParser createParser(Reader input) throws IOException {
-        return createParser(input, config.exactNumbers);
-    }
-
-    @Override
-    public JsonpParser createParser(Reader input, boolean exactNumbers) throws IOException {
         Reader protectedInput = new FilterReader(Asserts.notNull(input, "input")) {
             @Override public void close() { /* Caller owns input. */ }
         };
-        return createParser(provider.createParser(protectedInput), exactNumbers);
+        return createParser(provider.createParser(protectedInput));
     }
 
     /**
