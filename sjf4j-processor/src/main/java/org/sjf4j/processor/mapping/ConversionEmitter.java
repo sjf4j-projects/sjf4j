@@ -8,7 +8,8 @@ import org.sjf4j.processor.code.GeneratedNames;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.discovery.CompiledMetadata;
-import org.sjf4j.processor.property.PropertyAccess;
+import org.sjf4j.processor.access.NodeReadEmitter;
+import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.ExecutableElement;
@@ -1176,59 +1177,12 @@ public final class ConversionEmitter
     }
 
     private String accessReadExpression(String owner, String name, NodeAccess access) {
-        String key = JavaWriter.stringLiteral(name);
-
-        switch (access.kind()) {
-            case PROPERTY: {
-                PropertyAccess read = access.property().read();
-                return read.isMethod() ? owner + "." + read.memberName() + "()"
-                        : owner + "." + read.memberName();
-            }
-
-            case MAP:
-                return cast(access.readType(), owner + ".get(" + key + ")");
-
-            case JSON_OBJECT:
-                return cast(access.readType(), owner + ".getNode(" + key + ")");
-
-            case DYNAMIC:
-                return cast(access.readType(),
-                        "org.sjf4j.node.NodeWalker.getInObject(" + owner + ", " + key + ")");
-
-            default:
-                throw new IllegalStateException("unsupported structural read: " + access.kind());
-        }
+        String expression = NodeReadEmitter.rawName(access, owner, JavaWriter.stringLiteral(name));
+        return access.kind() == NodeAccess.Kind.PROPERTY ? expression : cast(access.readType(), expression);
     }
 
     private void emitAccessWrite(JavaWriter out, String owner, String name, NodeAccess access, String value) {
-        String key = JavaWriter.stringLiteral(name);
-
-        switch (access.kind()) {
-            case PROPERTY: {
-                PropertyAccess write = access.property().write();
-
-                if (write.isMethod()) {
-                    out.line(owner + "." + write.memberName() + "(" + value + ");");
-
-                } else {
-                    out.line(owner + "." + write.memberName() + " = " + value + ";");
-                }
-
-                return;
-            }
-
-            case MAP:
-            case JSON_OBJECT:
-                out.line(owner + ".put(" + key + ", " + value + ");");
-                return;
-
-            case DYNAMIC:
-                out.line("org.sjf4j.node.NodeWalker.putInObject(" + owner + ", " + key + ", " + value + ");");
-                return;
-
-            default:
-                throw new IllegalStateException("unsupported structural write: " + access.kind());
-        }
+        out.line(NodeWriteEmitter.name(access, owner, JavaWriter.stringLiteral(name), value) + ";");
     }
 
     /*

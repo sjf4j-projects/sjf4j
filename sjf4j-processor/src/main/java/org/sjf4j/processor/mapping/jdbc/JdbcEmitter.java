@@ -8,7 +8,8 @@ import org.sjf4j.processor.discovery.ValueCodecMetadata;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
 import org.sjf4j.processor.mapping.CreatorResolver;
-import org.sjf4j.processor.property.PropertyAccess;
+import org.sjf4j.processor.access.NodeReadEmitter;
+import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.ExecutableElement;
@@ -1585,183 +1586,43 @@ public final class JdbcEmitter {
                 value);
     }
 
-    private String readExpression(
-            String owner,
-            JdbcCompiler.TargetStep step) {
-
-        NodeAccess access =
-                step.access();
-
-        PathSegment segment =
-                step.segment();
-
+    private String readExpression(String owner, JdbcCompiler.TargetStep step) {
+        NodeAccess access = step.access();
+        PathSegment segment = step.segment();
         switch (access.kind()) {
-            case PROPERTY: {
-                PropertyAccess read =
-                        access.property()
-                                .read();
-
-                if (read == null) {
-                    throw new IllegalStateException(
-                            "JDBC target path property is not readable");
-                }
-
-                return read.isMethod()
-                        ? owner +
-                        "." +
-                        read.memberName() +
-                        "()"
-                        : owner +
-                        "." +
-                        read.memberName();
-            }
-
+            case PROPERTY:
+                return NodeReadEmitter.rawName(access, owner, null);
             case MAP:
-                return cast(
-                        access.readType(),
-                        owner +
-                                ".get(" +
-                                nameKey(segment) +
-                                ")");
-
             case JSON_OBJECT:
-                return cast(
-                        access.readType(),
-                        owner +
-                                ".getNode(" +
-                                nameKey(segment) +
-                                ")");
-
+                return cast(access.readType(), NodeReadEmitter.rawName(access, owner, nameKey(segment)));
             case LIST:
-                return cast(
-                        access.readType(),
-                        owner +
-                                ".get(" +
-                                index(segment) +
-                                ")");
-
-            case ARRAY:
-                return owner +
-                        "[" +
-                        index(segment) +
-                        "]";
-
             case JSON_ARRAY:
-                return cast(
-                        access.readType(),
-                        owner +
-                                ".getNode(" +
-                                index(segment) +
-                                ")");
-
+                return cast(access.readType(), NodeReadEmitter.rawIndex(access, owner, Integer.toString(index(segment))));
+            case ARRAY:
+                return NodeReadEmitter.rawIndex(access, owner, Integer.toString(index(segment)));
             default:
-                throw new IllegalStateException(
-                        "Unsupported JDBC target path read: " +
-                                access.kind());
+                throw new IllegalStateException("Unsupported JDBC target path read: " + access.kind());
         }
     }
 
-    private void writeValue(
-            JavaWriter out,
-            String owner,
-            JdbcCompiler.TargetStep step,
-            String value) {
-
-        NodeAccess access =
-                step.access();
-
-        PathSegment segment =
-                step.segment();
-
+    private void writeValue(JavaWriter out, String owner, JdbcCompiler.TargetStep step, String value) {
+        NodeAccess access = step.access();
+        PathSegment segment = step.segment();
         switch (access.kind()) {
-            case PROPERTY: {
-                PropertyAccess write =
-                        access.property()
-                                .write();
-
-                if (write == null) {
-                    throw new IllegalStateException(
-                            "JDBC target property is not writable");
-                }
-
-                if (write.isMethod()) {
-
-                    out.line(
-                            owner +
-                                    "." +
-                                    write.memberName() +
-                                    "(" +
-                                    value +
-                                    ");");
-
-                } else {
-
-                    out.line(
-                            owner +
-                                    "." +
-                                    write.memberName() +
-                                    " = " +
-                                    value +
-                                    ";");
-                }
-
+            case PROPERTY:
+                out.line(NodeWriteEmitter.name(access, owner, null, value) + ";");
                 return;
-            }
-
             case MAP:
-                out.line(
-                        owner +
-                                ".put(" +
-                                nameKey(segment) +
-                                ", " +
-                                value +
-                                ");");
-                return;
-
             case JSON_OBJECT:
-                out.line(
-                        owner +
-                                ".put(" +
-                                nameKey(segment) +
-                                ", " +
-                                value +
-                                ");");
+                out.line(NodeWriteEmitter.name(access, owner, nameKey(segment), value) + ";");
                 return;
-
             case LIST:
-                out.line(
-                        owner +
-                                ".set(" +
-                                index(segment) +
-                                ", " +
-                                value +
-                                ");");
-                return;
-
             case ARRAY:
-                out.line(
-                        owner +
-                                "[" +
-                                index(segment) +
-                                "] = " +
-                                value +
-                                ";");
-                return;
-
             case JSON_ARRAY:
-                out.line(
-                        owner +
-                                ".set(" +
-                                index(segment) +
-                                ", " +
-                                value +
-                                ");");
+                out.line(NodeWriteEmitter.index(access, owner, Integer.toString(index(segment)), value) + ";");
                 return;
-
             default:
-                throw new IllegalStateException(
-                        "Unsupported JDBC target path write: " +
-                                access.kind());
+                throw new IllegalStateException("Unsupported JDBC target path write: " + access.kind());
         }
     }
 

@@ -21,6 +21,13 @@ public final class NodeReadEmitter {
 
     /** @param key already escaped Java string expression, or a String parameter */
     public String name(NodeAccess access, String owner, String key) {
+        String expression = rawName(access, owner, key);
+        return access.kind() == NodeAccess.Kind.JSON_OBJECT || access.kind() == NodeAccess.Kind.DYNAMIC
+                ? cast(access.readType(), expression) : expression;
+    }
+
+    /** Named read without a cast; callers may apply their own type policy. */
+    public static String rawName(NodeAccess access, String owner, String key) {
         switch (access.kind()) {
             case PROPERTY: {
                 PropertyAccess read = access.property().read();
@@ -29,10 +36,9 @@ public final class NodeReadEmitter {
             case MAP:
                 return owner + ".get(" + key + ")";
             case JSON_OBJECT:
-                return cast(access.readType(), owner + ".getNode(" + key + ")");
+                return owner + ".getNode(" + key + ")";
             case DYNAMIC:
-                return cast(access.readType(),
-                        "org.sjf4j.node.NodeWalker.getInObject(" + owner + ", " + key + ")");
+                return "org.sjf4j.node.NodeWalker.getInObject(" + owner + ", " + key + ")";
             default:
                 throw new IllegalArgumentException("Not a named node access: " + access.kind());
         }
@@ -40,16 +46,22 @@ public final class NodeReadEmitter {
 
     /** @param index a normalized index expression; caller owns bounds checks */
     public String index(NodeAccess access, String owner, String index) {
+        String expression = rawIndex(access, owner, index);
+        return access.kind() == NodeAccess.Kind.JSON_ARRAY || access.kind() == NodeAccess.Kind.DYNAMIC
+                ? cast(access.readType(), expression) : expression;
+    }
+
+    /** Indexed read without a cast; callers may apply their own type policy. */
+    public static String rawIndex(NodeAccess access, String owner, String index) {
         switch (access.kind()) {
             case ARRAY:
                 return owner + "[" + index + "]";
             case LIST:
                 return owner + ".get(" + index + ")";
             case JSON_ARRAY:
-                return cast(access.readType(), owner + ".getNode(" + index + ")");
+                return owner + ".getNode(" + index + ")";
             case DYNAMIC:
-                return cast(access.readType(),
-                        "org.sjf4j.node.NodeWalker.getInArray(" + owner + ", " + index + ")");
+                return "org.sjf4j.node.NodeWalker.getInArray(" + owner + ", " + index + ")";
             default:
                 throw new IllegalArgumentException("Not an indexed node access: " + access.kind());
         }
