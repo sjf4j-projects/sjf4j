@@ -1,6 +1,7 @@
 package org.sjf4j.binding.simple;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 
@@ -627,7 +628,7 @@ try {
             arrayJson.append(']');
 
             try (SimpleJsonParser p = new SimpleJsonParser(new StringReader(objectJson.toString()))) {
-                Map<String, Object> result = p.readRawObject();
+                Map<String, Object> result = p.readRawObject(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, result.getClass());
                 assertEquals(size, result.size());
                 for (int i = 0; i < size; i++) {
@@ -637,7 +638,7 @@ try {
                 p.end();
             }
             try (SimpleJsonParser p = new SimpleJsonParser(new StringReader(arrayJson.toString()))) {
-                List<Object> result = p.readRawArray();
+                List<Object> result = p.readRawArray(NodeConfig.DEFAULT);
                 assertEquals(ArrayList.class, result.getClass());
                 assertEquals(size, result.size());
                 for (int i = 0; i < size; i++) {
@@ -648,7 +649,7 @@ try {
         }
 
         try (SimpleJsonParser p = new SimpleJsonParser(new StringReader("{\"a\":1,\"b\":2,\"c\":3,\"a\":4,\"d\":[null,{\"ok\":true}]}"))) {
-            Map<String, Object> result = p.readRawObject();
+            Map<String, Object> result = p.readRawObject(NodeConfig.DEFAULT);
             assertEquals(Arrays.asList("a", "b", "c", "d"),
                     new ArrayList<>(result.keySet()));
             assertEquals(4, ((Number) result.get("a")).intValue());

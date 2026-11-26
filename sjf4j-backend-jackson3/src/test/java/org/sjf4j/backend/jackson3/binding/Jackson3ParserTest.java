@@ -1,6 +1,7 @@
 package org.sjf4j.backend.jackson3.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingParser;
@@ -289,7 +290,7 @@ class Jackson3ParserTest {
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
             try {
-                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -407,7 +408,7 @@ class Jackson3ParserTest {
             arrayJson.append(']');
 
             try (Jackson3Parser p = parser(objectJson.toString())) {
-                Map<String, Object> value = p.readRawObject();
+                Map<String, Object> value = p.readRawObject(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(expectedObject, value);
                 assertEquals(new ArrayList<>(expectedObject.keySet()),
@@ -415,7 +416,7 @@ class Jackson3ParserTest {
                 p.end();
             }
             try (Jackson3Parser p = parser(arrayJson.toString())) {
-                List<Object> value = p.readRawArray();
+                List<Object> value = p.readRawArray(NodeConfig.DEFAULT);
                 assertEquals(ArrayList.class, value.getClass());
                 assertEquals(expectedArray, value);
                 p.end();
@@ -423,7 +424,7 @@ class Jackson3ParserTest {
         }
 
         try (Jackson3Parser p = parser("{\"a\":1,\"b\":2,\"c\":3,\"d\":4,\"e\":5,\"a\":6,\"f\":[null,{\"ok\":true}]}")) {
-            Map<String, Object> value = p.readRawObject();
+            Map<String, Object> value = p.readRawObject(NodeConfig.DEFAULT);
             assertEquals(Arrays.asList("a", "b", "c", "d", "e", "f"),
                     new ArrayList<>(value.keySet()));
             assertEquals(6, value.get("a"));
@@ -491,10 +492,10 @@ class Jackson3ParserTest {
                 parser.readArrayStart();
 
                 assertFalse(parser.nextIfArrayEnd());
-                assertNull(parser.readRaw());
+                assertNull(parser.readRaw(NodeConfig.DEFAULT));
 
                 assertFalse(parser.nextIfArrayEnd());
-                Map<?, ?> object = (Map<?, ?>) parser.readRaw();
+                Map<?, ?> object = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, object.getClass());
                 List<?> nested = (List<?>) object.get("a");
                 assertEquals(3, nested.size());
@@ -503,10 +504,10 @@ class Jackson3ParserTest {
                 assertNull(((Map<?, ?>) nested.get(2)).get("b"));
 
                 assertFalse(parser.nextIfArrayEnd());
-                assertEquals(Arrays.asList("x", 2), parser.readRaw());
+                assertEquals(Arrays.asList("x", 2), parser.readRaw(NodeConfig.DEFAULT));
 
                 assertFalse(parser.nextIfArrayEnd());
-                assertEquals(false, parser.readRaw());
+                assertEquals(false, parser.readRaw(NodeConfig.DEFAULT));
 
                 assertTrue(parser.nextIfArrayEnd());
                 parser.end();

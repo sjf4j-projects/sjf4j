@@ -1,6 +1,7 @@
 package org.sjf4j.backend.snake.binding;
 
 import org.junit.jupiter.api.Test;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingParser;
@@ -176,7 +177,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser("text: Ada\nnumber: 7\nenabled: true\nempty: null\nnested: {first: one}\nitems: [false, {second: 2}]\n");
             try {
-                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
                         new ArrayList<>(value.keySet()));
@@ -216,7 +217,7 @@ class SnakeParserTest {
         {
             SnakeParser parser = parser(nested);
             try {
-                Object value = parser.readRaw();
+                Object value = parser.readRaw(NodeConfig.DEFAULT);
                 for (int i = 0; i < 2_000; i++) {
                     if ((i & 1) == 0) {
                         assertEquals(ArrayList.class, value.getClass());
