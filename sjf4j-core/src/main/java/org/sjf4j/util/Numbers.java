@@ -11,9 +11,9 @@ import java.math.BigInteger;
 public final class Numbers {
 
     /**
-     * Known limitation: generic numeric literals over 100 characters are rejected.
-     * JSON itself imposes no such fixed limit, and backend-native readers may differ.
-     * Retain this historical limit for 1.5.0; review cross-backend consistency separately.
+     * Historical length limit for {@link #parseNumber(String)}.
+     * Exact parsing does not impose this limit; input size restrictions are
+     * the responsibility of the caller or backend.
      */
     private final static int MAX_NUMBER_LENGTH = 100;
     
@@ -262,12 +262,40 @@ public final class Numbers {
      * @throws NumberFormatException if the text is empty, too long, or invalid
      */
     public static Number parseNumber(String text) {
+        return _parseNumber(text, false);
+    }
+
+    /**
+     * Parses a numeric literal without rounding or loss of range.
+     *
+     * <p>Integral literals follow the same representation selection as
+     * {@link #parseNumber(String)}: {@link Integer}, {@link Long}, or
+     * {@link BigInteger}. Literals with a decimal point or exponent are always
+     * parsed directly as {@link BigDecimal}, even when the value is integral.
+     * No intermediate floating-point conversion is performed.</p>
+     *
+     * <p>Unlike {@link #parseNumber(String)}, this method does not impose
+     * the historical 100-character length limit. Callers and backends remain
+     * responsible for input size limits. Decimal exponents and scales must
+     * still be representable by {@link BigDecimal}.</p>
+     *
+     * @param text numeric literal text
+     * @return an {@code Integer}, {@code Long}, {@code BigInteger},
+     *         or {@code BigDecimal}, according to the literal form and range
+     * @throws NumberFormatException if the text is empty or invalid, or the
+     *         decimal exponent or scale is out of range
+     */
+    public static Number parseNumberExact(String text) {
+        return _parseNumber(text, true);
+    }
+
+    private static Number _parseNumber(String text, boolean exactNumbers) {
         if (text == null || text.isEmpty()) {
             throw new NumberFormatException("invalid number text: value is null or empty");
         }
 
         final int len = text.length();
-        if (len > MAX_NUMBER_LENGTH) {
+        if (!exactNumbers && len > MAX_NUMBER_LENGTH) {
             throw new NumberFormatException("invalid number text: too large (" + len + " chars): '" +
                     text + "'");
         }
@@ -320,9 +348,9 @@ public final class Numbers {
                 continue;
             }
 
-            // Floating-point number: delegate syntax validation to the JDK parser.
+            // Decimal or exponent literal: delegate syntax validation to the JDK parser.
             if (c == '.' || c == 'e' || c == 'E') {
-                return _parseFloatingNumber(text);
+                return exactNumbers ? new BigDecimal(text) : _parseFloatingNumber(text);
             }
 
             throw new NumberFormatException("invalid number text: '" + text + "'");

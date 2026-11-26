@@ -123,6 +123,76 @@ class NumbersTest {
         assertFalse(Numbers.isNumeric("1a"));
     }
 
+    @Test
+    void testParseNumberExactIntegralTypesAndBoundaries() {
+        String[] literals = {
+                "0", "-0", "1", "-1", "2147483647", "-2147483648",
+                "2147483648", "-2147483649", "9223372036854775807",
+                "-9223372036854775808", "9223372036854775808",
+                "-9223372036854775809", "99999999999999999999999999999"
+        };
+        for (String literal : literals) {
+            Number expected = Numbers.parseNumber(literal);
+            Number actual = Numbers.parseNumberExact(literal);
+            assertEquals(expected.getClass(), actual.getClass(), literal);
+            assertEquals(expected, actual, literal);
+        }
+        assertEquals(Integer.MAX_VALUE, Numbers.parseNumberExact("2147483647"));
+        assertEquals(Integer.MIN_VALUE, Numbers.parseNumberExact("-2147483648"));
+        assertEquals(Long.MAX_VALUE, Numbers.parseNumberExact("9223372036854775807"));
+        assertEquals(Long.MIN_VALUE, Numbers.parseNumberExact("-9223372036854775808"));
+        assertEquals(new BigInteger("9223372036854775808"),
+                Numbers.parseNumberExact("9223372036854775808"));
+        assertEquals(new BigInteger("-9223372036854775809"),
+                Numbers.parseNumberExact("-9223372036854775809"));
+    }
+
+    @Test
+    void testParseNumberExactDecimalsAndExponents() {
+        for (String literal : new String[]{
+                "0.1", "-0.1", "1.0", "1.2500", "-0.00",
+                "0.123456789123456789", "9007199254740993.0",
+                "1e3", "1E+3", "-1.25e-2", "1e-400", "1e400",
+                "1e-9999", "1e9999"
+        }) {
+            Number actual = Numbers.parseNumberExact(literal);
+            assertEquals(BigDecimal.class, actual.getClass(), literal);
+            assertEquals(new BigDecimal(literal), actual, literal);
+        }
+        assertEquals(0.1d, Numbers.parseNumber("0.1"));
+        assertEquals(1000.0d, Numbers.parseNumber("1e3"));
+        assertEquals(0.0d, Numbers.parseNumber("1e-400"));
+        assertEquals(new BigDecimal("1e400"), Numbers.parseNumber("1e400"));
+    }
+
+    @Test
+    void testParseNumberExactHasNoHistoricalLengthLimit() {
+        String integer = "9".repeat(150);
+        String decimal = "0." + "1234567890".repeat(15);
+        assertEquals(new BigInteger(integer), Numbers.parseNumberExact(integer));
+        assertEquals(new BigInteger("-" + integer), Numbers.parseNumberExact("-" + integer));
+        assertEquals(new BigDecimal(decimal), Numbers.parseNumberExact(decimal));
+        assertEquals(new BigDecimal(decimal + "e-500"),
+                Numbers.parseNumberExact(decimal + "e-500"));
+
+        String atLimit = "9".repeat(100);
+        assertEquals(new BigInteger(atLimit), Numbers.parseNumber(atLimit));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseNumber(integer));
+        assertThrows(NumberFormatException.class, () -> Numbers.parseNumber(decimal));
+    }
+
+    @Test
+    void testParseNumberExactRejectsInvalidLiterals() {
+        for (String literal : new String[]{
+                null, "", " ", "-", "NaN", "Infinity", "-Infinity", "12x",
+                "1.2.3", "1e", "1e+", "1.0d", "1.0f", "1.0 ",
+                "1e2147483648", "1e-2147483648"
+        }) {
+            assertThrows(NumberFormatException.class, () -> Numbers.parseNumberExact(literal),
+                    String.valueOf(literal));
+        }
+    }
+
 //    @Test
 //    void testParseNumberTypeAndRangeAfterNormalization() {
 //        assertEquals(Integer.class, Numbers.parseNumber(" 2147483647 ").getClass());
