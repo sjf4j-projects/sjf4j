@@ -33,26 +33,30 @@ final class BindingPlan {
     private final ReadInput readInput;
     private final WriteOutput writeOutput;
     private final boolean includeNulls;
+    private final boolean exactNumbers;
 
     private BindingPlan(ResolvedMethod method, Direction direction, TypeMirror valueType,
-                        ReadInput readInput, WriteOutput writeOutput, boolean includeNulls) {
+                        ReadInput readInput, WriteOutput writeOutput, boolean includeNulls,
+                        boolean exactNumbers) {
         this.method = Asserts.notNull(method, "method");
         this.direction = Asserts.notNull(direction, "direction");
         this.valueType = Asserts.notNull(valueType, "valueType");
         this.readInput = readInput;
         this.writeOutput = writeOutput;
         this.includeNulls = includeNulls;
+        this.exactNumbers = exactNumbers;
     }
 
-    static BindingPlan readFrom(ResolvedMethod method, TypeMirror valueType, ReadInput input) {
+    static BindingPlan readFrom(ResolvedMethod method, TypeMirror valueType, ReadInput input,
+                                boolean exactNumbers) {
         return new BindingPlan(method, Direction.READ_FROM, valueType,
-                Asserts.notNull(input, "input"), null, true);
+                Asserts.notNull(input, "input"), null, true, exactNumbers);
     }
 
     static BindingPlan writeTo(ResolvedMethod method, TypeMirror valueType, WriteOutput output,
                                boolean includeNulls) {
         return new BindingPlan(method, Direction.WRITE_TO, valueType,
-                null, Asserts.notNull(output, "output"), includeNulls);
+                null, Asserts.notNull(output, "output"), includeNulls, false);
     }
 
     ResolvedMethod method() {
@@ -77,5 +81,9 @@ final class BindingPlan {
 
     boolean includeNulls() {
         return includeNulls;
+    }
+
+    boolean exactNumbers() {
+        return exactNumbers;
     }
 }

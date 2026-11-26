@@ -17,4 +17,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface Read {
+    /**
+     * Preserves generic decimal and exponent literals as BigDecimal. When omitted,
+     * inherits {@link CompiledBinder#exactNumbers()}; an explicit value overrides it.
+     * Explicit numeric target types retain their existing semantics.
+     */
+    boolean exactNumbers() default false;
 }

@@ -54,6 +54,9 @@ public @interface CompiledBinder {
      */
     boolean includeNulls() default true;
 
+    /** Default precision policy for generated read operations, including runtime fallback. */
+    boolean exactNumbers() default false;
+
     /** Additional precompiled {@link org.sjf4j.annotation.node.NodeRegistry} interfaces. */
     Class<?>[] registries() default {};
 }

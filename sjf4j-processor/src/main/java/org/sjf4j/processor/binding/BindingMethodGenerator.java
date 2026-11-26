@@ -37,7 +37,7 @@ final class BindingMethodGenerator {
     }
 
     BindingPlan analyze(ResolvedMethod resolved, GeneratedClass generated,
-                        boolean binderIncludeNulls) {
+                        boolean binderIncludeNulls, boolean binderExactNumbers) {
         ExecutableElement method = resolved.declaration();
         boolean read = method.getAnnotation(Read.class) != null;
         boolean write = method.getAnnotation(Write.class) != null;
@@ -55,11 +55,12 @@ final class BindingMethodGenerator {
         }
 
         return read
-                ? analyzeRead(resolved, generated)
+                ? analyzeRead(resolved, generated, binderExactNumbers)
                 : analyzeWrite(resolved, generated, binderIncludeNulls);
     }
 
-    private BindingPlan analyzeRead(ResolvedMethod resolved, GeneratedClass generated) {
+    private BindingPlan analyzeRead(ResolvedMethod resolved, GeneratedClass generated,
+                                    boolean binderExactNumbers) {
         ExecutableElement method = resolved.declaration();
         ExecutableType type = resolved.type();
         List<? extends TypeMirror> parameters = type.getParameterTypes();
@@ -83,7 +84,8 @@ final class BindingMethodGenerator {
             return null;
         }
 
-        return BindingPlan.readFrom(resolved, returnType, input);
+        return BindingPlan.readFrom(resolved, returnType, input,
+                resolvedBoolean(method, Read.class.getName(), "exactNumbers", binderExactNumbers));
     }
 
     private BindingPlan analyzeWrite(ResolvedMethod resolved, GeneratedClass generated,
@@ -92,7 +94,7 @@ final class BindingMethodGenerator {
         ExecutableType type = resolved.type();
         List<? extends TypeMirror> parameters = type.getParameterTypes();
         TypeMirror returnType = type.getReturnType();
-        boolean includeNulls = resolvedIncludeNulls(method, binderIncludeNulls);
+        boolean includeNulls = resolvedBoolean(method, Write.class.getName(), "includeNulls", binderIncludeNulls);
 
         if (parameters.size() == 1) {
             BindingPlan.WriteOutput output = returnOutput(returnType);
@@ -127,14 +129,13 @@ final class BindingMethodGenerator {
     }
 
     /**
-     * getAnnotation(Write.class) includes default values and cannot tell a
-     * missing attribute from an explicit includeNulls=true override.
-     * AnnotationMirror.getElementValues() contains only explicitly written
-     * attributes, including on methods inherited from precompiled interfaces.
+     * Only explicitly supplied annotation attributes override the binder default,
+     * including on inherited methods from precompiled interfaces.
      */
-    private static boolean resolvedIncludeNulls(ExecutableElement method, boolean binderDefault) {
-        AnnotationMirror mirror = AnnotationValues.find(method, Write.class.getName());
-        AnnotationValue value = AnnotationValues.explicit(mirror, "includeNulls");
+    private static boolean resolvedBoolean(ExecutableElement method, String annotation,
+                                           String attribute, boolean binderDefault) {
+        AnnotationMirror mirror = AnnotationValues.find(method, annotation);
+        AnnotationValue value = AnnotationValues.explicit(mirror, attribute);
         return value == null ? binderDefault : Boolean.TRUE.equals(value.getValue());
     }
 
