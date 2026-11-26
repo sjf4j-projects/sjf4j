@@ -5,9 +5,7 @@ import org.sjf4j.processor.creator.CreatorPlan;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /** Recursively compiled binding semantics for one Java value type. */
 final class BindingValue {
@@ -51,8 +49,6 @@ final class BindingValue {
     private final Kind kind;
     private final boolean primitive;
 
-    private String helperName;
-    private final Map<Integer, String> preparedNames = new HashMap<>();
     private String oneOfOwner;
     private String oneOfProperty;
     private int oneOfCreatorIndex = -1;
@@ -111,24 +107,6 @@ final class BindingValue {
 
     void creator(CreatorPlan creator) {
         this.creator = creator;
-    }
-
-    String helperName() {
-        return helperName;
-    }
-
-    void helperName(String helperName) {
-        this.helperName = helperName;
-    }
-
-    void preparedName(int index, String name) {
-        preparedNames.put(index, name);
-    }
-
-    String preparedName(int index) {
-        String name = preparedNames.get(index);
-        if (name == null) throw new IllegalStateException("Prepared name not allocated for " + type + "[" + index + "]");
-        return name;
     }
 
     void oneOfMember(String owner, String property) {

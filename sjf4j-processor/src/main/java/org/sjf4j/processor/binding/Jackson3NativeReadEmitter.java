@@ -60,7 +60,7 @@ final class Jackson3NativeReadEmitter {
     }
 
     String helperName(BindingValue value) {
-        return names.helper(value, "jackson3NativeRead", value.helperName() + "Native");
+        return names.helper(value, "jackson3NativeRead", names.primaryHelper(value) + "Native");
     }
 
     String matcherFieldName(BindingValue value) {

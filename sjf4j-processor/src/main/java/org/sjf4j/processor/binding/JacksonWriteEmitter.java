@@ -70,7 +70,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(value.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(writes.naming().primaryHelper(value) + "(" + generator + ", " + expression + ");");
             out.endBlock();
             return;
         }
@@ -86,7 +86,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
      * Instance helpers are needed by codec metadata and local runtime fallbacks.
      */
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private void " + value.helperName() + "("
+        out.beginBlock("private void " + writes.naming().primaryHelper(value) + "("
                 + backend.generatorType() + " generator, " + value.type()
                 + " value) throws java.io.IOException");
         if (StructuralWriteEmitter.needsNativeGenerator(value, backend.backend())) {
@@ -132,7 +132,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writePropertyName(JavaWriter out, BindingValue owner, int index) {
         out.line("g." + (jackson2() ? "writeFieldName" : "writeName") + "("
-                + WriteEmitter.compiledNameField(owner, index) + ".serializedName);");
+                + writes.compiledNameField(owner, index) + ".serializedName);");
     }
 
     @Override
@@ -141,7 +141,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeStringMember(JavaWriter out, BindingValue owner, int index,
                                   String expression) {
-        out.line(writes.stringMemberHelper() + "(g, " + WriteEmitter.compiledNameField(owner, index)
+        out.line(writes.stringMemberHelper() + "(g, " + writes.compiledNameField(owner, index)
                 + ".serializedName, " + expression + ");");
     }
 
@@ -164,7 +164,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
     @Override
     public void writeNonNullValue(JavaWriter out, BindingValue value, String expression) {
         if (value.helperRequired()) {
-            out.line(value.helperName() + "(generator, " + expression + ");");
+            out.line(writes.naming().primaryHelper(value) + "(generator, " + expression + ");");
             return;
         }
         switch (value.kind()) {
@@ -224,7 +224,7 @@ final class JacksonWriteEmitter implements StructuralWriteEmitter.Operations {
             out.line(generator + ".writeNull();");
             out.endBlock(" else {");
             out.indent();
-            out.line(child.helperName() + "(" + generator + ", " + expression + ");");
+            out.line(writes.naming().primaryHelper(child) + "(" + generator + ", " + expression + ");");
             out.endBlock();
             return;
         }

@@ -152,7 +152,7 @@ final class ReadEmitter {
     }
 
     void emitHelper(JavaWriter out, BindingValue value) {
-        out.beginBlock("private " + value.type() + " " + value.helperName()
+        out.beginBlock("private " + value.type() + " " + names.primaryHelper(value)
                 + "(" + backend.parserType() + " parser) throws java.io.IOException");
 
         switch (value.kind()) {
@@ -191,7 +191,7 @@ final class ReadEmitter {
     }
 
     void registerHelpers(GeneratedClass generated, BindingValue value) {
-        generated.addHelper(value.helperName(), out -> emitHelper(out, value));
+        generated.addHelper(names.primaryHelper(value), out -> emitHelper(out, value));
         if (supportsJackson3Native(value)) {
             generated.addHelper(jackson3Native.helperName(value),
                     out -> jackson3Native.emitHelper(out, value, this));
@@ -207,7 +207,7 @@ final class ReadEmitter {
     /** Compile CURRENT/key OneOf without depending on discriminator position. */
     void emitOneOfReadHelper(JavaWriter out, BindingValue value) {
         String info = names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO");
-        out.beginBlock("private " + value.type() + " " + value.helperName()
+        out.beginBlock("private " + value.type() + " " + names.primaryHelper(value)
                 + "(" + backend.parserType() + " parser) throws java.io.IOException");
         out.beginBlock("if (!parser.nextIfObjectStart())");
         out.beginBlock("if (parser.nextIfNull())");
@@ -763,7 +763,7 @@ final class ReadEmitter {
     }
 
     private String readExpression(BindingValue value, String parser) {
-        if (value.helperRequired()) return value.helperName() + "(" + parser + ")";
+        if (value.helperRequired()) return names.primaryHelper(value) + "(" + parser + ")";
 
         switch (value.kind()) {
             case STRING:
@@ -855,7 +855,7 @@ final class ReadEmitter {
                         + value.type() + ".class, " + readConfig() + ")";
 
             case ONE_OF:
-                if (value.oneOfKey() != null) return value.helperName() + "(" + parser + ")";
+                if (value.oneOfKey() != null) return names.primaryHelper(value) + "(" + parser + ")";
                 return (context.types.isObject(value.type()) ? "" : "(" + value.type() + ") ")
                         + "org.sjf4j.binding.OneOfIO.readOneOf(" + parser + ", "
                         + names.field(value, "oneOfInfo", BindingNames.fieldType(value.type()) + "_ONE_OF_INFO") + ", " + readConfig() + ")";
