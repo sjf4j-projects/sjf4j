@@ -22,6 +22,33 @@ final class OfficialRuntimeSuiteLayoutTest {
     Path suiteDir;
 
     @Test
+    void preservesExactSchemaAndInstanceNumbersInOptionalFixtures() throws Exception {
+        Path optional = Files.createDirectories(suiteDir.resolve("optional"));
+        Files.writeString(optional.resolve("bignum.json"), """
+                {"tests": [
+                    {"schema": {"maximum": 1.00000000000000001},
+                     "tests": [
+                        {"data": 1.00000000000000001, "valid": true},
+                        {"data": 1.00000000000000002, "valid": false}
+                     ]},
+                    {"schema": {"const": 9223372036854775808123456789},
+                     "tests": [
+                        {"data": 9223372036854775808123456789, "valid": true},
+                        {"data": 9223372036854775808123456790, "valid": false}
+                     ]},
+                    {"schema": {"multipleOf": 0.00000000000000000001},
+                     "tests": [
+                        {"data": 0.00000000000000000003, "valid": true},
+                        {"data": 0.000000000000000000031, "valid": false}
+                     ]}
+                ]}
+                """);
+        OfficialRuntimeTest.TestSuiteReport report = OfficialRuntimeTest.runTestDir(
+                SchemaDialect.DRAFT_2020_12, suiteDir, false, "optional/bignum.json", null, null);
+        assertEquals(new OfficialRuntimeTest.Counts(6, 6, 0, 0), report.optional.totals());
+    }
+
+    @Test
     @ResourceLock(Resources.SYSTEM_OUT)
     void unifiedSuiteIncludesTaggedAndDirectoryCasesAndReportsOnlyFailures() throws Exception {
         Files.writeString(suiteDir.resolve("format.json"), """

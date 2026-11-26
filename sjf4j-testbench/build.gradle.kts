@@ -1,10 +1,18 @@
 import org.graalvm.buildtools.gradle.tasks.BuildNativeImageTask
-import groovy.json.JsonOutput
-import groovy.json.JsonSlurper
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.gradle.api.tasks.testing.Test
 import java.io.BufferedInputStream
 import java.net.URI
 import java.util.zip.ZipInputStream
+
+// Test-fixture generation must not truncate large integers or round decimal literals.
+buildscript {
+    repositories { mavenCentral() }
+    dependencies {
+        classpath("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    }
+}
 
 plugins {
     id("java-library")
@@ -327,6 +335,8 @@ val generateOfficialCompiledCases by tasks.registering {
     doLast {
         val outputRoot = officialCompiledGeneratedDir.get().asFile
         delete(outputRoot)
+        val exactJson = ObjectMapper()
+            .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
         val input = officialSchemaSuiteDir.get().asFile.resolve("validation/tests")
         val files = requireNotNull(input.listFiles())
             .filter { it.isFile && it.extension == "json" }
@@ -360,7 +370,7 @@ val generateOfficialCompiledCases by tasks.registering {
             var testCount = 0
             for (file in selectedFiles) {
                 val relativeFile = file.relativeTo(input).invariantSeparatorsPath
-                val suite = JsonSlurper().parse(file) as? Map<*, *>
+                val suite = exactJson.readValue(file, Map::class.java)
                     ?: throw GradleException("Invalid official Validation file: $file")
                 val groups = suite["tests"] as? List<*>
                     ?: throw GradleException("Missing official tests array: $file")
@@ -401,7 +411,7 @@ val generateOfficialCompiledCases by tasks.registering {
                             }
                         }
                     } else originalSchema
-                    schemaFile.writeText(JsonOutput.toJson(compiledSchema), Charsets.UTF_8)
+                    schemaFile.writeText(exactJson.writeValueAsString(compiledSchema), Charsets.UTF_8)
 
                     var externalAttribute = ""
                     val external = item["externalSchemas"] as? Map<*, *>
@@ -425,7 +435,7 @@ val generateOfficialCompiledCases by tasks.registering {
                         val externalPath = "external/$stem/$index.json"
                         val externalFile = resourceDir.resolve(externalPath)
                         externalFile.parentFile.mkdirs()
-                        externalFile.writeText(JsonOutput.toJson(documents), Charsets.UTF_8)
+                        externalFile.writeText(exactJson.writeValueAsString(documents), Charsets.UTF_8)
                         externalAttribute = ", externalSchemasRef = \"classpath:/official/$draft/$externalPath\""
                     }
                     for (allowFallback in listOf(false, true)) {
