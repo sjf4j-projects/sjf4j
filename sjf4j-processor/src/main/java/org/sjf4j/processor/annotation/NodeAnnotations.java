@@ -5,12 +5,10 @@ import org.sjf4j.annotation.node.NodeProperty;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Resolves node annotation semantics from SJF4J and compatible annotations.
@@ -57,13 +55,7 @@ public final class NodeAnnotations {
 
     /** Jackson 2 and 3 share com.fasterxml.jackson.annotation; no Jackson dependency is needed here. */
     public boolean hasJacksonCreator(Element element) {
-        for (AnnotationMirror annotation : element.getAnnotationMirrors()) {
-            Element type = annotation.getAnnotationType().asElement();
-            if (!(type instanceof TypeElement)) continue;
-            String name = ((TypeElement) type).getQualifiedName().toString();
-            if (JACKSON2_CREATOR.equals(name)) return true;
-        }
-        return false;
+        return AnnotationValues.find(element, JACKSON2_CREATOR) != null;
     }
 
     /** Returns creator parameter aliases, following Runtime's annotation precedence. */
@@ -104,59 +96,21 @@ public final class NodeAnnotations {
     }
 
     private String[] stringArrayValue(Element element, String annotationName, String memberName) {
-        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
-            Element annotationType = mirror.getAnnotationType().asElement();
-            if (!(annotationType instanceof TypeElement)
-                    || !((TypeElement) annotationType).getQualifiedName().contentEquals(annotationName)) {
-                continue;
-            }
-            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
-                    : mirror.getElementValues().entrySet()) {
-                if (!entry.getKey().getSimpleName().contentEquals(memberName)) continue;
-                Object value = entry.getValue().getValue();
-                if (!(value instanceof List)) return new String[0];
-                List<?> values = (List<?>) value;
-                String[] aliases = new String[values.size()];
-                for (int i = 0; i < values.size(); i++) {
-                    Object alias = ((AnnotationValue) values.get(i)).getValue();
-                    aliases[i] = (String) alias;
-                }
-                return aliases;
-            }
-            return new String[0];
+        AnnotationValue member = AnnotationValues.explicit(AnnotationValues.find(element, annotationName), memberName);
+        Object value = member == null ? null : member.getValue();
+        if (!(value instanceof List)) return new String[0];
+        List<?> values = (List<?>) value;
+        String[] aliases = new String[values.size()];
+        for (int i = 0; i < values.size(); i++) {
+            Object alias = ((AnnotationValue) values.get(i)).getValue();
+            aliases[i] = (String) alias;
         }
-        return new String[0];
+        return aliases;
     }
 
-    private String stringValue(
-            Element element,
-            String annotationName,
-            String memberName) {
-
-        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
-            Element annotation = mirror.getAnnotationType().asElement();
-
-            if (!(annotation instanceof TypeElement)) continue;
-
-            if (!((TypeElement) annotation)
-                    .getQualifiedName()
-                    .contentEquals(annotationName)) {
-                continue;
-            }
-
-            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
-                    : mirror.getElementValues().entrySet()) {
-                if (!entry.getKey().getSimpleName().contentEquals(memberName)) continue;
-
-                Object value = entry.getValue().getValue();
-                return value instanceof String
-                        ? (String) value
-                        : null;
-            }
-
-            return null;
-        }
-
-        return null;
+    private String stringValue(Element element, String annotationName, String memberName) {
+        AnnotationValue member = AnnotationValues.explicit(AnnotationValues.find(element, annotationName), memberName);
+        Object value = member == null ? null : member.getValue();
+        return value instanceof String ? (String) value : null;
     }
 }

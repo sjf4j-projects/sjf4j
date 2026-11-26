@@ -1,5 +1,6 @@
 package org.sjf4j.processor.binding;
 
+import org.sjf4j.processor.annotation.AnnotationValues;
 import org.sjf4j.annotation.binding.Read;
 import org.sjf4j.annotation.binding.Write;
 import org.sjf4j.processor.CompilationContext;
@@ -14,7 +15,6 @@ import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
-import java.util.Map;
 
 /** Analyzes one abstract {@code @CompiledBinder} method before source emission. */
 final class BindingMethodGenerator {
@@ -133,16 +133,9 @@ final class BindingMethodGenerator {
      * attributes, including on methods inherited from precompiled interfaces.
      */
     private static boolean resolvedIncludeNulls(ExecutableElement method, boolean binderDefault) {
-        for (AnnotationMirror mirror : method.getAnnotationMirrors()) {
-            if (!mirror.getAnnotationType().toString().equals(Write.class.getName())) continue;
-            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry
-                    : mirror.getElementValues().entrySet()) {
-                if (entry.getKey().getSimpleName().contentEquals("includeNulls")) {
-                    return Boolean.TRUE.equals(entry.getValue().getValue());
-                }
-            }
-        }
-        return binderDefault;
+        AnnotationMirror mirror = AnnotationValues.find(method, Write.class.getName());
+        AnnotationValue value = AnnotationValues.explicit(mirror, "includeNulls");
+        return value == null ? binderDefault : Boolean.TRUE.equals(value.getValue());
     }
 
     private BindingPlan.ReadInput readInput(TypeMirror type) {
