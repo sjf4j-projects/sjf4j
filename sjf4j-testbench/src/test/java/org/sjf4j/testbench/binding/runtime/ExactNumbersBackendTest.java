@@ -101,7 +101,7 @@ class ExactNumbersBackendTest {
             assertEquals(7, value.count);
             try (StreamingParser parser = binder.createParser(DECIMAL)) {
                 parser.start();
-                assertDecimal(DECIMAL, parser.readNumber());
+                assertDecimal(DECIMAL, parser.readNumberExact());
                 parser.end();
             }
         }
@@ -113,6 +113,27 @@ class ExactNumbersBackendTest {
                 parser.end();
             }
             assertInstanceOf(Double.class, binder.readNode("1.25", Number.class));
+        }
+    }
+
+    @Test
+    void precisionCanBeSelectedForEachValueWithoutParserState() throws Exception {
+        String json = "[1.25," + DECIMAL + "," + DOCUMENT + ",[1.25],1.25,null]";
+        for (Binder<?, ?> binder : backends(NodeConfig.DEFAULT)) {
+            // Fastjson2 uses a native reader-wide feature instead of a per-value API.
+            if (binder instanceof Fastjson2Binder) continue;
+            try (StreamingParser parser = binder.createParser(json)) {
+                parser.start();
+                parser.readArrayStart();
+                assertEquals(1.25d, parser.readNumber());
+                assertDecimal(DECIMAL, parser.readNumberExact());
+                checkRaw(parser.readRawObject(NodeConfig.EXACT_NUMBERS));
+                assertEquals(List.of(1.25d), parser.readRawArray(NodeConfig.DEFAULT));
+                assertEquals(1.25d, parser.readNumber());
+                assertNull(parser.readNumberExact());
+                assertTrue(parser.nextIfArrayEnd());
+                parser.end();
+            }
         }
     }
 

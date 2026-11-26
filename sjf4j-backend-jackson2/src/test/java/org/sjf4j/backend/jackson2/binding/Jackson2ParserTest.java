@@ -32,14 +32,15 @@ class Jackson2ParserTest {
     void exactNumbersAfterTokenLookahead() throws Exception {
         String literal = "0.123456789123456789";
         java.math.BigDecimal expected = new java.math.BigDecimal(literal);
-        Jackson2Binder binder = new Jackson2Binder(org.sjf4j.NodeConfig.EXACT_NUMBERS);
+        Jackson2Binder binder = new Jackson2Binder();
         for (boolean utf8 : new boolean[]{false, true}) {
             for (boolean raw : new boolean[]{false, true}) {
                 try (Jackson2Parser parser = utf8
                         ? binder.createParser(literal.getBytes(java.nio.charset.StandardCharsets.UTF_8))
                         : binder.createParser(literal)) {
                     assertEquals(StreamingParser.Token.NUMBER, parser.peekToken());
-                    assertEquals(expected, raw ? parser.readRaw() : parser.readNumber());
+                    assertEquals(expected, raw ? parser.readRaw(org.sjf4j.NodeConfig.EXACT_NUMBERS)
+                            : parser.readNumberExact());
                     parser.end();
                 }
             }
