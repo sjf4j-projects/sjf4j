@@ -394,15 +394,11 @@ public final class Jackson3Parser extends StreamingParser {
         if (current == JsonToken.VALUE_NULL) {
             return null;
         }
-        return _readNumber(current);
+        return _readNumber();
     }
 
-    private Number _readNumber(JsonToken token) throws IOException {
-        if (exactNumbers && token == JsonToken.VALUE_NUMBER_FLOAT) {
-            // Preserve the textual value even after native double inspection.
-            return parser.getDecimalValue();
-        }
-        return parser.getNumberValue();
+    private Number _readNumber() throws IOException {
+        return exactNumbers ? parser.getNumberValueExact() : parser.getNumberValue();
     }
 
     /* --------------------------------------------------------------
@@ -648,7 +644,7 @@ public final class Jackson3Parser extends StreamingParser {
                 return parser.getString();
             case VALUE_NUMBER_INT:
             case VALUE_NUMBER_FLOAT:
-                return _readNumber(current);
+                return _readNumber();
             case VALUE_TRUE:
                 return Boolean.TRUE;
             case VALUE_FALSE:
