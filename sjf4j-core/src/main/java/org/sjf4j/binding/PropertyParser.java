@@ -156,7 +156,7 @@ public interface PropertyParser {
             if ((fieldBoxed == Map.class || fieldBoxed == LinkedHashMap.class)
                     && valueType == Object.class) {
                 return (parser, owner, ownerType, ownerBoxed, config) -> {
-                    Object value = parser.readRawObject();
+                    Object value = parser.readRawObject(config);
                     Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
                 };
             }
@@ -169,7 +169,7 @@ public interface PropertyParser {
 
         if (fieldType == JsonObject.class) {
             return (parser, owner, ownerType, ownerBoxed, config) -> {
-                Object value = StreamingIO.readJsonObject(parser);
+                Object value = StreamingIO.readJsonObject(parser, config);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -180,7 +180,7 @@ public interface PropertyParser {
             if ((fieldBoxed == List.class || fieldBoxed == ArrayList.class)
                     && elementType == Object.class) {
                 return (parser, owner, ownerType, ownerBoxed, config) -> {
-                    Object value = parser.readRawArray();
+                    Object value = parser.readRawArray(config);
                     Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
                 };
             }
@@ -193,7 +193,7 @@ public interface PropertyParser {
 
         if (fieldType == JsonArray.class) {
             return (parser, owner, ownerType, ownerBoxed, config) -> {
-                Object value = StreamingIO.readJsonArray(parser);
+                Object value = StreamingIO.readJsonArray(parser, config);
                 Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, value);
             };
         }
@@ -272,7 +272,8 @@ public interface PropertyParser {
         }
         if (fieldBoxed == Number.class) {
             return (parser, owner, ownerType, ownerBoxed, config) -> {
-                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner, parser.readNumber());
+                Invokers.invokeSetter(fieldName, setterHandle, setterLambda, owner,
+                        config.exactNumbers ? parser.readNumberExact() : parser.readNumber());
             };
         }
         if (fieldBoxed == BigInteger.class) {

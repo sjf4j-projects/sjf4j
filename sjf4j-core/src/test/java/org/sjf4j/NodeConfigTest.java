@@ -28,5 +28,13 @@ class NodeConfigTest {
     @Test
     void defaultConfigIncludesNulls() {
         assertTrue(NodeConfig.DEFAULT.includeNulls);
+        assertFalse(NodeConfig.DEFAULT.exactNumbers);
+        assertFalse(NodeConfig.OMIT_NULLS.exactNumbers);
+        assertTrue(NodeConfig.EXACT_NUMBERS.includeNulls);
+        assertTrue(NodeConfig.EXACT_NUMBERS.exactNumbers);
+        NodeConfig exact = new NodeConfig(Map.of(LocalDate.class, "ISO"), false, true);
+        assertFalse(exact.includeNulls);
+        assertTrue(exact.exactNumbers);
+        assertEquals("ISO", exact.valueFormat(LocalDate.class));
     }
 }

@@ -2,6 +2,7 @@ package org.sjf4j.backend.gson.binding;
 
 import com.google.gson.stream.JsonReader;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
 
@@ -154,7 +155,7 @@ class GsonParserTest {
             try {
 
                 assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
-                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "large", "decimal", "enabled", "empty", "nested", "items"),
@@ -180,7 +181,7 @@ class GsonParserTest {
         {
             GsonParser parser = parser("");
             try {
-                assertThrows(IOException.class, parser::readRaw);
+                assertThrows(IOException.class, () -> parser.readRaw(NodeConfig.DEFAULT));
 
             } finally {
                 parser.close();
@@ -194,7 +195,7 @@ class GsonParserTest {
             GsonParser parser = parser("[{\"id\":7},\"next\"]");
             try {
                 parser.readArrayStart();
-                assertEquals(7, ((Map<?, ?>) parser.readRaw()).get("id"));
+                assertEquals(7, ((Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT)).get("id"));
                 assertEquals(StreamingParser.Token.STRING, parser.peekToken());
                 assertEquals("next", parser.readString());
                 parser.readArrayEnd();
@@ -269,7 +270,7 @@ class GsonParserTest {
             arrayJson.append(']');
 
             try (GsonParser p = parser(objectJson.toString())) {
-                Map<String, Object> result = p.readRawObject();
+                Map<String, Object> result = p.readRawObject(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, result.getClass());
                 assertEquals(size, result.size());
                 for (int i = 0; i < size; i++) {
@@ -279,7 +280,7 @@ class GsonParserTest {
                 p.end();
             }
             try (GsonParser p = parser(arrayJson.toString())) {
-                List<Object> result = p.readRawArray();
+                List<Object> result = p.readRawArray(NodeConfig.DEFAULT);
                 assertEquals(ArrayList.class, result.getClass());
                 assertEquals(size, result.size());
                 for (int i = 0; i < size; i++) {
@@ -290,7 +291,7 @@ class GsonParserTest {
         }
 
         try (GsonParser p = parser("{\"a\":1,\"b\":2,\"c\":3,\"a\":4,\"d\":[null,{\"ok\":true}]}")) {
-            Map<String, Object> result = p.readRawObject();
+            Map<String, Object> result = p.readRawObject(NodeConfig.DEFAULT);
             assertEquals(Arrays.asList("a", "b", "c", "d"),
                     new ArrayList<>(result.keySet()));
             assertEquals(4, ((Number) result.get("a")).intValue());

@@ -83,7 +83,7 @@ public final class OneOfIO {
 
     private static Object _readByDtorPath(StreamingParser parser, OneOfInfo oneOfInfo,
                                           NodeConfig config) throws IOException {
-        return _convertRawOneOf(parser.readRaw(), oneOfInfo, config);
+        return _convertRawOneOf(parser.readRaw(config), oneOfInfo, config);
     }
 
 
@@ -100,7 +100,7 @@ public final class OneOfIO {
         int index;
         while ((index = parser.nextNameMatch(matcher, 0)) != NameMatcher.OBJECT_END) {
             if (index == 0) {
-                Object discriminatorValue = parser.readRaw();
+                Object discriminatorValue = parser.readRaw(config);
                 if (discriminatorValue == null) {
                     if (fallbackNull) {
                         _skipRemainingObject(parser);
@@ -123,7 +123,7 @@ public final class OneOfIO {
             }
 
             String name = parser.currentName();
-            Object value = parser.readRaw();
+            Object value = parser.readRaw(config);
             if (pendingNames == null) {
                 pendingNames = new String[INITIAL_PENDING_CAPACITY];
                 pendingValues = new Object[INITIAL_PENDING_CAPACITY];
@@ -226,7 +226,7 @@ public final class OneOfIO {
                 }
 
                 if (pi.isJojo && pi.readDynamic) {
-                    state.acceptDynamic(parser.currentName(), parser.readRaw());
+                    state.acceptDynamic(parser.currentName(), parser.readRaw(config));
                 } else {
                     parser.skipNode();
                 }
@@ -255,7 +255,7 @@ public final class OneOfIO {
                 if (pi.propertyLookup.containsKey(key)) {
                     parser.skipNode();
                 } else {
-                    state.acceptDynamic(key, parser.readRaw());
+                    state.acceptDynamic(key, parser.readRaw(config));
                 }
             } else {
                 parser.skipNode();

@@ -3,6 +3,7 @@ package org.sjf4j.backend.jsonp.binding;
 import jakarta.json.Json;
 import jakarta.json.stream.JsonParser;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.node.NodeProperty;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingParser;
@@ -151,7 +152,7 @@ class JsonpParserTest {
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
             try {
 
-                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "large", "decimal", "enabled", "empty", "nested", "items"),
@@ -321,7 +322,7 @@ class JsonpParserTest {
             arrayJson.append(']');
 
             try (JsonpParser p = parser(objectJson.toString())) {
-                Map<String, Object> result = p.readRawObject();
+                Map<String, Object> result = p.readRawObject(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, result.getClass());
                 assertEquals(size, result.size());
                 for (int i = 0; i < size; i++) {
@@ -331,7 +332,7 @@ class JsonpParserTest {
                 p.end();
             }
             try (JsonpParser p = parser(arrayJson.toString())) {
-                List<Object> result = p.readRawArray();
+                List<Object> result = p.readRawArray(NodeConfig.DEFAULT);
                 assertEquals(ArrayList.class, result.getClass());
                 assertEquals(size, result.size());
                 for (int i = 0; i < size; i++) {
@@ -342,7 +343,7 @@ class JsonpParserTest {
         }
 
         try (JsonpParser p = parser("{\"a\":1,\"b\":2,\"c\":3,\"a\":4,\"d\":[null,{\"ok\":true}]}")) {
-            Map<String, Object> result = p.readRawObject();
+            Map<String, Object> result = p.readRawObject(NodeConfig.DEFAULT);
             assertEquals(Arrays.asList("a", "b", "c", "d"),
                     new ArrayList<>(result.keySet()));
             assertEquals(4, ((Number) result.get("a")).intValue());

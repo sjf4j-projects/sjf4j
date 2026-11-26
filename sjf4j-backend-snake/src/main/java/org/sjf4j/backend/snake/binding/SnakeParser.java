@@ -1,5 +1,6 @@
 package org.sjf4j.backend.snake.binding;
 
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
@@ -231,6 +232,15 @@ public final class SnakeParser extends StreamingParser {
 
     @Override
     public Number readNumber() throws IOException {
+        return _readNumber(false);
+    }
+
+    @Override
+    public Number readNumberExact() throws IOException {
+        return _readNumber(true);
+    }
+
+    private Number _readNumber(boolean exact) throws IOException {
         ScalarEvent scalar = peekScalarValue();
         Token token = scalarToken(scalar);
         if (token == Token.NULL) {
@@ -242,7 +252,7 @@ public final class SnakeParser extends StreamingParser {
             throw expected("number or null", token);
         }
         takeScalarValue();
-        return parseNumber(scalar.getValue());
+        return parseNumber(scalar.getValue(), exact);
     }
 
     @Override
@@ -460,10 +470,10 @@ public final class SnakeParser extends StreamingParser {
     }
 
     @Override
-    public Object readRaw() throws IOException {
+    public Object readRaw(NodeConfig config) throws IOException {
         Token token = peekToken();
         if (token != Token.OBJECT_START && token != Token.ARRAY_START) {
-            return readRawScalar(token);
+            return readRawScalar(token, config.exactNumbers);
         }
 
         RawFrame root = startRawContainer(token);
@@ -483,7 +493,7 @@ public final class SnakeParser extends StreamingParser {
                     frame.object.put(name, child.value());
                     frames.push(child);
                 } else {
-                    frame.object.put(name, readRawScalar(token));
+                    frame.object.put(name, readRawScalar(token, config.exactNumbers));
                 }
             } else {
                 if (nextIfArrayEnd()) {
@@ -496,7 +506,7 @@ public final class SnakeParser extends StreamingParser {
                     frame.array.add(child.value());
                     frames.push(child);
                 } else {
-                    frame.array.add(readRawScalar(token));
+                    frame.array.add(readRawScalar(token, config.exactNumbers));
                 }
             }
         }
@@ -650,7 +660,7 @@ public final class SnakeParser extends StreamingParser {
     private void skipScalar(ScalarEvent scalar) throws IOException {
         switch (scalarToken(scalar)) {
             case NUMBER:
-                parseNumber(scalar.getValue());
+                parseNumber(scalar.getValue(), false);
                 return;
             case BOOLEAN:
                 parseBoolean(scalar.getValue());
@@ -677,7 +687,7 @@ public final class SnakeParser extends StreamingParser {
         throw expected("container", token);
     }
 
-    private Object readRawScalar(Token token) throws IOException {
+    private Object readRawScalar(Token token, boolean exactNumbers) throws IOException {
         if (token != Token.STRING && token != Token.NUMBER
                 && token != Token.BOOLEAN && token != Token.NULL) {
             throw expected("value", token);
@@ -687,7 +697,7 @@ public final class SnakeParser extends StreamingParser {
             case STRING:
                 return scalar.getValue();
             case NUMBER:
-                return parseNumber(scalar.getValue());
+                return parseNumber(scalar.getValue(), exactNumbers);
             case BOOLEAN:
                 return parseBoolean(scalar.getValue());
             case NULL:
@@ -708,13 +718,13 @@ public final class SnakeParser extends StreamingParser {
         return value.charAt(0);
     }
 
-    private static Number parseNumber(String value) throws IOException {
+    private static Number parseNumber(String value, boolean exact) throws IOException {
         String normalized = normalizeDecimal(value);
         if (normalized == null) {
             throw new IOException("unsupported YAML number: " + value);
         }
         try {
-            return Numbers.parseNumber(normalized);
+            return exact ? Numbers.parseNumberExact(normalized) : Numbers.parseNumber(normalized);
         } catch (NumberFormatException e) {
             throw new IOException("invalid YAML number: " + value, e);
         }

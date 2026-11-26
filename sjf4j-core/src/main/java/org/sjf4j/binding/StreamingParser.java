@@ -1,5 +1,6 @@
 package org.sjf4j.binding;
 import org.sjf4j.JsonType;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.annotation.binding.Backend;
 import org.sjf4j.exception.BindingException;
 import org.sjf4j.meta.PropertyInfo;
@@ -334,6 +335,14 @@ public abstract class StreamingParser implements Closeable {
      */
     public abstract Number readNumber() throws IOException;
 
+    /**
+     * Reads a generic number without decimal rounding. Integral literals keep
+     * integral representations and decimal/exponent literals use BigDecimal.
+     * Backends with a native reader-wide numeric policy (Fastjson2) require
+     * the reader to have been created with exactNumbers enabled.
+     */
+    public abstract Number readNumberExact() throws IOException;
+
 
     /**
      * Reads and consumes the current logical value as a primitive
@@ -577,8 +586,11 @@ public abstract class StreamingParser implements Closeable {
      * possible. Backend implementations must create independently owned
      * mutable containers for raw object and array values; the binding layer
      * may adopt those containers without copying.</p>
+     *
+     * <p>For a backend with a native reader-wide numeric policy, the config
+     * must agree with the reader's configured policy.</p>
      */
-    public abstract Object readRaw() throws IOException;
+    public abstract Object readRaw(NodeConfig config) throws IOException;
 
     /**
      * Reads one complete raw JSON object, returning an owned mutable
@@ -587,8 +599,8 @@ public abstract class StreamingParser implements Closeable {
      * Backends may override this to avoid generic raw-value dispatch.
      */
     @SuppressWarnings("unchecked")
-    public Map<String, Object> readRawObject() throws IOException {
-        Object value = readRaw();
+    public Map<String, Object> readRawObject(NodeConfig config) throws IOException {
+        Object value = readRaw(config);
         if (value == null || value instanceof Map) {
             return (Map<String, Object>) value;
         }
@@ -601,8 +613,8 @@ public abstract class StreamingParser implements Closeable {
      * Implementations must preserve this backing type for zero-copy JsonArray adoption.
      */
     @SuppressWarnings("unchecked")
-    public List<Object> readRawArray() throws IOException {
-        Object value = readRaw();
+    public List<Object> readRawArray(NodeConfig config) throws IOException {
+        Object value = readRaw(config);
         if (value == null || value instanceof List) {
             return (List<Object>) value;
         }

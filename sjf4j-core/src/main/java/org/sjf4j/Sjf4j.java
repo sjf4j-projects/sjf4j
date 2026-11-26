@@ -56,7 +56,7 @@ public final class Sjf4j {
     }
 
     private Sjf4j(Builder builder) {
-        this.nodeConfig = new NodeConfig(builder.valueFormats, builder.includeNulls);
+        this.nodeConfig = new NodeConfig(builder.valueFormats, builder.includeNulls, builder.exactNumbers);
 
         this.jsonProvider = builder.jsonProvider == null
                 ? BinderFactory.jsonProvider() : builder.jsonProvider;
@@ -482,6 +482,7 @@ public final class Sjf4j {
 
         private final Map<Class<?>, String> valueFormats = new LinkedHashMap<>();
         private boolean includeNulls = true;
+        private boolean exactNumbers;
 
         /**
          * Creates a builder with framework-default binder providers and runtime settings.
@@ -501,6 +502,7 @@ public final class Sjf4j {
             this.propertiesBinder = sjf4j.propertiesBinder;
             sjf4j.nodeConfig.copyValueFormatsTo(this.valueFormats);
             this.includeNulls = sjf4j.nodeConfig.includeNulls;
+            this.exactNumbers = sjf4j.nodeConfig.exactNumbers;
         }
 
         /**
@@ -573,6 +575,17 @@ public final class Sjf4j {
          */
         public Builder includeNulls(boolean includeNulls) {
             this.includeNulls = includeNulls;
+            return this;
+        }
+
+        /**
+         * Preserves exact decimal values when binding to Number, Object, or
+         * untyped object/array members. Decimal and exponent literals use
+         * BigDecimal; integral literals retain the backend's integral types.
+         * Explicit numeric target types are not affected. Defaults to false.
+         */
+        public Builder exactNumbers(boolean exactNumbers) {
+            this.exactNumbers = exactNumbers;
             return this;
         }
 

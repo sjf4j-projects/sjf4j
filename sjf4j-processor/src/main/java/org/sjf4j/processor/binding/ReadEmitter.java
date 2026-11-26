@@ -158,10 +158,10 @@ final class ReadEmitter {
                 emitPojo(out, value);
                 break;
             case JSON_OBJECT:
-                out.line("return " + STREAMING_IO + ".readJsonObject(parser);");
+                out.line("return " + STREAMING_IO + ".readJsonObject(parser, org.sjf4j.NodeConfig.DEFAULT);");
                 break;
             case JSON_ARRAY:
-                out.line("return " + STREAMING_IO + ".readJsonArray(parser);");
+                out.line("return " + STREAMING_IO + ".readJsonArray(parser, org.sjf4j.NodeConfig.DEFAULT);");
                 break;
 
             case ARRAY:
@@ -227,7 +227,7 @@ final class ReadEmitter {
         out.beginBlock("while ((nameIndex = parser.nextNameMatch("
                 + names.field(value, "discriminator", BindingNames.fieldType(value.type()) + "_DISCRIMINATOR_MATCHER") + ", 0)) != " + NAME_MATCHER + ".OBJECT_END)");
         out.beginBlock("if (nameIndex == 0)");
-        out.line("Object discriminator = parser.readRaw();");
+        out.line("Object discriminator = parser.readRaw(org.sjf4j.NodeConfig.DEFAULT);");
         out.beginBlock("if (discriminator != null)");
         out.beginBlock("switch (String.valueOf(discriminator))");
         for (int i = 0; i < value.oneOfSubtypes().size(); i++) {
@@ -269,7 +269,7 @@ final class ReadEmitter {
         out.line("prefixValues = java.util.Arrays.copyOf(prefixValues, prefixSize << 1);");
         out.endBlock();
         out.line("prefixNames[prefixSize] = parser.currentName();");
-        out.line("prefixValues[prefixSize++] = parser.readRaw();");
+        out.line("prefixValues[prefixSize++] = parser.readRaw(org.sjf4j.NodeConfig.DEFAULT);");
         out.endBlock(); // while
 
         out.beginBlock("if (" + info + ".fallbackNull)");
@@ -334,7 +334,7 @@ final class ReadEmitter {
             case BIG_INTEGER: decoded = numeric + "toBigInteger((Number) " + raw + ")"; break;
             case BIG_DECIMAL: decoded = numeric + "toBigDecimal((Number) " + raw + ")"; break;
             case VALUE_CODEC:
-                // readRaw() may return Integer when the selected codec expects Long.
+                // A raw numeric read may return Integer when the selected codec expects Long.
                 String codec = names.field(value, "valueInfo",
                         BindingNames.lowerType(value.type()) + "ValueInfo");
                 return "(" + value.type() + ") " + codec + ".rawToValue("
@@ -606,7 +606,7 @@ final class ReadEmitter {
         out.line("dynamic = new java.util.LinkedHashMap<>();");
         out.line("org.sjf4j.InternalAccess.dynamicMembers(value, dynamic);");
         out.endBlock();
-        out.line("dynamic.put(unknownName, parser.readRaw());");
+        out.line("dynamic.put(unknownName, parser.readRaw(org.sjf4j.NodeConfig.DEFAULT));");
         if (!value.ignoredNames().isEmpty()) out.endBlock();
     }
 
@@ -864,7 +864,7 @@ final class ReadEmitter {
                 return rawReadExpression(value, parser, false);
 
             case RUNTIME:
-                if (context.types.isObject(value.type())) return parser + ".readRaw()";
+                if (context.types.isObject(value.type())) return parser + ".readRaw(org.sjf4j.NodeConfig.DEFAULT)";
                 return "(" + value.type() + ") " + STREAMING_IO + ".readNode(" + parser + ", "
                         + context.typeUtils.erasure(value.type()) + ".class, org.sjf4j.NodeConfig.DEFAULT)";
 
@@ -879,7 +879,7 @@ final class ReadEmitter {
      * assignable, but keep casts for concrete targets such as LinkedHashMap.
      */
     private String rawReadExpression(BindingValue value, String parser, boolean map) {
-        String expression = parser + (map ? ".readRawObject()" : ".readRawArray()");
+        String expression = parser + (map ? ".readRawObject(org.sjf4j.NodeConfig.DEFAULT)" : ".readRawArray(org.sjf4j.NodeConfig.DEFAULT)");
         TypeElement container = context.elements.getTypeElement(
                 map ? "java.util.Map" : "java.util.List");
         TypeMirror object = context.elements.getTypeElement("java.lang.Object").asType();

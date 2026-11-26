@@ -29,6 +29,38 @@ class Fastjson2BinderProviderTest {
     }
 
     @Test
+    void sharedContextIsNotMutatedByNumericPolicy() throws Exception {
+        JSONReader.Context context = JSONFactory.createReadContext(
+                JSONReader.Feature.AllowUnQuotedFieldNames,
+                JSONReader.Feature.UseLongForInts);
+        long features = context.getFeatures();
+        BinderProvider provider = Fastjson2BinderProvider.of(context, JSONFactory.createWriteContext());
+        Fastjson2Binder ordinary = (Fastjson2Binder) provider.create(NodeConfig.DEFAULT);
+        Fastjson2Binder exact = (Fastjson2Binder) provider.create(NodeConfig.EXACT_NUMBERS);
+        assertEquals(features, context.getFeatures());
+        assertEquals(0.1d, ordinary.readNode("0.1", Number.class));
+        assertEquals(new java.math.BigDecimal("0.1"), exact.readNode("0.1", Number.class));
+        assertEquals(new java.math.BigInteger("9223372036854775808"),
+                exact.readNode("9223372036854775808", Number.class));
+        assertEquals(new java.math.BigDecimal("1.23e-400"),
+                exact.readNode("1.23e-400", Number.class));
+        assertEquals(1L, ordinary.readNode("1", Number.class));
+        assertEquals(1, exact.readNode("1", Number.class));
+        assertInstanceOf(Double.class, ordinary.readNode("1.0e+3", Number.class));
+        try (Fastjson2Parser parser = ordinary.createParser("0.1")) {
+            parser.start();
+            assertEquals(0.1d, parser.readNumber());
+            parser.end();
+        }
+        try (Fastjson2Parser parser = exact.createParser("0.1")) {
+            parser.start();
+            assertEquals(new java.math.BigDecimal("0.1"), parser.readNumber());
+            parser.end();
+        }
+        assertEquals(features, context.getFeatures());
+    }
+
+    @Test
     void isDiscoveredAsTheDefaultJsonBinderProvider() {
         BinderProvider provider = BinderFactory.provider(Format.JSON);
 

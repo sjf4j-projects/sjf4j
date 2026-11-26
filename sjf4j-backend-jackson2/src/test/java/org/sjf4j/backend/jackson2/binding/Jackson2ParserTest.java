@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.SerializableString;
 import com.fasterxml.jackson.core.util.JsonParserDelegate;
 import org.junit.jupiter.api.Test;
+import org.sjf4j.NodeConfig;
 import org.sjf4j.binding.NameMatcher;
 import org.sjf4j.binding.StreamingParser;
 import org.sjf4j.exception.BindingException;
@@ -29,6 +30,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class Jackson2ParserTest {
 
     @Test
+    void exactNumbersAfterTokenLookahead() throws Exception {
+        String literal = "0.123456789123456789";
+        java.math.BigDecimal expected = new java.math.BigDecimal(literal);
+        Jackson2Binder binder = new Jackson2Binder();
+        for (boolean utf8 : new boolean[]{false, true}) {
+            for (boolean raw : new boolean[]{false, true}) {
+                try (Jackson2Parser parser = utf8
+                        ? binder.createParser(literal.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        : binder.createParser(literal)) {
+                    assertEquals(StreamingParser.Token.NUMBER, parser.peekToken());
+                    assertEquals(expected, raw ? parser.readRaw(org.sjf4j.NodeConfig.EXACT_NUMBERS)
+                            : parser.readNumberExact());
+                    parser.end();
+                }
+            }
+        }
+    }
+
+    @Test
     void nativeArrayTraversalHandsTokensBackToScalarAndRawReaders() throws Exception {
         try (Jackson2Parser reader = parser("[7,null,\"Ada\",{\"id\":2},[true,null]]")) {
             JsonParser nativeParser = reader.nativeParser();
@@ -50,11 +70,11 @@ class Jackson2ParserTest {
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.START_OBJECT, nativeParser.nextToken());
             reader.reuseCurrentToken();
-            assertEquals(2, ((Map<?, ?>) reader.readRaw()).get("id"));
+            assertEquals(2, ((Map<?, ?>) reader.readRaw(NodeConfig.DEFAULT)).get("id"));
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.START_ARRAY, nativeParser.nextToken());
             reader.reuseCurrentToken();
-            assertEquals(Arrays.asList(true, null), reader.readRaw());
+            assertEquals(Arrays.asList(true, null), reader.readRaw(NodeConfig.DEFAULT));
 
             assertEquals(com.fasterxml.jackson.core.JsonToken.END_ARRAY, nativeParser.nextToken());
             reader.end();
@@ -323,7 +343,7 @@ class Jackson2ParserTest {
                 "{\"text\":\"Ada\",\"number\":7,\"enabled\":true,\"empty\":null,"
                         + "\"nested\":{\"first\":\"one\"},\"items\":[false,{\"second\":2}]}");
             try {
-                Map<?, ?> value = (Map<?, ?>) parser.readRaw();
+                Map<?, ?> value = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
 
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -349,7 +369,7 @@ class Jackson2ParserTest {
         {
             Jackson2Parser parser = parser("");
             try {
-                assertThrows(IOException.class, parser::readRaw);
+                assertThrows(IOException.class, () -> parser.readRaw(NodeConfig.DEFAULT));
 
             } finally {
                 parser.close();
@@ -460,12 +480,12 @@ class Jackson2ParserTest {
         try {
             parser.readArrayStart();
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
-            Map<String, Object> object = parser.readRawObject();
+            Map<String, Object> object = parser.readRawObject(NodeConfig.DEFAULT);
             assertEquals(LinkedHashMap.class, object.getClass());
             assertEquals(7, object.get("id"));
             assertEquals(ArrayList.class, object.get("list").getClass());
             assertFalse(parser.nextIfArrayEnd());
-            List<Object> array = parser.readRawArray();
+            List<Object> array = parser.readRawArray(NodeConfig.DEFAULT);
             assertEquals(ArrayList.class, array.getClass());
             assertEquals(LinkedHashMap.class, array.get(1).getClass());
             parser.readArrayEnd();
@@ -477,8 +497,8 @@ class Jackson2ParserTest {
         Jackson2Parser nullParser = parser("[null,null]");
         try {
             nullParser.readArrayStart();
-            assertNull(nullParser.readRawObject());
-            assertNull(nullParser.readRawArray());
+            assertNull(nullParser.readRawObject(NodeConfig.DEFAULT));
+            assertNull(nullParser.readRawArray(NodeConfig.DEFAULT));
             nullParser.readArrayEnd();
             nullParser.end();
         } finally {
@@ -487,7 +507,7 @@ class Jackson2ParserTest {
 
         Jackson2Parser mismatch = parser("[]");
         try {
-            assertThrows(BindingException.class, mismatch::readRawObject);
+            assertThrows(BindingException.class, () -> mismatch.readRawObject(NodeConfig.DEFAULT));
         } finally {
             mismatch.close();
         }
@@ -514,7 +534,7 @@ class Jackson2ParserTest {
             arrayJson.append(']');
 
             try (Jackson2Parser p = parser(objectJson.toString())) {
-                Map<String, Object> value = p.readRawObject();
+                Map<String, Object> value = p.readRawObject(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(expectedObject, value);
                 assertEquals(new ArrayList<>(expectedObject.keySet()),
@@ -522,7 +542,7 @@ class Jackson2ParserTest {
                 p.end();
             }
             try (Jackson2Parser p = parser(arrayJson.toString())) {
-                List<Object> value = p.readRawArray();
+                List<Object> value = p.readRawArray(NodeConfig.DEFAULT);
                 assertEquals(ArrayList.class, value.getClass());
                 assertEquals(expectedArray, value);
                 p.end();
@@ -530,7 +550,7 @@ class Jackson2ParserTest {
         }
 
         try (Jackson2Parser p = parser("{\"a\":1,\"b\":2,\"c\":3,\"d\":4,\"e\":5,\"a\":6,\"f\":[null,{\"ok\":true}]}")) {
-            Map<String, Object> value = p.readRawObject();
+            Map<String, Object> value = p.readRawObject(NodeConfig.DEFAULT);
             assertEquals(Arrays.asList("a", "b", "c", "d", "e", "f"),
                     new ArrayList<>(value.keySet()));
             assertEquals(6, value.get("a"));
@@ -586,10 +606,10 @@ class Jackson2ParserTest {
                 parser.readArrayStart();
 
                 assertFalse(parser.nextIfArrayEnd());
-                assertNull(parser.readRaw());
+                assertNull(parser.readRaw(NodeConfig.DEFAULT));
 
                 assertFalse(parser.nextIfArrayEnd());
-                Map<?, ?> object = (Map<?, ?>) parser.readRaw();
+                Map<?, ?> object = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, object.getClass());
                 List<?> nested = (List<?>) object.get("a");
                 assertEquals(3, nested.size());
@@ -598,10 +618,10 @@ class Jackson2ParserTest {
                 assertNull(((Map<?, ?>) nested.get(2)).get("b"));
 
                 assertFalse(parser.nextIfArrayEnd());
-                assertEquals(Arrays.asList("x", 2), parser.readRaw());
+                assertEquals(Arrays.asList("x", 2), parser.readRaw(NodeConfig.DEFAULT));
 
                 assertFalse(parser.nextIfArrayEnd());
-                assertEquals(false, parser.readRaw());
+                assertEquals(false, parser.readRaw(NodeConfig.DEFAULT));
 
                 assertTrue(parser.nextIfArrayEnd());
                 parser.end();

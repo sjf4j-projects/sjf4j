@@ -41,7 +41,7 @@ class Fastjson2BinderTest {
         try {
 
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
-            Map<?, ?> value = (Map<?, ?>) parser.readRaw();
+            Map<?, ?> value = (Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT);
 
             assertEquals(LinkedHashMap.class, value.getClass());
             assertEquals(Arrays.asList("text", "number", "enabled", "empty", "nested", "items"),
@@ -67,15 +67,15 @@ class Fastjson2BinderTest {
         try {
             parser.readArrayStart();
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
-            Map<String, Object> object = parser.readRawObject();
+            Map<String, Object> object = parser.readRawObject(NodeConfig.DEFAULT);
             assertEquals(LinkedHashMap.class, object.getClass());
             assertEquals(7, object.get("id"));
             assertEquals(StreamingParser.Token.ARRAY_START, parser.peekToken());
-            List<Object> array = parser.readRawArray();
+            List<Object> array = parser.readRawArray(NodeConfig.DEFAULT);
             assertEquals(ArrayList.class, array.getClass());
             assertEquals(LinkedHashMap.class, array.get(1).getClass());
-            assertNull(parser.readRawObject());
-            assertNull(parser.readRawArray());
+            assertNull(parser.readRawObject(NodeConfig.DEFAULT));
+            assertNull(parser.readRawArray(NodeConfig.DEFAULT));
             parser.readArrayEnd();
             parser.end();
         } finally {
@@ -83,7 +83,7 @@ class Fastjson2BinderTest {
         }
         Fastjson2Parser mismatch = new Fastjson2Parser(JSONReader.of("[]"));
         try {
-            assertThrows(BindingException.class, mismatch::readRawObject);
+            assertThrows(BindingException.class, () -> mismatch.readRawObject(NodeConfig.DEFAULT));
         } finally {
             mismatch.close();
         }
@@ -129,7 +129,7 @@ class Fastjson2BinderTest {
                 JSONReader.Feature.UseNativeObject);
         try (Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(
                 "{\"first\":[{\"nested\":1}],\"second\":2}", context))) {
-            Map<String, Object> root = parser.readRawObject();
+            Map<String, Object> root = parser.readRawObject(NodeConfig.DEFAULT);
             assertEquals(LinkedHashMap.class, root.getClass());
             assertEquals(Arrays.asList("first", "second"), new ArrayList<>(root.keySet()));
             List<?> array = (List<?>) root.get("first");
@@ -160,7 +160,7 @@ class Fastjson2BinderTest {
             arrayJson.append(']');
 
             try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(objectJson.toString()))) {
-                Map<String, Object> value = p.readRawObject();
+                Map<String, Object> value = p.readRawObject(NodeConfig.DEFAULT);
                 assertEquals(LinkedHashMap.class, value.getClass());
                 assertEquals(expectedObject, value);
                 assertEquals(new ArrayList<>(expectedObject.keySet()),
@@ -168,7 +168,7 @@ class Fastjson2BinderTest {
                 p.end();
             }
             try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(arrayJson.toString()))) {
-                List<Object> value = p.readRawArray();
+                List<Object> value = p.readRawArray(NodeConfig.DEFAULT);
                 assertEquals(ArrayList.class, value.getClass());
                 assertEquals(expectedArray, value);
                 p.end();
@@ -176,7 +176,7 @@ class Fastjson2BinderTest {
         }
         try (Fastjson2Parser p = new Fastjson2Parser(JSONReader.of(
                 "{\"a\":1,\"b\":2,\"c\":3,\"d\":4,\"e\":5,\"a\":6,\"f\":[null,{\"ok\":true}]}"))) {
-            Map<String, Object> value = p.readRawObject();
+            Map<String, Object> value = p.readRawObject(NodeConfig.DEFAULT);
             assertEquals(Arrays.asList("a", "b", "c", "d", "e", "f"),
                     new ArrayList<>(value.keySet()));
             assertEquals(6, value.get("a"));
@@ -189,7 +189,7 @@ class Fastjson2BinderTest {
     void rawNodeReportsEofUsingStreamingTokenSemantics() {
         Fastjson2Parser parser = new Fastjson2Parser(JSONReader.of(""));
         try {
-            BindingException error = assertThrows(BindingException.class, parser::readRaw);
+            BindingException error = assertThrows(BindingException.class, () -> parser.readRaw(NodeConfig.DEFAULT));
             assertEquals("unexpected token 'EOF'", error.getMessage());
         } finally {
             parser.close();
@@ -202,7 +202,7 @@ class Fastjson2BinderTest {
         try {
             parser.readArrayStart();
             assertEquals(StreamingParser.Token.OBJECT_START, parser.peekToken());
-            assertEquals(7, ((Map<?, ?>) parser.readRaw()).get("id"));
+            assertEquals(7, ((Map<?, ?>) parser.readRaw(NodeConfig.DEFAULT)).get("id"));
             assertEquals(StreamingParser.Token.STRING, parser.peekToken());
             assertEquals("next", parser.readString());
             parser.readArrayEnd();

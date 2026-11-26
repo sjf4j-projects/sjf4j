@@ -80,6 +80,8 @@ class StreamingParserDefaultMethodTest {
         @Override
         public Number readNumber() { return nullValue ? null : 1; }
         @Override
+        public Number readNumberExact() { return readNumber(); }
+        @Override
         public long readLongValue() { return 1L; }
         public int readIntValue() { return 2; }
         public short readShortValue() { return 3; }
@@ -93,7 +95,7 @@ class StreamingParserDefaultMethodTest {
         public void skipNode() {}
 
         @Override
-        public Object readRaw() throws IOException { return null; }
+        public Object readRaw(org.sjf4j.NodeConfig config) throws IOException { return null; }
         public void close() {}
     }
 }

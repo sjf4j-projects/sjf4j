@@ -158,7 +158,7 @@ public class OneOfReadBenchmark {
     private Pet rawBaseline(Jackson2Parser parser) throws IOException {
         try {
             parser.start();
-            Object raw = parser.readRaw();
+            Object raw = parser.readRaw(NodeConfig.DEFAULT);
             parser.end();
             Object kind = ((Map<?, ?>) raw).get("kind");
             Class<?> subtype = "dog".equals(kind) ? Dog.class : Cat.class;

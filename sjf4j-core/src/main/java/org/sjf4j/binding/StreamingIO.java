@@ -87,7 +87,7 @@ public final class StreamingIO {
             }
 
             if (boxed == Object.class) {
-                return parser.readRaw();
+                return parser.readRaw(config);
             }
 
             /*
@@ -134,7 +134,7 @@ public final class StreamingIO {
             }
 
             if (boxed == Number.class) {
-                return parser.readNumber();
+                return config.exactNumbers ? parser.readNumberExact() : parser.readNumber();
             }
 
             if (boxed == BigInteger.class) {
@@ -158,7 +158,7 @@ public final class StreamingIO {
             }
 
             if (boxed == JsonObject.class) {
-                return readJsonObject(parser);
+                return readJsonObject(parser, config);
             }
 
             /*
@@ -170,7 +170,7 @@ public final class StreamingIO {
             }
 
             if (boxed == JsonArray.class) {
-                return readJsonArray(parser);
+                return readJsonArray(parser, config);
             }
 
             if (Set.class.isAssignableFrom(boxed)) {
@@ -379,15 +379,15 @@ public final class StreamingIO {
         }
 
         if (raw == Number.class) {
-            return valueInfo.rawToValue(parser.readNumber());
+            return valueInfo.rawToValue(config.exactNumbers ? parser.readNumberExact() : parser.readNumber());
         }
 
         if (raw == Map.class) {
-            return valueInfo.rawToValue(parser.readRawObject());
+            return valueInfo.rawToValue(parser.readRawObject(config));
         }
 
         if (raw == List.class) {
-            return valueInfo.rawToValue(parser.readRawArray());
+            return valueInfo.rawToValue(parser.readRawArray(config));
         }
 
         throw new BindingException("cannot read value with ValueCodec into type '" + raw.getName() + "'");
@@ -468,7 +468,7 @@ public final class StreamingIO {
                         InternalAccess.dynamicMembers(jojo, dynamic);
                     }
                 }
-                dynamic.put(name, parser.readRaw());
+                dynamic.put(name, parser.readRaw(config));
             } else {
                 parser.skipNode();
             }
@@ -503,7 +503,7 @@ public final class StreamingIO {
             if (index == NameMatcher.UNKNOWN) {
                 if (pojoInfo.isJojo && pojoInfo.readDynamic) {
                     String name = parser.currentName();
-                    Object value = parser.readRaw();
+                    Object value = parser.readRaw(config);
                     state.acceptDynamic(name, value);
                     if (parentKey != null && parentKey.equals(name)) {
                         parentValue = value;
@@ -577,7 +577,7 @@ public final class StreamingIO {
                     }
                 } else if (deferred == null) {
                     deferred = property;
-                    deferredRaw = parser.readRaw();
+                    deferredRaw = parser.readRaw(config);
                 } else {
                     throw new BindingException("at most one OneOf field with scope=PARENT is supported per class");
                 }
@@ -696,7 +696,7 @@ public final class StreamingIO {
         // Exact raw container declarations have no generic work to do.
         // Route them before token probes or type metadata initialization.
         if (valueType == null && (type == Map.class || type == LinkedHashMap.class)) {
-            return parser.readRawObject();
+            return parser.readRawObject(config);
         }
 
         if (valueType == null) {
@@ -711,7 +711,7 @@ public final class StreamingIO {
         if ((boxed == Map.class || boxed == LinkedHashMap.class)
                 && valueType == Object.class
                 && (valueTi == null || valueTi == TypeInfo.NONE)) {
-            return parser.readRawObject();
+            return parser.readRawObject(config);
         }
 
         if (!parser.nextIfObjectStart()) {
@@ -744,7 +744,7 @@ public final class StreamingIO {
                                         NodeConfig config) throws IOException {
         // Exact raw List targets have no generic metadata to resolve.
         if (elementType == null && (type == List.class || type == ArrayList.class)) {
-            return parser.readRawArray();
+            return parser.readRawArray(config);
         }
 
         if (elementType == null) {
@@ -758,7 +758,7 @@ public final class StreamingIO {
         if ((boxed == List.class || boxed == ArrayList.class)
                 && elementType == Object.class
                 && (elementTi == null || elementTi == TypeInfo.NONE)) {
-            return parser.readRawArray();
+            return parser.readRawArray(config);
         }
 
         if (!parser.nextIfArrayStart()) {
@@ -1003,8 +1003,8 @@ public final class StreamingIO {
 
 
     /** Adopts the owned raw LinkedHashMap without copying its members. */
-    public static JsonObject readJsonObject(StreamingParser parser) throws IOException {
-        Map<String, Object> raw = parser.readRawObject();
+    public static JsonObject readJsonObject(StreamingParser parser, NodeConfig config) throws IOException {
+        Map<String, Object> raw = parser.readRawObject(config);
         if (raw == null) return null;
         JsonObject result = new JsonObject();
         InternalAccess.dynamicMembers(result, (LinkedHashMap<String, Object>) raw);
@@ -1012,8 +1012,8 @@ public final class StreamingIO {
     }
 
     /** Adopts the owned raw ArrayList without copying its elements. */
-    public static JsonArray readJsonArray(StreamingParser parser) throws IOException {
-        List<Object> raw = parser.readRawArray();
+    public static JsonArray readJsonArray(StreamingParser parser, NodeConfig config) throws IOException {
+        List<Object> raw = parser.readRawArray(config);
         if (raw == null) return null;
         JsonArray result = new JsonArray();
         InternalAccess.dynamicElements(result, (ArrayList<Object>) raw);

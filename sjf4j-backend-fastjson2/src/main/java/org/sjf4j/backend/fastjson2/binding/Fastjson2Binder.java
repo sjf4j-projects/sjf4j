@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * JSON binder backed directly by Fastjson2's streaming reader and writer.
- * The reader context is configured in place to use doubles for decimal reads.
+ * Each binder owns one reader context with a fixed generic number policy.
  * The writer context is reused; SJF4J controls omission of null object members.
  */
 public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Generator> {
@@ -44,7 +44,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /**
      * Creates a binder with caller-supplied reader and writer contexts.
-     * @param readerContext the Fastjson2 read context, configured in place
+     * @param readerContext the Fastjson2 read context, copied for the configured numeric policy
      * @param writerContext the Fastjson2 write context
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext) {
@@ -53,18 +53,41 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /**
      * Creates a binder with caller-supplied contexts and runtime settings.
-     * @param readerContext the Fastjson2 read context, configured in place
+     * @param readerContext the Fastjson2 read context, copied for the configured numeric policy
      * @param writerContext the Fastjson2 write context
      * @param config the SJF4J node configuration
      */
     public Fastjson2Binder(JSONReader.Context readerContext, JSONWriter.Context writerContext,
                            NodeConfig config) {
         super(config);
-        this.readerContext = Asserts.notNull(readerContext, "readerContext");
+        Asserts.notNull(readerContext, "readerContext");
         this.writerContext = Asserts.notNull(writerContext, "writerContext");
-        this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals);
+        // Never toggle features on a context shared by active readers/binders.
+        this.readerContext = _copyReadContext(readerContext);
+        this.readerContext.config(JSONReader.Feature.UseDoubleForDecimals, !config.exactNumbers);
+        if (config.exactNumbers) {
+            // Fastjson2 uses this feature for exponent literals as well.
+            this.readerContext.config(JSONReader.Feature.UseBigDecimalForDoubles);
+            this.readerContext.config(JSONReader.Feature.UseLongForInts, false);
+        }
     }
 
+
+    private static JSONReader.Context _copyReadContext(JSONReader.Context source) {
+        JSONReader.Context copy = new JSONReader.Context(source.getProvider(), source.getFeatures());
+        copy.setMaxLevel(source.getMaxLevel());
+        copy.setBufferSize(source.getBufferSize());
+        copy.setZoneId(source.getZoneId());
+        copy.setLocale(source.getLocale());
+        copy.setTimeZone(source.getTimeZone());
+        copy.setDateFormat(source.getDateFormat());
+        copy.setDateFormatter(source.getDateFormatter());
+        copy.setObjectSupplier(source.getObjectSupplier());
+        copy.setArraySupplier(source.getArraySupplier());
+        copy.config(source.getContextAutoTypeBeforeHandler());
+        copy.setExtraProcessor(source.getExtraProcessor());
+        return copy;
+    }
 
     /*
      * --------------------------------------------------------------
@@ -74,6 +97,7 @@ public final class Fastjson2Binder extends Binder<Fastjson2Parser, Fastjson2Gene
 
     /**
      * Creates a streaming reader that wraps the supplied Fastjson2 reader.
+     * The supplied reader uses its own native numeric configuration.
      * @param reader the Fastjson2 reader
      * @return a SJF4J streaming reader
      */
