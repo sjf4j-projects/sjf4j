@@ -49,4 +49,15 @@ class NameAllocatorTest {
         assertEquals("item2", left.newName("item"));
         assertEquals("item", right.newName("item"));
     }
+    @Test
+    void semanticHintsAndIdentifierIgnorableCharactersDoNotIntroduceCollisions() {
+        assertEquals("userName", NameHints.lowerCamel("user_name"));
+        assertEquals("userName", NameHints.lowerCamel("user-name"));
+        assertEquals("urlValue", NameHints.lowerCamel("URLValue"));
+        assertEquals("uuid", NameHints.lowerCamel("UUID"));
+        NameAllocator names = NameAllocator.forParameters("userName", "value");
+        assertEquals("userName2", names.newName(NameHints.lowerCamel("user_name")));
+        assertEquals("userName3", names.newName(NameHints.lowerCamel("user-name")));
+        assertEquals("value2", names.newName("val" + (char) 0x200B + "ue"));
+    }
 }

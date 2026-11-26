@@ -194,4 +194,23 @@ class JdbcMappingIntegrationTest {
                 "JDBC source must be a column name: $.full_name"),
                 result.diagnostics());
     }
+    @Test
+    void columnNamesRemainUniqueAfterCamelCaseNormalization() throws Exception {
+        Map<String, String> sources = Map.of(
+                "fixture/Row.java", "package fixture; public class Row { public String first; public String second; }",
+                "fixture/Mapper.java",
+                "package fixture; import org.sjf4j.annotation.mapping.*; "
+                + "import org.sjf4j.annotation.mapping.jdbc.*; "
+                + "@CompiledJdbcMapper public interface Mapper { "
+                + "@Mapping(target=\\\"first\\\", source=\\\"user_name\\\") "
+                + "@Mapping(target=\\\"second\\\", source=\\\"user-name\\\") "
+                + "Row map(java.sql.ResultSet userName); }");
+        NavigatorTestCompiler.Result result = NavigatorTestCompiler.compile(sources, CodegenProcessor.class);
+        assertTrue(result.success, result.diagnostics());
+        String generated = result.generatedSource("fixture/Mapper_Impl.java");
+        assertTrue(generated.contains("userNameIndex"), generated);
+        assertTrue(generated.contains("userNameIndex2"), generated);
+        assertTrue(generated.contains("userName2"), generated);
+        assertFalse(generated.contains("idx_"), generated);
+    }
 }

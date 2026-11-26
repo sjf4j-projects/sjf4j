@@ -35,6 +35,7 @@ class CompiledMapperSharedHelperTest {
                 "package fixture; "
                         + "import org.sjf4j.annotation.mapping.*; "
                         + "@CompiledMapper public interface Mapper { "
+                        + "default void _mapAddressToAddressDto() {} "
                         + "TargetA mapA(SourceA source); "
                         + "TargetB mapB(SourceB source); "
                         + "@MappingCreator(targetType=AddressDto.class, creator=\"this::newAddress\") "
@@ -48,9 +49,9 @@ class CompiledMapperSharedHelperTest {
         assertTrue(result.success, result.diagnostics());
 
         String generated = result.generatedSource("fixture/Mapper_Impl.java");
-        assertEquals(3, occurrences(generated, "_mapAddressToAddressDto("), generated);
+        assertEquals(3, occurrences(generated, "_mapAddressToAddressDto2("), generated);
         assertTrue(generated.contains("newAddress("), generated);
-        assertFalse(generated.contains("_mapAddressToAddressDto2("), generated);
+        assertFalse(generated.contains("_mapAddressToAddressDto3("), generated);
 
         try (URLClassLoader loader = result.classLoader(getClass().getClassLoader())) {
             Class<?> addressType = loader.loadClass("fixture.Address");
