@@ -7,8 +7,7 @@ import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
-import org.sjf4j.processor.property.Property;
-import org.sjf4j.processor.property.PropertyAccess;
+import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.Element;
@@ -980,11 +979,11 @@ final class PathEmitter {
                             old);
                 }
 
-                emitPropertyWrite(out, step.access.property(), owner, value);
+                out.line(NodeWriteEmitter.name(step.access, owner, null, value) + ";");
                 return;
 
             case MAP: {
-                String expression = owner + ".put(" + nameExpression(step) + ", " + value + ")";
+                String expression = NodeWriteEmitter.name(step.access, owner, nameExpression(step), value);
 
                 emitOptionalOld(out, step, old, expression);
 
@@ -992,7 +991,7 @@ final class PathEmitter {
             }
 
             case JSON_OBJECT: {
-                String expression = owner + ".put(" + nameExpression(step) + ", " + value + ")";
+                String expression = NodeWriteEmitter.name(step.access, owner, nameExpression(step), value);
 
                 emitOptionalObjectOld(out, step, old, expression);
 
@@ -1006,28 +1005,9 @@ final class PathEmitter {
                 return;
 
             case DYNAMIC: {
-                String expression;
-
-                if (isIndexStep(step)) {
-                    expression =
-                            "org.sjf4j.node.NodeWalker.putInArray(" +
-                                    owner +
-                                    ", " +
-                                    rawIndexExpression(step) +
-                                    ", " +
-                                    value +
-                                    ")";
-
-                } else {
-                    expression =
-                            "org.sjf4j.node.NodeWalker.putInObject(" +
-                                    owner +
-                                    ", " +
-                                    nameExpression(step) +
-                                    ", " +
-                                    value +
-                                    ")";
-                }
+                String expression = isIndexStep(step)
+                        ? NodeWriteEmitter.index(step.access, owner, rawIndexExpression(step), value)
+                        : NodeWriteEmitter.name(step.access, owner, nameExpression(step), value);
 
                 emitOptionalObjectOld(out, step, old, expression);
 
@@ -1057,33 +1037,6 @@ final class PathEmitter {
 
         out.line(localType(step.access.readType()) + " " + old + " = " +
                 reads.name(step.access, owner, nameExpression(step)) + ";");
-    }
-
-    private void emitPropertyWrite(
-            JavaWriter out,
-            Property property,
-            String owner,
-            String value) {
-
-        PropertyAccess write = property.write();
-
-        if (write.isMethod()) {
-            out.line(
-                    owner +
-                            "." +
-                            write.memberName() +
-                            "(" +
-                            value +
-                            ");");
-        } else {
-            out.line(
-                    owner +
-                            "." +
-                            write.memberName() +
-                            " = " +
-                            value +
-                            ";");
-        }
     }
 
     private void emitOptionalOld(
@@ -1194,13 +1147,7 @@ final class PathEmitter {
                                 "];");
             }
 
-            out.line(
-                    owner +
-                            "[" +
-                            index +
-                            "] = " +
-                            value +
-                            ";");
+            out.line(NodeWriteEmitter.index(step.access, owner, index, value) + ";");
 
             return;
         }
@@ -1229,20 +1176,10 @@ final class PathEmitter {
                             (step.access.kind() == NodeAccess.Kind.LIST
                                     || types.isObject(oldType(step))
                                     ? "" : "(" + localType(oldType(step)) + ") ") +
-                            owner +
-                            ".set(" +
-                            index +
-                            ", " +
-                            value +
-                            ");");
+                            NodeWriteEmitter.index(step.access, owner, index, value) +
+                            ";");
         } else {
-            out.line(
-                    owner +
-                            ".set(" +
-                            index +
-                            ", " +
-                            value +
-                            ");");
+            out.line(NodeWriteEmitter.index(step.access, owner, index, value) + ";");
         }
 
         out.endBlock(
@@ -1254,11 +1191,7 @@ final class PathEmitter {
 
         out.indent();
 
-        out.line(
-                owner +
-                        ".add(" +
-                        value +
-                        ");");
+        out.line(NodeWriteEmitter.append(step.access, owner, value) + ";");
 
         if (old != null) {
             out.line(
@@ -1289,36 +1222,8 @@ final class PathEmitter {
         out.endBlock();
     }
 
-    private void emitAppend(
-            JavaWriter out,
-            Step step,
-            String owner,
-            String value) {
-
-        switch (step.access.kind()) {
-            case LIST:
-            case JSON_ARRAY:
-                out.line(
-                        owner +
-                                ".add(" +
-                                value +
-                                ");");
-                return;
-
-            case DYNAMIC:
-                out.line(
-                        "org.sjf4j.node.NodeWalker.addInArray(" +
-                                owner +
-                                ", " +
-                                value +
-                                ");");
-                return;
-
-            default:
-                throw new AssertionError(
-                        "Cannot append using " +
-                                step.access.kind());
-        }
+    private void emitAppend(JavaWriter out, Step step, String owner, String value) {
+        out.line(NodeWriteEmitter.append(step.access, owner, value) + ";");
     }
 
     /*

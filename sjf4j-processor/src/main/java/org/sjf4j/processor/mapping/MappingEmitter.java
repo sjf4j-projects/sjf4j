@@ -8,7 +8,7 @@ import org.sjf4j.processor.access.NodeReadEmitter;
 import org.sjf4j.processor.code.GeneratedClass;
 import org.sjf4j.processor.code.JavaWriter;
 import org.sjf4j.processor.code.NameAllocator;
-import org.sjf4j.processor.property.PropertyAccess;
+import org.sjf4j.processor.access.NodeWriteEmitter;
 import org.sjf4j.processor.type.TypeSystem;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -2584,209 +2584,36 @@ public final class MappingEmitter {
                 "name is required");
     }
 
-    private void emitNodeWrite(
-            JavaWriter out,
-            String owner,
-            PathSegment segment,
-            String index,
-            NodeAccess access,
-            String value) {
-
-        if (segment instanceof
-                PathSegment.Name) {
-
-            String name =
-                    ((PathSegment.Name) segment)
-                            .name;
-
-            String key =
-                    JavaWriter.stringLiteral(
-                            name);
-
-            switch (access.kind()) {
-                case PROPERTY: {
-                    PropertyAccess write =
-                            access.property()
-                                    .write();
-
-                    if (write.isMethod()) {
-                        out.line(
-                                owner +
-                                        "." +
-                                        write.memberName() +
-                                        "(" +
-                                        value +
-                                        ");");
-
-                    } else {
-                        out.line(
-                                owner +
-                                        "." +
-                                        write.memberName() +
-                                        " = " +
-                                        value +
-                                        ";");
-                    }
-
-                    return;
-                }
-
-                case MAP:
-                case JSON_OBJECT:
-                    out.line(
-                            owner +
-                                    ".put(" +
-                                    key +
-                                    ", " +
-                                    value +
-                                    ");");
-                    return;
-
-                case DYNAMIC:
-                    out.line(
-                            "org.sjf4j.node.NodeWalker.putInObject(" +
-                                    owner +
-                                    ", " +
-                                    key +
-                                    ", " +
-                                    value +
-                                    ");");
-                    return;
-
-                default:
-                    throw new IllegalStateException(
-                            "unsupported name write: " +
-                                    access.kind());
-            }
+    private void emitNodeWrite(JavaWriter out, String owner, PathSegment segment,
+                               String index, NodeAccess access, String value) {
+        if (segment instanceof PathSegment.Name) {
+            String key = JavaWriter.stringLiteral(((PathSegment.Name) segment).name);
+            out.line(NodeWriteEmitter.name(access, owner, key, value) + ";");
+            return;
         }
 
-        if (segment instanceof
-                PathSegment.Append) {
-
-            switch (access.kind()) {
-                case LIST:
-                case JSON_ARRAY:
-                    out.line(
-                            owner +
-                                    ".add(" +
-                                    value +
-                                    ");");
-                    return;
-
-                case DYNAMIC:
-                    out.line(
-                            "org.sjf4j.node.NodeWalker.addInArray(" +
-                                    owner +
-                                    ", " +
-                                    value +
-                                    ");");
-                    return;
-
-                default:
-                    throw new IllegalStateException(
-                            "unsupported append write: " +
-                                    access.kind());
-            }
+        if (segment instanceof PathSegment.Append) {
+            out.line(NodeWriteEmitter.append(access, owner, value) + ";");
+            return;
         }
 
-        if (segment instanceof
-                PathSegment.Index) {
-
-            String actualIndex =
-                    index != null
-                            ? index
-                            : Integer.toString(
-                            ((PathSegment.Index) segment)
-                                    .index);
-
-            switch (access.kind()) {
-                case ARRAY:
-                    out.line(
-                            owner +
-                                    "[" +
-                                    actualIndex +
-                                    "] = " +
-                                    value +
-                                    ";");
-                    return;
-
-                case LIST:
-                    out.beginBlock(
-                            "if (" +
-                                    actualIndex +
-                                    " == " +
-                                    owner +
-                                    ".size())");
-
-                    out.line(
-                            owner +
-                                    ".add(" +
-                                    value +
-                                    ");");
-
-                    out.endBlock();
-                    out.beginBlock("else");
-
-                    out.line(
-                            owner +
-                                    ".set(" +
-                                    actualIndex +
-                                    ", " +
-                                    value +
-                                    ");");
-
-                    out.endBlock();
-                    return;
-
-                case JSON_ARRAY:
-                    out.beginBlock(
-                            "if (" +
-                                    actualIndex +
-                                    " == " +
-                                    owner +
-                                    ".size())");
-
-                    out.line(
-                            owner +
-                                    ".add(" +
-                                    value +
-                                    ");");
-
-                    out.endBlock();
-                    out.beginBlock("else");
-
-                    out.line(
-                            owner +
-                                    ".set(" +
-                                    actualIndex +
-                                    ", " +
-                                    value +
-                                    ");");
-
-                    out.endBlock();
-                    return;
-
-                case DYNAMIC:
-                    out.line(
-                            "org.sjf4j.node.NodeWalker.putInArray(" +
-                                    owner +
-                                    ", " +
-                                    actualIndex +
-                                    ", " +
-                                    value +
-                                    ");");
-                    return;
-
-                default:
-                    throw new IllegalStateException(
-                            "unsupported index write: " +
-                                    access.kind());
+        if (segment instanceof PathSegment.Index) {
+            String actualIndex = index != null ? index :
+                    Integer.toString(((PathSegment.Index) segment).index);
+            if (access.kind() == NodeAccess.Kind.LIST || access.kind() == NodeAccess.Kind.JSON_ARRAY) {
+                out.beginBlock("if (" + actualIndex + " == " + owner + ".size())");
+                out.line(NodeWriteEmitter.append(access, owner, value) + ";");
+                out.endBlock();
+                out.beginBlock("else");
+                out.line(NodeWriteEmitter.index(access, owner, actualIndex, value) + ";");
+                out.endBlock();
+            } else {
+                out.line(NodeWriteEmitter.index(access, owner, actualIndex, value) + ";");
             }
+            return;
         }
 
-        throw new IllegalStateException(
-                "unsupported target segment: " +
-                        segment);
+        throw new IllegalStateException("unsupported target segment: " + segment);
     }
 
     /*
