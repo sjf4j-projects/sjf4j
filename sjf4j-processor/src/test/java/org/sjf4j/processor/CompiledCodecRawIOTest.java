@@ -62,7 +62,7 @@ class CompiledCodecRawIOTest {
                         backend + ": native POJO writer was lost");
             }
             if (backend.equals("JACKSON2") || backend.equals("JACKSON3")) {
-                assertTrue(generated.contains(" g = generator.nativeGenerator();"),
+                assertTrue(generated.contains(" nativeGenerator = generator.nativeGenerator();"),
                         backend + ": mixed native POJO path missing");
                 assertTrue(generated.contains("_writeString(nativeGenerator, (String) rawValue);"),
                         backend + ": shared Jackson codec string helper missing");
